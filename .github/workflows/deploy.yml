@@ -1,7 +1,7 @@
 name: deploy
 
 # Publish the gateway image to GHCR on push to main. The reusable workflow tags
-# the image with a build semver (0.<run>.x, like projects-hub/landscape); Flux
+# the image with a build semver (0.<run>, like projects-hub/landscape); Flux
 # image-automation (ImagePolicy range >=0.1.0) picks it up and deploys it to the
 # k3s cluster (sujaykumarsuman/infra). Switch to release tags at the 1.0
 # milestone — see docs/adr/0009-deployment-and-gitops.md.
@@ -15,4 +15,7 @@ jobs:
     with:
       image: ghcr.io/sujaykumarsuman/xlearn-gateway
       dockerfile: deploy/gateway.Dockerfile
-    secrets: inherit
+      # Stamp the binary version to match the build-semver image tag
+      # (0.1.<run_number>) the reusable workflow publishes on a branch push.
+      build-args: |
+        VERSION=0.1.${{ github.run_number }}
