@@ -10,4 +10,5 @@ web/dist/*
 
 # Local artefacts
 *.local
+*.env
 .DS_Store
