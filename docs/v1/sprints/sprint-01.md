@@ -6,22 +6,28 @@
 
 ## Status
 
-_Overall:_ 🔄 Code + wiring complete and locally verified; **M0 (Flux deploy) pending merge to `main` + the `infra` PR** (not pushed — repo policy is "don't commit/push unless asked").
+_Overall:_ ✅ **Done — M0 reached.** Skeleton live at `projects.sujaykumar.dev/xlearn` via Flux
+(`xlearn-gateway:0.1.3`), merged trunk-based (xlearn #2/#3/#4 + infra #7).
 
 | # | Task | Status |
 |---|------|--------|
 | 1 | Monorepo, tooling & platform primitives (gateway health skeleton) | ✅ |
 | 2 | Web app: port theme.css, app shell, routing, 12 stub screens | ✅ |
 | 3 | Gateway embeds & serves the SPA under /xlearn | ✅ |
-| 4 | CI + infra wiring -> deploy (reach M0) | 🔄 files written & validated (helm template, docker build, YAML); Flux deploy pending push |
+| 4 | CI + infra wiring -> deploy (reach M0) | ✅ |
 
-**Verified locally (2026-09-20):** `make build` embeds `web/dist` into `bin/gateway`; `make test` +
-`make lint` green (Go race + Vitest + eslint/tsc); the shell renders at `/xlearn` with all 12 routes,
-SPA deep-link fallback, sidebar collapse + coach FAB working; `/xlearn/api/healthz`, `/readyz`,
-`/healthz` return 200; hashed assets `immutable`, `index.html` `no-cache`; base-path tolerance works
-both stripped (`/api/healthz`) and un-stripped (`/xlearn/api/healthz`). The `deploy/gateway.Dockerfile`
-image builds (15.5 MB distroless) and runs under `--read-only` rootfs. `infra` renders via
-`helm template` + `helm lint` (IngressRoute `/xlearn` stripPrefix, `readOnlyRootFilesystem: true`).
+**Verified in prod (2026-09-20):** `https://projects.sujaykumar.dev/xlearn/api/healthz` →
+`{"status":"ok","service":"gateway","version":"0.1.3"}`; the shell renders at `/xlearn`, deep links
+fall back to the SPA (`/xlearn/dsa/dashboard` → 200), hashed assets are `immutable` through Traefik
+stripPrefix. Flux image-automation bumped the HelmRelease tag `0.1.0 → 0.1.3` automatically. Locally:
+`make build`/`make test`/`make lint` green; all 12 routes + collapse + coach FAB; the distroless image
+runs under `--read-only` rootfs; `infra` renders via `helm template`/`helm lint`.
+
+**Deploy note:** the first two `deploy` runs hit `startup_failure` — the reusable `build-push.yml@main`
+declares no `secrets:` block (so `secrets: inherit` is rejected) and needs `packages: write`, which a
+new repo's read-only default workflow token can't grant. Fixed by matching the airlift/landscape caller
+(no `secrets: inherit`, a `VERSION` build-arg) and granting `packages: write` on the deploy job (xlearn
+#3, #4). Future `xlearn-*` service deploys should copy this `deploy.yml` shape.
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + the
