@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
@@ -25,6 +27,13 @@ func (g *Gateway) newAPIMux() *http.ServeMux {
 	mux.HandleFunc("POST /api/onboarding/step", g.handleOnboardingStep)
 	mux.HandleFunc("POST /api/auth/{provider}/start", g.handleAuthProxy)
 	mux.HandleFunc("GET /api/auth/{provider}/callback", g.handleAuthProxy)
+	// Curriculum content (read-only). Session-gated but no user JWT — curriculum
+	// has no per-user state; the gateway just proxies (no aggregation this sprint).
+	mux.HandleFunc("GET /api/paths", g.handleListPaths)
+	mux.HandleFunc("GET /api/paths/{slug}", g.handleGetPath)
+	mux.HandleFunc("GET /api/paths/{slug}/weeks/{n}", g.handleGetWeek)
+	mux.HandleFunc("GET /api/problems/{id}", g.handleGetProblem)
+	mux.HandleFunc("GET /api/concepts/{slug}", g.handleGetConcept)
 	// Catch-all: unknown /api/* is a 404 envelope, never the SPA shell.
 	mux.HandleFunc("/api/", g.apiNotFound)
 	return mux
@@ -116,6 +125,68 @@ func (g *Gateway) handleAuthProxy(w http.ResponseWriter, r *http.Request) {
 
 func (g *Gateway) apiNotFound(w http.ResponseWriter, r *http.Request) {
 	writeError(w, http.StatusNotFound, "not_found", "no such endpoint")
+}
+
+// --- curriculum content proxy (read-only, session-gated) ---
+//
+// Content is read-only with no per-user state, so the gateway validates the session
+// (consistent with the rest of /api) but does NOT forward a user JWT — curriculum
+// has no user-scoped logic. It simply proxies; screen aggregation is a later sprint.
+
+func (g *Gateway) handleListPaths(w http.ResponseWriter, r *http.Request) {
+	if _, ok := g.authAccount(w, r); !ok {
+		return
+	}
+	g.proxyCurriculum(w, r, "/paths")
+}
+
+func (g *Gateway) handleGetPath(w http.ResponseWriter, r *http.Request) {
+	if _, ok := g.authAccount(w, r); !ok {
+		return
+	}
+	g.proxyCurriculum(w, r, "/paths/"+url.PathEscape(r.PathValue("slug")))
+}
+
+func (g *Gateway) handleGetWeek(w http.ResponseWriter, r *http.Request) {
+	if _, ok := g.authAccount(w, r); !ok {
+		return
+	}
+	n := r.PathValue("n")
+	if _, err := strconv.Atoi(n); err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "week must be an integer")
+		return
+	}
+	g.proxyCurriculum(w, r, "/paths/"+url.PathEscape(r.PathValue("slug"))+"/weeks/"+url.PathEscape(n))
+}
+
+func (g *Gateway) handleGetProblem(w http.ResponseWriter, r *http.Request) {
+	if _, ok := g.authAccount(w, r); !ok {
+		return
+	}
+	g.proxyCurriculum(w, r, "/problems/"+url.PathEscape(r.PathValue("id")))
+}
+
+func (g *Gateway) handleGetConcept(w http.ResponseWriter, r *http.Request) {
+	if _, ok := g.authAccount(w, r); !ok {
+		return
+	}
+	g.proxyCurriculum(w, r, "/concepts/"+url.PathEscape(r.PathValue("slug")))
+}
+
+// proxyCurriculum forwards a GET to the curriculum service and passes its JSON
+// response (including its own 404/error envelopes) straight through.
+func (g *Gateway) proxyCurriculum(w http.ResponseWriter, r *http.Request, upstreamPath string) {
+	if g.curriculum == nil {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "curriculum not configured")
+		return
+	}
+	body, status, err := g.curriculum.get(r.Context(), upstreamPath)
+	if err != nil {
+		g.log.Error("bff curriculum call failed", "path", upstreamPath, "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "curriculum unavailable")
+		return
+	}
+	passthrough(w, status, body)
 }
 
 // authAccount resolves the account id from the session cookie via identity, or
@@ -268,6 +339,37 @@ func (c *identityClient) postJSON(ctx context.Context, path, token string, paylo
 }
 
 func (c *identityClient) do(req *http.Request) ([]byte, int, error) {
+	resp, err := c.httpc.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	return body, resp.StatusCode, err
+}
+
+// --- curriculum client ---
+
+// curriculumClient calls the internal curriculum service (read-only content).
+type curriculumClient struct {
+	baseURL string
+	httpc   *http.Client
+}
+
+func newCurriculumClient(baseURL string) *curriculumClient {
+	return &curriculumClient{
+		baseURL: baseURL,
+		httpc:   &http.Client{Timeout: 10 * time.Second},
+	}
+}
+
+// get issues a GET to the curriculum service and returns the raw body + status.
+func (c *curriculumClient) get(ctx context.Context, path string) ([]byte, int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Accept", "application/json")
 	resp, err := c.httpc.Do(req)
 	if err != nil {
 		return nil, 0, err

@@ -19,9 +19,10 @@ import (
 // verifies the gateway-minted JWT against the gateway's real JWKS — the end-to-end
 // mint→forward→JWKS-verify path (ADR-0006, acceptance #3).
 type bffHarness struct {
-	gwServer   *httptest.Server
-	verifyErr  error // last error the fake identity's verifier returned
-	lastRevoke string
+	gwServer           *httptest.Server
+	verifyErr          error // last error the fake identity's verifier returned
+	lastRevoke         string
+	lastCurriculumPath string // last path the fake curriculum service received
 }
 
 func newBFFHarness(t *testing.T) *bffHarness {
@@ -88,14 +89,29 @@ func newBFFHarness(t *testing.T) *bffHarness {
 	identity := httptest.NewServer(identityMux)
 	t.Cleanup(identity.Close)
 
+	// Fake curriculum service: records the last path it was asked for and echoes a
+	// tiny content payload. Curriculum takes no user JWT, so no verification here.
+	curriculumMux := http.NewServeMux()
+	curriculumMux.HandleFunc("GET /paths", func(w http.ResponseWriter, r *http.Request) {
+		h.lastCurriculumPath = r.URL.Path
+		_ = json.NewEncoder(w).Encode(map[string]any{"paths": []any{map[string]any{"slug": "dsa"}}})
+	})
+	curriculumMux.HandleFunc("GET /paths/{slug}", func(w http.ResponseWriter, r *http.Request) {
+		h.lastCurriculumPath = r.URL.Path
+		_ = json.NewEncoder(w).Encode(map[string]any{"path": map[string]any{"slug": r.PathValue("slug")}})
+	})
+	curriculum := httptest.NewServer(curriculumMux)
+	t.Cleanup(curriculum.Close)
+
 	dist := fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>xLearn</title>")}}
 	gw := New(Options{
-		BasePath:         "/xlearn",
-		Version:          "test",
-		Dist:             dist,
-		Signer:           signer,
-		IdentityBaseURL:  identity.URL,
-		AudienceIdentity: "identity",
+		BasePath:          "/xlearn",
+		Version:           "test",
+		Dist:              dist,
+		Signer:            signer,
+		IdentityBaseURL:   identity.URL,
+		AudienceIdentity:  "identity",
+		CurriculumBaseURL: curriculum.URL,
 	})
 	h.gwServer = httptest.NewServer(gw.Handler())
 	t.Cleanup(h.gwServer.Close)
@@ -215,6 +231,55 @@ func TestBFFAuthStartProxy(t *testing.T) {
 	}
 	if !hasCookieNamed(resp.Cookies(), "xl_oauthtx") {
 		t.Fatalf("start did not pass through the tx cookie")
+	}
+}
+
+func TestBFFCurriculumRequiresSession(t *testing.T) {
+	h := newBFFHarness(t)
+	resp := h.get(t, "/xlearn/api/paths", nil)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("no cookie: status %d, want 401", resp.StatusCode)
+	}
+	if h.lastCurriculumPath != "" {
+		t.Fatalf("curriculum should not be called without a session; got %q", h.lastCurriculumPath)
+	}
+}
+
+func TestBFFCurriculumProxiesPaths(t *testing.T) {
+	h := newBFFHarness(t)
+	resp := h.get(t, "/xlearn/api/paths", &http.Cookie{Name: auth.SessionCookieName, Value: "sess-1"})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d, want 200", resp.StatusCode)
+	}
+	if h.lastCurriculumPath != "/paths" {
+		t.Fatalf("curriculum path = %q, want /paths", h.lastCurriculumPath)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(body), `"dsa"`) {
+		t.Fatalf("expected proxied content, got %s", body)
+	}
+}
+
+func TestBFFCurriculumProxiesPathBySlug(t *testing.T) {
+	h := newBFFHarness(t)
+	resp := h.get(t, "/xlearn/api/paths/dsa", &http.Cookie{Name: auth.SessionCookieName, Value: "sess-1"})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d, want 200", resp.StatusCode)
+	}
+	if h.lastCurriculumPath != "/paths/dsa" {
+		t.Fatalf("curriculum path = %q, want /paths/dsa", h.lastCurriculumPath)
+	}
+}
+
+func TestBFFWeekRejectsNonInteger(t *testing.T) {
+	h := newBFFHarness(t)
+	resp := h.get(t, "/xlearn/api/paths/dsa/weeks/abc", &http.Cookie{Name: auth.SessionCookieName, Value: "sess-1"})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("non-integer week: status %d, want 400", resp.StatusCode)
 	}
 }
 

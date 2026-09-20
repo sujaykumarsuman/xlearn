@@ -51,13 +51,14 @@ func run() int {
 	}
 
 	gw := gateway.New(gateway.Options{
-		BasePath:         cfg.BasePath,
-		Version:          xlearn.Version,
-		Dist:             dist,
-		Logger:           logger,
-		Signer:           signer,
-		IdentityBaseURL:  cfg.IdentityBaseURL,
-		AudienceIdentity: cfg.JWT.AudienceIdentity,
+		BasePath:          cfg.BasePath,
+		Version:           xlearn.Version,
+		Dist:              dist,
+		Logger:            logger,
+		Signer:            signer,
+		IdentityBaseURL:   cfg.IdentityBaseURL,
+		AudienceIdentity:  cfg.JWT.AudienceIdentity,
+		CurriculumBaseURL: cfg.CurriculumBaseURL,
 	})
 
 	handler := httpx.Chain(gw.Handler(),
