@@ -5,8 +5,8 @@ Cross-sprint living tracker. Updated per the
 state (it's baked into every `prompt-sNN.md`). Per-task detail lives in each
 [`sprints/sprint-NN.md`](sprints/); newest decisions at the top of the log.
 
-- **Build line:** v1 · **Phase:** S03 curriculum service + Catalog/Roadmap **merged & deployed to prod via Flux** (`xlearn-curriculum`/`xlearn-gateway`/`xlearn-identity:0.1.11`); gateway live with the content route present. Adversarial review clean.
-- **Deploy mode:** build-semver auto-deploy from `main` ([ADR-0009](../adr/0009-deployment-and-gitops.md)) — proven again for S03 (all three images → `0.1.11`); DB Flux Kustomizations tightened to a 1m reconcile so role/schema/creds land as fast as the apps
+- **Build line:** v1 · **Phase:** S04 Week + Concept screens + the BFF **week-aggregation** endpoint (placeholder five-touch/solve `userState`, frozen shape — [ADR-0013](../adr/0013-bff-week-aggregation-userstate-contract.md)) **code-complete & green, shipping**. Completes the read-only browse path (**M2**). Adversarial review: 1 confirmed finding (malformed-week not-found state) fixed. S03 before it: curriculum + Catalog/Roadmap merged & deployed (`0.1.11`).
+- **Deploy mode:** build-semver auto-deploy from `main` ([ADR-0009](../adr/0009-deployment-and-gitops.md)). S04 touches no infra: only the gateway image changes, and it auto-updates via Flux image-automation from `main` (no `../infra` change this sprint).
 - **Last updated:** 2026-09-21
 
 ## Snapshot
@@ -19,7 +19,7 @@ state (it's baked into every `prompt-sNN.md`). Per-task detail lives in each
 | Git strategy | ✅ drafted |
 | v1 build plan | ✅ done |
 | Sprint plans + prompts (S01-S12) | ✅ all scaffolded |
-| Application code | 🔄 S01 gateway + web shell live; S02 identity **merged & deployed** (`0.1.7`); S03 `curriculum` service (schema+goose+sqlc, idempotent seed, 5 read endpoints) + gateway content proxy + Catalog/Roadmap screens **merged & deployed** (`0.1.11`) |
+| Application code | 🔄 S01 gateway + web shell live; S02 identity **merged & deployed** (`0.1.7`); S03 `curriculum` + gateway content proxy + Catalog/Roadmap **merged & deployed** (`0.1.11`); S04 Week + Concept screens + gateway **week-aggregation** (`agg`, placeholder `userState`) + `/concepts/{slug}` passthrough + sanitized markdown renderer + route-aware breadcrumbs **code-complete & green, shipping** |
 | `infra` xlearn wiring | 🔄 gateway + identity + **curriculum live** (`0.1.11`); S03 merged: `xlearn-curriculum` HelmRelease (ClusterIP), `curriculum` schema + `xlearn_curriculum` role (4-step), SOPS `xlearn-curriculum-db`/`pg-xlearn-curriculum`, curriculum image-automation, gateway `CURRICULUM_BASE_URL`; DB Flux Kustomizations set to 1m reconcile |
 
 ## Sprint board
@@ -29,7 +29,7 @@ state (it's baked into every `prompt-sNN.md`). Per-task detail lives in each
 | [S01](sprints/sprint-01.md) | Bootstrap + app shell (→ M0 live at `/xlearn`) | ✅ Done — live at `/xlearn` |
 | [S02](sprints/sprint-02.md) | identity / auth (→ M1) | 🔄 Merged & deployed (`0.1.7`), verified live; login pending real GitHub OAuth creds |
 | [S03](sprints/sprint-03.md) | curriculum + Catalog/Roadmap | ✅ Done — merged & deployed (`0.1.11`) |
-| [S04](sprints/sprint-04.md) | Week + Concept (→ M2) | ⬜ Planned |
+| [S04](sprints/sprint-04.md) | Week + Concept (→ M2) | 🔄 Code-complete & green; shipping |
 | [S05](sprints/sprint-05.md) | practice / Problem ★ (→ M3) | ⬜ Planned |
 | [S06](sprints/sprint-06.md) | review scheduler / Revision | ⬜ Planned |
 | [S07](sprints/sprint-07.md) | mistakes + notifications (→ M4) | ⬜ Planned |
@@ -48,7 +48,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ planned/not started · ⛔ blocked. 
 |----|--------|-------|
 | M0 live at `/xlearn` | end S01 | ✅ **live** at `projects.sujaykumar.dev/xlearn` (`xlearn-gateway:0.1.3`, Flux-deployed 2026-09-20) |
 | M1 login | end S02 | 🔄 **identity + gateway deployed to prod via Flux** (`0.1.7`), verified live (JWKS, `/me`→401, OAuth `start`→302, schema migrated, SOPS secrets); GitHub login goes live once the real OAuth client id/secret replace the placeholders |
-| M2 browse curriculum | end S04 | ⬜ |
+| M2 browse curriculum | end S04 | 🔄 **Catalog → Roadmap → Week → Concept** all built on real seeded content; week `agg` endpoint returns the frozen placeholder `userState`. Code-complete & green; flips to ✅ on Flux deploy + live verify. |
 | M3 guided problem | end S05 | ⬜ |
 | M4 repetition+mistakes | end S07 | ⬜ |
 | M5 mock+analytics | end S09 | ⬜ |
@@ -61,6 +61,8 @@ Notable calls not (yet) worth a full ADR, newest first. Promote to an ADR if the
 
 | Date | Decision | Notes |
 |------|----------|-------|
+| 2026-09-21 | **S04 week-aggregation `userState` shape FROZEN → [ADR-0013](../adr/0013-bff-week-aggregation-userstate-contract.md).** `GET /paths/{slug}/weeks/{n}` is now a gateway `agg`: curriculum content passes through unchanged (+ its 404s), with one added `userState` key — per-problem `{status,lastOutcome,currentTouch,touches[5]}` (levels 1..5 = Day 1/3/7/21/45) + week rollup `{solved,coreTotal,byDifficulty,populated:false}`. camelCase (vs snake_case content) is deliberate. Curriculum's week endpoint also gained `phase` + slim `path` (for the eyebrow). | S05/S06 fill the same fields in place (flip `populated`) with no client change. Placeholder is honest — neutral dots, "Available", 0/core; never faked. `coreTotal`/`byDifficulty` count non-reinforcement problems only. |
+| 2026-09-21 | **S04 Week + Concept passed a 4-dimension adversarial review** (correctness / contract-honesty / security / conventions → verify): **1 confirmed defect fixed** — a malformed week URL (`/dsa/week/0`,`abc`) disabled the query and rendered a blank "Week NaN of 16" page; now an explicit not-found state (regression test added). Security/contract/conventions clean. | Sanitized markdown renderer builds React nodes (no `dangerouslySetInnerHTML`); `.dc.html` `.cn` styles ported to `app.css`; C++ template tab stubbed/disabled (Go-first). |
 | 2026-09-21 | **S03 merged + deployed to prod** (xlearn#12, infra#10/#11); GitOps loop fired — Flux built + bumped `xlearn-curriculum`/`xlearn-gateway`/`xlearn-identity` to `0.1.11` (identity rebuilt via shared `internal/platform`). Verified live: gateway `0.1.11`, `/api/paths`→401 (content route present, session-gated). | End-to-end curriculum content not exercisable in prod yet (login still on placeholder OAuth; curriculum is ClusterIP, no kubectl) — same ceiling as S02. |
 | 2026-09-21 | **DB Flux Kustomizations `cnpg-operator`+`databases` set 30m→1m** (infra#11) to match `apps` — role/schema/cred changes now land as fast as the HelmReleases that depend on them (a new service could otherwise boot before its role/schema existed). | Surfaced adding the `xlearn_curriculum` role/schema. |
 | 2026-09-21 | **End-of-session shipping made a self-authorizing standing directive** (AGENT.md / git-strategy.md / all `prompt-sNN.md`), superseding the "do not commit or push unless asked" boilerplate — resolved a directive conflict that had me stop after local verification. | Ship = branch → PR → CI-green squash-merge → Flux deploy → verify → sync `main`, in every repo touched. |

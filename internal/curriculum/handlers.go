@@ -43,6 +43,15 @@ type conceptRefJSON struct {
 	Title string `json:"title"`
 }
 
+// weekPathJSON is the slim path context a week view needs for its eyebrow
+// ("Week N of {week_total} …") without pulling the whole Roadmap payload.
+type weekPathJSON struct {
+	Slug         string `json:"slug"`
+	Title        string `json:"title"`
+	ProblemTotal int    `json:"problem_total"`
+	WeekTotal    int    `json:"week_total"`
+}
+
 type problemJSON struct {
 	ID              string `json:"id"`
 	PathSlug        string `json:"path_slug"`
@@ -126,8 +135,12 @@ func (s *Service) handleGetPath(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleGetWeek: GET /paths/{slug}/weeks/{n} — week thesis + concepts + problem list
-// (CONTENT ONLY; the stateful `agg` version that folds in five-touch state is S04).
+// handleGetWeek: GET /paths/{slug}/weeks/{n} — week thesis + its phase + concepts
+// + problem list. This is the CONTENT read; the gateway's `agg` version layers the
+// per-user five-touch/solve state on top (ADR-0005: cross-context stitching lives in
+// the gateway). The phase (resolved from the week range) and slim path context let
+// the Week screen render its "Week N of {week_total} · Phase X <name>" eyebrow from
+// one call.
 func (s *Service) handleGetWeek(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
 	n, err := strconv.Atoi(r.PathValue("n"))
@@ -135,9 +148,19 @@ func (s *Service) handleGetWeek(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad_request", "week must be a positive integer")
 		return
 	}
+	path, err := s.store.GetPath(r.Context(), slug)
+	if err != nil {
+		s.mapErr(w, "get path", err)
+		return
+	}
 	week, err := s.store.GetWeek(r.Context(), slug, n)
 	if err != nil {
 		s.mapErr(w, "get week", err)
+		return
+	}
+	phases, err := s.store.ListPhases(r.Context(), slug)
+	if err != nil {
+		s.internal(w, "list phases", err)
 		return
 	}
 	concepts, err := s.store.ListConceptsByWeek(r.Context(), slug, n)
@@ -158,15 +181,30 @@ func (s *Service) handleGetWeek(w http.ResponseWriter, r *http.Request) {
 	for _, p := range problems {
 		problemsOut = append(problemsOut, toProblemJSON(p))
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	out := map[string]any{
 		"week": map[string]any{
 			"n":      week.N,
 			"title":  week.Title,
 			"thesis": week.Thesis,
 		},
+		"path": weekPathJSON{
+			Slug:         path.Slug,
+			Title:        path.Title,
+			ProblemTotal: path.ProblemTotal,
+			WeekTotal:    path.WeekTotal,
+		},
 		"concepts": conceptsOut,
 		"problems": problemsOut,
-	})
+	}
+	// The phase that contains this week (order/name drive the eyebrow). A week with
+	// no matching phase range simply omits it rather than guessing.
+	for _, p := range phases {
+		if n >= p.WeekFrom && n <= p.WeekTo {
+			out["phase"] = phaseJSON{Order: p.Order, Name: p.Name, Theme: p.Theme, WeekFrom: p.WeekFrom, WeekTo: p.WeekTo}
+			break
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 // handleGetProblem: GET /problems/{id} — problem + its problem_sections keyed by

@@ -100,6 +100,26 @@ func newBFFHarness(t *testing.T) *bffHarness {
 		h.lastCurriculumPath = r.URL.Path
 		_ = json.NewEncoder(w).Encode(map[string]any{"path": map[string]any{"slug": r.PathValue("slug")}})
 	})
+	// Week content for the BFF aggregation test: a core Medium + a reinforcement Easy.
+	// Week 99 is unknown → curriculum's own 404 envelope, which the gateway propagates.
+	curriculumMux.HandleFunc("GET /paths/{slug}/weeks/{n}", func(w http.ResponseWriter, r *http.Request) {
+		h.lastCurriculumPath = r.URL.Path
+		if r.PathValue("n") == "99" {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":{"code":"not_found","message":"resource not found"}}`))
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"week":     map[string]any{"n": 2, "title": "Two Pointers", "thesis": "t2"},
+			"phase":    map[string]any{"order": 1, "name": "Fundamentals"},
+			"path":     map[string]any{"slug": r.PathValue("slug"), "week_total": 16},
+			"concepts": []any{map[string]any{"slug": "two-pointers", "title": "Two Pointers"}},
+			"problems": []any{
+				map[string]any{"id": "16", "difficulty": "med", "is_reinforcement": false},
+				map[string]any{"id": "3", "difficulty": "easy", "is_reinforcement": true},
+			},
+		})
+	})
 	curriculum := httptest.NewServer(curriculumMux)
 	t.Cleanup(curriculum.Close)
 
@@ -280,6 +300,105 @@ func TestBFFWeekRejectsNonInteger(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("non-integer week: status %d, want 400", resp.StatusCode)
+	}
+	if h.lastCurriculumPath != "" {
+		t.Fatalf("curriculum should not be called for a bad week; got %q", h.lastCurriculumPath)
+	}
+}
+
+// TestBFFWeekAggregatesUserState is the S04 acceptance: the week route stitches the
+// curriculum content to a placeholder userState with the FROZEN shape (per-problem
+// touches[5] + week rollup, populated:false) that S05/S06 will fill (ADR-0013).
+func TestBFFWeekAggregatesUserState(t *testing.T) {
+	h := newBFFHarness(t)
+	resp := h.get(t, "/xlearn/api/paths/dsa/weeks/2", &http.Cookie{Name: auth.SessionCookieName, Value: "sess-1"})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d, want 200", resp.StatusCode)
+	}
+	if h.lastCurriculumPath != "/paths/dsa/weeks/2" {
+		t.Fatalf("curriculum path = %q, want /paths/dsa/weeks/2", h.lastCurriculumPath)
+	}
+
+	var out struct {
+		Week      map[string]any `json:"week"`
+		Concepts  []any          `json:"concepts"`
+		Problems  []any          `json:"problems"`
+		UserState struct {
+			Week struct {
+				Solved       int `json:"solved"`
+				CoreTotal    int `json:"coreTotal"`
+				ByDifficulty struct {
+					Easy int `json:"easy"`
+					Med  int `json:"med"`
+					Hard int `json:"hard"`
+				} `json:"byDifficulty"`
+				Populated bool `json:"populated"`
+			} `json:"week"`
+			Problems map[string]struct {
+				Status       string  `json:"status"`
+				LastOutcome  *string `json:"lastOutcome"`
+				CurrentTouch int     `json:"currentTouch"`
+				Touches      []struct {
+					Level   int     `json:"level"`
+					DueDate *string `json:"dueDate"`
+					Result  string  `json:"result"`
+				} `json:"touches"`
+			} `json:"problems"`
+		} `json:"userState"`
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if err := json.Unmarshal(body, &out); err != nil {
+		t.Fatalf("response not JSON: %v (%s)", err, body)
+	}
+
+	// Curriculum content is preserved verbatim.
+	if out.Week["n"].(float64) != 2 || len(out.Concepts) != 1 || len(out.Problems) != 2 {
+		t.Fatalf("curriculum content not preserved: %s", body)
+	}
+
+	// Week rollup: 1 core Medium (the Easy is reinforcement → not counted), 0 solved,
+	// populated:false so S05/S06 can flip it.
+	wk := out.UserState.Week
+	if wk.Solved != 0 || wk.CoreTotal != 1 || wk.Populated {
+		t.Fatalf("week rollup wrong: %+v", wk)
+	}
+	if wk.ByDifficulty.Med != 1 || wk.ByDifficulty.Easy != 0 || wk.ByDifficulty.Hard != 0 {
+		t.Fatalf("byDifficulty should count only the core Medium: %+v", wk.ByDifficulty)
+	}
+
+	// Every problem (core AND reinforcement) gets an honest available state with five
+	// empty touches (levels 1..5, no due date, no result).
+	if len(out.UserState.Problems) != 2 {
+		t.Fatalf("expected per-problem state for both problems, got %d", len(out.UserState.Problems))
+	}
+	ps, ok := out.UserState.Problems["16"]
+	if !ok {
+		t.Fatalf("missing state for problem 16: %s", body)
+	}
+	if ps.Status != "available" || ps.LastOutcome != nil || ps.CurrentTouch != 0 {
+		t.Fatalf("problem 16 state should be honest/empty: %+v", ps)
+	}
+	if len(ps.Touches) != 5 {
+		t.Fatalf("expected 5 touches, got %d", len(ps.Touches))
+	}
+	for i, tch := range ps.Touches {
+		if tch.Level != i+1 || tch.DueDate != nil || tch.Result != "none" {
+			t.Fatalf("touch %d not empty: %+v", i, tch)
+		}
+	}
+}
+
+func TestBFFWeekPropagatesNotFound(t *testing.T) {
+	h := newBFFHarness(t)
+	resp := h.get(t, "/xlearn/api/paths/dsa/weeks/99", &http.Cookie{Name: auth.SessionCookieName, Value: "sess-1"})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("unknown week: status %d, want 404", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(body), `"not_found"`) {
+		t.Fatalf("want curriculum not_found envelope, got %s", body)
 	}
 }
 

@@ -44,6 +44,47 @@ export const NAV: NavSection[] = [
   },
 ];
 
+/** One breadcrumb: a label, and a link target unless it is the current page. */
+export interface Crumb {
+  label: string;
+  to?: string;
+}
+
+/**
+ * buildCrumbs turns an app-relative path (+ query string) into the top-bar
+ * breadcrumb trail. Two content routes get bespoke trails so the last crumb reads
+ * like the artboards and Concept shows the week it was opened from:
+ *   - /dsa/week/:n           → xlearn / dsa / week/N
+ *   - /dsa/concept/:slug     → xlearn / dsa / [week N /] concept/slug   (week from ?week=N)
+ * Every other route falls back to one crumb per path segment. The leading `xlearn`
+ * links home except when it is the only (current-page) crumb.
+ */
+export function buildCrumbs(pathname: string, search = ""): Crumb[] {
+  const segs = pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+  const crumbs: Crumb[] = [{ label: "xlearn", to: "/" }];
+
+  if (segs.length === 3 && segs[0] === "dsa" && segs[1] === "week") {
+    crumbs.push({ label: "dsa", to: "/dsa" }, { label: `week/${segs[2]}` });
+    return crumbs;
+  }
+
+  if (segs.length === 3 && segs[0] === "dsa" && segs[1] === "concept") {
+    crumbs.push({ label: "dsa", to: "/dsa" });
+    const week = new URLSearchParams(search).get("week");
+    if (week && /^\d+$/.test(week)) {
+      crumbs.push({ label: `week ${week}`, to: `/dsa/week/${week}` });
+    }
+    crumbs.push({ label: `concept/${segs[2]}` });
+    return crumbs;
+  }
+
+  segs.forEach((seg, i) => {
+    const last = i === segs.length - 1;
+    crumbs.push(last ? { label: seg } : { label: seg, to: "/" + segs.slice(0, i + 1).join("/") });
+  });
+  return crumbs;
+}
+
 /**
  * routeTitle returns a human screen name for an app-relative path (the value of
  * useLocation().pathname, which excludes the router basename). Used for the

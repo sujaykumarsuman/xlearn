@@ -28,6 +28,7 @@ under [`../v1/`](../v1/).
 | [0010](0010-spa-base-path-and-gateway-serving.md) | SPA base path & gateway serving model | Accepted |
 | [0011](0011-jwks-publication-and-shared-db-schema-ownership.md) | JWKS publication & shared-DB schema ownership | Accepted |
 | [0012](0012-curriculum-content-model-and-seeding.md) | Curriculum content model & seeding | Accepted |
+| [0013](0013-bff-week-aggregation-userstate-contract.md) | BFF week-aggregation `userState` contract | Accepted |
 
 ## Adding an ADR
 
