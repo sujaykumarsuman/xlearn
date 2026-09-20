@@ -25,7 +25,7 @@ export function Sidebar() {
           aria-haspopup="true"
         >
           <span className="xl-pathsw__ic">DSA</span>
-          <span style={{ flex: 1 }}>
+          <span className="xl-pathsw__label" style={{ flex: 1 }}>
             <span className="xl-pathsw__t">DSA Interview Mastery</span>
             <span className="xl-pathsw__s">16 weeks · 151 problems</span>
           </span>
