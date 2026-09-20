@@ -1,0 +1,34 @@
+[
+  {
+    "path_slug": "dsa",
+    "order": 1,
+    "name": "Fundamentals",
+    "theme": "Arrays, hashing, and the two-pointer mind.",
+    "week_from": 1,
+    "week_to": 3
+  },
+  {
+    "path_slug": "dsa",
+    "order": 2,
+    "name": "Core Data Structures",
+    "theme": "The structures interviewers reach for by default.",
+    "week_from": 4,
+    "week_to": 8
+  },
+  {
+    "path_slug": "dsa",
+    "order": 3,
+    "name": "Advanced Patterns",
+    "theme": "Where medium becomes hard — DP, graphs, greedy.",
+    "week_from": 9,
+    "week_to": 12
+  },
+  {
+    "path_slug": "dsa",
+    "order": 4,
+    "name": "Interview Mastery",
+    "theme": "Perform under real interview conditions.",
+    "week_from": 13,
+    "week_to": 16
+  }
+]

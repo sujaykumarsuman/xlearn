@@ -1,0 +1,98 @@
+[
+  {
+    "path_slug": "dsa",
+    "n": 1,
+    "title": "Arrays, Strings, Hashing, Prefix Sums",
+    "thesis": "Turn linear scans into O(1) lookups: hashing and prefix sums are the bedrock every later pattern builds on."
+  },
+  {
+    "path_slug": "dsa",
+    "n": 2,
+    "title": "Two Pointers & Sliding Window",
+    "thesis": "Collapse nested loops into a single moving window — the mindset behind most array and string interview questions."
+  },
+  {
+    "path_slug": "dsa",
+    "n": 3,
+    "title": "Stacks & Monotonic Stack",
+    "thesis": "Keep a stack sorted to answer 'next greater / smaller' in one pass — the key to histogram and span problems."
+  },
+  {
+    "path_slug": "dsa",
+    "n": 4,
+    "title": "Linked Lists & Design",
+    "thesis": "Pointer surgery and cache design: reverse, detect cycles, and build an O(1) LRU from a hashmap plus a doubly-linked list."
+  },
+  {
+    "path_slug": "dsa",
+    "n": 5,
+    "title": "Trees & BST",
+    "thesis": "Recursion over structure — traversals, invariants, and the ordered guarantees of a binary search tree."
+  },
+  {
+    "path_slug": "dsa",
+    "n": 6,
+    "title": "Heaps & Intervals",
+    "thesis": "Keep the top-k live with a heap, and reason about overlaps by sorting intervals on the right key."
+  },
+  {
+    "path_slug": "dsa",
+    "n": 7,
+    "title": "Tries & Backtracking",
+    "thesis": "Prefix trees for word problems, and disciplined backtracking that prunes the search space instead of brute-forcing it."
+  },
+  {
+    "path_slug": "dsa",
+    "n": 8,
+    "title": "Graphs & Topological Sort",
+    "thesis": "Model dependencies as a graph; BFS/DFS, cycle detection, and topological order unlock scheduling problems like Course Schedule."
+  },
+  {
+    "path_slug": "dsa",
+    "n": 9,
+    "title": "Shortest Paths",
+    "thesis": "Dijkstra, Bellman-Ford, and BFS-on-weights — pick the right shortest-path tool for the constraints you're given."
+  },
+  {
+    "path_slug": "dsa",
+    "n": 10,
+    "title": "Dynamic Programming I",
+    "thesis": "Find the recurrence, then remember it: 1-D DP over choices, from Coin Change to classic knapsack shapes."
+  },
+  {
+    "path_slug": "dsa",
+    "n": 11,
+    "title": "Dynamic Programming II",
+    "thesis": "2-D and interval DP — grids, subsequences, and partitions where the state needs two dimensions."
+  },
+  {
+    "path_slug": "dsa",
+    "n": 12,
+    "title": "Greedy & Bit Manipulation",
+    "thesis": "Prove the local choice is globally optimal, and wield bit tricks for set-state and constant-space wins."
+  },
+  {
+    "path_slug": "dsa",
+    "n": 13,
+    "title": "Mixed sets + first mocks",
+    "thesis": "Interleave patterns under time pressure and take your first scored mocks; target ≥ 24 / 35."
+  },
+  {
+    "path_slug": "dsa",
+    "n": 14,
+    "title": "Timed company sets",
+    "thesis": "Company-style problem sets on the clock — build speed and pattern recall; target ≥ 28 / 35."
+  },
+  {
+    "path_slug": "dsa",
+    "n": 15,
+    "title": "Mock intensives",
+    "thesis": "Back-to-back full mocks under real conditions; tighten communication and edge-case coverage; target ≥ 30 / 35."
+  },
+  {
+    "path_slug": "dsa",
+    "n": 16,
+    "title": "Final rounds & retro",
+    "thesis": "Simulate final onsite rounds, close mistake-journal loops, and retro your weak areas — interview-ready."
+  }
+]
