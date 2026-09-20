@@ -1,0 +1,27 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-09-20T18:00:00Z" },
+  "title": "xLearn",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Dashboard.dc.html": { "x": 0, "y": 0, "w": 1440, "h": 1024, "title": "Dashboard · Today", "is_interactive": true },
+    "Problem.dc.html": { "x": 1520, "y": 0, "w": 1440, "h": 1024, "title": "Guided problem · 3Sum (hero)", "is_interactive": true },
+    "Roadmap.dc.html": { "x": 3040, "y": 0, "w": 1440, "h": 1024, "title": "Path overview · 16-week roadmap", "is_interactive": true },
+    "Week.dc.html": { "x": 0, "y": 1144, "w": 1440, "h": 1024, "title": "Week 2 · Two Pointers & Sliding Window", "is_interactive": true },
+    "Concept.dc.html": { "x": 1520, "y": 1144, "w": 1440, "h": 1024, "title": "Concept · Sliding Window", "is_interactive": true },
+    "Revision.dc.html": { "x": 3040, "y": 1144, "w": 1440, "h": 1024, "title": "Revision queue · five-touch", "is_interactive": true },
+    "Mistakes.dc.html": { "x": 0, "y": 2288, "w": 1440, "h": 1024, "title": "Mistake journal", "is_interactive": true },
+    "Mock.dc.html": { "x": 1520, "y": 2288, "w": 1440, "h": 1024, "title": "Mock interview + rubric", "is_interactive": true },
+    "Progress.dc.html": { "x": 3040, "y": 2288, "w": 1440, "h": 1024, "title": "Progress & stats", "is_interactive": true },
+    "Settings.dc.html": { "x": 0, "y": 3432, "w": 1440, "h": 1024, "title": "Settings · study budget & API keys", "is_interactive": true },
+    "Catalog.dc.html": { "x": 1520, "y": 3432, "w": 1440, "h": 1024, "title": "xLearn catalog · all paths", "is_interactive": true },
+    "Auth.dc.html": { "x": 3040, "y": 3432, "w": 1440, "h": 1024, "title": "Auth & onboarding", "is_interactive": true }
+  },
+  "order": ["Dashboard.dc.html", "Problem.dc.html", "Roadmap.dc.html", "Week.dc.html", "Concept.dc.html", "Revision.dc.html", "Mistakes.dc.html", "Mock.dc.html", "Progress.dc.html", "Settings.dc.html", "Catalog.dc.html", "Auth.dc.html"],
+  "notes": {
+    "title_main": { "x": 0, "y": -250, "text": "xLearn — a guided-learning platform · built with the sujaykumar design system", "kind": "title1", "maxW": 4480 },
+    "sub_main": { "x": 0, "y": -120, "text": "12 clickable screens · dark control-plane look · DSA Interview Mastery sample data. Hit Play on any board; links between screens work in Play mode.", "color": "gray", "size": "m", "maxW": 1400 }
+  },
+  "designSystems": []
+}

@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>xLearn — Week 2</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body { margin: 0; background: #0b0d10; color: #e6e9ef; font-family: "Inter", system-ui, sans-serif; }</style>
+</helmet>
+
+<div class="xl-app">
+  <input type="checkbox" id="xl-collapse-week" class="xl-collapse-cb" aria-label="Collapse sidebar">
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10.2V19h12v-8.8"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7 9 5z"/><path d="M9 5v12M15 7v12"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4"/></symbol>
+    <symbol id="i-journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v18M12.5 8h3.5M12.5 12h3.5"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V11M10 19V5M16 19v-6"/><path d="M3 21h18"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A2 2 0 0 1 7 3h12v15H7a2 2 0 0 0-2 2z"/><path d="M5 4.5V19"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c.5 3 3.5 4 3.5 8a3.5 3.5 0 0 1-7 0c0-1.5.7-2.3 1.2-3 .3 1 .9 1.6 1.5 1.8-.3-2.5-.8-4.8.8-6.8z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z"/><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M18 5l2 2M15 8l2 2"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5z"/><path d="M3 12.5 12 17l9-4.5M3 17 12 21.5 21 17"/></symbol>
+    <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 8l4 4 5-7 5 7 4-4v9H3z"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-3.8 10.6c.8.7 1.3 1.5 1.3 2.4h5c0-.9.5-1.7 1.3-2.4A6 6 0 0 0 12 3z"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 3.5L16 11H5"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></symbol>
+  </svg>
+
+  <aside class="xl-side">
+    <div class="xl-brand"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+    <div class="xl-pathsw"><a class="xl-pathsw__btn" href="Catalog.dc.html"><span class="xl-pathsw__ic">DSA</span><span style="flex:1"><span class="xl-pathsw__t">DSA Interview Mastery</span><span class="xl-pathsw__s">16 weeks · 151 problems</span></span><svg class="xl-ico xl-ico--sm" style="color:var(--ds-muted)"><use href="#i-chevdown"/></svg></a></div>
+    <nav class="xl-nav">
+      <a class="xl-nav__item" href="Dashboard.dc.html"><svg class="xl-ico"><use href="#i-today"/></svg> Today</a>
+      <a class="xl-nav__item xl-nav__item--active" href="Roadmap.dc.html"><svg class="xl-ico"><use href="#i-map"/></svg> Roadmap</a>
+      <div class="xl-nav__cap">Practice loop</div>
+      <a class="xl-nav__item" href="Revision.dc.html"><svg class="xl-ico"><use href="#i-refresh"/></svg> Revision <span class="xl-nav__badge xl-nav__badge--teal">4</span></a>
+      <a class="xl-nav__item" href="Mistakes.dc.html"><svg class="xl-ico"><use href="#i-journal"/></svg> Mistakes <span class="xl-nav__badge">3</span></a>
+      <a class="xl-nav__item" href="Mock.dc.html"><svg class="xl-ico"><use href="#i-target"/></svg> Mock interview</a>
+      <a class="xl-nav__item" href="Progress.dc.html"><svg class="xl-ico"><use href="#i-chart"/></svg> Progress</a>
+      <div class="xl-nav__cap">Account</div>
+      <a class="xl-nav__item" href="Settings.dc.html"><svg class="xl-ico"><use href="#i-settings"/></svg> Settings</a>
+    </nav>
+    <div class="xl-side__foot" style="padding:8px"><label for="xl-collapse-week" class="xl-nav__item xl-collapse-btn" title="Collapse sidebar" style="width:100%"><svg class="xl-ico xl-collapse-ico"><use href="#i-chevron"/></svg> <span class="xl-collapse-lbl">Collapse</span></label></div>
+  </aside>
+
+  <div class="xl-main">
+    <div class="xl-topbar">
+      <div class="xl-crumb"><a href="Catalog.dc.html">xlearn</a><span class="xl-crumb__sep">/</span><a href="Roadmap.dc.html">dsa</a><span class="xl-crumb__sep">/</span><b>week/2</b></div>
+      <button class="xl-cmdk"><svg class="xl-ico xl-ico--sm"><use href="#i-search"/></svg><span style="flex:1;text-align:left">Search or jump to…</span><span class="xl-kbd">⌘K</span></button>
+      <button class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico"><use href="#i-bell"/></svg></button>
+      <div class="xl-acct">
+        <input type="checkbox" id="xl-acct-week" class="xl-acct-cb" aria-label="Account menu">
+        <label for="xl-acct-week" class="ds-avatar xl-topbar__avatar xl-acct-btn" title="Account">S</label>
+        <label for="xl-acct-week" class="xl-acct-backdrop" aria-hidden="true"></label>
+        <div class="xl-acct-menu">
+          <div class="xl-acct-head"><span class="ds-avatar" style="width:36px;height:36px;font-size:14px">S</span><div><b>Sujay Kumar</b><span>sujaykumar.dev@gmail.com</span></div></div>
+          <a href="Settings.dc.html" class="xl-acct-item"><svg class="xl-ico xl-ico--sm"><use href="#i-settings"/></svg> Settings</a>
+          <a href="Progress.dc.html" class="xl-acct-item"><svg class="xl-ico xl-ico--sm"><use href="#i-chart"/></svg> Progress &amp; stats</a>
+          <div class="xl-acct-sep"></div>
+          <a href="Auth.dc.html" class="xl-acct-item xl-acct-item--danger"><svg class="xl-ico xl-ico--sm" viewBox="0 0 24 24"><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"/><path d="M16 12H8M13 8l4 4-4 4"/></svg> Sign out</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="xl-content">
+      <div class="xl-page-h">
+        <div>
+          <div class="xl-eyebrow">Week 2 of 16 · Phase 1 Fundamentals</div>
+          <h1 style="margin-top:6px">Two Pointers &amp; Sliding Window</h1>
+        </div>
+        <div style="display:flex;gap:8px">
+          <a class="ds-btn ds-btn--secondary" href="Roadmap.dc.html"><svg class="xl-ico xl-ico--sm"><use href="#i-map"/></svg> Roadmap</a>
+          <a class="ds-btn ds-btn--primary" href="Problem.dc.html">Resume 3Sum <svg class="xl-ico xl-ico--sm"><use href="#i-arrow"/></svg></a>
+        </div>
+      </div>
+
+      <!-- what this week is about -->
+      <div class="ds-card ds-card--teal" style="padding:18px 20px;margin-bottom:22px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-teal)"><use href="#i-bulb"/></svg><span style="font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--ds-teal);font-family:var(--ds-font-mono)">What this week is really about</span></div>
+        <p style="font-size:14px;line-height:1.65;color:var(--ds-text);max-width:820px">Most "hard" array problems are just a brute force with one redundant pass removed. This week trains the instinct to <b>collapse nested loops into a single sweep</b> — either two pointers converging on a sorted array, or a window that grows and shrinks while a running condition holds. Learn to recognize <i>which</i> from the problem statement, and the code writes itself.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start">
+        <div>
+          <!-- concepts -->
+          <div class="xl-sect">
+            <div class="xl-sect__h"><h2>Concepts</h2></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <a class="ds-card ds-card--interactive" href="Concept.dc.html" style="padding:15px;text-decoration:none;color:inherit">
+                <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px"><span style="width:30px;height:30px;border-radius:8px;background:rgba(155,140,240,.14);display:grid;place-items:center"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-violet)"><use href="#i-book"/></svg></span><b style="font-size:14px">Sliding Window</b></div>
+                <p style="font-size:12px;color:var(--ds-dim);line-height:1.5">Grow-and-shrink windows over contiguous ranges + a reusable Go template.</p>
+                <div style="margin-top:10px;font-size:11.5px;color:var(--ds-teal);display:flex;align-items:center;gap:4px">Read concept <svg class="xl-ico xl-ico--sm"><use href="#i-arrow"/></svg></div>
+              </a>
+              <a class="ds-card ds-card--interactive" href="Concept.dc.html" style="padding:15px;text-decoration:none;color:inherit">
+                <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px"><span style="width:30px;height:30px;border-radius:8px;background:rgba(155,140,240,.14);display:grid;place-items:center"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-violet)"><use href="#i-layers"/></svg></span><b style="font-size:14px">Two Pointers</b></div>
+                <p style="font-size:12px;color:var(--ds-dim);line-height:1.5">Converging and fast/slow pointers on sorted arrays &amp; linked lists.</p>
+                <div style="margin-top:10px;font-size:11.5px;color:var(--ds-teal);display:flex;align-items:center;gap:4px">Read concept <svg class="xl-ico xl-ico--sm"><use href="#i-arrow"/></svg></div>
+              </a>
+            </div>
+          </div>
+
+          <!-- problems -->
+          <div class="xl-sect">
+            <div class="xl-sect__h">
+              <h2>Problems</h2>
+              <div class="ds-seg">
+                <button class="{{fAll}}" onClick="{{setAll}}">All</button>
+                <button class="{{fGuided}}" onClick="{{setGuided}}">Guided</button>
+                <button class="{{fReinf}}" onClick="{{setReinf}}">Reinforcement</button>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <sc-for list="{{problems}}" as="p" hint-placeholder-count="5">
+                <a href="{{p.href}}" style="display:flex;align-items:center;gap:14px;padding:13px 15px;background:var(--ds-panel);border:1px solid var(--ds-line);border-radius:10px;text-decoration:none;color:inherit;{{p.style}}">
+                  <span class="ds-mono" style="font-size:12px;color:var(--ds-muted);width:34px;flex:none">{{p.num}}</span>
+                  <span style="flex:1;min-width:0">
+                    <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                      <b style="font-size:13.5px">{{p.title}}</b>
+                      <span class="{{p.diffCls}}">{{p.diff}}</span>
+                      <span class="xl-pat">{{p.pattern}}</span>
+                      <sc-if value="{{p.reinf}}" hint-placeholder-val="{{false}}"><span class="ds-chip ds-chip--xs ds-mono" style="color:var(--ds-violet)"><svg class="xl-ico" style="width:11px;height:11px"><use href="#i-refresh"/></svg> reinforcement</span></sc-if>
+                    </span>
+                  </span>
+                  <span class="xl-touch">
+                    <sc-for list="{{p.dots}}" as="d" hint-placeholder-count="5"><span class="{{d.cls}}"></span></sc-for>
+                  </span>
+                  <span class="{{p.statusCls}}" style="width:96px;justify-content:center">{{p.status}}</span>
+                  <svg class="xl-ico xl-ico--sm" style="color:var(--ds-muted)"><use href="#i-chevron"/></svg>
+                </a>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <!-- right -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="xl-panel"><div class="xl-panel__b">
+            <div style="font-size:12px;color:var(--ds-dim);margin-bottom:10px">Week 2 progress</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px"><span class="ds-mono" style="font-size:26px;font-weight:700">2</span><span style="color:var(--ds-muted)">/ 5 core solved</span></div>
+            <div class="ds-meter"><div class="ds-meter__fill" style="width:40%"></div></div>
+            <div style="display:flex;gap:14px;margin-top:14px;font-size:12px">
+              <span><b style="color:var(--ds-ok)">0</b> <span class="xl-mut">Easy</span></span>
+              <span><b style="color:var(--ds-warn)">3</b> <span class="xl-mut">Med</span></span>
+              <span><b style="color:var(--ds-err)">1</b> <span class="xl-mut">Hard</span></span>
+            </div>
+          </div></div>
+
+          <div class="xl-panel"><div class="xl-panel__b">
+            <div style="font-size:12px;color:var(--ds-dim);margin-bottom:10px">Suggested for today</div>
+            <a href="Problem.dc.html" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;background:#101a1c;border:1px solid rgba(53,208,192,.3);text-decoration:none;color:inherit">
+              <svg class="xl-ico xl-ico--sm" style="color:var(--ds-teal)"><use href="#i-code"/></svg>
+              <span style="flex:1"><b style="font-size:12.5px">Finish 3Sum</b><br><span style="font-size:11px;color:var(--ds-muted)">in progress · Stage 1</span></span>
+              <svg class="xl-ico xl-ico--sm"><use href="#i-arrow"/></svg>
+            </a>
+            <div style="font-size:11.5px;color:var(--ds-muted);margin-top:12px;line-height:1.5">Two Sum is due for revision (Day 1 reset). Reviews take priority — <a href="Revision.dc.html">clear the queue first</a>.</div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{coachClosed}}" hint-placeholder-val="{{true}}"><button class="xl-fab" onClick="{{toggleCoach}}" aria-label="Open AI coach"><svg class="xl-ico xl-ico--lg"><use href="#i-spark"/></svg></button></sc-if>
+  <sc-if value="{{coachOpen}}" hint-placeholder-val="{{false}}">
+    <div class="xl-coach">
+      <div class="xl-coach__top"><div class="xl-coach__title"><svg class="xl-ico" style="color:var(--ds-teal)"><use href="#i-spark"/></svg> Coach</div><span style="flex:1"></span><button class="ds-iconbtn" onClick="{{toggleCoach}}" aria-label="Close coach"><svg class="xl-ico"><use href="#i-close"/></svg></button></div>
+      <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm"><use href="#i-cal"/></svg> Context · Week 2 — 2 / 5 core solved</div>
+      <div class="xl-coach__body xl-scroll">
+        <sc-for list="{{thread}}" as="m" hint-placeholder-count="1"><div class="{{m.cls}}" style="white-space:pre-line">{{m.text}}</div></sc-for>
+        <div class="xl-coach__sugg"><button class="xl-coach__chip" onClick="{{askOrder}}">What order should I do these in?</button><button class="xl-coach__chip" onClick="{{askDiff}}">Two pointers vs sliding window?</button></div>
+      </div>
+      <div class="xl-coach__foot"><div class="xl-coach__input"><input placeholder="Ask your coach…" aria-label="Message coach"><button class="ds-iconbtn" style="color:var(--ds-teal)" aria-label="Send"><svg class="xl-ico"><use href="#i-arrow"/></svg></button></div></div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1024}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { filter: "all", coach: false, thread: [{ who: "bot", text: "Two of five core problems done. Reviews come first (Two Sum is due), then finish 3Sum, then Longest Substring — it's the cleanest sliding-window intro before Minimum Window Substring (Hard) unlocks. Want the reasoning?" }] }; }
+  renderVals() {
+    const s = this.state;
+    const diffCls = { easy: "xl-diff xl-diff--easy", med: "xl-diff xl-diff--med", hard: "xl-diff xl-diff--hard" };
+    const dot = (m) => ({ cls: m ? "xl-touch__d xl-touch__d--" + m : "xl-touch__d" });
+    const stCls = { attempting: "ds-badge ds-badge--info", available: "ds-chip ds-chip--sm ds-mono", locked: "xl-lock", due: "ds-badge ds-badge--warn", day7: "ds-badge ds-badge--ok" };
+    const P = [
+      { num: "#16", title: "3Sum", diff: "Medium", d: "med", pattern: "Two pointers", kind: "guided", href: "Problem.dc.html", status: "Attempting", st: "attempting", dots: ["", "", "", "", ""] },
+      { num: "#17", title: "Longest Substring w/o Repeating", diff: "Medium", d: "med", pattern: "Sliding window", kind: "guided", href: "Problem.dc.html", status: "Available", st: "available", dots: ["", "", "", "", ""] },
+      { num: "#18", title: "Minimum Window Substring", diff: "Hard", d: "hard", pattern: "Sliding window", kind: "guided", href: "#locked", status: "Locked", st: "locked", dots: ["", "", "", "", ""] },
+      { num: "#03", title: "Two Sum", diff: "Easy", d: "easy", pattern: "Complement lookup", kind: "reinf", href: "Revision.dc.html", status: "Due · Day 1", st: "due", dots: ["due", "", "", "", ""] },
+      { num: "#06", title: "Subarray Sum Equals K", diff: "Medium", d: "med", pattern: "Prefix sum + map", kind: "reinf", href: "Revision.dc.html", status: "Day 7", st: "day7", dots: ["pass", "pass", "due", "", ""] }
+    ];
+    const shown = P.filter((p) => s.filter === "all" || (s.filter === "guided" && p.kind === "guided") || (s.filter === "reinf" && p.kind === "reinf"));
+    const seg = (on) => on ? "ds-seg__btn ds-seg__btn--on" : "ds-seg__btn";
+    const push = (q, a) => this.setState((st) => ({ coach: true, thread: [...st.thread, { who: "me", text: q }, { who: "bot", text: a }] }));
+    return {
+      problems: shown.map((p) => ({
+        key: p.num, num: p.num, title: p.title, diff: p.diff, diffCls: diffCls[p.d], pattern: p.pattern,
+        reinf: p.kind === "reinf", href: p.href, status: p.status, statusCls: stCls[p.st],
+        style: p.st === "locked" ? "opacity:.6" : "",
+        dots: p.dots.map(dot)
+      })),
+      fAll: seg(s.filter === "all"), fGuided: seg(s.filter === "guided"), fReinf: seg(s.filter === "reinf"),
+      setAll: () => this.setState({ filter: "all" }), setGuided: () => this.setState({ filter: "guided" }), setReinf: () => this.setState({ filter: "reinf" }),
+      coachOpen: s.coach, coachClosed: !s.coach,
+      thread: s.thread.map((m, i) => ({ key: i, text: m.text, cls: m.who === "me" ? "xl-coach__msg xl-coach__msg--me" : "xl-coach__msg xl-coach__msg--bot" })),
+      toggleCoach: () => this.setState((st) => ({ coach: !st.coach })),
+      askOrder: () => push("What order should I do these in?", "Revisions first (Two Sum, Day-1 reset). Then 3Sum — it's your in-progress one. Then Longest Substring w/o Repeating as your sliding-window warm-up. Save Minimum Window Substring (Hard) for last; it combines both ideas and unlocks once the mediums are green."),
+      askDiff: () => push("Two pointers vs sliding window?", "Two pointers usually means a SORTED array with pointers converging from both ends (3Sum). Sliding window means a CONTIGUOUS range with a left/right that both move rightward while a condition holds (Longest Substring). Ask: 'do I need order, or a running window property?'")
+    };
+  }
+}
+</script>
+</body>
+</html>

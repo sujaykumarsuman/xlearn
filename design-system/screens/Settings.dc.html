@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>xLearn — Settings</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body { margin: 0; background: #0b0d10; color: #e6e9ef; font-family: "Inter", system-ui, sans-serif; }</style>
+</helmet>
+
+<div class="xl-app">
+  <input type="checkbox" id="xl-collapse-set" class="xl-collapse-cb" aria-label="Collapse sidebar">
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10.2V19h12v-8.8"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7 9 5z"/><path d="M9 5v12M15 7v12"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4"/></symbol>
+    <symbol id="i-journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v18M12.5 8h3.5M12.5 12h3.5"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V11M10 19V5M16 19v-6"/><path d="M3 21h18"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A2 2 0 0 1 7 3h12v15H7a2 2 0 0 0-2 2z"/><path d="M5 4.5V19"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c.5 3 3.5 4 3.5 8a3.5 3.5 0 0 1-7 0c0-1.5.7-2.3 1.2-3 .3 1 .9 1.6 1.5 1.8-.3-2.5-.8-4.8.8-6.8z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z"/><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M18 5l2 2M15 8l2 2"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5z"/><path d="M3 12.5 12 17l9-4.5M3 17 12 21.5 21 17"/></symbol>
+    <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 8l4 4 5-7 5 7 4-4v9H3z"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-3.8 10.6c.8.7 1.3 1.5 1.3 2.4h5c0-.9.5-1.7 1.3-2.4A6 6 0 0 0 12 3z"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 3.5L16 11H5"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></symbol>
+  </svg>
+
+  <aside class="xl-side">
+    <div class="xl-brand"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+    <div class="xl-pathsw"><a class="xl-pathsw__btn" href="Catalog.dc.html"><span class="xl-pathsw__ic">DSA</span><span style="flex:1"><span class="xl-pathsw__t">DSA Interview Mastery</span><span class="xl-pathsw__s">16 weeks · 151 problems</span></span><svg class="xl-ico xl-ico--sm" style="color:var(--ds-muted)"><use href="#i-chevdown"/></svg></a></div>
+    <nav class="xl-nav">
+      <a class="xl-nav__item" href="Dashboard.dc.html"><svg class="xl-ico"><use href="#i-today"/></svg> Today</a>
+      <a class="xl-nav__item" href="Roadmap.dc.html"><svg class="xl-ico"><use href="#i-map"/></svg> Roadmap</a>
+      <div class="xl-nav__cap">Practice loop</div>
+      <a class="xl-nav__item" href="Revision.dc.html"><svg class="xl-ico"><use href="#i-refresh"/></svg> Revision <span class="xl-nav__badge xl-nav__badge--teal">4</span></a>
+      <a class="xl-nav__item" href="Mistakes.dc.html"><svg class="xl-ico"><use href="#i-journal"/></svg> Mistakes <span class="xl-nav__badge">3</span></a>
+      <a class="xl-nav__item" href="Mock.dc.html"><svg class="xl-ico"><use href="#i-target"/></svg> Mock interview</a>
+      <a class="xl-nav__item" href="Progress.dc.html"><svg class="xl-ico"><use href="#i-chart"/></svg> Progress</a>
+      <div class="xl-nav__cap">Account</div>
+      <a class="xl-nav__item xl-nav__item--active" href="Settings.dc.html"><svg class="xl-ico"><use href="#i-settings"/></svg> Settings</a>
+    </nav>
+    <div class="xl-side__foot" style="padding:8px"><label for="xl-collapse-set" class="xl-nav__item xl-collapse-btn" title="Collapse sidebar" style="width:100%"><svg class="xl-ico xl-collapse-ico"><use href="#i-chevron"/></svg> <span class="xl-collapse-lbl">Collapse</span></label></div>
+  </aside>
+
+  <div class="xl-main">
+    <div class="xl-topbar">
+      <div class="xl-crumb"><b>settings</b></div>
+      <button class="xl-cmdk"><svg class="xl-ico xl-ico--sm"><use href="#i-search"/></svg><span style="flex:1;text-align:left">Search or jump to…</span><span class="xl-kbd">⌘K</span></button>
+      <button class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico"><use href="#i-bell"/></svg></button>
+      <div class="xl-acct">
+        <input type="checkbox" id="xl-acct-set" class="xl-acct-cb" aria-label="Account menu">
+        <label for="xl-acct-set" class="ds-avatar xl-topbar__avatar xl-acct-btn" title="Account">S</label>
+        <label for="xl-acct-set" class="xl-acct-backdrop" aria-hidden="true"></label>
+        <div class="xl-acct-menu">
+          <div class="xl-acct-head"><span class="ds-avatar" style="width:36px;height:36px;font-size:14px">S</span><div><b>Sujay Kumar</b><span>sujaykumar.dev@gmail.com</span></div></div>
+          <a href="Settings.dc.html" class="xl-acct-item"><svg class="xl-ico xl-ico--sm"><use href="#i-settings"/></svg> Settings</a>
+          <a href="Progress.dc.html" class="xl-acct-item"><svg class="xl-ico xl-ico--sm"><use href="#i-chart"/></svg> Progress &amp; stats</a>
+          <div class="xl-acct-sep"></div>
+          <a href="Auth.dc.html" class="xl-acct-item xl-acct-item--danger"><svg class="xl-ico xl-ico--sm" viewBox="0 0 24 24"><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"/><path d="M16 12H8M13 8l4 4-4 4"/></svg> Sign out</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="xl-content">
+      <div class="xl-page-h"><div><div class="xl-eyebrow">Account</div><h1 style="margin-top:6px">Settings</h1></div></div>
+
+      <div style="max-width:800px">
+        <div style="display:flex;flex-direction:column;gap:22px">
+          <!-- profile -->
+          <div class="xl-panel" id="profile">
+            <div class="xl-panel__h"><h3>Profile</h3></div>
+            <div class="xl-panel__b" style="display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;align-items:center;gap:16px">
+                <span class="ds-avatar ds-avatar--lg">S</span>
+                <div><button class="ds-btn ds-btn--secondary ds-btn--sm">Change avatar</button><div style="font-size:11px;color:var(--ds-muted);margin-top:6px">PNG or JPG, up to 2 MB</div></div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                <div class="ds-field"><label class="ds-field__label">Full name</label><input class="ds-input" value="Sujay Kumar"></div>
+                <div class="ds-field"><label class="ds-field__label">Email</label><input class="ds-input" value="sujaykumar.dev@gmail.com" readonly style="color:var(--ds-dim)"></div>
+              </div>
+              <div class="ds-field" style="max-width:340px"><label class="ds-field__label">Timezone</label>
+                <div style="position:relative"><select class="ds-input" style="appearance:none;padding-right:32px"><option>Asia/Kolkata · GMT+5:30</option><option>America/Los_Angeles · GMT−7</option><option>Europe/London · GMT+1</option></select><svg class="xl-ico xl-ico--sm" style="position:absolute;right:11px;top:11px;color:var(--ds-muted);pointer-events:none"><use href="#i-chevdown"/></svg></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- study budget -->
+          <div class="xl-panel" id="budget">
+            <div class="xl-panel__h"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-teal)"><use href="#i-clock"/></svg><h3>Study budget</h3></div>
+            <div class="xl-panel__b" style="display:flex;flex-direction:column;gap:18px">
+              <p style="font-size:12.5px;color:var(--ds-muted)">xLearn sizes each day's plan to fit your budget. Reviews always come first.</p>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+                <div>
+                  <div class="ds-field__label" style="margin-bottom:8px">Weekday · minutes/day</div>
+                  <div style="display:flex;align-items:center;gap:0;width:150px">
+                    <button class="ds-btn ds-btn--secondary" onClick="{{wdDown}}" style="border-radius:9px 0 0 9px;width:38px;padding:0"><svg class="xl-ico xl-ico--sm"><use href="#i-minus"/></svg></button>
+                    <div class="ds-input" style="border-radius:0;border-left:none;border-right:none;text-align:center;display:flex;align-items:center;justify-content:center;font-family:var(--ds-font-mono);font-weight:600">{{weekday}}</div>
+                    <button class="ds-btn ds-btn--secondary" onClick="{{wdUp}}" style="border-radius:0 9px 9px 0;width:38px;padding:0"><svg class="xl-ico xl-ico--sm"><use href="#i-plus"/></svg></button>
+                  </div>
+                </div>
+                <div>
+                  <div class="ds-field__label" style="margin-bottom:8px">Weekend · hours/day</div>
+                  <div class="ds-seg"><button class="{{h2}}" onClick="{{setH2}}">2h</button><button class="{{h3}}" onClick="{{setH3}}">3–4h</button><button class="{{h5}}" onClick="{{setH5}}">5h+</button></div>
+                </div>
+              </div>
+              <div style="padding:12px 14px;background:var(--ds-inset);border-radius:9px;font-size:12px;color:var(--ds-dim);display:flex;align-items:center;gap:8px"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-teal)"><use href="#i-bulb"/></svg> At {{weekday}} min/weekday + {{weekendLabel}}/weekend, you'll finish the 16-week path in ~<b style="color:var(--ds-text)">{{eta}}</b> at your current pace.</div>
+            </div>
+          </div>
+
+          <!-- API keys -->
+          <div class="xl-panel" id="apikeys">
+            <div class="xl-panel__h"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-teal)"><use href="#i-key"/></svg><h3>API keys · your coach</h3><span style="margin-left:auto" class="{{coachStatusCls}}">{{coachStatus}}</span></div>
+            <div class="xl-panel__b" style="display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ds-muted)"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-ok)"><use href="#i-lock"/></svg> Used only for your coach. Stored encrypted; never shared or used for anything else.</div>
+
+              <sc-for list="{{keys}}" as="k" hint-placeholder-count="1">
+                <div style="display:flex;align-items:center;gap:14px;padding:13px 15px;background:var(--ds-panel-2);border:1px solid var(--ds-line-2);border-radius:10px">
+                  <span style="width:34px;height:34px;border-radius:8px;background:{{k.iconBg}};display:grid;place-items:center;flex:none;font-family:var(--ds-font-mono);font-weight:700;font-size:13px;color:{{k.iconColor}}">{{k.abbr}}</span>
+                  <div style="flex:1;min-width:0">
+                    <div style="display:flex;align-items:center;gap:8px"><b style="font-size:13.5px">{{k.provider}}</b> <span class="ds-chip ds-chip--xs ds-mono">{{k.model}}</span> <span class="{{k.testCls}}">{{k.testLabel}}</span></div>
+                    <div class="ds-mono" style="font-size:12px;color:var(--ds-muted);margin-top:3px">{{k.masked}}</div>
+                  </div>
+                  <button class="ds-btn ds-btn--ghost ds-btn--sm" onClick="{{k.test}}">Test connection</button>
+                  <label class="ds-toggle {{k.toggleWrap}}" onClick="{{k.toggle}}"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></label>
+                </div>
+              </sc-for>
+
+              <sc-if value="{{addClosed}}" hint-placeholder-val="{{true}}">
+                <button class="ds-btn ds-btn--secondary" onClick="{{openAdd}}" style="align-self:flex-start"><svg class="xl-ico xl-ico--sm"><use href="#i-plus"/></svg> Add a provider</button>
+              </sc-if>
+              <sc-if value="{{addOpen}}" hint-placeholder-val="{{false}}">
+                <div style="padding:16px;border:1px dashed var(--ds-line-2);border-radius:10px;display:flex;flex-direction:column;gap:14px">
+                  <div class="ds-field"><label class="ds-field__label">Provider</label>
+                    <div class="ds-seg"><button class="{{pAnth}}" onClick="{{pickAnth}}">Anthropic</button><button class="{{pOpen}}" onClick="{{pickOpen}}">OpenAI</button><button class="{{pGoog}}" onClick="{{pickGoog}}">Google</button></div>
+                  </div>
+                  <div class="ds-field"><label class="ds-field__label">API key</label><input class="ds-input ds-input--mono" type="password" placeholder="{{keyPlaceholder}}" aria-label="API key"></div>
+                  <div class="ds-field" style="max-width:320px"><label class="ds-field__label">Default model</label>
+                    <div style="position:relative"><select class="ds-input" style="appearance:none;padding-right:32px"><sc-for list="{{modelOpts}}" as="o" hint-placeholder-count="3"><option>{{o.v}}</option></sc-for></select><svg class="xl-ico xl-ico--sm" style="position:absolute;right:11px;top:11px;color:var(--ds-muted);pointer-events:none"><use href="#i-chevdown"/></svg></div>
+                  </div>
+                  <div style="display:flex;gap:8px"><button class="ds-btn ds-btn--primary ds-btn--sm" onClick="{{addKey}}"><svg class="xl-ico xl-ico--sm"><use href="#i-check"/></svg> Add key</button><button class="ds-btn ds-btn--ghost ds-btn--sm" onClick="{{cancelAdd}}">Cancel</button></div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+
+          <!-- reminders -->
+          <div class="xl-panel" id="notif">
+            <div class="xl-panel__h"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-teal)"><use href="#i-bell"/></svg><h3>Reminders</h3></div>
+            <div class="xl-panel__b" style="display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:center;gap:12px"><span style="flex:1"><b style="font-size:13px">Daily study reminder</b><div style="font-size:11.5px;color:var(--ds-muted)">A nudge if you haven't started today's plan</div></span><label class="ds-toggle {{remWrap}}" onClick="{{toggleRem}}"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></label></div>
+              <sc-if value="{{remOn}}" hint-placeholder-val="{{true}}">
+                <div class="ds-field" style="max-width:200px;padding-left:0"><label class="ds-field__label">Remind me at</label><input class="ds-input ds-input--mono" value="20:00"></div>
+              </sc-if>
+              <div style="display:flex;align-items:center;gap:12px;border-top:1px solid var(--ds-line);padding-top:14px"><span style="flex:1"><b style="font-size:13px">Revision-due alerts</b><div style="font-size:11.5px;color:var(--ds-muted)">When reviews pile up past your daily budget</div></span><label class="ds-toggle xl-on" onClick="{{noop}}"><span class="ds-toggle__track" style="background:rgba(53,208,192,.25);border-color:var(--ds-teal)"><span class="ds-toggle__knob" style="transform:translateX(16px);background:var(--ds-teal)"></span></span></label></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{coachClosed}}" hint-placeholder-val="{{true}}"><button class="xl-fab" onClick="{{toggleCoach}}" aria-label="Open AI coach"><svg class="xl-ico xl-ico--lg"><use href="#i-spark"/></svg></button></sc-if>
+  <sc-if value="{{coachOpen}}" hint-placeholder-val="{{false}}">
+    <div class="xl-coach">
+      <div class="xl-coach__top"><div class="xl-coach__title"><svg class="xl-ico" style="color:var(--ds-teal)"><use href="#i-spark"/></svg> Coach</div><span style="flex:1"></span><button class="ds-iconbtn" onClick="{{toggleCoach}}" aria-label="Close coach"><svg class="xl-ico"><use href="#i-close"/></svg></button></div>
+      <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm"><use href="#i-settings"/></svg> Context · Settings — {{coachStatus}}</div>
+      <div class="xl-coach__body xl-scroll">
+        <sc-for list="{{thread}}" as="m" hint-placeholder-count="1"><div class="{{m.cls}}" style="white-space:pre-line">{{m.text}}</div></sc-for>
+        <div class="xl-coach__sugg"><button class="xl-coach__chip" onClick="{{askModel}}">Which model should power my coach?</button><button class="xl-coach__chip" onClick="{{askPrivacy}}">Where does my key go?</button></div>
+      </div>
+      <div class="xl-coach__foot"><div class="xl-coach__input"><input placeholder="Ask your coach…" aria-label="Message coach"><button class="ds-iconbtn" style="color:var(--ds-teal)" aria-label="Send"><svg class="xl-ico"><use href="#i-arrow"/></svg></button></div></div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1024}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      weekday: 90, weekend: "3-4",
+      keys: [{ provider: "Anthropic", model: "claude-sonnet-5", masked: "sk-ant-••••••••••••4a2f", enabled: true, tested: true }],
+      addOpen: false, addProvider: "openai", remOn: true, coach: false,
+      thread: [{ who: "bot", text: "Your coach is connected through Anthropic on claude-sonnet-5 — a good default for fast, sharp hints. Add a second provider as a fallback, or ask me which model fits which job." }]
+    };
+  }
+  renderVals() {
+    const s = this.state;
+    const meta = {
+      Anthropic: { abbr: "AN", iconBg: "rgba(217,119,87,.16)", iconColor: "#d97757" },
+      OpenAI: { abbr: "AI", iconBg: "rgba(87,211,154,.16)", iconColor: "var(--ds-ok)" },
+      Google: { abbr: "GG", iconBg: "rgba(106,166,255,.16)", iconColor: "var(--ds-info)" }
+    };
+    const provModels = { Anthropic: "claude-opus-5", OpenAI: "gpt-5.1", Google: "gemini-3-pro" };
+    const modelChoices = { anthropic: ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"], openai: ["gpt-5.1", "gpt-5.1-mini", "o4"], google: ["gemini-3-pro", "gemini-3-flash"] };
+    const provNameOf = { anthropic: "Anthropic", openai: "OpenAI", google: "Google" };
+    const seg = (on) => on ? "ds-seg__btn ds-seg__btn--on" : "ds-seg__btn";
+    const connected = s.keys.some((k) => k.enabled);
+    const weekendLabel = { "2": "2h", "3-4": "3–4h", "5": "5h+" }[s.weekend];
+    const eta = s.weekday >= 120 || s.weekend === "5" ? "14 weeks" : s.weekday <= 60 && s.weekend === "2" ? "22 weeks" : "16 weeks";
+    const push = (q, a) => this.setState((st) => ({ coach: true, thread: [...st.thread, { who: "me", text: q }, { who: "bot", text: a }] }));
+
+    return {
+      weekday: s.weekday, weekendLabel, eta,
+      wdUp: () => this.setState((st) => ({ weekday: Math.min(240, st.weekday + 15) })),
+      wdDown: () => this.setState((st) => ({ weekday: Math.max(30, st.weekday - 15) })),
+      h2: seg(s.weekend === "2"), h3: seg(s.weekend === "3-4"), h5: seg(s.weekend === "5"),
+      setH2: () => this.setState({ weekend: "2" }), setH3: () => this.setState({ weekend: "3-4" }), setH5: () => this.setState({ weekend: "5" }),
+
+      keys: s.keys.map((k, i) => ({
+        key: k.provider + i, provider: k.provider, model: k.model, masked: k.masked,
+        abbr: meta[k.provider].abbr, iconBg: meta[k.provider].iconBg, iconColor: meta[k.provider].iconColor,
+        testLabel: k.tested ? "Connected" : "Untested", testCls: k.tested ? "ds-badge ds-badge--ok" : "ds-chip ds-chip--xs",
+        toggleWrap: k.enabled ? "ds-toggle--on" : "",
+        toggle: () => this.setState((st) => { const ks = st.keys.slice(); ks[i] = { ...ks[i], enabled: !ks[i].enabled }; return { keys: ks }; }),
+        test: () => this.setState((st) => { const ks = st.keys.slice(); ks[i] = { ...ks[i], tested: true }; return { keys: ks }; })
+      })),
+      coachStatus: connected ? "Connected" : "No key — coach off",
+      coachStatusCls: connected ? "ds-badge ds-badge--ok" : "ds-badge ds-badge--warn",
+
+      addOpen: s.addOpen, addClosed: !s.addOpen,
+      openAdd: () => this.setState({ addOpen: true }), cancelAdd: () => this.setState({ addOpen: false }),
+      pAnth: seg(s.addProvider === "anthropic"), pOpen: seg(s.addProvider === "openai"), pGoog: seg(s.addProvider === "google"),
+      pickAnth: () => this.setState({ addProvider: "anthropic" }), pickOpen: () => this.setState({ addProvider: "openai" }), pickGoog: () => this.setState({ addProvider: "google" }),
+      keyPlaceholder: s.addProvider === "anthropic" ? "sk-ant-…" : s.addProvider === "openai" ? "sk-…" : "AIza…",
+      modelOpts: (modelChoices[s.addProvider] || []).map((v, i) => ({ key: i, v })),
+      addKey: () => this.setState((st) => {
+        const name = provNameOf[st.addProvider];
+        const tail = ["e91b", "7c30", "b42a"][st.keys.length % 3];
+        const pre = st.addProvider === "anthropic" ? "sk-ant-••••••••••••" : st.addProvider === "openai" ? "sk-••••••••••••" : "AIza••••••••";
+        return { addOpen: false, keys: [...st.keys, { provider: name, model: provModels[name], masked: pre + tail, enabled: true, tested: false }] };
+      }),
+
+      remOn: s.remOn, remWrap: s.remOn ? "ds-toggle--on" : "", toggleRem: () => this.setState((st) => ({ remOn: !st.remOn })),
+      noop: () => {},
+      coachOpen: s.coach, coachClosed: !s.coach,
+      thread: s.thread.map((m, i) => ({ key: i, text: m.text, cls: m.who === "me" ? "xl-coach__msg xl-coach__msg--me" : "xl-coach__msg xl-coach__msg--bot" })),
+      toggleCoach: () => this.setState((st) => ({ coach: !st.coach })),
+      askModel: () => push("Which model should power my coach?", "For Socratic hints during attempts, a fast model like claude-sonnet-5 keeps the back-and-forth snappy. For post-solve code review — where depth matters more than latency — switch the default to claude-opus-5. You can keep both keys and let xLearn route by task."),
+      askPrivacy: () => push("Where does my key go?", "It's stored encrypted on your account and used only to call the provider for your coach's responses. It never touches other users, never trains anything, and is never sent to xLearn's own servers in plaintext. Delete a provider and its key is wiped immediately.")
+    };
+  }
+}
+</script>
+</body>
+</html>

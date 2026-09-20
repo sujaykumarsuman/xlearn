@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>xLearn — Revision queue</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body { margin: 0; background: #0b0d10; color: #e6e9ef; font-family: "Inter", system-ui, sans-serif; }</style>
+</helmet>
+
+<div class="xl-app">
+  <input type="checkbox" id="xl-collapse-rev" class="xl-collapse-cb" aria-label="Collapse sidebar">
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10.2V19h12v-8.8"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7 9 5z"/><path d="M9 5v12M15 7v12"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4"/></symbol>
+    <symbol id="i-journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v18M12.5 8h3.5M12.5 12h3.5"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V11M10 19V5M16 19v-6"/><path d="M3 21h18"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A2 2 0 0 1 7 3h12v15H7a2 2 0 0 0-2 2z"/><path d="M5 4.5V19"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c.5 3 3.5 4 3.5 8a3.5 3.5 0 0 1-7 0c0-1.5.7-2.3 1.2-3 .3 1 .9 1.6 1.5 1.8-.3-2.5-.8-4.8.8-6.8z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z"/><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M18 5l2 2M15 8l2 2"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5z"/><path d="M3 12.5 12 17l9-4.5M3 17 12 21.5 21 17"/></symbol>
+    <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 8l4 4 5-7 5 7 4-4v9H3z"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-3.8 10.6c.8.7 1.3 1.5 1.3 2.4h5c0-.9.5-1.7 1.3-2.4A6 6 0 0 0 12 3z"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 3.5L16 11H5"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></symbol>
+  </svg>
+
+  <aside class="xl-side">
+    <div class="xl-brand"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+    <div class="xl-pathsw"><a class="xl-pathsw__btn" href="Catalog.dc.html"><span class="xl-pathsw__ic">DSA</span><span style="flex:1"><span class="xl-pathsw__t">DSA Interview Mastery</span><span class="xl-pathsw__s">16 weeks · 151 problems</span></span><svg class="xl-ico xl-ico--sm" style="color:var(--ds-muted)"><use href="#i-chevdown"/></svg></a></div>
+    <nav class="xl-nav">
+      <a class="xl-nav__item" href="Dashboard.dc.html"><svg class="xl-ico"><use href="#i-today"/></svg> Today</a>
+      <a class="xl-nav__item" href="Roadmap.dc.html"><svg class="xl-ico"><use href="#i-map"/></svg> Roadmap</a>
+      <div class="xl-nav__cap">Practice loop</div>
+      <a class="xl-nav__item xl-nav__item--active" href="Revision.dc.html"><svg class="xl-ico"><use href="#i-refresh"/></svg> Revision <span class="xl-nav__badge xl-nav__badge--teal">4</span></a>
+      <a class="xl-nav__item" href="Mistakes.dc.html"><svg class="xl-ico"><use href="#i-journal"/></svg> Mistakes <span class="xl-nav__badge">3</span></a>
+      <a class="xl-nav__item" href="Mock.dc.html"><svg class="xl-ico"><use href="#i-target"/></svg> Mock interview</a>
+      <a class="xl-nav__item" href="Progress.dc.html"><svg class="xl-ico"><use href="#i-chart"/></svg> Progress</a>
+      <div class="xl-nav__cap">Account</div>
+      <a class="xl-nav__item" href="Settings.dc.html"><svg class="xl-ico"><use href="#i-settings"/></svg> Settings</a>
+    </nav>
+    <div class="xl-side__foot" style="padding:8px"><label for="xl-collapse-rev" class="xl-nav__item xl-collapse-btn" title="Collapse sidebar" style="width:100%"><svg class="xl-ico xl-collapse-ico"><use href="#i-chevron"/></svg> <span class="xl-collapse-lbl">Collapse</span></label></div>
+  </aside>
+
+  <div class="xl-main">
+    <div class="xl-topbar">
+      <div class="xl-crumb"><a href="Catalog.dc.html">xlearn</a><span class="xl-crumb__sep">/</span><a href="Roadmap.dc.html">dsa</a><span class="xl-crumb__sep">/</span><b>revision</b></div>
+      <button class="xl-cmdk"><svg class="xl-ico xl-ico--sm"><use href="#i-search"/></svg><span style="flex:1;text-align:left">Search or jump to…</span><span class="xl-kbd">⌘K</span></button>
+      <button class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico"><use href="#i-bell"/></svg></button>
+      <div class="xl-acct">
+        <input type="checkbox" id="xl-acct-rev" class="xl-acct-cb" aria-label="Account menu">
+        <label for="xl-acct-rev" class="ds-avatar xl-topbar__avatar xl-acct-btn" title="Account">S</label>
+        <label for="xl-acct-rev" class="xl-acct-backdrop" aria-hidden="true"></label>
+        <div class="xl-acct-menu">
+          <div class="xl-acct-head"><span class="ds-avatar" style="width:36px;height:36px;font-size:14px">S</span><div><b>Sujay Kumar</b><span>sujaykumar.dev@gmail.com</span></div></div>
+          <a href="Settings.dc.html" class="xl-acct-item"><svg class="xl-ico xl-ico--sm"><use href="#i-settings"/></svg> Settings</a>
+          <a href="Progress.dc.html" class="xl-acct-item"><svg class="xl-ico xl-ico--sm"><use href="#i-chart"/></svg> Progress &amp; stats</a>
+          <div class="xl-acct-sep"></div>
+          <a href="Auth.dc.html" class="xl-acct-item xl-acct-item--danger"><svg class="xl-ico xl-ico--sm" viewBox="0 0 24 24"><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"/><path d="M16 12H8M13 8l4 4-4 4"/></svg> Sign out</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="xl-content">
+      <div class="xl-page-h">
+        <div>
+          <div class="xl-eyebrow">Spaced repetition · the five-touch schedule</div>
+          <h1 style="margin-top:6px">Revision queue</h1>
+          <p>Reviews are <b style="color:var(--ds-text)">re-solves from a blank editor</b>, not re-reads — and they take priority over new problems. 4 due today.</p>
+        </div>
+        <a class="ds-btn ds-btn--primary ds-btn--lg" href="Problem.dc.html"><svg class="xl-ico"><use href="#i-play"/></svg> Start next review</a>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 316px;gap:24px;align-items:start">
+        <div>
+          <!-- DAY 1 group -->
+          <div class="xl-sect">
+            <div class="xl-sect__h"><h2>Due · Day 1 touch</h2><span class="ds-badge ds-badge--info ds-mono">2</span></div>
+
+            <!-- interactive item -->
+            <div class="xl-panel" style="margin-bottom:12px">
+              <div class="xl-panel__b">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                  <span class="ds-mono" style="font-size:12px;color:var(--ds-muted)">#03</span>
+                  <b style="font-size:15px">Two Sum</b>
+                  <span class="xl-diff xl-diff--easy">Easy</span>
+                  <span class="xl-pat">Complement lookup</span>
+                  <span style="margin-left:auto" class="{{stBadgeCls}}">{{stBadge}}</span>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:16px;margin-bottom:6px">
+                  <span class="xl-touch">
+                    <sc-for list="{{dots}}" as="d" hint-placeholder-count="5"><span class="{{d.cls}}"></span></sc-for>
+                  </span>
+                  <span class="xl-touch__lab"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></span>
+                  <span style="font-size:12px;color:{{noteColor}};flex:1">{{note}}</span>
+                </div>
+
+                <!-- idle -->
+                <sc-if value="{{isIdle}}" hint-placeholder-val="{{true}}">
+                  <div style="display:flex;align-items:center;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--ds-line)">
+                    <button class="ds-btn ds-btn--primary ds-btn--sm" onClick="{{resolve}}"><svg class="xl-ico xl-ico--sm"><use href="#i-code"/></svg> Re-solve from blank · 20:00</button>
+                    <span style="font-size:11.5px;color:var(--ds-muted);flex:1;display:flex;align-items:center;gap:6px"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-teal)"><use href="#i-spark"/></svg> Result is scored automatically — pattern named, solved in-timer, complexity stated.</span>
+                  </div>
+                </sc-if>
+                <!-- passed -->
+                <sc-if value="{{isPass}}" hint-placeholder-val="{{false}}">
+                  <div style="margin-top:14px;padding:12px 14px;border-radius:9px;background:rgba(87,211,154,.08);border:1px solid rgba(87,211,154,.3)">
+                    <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ds-ok);font-weight:600"><svg class="xl-ico xl-ico--sm"><use href="#i-spark"/></svg> Auto-logged · Passed — advances to Day 3</div>
+                    <div style="font-size:12px;color:var(--ds-dim);margin-top:6px;line-height:1.5">Pattern named 0:48 ✓ · solved 13:20 ✓ · complexity stated ✓ — all three auto-checked. Next review in 2 days; a miss on any check would have auto-reset it to Day 1. <button onClick="{{reset}}" style="background:none;border:none;color:var(--ds-teal);cursor:pointer;font-family:inherit;font-size:12px;padding:0">Undo</button></div>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+
+            <!-- static: another day-1 (a fresh solve from yesterday) -->
+            <div class="ds-card" style="padding:14px 16px;display:flex;align-items:center;gap:14px">
+              <span class="ds-mono" style="font-size:12px;color:var(--ds-muted)">#16</span>
+              <span style="flex:1"><b style="font-size:14px">3Sum</b> <span class="xl-diff xl-diff--med" style="margin-left:6px">Medium</span> <span class="xl-pat" style="margin-left:4px">Two pointers</span><div style="margin-top:9px;display:flex;align-items:center;gap:14px"><span class="xl-touch"><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d xl-touch__d--mock"></span><span class="xl-touch__d xl-touch__d--mock"></span></span><span style="font-size:11.5px;color:var(--ds-muted)">first review — solved today</span></div></span>
+              <a class="ds-btn ds-btn--secondary ds-btn--sm" href="Problem.dc.html">Re-solve</a>
+            </div>
+          </div>
+
+          <!-- DAY 7 group -->
+          <div class="xl-sect">
+            <div class="xl-sect__h"><h2>Due · Day 7 touch</h2><span class="ds-badge ds-badge--ok ds-mono">2</span></div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div class="ds-card" style="padding:14px 16px;display:flex;align-items:center;gap:14px">
+                <span class="ds-mono" style="font-size:12px;color:var(--ds-muted)">#01</span>
+                <span style="flex:1"><b style="font-size:14px">Contains Duplicate</b> <span class="xl-diff xl-diff--easy" style="margin-left:6px">Easy</span> <span class="xl-pat" style="margin-left:4px">HashSet</span><div style="margin-top:9px;display:flex;align-items:center;gap:14px"><span class="xl-touch"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d xl-touch__d--mock"></span><span class="xl-touch__d xl-touch__d--mock"></span></span><span style="font-size:11.5px;color:var(--ds-ok)">clean × 2 — strong retention</span></div></span>
+                <a class="ds-btn ds-btn--secondary ds-btn--sm" href="Problem.dc.html">Re-solve</a>
+              </div>
+              <div class="ds-card" style="padding:14px 16px;display:flex;align-items:center;gap:14px">
+                <span class="ds-mono" style="font-size:12px;color:var(--ds-muted)">#05</span>
+                <span style="flex:1"><b style="font-size:14px">Top K Frequent Elements</b> <span class="xl-diff xl-diff--med" style="margin-left:6px">Medium</span> <span class="xl-pat" style="margin-left:4px">Bucket sort</span><div style="margin-top:9px;display:flex;align-items:center;gap:14px"><span class="xl-touch"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--fail"></span><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d xl-touch__d--mock"></span><span class="xl-touch__d xl-touch__d--mock"></span></span><span style="font-size:11.5px;color:var(--ds-muted)">recovered after a Day-3 miss</span></div></span>
+                <a class="ds-btn ds-btn--secondary ds-btn--sm" href="Problem.dc.html">Re-solve</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- upcoming mock-condition -->
+          <div class="xl-sect" style="margin-bottom:0">
+            <div class="xl-sect__h"><h2>Coming up</h2></div>
+            <div class="ds-card ds-card--violet" style="padding:14px 16px;display:flex;align-items:center;gap:14px;opacity:.85">
+              <span class="ds-mono" style="font-size:12px;color:var(--ds-muted)">#02</span>
+              <span style="flex:1"><b style="font-size:14px">Valid Anagram</b> <span class="xl-diff xl-diff--easy" style="margin-left:6px">Easy</span> <span class="ds-badge ds-badge--violet" style="margin-left:4px"><svg class="xl-ico" style="width:11px;height:11px"><use href="#i-mic"/></svg> Day 21 · mock conditions</span><div style="margin-top:9px;display:flex;align-items:center;gap:14px"><span class="xl-touch"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--mock"></span><span class="xl-touch__d xl-touch__d--mock"></span></span><span style="font-size:11.5px;color:var(--ds-violet)">in 6 days · talk aloud, no notes</span></div></span>
+              <span class="xl-lock">Not due yet</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- right rail -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="xl-panel">
+            <div class="xl-panel__h" style="padding:12px 14px"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-teal)"><use href="#i-refresh"/></svg><h3 style="font-size:13px">How a review works</h3></div>
+            <div class="xl-panel__b" style="padding:14px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;gap:10px"><span style="font-family:var(--ds-font-mono);color:var(--ds-teal);font-size:12px">01</span><span style="font-size:12.5px;color:var(--ds-dim);line-height:1.5">Re-solve from a <b style="color:var(--ds-text)">blank editor</b> with a 20-min timer. Never a re-read.</span></div>
+              <div style="display:flex;gap:10px"><span style="font-family:var(--ds-font-mono);color:var(--ds-teal);font-size:12px">02</span><span style="font-size:12.5px;color:var(--ds-dim);line-height:1.5">Auto-scored — passes only if: pattern named &lt; 2 min · correct within timer · complexity stated.</span></div>
+              <div style="display:flex;gap:10px"><span style="font-family:var(--ds-font-mono);color:var(--ds-err);font-size:12px">03</span><span style="font-size:12.5px;color:var(--ds-dim);line-height:1.5">A fail <b style="color:var(--ds-err)">resets the clock to Day 1</b> and auto-creates a mistake entry.</span></div>
+              <div style="display:flex;gap:10px"><span style="font-family:var(--ds-font-mono);color:var(--ds-violet);font-size:12px">04</span><span style="font-size:12.5px;color:var(--ds-dim);line-height:1.5">Day 21 &amp; 45 run under <b style="color:var(--ds-violet)">mock conditions</b> — talk aloud, no notes.</span></div>
+            </div>
+            <div style="padding:12px 14px;border-top:1px solid var(--ds-line)">
+              <div class="xl-touch__lab" style="justify-content:space-between;display:flex"><span style="width:auto;color:var(--ds-muted);font-size:10px">The five touches →</span></div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:8px"><span class="xl-touch"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d xl-touch__d--mock"></span><span class="xl-touch__d xl-touch__d--mock"></span></span></div>
+              <div class="xl-touch__lab" style="margin-top:5px"><span>1</span><span>3</span><span>7</span><span>21</span><span>45</span></div>
+              <div style="display:flex;gap:12px;margin-top:10px;font-size:10.5px;color:var(--ds-muted)"><span><span class="xl-touch__d xl-touch__d--pass" style="display:inline-block;vertical-align:middle"></span> passed</span><span><span class="xl-touch__d xl-touch__d--due" style="display:inline-block;vertical-align:middle"></span> due</span><span><span class="xl-touch__d xl-touch__d--fail" style="display:inline-block;vertical-align:middle"></span> failed</span></div>
+            </div>
+          </div>
+
+          <div class="xl-panel"><div class="xl-panel__b">
+            <div style="font-size:12px;color:var(--ds-dim);margin-bottom:12px">Retention this week</div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span class="ds-mono" style="font-size:28px;font-weight:700;color:var(--ds-ok)">80%</span><span style="font-size:12px;color:var(--ds-muted)">Day-7 pass rate</span></div>
+            <div class="ds-meter" style="margin-top:10px"><div class="ds-meter__fill" style="width:80%;background:var(--ds-ok)"></div></div>
+            <div style="font-size:11.5px;color:var(--ds-muted);margin-top:10px;line-height:1.5">1 reset this week (Two Sum). Reviews cleared: 11 / 13.</div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{coachClosed}}" hint-placeholder-val="{{true}}"><button class="xl-fab" onClick="{{toggleCoach}}" aria-label="Open AI coach"><svg class="xl-ico xl-ico--lg"><use href="#i-spark"/></svg></button></sc-if>
+  <sc-if value="{{coachOpen}}" hint-placeholder-val="{{false}}">
+    <div class="xl-coach">
+      <div class="xl-coach__top"><div class="xl-coach__title"><svg class="xl-ico" style="color:var(--ds-teal)"><use href="#i-spark"/></svg> Coach</div><span style="flex:1"></span><button class="ds-iconbtn" onClick="{{toggleCoach}}" aria-label="Close coach"><svg class="xl-ico"><use href="#i-close"/></svg></button></div>
+      <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm"><use href="#i-refresh"/></svg> Context · Revision — 4 due today</div>
+      <div class="xl-coach__body xl-scroll">
+        <sc-for list="{{thread}}" as="m" hint-placeholder-count="1"><div class="{{m.cls}}" style="white-space:pre-line">{{m.text}}</div></sc-for>
+        <div class="xl-coach__sugg"><button class="xl-coach__chip" onClick="{{askWhy}}">Why did Two Sum reset?</button><button class="xl-coach__chip" onClick="{{askOrder}}">Which should I do first?</button></div>
+      </div>
+      <div class="xl-coach__foot"><div class="xl-coach__input"><input placeholder="Ask your coach…" aria-label="Message coach"><button class="ds-iconbtn" style="color:var(--ds-teal)" aria-label="Send"><svg class="xl-ico"><use href="#i-arrow"/></svg></button></div></div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1024}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { demo: "idle", coach: false, thread: [{ who: "bot", text: "4 reviews due — reviews come before new problems. Two Sum is a Day-1 reset after yesterday's fail, so start there while it's fresh. Re-solve it and xLearn scores the result automatically — a pass advances the touch, a miss resets it to Day 1." }] }; }
+  renderVals() {
+    const s = this.state;
+    const dot = (m) => ({ cls: m ? "xl-touch__d xl-touch__d--" + m : "xl-touch__d" });
+    let dots, note, noteColor, stBadge, stBadgeCls;
+    if (s.demo === "pass") { dots = ["pass", "due", "", "", ""]; note = "auto-logged — next review Day 3"; noteColor = "var(--ds-ok)"; stBadge = "Passed"; stBadgeCls = "ds-badge ds-badge--ok"; }
+    else { dots = ["due", "", "", "", ""]; note = "reset yesterday — failed the Day-3 touch"; noteColor = "var(--ds-muted)"; stBadge = "Day 1 · reset"; stBadgeCls = "ds-badge ds-badge--info"; }
+    const push = (q, a) => this.setState((st) => ({ coach: true, thread: [...st.thread, { who: "me", text: q }, { who: "bot", text: a }] }));
+    return {
+      dots: dots.map(dot), note, noteColor, stBadge, stBadgeCls,
+      isIdle: s.demo === "idle", isPass: s.demo === "pass",
+      resolve: () => this.setState({ demo: "pass" }), reset: () => this.setState({ demo: "idle" }),
+      coachOpen: s.coach, coachClosed: !s.coach,
+      thread: s.thread.map((m, i) => ({ key: i, text: m.text, cls: m.who === "me" ? "xl-coach__msg xl-coach__msg--me" : "xl-coach__msg xl-coach__msg--bot" })),
+      toggleCoach: () => this.setState((st) => ({ coach: !st.coach })),
+      askWhy: () => push("Why did Two Sum reset?", "On the Day-3 touch you couldn't name the complement-lookup pattern within 2 minutes and went over the timer. Any one of the three pass criteria failing counts as a fail, and a fail always resets to Day 1 — the schedule assumes the memory didn't consolidate, so it rebuilds from scratch."),
+      askOrder: () => push("Which should I do first?", "Day-1 items first (Two Sum, 3Sum) — they're the most fragile. Then the Day-7 pair. Save nothing for tomorrow: today's queue must be empty before new problems unlock. The Day-21 mock touch (Valid Anagram) isn't due for 6 days.")
+    };
+  }
+}
+</script>
+</body>
+</html>

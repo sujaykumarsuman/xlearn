@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>xLearn — 3Sum · guided problem</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #0b0d10; color: #e6e9ef; font-family: "Inter", system-ui, sans-serif; }
+  .pv-reading::-webkit-scrollbar, .pv-rail::-webkit-scrollbar { width: 9px; }
+  .pv-reading::-webkit-scrollbar-thumb, .pv-rail::-webkit-scrollbar-thumb { background: #232a35; border-radius: 6px; border: 2px solid #0b0d10; }
+  .pv-sec { border-top: 1px solid var(--ds-line); padding: 16px 20px; }
+  .pv-sec h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-teal); font-family: var(--ds-font-mono); margin-bottom: 9px; display:flex; align-items:center; gap:7px; }
+  .pv-sec p { font-size: 13px; line-height: 1.62; color: var(--ds-dim); }
+  .pv-sec p b { color: var(--ds-text); font-weight: 600; }
+</style>
+</helmet>
+
+<div class="xl-app">
+  <input type="checkbox" id="xl-collapse-prob" class="xl-collapse-cb" aria-label="Collapse sidebar">
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10.2V19h12v-8.8"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7 9 5z"/><path d="M9 5v12M15 7v12"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4"/></symbol>
+    <symbol id="i-journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v18M12.5 8h3.5M12.5 12h3.5"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V11M10 19V5M16 19v-6"/><path d="M3 21h18"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A2 2 0 0 1 7 3h12v15H7a2 2 0 0 0-2 2z"/><path d="M5 4.5V19"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c.5 3 3.5 4 3.5 8a3.5 3.5 0 0 1-7 0c0-1.5.7-2.3 1.2-3 .3 1 .9 1.6 1.5 1.8-.3-2.5-.8-4.8.8-6.8z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z"/><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M18 5l2 2M15 8l2 2"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5z"/><path d="M3 12.5 12 17l9-4.5M3 17 12 21.5 21 17"/></symbol>
+    <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 8l4 4 5-7 5 7 4-4v9H3z"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-3.8 10.6c.8.7 1.3 1.5 1.3 2.4h5c0-.9.5-1.7 1.3-2.4A6 6 0 0 0 12 3z"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 3.5L16 11H5"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></symbol>
+  </svg>
+
+  <!-- Sidebar -->
+  <aside class="xl-side">
+    <div class="xl-brand"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+    <div class="xl-pathsw">
+      <a class="xl-pathsw__btn" href="Roadmap.dc.html">
+        <span class="xl-pathsw__ic">DSA</span>
+        <span style="flex:1"><span class="xl-pathsw__t">DSA Interview Mastery</span><span class="xl-pathsw__s">16 weeks · 151 problems</span></span>
+        <svg class="xl-ico xl-ico--sm" style="color:var(--ds-muted)"><use href="#i-chevdown"/></svg>
+      </a>
+    </div>
+    <nav class="xl-nav">
+      <a class="xl-nav__item" href="Dashboard.dc.html"><svg class="xl-ico"><use href="#i-today"/></svg> Today</a>
+      <a class="xl-nav__item" href="Roadmap.dc.html"><svg class="xl-ico"><use href="#i-map"/></svg> Roadmap</a>
+      <div class="xl-nav__cap">Practice loop</div>
+      <a class="xl-nav__item" href="Revision.dc.html"><svg class="xl-ico"><use href="#i-refresh"/></svg> Revision <span class="xl-nav__badge xl-nav__badge--teal">4</span></a>
+      <a class="xl-nav__item" href="Mistakes.dc.html"><svg class="xl-ico"><use href="#i-journal"/></svg> Mistakes <span class="xl-nav__badge">3</span></a>
+      <a class="xl-nav__item" href="Mock.dc.html"><svg class="xl-ico"><use href="#i-target"/></svg> Mock interview</a>
+      <a class="xl-nav__item" href="Progress.dc.html"><svg class="xl-ico"><use href="#i-chart"/></svg> Progress</a>
+      <div class="xl-nav__cap">Account</div>
+      <a class="xl-nav__item" href="Settings.dc.html"><svg class="xl-ico"><use href="#i-settings"/></svg> Settings</a>
+    </nav>
+    <div class="xl-side__foot" style="padding:8px">
+      <label for="xl-collapse-prob" class="xl-nav__item xl-collapse-btn" title="Collapse sidebar" style="width:100%"><svg class="xl-ico xl-collapse-ico"><use href="#i-chevron"/></svg> <span class="xl-collapse-lbl">Collapse</span></label>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="xl-main">
+    <!-- problem header bar -->
+    <div style="flex:none;border-bottom:1px solid var(--ds-line);padding:12px 22px;display:flex;align-items:center;gap:16px;background:rgba(11,13,16,.6)">
+      <div style="flex:1;min-width:0">
+        <div class="xl-crumb" style="margin-bottom:6px">
+          <a href="Roadmap.dc.html">dsa</a><span class="xl-crumb__sep">/</span><a href="Week.dc.html">week 2</a><span class="xl-crumb__sep">/</span><b>problem/16</b>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="ds-mono" style="color:var(--ds-muted);font-size:15px">#16</span>
+          <h1 style="font-size:19px;font-weight:700">3Sum</h1>
+          <span class="xl-diff xl-diff--med">Medium</span>
+          <span class="xl-pat"><svg class="xl-ico xl-ico--sm"><use href="#i-layers"/></svg> Two pointers</span>
+          <span class="ds-chip ds-chip--xs ds-mono">Week 2</span>
+          <a class="ds-chip ds-chip--xs" href="https://leetcode.com/problems/3sum/" target="_blank" rel="noopener" style="text-decoration:none">LeetCode <svg class="xl-ico" style="width:11px;height:11px"><use href="#i-ext"/></svg></a>
+          <a class="ds-chip ds-chip--xs" href="https://neetcode.io/problems/three-integer-sum" target="_blank" rel="noopener" style="text-decoration:none">NeetCode <svg class="xl-ico" style="width:11px;height:11px"><use href="#i-ext"/></svg></a>
+        </div>
+      </div>
+      <!-- timer HUD -->
+      <div style="display:flex;align-items:center;gap:14px">
+        <div class="ds-tabs" style="background:var(--ds-inset);border:1px solid var(--ds-line-2);border-radius:9px;padding:3px;gap:2px">
+          <span class="{{s0cls}}">0 · Attempt</span>
+          <span class="{{s1cls}}">1 · Hint</span>
+          <span class="{{s2cls}}">2 · Solution</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 12px;background:var(--ds-panel);border:1px solid var(--ds-line-2);border-radius:10px">
+          <svg width="46" height="46" viewBox="0 0 56 56" style="transform:rotate(-90deg)">
+            <circle class="xl-ring-track" cx="28" cy="28" r="24" fill="none" stroke-width="5"/>
+            <circle cx="28" cy="28" r="24" fill="none" stroke-width="5" stroke-linecap="round" stroke="{{ringColor}}" stroke-dasharray="{{ringDash}}"/>
+          </svg>
+          <div>
+            <div class="xl-timer__t" style="font-size:22px;color:{{timeColor}}">{{timeText}}</div>
+            <div style="font-size:10px;color:var(--ds-muted);font-family:var(--ds-font-mono);text-transform:uppercase;letter-spacing:.5px">{{stageName}}</div>
+          </div>
+          <button class="ds-iconbtn" onClick="{{toggleRun}}" aria-label="Pause or resume timer"><svg class="xl-ico"><use href="{{runIcon}}"/></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- three panes -->
+    <div style="flex:1;display:flex;min-height:0">
+
+      <!-- LEFT: reading -->
+      <div class="pv-reading" style="width:432px;flex:none;border-right:1px solid var(--ds-line);overflow:auto">
+        <div class="pv-sec" style="border-top:none">
+          <h4><svg class="xl-ico xl-ico--sm"><use href="#i-bulb"/></svg> Why this matters</h4>
+          <p>3Sum is the canonical <b>sort + two-pointers</b> problem. It teaches how to collapse an O(n³) brute force to O(n²) and how to skip duplicates cleanly — a move that reappears in 3Sum Closest, 4Sum, and interval problems. Interviewers love it because the naive answer is obvious and the good answer is not.</p>
+        </div>
+        <div class="pv-sec">
+          <h4><svg class="xl-ico xl-ico--sm"><use href="#i-list"/></svg> Problem</h4>
+          <p>Given an integer array <span class="ds-mono" style="color:var(--ds-text)">nums</span>, return all triplets <span class="ds-mono" style="color:var(--ds-text)">[nums[i], nums[j], nums[k]]</span> such that <span class="ds-mono" style="color:var(--ds-text)">i ≠ j ≠ k</span> and the three sum to <b>0</b>. The result must not contain duplicate triplets.</p>
+        </div>
+        <div class="pv-sec">
+          <h4><svg class="xl-ico xl-ico--sm"><use href="#i-code"/></svg> Example</h4>
+          <pre class="xl-code" style="font-size:12px"><span class="c">// input</span>
+nums = [-1, 0, 1, 2, -1, -4]
+<span class="c">// output (order within a triplet doesn't matter)</span>
+[[-1, -1, 2], [-1, 0, 1]]</pre>
+          <p style="margin-top:10px;font-size:12px"><b>Constraints</b> · 3 ≤ n ≤ 3000 · −10⁵ ≤ nums[i] ≤ 10⁵</p>
+        </div>
+
+        <!-- Stage 1: hint -->
+        <sc-if value="{{showHint}}" hint-placeholder-val="{{false}}">
+          <div class="pv-sec" style="background:rgba(240,180,41,.03)">
+            <h4 style="color:var(--ds-warn)"><svg class="xl-ico xl-ico--sm"><use href="#i-bulb"/></svg> First thought · brute force</h4>
+            <p>Three nested loops over every <span class="ds-mono" style="color:var(--ds-text)">i&lt;j&lt;k</span>, keep those that sum to 0, dedupe with a set. Correct but <b>O(n³)</b> time — ~2.7×10¹⁰ ops at n=3000. It will TLE. The set-dedupe also costs memory and hides the real structure.</p>
+          </div>
+          <div class="pv-sec" style="background:rgba(240,180,41,.03)">
+            <h4 style="color:var(--ds-warn)"><svg class="xl-ico xl-ico--sm"><use href="#i-key"/></svg> Key observation</h4>
+            <p>Fix one number <span class="ds-mono" style="color:var(--ds-text)">nums[i]</span>. The rest is <b>Two Sum</b> for target <span class="ds-mono" style="color:var(--ds-text)">−nums[i]</span>. If the array is <b>sorted</b>, Two Sum on a sorted array is a two-pointer sweep — no hash map, and duplicates become adjacent so they're trivial to skip.</p>
+          </div>
+          <div class="pv-sec" style="background:rgba(155,140,240,.05)">
+            <h4 style="color:var(--ds-violet)"><svg class="xl-ico xl-ico--sm"><use href="#i-layers"/></svg> Pattern recognition</h4>
+            <p style="color:var(--ds-text);font-weight:500">When you see <i>“find combinations in an array that hit a target sum”</i> → <b style="color:var(--ds-violet)">sort, then converge two pointers</b> from both ends. Moving left raises the sum, moving right lowers it.</p>
+          </div>
+        </sc-if>
+
+        <!-- Stage 2: solution -->
+        <sc-if value="{{showSol}}" hint-placeholder-val="{{false}}">
+          <div class="pv-sec" style="background:rgba(53,208,192,.04)">
+            <h4><svg class="xl-ico xl-ico--sm"><use href="#i-check"/></svg> Optimized approach</h4>
+            <p>Sort the array. For each index <span class="ds-mono" style="color:var(--ds-text)">i</span>, run two pointers <span class="ds-mono" style="color:var(--ds-text)">l = i+1</span>, <span class="ds-mono" style="color:var(--ds-text)">r = n-1</span> toward the target <span class="ds-mono" style="color:var(--ds-text)">−nums[i]</span>. Skip duplicate <span class="ds-mono" style="color:var(--ds-text)">i</span>, and after recording a hit, skip duplicate <span class="ds-mono" style="color:var(--ds-text)">l</span>/<span class="ds-mono" style="color:var(--ds-text)">r</span>. Break early once <span class="ds-mono" style="color:var(--ds-text)">nums[i] &gt; 0</span>.</p>
+          </div>
+          <div class="pv-sec">
+            <h4>Algorithm steps</h4>
+            <ol style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.7;color:var(--ds-dim)">
+              <li>Sort <span class="ds-mono">nums</span> ascending.</li>
+              <li>Loop <span class="ds-mono">i</span> from 0 to n−3. If <span class="ds-mono">nums[i] &gt; 0</span> break; if <span class="ds-mono">nums[i]==nums[i-1]</span> skip.</li>
+              <li>Set <span class="ds-mono">l=i+1</span>, <span class="ds-mono">r=n−1</span>.</li>
+              <li><span class="ds-mono">sum &lt; 0</span> → <span class="ds-mono">l++</span>; <span class="ds-mono">sum &gt; 0</span> → <span class="ds-mono">r−−</span>.</li>
+              <li><span class="ds-mono">sum == 0</span> → record, then advance both and skip duplicate <span class="ds-mono">l</span>/<span class="ds-mono">r</span>.</li>
+            </ol>
+          </div>
+          <div class="pv-sec">
+            <h4>Dry run · sorted [−4, −1, −1, 0, 1, 2]</h4>
+            <pre class="xl-code" style="font-size:11px;line-height:1.7"><span class="c">i=-4  l,r → -1..2  sums -3,-4,-1 → none</span>
+<span class="c">i=-1  l,r → -1..2  sum 0 ✓  [-1,-1,2]</span>
+<span class="c">      l,r → 0..1   sum 0 ✓  [-1,0,1]</span>
+<span class="c">i=0   l,r → 1..2   sum 3 &gt;0 r--  → none</span>
+<span class="s">result = [[-1,-1,2], [-1,0,1]]</span></pre>
+          </div>
+          <div class="pv-sec">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <h4 style="margin:0">Reference solution</h4>
+              <div class="ds-seg">
+                <button class="{{goSeg}}" onClick="{{setGo}}">Go</button>
+                <button class="{{cppSeg}}" onClick="{{setCpp}}">C++</button>
+              </div>
+            </div>
+            <sc-if value="{{langGo}}" hint-placeholder-val="{{true}}">
+<pre class="xl-code" style="font-size:11.5px"><span class="k">func</span> <span class="fn">threeSum</span>(nums []<span class="k">int</span>) [][]<span class="k">int</span> {
+    sort.<span class="fn">Ints</span>(nums)
+    res := [][]<span class="k">int</span>{}
+    <span class="k">for</span> i := <span class="n">0</span>; i &lt; <span class="fn">len</span>(nums)-<span class="n">2</span>; i++ {
+        <span class="k">if</span> nums[i] &gt; <span class="n">0</span> { <span class="k">break</span> }
+        <span class="k">if</span> i &gt; <span class="n">0</span> &amp;&amp; nums[i] == nums[i-<span class="n">1</span>] { <span class="k">continue</span> }
+        l, r := i+<span class="n">1</span>, <span class="fn">len</span>(nums)-<span class="n">1</span>
+        <span class="k">for</span> l &lt; r {
+            sum := nums[i] + nums[l] + nums[r]
+            <span class="k">switch</span> {
+            <span class="k">case</span> sum &lt; <span class="n">0</span>: l++
+            <span class="k">case</span> sum &gt; <span class="n">0</span>: r--
+            <span class="k">default</span>:
+                res = <span class="fn">append</span>(res, []<span class="k">int</span>{nums[i], nums[l], nums[r]})
+                l++; r--
+                <span class="k">for</span> l &lt; r &amp;&amp; nums[l] == nums[l-<span class="n">1</span>] { l++ }
+                <span class="k">for</span> l &lt; r &amp;&amp; nums[r] == nums[r+<span class="n">1</span>] { r-- }
+            }
+        }
+    }
+    <span class="k">return</span> res
+}</pre>
+            </sc-if>
+            <sc-if value="{{langCpp}}" hint-placeholder-val="{{false}}">
+<pre class="xl-code" style="font-size:11.5px"><span class="k">vector</span>&lt;<span class="k">vector</span>&lt;<span class="k">int</span>&gt;&gt; <span class="fn">threeSum</span>(<span class="k">vector</span>&lt;<span class="k">int</span>&gt;&amp; nums) {
+    <span class="fn">sort</span>(nums.<span class="fn">begin</span>(), nums.<span class="fn">end</span>());
+    <span class="k">vector</span>&lt;<span class="k">vector</span>&lt;<span class="k">int</span>&gt;&gt; res;
+    <span class="k">for</span> (<span class="k">int</span> i = <span class="n">0</span>; i + <span class="n">2</span> &lt; nums.<span class="fn">size</span>(); ++i) {
+        <span class="k">if</span> (nums[i] &gt; <span class="n">0</span>) <span class="k">break</span>;
+        <span class="k">if</span> (i &gt; <span class="n">0</span> &amp;&amp; nums[i] == nums[i-<span class="n">1</span>]) <span class="k">continue</span>;
+        <span class="k">int</span> l = i+<span class="n">1</span>, r = nums.<span class="fn">size</span>()-<span class="n">1</span>;
+        <span class="k">while</span> (l &lt; r) {
+            <span class="k">int</span> sum = nums[i]+nums[l]+nums[r];
+            <span class="k">if</span> (sum &lt; <span class="n">0</span>) ++l;
+            <span class="k">else if</span> (sum &gt; <span class="n">0</span>) --r;
+            <span class="k">else</span> {
+                res.<span class="fn">push_back</span>({nums[i], nums[l], nums[r]});
+                ++l; --r;
+                <span class="k">while</span> (l&lt;r &amp;&amp; nums[l]==nums[l-<span class="n">1</span>]) ++l;
+                <span class="k">while</span> (l&lt;r &amp;&amp; nums[r]==nums[r+<span class="n">1</span>]) --r;
+            }
+        }
+    }
+    <span class="k">return</span> res;
+}</pre>
+            </sc-if>
+            <div style="display:flex;gap:14px;margin-top:12px">
+              <span class="ds-chip ds-chip--sm ds-mono"><span style="color:var(--ds-muted)">Time</span> O(n²)</span>
+              <span class="ds-chip ds-chip--sm ds-mono"><span style="color:var(--ds-muted)">Space</span> O(1)<span style="color:var(--ds-muted)"> ex-sort</span></span>
+            </div>
+          </div>
+          <div class="pv-sec">
+            <h4 style="color:var(--ds-err)"><svg class="xl-ico xl-ico--sm"><use href="#i-alert"/></svg> Common mistakes</h4>
+            <ul style="margin:0;padding-left:16px;font-size:12.5px;line-height:1.7;color:var(--ds-dim)">
+              <li>Forgetting to skip duplicate <span class="ds-mono">l</span>/<span class="ds-mono">r</span> after a hit → duplicate triplets.</li>
+              <li>Advancing only one pointer on a match (infinite/incorrect).</li>
+              <li>Skipping duplicates <i>before</i> recording the first hit.</li>
+            </ul>
+          </div>
+          <div class="pv-sec">
+            <h4><svg class="xl-ico xl-ico--sm"><use href="#i-target"/></svg> Interview discussion &amp; variations</h4>
+            <p>Be ready to justify sorting (O(n log n) is dominated by the O(n²) sweep) and to contrast with a hash-set variant. Follow-ups: <b>3Sum Closest</b>, <b>4Sum</b> (add a loop), <b>3Sum Smaller</b> (count, don't enumerate), and <b>Two Sum II</b> as the sorted primitive.</p>
+          </div>
+        </sc-if>
+      </div>
+
+      <!-- CENTER: editor -->
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--ds-line);background:#0c0f14">
+        <div style="flex:none;height:42px;display:flex;align-items:center;gap:2px;padding:0 10px;border-bottom:1px solid var(--ds-line)">
+          <div style="display:flex;align-items:center;gap:7px;height:30px;padding:0 12px;background:var(--ds-panel-2);border:1px solid var(--ds-line-2);border-bottom:none;border-radius:7px 7px 0 0;font-size:12.5px;font-family:var(--ds-font-mono)">
+            <svg class="xl-ico xl-ico--sm" style="color:var(--ds-teal)"><use href="#i-code"/></svg> {{fileName}}
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+            <div class="ds-seg">
+              <button class="{{goSeg}}" onClick="{{setGo}}">Go</button>
+              <button class="{{cppSeg}}" onClick="{{setCpp}}">C++</button>
+            </div>
+            <button class="ds-btn ds-btn--secondary ds-btn--sm" onClick="{{run}}"><svg class="xl-ico xl-ico--sm"><use href="#i-play"/></svg> Run tests</button>
+          </div>
+        </div>
+
+        <!-- code -->
+        <div style="flex:1;min-height:0;overflow:auto;display:flex;font-family:var(--ds-font-mono);font-size:12.5px;line-height:1.65">
+          <div style="flex:none;padding:14px 10px;text-align:right;color:#3a4351;user-select:none;background:#0a0d11;border-right:1px solid var(--ds-line)">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14</div>
+          <div style="flex:1;padding:14px 16px;white-space:pre;overflow:auto;color:#cdd5e0">{{editorCode}}</div>
+        </div>
+
+        <!-- tests panel -->
+        <div style="flex:none;border-top:1px solid var(--ds-line);background:var(--ds-panel)">
+          <div style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--ds-line)">
+            <svg class="xl-ico xl-ico--sm" style="color:var(--ds-dim)"><use href="#i-list"/></svg>
+            <span style="font-size:12px;font-weight:600">Tests</span>
+            <span class="{{testBadgeCls}}" style="margin-left:6px">{{testSummary}}</span>
+            <span style="margin-left:auto;font-size:11px;color:var(--ds-muted);font-family:var(--ds-font-mono)">go test ./...</span>
+          </div>
+          <div style="padding:10px 14px;display:flex;flex-direction:column;gap:7px;font-family:var(--ds-font-mono);font-size:11.5px">
+            <div style="display:flex;align-items:center;gap:9px"><span class="{{t1dot}}"></span><span style="color:var(--ds-dim);flex:1">[-1,0,1,2,-1,-4] → [[-1,-1,2],[-1,0,1]]</span><span style="color:{{t1col}}">{{t1txt}}</span></div>
+            <div style="display:flex;align-items:center;gap:9px"><span class="{{t2dot}}"></span><span style="color:var(--ds-dim);flex:1">[0,1,1] → []</span><span style="color:{{t2col}}">{{t2txt}}</span></div>
+            <div style="display:flex;align-items:center;gap:9px"><span class="{{t3dot}}"></span><span style="color:var(--ds-dim);flex:1">[0,0,0] → [[0,0,0]]</span><span style="color:{{t3col}}">{{t3txt}}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: method rail -->
+      <div class="pv-rail" style="width:330px;flex:none;overflow:auto;display:flex;flex-direction:column;gap:14px;padding:16px">
+
+        <!-- Stage stepper -->
+        <div class="xl-panel">
+          <div class="xl-panel__b" style="padding:14px">
+            <div style="display:flex;flex-direction:column;gap:0">
+              <div style="display:flex;gap:11px;align-items:flex-start">
+                <div style="display:flex;flex-direction:column;align-items:center"><span class="{{d0}}"></span><span style="width:2px;height:26px;background:var(--ds-line-2)"></span></div>
+                <div style="padding-bottom:14px"><div style="font-size:12.5px;font-weight:600;color:{{c0}}">Stage 0 · Attempt</div><div style="font-size:11px;color:var(--ds-muted)">Solve blind · 15 min</div></div>
+              </div>
+              <div style="display:flex;gap:11px;align-items:flex-start">
+                <div style="display:flex;flex-direction:column;align-items:center"><span class="{{d1}}"></span><span style="width:2px;height:26px;background:var(--ds-line-2)"></span></div>
+                <div style="padding-bottom:14px"><div style="font-size:12.5px;font-weight:600;color:{{c1}}">Stage 1 · Hint</div><div style="font-size:11px;color:var(--ds-muted)">Nudge + pattern · 10 min</div></div>
+              </div>
+              <div style="display:flex;gap:11px;align-items:flex-start">
+                <div style="display:flex;flex-direction:column;align-items:center"><span class="{{d2}}"></span></div>
+                <div><div style="font-size:12.5px;font-weight:600;color:{{c2}}">Stage 2 · Solution</div><div style="font-size:11px;color:var(--ds-muted)">Full walkthrough → re-implement</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage 0/1 controls -->
+        <sc-if value="{{showStuck}}" hint-placeholder-val="{{true}}">
+          <div class="ds-card" style="padding:14px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-muted)"><use href="#i-lock"/></svg><span style="font-size:12px;color:var(--ds-dim)">{{lockLabel}}</span></div>
+            <div style="font-size:11.5px;color:var(--ds-muted);line-height:1.5;margin-bottom:12px">Unlocks when the timer ends — or tap below.</div>
+            <button class="ds-btn ds-btn--secondary ds-btn--block ds-btn--sm" onClick="{{stuck}}"><svg class="xl-ico xl-ico--sm"><use href="#i-bulb"/></svg> {{stuckLabel}}</button>
+            <sc-if value="{{atHint}}" hint-placeholder-val="{{false}}">
+              <div style="margin-top:9px;font-size:11px;color:var(--ds-warn);line-height:1.5;display:flex;gap:6px"><svg class="xl-ico xl-ico--sm" style="flex:none;margin-top:1px"><use href="#i-alert"/></svg> Revealing the full solution now means you owe #16 another attempt in 3 days.</div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <!-- Stage 2: re-implement CTA -->
+        <sc-if value="{{atSol}}" hint-placeholder-val="{{false}}">
+          <div class="ds-card ds-card--teal" style="padding:15px">
+            <div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--ds-text)">Studied it? Prove it.</div>
+            <p style="font-size:12px;color:var(--ds-dim);line-height:1.55;margin-bottom:12px">Close the solution and re-implement 3Sum from a blank editor. This is where it actually sticks.</p>
+            <button class="ds-btn ds-btn--primary ds-btn--block ds-btn--sm" onClick="{{reimpl}}"><svg class="xl-ico xl-ico--sm"><use href="#i-code"/></svg> Re-implement from memory</button>
+          </div>
+        </sc-if>
+
+        <!-- Stage 3: outcome logging -->
+        <sc-if value="{{atReimpl}}" hint-placeholder-val="{{false}}">
+          <sc-if value="{{notLogged}}" hint-placeholder-val="{{true}}">
+            <div class="xl-panel">
+              <div class="xl-panel__h" style="padding:12px 14px"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-teal)"><use href="#i-flag"/></svg><h3 style="font-size:13px">Log your outcome</h3></div>
+              <div class="xl-panel__b" style="padding:14px">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <button class="{{ocClean}}" onClick="{{pickClean}}" style="padding:11px;border-radius:9px;cursor:pointer;text-align:left;font-family:inherit"><div style="font-size:13px;font-weight:600;color:var(--ds-ok)">Clean</div><div style="font-size:10.5px;color:var(--ds-muted)">no help, in time</div></button>
+                  <button class="{{ocRough}}" onClick="{{pickRough}}" style="padding:11px;border-radius:9px;cursor:pointer;text-align:left;font-family:inherit"><div style="font-size:13px;font-weight:600;color:var(--ds-warn)">Rough</div><div style="font-size:10.5px;color:var(--ds-muted)">solved, ugly</div></button>
+                  <button class="{{ocAssist}}" onClick="{{pickAssist}}" style="padding:11px;border-radius:9px;cursor:pointer;text-align:left;font-family:inherit"><div style="font-size:13px;font-weight:600;color:var(--ds-info)">Assisted</div><div style="font-size:10.5px;color:var(--ds-muted)">needed a hint</div></button>
+                  <button class="{{ocMiss}}" onClick="{{pickMiss}}" style="padding:11px;border-radius:9px;cursor:pointer;text-align:left;font-family:inherit"><div style="font-size:13px;font-weight:600;color:var(--ds-err)">Miss</div><div style="font-size:10.5px;color:var(--ds-muted)">didn't get it</div></button>
+                </div>
+
+                <!-- mistake quick entry -->
+                <sc-if value="{{mistakeOpen}}" hint-placeholder-val="{{false}}">
+                  <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--ds-line)">
+                    <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-violet)"><use href="#i-journal"/></svg><span style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--ds-violet);font-family:var(--ds-font-mono)">Quick mistake entry</span></div>
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px"><span style="font-size:11.5px;color:var(--ds-muted)">Pattern</span><span class="xl-pat">Two pointers</span><span style="font-size:11px;color:var(--ds-muted)">· pre-filled</span></div>
+                    <div style="font-size:11.5px;color:var(--ds-muted);margin-bottom:7px">Category</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+                      <button class="{{catA}}" onClick="{{catPickA}}">Off-by-one</button>
+                      <button class="{{catB}}" onClick="{{catPickB}}">Wrong pattern</button>
+                      <button class="{{catC}}" onClick="{{catPickC}}">Right pattern, wrong state</button>
+                      <button class="{{catD}}" onClick="{{catPickD}}">Complexity</button>
+                    </div>
+                    <textarea placeholder="Root cause — what actually went wrong?" style="width:100%;height:60px;resize:none;background:var(--ds-input-bg);border:1px solid var(--ds-line-2);border-radius:9px;color:var(--ds-text);font-family:inherit;font-size:12.5px;padding:9px 11px"></textarea>
+                    <button class="ds-btn ds-btn--primary ds-btn--block ds-btn--sm" onClick="{{save}}" style="margin-top:11px">Save &amp; schedule revision</button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{cleanReady}}" hint-placeholder-val="{{false}}">
+                  <button class="ds-btn ds-btn--primary ds-btn--block ds-btn--sm" onClick="{{save}}" style="margin-top:13px">Mark solved &amp; schedule revision</button>
+                </sc-if>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- logged confirmation -->
+          <sc-if value="{{logged}}" hint-placeholder-val="{{false}}">
+            <div class="ds-card ds-card--teal" style="padding:16px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="width:26px;height:26px;border-radius:50%;background:var(--ds-ok);display:grid;place-items:center"><svg class="xl-ico xl-ico--sm" style="color:#06231f"><use href="#i-check"/></svg></span><b style="font-size:14px">Logged as {{outcomeLabel}}</b></div>
+              <p style="font-size:12px;color:var(--ds-dim);line-height:1.55;margin-bottom:12px">Five-touch revision schedule created — reviews are re-solves from blank, not re-reads.</p>
+              <div class="xl-touch" style="margin-bottom:6px">
+                <span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d xl-touch__d--mock"></span><span class="xl-touch__d xl-touch__d--mock"></span>
+              </div>
+              <div class="xl-touch__lab" style="margin-bottom:12px"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div>
+              <sc-if value="{{penalty}}" hint-placeholder-val="{{false}}">
+                <div style="font-size:11.5px;color:var(--ds-warn);line-height:1.5;display:flex;gap:6px;margin-bottom:12px"><svg class="xl-ico xl-ico--sm" style="flex:none;margin-top:1px"><use href="#i-alert"/></svg> +1 re-attempt queued for <b>Day 3</b> — you revealed the solution early.</div>
+              </sc-if>
+              <div style="display:flex;gap:8px">
+                <a class="ds-btn ds-btn--secondary ds-btn--sm" href="Revision.dc.html" style="flex:1">Revision queue</a>
+                <a class="ds-btn ds-btn--secondary ds-btn--sm" href="Week.dc.html" style="flex:1">Next problem</a>
+              </div>
+            </div>
+          </sc-if>
+        </sc-if>
+
+        <!-- coach nudge -->
+        <div class="ds-card" style="padding:13px;border-color:rgba(53,208,192,.28)">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-teal)"><use href="#i-spark"/></svg><span style="font-size:11px;font-weight:600;color:var(--ds-teal);font-family:var(--ds-font-mono);text-transform:uppercase;letter-spacing:.4px">Coach</span></div>
+          <p style="font-size:12px;color:var(--ds-dim);line-height:1.55">{{coachNudge}}</p>
+          <button class="ds-btn ds-btn--ghost ds-btn--sm" onClick="{{toggleCoach}}" style="padding:0;height:auto;margin-top:8px;color:var(--ds-teal)">Open coach →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Coach -->
+  <sc-if value="{{coachClosed}}" hint-placeholder-val="{{true}}">
+    <button class="xl-fab" onClick="{{toggleCoach}}" aria-label="Open AI coach"><svg class="xl-ico xl-ico--lg"><use href="#i-spark"/></svg></button>
+  </sc-if>
+  <sc-if value="{{coachOpen}}" hint-placeholder-val="{{false}}">
+    <div class="xl-coach">
+      <div class="xl-coach__top"><div class="xl-coach__title"><svg class="xl-ico" style="color:var(--ds-teal)"><use href="#i-spark"/></svg> Coach</div><span style="flex:1"></span><button class="ds-iconbtn" onClick="{{toggleCoach}}" aria-label="Close coach"><svg class="xl-ico"><use href="#i-close"/></svg></button></div>
+      <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm"><use href="#i-code"/></svg> Context · Problem 16 · 3Sum · {{stageName}} · your Go draft</div>
+      <div class="xl-coach__body xl-scroll">
+        <sc-for list="{{thread}}" as="m" hint-placeholder-count="1"><div class="{{m.cls}}" style="white-space:pre-line">{{m.text}}</div></sc-for>
+        <div class="xl-coach__sugg">
+          <button class="xl-coach__chip" onClick="{{askDS}}">Which data structure fits here?</button>
+          <button class="xl-coach__chip" onClick="{{askDupes}}">Is my duplicate-skipping right?</button>
+          <button class="xl-coach__chip" onClick="{{askReview}}">Review my Go draft</button>
+        </div>
+      </div>
+      <div class="xl-coach__foot"><div class="xl-coach__input"><input placeholder="Ask your coach…" aria-label="Message coach"><button class="ds-iconbtn" style="color:var(--ds-teal)" aria-label="Send"><svg class="xl-ico"><use href="#i-arrow"/></svg></button></div></div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1024}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      stage: 0, secondsLeft: 900, running: true, lang: "go",
+      ran: false, outcome: null, cat: null, mistakeOpen: false, cleanReady: false,
+      logged: false, penalty: false, coach: false,
+      thread: [{ who: "bot", text: "You're at Stage 0 — I won't hand you the answer yet. One nudge to get unstuck: what changes about Two Sum if the array were sorted first?" }]
+    };
+  }
+  componentDidMount() {
+    this._t = setInterval(() => {
+      this.setState((st) => {
+        if (!st.running || st.secondsLeft <= 0) return null;
+        return { secondsLeft: st.secondsLeft - 1 };
+      });
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this._t); }
+
+  goEditor() {
+    return this.state.stage >= 3
+      ? "func threeSum(nums []int) [][]int {\n    // re-implement from memory — no peeking at the solution\n    \n    \n}"
+      : "func threeSum(nums []int) [][]int {\n    sort.Ints(nums)\n    res := [][]int{}\n    for i := 0; i < len(nums); i++ {\n        // TODO: skip duplicate i\n        l, r := i+1, len(nums)-1\n        for l < r {\n            sum := nums[i] + nums[l] + nums[r]\n            // move a pointer based on sum...\n        }\n    }\n    return res\n}";
+  }
+  cppEditor() {
+    return this.state.stage >= 3
+      ? "vector<vector<int>> threeSum(vector<int>& nums) {\n    // re-implement from memory — no peeking\n    \n    \n}"
+      : "vector<vector<int>> threeSum(vector<int>& nums) {\n    sort(nums.begin(), nums.end());\n    vector<vector<int>> res;\n    for (int i = 0; i < nums.size(); i++) {\n        // TODO: skip duplicate i\n        int l = i+1, r = nums.size()-1;\n        while (l < r) {\n            // move a pointer based on sum...\n        }\n    }\n    return res;\n}";
+  }
+
+  renderVals() {
+    const s = this.state;
+    const seg = (on) => on ? "ds-seg__btn ds-seg__btn--on" : "ds-seg__btn";
+    const step = (idx) => {
+      // dot classes for stepper
+      if (s.stage > idx) return "xl-touch__d xl-touch__d--pass";
+      if (s.stage === idx) return "xl-touch__d xl-touch__d--due";
+      return "xl-touch__d";
+    };
+    const stepColor = (idx) => s.stage >= idx ? "var(--ds-text)" : "var(--ds-muted)";
+    const tabCls = (idx) => s.stage === idx ? "ds-tab ds-tab--active" : (s.stage > idx ? "ds-tab" : "ds-tab");
+
+    // timer visuals
+    const dur = s.stage === 0 ? 900 : s.stage === 1 ? 600 : s.stage >= 3 ? 1200 : 1;
+    const circ = 150.8;
+    const frac = Math.max(0, Math.min(1, s.secondsLeft / dur));
+    const mm = String(Math.floor(s.secondsLeft / 60)).padStart(2, "0");
+    const ss = String(s.secondsLeft % 60).padStart(2, "0");
+    const low = s.secondsLeft <= 30, mid = s.secondsLeft <= 120;
+    const col = s.stage === 2 ? "var(--ds-muted)" : low ? "var(--ds-err)" : mid ? "var(--ds-warn)" : "var(--ds-teal)";
+
+    const stageName = s.stage === 0 ? "Stage 0 · Attempt" : s.stage === 1 ? "Stage 1 · Hint" : s.stage === 2 ? "Stage 2 · Solution" : "Re-implement";
+    const outLabel = { clean: "Clean", rough: "Rough", assisted: "Assisted", miss: "Miss" }[s.outcome] || "";
+
+    const ocCls = (k, tone) => "ds-card" + (s.outcome === k ? " ds-card--teal" : "");
+    const catCls = (k) => s.cat === k ? "xl-pat" : "ds-chip ds-chip--xs";
+
+    const push = (q, a) => this.setState((st) => ({ coach: true, thread: [...st.thread, { who: "me", text: q }, { who: "bot", text: a }] }));
+    const pick = (k) => this.setState({ outcome: k, mistakeOpen: k !== "clean", cleanReady: k === "clean", cat: null });
+
+    const nudge = s.stage < 2
+      ? "Stage " + s.stage + ": I'll stay Socratic. Sorting turns the inner search into a converging two-pointer sweep — try that before revealing anything."
+      : "Now that you've seen it: your draft never skipped duplicate l/r after a hit — that's the classic 3Sum duplicate bug. Re-implement and watch for it.";
+
+    return {
+      // timer
+      timeText: mm + ":" + ss, timeColor: col, ringColor: col,
+      ringDash: (frac * circ).toFixed(1) + " " + circ,
+      stageName, runIcon: s.running ? "#i-pause" : "#i-play",
+      toggleRun: () => this.setState((st) => ({ running: !st.running })),
+
+      // stage stepper + tabs
+      d0: step(0), d1: step(1), d2: step(2),
+      c0: stepColor(0), c1: stepColor(1), c2: stepColor(2),
+      s0cls: tabCls(0), s1cls: tabCls(1), s2cls: tabCls(2),
+
+      // reveal gating
+      showHint: s.stage >= 1, showSol: s.stage >= 2,
+      showStuck: s.stage < 2, atHint: s.stage === 1, atSol: s.stage === 2,
+      atReimpl: s.stage >= 3,
+      lockLabel: s.stage === 0 ? "Hints & solution locked" : "Solution locked",
+      stuckLabel: s.stage === 0 ? "I'm stuck — show a hint" : "Reveal full solution",
+      stuck: () => this.setState((st) => st.stage === 0
+        ? { stage: 1, secondsLeft: 600, running: true }
+        : { stage: 2, secondsLeft: 0, running: false, penalty: true }),
+      reimpl: () => this.setState({ stage: 3, secondsLeft: 1200, running: true }),
+
+      // editor + lang
+      lang: s.lang, langGo: s.lang === "go", langCpp: s.lang === "cpp",
+      goSeg: seg(s.lang === "go"), cppSeg: seg(s.lang === "cpp"),
+      setGo: () => this.setState({ lang: "go" }), setCpp: () => this.setState({ lang: "cpp" }),
+      fileName: s.lang === "go" ? "solution.go" : "solution.cpp",
+      editorCode: s.lang === "go" ? this.goEditor() : this.cppEditor(),
+
+      // tests
+      run: () => this.setState({ ran: true }),
+      testSummary: s.ran ? (s.stage >= 3 ? "3 / 3 passing" : "2 / 3 passing") : "not run",
+      testBadgeCls: s.ran ? (s.stage >= 3 ? "ds-badge ds-badge--ok ds-mono" : "ds-badge ds-badge--warn ds-mono") : "ds-chip ds-chip--xs ds-mono",
+      t1dot: !s.ran ? "ds-dot ds-dot--unknown" : (s.stage >= 3 ? "ds-dot ds-dot--ok" : "ds-dot ds-dot--failed"),
+      t1txt: !s.ran ? "—" : (s.stage >= 3 ? "pass" : "dupes"),
+      t1col: !s.ran ? "var(--ds-muted)" : (s.stage >= 3 ? "var(--ds-ok)" : "var(--ds-err)"),
+      t2dot: !s.ran ? "ds-dot ds-dot--unknown" : "ds-dot ds-dot--ok", t2txt: !s.ran ? "—" : "pass", t2col: !s.ran ? "var(--ds-muted)" : "var(--ds-ok)",
+      t3dot: !s.ran ? "ds-dot ds-dot--unknown" : "ds-dot ds-dot--ok", t3txt: !s.ran ? "—" : "pass", t3col: !s.ran ? "var(--ds-muted)" : "var(--ds-ok)",
+
+      // outcome logging
+      ocClean: ocCls("clean"), ocRough: ocCls("rough"), ocAssist: ocCls("assisted"), ocMiss: ocCls("miss"),
+      pickClean: () => pick("clean"), pickRough: () => pick("rough"), pickAssist: () => pick("assisted"), pickMiss: () => pick("miss"),
+      mistakeOpen: s.mistakeOpen, cleanReady: s.cleanReady,
+      catA: catCls("off"), catB: catCls("pat"), catC: catCls("state"), catD: catCls("cx"),
+      catPickA: () => this.setState({ cat: "off" }), catPickB: () => this.setState({ cat: "pat" }),
+      catPickC: () => this.setState({ cat: "state" }), catPickD: () => this.setState({ cat: "cx" }),
+      save: () => this.setState({ logged: true, mistakeOpen: false, cleanReady: false }),
+      notLogged: !s.logged, logged: s.logged, penalty: s.penalty, outcomeLabel: outLabel,
+
+      // coach
+      coachOpen: s.coach, coachClosed: !s.coach, coachNudge: nudge,
+      thread: s.thread.map((m, i) => ({ key: i, text: m.text, cls: m.who === "me" ? "xl-coach__msg xl-coach__msg--me" : "xl-coach__msg xl-coach__msg--bot" })),
+      toggleCoach: () => this.setState((st) => ({ coach: !st.coach })),
+      askDS: () => push("Which data structure fits here?", "Think about what sorting buys you. Once nums is sorted, you don't need a hash map at all — the two ends of the array become your search handles. What happens to the sum when you move the left pointer right?"),
+      askDupes: () => push("Is my duplicate-skipping right?", "Skip duplicate i only when i>0 and nums[i]==nums[i-1] — before the inner loop. And after you RECORD a hit, advance l and r past equal neighbours. Skipping before the first record drops valid triplets like [-1,-1,2]."),
+      askReview: () => push("Review my Go draft", "Two things: your inner loop never moves l/r based on sum, so it can't converge, and there's no dedupe after a match. Add the switch on sum<0 / sum>0 / else, then the two skip-while loops. Structure's otherwise right.")
+    };
+  }
+}
+</script>
+</body>
+</html>

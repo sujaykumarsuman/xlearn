@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>xLearn — DSA roadmap</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body { margin: 0; background: #0b0d10; color: #e6e9ef; font-family: "Inter", system-ui, sans-serif; }</style>
+</helmet>
+
+<div class="xl-app">
+  <input type="checkbox" id="xl-collapse-road" class="xl-collapse-cb" aria-label="Collapse sidebar">
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10.2V19h12v-8.8"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7 9 5z"/><path d="M9 5v12M15 7v12"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4"/></symbol>
+    <symbol id="i-journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v18M12.5 8h3.5M12.5 12h3.5"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V11M10 19V5M16 19v-6"/><path d="M3 21h18"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A2 2 0 0 1 7 3h12v15H7a2 2 0 0 0-2 2z"/><path d="M5 4.5V19"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c.5 3 3.5 4 3.5 8a3.5 3.5 0 0 1-7 0c0-1.5.7-2.3 1.2-3 .3 1 .9 1.6 1.5 1.8-.3-2.5-.8-4.8.8-6.8z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z"/><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M18 5l2 2M15 8l2 2"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5z"/><path d="M3 12.5 12 17l9-4.5M3 17 12 21.5 21 17"/></symbol>
+    <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 8l4 4 5-7 5 7 4-4v9H3z"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-3.8 10.6c.8.7 1.3 1.5 1.3 2.4h5c0-.9.5-1.7 1.3-2.4A6 6 0 0 0 12 3z"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 3.5L16 11H5"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></symbol>
+  </svg>
+
+  <aside class="xl-side">
+    <div class="xl-brand"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+    <div class="xl-pathsw"><a class="xl-pathsw__btn" href="Catalog.dc.html"><span class="xl-pathsw__ic">DSA</span><span style="flex:1"><span class="xl-pathsw__t">DSA Interview Mastery</span><span class="xl-pathsw__s">16 weeks · 151 problems</span></span><svg class="xl-ico xl-ico--sm" style="color:var(--ds-muted)"><use href="#i-chevdown"/></svg></a></div>
+    <nav class="xl-nav">
+      <a class="xl-nav__item" href="Dashboard.dc.html"><svg class="xl-ico"><use href="#i-today"/></svg> Today</a>
+      <a class="xl-nav__item xl-nav__item--active" href="Roadmap.dc.html"><svg class="xl-ico"><use href="#i-map"/></svg> Roadmap</a>
+      <div class="xl-nav__cap">Practice loop</div>
+      <a class="xl-nav__item" href="Revision.dc.html"><svg class="xl-ico"><use href="#i-refresh"/></svg> Revision <span class="xl-nav__badge xl-nav__badge--teal">4</span></a>
+      <a class="xl-nav__item" href="Mistakes.dc.html"><svg class="xl-ico"><use href="#i-journal"/></svg> Mistakes <span class="xl-nav__badge">3</span></a>
+      <a class="xl-nav__item" href="Mock.dc.html"><svg class="xl-ico"><use href="#i-target"/></svg> Mock interview</a>
+      <a class="xl-nav__item" href="Progress.dc.html"><svg class="xl-ico"><use href="#i-chart"/></svg> Progress</a>
+      <div class="xl-nav__cap">Account</div>
+      <a class="xl-nav__item" href="Settings.dc.html"><svg class="xl-ico"><use href="#i-settings"/></svg> Settings</a>
+    </nav>
+    <div class="xl-side__foot" style="padding:8px"><label for="xl-collapse-road" class="xl-nav__item xl-collapse-btn" title="Collapse sidebar" style="width:100%"><svg class="xl-ico xl-collapse-ico"><use href="#i-chevron"/></svg> <span class="xl-collapse-lbl">Collapse</span></label></div>
+  </aside>
+
+  <div class="xl-main">
+    <div class="xl-topbar">
+      <div class="xl-crumb"><a href="Catalog.dc.html">xlearn</a><span class="xl-crumb__sep">/</span><b>dsa</b></div>
+      <button class="xl-cmdk"><svg class="xl-ico xl-ico--sm"><use href="#i-search"/></svg><span style="flex:1;text-align:left">Search or jump to…</span><span class="xl-kbd">⌘K</span></button>
+      <button class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico"><use href="#i-bell"/></svg></button>
+      <div class="xl-acct">
+        <input type="checkbox" id="xl-acct-road" class="xl-acct-cb" aria-label="Account menu">
+        <label for="xl-acct-road" class="ds-avatar xl-topbar__avatar xl-acct-btn" title="Account">S</label>
+        <label for="xl-acct-road" class="xl-acct-backdrop" aria-hidden="true"></label>
+        <div class="xl-acct-menu">
+          <div class="xl-acct-head"><span class="ds-avatar" style="width:36px;height:36px;font-size:14px">S</span><div><b>Sujay Kumar</b><span>sujaykumar.dev@gmail.com</span></div></div>
+          <a href="Settings.dc.html" class="xl-acct-item"><svg class="xl-ico xl-ico--sm"><use href="#i-settings"/></svg> Settings</a>
+          <a href="Progress.dc.html" class="xl-acct-item"><svg class="xl-ico xl-ico--sm"><use href="#i-chart"/></svg> Progress &amp; stats</a>
+          <div class="xl-acct-sep"></div>
+          <a href="Auth.dc.html" class="xl-acct-item xl-acct-item--danger"><svg class="xl-ico xl-ico--sm" viewBox="0 0 24 24"><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"/><path d="M16 12H8M13 8l4 4-4 4"/></svg> Sign out</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="xl-content">
+      <div class="xl-page-h">
+        <div>
+          <div class="xl-eyebrow">Learning path · /xlearn/dsa</div>
+          <h1 style="margin-top:6px">DSA Interview Mastery</h1>
+          <p>16 weeks · 4 phases · 151 problems · Go-first. The method is enforced: sequential unlocks, timed practice, and five-touch spaced revision.</p>
+        </div>
+        <a class="ds-btn ds-btn--primary ds-btn--lg" href="Problem.dc.html"><svg class="xl-ico"><use href="#i-play"/></svg> Start today's plan</a>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:26px;align-items:start">
+
+        <!-- vertical phase / week rail -->
+        <div>
+          <sc-for list="{{phases}}" as="ph" hint-placeholder-count="4">
+            <div style="margin-bottom:26px">
+              <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:2px">
+                <span class="ds-mono" style="font-size:11px;color:var(--ds-violet);letter-spacing:.5px">{{ph.tag}}</span>
+                <h2 style="font-size:16px;font-weight:700">{{ph.name}}</h2>
+                <span class="ds-chip ds-chip--xs ds-mono">{{ph.weeks}}</span>
+                <span style="margin-left:auto;font-size:11.5px;color:var(--ds-muted);font-family:var(--ds-font-mono)">{{ph.pct}}</span>
+              </div>
+              <p style="font-size:12.5px;color:var(--ds-muted);margin-bottom:14px">{{ph.theme}}</p>
+
+              <sc-for list="{{ph.items}}" as="w" hint-placeholder-count="3">
+                <a href="{{w.href}}" style="display:flex;gap:14px;text-decoration:none;color:inherit">
+                  <div style="display:flex;flex-direction:column;align-items:center;flex:none;width:36px">
+                    <span style="width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-family:var(--ds-font-mono);font-weight:600;font-size:13px;flex:none;{{w.numStyle}}">{{w.num}}</span>
+                    <span style="flex:1;width:2px;background:var(--ds-line);min-height:12px"></span>
+                  </div>
+                  <div class="ds-card" style="flex:1;margin-bottom:10px;padding:12px 14px;{{w.cardStyle}}">
+                    <div style="display:flex;align-items:center;gap:9px">
+                      <b style="font-size:13.5px;flex:1">Week {{w.num}} · {{w.title}}</b>
+                      <span class="{{w.chipCls}}">{{w.chip}}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;margin-top:8px;font-size:11.5px;color:var(--ds-muted);font-family:var(--ds-font-mono)">
+                      <span>{{w.mix}}</span>
+                      <sc-if value="{{w.hasStar}}" hint-placeholder-val="{{false}}"><span style="color:var(--ds-warn)">★ {{w.star}}</span></sc-if>
+                    </div>
+                  </div>
+                </a>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+
+        <!-- summary column -->
+        <div style="display:flex;flex-direction:column;gap:16px;position:sticky;top:0">
+          <div class="xl-panel" style="padding:20px;display:flex;flex-direction:column;align-items:center">
+            <svg width="132" height="132" viewBox="0 0 76 76" style="transform:rotate(-90deg)">
+              <circle class="xl-ring-track" cx="38" cy="38" r="30" fill="none" stroke-width="7"/>
+              <circle cx="38" cy="38" r="30" fill="none" stroke-width="7" stroke-linecap="round" stroke="var(--ds-teal)" stroke-dasharray="35.8 188.5"/>
+            </svg>
+            <div style="margin-top:-88px;text-align:center;margin-bottom:52px">
+              <div class="ds-mono" style="font-size:30px;font-weight:700">19%</div>
+              <div style="font-size:11px;color:var(--ds-muted)">28 / 151 solved</div>
+            </div>
+            <div style="width:100%;display:flex;justify-content:space-between;font-size:12px;color:var(--ds-dim);border-top:1px solid var(--ds-line);padding-top:14px">
+              <span>Current</span><b style="color:var(--ds-teal)">Week 2</b>
+            </div>
+            <div style="width:100%;display:flex;justify-content:space-between;font-size:12px;color:var(--ds-dim);margin-top:8px">
+              <span class="xl-streak"><svg class="xl-ico xl-ico--sm"><use href="#i-flame"/></svg> Streak</span><b style="color:var(--ds-warn)">12 days</b>
+            </div>
+            <div style="width:100%;display:flex;justify-content:space-between;font-size:12px;color:var(--ds-dim);margin-top:8px">
+              <span>Revisions due</span><a href="Revision.dc.html"><b style="color:var(--ds-teal)">4 today →</b></a>
+            </div>
+          </div>
+
+          <div class="xl-panel">
+            <div class="xl-panel__h" style="padding:12px 14px"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-violet)"><use href="#i-layers"/></svg><h3 style="font-size:13px">Phase progress</h3></div>
+            <div class="xl-panel__b" style="padding:14px;display:flex;flex-direction:column;gap:13px">
+              <div><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:5px"><span style="color:var(--ds-dim)">Fundamentals</span><span class="ds-mono xl-mut">78%</span></div><div class="ds-meter"><div class="ds-meter__fill" style="width:78%"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:5px"><span style="color:var(--ds-dim)">Core Data Structures</span><span class="ds-mono xl-mut">0%</span></div><div class="ds-meter"><div class="ds-meter__fill" style="width:0%"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:5px"><span style="color:var(--ds-dim)">Advanced Patterns</span><span class="ds-mono xl-mut">0%</span></div><div class="ds-meter"><div class="ds-meter__fill" style="width:0%"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:5px"><span style="color:var(--ds-dim)">Interview Mastery</span><span class="ds-mono xl-mut">0%</span></div><div class="ds-meter"><div class="ds-meter__fill" style="width:0%"></div></div></div>
+            </div>
+          </div>
+
+          <a class="ds-btn ds-btn--secondary ds-btn--block" href="Week.dc.html">Resume Week 2 <svg class="xl-ico xl-ico--sm"><use href="#i-arrow"/></svg></a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{coachClosed}}" hint-placeholder-val="{{true}}"><button class="xl-fab" onClick="{{toggleCoach}}" aria-label="Open AI coach"><svg class="xl-ico xl-ico--lg"><use href="#i-spark"/></svg></button></sc-if>
+  <sc-if value="{{coachOpen}}" hint-placeholder-val="{{false}}">
+    <div class="xl-coach">
+      <div class="xl-coach__top"><div class="xl-coach__title"><svg class="xl-ico" style="color:var(--ds-teal)"><use href="#i-spark"/></svg> Coach</div><span style="flex:1"></span><button class="ds-iconbtn" onClick="{{toggleCoach}}" aria-label="Close coach"><svg class="xl-ico"><use href="#i-close"/></svg></button></div>
+      <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm"><use href="#i-map"/></svg> Context · Roadmap — Week 2 of 16</div>
+      <div class="xl-coach__body xl-scroll">
+        <sc-for list="{{thread}}" as="m" hint-placeholder-count="1"><div class="{{m.cls}}" style="white-space:pre-line">{{m.text}}</div></sc-for>
+        <div class="xl-coach__sugg">
+          <button class="xl-coach__chip" onClick="{{askPace}}">Am I on pace for interviews?</button>
+          <button class="xl-coach__chip" onClick="{{askNext}}">What's coming up in Week 3?</button>
+        </div>
+      </div>
+      <div class="xl-coach__foot"><div class="xl-coach__input"><input placeholder="Ask your coach…" aria-label="Message coach"><button class="ds-iconbtn" style="color:var(--ds-teal)" aria-label="Send"><svg class="xl-ico"><use href="#i-arrow"/></svg></button></div></div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1024}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { coach: false, thread: [{ who: "bot", text: "You're in Week 2 of 16 with a 12-day streak — on pace. Fundamentals is 78% done; the next unlock is Week 3 (Monotonic Stack). Want a read on your interview-readiness, or a preview of what's next?" }] }; }
+  renderVals() {
+    const s = this.state;
+    const wk = (num, title, status, mix, star) => {
+      const solved = status === "done", cur = status === "cur", avail = status === "next";
+      const unlocked = solved || cur || avail;
+      return {
+        key: num, num, title, mix, star: star || "", hasStar: !!star,
+        href: unlocked ? "Week.dc.html" : "#locked",
+        numStyle: solved ? "background:rgba(53,208,192,.16);border:1.6px solid var(--ds-teal);color:var(--ds-teal)"
+          : cur ? "background:var(--ds-teal);border:1.6px solid var(--ds-teal);color:#06231f;box-shadow:0 0 0 4px rgba(53,208,192,.15)"
+          : avail ? "background:var(--ds-panel-2);border:1.6px solid var(--ds-line-2);color:var(--ds-dim)"
+          : "background:var(--ds-panel);border:1.6px dashed var(--ds-line-2);color:var(--ds-muted)",
+        cardStyle: cur ? "border-color:rgba(53,208,192,.45);background:#101a1c" : (unlocked ? "" : "opacity:.62"),
+        chip: solved ? "Solved" : cur ? "In progress" : avail ? "Next" : "Locked",
+        chipCls: solved ? "ds-badge ds-badge--ok" : cur ? "ds-badge ds-badge--info" : avail ? "ds-chip ds-chip--sm ds-mono" : "xl-lock"
+      };
+    };
+    const push = (q, a) => this.setState((st) => ({ coach: true, thread: [...st.thread, { who: "me", text: q }, { who: "bot", text: a }] }));
+    return {
+      phases: [
+        { key: 1, tag: "PHASE 1", name: "Fundamentals", weeks: "W1–3", pct: "78%", theme: "Arrays, hashing, and the two-pointer mind.", items: [
+          wk(1, "Arrays, Strings, Hashing, Prefix Sums", "done", "4 Easy · 2 Med"),
+          wk(2, "Two Pointers & Sliding Window", "cur", "3 Med · 1 Hard", "3Sum · Min Window Substring"),
+          wk(3, "Stacks & Monotonic Stack", "next", "2 Med · 1 Hard", "Largest Rectangle in Histogram")
+        ]},
+        { key: 2, tag: "PHASE 2", name: "Core Data Structures", weeks: "W4–8", pct: "0%", theme: "The structures interviewers reach for by default.", items: [
+          wk(4, "Linked Lists & Design", "lock", "~9 problems", "LRU Cache"),
+          wk(5, "Trees & BST", "lock", "~11 problems"),
+          wk(6, "Heaps & Intervals", "lock", "~9 problems"),
+          wk(7, "Tries & Backtracking", "lock", "~10 problems"),
+          wk(8, "Graphs & Topological Sort", "lock", "~11 problems", "Course Schedule")
+        ]},
+        { key: 3, tag: "PHASE 3", name: "Advanced Patterns", weeks: "W9–12", pct: "0%", theme: "Where medium becomes hard — DP, graphs, greedy.", items: [
+          wk(9, "Shortest Paths", "lock", "~9 problems", "Cheapest Flights Within K Stops"),
+          wk(10, "Dynamic Programming I", "lock", "~11 problems", "Coin Change"),
+          wk(11, "Dynamic Programming II", "lock", "~10 problems"),
+          wk(12, "Greedy & Bit Manipulation", "lock", "~9 problems")
+        ]},
+        { key: 4, tag: "PHASE 4", name: "Interview Mastery", weeks: "W13–16", pct: "0%", theme: "Perform under real interview conditions.", items: [
+          wk(13, "Mixed sets + first mocks", "lock", "target ≥ 24 / 35"),
+          wk(14, "Timed company sets", "lock", "target ≥ 28 / 35"),
+          wk(15, "Mock intensives", "lock", "target ≥ 30 / 35"),
+          wk(16, "Final rounds & retro", "lock", "interview-ready")
+        ]}
+      ],
+      coachOpen: s.coach, coachClosed: !s.coach,
+      thread: s.thread.map((m, i) => ({ key: i, text: m.text, cls: m.who === "me" ? "xl-coach__msg xl-coach__msg--me" : "xl-coach__msg xl-coach__msg--bot" })),
+      toggleCoach: () => this.setState((st) => ({ coach: !st.coach })),
+      askPace: () => push("Am I on pace for interviews?", "At 28 solved over 12 days you're averaging ~2.3/day — right on the plan's curve. The bigger signal is retention: your Day-7 pass rate is 80%. Hold that and you'll clear the Week-13 mock target of 24/35 comfortably."),
+      askNext: () => push("What's coming up in Week 3?", "Week 3 is Stacks & Monotonic Stack — the headline is Largest Rectangle in Histogram, the problem that finally makes the monotonic-stack pattern click. It unlocks once you finish Week 2's core set (3Sum is the one left in progress).")
+    };
+  }
+}
+</script>
+</body>
+</html>
