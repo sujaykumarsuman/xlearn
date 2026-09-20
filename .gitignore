@@ -1,0 +1,13 @@
+# Go
+/bin/
+# stray `go build ./cmd/gateway` output (the real build goes to bin/)
+/gateway
+
+# Web
+web/node_modules/
+web/dist/*
+!web/dist/.gitkeep
+
+# Local artefacts
+*.local
+.DS_Store

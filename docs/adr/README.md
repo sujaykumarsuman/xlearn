@@ -25,6 +25,7 @@ under [`../v1/`](../v1/).
 | [0007](0007-ai-coach-byo-key-and-secrets.md) | AI coach BYO-key & secret handling | Accepted |
 | [0008](0008-frontend-stack.md) | Frontend stack | Accepted |
 | [0009](0009-deployment-and-gitops.md) | Deployment & GitOps (Flux/Helm on k3s) | Accepted |
+| [0010](0010-spa-base-path-and-gateway-serving.md) | SPA base path & gateway serving model | Accepted |
 
 ## Adding an ADR
 

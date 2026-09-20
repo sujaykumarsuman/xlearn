@@ -6,14 +6,22 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ 🔄 Code + wiring complete and locally verified; **M0 (Flux deploy) pending merge to `main` + the `infra` PR** (not pushed — repo policy is "don't commit/push unless asked").
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | Monorepo, tooling & platform primitives (gateway health skeleton) | ⬜ |
-| 2 | Web app: port theme.css, app shell, routing, 12 stub screens | ⬜ |
-| 3 | Gateway embeds & serves the SPA under /xlearn | ⬜ |
-| 4 | CI + infra wiring -> deploy (reach M0) | ⬜ |
+| 1 | Monorepo, tooling & platform primitives (gateway health skeleton) | ✅ |
+| 2 | Web app: port theme.css, app shell, routing, 12 stub screens | ✅ |
+| 3 | Gateway embeds & serves the SPA under /xlearn | ✅ |
+| 4 | CI + infra wiring -> deploy (reach M0) | 🔄 files written & validated (helm template, docker build, YAML); Flux deploy pending push |
+
+**Verified locally (2026-09-20):** `make build` embeds `web/dist` into `bin/gateway`; `make test` +
+`make lint` green (Go race + Vitest + eslint/tsc); the shell renders at `/xlearn` with all 12 routes,
+SPA deep-link fallback, sidebar collapse + coach FAB working; `/xlearn/api/healthz`, `/readyz`,
+`/healthz` return 200; hashed assets `immutable`, `index.html` `no-cache`; base-path tolerance works
+both stripped (`/api/healthz`) and un-stripped (`/xlearn/api/healthz`). The `deploy/gateway.Dockerfile`
+image builds (15.5 MB distroless) and runs under `--read-only` rootfs. `infra` renders via
+`helm template` + `helm lint` (IngressRoute `/xlearn` stripPrefix, `readOnlyRootFilesystem: true`).
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + the

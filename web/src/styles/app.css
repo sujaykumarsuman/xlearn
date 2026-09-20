@@ -1,0 +1,37 @@
+/* App-level overrides layered on the verbatim design-system theme.css.
+   theme.css frames .xl-app as a fixed 1440x1024 artboard (the design canvas);
+   the real app fills the viewport instead. These rules live here — not in
+   theme.css — so web/src/styles/theme.css stays byte-identical to the
+   design-system source of truth. */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--ds-bg);
+  color: var(--ds-text);
+}
+
+#root {
+  min-height: 100%;
+}
+
+/* Fill the viewport instead of the fixed artboard size. */
+.xl-app {
+  width: 100%;
+  height: 100vh;
+  min-height: 0;
+}
+
+/* The cmd-K palette and coach input are scaffolds this sprint (no search, no
+   LLM yet) — soften the disabled affordance without touching the DS classes. */
+.xl-cmdk:disabled {
+  cursor: default;
+}
+.xl-coach__input input:disabled {
+  cursor: not-allowed;
+}
