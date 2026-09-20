@@ -27,6 +27,58 @@ body {
   min-height: 0;
 }
 
+/* --- standalone Auth screen (pre-auth; no app shell) --- */
+/* The Auth screen is not .xl-app (the fixed artboard) — it fills the viewport as a
+   two-column layout that collapses to one column on narrow screens. */
+.xl-auth {
+  display: flex;
+  min-height: 100vh;
+  background: var(--ds-bg);
+  color: var(--ds-text);
+}
+.xl-auth__left {
+  width: 600px;
+  flex: none;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 15% 0%, #12211f 0%, #0b0d10 55%);
+  border-right: 1px solid var(--ds-line);
+  padding: 56px 52px;
+  display: flex;
+  flex-direction: column;
+}
+.xl-auth__right {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 40px;
+}
+.xl-auth__card {
+  width: 100%;
+  max-width: 410px;
+}
+/* Below the two-column breakpoint, drop the marketing panel and center the card. */
+@media (max-width: 900px) {
+  .xl-auth__left {
+    display: none;
+  }
+}
+
+/* Sign out is a <button> (it performs an action), but reuses the .xl-acct-item
+   link styling — reset the native button chrome so it matches the other rows. */
+button.xl-acct-item {
+  width: 100%;
+  background: none;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.xl-acct-item:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 /* The cmd-K palette and coach input are scaffolds this sprint (no search, no
    LLM yet) — soften the disabled affordance without touching the DS classes. */
 .xl-cmdk:disabled {

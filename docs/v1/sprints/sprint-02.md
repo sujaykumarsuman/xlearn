@@ -6,14 +6,24 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ 🔄 Code + infra complete and verified end-to-end locally (real Postgres + browser);
+prod deploy (M1) pending merge + OAuth app registration (not committed/pushed per instructions).
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | identity service + xlearndb wiring | ⬜ |
-| 2 | OAuth (GitHub + Google) + server session | ⬜ |
-| 3 | JWT/JWKS + gateway auth middleware | ⬜ |
-| 4 | Auth screen + onboarding step 1 (path) | ⬜ |
+| 1 | identity service + xlearndb wiring | ✅ |
+| 2 | OAuth (GitHub + Google) + server session | ✅ |
+| 3 | JWT/JWKS + gateway auth middleware | ✅ |
+| 4 | Auth screen + onboarding step 1 (path) | ✅ |
+
+> **Built & verified this session (not yet deployed):** `cmd/identity` + `internal/identity` (goose
+> migrations, sqlc/pgx store, OAuth GitHub w/ state+PKCE — Google deferred, opaque sessions, outbox), the shared
+> `internal/platform/auth` RS256/JWKS mint+verify (stdlib), the gateway BFF (`/me`, `/auth/logout`,
+> `/onboarding/step`, OAuth proxy, JWKS publication), the standalone Auth screen + onboarding step 1,
+> and all infra (`deploy/identity.Dockerfile`, CI path filter + `sqlc diff`, HelmRelease, 4-step DB
+> wiring, SOPS secrets). The full mint→JWKS-verify loop and step-1 persistence were exercised live
+> against a Dockerised Postgres and in the browser. **Remaining for M1:** register the GitHub/Google
+> OAuth apps and fill `xlearn-oauth.enc.yaml`, then merge (xlearn + infra) so Flux deploys.
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + the

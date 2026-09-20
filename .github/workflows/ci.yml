@@ -38,3 +38,8 @@ jobs:
       - run: test -z "$(gofmt -l .)"
       - run: go vet ./...
       - run: go test -race ./...
+      # sqlc-generated code is committed; verify it is in sync (ADR-0005).
+      - uses: sqlc-dev/setup-sqlc@v4
+        with:
+          sqlc-version: "1.31.1"
+      - run: sqlc diff

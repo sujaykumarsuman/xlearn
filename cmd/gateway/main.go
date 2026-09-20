@@ -8,8 +8,11 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"errors"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,6 +21,7 @@ import (
 
 	"github.com/sujaykumarsuman/xlearn"
 	"github.com/sujaykumarsuman/xlearn/internal/gateway"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/config"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/httpx"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/slogx"
@@ -40,11 +44,20 @@ func run() int {
 		return 1
 	}
 
+	signer, err := loadSigner(cfg.JWT, logger)
+	if err != nil {
+		logger.Error("load jwt signing key", "err", err)
+		return 1
+	}
+
 	gw := gateway.New(gateway.Options{
-		BasePath: cfg.BasePath,
-		Version:  xlearn.Version,
-		Dist:     dist,
-		Logger:   logger,
+		BasePath:         cfg.BasePath,
+		Version:          xlearn.Version,
+		Dist:             dist,
+		Logger:           logger,
+		Signer:           signer,
+		IdentityBaseURL:  cfg.IdentityBaseURL,
+		AudienceIdentity: cfg.JWT.AudienceIdentity,
 	})
 
 	handler := httpx.Chain(gw.Handler(),
@@ -82,4 +95,43 @@ func run() int {
 	}
 	logger.Info("gateway stopped")
 	return 0
+}
+
+// loadSigner resolves the RSA signing key (ADR-0006): from JWT_PRIVATE_KEY (PEM),
+// then JWT_PRIVATE_KEY_FILE, else an ephemeral dev key (logged loudly — tokens do
+// not survive a restart and other pods can't verify them, so prod must set one).
+func loadSigner(cfg config.JWTConfig, logger *slog.Logger) (*auth.Signer, error) {
+	var pemBytes []byte
+	switch {
+	case cfg.PrivateKeyPEM != "":
+		pemBytes = []byte(cfg.PrivateKeyPEM)
+	case cfg.PrivateKeyFile != "":
+		b, err := os.ReadFile(cfg.PrivateKeyFile)
+		if err != nil {
+			return nil, err
+		}
+		pemBytes = b
+	default:
+		logger.Warn("no JWT signing key configured; generating an ephemeral dev key (set JWT_PRIVATE_KEY in prod)")
+		key, err := rsa.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			return nil, err
+		}
+		return auth.NewSigner(key, cfg.Issuer, cfg.TTL), nil
+	}
+	key, err := auth.ParseRSAPrivateKeyPEM(pemBytes)
+	if err != nil {
+		return nil, err
+	}
+	signer := auth.NewSigner(key, cfg.Issuer, cfg.TTL)
+	// Publish any additional verification keys (rotation overlap window, ADR-0011).
+	if cfg.AdditionalPublicKeysPEM != "" {
+		pubs, err := auth.ParseRSAPublicKeysPEM([]byte(cfg.AdditionalPublicKeysPEM))
+		if err != nil {
+			return nil, err
+		}
+		signer.AddVerificationKeys(pubs...)
+		logger.Info("publishing additional JWKS verification keys", "count", len(pubs))
+	}
+	return signer, nil
 }

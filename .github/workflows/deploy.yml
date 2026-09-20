@@ -1,16 +1,49 @@
 name: deploy
 
-# Publish the gateway image to GHCR on push to main. The reusable workflow tags
-# the image with a build semver (0.<run>, like projects-hub/landscape); Flux
-# image-automation (ImagePolicy range >=0.1.0) picks it up and deploys it to the
-# k3s cluster (sujaykumarsuman/infra). Switch to release tags at the 1.0
-# milestone — see docs/adr/0009-deployment-and-gitops.md.
+# Publish service images to GHCR on push to main. Each service builds only when
+# its own code (or shared code) changes — path-filtered, per ADR-0009. The
+# reusable workflow tags images with a build semver (0.1.<run>); Flux
+# image-automation (ImagePolicy range >=0.1.0) picks them up and deploys them to
+# the k3s cluster (sujaykumarsuman/infra). Switch to release tags at 1.0.
 on:
   push:
     branches: [main]
 
 jobs:
+  # Detect which services changed so only those rebuild.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      gateway: ${{ steps.filter.outputs.gateway }}
+      identity: ${{ steps.filter.outputs.identity }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            gateway:
+              - 'cmd/gateway/**'
+              - 'internal/gateway/**'
+              - 'internal/platform/**'
+              - 'web/**'
+              - 'embed.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'deploy/gateway.Dockerfile'
+              - '.github/workflows/deploy.yml'
+            identity:
+              - 'cmd/identity/**'
+              - 'internal/identity/**'
+              - 'internal/platform/**'
+              - 'go.mod'
+              - 'go.sum'
+              - 'deploy/identity.Dockerfile'
+              - '.github/workflows/deploy.yml'
+
   gateway:
+    needs: changes
+    if: ${{ needs.changes.outputs.gateway == 'true' }}
     # The reusable workflow pushes to GHCR, so the calling job must grant
     # packages: write (this repo's default workflow token is read-only). Scoped
     # to this job rather than flipping the repo-wide default.
@@ -23,5 +56,18 @@ jobs:
       dockerfile: deploy/gateway.Dockerfile
       # Stamp the binary version to match the build-semver image tag
       # (0.1.<run_number>) the reusable workflow publishes on a branch push.
+      build-args: |
+        VERSION=0.1.${{ github.run_number }}
+
+  identity:
+    needs: changes
+    if: ${{ needs.changes.outputs.identity == 'true' }}
+    permissions:
+      contents: read
+      packages: write
+    uses: sujaykumarsuman/.github/.github/workflows/build-push.yml@main
+    with:
+      image: ghcr.io/sujaykumarsuman/xlearn-identity
+      dockerfile: deploy/identity.Dockerfile
       build-args: |
         VERSION=0.1.${{ github.run_number }}
