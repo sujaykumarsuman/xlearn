@@ -5,8 +5,8 @@ Cross-sprint living tracker. Updated per the
 state (it's baked into every `prompt-sNN.md`). Per-task detail lives in each
 [`sprints/sprint-NN.md`](sprints/); newest decisions at the top of the log.
 
-- **Build line:** v1 · **Phase:** S02 identity/auth **code + infra complete & verified locally**; prod deploy (M1) pending merge + OAuth app registration
-- **Deploy mode:** build-semver auto-deploy from `main` ([ADR-0009](../adr/0009-deployment-and-gitops.md)) — proven end-to-end (`xlearn-gateway:0.1.3`)
+- **Build line:** v1 · **Phase:** S02 identity/auth **merged & deployed to prod via Flux** (`xlearn-identity`/`xlearn-gateway:0.1.7`), verified live; login pending real GitHub OAuth creds
+- **Deploy mode:** build-semver auto-deploy from `main` ([ADR-0009](../adr/0009-deployment-and-gitops.md)) — proven again for S02 (identity + gateway 0.1.7)
 - **Last updated:** 2026-09-20
 
 ## Snapshot
@@ -19,15 +19,15 @@ state (it's baked into every `prompt-sNN.md`). Per-task detail lives in each
 | Git strategy | ✅ drafted |
 | v1 build plan | ✅ done |
 | Sprint plans + prompts (S01-S12) | ✅ all scaffolded |
-| Application code | 🔄 S01 gateway + web shell **live**; S02 identity service + auth (OAuth, sessions, JWT/JWKS, outbox, Auth screen) **built & verified locally**, not yet deployed |
-| `infra` xlearn wiring | 🔄 gateway **live**; S02 adds `xlearn-identity` HelmRelease + gateway JWT env, `xlearndb` 4-step DB wiring (managed roles + `Database` CR), SOPS `xlearn-db`/`xlearn-oauth`/`xlearn-jwt`, identity image-automation — **staged, not merged** |
+| Application code | 🔄 S01 gateway + web shell live; S02 identity service + auth (GitHub OAuth, sessions, JWT/JWKS, outbox, Auth screen) **merged & deployed** (`0.1.7`) |
+| `infra` xlearn wiring | 🔄 gateway + identity **live**; S02 merged: `xlearn-identity` HelmRelease + gateway JWT env, `xlearndb` 4-step DB wiring (managed roles + `Database` CR), SOPS `xlearn-db`/`xlearn-oauth`/`xlearn-jwt`, identity image-automation (Flux bumped both to 0.1.7) |
 
 ## Sprint board
 
 | Sprint | Focus | State |
 |--------|-------|-------|
 | [S01](sprints/sprint-01.md) | Bootstrap + app shell (→ M0 live at `/xlearn`) | ✅ Done — live at `/xlearn` |
-| [S02](sprints/sprint-02.md) | identity / auth (→ M1) | 🔄 Code + infra complete, verified locally; deploy pending merge + OAuth apps |
+| [S02](sprints/sprint-02.md) | identity / auth (→ M1) | 🔄 Merged & deployed (`0.1.7`), verified live; login pending real GitHub OAuth creds |
 | [S03](sprints/sprint-03.md) | curriculum + Catalog/Roadmap | ⬜ Planned |
 | [S04](sprints/sprint-04.md) | Week + Concept (→ M2) | ⬜ Planned |
 | [S05](sprints/sprint-05.md) | practice / Problem ★ (→ M3) | ⬜ Planned |
@@ -47,7 +47,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ planned/not started · ⛔ blocked. 
 | ID | Target | State |
 |----|--------|-------|
 | M0 live at `/xlearn` | end S01 | ✅ **live** at `projects.sujaykumar.dev/xlearn` (`xlearn-gateway:0.1.3`, Flux-deployed 2026-09-20) |
-| M1 login | end S02 | 🔄 login works end-to-end **locally** (real Postgres + browser); prod deploy pending merge + GitHub/Google OAuth app registration |
+| M1 login | end S02 | 🔄 **identity + gateway deployed to prod via Flux** (`0.1.7`), verified live (JWKS, `/me`→401, OAuth `start`→302, schema migrated, SOPS secrets); GitHub login goes live once the real OAuth client id/secret replace the placeholders |
 | M2 browse curriculum | end S04 | ⬜ |
 | M3 guided problem | end S05 | ⬜ |
 | M4 repetition+mistakes | end S07 | ⬜ |
@@ -61,6 +61,7 @@ Notable calls not (yet) worth a full ADR, newest first. Promote to an ADR if the
 
 | Date | Decision | Notes |
 |------|----------|-------|
+| 2026-09-20 | **S02 merged + deployed to prod** (xlearn#8, infra#8); GitOps loop fired again — Flux bumped `xlearn-identity` + `xlearn-gateway` to `0.1.7`. Verified live: JWKS served, `/me`→401, OAuth `start`→302 (PKCE + correct callback), identity migrated on startup. | M1 infra reached; GitHub login goes live on real OAuth creds. |
 | 2026-09-20 | **Ship GitHub-only OAuth for the initial S02 cut; Google deferred** until its OAuth app is registered. | The provider abstraction stays generic — re-adding Google is one `newProviders` entry + a `googleProfile` branch + the secret keys. ADR-0006 (target design) unchanged. |
 | 2026-09-20 | **S02 code passed a multi-agent adversarial review** (4 dimensions → verify): 6 confirmed defects fixed — DSN URL-encoding (high), onboarding route gate, data-first Auth render, logout-failure handling, JWKS rotation-overlap publication, and a `/me`-error retry. | Regression tests added for each. |
 | 2026-09-20 | **JWKS is published by the gateway** (the JWT issuer), not identity — refines `services.md`. | [ADR-0011](../adr/0011-jwks-publication-and-shared-db-schema-ownership.md). Keeps single key custody per ADR-0006. |

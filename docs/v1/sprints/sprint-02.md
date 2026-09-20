@@ -6,8 +6,10 @@
 
 ## Status
 
-_Overall:_ 🔄 Code + infra complete and verified end-to-end locally (real Postgres + browser);
-prod deploy (M1) pending merge + OAuth app registration (not committed/pushed per instructions).
+_Overall:_ 🔄 Merged + **deployed to prod via Flux** (`xlearn-identity`/`xlearn-gateway:0.1.7`) and
+verified live: gateway JWKS served, `/me`→401 envelope, identity up (OAuth `start`→302 with PKCE +
+correct callback), `xlearndb` `identity` schema migrated on startup. **Login pending only the real
+GitHub OAuth client id/secret** in `xlearn-oauth.enc.yaml` (currently `CHANGE-ME`).
 
 | # | Task | Status |
 |---|------|--------|
@@ -135,13 +137,14 @@ inert (OAuth-only). Screen intent: [Auth.dc.html]; account/onboarding fields:
 [data-model.md](../../architecture/data-model.md#schema-identity).
 
 ## Acceptance criteria
-- [ ] A user signs in with GitHub and with Google; a session cookie is set; refreshing the page keeps
-      them logged in; logout revokes the session server-side.
-- [ ] Unauthenticated requests to app routes redirect to OAuth; `GET /me` returns the account plus
-      onboarding state (including `path_chosen` after step 1).
-- [ ] Downstream calls carry a gateway-minted JWT; a service verifies it via JWKS (demonstrated on
-      identity or a stub protected route), tolerating small clock skew and `kid` overlap.
-- [ ] identity is deployed to prod via Flux as a ClusterIP service (`route.enabled: false`); the
+- 🔶 A user signs in with GitHub (Google deferred); a session cookie is set; refreshing keeps them
+      logged in; logout revokes the session server-side. **Verified end-to-end locally** (real Postgres
+      + browser); in prod it needs only the real GitHub OAuth client id/secret (placeholders today).
+- [x] Unauthenticated requests to app routes redirect to OAuth; `GET /me` returns the account plus
+      onboarding state (including `path_chosen` after step 1). (`/me`→401 envelope verified live.)
+- [x] Downstream calls carry a gateway-minted JWT; a service verifies it via JWKS (demonstrated on
+      identity), tolerating small clock skew and `kid` overlap. (JWKS served live; overlap-publish added.)
+- [x] identity is deployed to prod via Flux as a ClusterIP service (`route.enabled: false`); the
       `xlearndb` `identity` schema is migrated on startup; all secrets are via SOPS. **(M1)**
 
 ## Definition of Done
