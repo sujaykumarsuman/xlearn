@@ -11,6 +11,12 @@ on:
 
 jobs:
   gateway:
+    # The reusable workflow pushes to GHCR, so the calling job must grant
+    # packages: write (this repo's default workflow token is read-only). Scoped
+    # to this job rather than flipping the repo-wide default.
+    permissions:
+      contents: read
+      packages: write
     uses: sujaykumarsuman/.github/.github/workflows/build-push.yml@main
     with:
       image: ghcr.io/sujaykumarsuman/xlearn-gateway
