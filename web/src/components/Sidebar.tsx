@@ -42,9 +42,10 @@ export function Sidebar() {
           aria-haspopup="true"
         >
           <span className="xl-pathsw__ic">DSA</span>
+          {/* Keep the switcher to just the path name; the path overview
+              (Roadmap/Today) carries weeks/problems and other detail. */}
           <span className="xl-pathsw__label" style={{ flex: 1 }}>
-            <span className="xl-pathsw__t">DSA Interview Mastery</span>
-            <span className="xl-pathsw__s">16 weeks · 151 problems</span>
+            <span className="xl-pathsw__t">DSA</span>
           </span>
           <Icon name="chevdown" className="xl-ico--sm" />
         </button>
@@ -52,7 +53,7 @@ export function Sidebar() {
       {pathOpen && (
         <div className="xl-pathsw__menu" role="menu">
           <div className="xl-pathsw__opt xl-pathsw__opt--active">
-            <span className="ds-dot ds-dot--ok" /> DSA Interview Mastery
+            <span className="ds-dot ds-dot--ok" /> DSA
           </div>
           <div className="xl-pathsw__opt xl-pathsw__opt--locked">
             <Icon name="lock" className="xl-ico--sm" /> System Design · <i>Coming soon</i>
