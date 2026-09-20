@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { NAV, SIDEBAR_COLLAPSE_ID } from "../nav";
 import { Icon } from "./Icon";
 
@@ -7,6 +7,23 @@ import { Icon } from "./Icon";
  *  collapse toggle (label bound to the checkbox rendered by AppShell). */
 export function Sidebar() {
   const [pathOpen, setPathOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // Collapse is a pure-CSS checkbox toggle (the source of truth), so read it at
+  // click time. Collapsed, the 66px rail can't hold the switcher dropdown — the
+  // badge instead navigates to Catalog ("browse all paths"), matching the
+  // Roadmap artboard where the switcher is a plain link.
+  const isCollapsed = () =>
+    (document.getElementById(SIDEBAR_COLLAPSE_ID) as HTMLInputElement | null)?.checked ?? false;
+
+  const onPathClick = () => {
+    if (isCollapsed()) {
+      setPathOpen(false);
+      navigate("/");
+    } else {
+      setPathOpen((o) => !o);
+    }
+  };
 
   return (
     <aside className="xl-side">
@@ -20,7 +37,7 @@ export function Sidebar() {
       <div className="xl-pathsw">
         <button
           className="xl-pathsw__btn"
-          onClick={() => setPathOpen((o) => !o)}
+          onClick={onPathClick}
           aria-expanded={pathOpen}
           aria-haspopup="true"
         >
@@ -90,6 +107,7 @@ export function Sidebar() {
           className="xl-nav__item xl-collapse-btn"
           title="Collapse sidebar"
           style={{ width: "100%" }}
+          onClick={() => setPathOpen(false)}
         >
           <Icon name="chevron" className="xl-collapse-ico" />
           <span className="xl-collapse-lbl">Collapse</span>

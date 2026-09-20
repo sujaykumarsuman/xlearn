@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { routes } from "../router";
@@ -33,6 +33,22 @@ describe("AppShell + routing", () => {
   it("renders params-driven screens", () => {
     renderAt("/xlearn/dsa/problem/16");
     expect(screen.getByRole("heading", { level: 1, name: "Problem #16" })).toBeInTheDocument();
+  });
+
+  it("expanded: the path switcher opens the dropdown", () => {
+    renderAt("/xlearn/dsa/dashboard");
+    fireEvent.click(screen.getByRole("button", { name: /DSA Interview Mastery/i }));
+    expect(screen.getByText("Browse all paths")).toBeInTheDocument();
+  });
+
+  it("collapsed: the path switcher navigates to Catalog instead of the cramped menu", async () => {
+    renderAt("/xlearn/dsa/dashboard");
+    // Emulate the pure-CSS collapsed state (the checkbox is the source of truth).
+    const checkbox = document.getElementById("xl-collapse") as HTMLInputElement;
+    checkbox.checked = true;
+    fireEvent.click(screen.getByRole("button", { name: /DSA Interview Mastery/i }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Learning paths" })).toBeInTheDocument();
+    expect(screen.queryByText("Browse all paths")).not.toBeInTheDocument();
   });
 
   it("renders all 12 routes (plus the 404) inside the shell without crashing", () => {
