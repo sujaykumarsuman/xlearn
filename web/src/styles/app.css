@@ -35,3 +35,24 @@ body {
 .xl-coach__input input:disabled {
   cursor: not-allowed;
 }
+
+/* --- shell chrome fixes (layered on the verbatim theme.css) --- */
+
+/* The account-menu header avatar is a <span class="ds-avatar">, but theme.css's
+   `.xl-acct-head span` rule (higher specificity) forces it to display:block with
+   muted mono text — so the initial renders top-left in near-invisible grey.
+   Restore the centered dark-on-teal avatar. */
+.xl-acct-head .ds-avatar {
+  display: inline-grid;
+  place-items: center;
+  color: #06120f;
+  font-family: var(--ds-font-sans);
+}
+
+/* Collapsed sidebar: the path-switcher button holds an invisible flex:1 spacer
+   (the hidden title/subtitle wrapper). theme.css hides the text but not the
+   spacer, so it keeps eating flex space and shoves the "DSA" badge off-centre
+   and clips it. Hide the spacer when collapsed so the badge centres cleanly. */
+.xl-collapse-cb:checked ~ .xl-side .xl-pathsw__label {
+  display: none;
+}
