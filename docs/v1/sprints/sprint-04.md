@@ -6,7 +6,7 @@
 
 ## Status
 
-_Overall:_ 🔄 Code-complete & green (build/test/lint + `sqlc diff` pass); shipping.
+_Overall:_ ✅ Done — merged & deployed to prod via Flux (`xlearn-gateway`/`xlearn-curriculum:0.1.13`); **M2 reached**.
 
 | # | Task | Status |
 |---|------|--------|
