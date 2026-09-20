@@ -116,3 +116,101 @@ button.xl-acct-item:disabled {
 .xl-collapse-cb:checked ~ .xl-side .xl-pathsw__menu {
   display: none;
 }
+
+/* --- Concept article typography (`.cn`) --- */
+/* Ported from the Concept.dc.html artboard's inline <style> (the artboards keep
+   these local; the real app defines them here, layered on theme.css). The Markdown
+   renderer emits h2/p/ul/code into a `.cn` container. */
+.cn h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 26px 0 10px;
+}
+.cn h2:first-child {
+  margin-top: 0;
+}
+.cn p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ds-dim);
+  margin-bottom: 12px;
+}
+.cn p b {
+  color: var(--ds-text);
+  font-weight: 600;
+}
+.cn code {
+  font-family: var(--ds-font-mono);
+  font-size: 12.5px;
+  background: var(--ds-inset);
+  border: 1px solid var(--ds-line-2);
+  border-radius: 5px;
+  padding: 1px 6px;
+  color: var(--ds-teal);
+}
+.cn ul,
+.cn-list {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+.cn-list li {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ds-dim);
+  margin-bottom: 6px;
+}
+.cn-list li b {
+  color: var(--ds-text);
+  font-weight: 600;
+}
+/* In-body callouts (e.g. a "> [!warning]" → violet "Watch out"). */
+.cn-callout {
+  padding: 16px 18px;
+  margin: 22px 0;
+}
+.cn-callout__h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-family: var(--ds-font-mono);
+  color: var(--ds-dim);
+}
+.ds-card--violet.cn-callout .cn-callout__h {
+  color: var(--ds-violet);
+}
+.cn-callout p {
+  color: var(--ds-text);
+  font-size: 13.5px;
+  line-height: 1.6;
+  margin: 0 0 8px;
+}
+.cn-callout p:last-child {
+  margin-bottom: 0;
+}
+
+/* --- loading skeletons (Week / Concept) --- */
+/* A DS-toned placeholder block that pulses while an aggregation loads. */
+.xl-skel {
+  background: var(--ds-panel-2);
+  border: 1px solid var(--ds-line);
+  border-radius: 10px;
+  animation: xl-skel-pulse 1.4s ease-in-out infinite;
+}
+@keyframes xl-skel-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xl-skel {
+    animation: none;
+  }
+}

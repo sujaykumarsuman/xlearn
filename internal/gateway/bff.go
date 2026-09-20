@@ -27,8 +27,11 @@ func (g *Gateway) newAPIMux() *http.ServeMux {
 	mux.HandleFunc("POST /api/onboarding/step", g.handleOnboardingStep)
 	mux.HandleFunc("POST /api/auth/{provider}/start", g.handleAuthProxy)
 	mux.HandleFunc("GET /api/auth/{provider}/callback", g.handleAuthProxy)
-	// Curriculum content (read-only). Session-gated but no user JWT — curriculum
-	// has no per-user state; the gateway just proxies (no aggregation this sprint).
+	// Curriculum content (read-only). Session-gated. Most routes are a straight proxy
+	// (curriculum has no per-user state, so no user JWT is forwarded). The week route
+	// is the exception: it is a BFF aggregation (api.md `agg`) — the gateway layers a
+	// per-user five-touch/solve state onto the curriculum content (ADR-0005). That
+	// state is a stable placeholder until practice/review exist (S05/S06, ADR-0013).
 	mux.HandleFunc("GET /api/paths", g.handleListPaths)
 	mux.HandleFunc("GET /api/paths/{slug}", g.handleGetPath)
 	mux.HandleFunc("GET /api/paths/{slug}/weeks/{n}", g.handleGetWeek)
@@ -147,6 +150,10 @@ func (g *Gateway) handleGetPath(w http.ResponseWriter, r *http.Request) {
 	g.proxyCurriculum(w, r, "/paths/"+url.PathEscape(r.PathValue("slug")))
 }
 
+// handleGetWeek is the week BFF aggregation (api.md `agg`): it fetches the curriculum
+// week content, then layers a per-user five-touch/solve state (placeholder until
+// practice/review land — S05/S06, ADR-0013). Curriculum's own status/envelope for a
+// bad path or unknown week is propagated unchanged.
 func (g *Gateway) handleGetWeek(w http.ResponseWriter, r *http.Request) {
 	if _, ok := g.authAccount(w, r); !ok {
 		return
@@ -156,7 +163,29 @@ func (g *Gateway) handleGetWeek(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad_request", "week must be an integer")
 		return
 	}
-	g.proxyCurriculum(w, r, "/paths/"+url.PathEscape(r.PathValue("slug"))+"/weeks/"+url.PathEscape(n))
+	if g.curriculum == nil {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "curriculum not configured")
+		return
+	}
+	upstream := "/paths/" + url.PathEscape(r.PathValue("slug")) + "/weeks/" + url.PathEscape(n)
+	body, status, err := g.curriculum.get(r.Context(), upstream)
+	if err != nil {
+		g.log.Error("bff week aggregation: curriculum call failed", "path", upstream, "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "curriculum unavailable")
+		return
+	}
+	if status != http.StatusOK {
+		// Propagate curriculum's own status + envelope (e.g. 404 for an unknown week).
+		passthrough(w, status, body)
+		return
+	}
+	merged, err := aggregateWeek(body)
+	if err != nil {
+		g.log.Error("bff week aggregation: merge failed", "path", upstream, "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "curriculum returned malformed content")
+		return
+	}
+	passthrough(w, http.StatusOK, merged)
 }
 
 func (g *Gateway) handleGetProblem(w http.ResponseWriter, r *http.Request) {

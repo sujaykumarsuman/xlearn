@@ -1,27 +1,27 @@
 import { Fragment } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useLogout, useMe } from "../lib/auth";
+import { buildCrumbs } from "../nav";
 import { Icon } from "./Icon";
 
 // A single top-bar instance mounts at a time, so a fixed id is safe for the
 // pure-CSS account-menu toggle.
 const ACCT_ID = "xl-acct";
 
-/** Breadcrumb derived from the app-relative path (basename already stripped). */
+/** Breadcrumb derived from the app-relative path + query (basename already
+ *  stripped). The trail — and the Week/Concept special cases — live in buildCrumbs. */
 function Crumb() {
-  const { pathname } = useLocation();
-  const segs = pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+  const { pathname, search } = useLocation();
+  const crumbs = buildCrumbs(pathname, search);
 
   return (
     <div className="xl-crumb">
-      {segs.length === 0 ? <b>xlearn</b> : <Link to="/">xlearn</Link>}
-      {segs.map((seg, i) => {
-        const to = "/" + segs.slice(0, i + 1).join("/");
-        const last = i === segs.length - 1;
+      {crumbs.map((c, i) => {
+        const last = i === crumbs.length - 1;
         return (
-          <Fragment key={to}>
-            <span className="xl-crumb__sep">/</span>
-            {last ? <b>{seg}</b> : <Link to={to}>{seg}</Link>}
+          <Fragment key={`${c.label}-${i}`}>
+            {i > 0 && <span className="xl-crumb__sep">/</span>}
+            {last || !c.to ? <b>{c.label}</b> : <Link to={c.to}>{c.label}</Link>}
           </Fragment>
         );
       })}

@@ -6,14 +6,14 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ 🔄 Code-complete & green (build/test/lint + `sqlc diff` pass); shipping.
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | Week screen | ⬜ |
-| 2 | Concept screen | ⬜ |
-| 3 | BFF week aggregation | ⬜ |
-| 4 | Navigation + polish | ⬜ |
+| 1 | Week screen | ✅ |
+| 2 | Concept screen | ✅ |
+| 3 | BFF week aggregation | ✅ |
+| 4 | Navigation + polish | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + any

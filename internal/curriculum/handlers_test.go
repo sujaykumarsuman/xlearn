@@ -121,6 +121,15 @@ func TestGetWeek(t *testing.T) {
 	if len(body["concepts"].([]any)) != 1 || len(body["problems"].([]any)) != 1 {
 		t.Fatalf("expected 1 concept + 1 problem, got %v / %v", body["concepts"], body["problems"])
 	}
+	// The week carries its phase (order/name for the eyebrow) and slim path totals.
+	phase, ok := body["phase"].(map[string]any)
+	if !ok || phase["order"].(float64) != 1 || phase["name"] != "Fundamentals" {
+		t.Fatalf("expected week 2 to resolve phase 1 Fundamentals, got %v", body["phase"])
+	}
+	path, ok := body["path"].(map[string]any)
+	if !ok || path["slug"] != "dsa" || path["week_total"].(float64) != 16 {
+		t.Fatalf("expected path context (dsa, week_total 16), got %v", body["path"])
+	}
 }
 
 func TestGetWeekBadNumber(t *testing.T) {
