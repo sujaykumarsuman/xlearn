@@ -6,7 +6,7 @@
 
 ## Status
 
-_Overall:_ 🔄 Code complete + verified locally (real Postgres, idempotent seed, adversarial review clean); **deploy to prod pending commit/merge**
+_Overall:_ ✅ Done — merged (xlearn#12, infra#10/#11) & **deployed to prod via Flux** (`xlearn-curriculum`/`xlearn-gateway`/`xlearn-identity:0.1.11`); schema migrated + seeded idempotently on startup. Verified locally (real Postgres, idempotent seed, Docker image) + adversarial review clean; gateway live at `0.1.11` with the content route present (`/api/paths`→401).
 
 | # | Task | Status |
 |---|------|--------|
@@ -124,10 +124,10 @@ Medium = `--ds-warn` (amber), Hard = `--ds-err` (red); use the mono font for num
 `/xlearn/api` with `credentials: include`.
 
 ## Acceptance criteria
-- [~] `curriculum` deployed to prod (ClusterIP) via Flux; its schema is migrated + seeded
-      **idempotently** on startup (re-boot does not duplicate rows). — _migrate + idempotent seed
-      **verified locally** (identical row counts across 3 boots + integration test + the shipping
-      Docker image); infra written; **prod deploy pending commit/merge**._
+- [x] `curriculum` deployed to prod (ClusterIP) via Flux; its schema is migrated + seeded
+      **idempotently** on startup (re-boot does not duplicate rows). — _deployed at `0.1.11` (Flux
+      image-automation); migrate + idempotent seed verified locally (identical row counts across 3
+      boots + integration test + the shipping Docker image)._
 - [x] `GET /paths` and `GET /paths/dsa` return real seeded content through the gateway. — _verified
       locally through the gateway BFF (session-gated proxy)._
 - [x] Catalog renders the DSA path (active) + coming-soon others; Roadmap renders 4 phases / 16 weeks
