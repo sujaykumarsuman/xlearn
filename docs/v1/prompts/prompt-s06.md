@@ -5,7 +5,7 @@
 
 ## Read first
 
-- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions (dark theme, service boundaries, GitOps, do not commit/push unless asked).
+- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions (dark theme, service boundaries, GitOps, ship at session end (AGENT.md land-and-sync)).
 - [`../../adr/0004-inter-service-comms-and-events.md`](../../adr/0004-inter-service-comms-and-events.md) — NATS JetStream, durable pull consumers, transactional outbox, idempotent inbox, and the **event-driven + periodic-sweep hybrid** scheduler. The contract for this whole sprint.
 - [`../../adr/0005-data-ownership-and-migrations.md`](../../adr/0005-data-ownership-and-migrations.md) — schema-per-service, no cross-schema FKs, goose migrations.
 - [`../../architecture/services.md`](../../architecture/services.md) — the **review** service: what it owns, its API, what it emits/consumes.
@@ -87,7 +87,7 @@ spaced-repetition method. No milestone gate; it unblocks [S07](../sprints/sprint
 - **Ops:** `/healthz`+`/readyz`, slog JSON logs, read-only rootfs; internal ClusterIP (no route). Mirror
   `../infra` conventions exactly (copy `apps/airlift.yaml`/`apps/landscape.yaml`; GHCR image; Flux
   image-automation setter; ImagePolicy `>=0.1.0`; SOPS secret). **Pull-based GitOps — never `kubectl apply`.**
-- Do **not** commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).
 
 ## Deliverables
 
@@ -119,4 +119,4 @@ spaced-repetition method. No milestone gate; it unblocks [S07](../sprints/sprint
       `GET /revision/due` prioritises reviews over new work.
 - [ ] **review** is deployed to prod on ClusterIP via Flux; the **Revision** screen matches the artboard.
 - [ ] Re-delivered practice events do **not** double-schedule (dedupe on `event_id` + upsert).
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).

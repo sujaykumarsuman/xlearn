@@ -6,14 +6,14 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ 🔄 Code complete + verified locally (real Postgres, idempotent seed, adversarial review clean); **deploy to prod pending commit/merge**
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | curriculum service + schema | ⬜ |
-| 2 | DSA curriculum seed (versioned) | ⬜ |
-| 3 | read API | ⬜ |
-| 4 | Catalog + Roadmap screens | ⬜ |
+| 1 | curriculum service + schema | ✅ |
+| 2 | DSA curriculum seed (versioned) | ✅ |
+| 3 | read API | ✅ |
+| 4 | Catalog + Roadmap screens | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row; this
@@ -124,12 +124,15 @@ Medium = `--ds-warn` (amber), Hard = `--ds-err` (red); use the mono font for num
 `/xlearn/api` with `credentials: include`.
 
 ## Acceptance criteria
-- [ ] `curriculum` deployed to prod (ClusterIP) via Flux; its schema is migrated + seeded
-      **idempotently** on startup (re-boot does not duplicate rows).
-- [ ] `GET /paths` and `GET /paths/dsa` return real seeded content through the gateway.
-- [ ] Catalog renders the DSA path (active) + coming-soon others; Roadmap renders 4 phases / 16 weeks
-      from the API (ring/percentages may be placeholder).
-- [ ] Difficulty tokens are correct (green/amber/red); Catalog + Roadmap match the artboards.
+- [~] `curriculum` deployed to prod (ClusterIP) via Flux; its schema is migrated + seeded
+      **idempotently** on startup (re-boot does not duplicate rows). — _migrate + idempotent seed
+      **verified locally** (identical row counts across 3 boots + integration test + the shipping
+      Docker image); infra written; **prod deploy pending commit/merge**._
+- [x] `GET /paths` and `GET /paths/dsa` return real seeded content through the gateway. — _verified
+      locally through the gateway BFF (session-gated proxy)._
+- [x] Catalog renders the DSA path (active) + coming-soon others; Roadmap renders 4 phases / 16 weeks
+      from the API (ring/percentages may be placeholder). — _verified live in the browser._
+- [x] Difficulty tokens are correct (green/amber/red); Catalog + Roadmap match the artboards.
 
 ## Definition of Done
 CI green · deployed to prod via Flux (no hand `kubectl`) · screens match the artboards · acceptance

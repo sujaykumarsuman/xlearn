@@ -21,8 +21,9 @@ mapped onto the Flux GitOps promotion flow ([ADR-0009](adr/0009-deployment-and-g
   `fix(review): reset touch level on failed re-solve`, `docs(adr): add 0004 events`.
 - Imperative subject, ≤ ~72 chars; body explains **why** when non-obvious. Reference issues/ADRs.
 - Conventional history feeds changelog/versioning at 1.0.
-- **Do not commit or push unless asked** ([AGENT.md](../AGENT.md)); when asked, follow this format
-  and the attribution the session specifies.
+- Don't commit or push **mid-task**; the **end-of-session ship is a standing directive** and is its own
+  authorization (see [AGENT.md](../AGENT.md) "land and sync") — no separate ask needed. Follow this
+  commit format and the attribution the session specifies.
 
 ## Versioning & release train
 

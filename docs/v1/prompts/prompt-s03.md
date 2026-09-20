@@ -4,7 +4,7 @@
 > **Plan:** [`../sprints/sprint-03.md`](../sprints/sprint-03.md)   ·   **Milestone:** none (mid-phase)   ·   **Prereqs:** [S01](../sprints/sprint-01.md), [S02](../sprints/sprint-02.md)
 
 ## Read first
-- [`../../../CLAUDE.md`](../../../CLAUDE.md) + [`../../../AGENT.md`](../../../AGENT.md) — repo conventions (theme, service boundaries, "don't commit/push unless asked").
+- [`../../../CLAUDE.md`](../../../CLAUDE.md) + [`../../../AGENT.md`](../../../AGENT.md) — repo conventions (theme, service boundaries, "ship at session end (AGENT.md land-and-sync)").
 - [`../../adr/0005-data-ownership-and-migrations.md`](../../adr/0005-data-ownership-and-migrations.md) — schema-per-service, `goose` (embedded, startup + advisory lock), `sqlc`/`pgx`, per-schema role.
 - [`../../adr/0009-deployment-and-gitops.md`](../../adr/0009-deployment-and-gitops.md) — GHCR image per service, Flux image-automation, SOPS secrets, ClusterIP-only for non-gateway services, pull-based (never `kubectl apply`).
 - [`../../architecture/services.md`](../../architecture/services.md) — the `curriculum` responsibility + API + "emits/consumes nothing".
@@ -31,7 +31,7 @@
 - Curriculum **emits/consumes no events** — no outbox/inbox.
 - Match infra conventions: copy `infra/apps/airlift.yaml` as the HelmRelease template; ClusterIP only (`route.enabled: false`); GHCR image + Flux image-automation entry; SOPS secrets under `infra/apps/secrets/`; pod hardening (non-root, read-only rootfs, dropped caps) from chart defaults.
 - **Pull-based GitOps:** never `kubectl apply` by hand — all deploy config lands in `../infra` for Flux to reconcile.
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).
 
 ## Deliverables
 - `cmd/curriculum/` + `internal/curriculum/` (handler/service/store, `goose` migrations, `sqlc` queries + generated Go), `/healthz` + `/readyz`.
@@ -51,4 +51,4 @@
 - [ ] `GET /paths` and `GET /paths/dsa` return real seeded content through the gateway.
 - [ ] Catalog renders the DSA path (active) + coming-soon others; Roadmap renders 4 phases / 16 weeks from the API (ring/percentages may be placeholder).
 - [ ] Difficulty tokens are correct (green/amber/red); Catalog + Roadmap match the artboards.
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).

@@ -1,0 +1,520 @@
+[
+  {
+    "id": "1",
+    "path_slug": "dsa",
+    "week_n": 1,
+    "title": "Contains Duplicate",
+    "difficulty": "easy",
+    "pattern": "Hashing",
+    "leetcode_url": "https://leetcode.com/problems/contains-duplicate/",
+    "neetcode_url": "https://neetcode.io/problems/duplicate-integer",
+    "is_reinforcement": false,
+    "sort_order": 1,
+    "sections": [
+      {
+        "stage": "attempt",
+        "kind": "summary",
+        "order": 1,
+        "body_md": "Given an integer array, return true if any value appears at least twice. The warm-up that establishes the seen-set reflex.",
+        "code": ""
+      },
+      {
+        "stage": "solution",
+        "kind": "approach",
+        "order": 1,
+        "body_md": "Scan once, keeping a set of values seen so far. If the current value is already in the set, you found a duplicate; otherwise add it.",
+        "code": ""
+      },
+      {
+        "stage": "solution",
+        "kind": "code",
+        "order": 2,
+        "body_md": "",
+        "code": "func containsDuplicate(nums []int) bool {\n    seen := make(map[int]struct{}, len(nums))\n    for _, n := range nums {\n        if _, ok := seen[n]; ok {\n            return true\n        }\n        seen[n] = struct{}{}\n    }\n    return false\n}"
+      },
+      {
+        "stage": "solution",
+        "kind": "complexity",
+        "order": 3,
+        "body_md": "Time O(n), space O(n).",
+        "code": ""
+      }
+    ]
+  },
+  {
+    "id": "2",
+    "path_slug": "dsa",
+    "week_n": 1,
+    "title": "Valid Anagram",
+    "difficulty": "easy",
+    "pattern": "Hashing",
+    "leetcode_url": "https://leetcode.com/problems/valid-anagram/",
+    "neetcode_url": "https://neetcode.io/problems/is-anagram",
+    "is_reinforcement": false,
+    "sort_order": 2,
+    "sections": [
+      {
+        "stage": "attempt",
+        "kind": "summary",
+        "order": 1,
+        "body_md": "Return true if two strings are anagrams. Count characters with a frequency map (or a fixed 26-int array) and compare.",
+        "code": ""
+      }
+    ]
+  },
+  {
+    "id": "3",
+    "path_slug": "dsa",
+    "week_n": 1,
+    "title": "Two Sum",
+    "difficulty": "easy",
+    "pattern": "Hashing",
+    "leetcode_url": "https://leetcode.com/problems/two-sum/",
+    "neetcode_url": "https://neetcode.io/problems/two-integer-sum",
+    "is_reinforcement": false,
+    "sort_order": 3,
+    "sections": [
+      {
+        "stage": "attempt",
+        "kind": "summary",
+        "order": 1,
+        "body_md": "Return the indices of the two numbers that add up to `target`. The complement-lookup archetype.",
+        "code": ""
+      },
+      {
+        "stage": "attempt",
+        "kind": "example",
+        "order": 2,
+        "body_md": "nums = [2,7,11,15], target = 9 → [0,1] because 2 + 7 = 9.",
+        "code": ""
+      },
+      {
+        "stage": "hint",
+        "kind": "key_observation",
+        "order": 1,
+        "body_md": "For each number `n`, the number you still need is `target - n`. If you have already seen it, you are done — so check the map before inserting.",
+        "code": ""
+      },
+      {
+        "stage": "solution",
+        "kind": "approach",
+        "order": 1,
+        "body_md": "One pass. Keep a map of value → index. For each element, look up its complement; if present, return the stored index and the current one. Otherwise record the current value.",
+        "code": ""
+      },
+      {
+        "stage": "solution",
+        "kind": "code",
+        "order": 2,
+        "body_md": "",
+        "code": "func twoSum(nums []int, target int) []int {\n    seen := make(map[int]int, len(nums))\n    for i, n := range nums {\n        if j, ok := seen[target-n]; ok {\n            return []int{j, i}\n        }\n        seen[n] = i\n    }\n    return nil\n}"
+      },
+      {
+        "stage": "solution",
+        "kind": "complexity",
+        "order": 3,
+        "body_md": "Time O(n), space O(n). Beats the O(n^2) nested-loop brute force by trading memory for the complement lookup.",
+        "code": ""
+      }
+    ]
+  },
+  {
+    "id": "5",
+    "path_slug": "dsa",
+    "week_n": 1,
+    "title": "Group Anagrams",
+    "difficulty": "med",
+    "pattern": "Hashing",
+    "leetcode_url": "https://leetcode.com/problems/group-anagrams/",
+    "neetcode_url": "https://neetcode.io/problems/anagram-groups",
+    "is_reinforcement": false,
+    "sort_order": 4,
+    "sections": [
+      {
+        "stage": "attempt",
+        "kind": "summary",
+        "order": 1,
+        "body_md": "Group strings that are anagrams of each other. Key each group by a canonical signature — the sorted string, or a 26-length count tuple.",
+        "code": ""
+      }
+    ]
+  },
+  {
+    "id": "7",
+    "path_slug": "dsa",
+    "week_n": 1,
+    "title": "Top K Frequent Elements",
+    "difficulty": "med",
+    "pattern": "Heap / Bucket Sort",
+    "leetcode_url": "https://leetcode.com/problems/top-k-frequent-elements/",
+    "neetcode_url": "https://neetcode.io/problems/top-k-elements-in-list",
+    "is_reinforcement": false,
+    "sort_order": 5,
+    "sections": [
+      {
+        "stage": "attempt",
+        "kind": "summary",
+        "order": 1,
+        "body_md": "Return the k most frequent elements. Count with a frequency map, then either a heap of size k (O(n log k)) or bucket sort by frequency (O(n)).",
+        "code": ""
+      }
+    ]
+  },
+  {
+    "id": "9",
+    "path_slug": "dsa",
+    "week_n": 1,
+    "title": "Subarray Sum Equals K",
+    "difficulty": "med",
+    "pattern": "Prefix Sum",
+    "leetcode_url": "https://leetcode.com/problems/subarray-sum-equals-k/",
+    "neetcode_url": "",
+    "is_reinforcement": false,
+    "sort_order": 6,
+    "sections": [
+      {
+        "stage": "attempt",
+        "kind": "summary",
+        "order": 1,
+        "body_md": "Count the contiguous subarrays that sum to k. The running-prefix-sum + hashmap-of-seen-prefixes trick counts them in one pass.",
+        "code": ""
+      },
+      {
+        "stage": "hint",
+        "kind": "key_observation",
+        "order": 1,
+        "body_md": "A subarray (l, r] sums to k exactly when pre[r] - pre[l] = k, i.e. pre[l] = pre[r] - k. So at each r, add how many times the prefix `pre[r] - k` has already occurred.",
+        "code": ""
+      }
+    ]
+  },
+  {
+    "id": "12",
+    "path_slug": "dsa",
+    "week_n": 2,
+    "title": "Longest Substring Without Repeating Characters",
+    "difficulty": "med",
+    "pattern": "Sliding Window",
+    "leetcode_url": "https://leetcode.com/problems/longest-substring-without-repeating-characters/",
+    "neetcode_url": "https://neetcode.io/problems/longest-substring-without-duplicates",
+    "is_reinforcement": false,
+    "sort_order": 1,
+    "sections": [
+      {
+        "stage": "attempt",
+        "kind": "summary",
+        "order": 1,
+        "body_md": "Find the length of the longest substring with all-distinct characters. Grow a window on the right; when a duplicate appears, shrink from the left until it is gone.",
+        "code": ""
+      }
+    ]
+  },
+  {
+    "id": "16",
+    "path_slug": "dsa",
+    "week_n": 2,
+    "title": "3Sum",
+    "difficulty": "med",
+    "pattern": "Two Pointers",
+    "leetcode_url": "https://leetcode.com/problems/3sum/",
+    "neetcode_url": "https://neetcode.io/problems/three-integer-sum",
+    "is_reinforcement": false,
+    "sort_order": 2,
+    "sections": [
+      {
+        "stage": "attempt",
+        "kind": "tags",
+        "order": 1,
+        "body_md": "Two Pointers · Sorting · Arrays. Medium. The signature Week-2 problem — the one that makes the two-pointer sweep click.",
+        "code": ""
+      },
+      {
+        "stage": "attempt",
+        "kind": "why",
+        "order": 2,
+        "body_md": "3Sum is the bridge from the O(1) complement trick (Two Sum) to reducing a k-sum problem by one dimension: fix one element and two-pointer the rest. That fix-and-sweep move reappears in 4Sum, 3Sum Closest, and countless interview variants.",
+        "code": ""
+      },
+      {
+        "stage": "attempt",
+        "kind": "summary",
+        "order": 3,
+        "body_md": "Given an integer array, return all unique triplets [a, b, c] with a + b + c = 0. No triplet may be duplicated in the output.",
+        "code": ""
+      },
+      {
+        "stage": "attempt",
+        "kind": "example",
+        "order": 4,
+        "body_md": "nums = [-1, 0, 1, 2, -1, -4] → [[-1, -1, 2], [-1, 0, 1]]. Note the two -1 values collapse into one unique triplet.",
+        "code": ""
+      },
+      {
+        "stage": "attempt",
+        "kind": "links",
+        "order": 5,
+        "body_md": "Practice on LeetCode #15 and NeetCode before revealing the hint.",
+        "code": ""
+      },
+      {
+        "stage": "hint",
+        "kind": "brute_force",
+        "order": 1,
+        "body_md": "The obvious approach is three nested loops over every triple — O(n^3) time — plus a set to dedupe. It works but times out on large inputs and wastes the structure you could get from sorting.",
+        "code": ""
+      },
+      {
+        "stage": "hint",
+        "kind": "key_observation",
+        "order": 2,
+        "body_md": "Sort the array first. Fix the leftmost element `nums[i]`; the rest reduces to Two Sum on a sorted subarray for target `-nums[i]`, which two pointers solve in O(n). Sorting also makes duplicates adjacent, so skipping repeats is trivial.",
+        "code": ""
+      },
+      {
+        "stage": "hint",
+        "kind": "pattern",
+        "order": 3,
+        "body_md": "Pattern: **fix one, two-pointer the rest**. Reducing a k-sum to a (k-1)-sum by fixing an index and sweeping two pointers is the reusable idea here.",
+        "code": ""
+      },
+      {
+        "stage": "solution",
+        "kind": "approach",
+        "order": 1,
+        "body_md": "Sort. For each index i (skipping duplicate anchors), run two pointers l = i+1 and r = n-1 toward each other. If the triple sums to zero, record it and advance both pointers past any duplicates; if the sum is too small move l right, if too big move r left.",
+        "code": ""
+      },
+      {
+        "stage": "solution",
+        "kind": "steps",
+        "order": 2,
+        "body_md": "1) Sort nums.\n2) Loop i from 0 to n-3; if nums[i] == nums[i-1], skip (duplicate anchor).\n3) Early exit: once nums[i] > 0, no triple can sum to zero.\n4) Two-pointer l, r inward on target -nums[i].\n5) On a hit, append the triplet, then skip equal values at l and r before moving on.",
+        "code": ""
+      },
+      {
+        "stage": "solution",
+        "kind": "dry_run",
+        "order": 3,
+        "body_md": "sorted = [-4, -1, -1, 0, 1, 2]. i=1 (-1): l=2(-1), r=5(2) → sum 0 → record [-1,-1,2]; skip dup -1 at l. i moves; i=2 is a duplicate anchor, skipped. i=3 (0): l=4(1), r=5(2) → sum 3 > 0, r--; l==r stop... backtrack shows [-1,0,1] captured when i=1 continues after the first hit. Result: [[-1,-1,2], [-1,0,1]].",
+        "code": ""
+      },
+      {
+        "stage": "solution",
+        "kind": "code",
+        "order": 4,
+        "body_md": "",
+        "code": "func threeSum(nums []int) [][]int {\n    sort.Ints(nums)\n    res := [][]int{}\n    for i := 0; i < len(nums)-2; i++ {\n        if nums[i] > 0 {\n            break // smallest is positive: no zero-sum triple remains\n        }\n        if i > 0 && nums[i] == nums[i-1] {\n            continue // skip duplicate anchor\n        }\n        l, r := i+1, len(nums)-1\n        for l < r {\n            sum := nums[i] + nums[l] + nums[r]\n            switch {\n            case sum == 0:\n                res = append(res, []int{nums[i], nums[l], nums[r]})\n                l++\n                r--\n                for l < r && nums[l] == nums[l-1] {\n                    l++\n                }\n                for l < r && nums[r] == nums[r+1] {\n                    r--\n                }\n            case sum < 0:\n                l++\n            default:\n                r--\n            }\n        }\n    }\n    return res\n}"
+      },
+      {
+        "stage": "solution",
+        "kind": "complexity",
+        "order": 5,
+        "body_md": "Time O(n^2): the sort is O(n log n) and each anchor drives an O(n) two-pointer sweep. Space O(1) beyond the output (or O(n) counting the sort).",
+        "code": ""
+      },
+      {
+        "stage": "solution",
+        "kind": "mistakes",
+        "order": 6,
+        "body_md": "- Forgetting to skip duplicate anchors AND duplicate l/r values → duplicate triplets.\n- Advancing only one pointer after a hit (you must move both).\n- Off-by-one in the dedupe loops (compare against the value you just moved past).",
+        "code": ""
+      },
+      {
+        "stage": "solution",
+        "kind": "variations",
+        "order": 7,
+        "body_md": "4Sum (fix two, two-pointer the rest), 3Sum Closest (track the best sum instead of exact zero), 3Sum Smaller (count triples below a target).",
+        "code": ""
+      }
+    ]
+  },
+  {
+    "id": "18",
+    "path_slug": "dsa",
+    "week_n": 2,
+    "title": "Minimum Window Substring",
+    "difficulty": "hard",
+    "pattern": "Sliding Window",
+    "leetcode_url": "https://leetcode.com/problems/minimum-window-substring/",
+    "neetcode_url": "https://neetcode.io/problems/minimum-window-with-characters",
+    "is_reinforcement": false,
+    "sort_order": 3,
+    "sections": [
+      {
+        "stage": "attempt",
+        "kind": "summary",
+        "order": 1,
+        "body_md": "Find the smallest substring of s that contains every character of t (with multiplicity). A variable-size sliding window with a 'need' counter that tracks how many required characters are still missing.",
+        "code": ""
+      }
+    ]
+  },
+  {
+    "id": "23",
+    "path_slug": "dsa",
+    "week_n": 3,
+    "title": "Largest Rectangle in Histogram",
+    "difficulty": "hard",
+    "pattern": "Monotonic Stack",
+    "leetcode_url": "https://leetcode.com/problems/largest-rectangle-in-histogram/",
+    "neetcode_url": "https://neetcode.io/problems/largest-rectangle-in-histogram",
+    "is_reinforcement": false,
+    "sort_order": 1,
+    "sections": [
+      {
+        "stage": "attempt",
+        "kind": "summary",
+        "order": 1,
+        "body_md": "Given bar heights, find the largest axis-aligned rectangle in the histogram. The problem that finally makes the monotonic-stack pattern click.",
+        "code": ""
+      },
+      {
+        "stage": "hint",
+        "kind": "key_observation",
+        "order": 1,
+        "body_md": "Keep a stack of indices with increasing heights. When a shorter bar arrives, pop taller bars — each popped bar's rectangle extends from the new bar back to the element below it on the stack. A sentinel zero-height bar at the end flushes the stack.",
+        "code": ""
+      }
+    ]
+  },
+  {
+    "id": "40",
+    "path_slug": "dsa",
+    "week_n": 4,
+    "title": "LRU Cache",
+    "difficulty": "med",
+    "pattern": "Design / Hashmap + DLL",
+    "leetcode_url": "https://leetcode.com/problems/lru-cache/",
+    "neetcode_url": "https://neetcode.io/problems/lru-cache",
+    "is_reinforcement": false,
+    "sort_order": 1,
+    "sections": [
+      {
+        "stage": "attempt",
+        "kind": "summary",
+        "order": 1,
+        "body_md": "Design a cache with O(1) get and put that evicts the least-recently-used key at capacity. The canonical hashmap + doubly-linked-list design problem.",
+        "code": ""
+      },
+      {
+        "stage": "attempt",
+        "kind": "why",
+        "order": 2,
+        "body_md": "LRU forces you to combine two structures for their complementary strengths: a hash map for O(1) key lookup and a doubly-linked list for O(1) recency reordering and eviction. Recognising 'I need O(1) access AND O(1) ordering' is the transferable skill.",
+        "code": ""
+      },
+      {
+        "stage": "solution",
+        "kind": "approach",
+        "order": 1,
+        "body_md": "Map key → list node. On get, move the node to the front (most recent) and return its value. On put, upsert and move to front; if over capacity, evict the tail node and delete its key. Use head/tail sentinel nodes so no operation special-cases the ends.",
+        "code": ""
+      },
+      {
+        "stage": "solution",
+        "kind": "complexity",
+        "order": 2,
+        "body_md": "Every operation is O(1) time; O(capacity) space.",
+        "code": ""
+      }
+    ]
+  },
+  {
+    "id": "78",
+    "path_slug": "dsa",
+    "week_n": 8,
+    "title": "Course Schedule",
+    "difficulty": "med",
+    "pattern": "Topological Sort",
+    "leetcode_url": "https://leetcode.com/problems/course-schedule/",
+    "neetcode_url": "https://neetcode.io/problems/course-schedule",
+    "is_reinforcement": false,
+    "sort_order": 1,
+    "sections": [
+      {
+        "stage": "attempt",
+        "kind": "summary",
+        "order": 1,
+        "body_md": "Given courses and prerequisite pairs, decide whether you can finish all of them. This is cycle detection on a directed graph — a topological-sort feasibility check.",
+        "code": ""
+      },
+      {
+        "stage": "hint",
+        "kind": "key_observation",
+        "order": 1,
+        "body_md": "Build the dependency graph and run Kahn's algorithm: repeatedly remove zero-in-degree nodes. If you can remove all N courses, there is no cycle and the schedule is completable; if some remain, a prerequisite cycle exists.",
+        "code": ""
+      }
+    ]
+  },
+  {
+    "id": "92",
+    "path_slug": "dsa",
+    "week_n": 9,
+    "title": "Cheapest Flights Within K Stops",
+    "difficulty": "med",
+    "pattern": "Shortest Paths (Bellman-Ford)",
+    "leetcode_url": "https://leetcode.com/problems/cheapest-flights-within-k-stops/",
+    "neetcode_url": "",
+    "is_reinforcement": false,
+    "sort_order": 1,
+    "sections": [
+      {
+        "stage": "attempt",
+        "kind": "summary",
+        "order": 1,
+        "body_md": "Find the cheapest price from src to dst using at most K stops. The stop cap turns this into Bellman-Ford limited to K+1 relaxation rounds over a snapshot of the distances.",
+        "code": ""
+      },
+      {
+        "stage": "hint",
+        "kind": "key_observation",
+        "order": 1,
+        "body_md": "Relax all edges K+1 times, but each round must read from the previous round's distances (a copy) so a single round cannot chain multiple edges — that is what enforces the stop limit.",
+        "code": ""
+      }
+    ]
+  },
+  {
+    "id": "104",
+    "path_slug": "dsa",
+    "week_n": 10,
+    "title": "Coin Change",
+    "difficulty": "med",
+    "pattern": "Dynamic Programming",
+    "leetcode_url": "https://leetcode.com/problems/coin-change/",
+    "neetcode_url": "https://neetcode.io/problems/coin-change",
+    "is_reinforcement": false,
+    "sort_order": 1,
+    "sections": [
+      {
+        "stage": "attempt",
+        "kind": "summary",
+        "order": 1,
+        "body_md": "Return the fewest coins that make up `amount`, or -1 if impossible. The canonical 1-D dynamic-programming recurrence.",
+        "code": ""
+      },
+      {
+        "stage": "hint",
+        "kind": "key_observation",
+        "order": 1,
+        "body_md": "dp[a] = fewest coins to make amount a = 1 + min over coins c of dp[a - c]. Build dp from 0 up to amount; seed dp[0] = 0 and treat unreachable amounts as a sentinel bigger than any valid answer.",
+        "code": ""
+      },
+      {
+        "stage": "solution",
+        "kind": "code",
+        "order": 1,
+        "body_md": "",
+        "code": "func coinChange(coins []int, amount int) int {\n    dp := make([]int, amount+1)\n    for a := 1; a <= amount; a++ {\n        dp[a] = amount + 1\n        for _, c := range coins {\n            if c <= a && dp[a-c]+1 < dp[a] {\n                dp[a] = dp[a-c] + 1\n            }\n        }\n    }\n    if dp[amount] > amount {\n        return -1\n    }\n    return dp[amount]\n}"
+      },
+      {
+        "stage": "solution",
+        "kind": "complexity",
+        "order": 2,
+        "body_md": "Time O(amount × len(coins)), space O(amount).",
+        "code": ""
+      }
+    ]
+  }
+]

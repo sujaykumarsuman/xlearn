@@ -1,0 +1,83 @@
+[
+  {
+    "path_slug": "dsa",
+    "slug": "hashing",
+    "title": "Hashing & Frequency Maps",
+    "body_md": "A hash map trades space for time: it turns an O(n) membership scan into an O(1) average lookup. Most 'have I seen this?' and 'how many of each?' questions reduce to one pass that builds a `map[T]int` (a frequency map) or a `map[T]struct{}` (a set), then a second glance at the map.\n\nThe three moves you reuse constantly:\n- **Seen-set**: add as you go, check before adding (duplicate detection).\n- **Frequency map**: count occurrences, then reason over the counts.\n- **Complement lookup**: for each element, ask whether the value you still need is already in the map (Two Sum).",
+    "when_to_use_md": "Reach for hashing when you catch yourself writing a nested loop to ask 'is X somewhere in this array?' or 'how many times does X appear?'. If order does not matter and you only need membership or counts, a map collapses the inner loop to O(1).",
+    "code_template": "// Frequency map over a slice.\nfreq := make(map[int]int, len(nums))\nfor _, n := range nums {\n    freq[n]++\n}\n\n// Complement lookup (Two Sum shape).\nseen := make(map[int]int, len(nums)) // value -> index\nfor i, n := range nums {\n    if j, ok := seen[target-n]; ok {\n        return []int{j, i}\n    }\n    seen[n] = i\n}",
+    "weeks": [1]
+  },
+  {
+    "path_slug": "dsa",
+    "slug": "prefix-sums",
+    "title": "Prefix Sums",
+    "body_md": "A prefix sum array `pre` where `pre[i]` is the sum of the first `i` elements lets you get the sum of any range `[l, r)` in O(1) as `pre[r] - pre[l]`. Combine it with a hash map of previously-seen prefix sums and you can count subarrays with a given sum in a single pass: at index `i`, the number of subarrays ending here that sum to `k` equals how many times `pre[i] - k` has appeared.",
+    "when_to_use_md": "Use prefix sums when the question is about the sum (or count, or XOR) of contiguous subarrays, especially with many range queries or a target subarray sum. The running-prefix-plus-hashmap trick is the go-to for 'number of subarrays that sum to k'.",
+    "code_template": "// Count subarrays summing to k.\ncount, sum := 0, 0\nseen := map[int]int{0: 1} // prefix sum -> frequency\nfor _, n := range nums {\n    sum += n\n    count += seen[sum-k]\n    seen[sum]++\n}\nreturn count",
+    "weeks": [1]
+  },
+  {
+    "path_slug": "dsa",
+    "slug": "two-pointers",
+    "title": "Two Pointers",
+    "body_md": "Two pointers walk a (usually sorted) sequence from opposite ends or in tandem, using the ordering to discard whole regions of the search space without checking them. On a sorted array, if the sum of the two ends is too big you move the right pointer in; too small, move the left pointer out. That single comparison replaces an entire inner loop, taking a naive O(n^2) pair search down to O(n).",
+    "when_to_use_md": "Reach for two pointers when the input is sorted (or you can afford to sort it) and you are looking for a pair/triple that meets a numeric condition, or when you need to partition/dedupe in place. If you sorted specifically to unlock the pointer sweep, that O(n log n) sort is almost always worth it.",
+    "code_template": "sort.Ints(nums)\nl, r := 0, len(nums)-1\nfor l < r {\n    sum := nums[l] + nums[r]\n    switch {\n    case sum == target:\n        // record the pair, then move both inward\n        l++\n        r--\n    case sum < target:\n        l++\n    default:\n        r--\n    }\n}",
+    "weeks": [2]
+  },
+  {
+    "path_slug": "dsa",
+    "slug": "sliding-window",
+    "title": "Sliding Window",
+    "body_md": "A sliding window maintains a contiguous range `[left, right]` and a small amount of state about what is inside it (a count, a frequency map, a running sum). You expand `right` to include new elements and contract `left` when the window violates its constraint. Each index enters and leaves the window at most once, so the whole scan is O(n) even though the window is 'nested'.",
+    "when_to_use_md": "Use a sliding window for 'longest / shortest / count of contiguous substring-or-subarray satisfying a property' — no duplicates, at most k distinct, sum ≤ target, contains all of T. If the brute force is 'try every subarray', a window usually collapses it to one pass.",
+    "code_template": "window := make(map[byte]int)\nleft, best := 0, 0\nfor right := 0; right < len(s); right++ {\n    window[s[right]]++\n    for windowInvalid(window) { // e.g. a char count > 1\n        window[s[left]]--\n        if window[s[left]] == 0 {\n            delete(window, s[left])\n        }\n        left++\n    }\n    if right-left+1 > best {\n        best = right - left + 1\n    }\n}\nreturn best",
+    "weeks": [2]
+  },
+  {
+    "path_slug": "dsa",
+    "slug": "monotonic-stack",
+    "title": "Monotonic Stack",
+    "body_md": "A monotonic stack keeps its elements in sorted order (increasing or decreasing) by popping anything that would break the order before pushing the new element. The moment you pop an element, the element about to be pushed is its 'next greater/smaller' neighbour — so a single left-to-right pass answers next-greater-element, daily-temperatures, and histogram-area questions in O(n) total, since each index is pushed and popped at most once.",
+    "when_to_use_md": "Reach for a monotonic stack when a problem asks for the nearest larger/smaller element on either side, or spans/areas bounded by such elements (Largest Rectangle in Histogram, Trapping Rain Water). The tell is 'for each element, find the next one that is bigger/smaller'.",
+    "code_template": "// Indices of a strictly increasing stack; pop on a smaller bar.\nstack := []int{}\nfor i := 0; i <= len(heights); i++ {\n    h := 0\n    if i < len(heights) {\n        h = heights[i]\n    }\n    for len(stack) > 0 && heights[stack[len(stack)-1]] > h {\n        top := stack[len(stack)-1]\n        stack = stack[:len(stack)-1]\n        width := i\n        if len(stack) > 0 {\n            width = i - stack[len(stack)-1] - 1\n        }\n        // area := heights[top] * width\n        _ = top\n        _ = width\n    }\n    stack = append(stack, i)\n}",
+    "weeks": [3]
+  },
+  {
+    "path_slug": "dsa",
+    "slug": "linked-list-design",
+    "title": "Linked Lists & O(1) Design",
+    "body_md": "Linked-list problems are pointer discipline: keep a dummy head to avoid special-casing the first node, advance with care, and reconnect in the right order. The design payoff is the LRU cache — a hash map from key to node gives O(1) lookup, and a doubly-linked list ordered by recency gives O(1) move-to-front and evict-from-back. Together they make every `get`/`put` O(1).",
+    "when_to_use_md": "Use a dummy node whenever the head can change (insert/delete at front). Reach for hashmap + doubly-linked list whenever you need O(1) access AND O(1) ordering updates — LRU/LFU caches, browser history with jumps, any 'most-recently-used' structure.",
+    "code_template": "type node struct {\n    key, val   int\n    prev, next *node\n}\n\ntype LRUCache struct {\n    cap        int\n    m          map[int]*node\n    head, tail *node // sentinels: head.next = most recent\n}\n\nfunc (c *LRUCache) remove(n *node) { n.prev.next = n.next; n.next.prev = n.prev }\nfunc (c *LRUCache) pushFront(n *node) {\n    n.prev, n.next = c.head, c.head.next\n    c.head.next.prev, c.head.next = n, n\n}",
+    "weeks": [4]
+  },
+  {
+    "path_slug": "dsa",
+    "slug": "topological-sort",
+    "title": "Graphs & Topological Sort",
+    "body_md": "A topological sort orders the nodes of a directed acyclic graph so every edge points forward — exactly what you need for 'do prerequisites before dependents'. Kahn's algorithm computes in-degrees, starts a queue with the zero-in-degree nodes, and repeatedly removes a node and decrements its neighbours. If you emit all N nodes, the graph is acyclic (a valid schedule exists); if fewer, there is a cycle.",
+    "when_to_use_md": "Reach for topological sort whenever tasks have ordering constraints: course prerequisites, build systems, package installs. It also doubles as cycle detection on a directed graph — 'can this schedule be completed?' is a topological-sort feasibility check (Course Schedule).",
+    "code_template": "indeg := make([]int, n)\nadj := make([][]int, n)\nfor _, e := range edges { // e = [dependent, prereq]\n    adj[e[1]] = append(adj[e[1]], e[0])\n    indeg[e[0]]++\n}\nq := []int{}\nfor i := 0; i < n; i++ {\n    if indeg[i] == 0 {\n        q = append(q, i)\n    }\n}\nseen := 0\nfor len(q) > 0 {\n    u := q[0]\n    q = q[1:]\n    seen++\n    for _, v := range adj[u] {\n        indeg[v]--\n        if indeg[v] == 0 {\n            q = append(q, v)\n        }\n    }\n}\nreturn seen == n // false => a cycle",
+    "weeks": [8]
+  },
+  {
+    "path_slug": "dsa",
+    "slug": "shortest-paths",
+    "title": "Shortest Paths",
+    "body_md": "Pick the shortest-path algorithm by the graph's constraints. Unweighted edges: plain BFS. Non-negative weights: Dijkstra with a min-heap. Negative weights, or a hard cap on the number of edges used: Bellman-Ford, which relaxes every edge repeatedly. 'Cheapest flight within K stops' is Bellman-Ford limited to K+1 relaxation rounds — the round count is exactly the edge budget.",
+    "when_to_use_md": "BFS for fewest edges on an unweighted graph. Dijkstra for cheapest cost with non-negative weights. Bellman-Ford when weights can be negative or when the answer is bounded by a number of hops/stops (relax K+1 times over a copy of the distances).",
+    "code_template": "// Bellman-Ford bounded to k stops (k+1 edges).\ndist := make([]int, n)\nfor i := range dist {\n    dist[i] = math.MaxInt32\n}\ndist[src] = 0\nfor i := 0; i <= k; i++ {\n    tmp := append([]int(nil), dist...)\n    for _, f := range flights { // f = [from, to, price]\n        if dist[f[0]] != math.MaxInt32 && dist[f[0]]+f[2] < tmp[f[1]] {\n            tmp[f[1]] = dist[f[0]] + f[2]\n        }\n    }\n    dist = tmp\n}",
+    "weeks": [9]
+  },
+  {
+    "path_slug": "dsa",
+    "slug": "dynamic-programming",
+    "title": "Dynamic Programming",
+    "body_md": "Dynamic programming is careful recursion with memory. First find the recurrence: express the answer for a state in terms of smaller states (the choices you can make). Then remember each sub-answer so you never recompute it — top-down with a memo, or bottom-up by filling a table. Coin Change is the canonical 1-D DP: `dp[a]` = fewest coins to make amount `a` = 1 + min over coins of `dp[a - coin]`.",
+    "when_to_use_md": "Reach for DP when a problem asks for an optimum (min/max/count) over a sequence of choices AND the same sub-problems recur (overlapping subproblems + optimal substructure). If your brute-force recursion re-solves the same arguments, add a memo and you have DP.",
+    "code_template": "// Coin Change: fewest coins to make `amount`.\ndp := make([]int, amount+1)\nfor a := 1; a <= amount; a++ {\n    dp[a] = amount + 1 // sentinel = impossible\n    for _, c := range coins {\n        if c <= a && dp[a-c]+1 < dp[a] {\n            dp[a] = dp[a-c] + 1\n        }\n    }\n}\nif dp[amount] > amount {\n    return -1\n}\nreturn dp[amount]",
+    "weeks": [10]
+  }
+]

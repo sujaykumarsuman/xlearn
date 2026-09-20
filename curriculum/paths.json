@@ -1,0 +1,56 @@
+[
+  {
+    "slug": "dsa",
+    "title": "DSA Interview Mastery",
+    "status": "active",
+    "summary": "From arrays to graphs and DP, built to make you interview-ready — and to keep it retained.",
+    "problem_total": 151,
+    "week_total": 16,
+    "sort_order": 0
+  },
+  {
+    "slug": "system-design",
+    "title": "System Design Interviews",
+    "status": "coming_soon",
+    "summary": "Scalable systems, trade-offs, and the whiteboard narrative — timed design rounds with rubric scoring.",
+    "problem_total": 40,
+    "week_total": 12,
+    "sort_order": 10
+  },
+  {
+    "slug": "go-concurrency",
+    "title": "Go Concurrency Patterns",
+    "status": "coming_soon",
+    "summary": "Goroutines, channels, and the race detector as muscle memory — from worker pools to context cancellation.",
+    "problem_total": 60,
+    "week_total": 8,
+    "sort_order": 20
+  },
+  {
+    "slug": "lld-ood",
+    "title": "Low-Level / OOD",
+    "status": "coming_soon",
+    "summary": "Object modeling and design patterns under interview pressure: parking lots, rate limiters, and more.",
+    "problem_total": 24,
+    "week_total": 6,
+    "sort_order": 30
+  },
+  {
+    "slug": "sql",
+    "title": "SQL & Data Modeling",
+    "status": "coming_soon",
+    "summary": "Query optimization, indexing, and schema design with a spaced-repetition drill set.",
+    "problem_total": 50,
+    "week_total": 6,
+    "sort_order": 40
+  },
+  {
+    "slug": "behavioral",
+    "title": "Behavioral & Storytelling",
+    "status": "coming_soon",
+    "summary": "STAR stories, leadership signals, and the retro loop — rehearsed and scored like a technical mock.",
+    "problem_total": 20,
+    "week_total": 4,
+    "sort_order": 50
+  }
+]

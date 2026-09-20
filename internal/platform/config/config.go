@@ -16,6 +16,7 @@ const (
 	defaultLogLevel           = "info"
 	defaultBasePath           = "/xlearn"
 	defaultIdentityBaseURL    = "http://localhost:8081"
+	defaultCurriculumBaseURL  = "http://localhost:8082"
 	defaultJWTIssuer          = "xlearn-gateway"
 	defaultJWTAudIdentity     = "identity"
 	defaultJWTTTL             = 5 * time.Minute
@@ -34,6 +35,9 @@ type Config struct {
 	// IdentityBaseURL is the internal ClusterIP URL of the identity service
 	// (env IDENTITY_BASE_URL), e.g. http://xlearn-identity.xlearn.svc.cluster.local:8081.
 	IdentityBaseURL string
+	// CurriculumBaseURL is the internal ClusterIP URL of the curriculum service
+	// (env CURRICULUM_BASE_URL), e.g. http://xlearn-curriculum.xlearn.svc.cluster.local:8082.
+	CurriculumBaseURL string
 	// JWT holds the RS256 signing config for gateway-minted internal JWTs (ADR-0006).
 	JWT JWTConfig
 }
@@ -60,10 +64,11 @@ type JWTConfig struct {
 // Load reads the environment and returns a validated, normalised Config.
 func Load() Config {
 	return Config{
-		Port:            env("PORT", defaultPort),
-		LogLevel:        env("LOG_LEVEL", defaultLogLevel),
-		BasePath:        normalizeBasePath(env("BASE_PATH", defaultBasePath)),
-		IdentityBaseURL: strings.TrimRight(env("IDENTITY_BASE_URL", defaultIdentityBaseURL), "/"),
+		Port:              env("PORT", defaultPort),
+		LogLevel:          env("LOG_LEVEL", defaultLogLevel),
+		BasePath:          normalizeBasePath(env("BASE_PATH", defaultBasePath)),
+		IdentityBaseURL:   strings.TrimRight(env("IDENTITY_BASE_URL", defaultIdentityBaseURL), "/"),
+		CurriculumBaseURL: strings.TrimRight(env("CURRICULUM_BASE_URL", defaultCurriculumBaseURL), "/"),
 		JWT: JWTConfig{
 			PrivateKeyPEM:           os.Getenv("JWT_PRIVATE_KEY"),
 			PrivateKeyFile:          strings.TrimSpace(os.Getenv("JWT_PRIVATE_KEY_FILE")),

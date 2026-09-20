@@ -16,6 +16,7 @@ jobs:
     outputs:
       gateway: ${{ steps.filter.outputs.gateway }}
       identity: ${{ steps.filter.outputs.identity }}
+      curriculum: ${{ steps.filter.outputs.curriculum }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -39,6 +40,15 @@ jobs:
               - 'go.mod'
               - 'go.sum'
               - 'deploy/identity.Dockerfile'
+              - '.github/workflows/deploy.yml'
+            curriculum:
+              - 'cmd/curriculum/**'
+              - 'internal/curriculum/**'
+              - 'internal/platform/**'
+              - 'curriculum/**'
+              - 'go.mod'
+              - 'go.sum'
+              - 'deploy/curriculum.Dockerfile'
               - '.github/workflows/deploy.yml'
 
   gateway:
@@ -69,5 +79,18 @@ jobs:
     with:
       image: ghcr.io/sujaykumarsuman/xlearn-identity
       dockerfile: deploy/identity.Dockerfile
+      build-args: |
+        VERSION=0.1.${{ github.run_number }}
+
+  curriculum:
+    needs: changes
+    if: ${{ needs.changes.outputs.curriculum == 'true' }}
+    permissions:
+      contents: read
+      packages: write
+    uses: sujaykumarsuman/.github/.github/workflows/build-push.yml@main
+    with:
+      image: ghcr.io/sujaykumarsuman/xlearn-curriculum
+      dockerfile: deploy/curriculum.Dockerfile
       build-args: |
         VERSION=0.1.${{ github.run_number }}

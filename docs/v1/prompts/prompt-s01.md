@@ -5,7 +5,7 @@
 
 ## Read first
 
-- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions, tech stack, and working rules (match the design, respect service boundaries, do not commit/push unless asked).
+- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions, tech stack, and working rules (match the design, respect service boundaries, ship at session end (AGENT.md land-and-sync)).
 - [`../sprints/sprint-01.md`](../sprints/sprint-01.md) — the plan this prompt executes (scope, tasks, acceptance, DoD, risks).
 - [ADR-0002](../../adr/0002-monorepo-vs-multi-repo.md) — single Go module monorepo, `cmd/<svc>/` + `internal/`, one image per service.
 - [ADR-0008](../../adr/0008-frontend-stack.md) — Vite + React + TS (strict), React Router data router, TanStack Query, port `theme.css` (no Tailwind), SPA embedded in the gateway.
@@ -43,7 +43,7 @@ wiring -- and proves the whole GitOps path (merge to `main` -> CI image -> Flux 
 - Read-only rootfs: the gateway serves only from the embedded FS; no runtime disk writes.
 - Match `../infra` conventions exactly: copy the `airlift`/`landscape` HelmRelease shape, GHCR image naming `xlearn-<svc>`, the image-automation setter marker, semver range `>=0.1.0`. Pull-based GitOps -- never `kubectl apply` by hand.
 - `auth` and `events` are stub-only seams this sprint (no impl). No auth/DB/NATS/business logic yet.
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).
 
 ## Deliverables
 
@@ -67,4 +67,4 @@ wiring -- and proves the whole GitOps path (merge to `main` -> CI image -> Flux 
 - [ ] The SPA uses the ported `theme.css` (dark landscape-console look; difficulty tokens present); sidebar collapse + coach FAB scaffold work.
 - [ ] `ci.yml` + `deploy.yml` are present; `deploy.yml` builds + pushes `xlearn-gateway` on merge to `main`.
 - [ ] `../infra` has the `xlearn` namespace + `apps/xlearn-gateway.yaml` + the image-automation entry; **Flux deploys it and the skeleton is reachable at `projects.sujaykumar.dev/xlearn` (M0)**.
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).

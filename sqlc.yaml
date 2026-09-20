@@ -1,6 +1,6 @@
 # sqlc config (ADR-0005): type-safe Go from hand-written SQL, pgx/v5 driver, no ORM.
 # Generated output is committed; CI runs `sqlc diff` to keep it in sync. One block
-# per service schema as services adopt the platform; identity is the first.
+# per service schema as services adopt the platform.
 version: "2"
 sql:
   - engine: "postgresql"
@@ -14,6 +14,21 @@ sql:
       go:
         package: "gen"
         out: "internal/identity/store/gen"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_json_tags: false
+        emit_empty_slices: true
+  - engine: "postgresql"
+    # curriculum: the read-heavy content rail (S03). Same pattern as identity —
+    # schema.sql declares the infra-provisioned schema, migrations supply tables.
+    schema:
+      - "internal/curriculum/store/schema.sql"
+      - "internal/curriculum/store/migrations"
+    queries: "internal/curriculum/store/queries"
+    gen:
+      go:
+        package: "gen"
+        out: "internal/curriculum/store/gen"
         sql_package: "pgx/v5"
         emit_interface: true
         emit_json_tags: false

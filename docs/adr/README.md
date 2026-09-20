@@ -27,6 +27,7 @@ under [`../v1/`](../v1/).
 | [0009](0009-deployment-and-gitops.md) | Deployment & GitOps (Flux/Helm on k3s) | Accepted |
 | [0010](0010-spa-base-path-and-gateway-serving.md) | SPA base path & gateway serving model | Accepted |
 | [0011](0011-jwks-publication-and-shared-db-schema-ownership.md) | JWKS publication & shared-DB schema ownership | Accepted |
+| [0012](0012-curriculum-content-model-and-seeding.md) | Curriculum content model & seeding | Accepted |
 
 ## Adding an ADR
 

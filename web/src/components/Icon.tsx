@@ -42,7 +42,11 @@ export type IconName =
   | "filter"
   | "eye"
   | "mic"
-  | "signout";
+  | "signout"
+  | "server"
+  | "branch"
+  | "db"
+  | "chat";
 
 export function Icon({ name, className }: { name: IconName; className?: string }) {
   return (
@@ -197,6 +201,24 @@ export function IconSprite() {
       <symbol id="i-signout" viewBox="0 0 24 24">
         <path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" />
         <path d="M16 12H8M13 8l4 4-4 4" />
+      </symbol>
+      <symbol id="i-server" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="7" rx="2" />
+        <rect x="3" y="14" width="18" height="7" rx="2" />
+        <path d="M7 7.5h.01M7 17.5h.01" />
+      </symbol>
+      <symbol id="i-branch" viewBox="0 0 24 24">
+        <circle cx="6" cy="5" r="2.4" />
+        <circle cx="6" cy="19" r="2.4" />
+        <circle cx="18" cy="8" r="2.4" />
+        <path d="M6 7.4v9.2M6 12h6a4 4 0 0 0 4-4" />
+      </symbol>
+      <symbol id="i-db" viewBox="0 0 24 24">
+        <ellipse cx="12" cy="6" rx="8" ry="3" />
+        <path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6" />
+      </symbol>
+      <symbol id="i-chat" viewBox="0 0 24 24">
+        <path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.5A8 8 0 1 1 21 12z" />
       </symbol>
     </svg>
   );
