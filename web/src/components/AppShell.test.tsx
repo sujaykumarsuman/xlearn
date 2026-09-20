@@ -43,7 +43,7 @@ describe("AppShell + routing (authenticated)", () => {
 
   it("expanded: the path switcher opens the dropdown", async () => {
     renderAt("/xlearn/dsa/dashboard");
-    fireEvent.click(await screen.findByRole("button", { name: /DSA Interview Mastery/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /DSA/i }));
     expect(screen.getByText("Browse all paths")).toBeInTheDocument();
   });
 
@@ -52,7 +52,7 @@ describe("AppShell + routing (authenticated)", () => {
     await screen.findByRole("navigation");
     const checkbox = document.getElementById("xl-collapse") as HTMLInputElement;
     checkbox.checked = true;
-    fireEvent.click(screen.getByRole("button", { name: /DSA Interview Mastery/i }));
+    fireEvent.click(screen.getByRole("button", { name: /DSA/i }));
     expect(await screen.findByRole("heading", { level: 1, name: "Learning paths" })).toBeInTheDocument();
     expect(screen.queryByText("Browse all paths")).not.toBeInTheDocument();
   });
