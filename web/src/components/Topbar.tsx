@@ -1,5 +1,6 @@
 import { Fragment } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLogout, useMe } from "../lib/auth";
 import { Icon } from "./Icon";
 
 // A single top-bar instance mounts at a time, so a fixed id is safe for the
@@ -30,6 +31,23 @@ function Crumb() {
 
 /** The top bar: breadcrumb, cmd-K search pill, notifications, account menu. */
 export function Topbar() {
+  const me = useMe();
+  const navigate = useNavigate();
+  const logout = useLogout();
+
+  const name = me.data?.account.display_name ?? "Account";
+  const email = me.data?.account.email ?? "";
+  const initial = name.trim().charAt(0).toUpperCase() || "?";
+
+  // Navigate to /auth only on a successful revocation. A failed logout must NOT
+  // bounce the user to /auth (the still-cached, still-valid session would just send
+  // them back into the app) — keep them here and show the error instead.
+  const signOut = () => {
+    logout.mutate(undefined, {
+      onSuccess: () => navigate("/auth", { replace: true }),
+    });
+  };
+
   return (
     <div className="xl-topbar">
       <Crumb />
@@ -47,17 +65,17 @@ export function Topbar() {
       <div className="xl-acct">
         <input type="checkbox" id={ACCT_ID} className="xl-acct-cb" aria-label="Account menu" />
         <label htmlFor={ACCT_ID} className="ds-avatar xl-topbar__avatar xl-acct-btn" title="Account">
-          S
+          {initial}
         </label>
         <label htmlFor={ACCT_ID} className="xl-acct-backdrop" aria-hidden="true" />
         <div className="xl-acct-menu">
           <div className="xl-acct-head">
             <span className="ds-avatar" style={{ width: 36, height: 36, fontSize: 14 }}>
-              S
+              {initial}
             </span>
             <div>
-              <b>Sujay Kumar</b>
-              <span>sujaykumar.dev@gmail.com</span>
+              <b>{name}</b>
+              {email && <span>{email}</span>}
             </div>
           </div>
           <Link to="/settings" className="xl-acct-item">
@@ -67,9 +85,19 @@ export function Topbar() {
             <Icon name="chart" className="xl-ico--sm" /> Progress &amp; stats
           </Link>
           <div className="xl-acct-sep" />
-          <Link to="/auth" className="xl-acct-item xl-acct-item--danger">
-            <Icon name="signout" className="xl-ico--sm" /> Sign out
-          </Link>
+          <button
+            type="button"
+            className="xl-acct-item xl-acct-item--danger"
+            onClick={signOut}
+            disabled={logout.isPending}
+          >
+            <Icon name="signout" className="xl-ico--sm" /> {logout.isPending ? "Signing out…" : "Sign out"}
+          </button>
+          {logout.isError && (
+            <div role="alert" className="xl-mut" style={{ padding: "6px 12px", fontSize: 11.5, color: "var(--ds-err)" }}>
+              Couldn’t sign out — try again.
+            </div>
+          )}
         </div>
       </div>
     </div>

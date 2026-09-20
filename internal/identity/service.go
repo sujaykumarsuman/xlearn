@@ -1,0 +1,95 @@
+package identity
+
+import (
+	"context"
+	"log/slog"
+	"net/http"
+	"time"
+
+	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/health"
+)
+
+// streamIdentity is identity's JetStream stream (events.md).
+const streamIdentity = "XLEARN_IDENTITY"
+
+// Service is the identity HTTP application: OAuth, sessions, accounts, onboarding,
+// and the internal JWT-protected routes. It owns no signing key (the gateway
+// mints + publishes JWKS, ADR-0006); it only verifies inbound JWTs.
+type Service struct {
+	cfg       Config
+	store     store.Store
+	verifier  auth.Verifier
+	providers map[string]*oauthProvider
+	httpc     *http.Client
+	log       *slog.Logger
+	health    *health.Handler
+}
+
+// NewService wires the identity application. verifier checks gateway-minted JWTs on
+// the protected internal routes.
+func NewService(cfg Config, st store.Store, verifier auth.Verifier, log *slog.Logger) *Service {
+	return &Service{
+		cfg:       cfg,
+		store:     st,
+		verifier:  verifier,
+		providers: newProviders(cfg.Auth),
+		httpc:     &http.Client{Timeout: 10 * time.Second},
+		log:       log,
+		health: health.New(health.Named{
+			Name:  "postgres",
+			Check: st.Ping,
+		}),
+	}
+}
+
+// Handler builds identity's HTTP routes (Go 1.22+ method+pattern mux).
+func (s *Service) Handler() http.Handler {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("GET /healthz", s.health.Live)
+	mux.HandleFunc("GET /readyz", s.health.Ready)
+
+	// Browser-facing OAuth (reached through the gateway proxy).
+	mux.HandleFunc("POST /auth/{provider}/start", s.handleStart)
+	mux.HandleFunc("GET /auth/{provider}/callback", s.handleCallback)
+
+	// Gateway trust endpoints (ClusterIP + NetworkPolicy; no user JWT — these
+	// establish identity from the opaque session).
+	mux.HandleFunc("POST /sessions/validate", s.handleValidateSession)
+	mux.HandleFunc("POST /sessions/revoke", s.handleRevokeSession)
+
+	// User-data routes: verify the gateway-minted JWT via JWKS + ownership.
+	mux.Handle("GET /accounts/{id}", s.requireJWT(http.HandlerFunc(s.handleGetAccount)))
+	mux.Handle("POST /onboarding/step", s.requireJWT(http.HandlerFunc(s.handleOnboardingStep)))
+
+	return mux
+}
+
+// NewOutboxRelay builds the identity outbox relay with the placeholder log
+// publisher (NATS JetStream lands in S05/S06). Call Run in a goroutine.
+func (s *Service) NewOutboxRelay() *events.Relay {
+	pub := events.NewLogPublisher(s.log, streamIdentity)
+	return events.NewRelay(outboxSource{s.store}, pub, s.log)
+}
+
+// outboxSource adapts the identity store to events.OutboxSource.
+type outboxSource struct{ st store.Store }
+
+func (o outboxSource) ListUnsent(ctx context.Context, limit int32) ([]events.Event, error) {
+	rows, err := o.st.ListUnsentOutbox(ctx, limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]events.Event, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, events.Event{ID: r.EventID, Subject: r.Subject, Data: r.Payload})
+	}
+	return out, nil
+}
+
+func (o outboxSource) MarkSent(ctx context.Context, eventID string) error {
+	return o.st.MarkOutboxSent(ctx, eventID)
+}

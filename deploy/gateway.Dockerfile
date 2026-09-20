@@ -17,7 +17,7 @@ RUN npm run --silent build
 FROM golang:1.26-alpine AS build
 ARG VERSION=dev
 WORKDIR /src
-COPY go.mod ./
+COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 # Overwrite the .gitkeep-only web/dist with the built assets go:embed needs.

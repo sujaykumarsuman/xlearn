@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/health"
 )
 
@@ -29,27 +30,58 @@ type Options struct {
 	Dist fs.FS
 	// Logger is the structured logger.
 	Logger *slog.Logger
+
+	// Signer mints internal JWTs and provides the JWKS the gateway publishes
+	// (ADR-0006). Nil disables the auth BFF (the auth routes 503) — used only in
+	// tests that exercise SPA/probe serving.
+	Signer *auth.Signer
+	// IdentityBaseURL is the identity service's internal URL. Empty disables the
+	// identity-backed BFF routes.
+	IdentityBaseURL string
+	// AudienceIdentity is the "aud" for JWTs forwarded to identity.
+	AudienceIdentity string
 }
 
-// Gateway serves the SPA, the app API and the k8s probes.
+// Gateway serves the SPA, the app BFF API and the k8s probes.
 type Gateway struct {
 	basePath string
 	version  string
 	dist     fs.FS
 	log      *slog.Logger
 	health   *health.Handler
+
+	signer      *auth.Signer
+	identity    *identityClient
+	audIdentity string
+	api         *http.ServeMux
 }
 
 // New builds a Gateway. Readiness is trivially OK this sprint (stateless; no DB).
 func New(opt Options) *Gateway {
-	return &Gateway{
-		basePath: opt.BasePath,
-		version:  opt.Version,
-		dist:     opt.Dist,
-		log:      opt.Logger,
-		health:   health.New(),
+	log := opt.Logger
+	if log == nil {
+		log = slog.New(slog.NewTextHandler(nopWriter{}, nil))
 	}
+	g := &Gateway{
+		basePath:    opt.BasePath,
+		version:     opt.Version,
+		dist:        opt.Dist,
+		log:         log,
+		health:      health.New(),
+		signer:      opt.Signer,
+		audIdentity: opt.AudienceIdentity,
+	}
+	if opt.IdentityBaseURL != "" {
+		g.identity = newIdentityClient(opt.IdentityBaseURL)
+	}
+	g.api = g.newAPIMux()
+	return g
 }
+
+// nopWriter drops logs (used when no logger is supplied, e.g. in tests).
+type nopWriter struct{}
+
+func (nopWriter) Write(p []byte) (int, error) { return len(p), nil }
 
 // Handler returns the composed HTTP handler.
 //
@@ -73,14 +105,15 @@ func (g *Gateway) Handler() http.Handler {
 
 		p := g.stripBase(r.URL.Path)
 
-		// App/BFF API. Only /api/healthz exists this sprint; other /api/* paths
-		// 404 (never fall through to the SPA shell).
-		if p == "/api/healthz" {
-			g.appHealth(w, r)
-			return
-		}
-		if p == "/api" || strings.HasPrefix(p, "/api/") {
-			http.NotFound(w, r)
+		// The BFF API and the (non-secret) JWKS go through the API mux — which
+		// handles method/pattern routing and 404s unknown /api/* paths (never
+		// falling through to the SPA shell). JWKS is served at the pod root too so
+		// internal services can fetch it directly on the ClusterIP.
+		if p == "/.well-known/jwks.json" || p == "/api" || strings.HasPrefix(p, "/api/") {
+			r2 := r.Clone(r.Context())
+			r2.URL.Path = p
+			r2.URL.RawPath = ""
+			g.api.ServeHTTP(w, r2)
 			return
 		}
 
