@@ -56,3 +56,11 @@ body {
 .xl-collapse-cb:checked ~ .xl-side .xl-pathsw__label {
   display: none;
 }
+
+/* The path-switcher dropdown can't fit the 66px collapsed rail (its rows wrap
+   into an unreadable mess). Collapsed, the badge navigates to Catalog instead
+   of opening the menu (see Sidebar.tsx); this also hard-suppresses the menu for
+   the open-then-collapse case. */
+.xl-collapse-cb:checked ~ .xl-side .xl-pathsw__menu {
+  display: none;
+}
