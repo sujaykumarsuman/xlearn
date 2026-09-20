@@ -5,7 +5,7 @@
 
 ## Read first
 
-- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions: match `theme.css`, respect service boundaries, don't commit/push unless asked.
+- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions: match `theme.css`, respect service boundaries, ship at session end (AGENT.md land-and-sync).
 - [`../sprints/sprint-09.md`](../sprints/sprint-09.md) — this sprint's scope, tasks and acceptance criteria (source of the checklist below).
 - [`../../architecture/services.md`](../../architecture/services.md) — `assessment` (mock + **progress projections**) and the gateway's screen-aggregation role.
 - [`../../architecture/data-model.md`](../../architecture/data-model.md) — the `proj_coverage`/`proj_heatmap`/`proj_mastery`/`proj_outcome_mix` tables and the `inbox` dedupe table in schema `assessment`.
@@ -40,7 +40,7 @@ API + the Progress screen, and finalizes the Dashboard ★ via BFF aggregation �
 - Idempotent consumers: dedupe on `event_id` via `inbox`; **upsert** (never assume per-subject order); keep projections a **pure function of the event log** so replay is safe.
 - `GET /dashboard` is a 4-service fan-out — parallelize, time out, watch p95; the `assessment` and `gateway` services keep `/healthz`+`/readyz` and slog JSON logs, read-only rootfs.
 - Pull-based GitOps: **never** `kubectl apply`. `assessment` + `gateway` already have HelmRelease + Flux image-automation; images auto-bump on merge to `main` (build-semver). No new infra file this sprint.
-- Do **not** commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).
 
 ## Deliverables
 
@@ -62,4 +62,4 @@ API + the Progress screen, and finalizes the Dashboard ★ via BFF aggregation �
 - [ ] The Dashboard ★ aggregates real daily plan + due reviews + weak area + streak/stats, with reviews prioritised over new work.
 - [ ] Projections are idempotent (dedupe on `event_id`) and can be rebuilt by replaying JetStream from the start (verified).
 - [ ] Deployed to prod via Flux — **M5 (mock + analytics complete)** — and Progress + Dashboard match the artboards.
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).

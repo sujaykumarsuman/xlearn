@@ -87,7 +87,7 @@ all four closes design phase **D4** and milestone **M4** (the repetition + mista
 - **Frontend:** reuse `theme.css` tokens/components verbatim (no Tailwind); match the artboards; keep the
   dark theme. Difficulty tokens where shown are Easy=`--ds-ok` / Medium=`--ds-warn` / Hard=`--ds-err`.
 - **GitOps:** deploy is **pull-based via Flux** — never `kubectl apply` by hand; mirror `../infra`
-  conventions. Read-only rootfs containers. **Do not commit or push unless asked.**
+  conventions. Read-only rootfs containers. **Ship at session end** per AGENT.md land-and-sync (standing directive; no separate ask)
 
 ## Deliverables
 
@@ -118,4 +118,4 @@ all four closes design phase **D4** and milestone **M4** (the repetition + mista
       timezone** and surfaces on the **Dashboard** banner via `GET /weak-area`.
 - [ ] Due reviews generate **in-app reminders** (no email/push); the **Mistakes** screen matches the
       artboard — **M4: repetition + mistakes loop closed**.
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).

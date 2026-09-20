@@ -4,7 +4,7 @@
 > **Plan:** [`../sprints/sprint-04.md`](../sprints/sprint-04.md)   ·   **Milestone:** M2 — browse the full curriculum   ·   **Prereqs:** [S03](../sprints/sprint-03.md)
 
 ## Read first
-- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions: Go services + PostgreSQL + React/TS SPA, `theme.css`, service boundaries, GitOps, don't commit/push unless asked.
+- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions: Go services + PostgreSQL + React/TS SPA, `theme.css`, service boundaries, GitOps, ship at session end (AGENT.md land-and-sync).
 - [`../sprints/sprint-04.md`](../sprints/sprint-04.md) — the plan this prompt executes (tasks, acceptance, DoD, risks).
 - [`../build-plan.md`](../build-plan.md) — where S04 sits (D2 Content, M2) and its dependencies.
 - [`../../architecture/services.md`](../../architecture/services.md) — curriculum (read-heavy) + gateway (BFF aggregation) responsibilities and the service<->screen matrix.
@@ -69,7 +69,7 @@ practice/review state does not exist yet (S05/S06), so the aggregation returns a
 - curriculum is read-only here: no new schema/migrations, no events, no outbox this sprint.
 - Gateway fan-out uses the session cookie -> minted internal RS256 JWT ([ADR-0006](../../adr/0006-authn-authz.md)).
 - Pull-based GitOps: the gateway ships as the existing `ghcr.io/sujaykumarsuman/xlearn-gateway` image; Flux image-automation deploys from `main`. Never `kubectl apply` by hand.
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).
 
 ## Deliverables
 - Week view at `/xlearn/dsa/week/:n` and Concept view at `/xlearn/dsa/concept/:slug` (React/TS on `theme.css`), matching the artboards.
@@ -88,4 +88,4 @@ practice/review state does not exist yet (S05/S06), so the aggregation returns a
 - [ ] Concept shows reading (`body_md`) + when-to-use (`when_to_use_md`) + code template.
 - [ ] `GET /paths/{slug}/weeks/{n}` returns a stable shape with a placeholder `userState` object (per-problem `touches[5]` + week rollup, `populated: false`).
 - [ ] The Problem link routes to the S05 stub; both screens match the Week/Concept artboards.
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).

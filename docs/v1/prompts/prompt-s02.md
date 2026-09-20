@@ -4,7 +4,7 @@
 > **Plan:** [`../sprints/sprint-02.md`](../sprints/sprint-02.md)   ·   **Milestone:** M1 — OAuth login works end-to-end   ·   **Prereqs:** [S01](../sprints/sprint-01.md)
 
 ## Read first
-- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions: match `theme.css`, respect service boundaries, conventional commits, do not commit/push unless asked.
+- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions: match `theme.css`, respect service boundaries, conventional commits, ship at session end (AGENT.md land-and-sync).
 - [`../../adr/0006-authn-authz.md`](../../adr/0006-authn-authz.md) — the auth model: OAuth -> opaque server-session cookie; gateway-minted RS256 JWT; JWKS verify. No passwords.
 - [`../../adr/0005-data-ownership-and-migrations.md`](../../adr/0005-data-ownership-and-migrations.md) — one `xlearndb`, schema-per-service, per-service role; goose (embedded, startup + advisory lock) + sqlc/pgx.
 - [`../../adr/0009-deployment-and-gitops.md`](../../adr/0009-deployment-and-gitops.md) — mirror `../infra`: `charts/project` HelmRelease, GHCR image, Flux image-automation, SOPS secrets, pull-based (no `kubectl`).
@@ -75,7 +75,7 @@ makes OAuth login real end-to-end, and lays the JWT/JWKS propagation pattern eve
 - Store no passwords anywhere; the session cookie is opaque + revocable (HttpOnly Secure SameSite=Lax, path `/xlearn`). Internal auth is the gateway-minted short-TTL RS256 JWT, verified via JWKS — no `identity` call on the hot path.
 - Emit `xlearn.identity.account_created` via the transactional outbox (write domain row + outbox row in one tx; relay publishes). Route only on gateway; identity is ClusterIP (`route.enabled: false`).
 - Pod hardening: inherit chart defaults (non-root, read-only rootfs, dropped caps). Structured slog JSON logs to stdout.
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).
 
 ## Deliverables
 - `cmd/identity` + `internal/identity` (handlers, sqlc store, goose migrations for schema `identity`), with `/healthz` + `/readyz`.
@@ -94,4 +94,4 @@ makes OAuth login real end-to-end, and lays the JWT/JWKS propagation pattern eve
 - [ ] Unauthenticated requests to app routes redirect to OAuth; `GET /me` returns the account + onboarding state (including `path_chosen` after step 1).
 - [ ] Downstream calls carry a gateway-minted JWT; a service verifies it via JWKS (demonstrated on identity or a stub protected route).
 - [ ] identity is deployed to prod via Flux as ClusterIP; the `xlearndb` `identity` schema is migrated on startup; secrets are via SOPS. **(M1)**
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).

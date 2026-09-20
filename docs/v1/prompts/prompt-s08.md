@@ -5,7 +5,7 @@
 
 ## Read first
 
-- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions (dark theme, service boundaries, don't commit/push unless asked).
+- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions (dark theme, service boundaries, ship at session end (AGENT.md land-and-sync)).
 - [`../../architecture/services.md`](../../architecture/services.md) — the **assessment** service (mock aggregate): owned schema, internal API, emits/consumes.
 - [`../../architecture/data-model.md`](../../architecture/data-model.md) — schema `assessment`: `mock_session`, `rubric_score`, `inbox` (and the S09 projection tables you must **not** create yet).
 - [`../../architecture/events.md`](../../architecture/events.md) — `xlearn.assessment.mock_completed`, the outbox/inbox pattern, `XLEARN_ASSESSMENT` stream, durable pull consumers.
@@ -82,7 +82,7 @@ and consumer scaffold so they slot in without rework.
 - **Pull-based GitOps**: all deploy config goes through the `infra` repo and Flux — never `kubectl apply`
   by hand. Mirror `infra` conventions exactly (copy `airlift.yaml`; GHCR image
   `ghcr.io/sujaykumarsuman/xlearn-assessment`; build-semver auto-deploy from `main`).
-- Do **not** commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).
 
 ## Deliverables
 
@@ -112,4 +112,4 @@ and consumer scaffold so they slot in without rework.
 - [ ] `xlearn.assessment.mock_completed` is emitted via the outbox; assessment is deployed to prod as a
       **ClusterIP** service.
 - [ ] The **Mock** screen matches the artboard across setup / live / results.
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).

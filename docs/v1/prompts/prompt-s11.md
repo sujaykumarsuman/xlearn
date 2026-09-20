@@ -4,7 +4,7 @@
 > **Plan:** [`../sprints/sprint-11.md`](../sprints/sprint-11.md)   ·   **Milestone:** M6 — feature-complete v1   ·   **Prereqs:** [S10](../sprints/sprint-10.md), [S05](../sprints/sprint-05.md)
 
 ## Read first
-- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions: reuse `theme.css`, respect service boundaries, do not commit/push unless asked.
+- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions: reuse `theme.css`, respect service boundaries, ship at session end (AGENT.md land-and-sync).
 - [`../../adr/0007-ai-coach-byo-key-and-secrets.md`](../../adr/0007-ai-coach-byo-key-and-secrets.md) — **the governing ADR**: envelope encryption, SOPS master key, provider access, handling rules.
 - [`../../adr/0006-authn-authz.md`](../../adr/0006-authn-authz.md) — gateway-minted RS256 JWT + JWKS; how coach trusts inbound calls.
 - [`../../architecture/services.md`](../../architecture/services.md) — the `coach` section (owns schema `coach`; API; emits no events) and the service<->screen matrix.
@@ -73,7 +73,7 @@ and never sees the raw key.
   `ghcr.io/sujaykumarsuman/xlearn-coach`; image-automation setter `# {"$imagepolicy": "flux-system:xlearn-coach:tag"}`;
   `ImagePolicy` semver `>=0.1.0`; read-only rootfs; deploy **ClusterIP** (only the gateway is routed, at `/xlearn`).
 - **Pull-based GitOps:** never `kubectl apply` by hand — changes land via Flux from `main` (build-semver
-  auto-deploy). Do not commit or push unless asked.
+  auto-deploy). Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).
 
 ## Deliverables
 - `cmd/coach` + `internal/coach` (service, handlers, sqlc queries) with `/healthz` + `/readyz` and slog JSON logs.
@@ -104,4 +104,4 @@ and never sees the raw key.
       routes back to Settings.
 - [ ] The `xl-coach`/`xl-fab` panel is wired on **every** screen, matching the artboards.
 - [ ] `coach` is deployed to prod (ClusterIP) with the SOPS master key mounted; **v1 is feature-complete (M6)**.
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).

@@ -90,7 +90,7 @@ practice emits here, so the schema, events, and outbox must be right.
   `# {"$imagepolicy": "flux-system:xlearn-practice:tag"}` setter; ImagePolicy semver `>=0.1.0`; SOPS/age
   secrets under `infra/apps/secrets/*.enc.yaml`; only gateway routes (Traefik `/xlearn`); read-only rootfs
   from chart defaults. **Pull-based GitOps — never `kubectl apply` by hand.**
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).
 
 ## Deliverables
 
@@ -126,4 +126,4 @@ practice emits here, so the schema, events, and outbox must be right.
       outbox in one tx; below-Clean is flagged in the event.
 - [ ] NATS JetStream is deployed and healthy; practice deployed to prod via Flux; Problem ★ matches the
       artboard. **M3 met.**
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).

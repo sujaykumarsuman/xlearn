@@ -5,7 +5,7 @@
 
 ## Read first
 
-- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions; do not commit/push unless asked; keep the dark theme.
+- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions; ship at session end (AGENT.md land-and-sync); keep the dark theme.
 - [`../../adr/0009-deployment-and-gitops.md`](../../adr/0009-deployment-and-gitops.md) — the 1.0 image-policy switch (`>=0.1.0` -> `>=1.0.0`), infra file map, single-node constraints.
 - [`../../git-strategy.md`](../../git-strategy.md) — release train; build-semver -> release-tag mode; what "cut 1.0" means.
 - [`../../architecture/api.md`](../../architecture/api.md) — the gateway surface, the `agg` endpoints to profile, the OpenAPI note, and `/xlearn/api/v1` versioning.
@@ -62,7 +62,7 @@ the deploy mode to release-semver tags and tagging `v1.0.0` (M7).
 - Async stays idempotent: transactional outbox + dedupe-on-`event_id` consumers; the e2e must use the real NATS path.
 - Do not regress security: BYO-key encrypted at rest; gateway-minted RS256 JWT / JWKS intact; caches are per-account and never cross-user.
 - Inherit chart pod hardening (non-root, read-only rootfs, dropped caps).
-- **Do not commit or push unless asked** — including the `v1.0.0` tag and any infra change.
+- **Ship at session end** per AGENT.md land-and-sync (standing directive; no separate ask) — including the `v1.0.0` tag and any infra change.
 
 ## Deliverables
 
@@ -83,4 +83,4 @@ the deploy mode to release-semver tags and tagging `v1.0.0` (M7).
 - [ ] All 12 screens have complete error / empty / loading states and pass the a11y pass.
 - [ ] Core-loop e2e is green in CI and runs the real NATS event flow; `docs/architecture/openapi.yaml` is generated and drift-checked in CI.
 - [ ] **M7 gate:** 1.0 tagged (`v1.0.0`); infra image-automation switched to `>=1.0.0`; `/xlearn/api/v1` live; docs updated (`git-strategy.md` + `status.md`, M7).
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).

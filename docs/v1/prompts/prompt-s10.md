@@ -4,7 +4,7 @@
 > **Plan:** [`../sprints/sprint-10.md`](../sprints/sprint-10.md)   ·   **Milestone:** none   ·   **Prereqs:** [S02](../sprints/sprint-02.md), [S07](../sprints/sprint-07.md)
 
 ## Read first
-- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions (dark theme, service boundaries, GitOps, don't commit/push unless asked).
+- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions (dark theme, service boundaries, GitOps, ship at session end (AGENT.md land-and-sync)).
 - [`../sprints/sprint-10.md`](../sprints/sprint-10.md) — this sprint's plan, scope, acceptance, and the Status table you will keep current.
 - [`../../architecture/services.md`](../../architecture/services.md) — `identity` (account/onboarding) and the `notifications` worker inside `review`.
 - [`../../architecture/data-model.md`](../../architecture/data-model.md) — schema `identity`: `account` (`display_name`, `timezone`, `study_budget_json`, `reminders_json`) + `onboarding` (`path_chosen`, `budget_set`, `key_added`, `completed_at`).
@@ -59,7 +59,7 @@ the Settings **API-keys section shell** so the next sprint (S11, coach) has a re
 - Notifications consumer stays idempotent (dedupe on `event_id`); the sweep/worker already exists from S07 — extend, don't duplicate.
 - **Do not fake coach key storage** — the API-keys store/delete are shell-only until S11.
 - Read-only rootfs, slog JSON logs, `/healthz`+`/readyz` unchanged; pull-based GitOps — never `kubectl apply`, deploy is Flux auto-bumping the identity + gateway image tags from `main`.
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).
 
 ## Deliverables
 - `identity`: `sqlc` queries + `PATCH /me` handler (profile / budget / timezone / reminders); goose migration only if a column is missing.
@@ -78,4 +78,4 @@ the Settings **API-keys section shell** so the next sprint (S11, coach) has a re
 - [ ] First-run onboarding runs all 3 steps (path -> budget -> key, key skippable) and marks completion (`onboarding.completed_at` set); a completed account is not re-routed through the flow.
 - [ ] Reminders respect the study budget + timezone (daily reminder fires at the local time; disabled prefs suppress).
 - [ ] Settings screen matches the artboard, including the API-keys section shell (functional store/delete deferred to S11).
-- Do not commit or push unless asked.
+- Ship at session end per AGENT.md land-and-sync (standing directive; no separate ask needed).

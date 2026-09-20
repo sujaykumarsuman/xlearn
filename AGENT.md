@@ -55,12 +55,21 @@ Current build line: **v1**.
 - Match the design: use `design-system/theme.css` tokens/components; keep the dark theme.
   Difficulty tokens are Easy=green (`--ds-ok`), Medium=amber (`--ds-warn`), Hard=red (`--ds-err`).
 - Respect service boundaries once defined in `docs/architecture/`; don't collapse back to a monolith.
-- Git: `main` is the default branch. Follow `docs/git-strategy.md` once it exists. Commit messages
-  are conventional (`feat:`, `fix:`, `docs:`, …). **Don't commit or push unless asked.**
-- **End of session — land and sync:** once the session's work is approved, don't leave it dangling.
-  Merge the PR(s) after CI is green (fix-then-merge on failure), then check out `main` and `git pull`
-  in **every repo touched this session** (this repo and any sibling such as `../infra`) so local `main`
-  is fully synced. The next session must be able to start the next sprint from an up-to-date local
-  `main` — never end a session with merged work unpulled or open PRs left hanging.
+- Git: `main` is the default branch. Follow [`docs/git-strategy.md`](docs/git-strategy.md). Commit
+  messages are conventional (`feat:`, `fix:`, `docs:`, …), squash-merged via PR. Don't commit or push
+  **mid-task** or on a whim — but shipping the finished sprint at end of session (below) is a
+  **standing instruction that IS the authorization**, so you do **not** need a separate ask for it.
+  This **supersedes** any "do not commit or push unless asked" boilerplate in the per-sprint
+  `docs/v1/prompts/prompt-sNN.md` files.
+- **End of session — land and sync (standing directive; this is your authorization to ship):** when
+  the session's work is code-complete and green (build/test/lint + `sqlc diff` pass), don't leave it
+  dangling — ship it **without waiting for a further prompt**: branch (`feat/…` etc.) → conventional
+  commit(s) with the required attribution lines → push → open a PR in **every repo touched this
+  session** (this repo and any sibling such as `../infra`) → wait for CI green (fix-then-merge on
+  failure) → squash-merge → let Flux build+deploy → verify live → `git checkout main && git pull` in
+  every repo touched so local `main` is fully synced. The next session must be able to start the next
+  sprint from an up-to-date local `main` — never end a session with merged work unpulled or open PRs
+  left hanging. Caveats: don't enable PR **auto-merge** unless asked (merge yourself once CI is green);
+  and if the user says "hold / don't ship," that overrides for that session.
 - Record notable technical decisions as ADRs; keep docs concise and skimmable.
 - Update `docs/v1/status.md` when you finish a chunk of build work.
