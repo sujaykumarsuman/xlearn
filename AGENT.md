@@ -57,5 +57,10 @@ Current build line: **v1**.
 - Respect service boundaries once defined in `docs/architecture/`; don't collapse back to a monolith.
 - Git: `main` is the default branch. Follow `docs/git-strategy.md` once it exists. Commit messages
   are conventional (`feat:`, `fix:`, `docs:`, …). **Don't commit or push unless asked.**
+- **End of session — land and sync:** once the session's work is approved, don't leave it dangling.
+  Merge the PR(s) after CI is green (fix-then-merge on failure), then check out `main` and `git pull`
+  in **every repo touched this session** (this repo and any sibling such as `../infra`) so local `main`
+  is fully synced. The next session must be able to start the next sprint from an up-to-date local
+  `main` — never end a session with merged work unpulled or open PRs left hanging.
 - Record notable technical decisions as ADRs; keep docs concise and skimmable.
 - Update `docs/v1/status.md` when you finish a chunk of build work.
