@@ -6,8 +6,9 @@
 
 ## Status
 
-_Overall:_ ✅ Done — code complete, full suite green (incl. a real-Postgres integration run of the
-gated flow + outbox), practice image + project/NATS charts render/build clean; shipping to prod via Flux.
+_Overall:_ ✅ Done — **merged & deployed to prod via Flux** (`xlearn-practice`/`xlearn-gateway`:`0.1.15`;
+NATS JetStream + the `xlearn_practice` DB role/schema up). Full suite green incl. a real-Postgres
+integration run of the gated flow + outbox; Problem routes verified live (session-gated →401). **M3 reached.**
 
 | # | Task | Status |
 |---|------|--------|
