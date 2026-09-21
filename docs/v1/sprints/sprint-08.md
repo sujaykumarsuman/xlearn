@@ -6,14 +6,14 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done — built, reviewed & green (deploy tracked in [status.md](../status.md))
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | assessment service + schema + consumer bootstrap | ⬜ |
-| 2 | mock session lifecycle | ⬜ |
-| 3 | 7-dimension rubric + trend | ⬜ |
-| 4 | Mock screen | ⬜ |
+| 1 | assessment service + schema + consumer bootstrap | ✅ |
+| 2 | mock session lifecycle | ✅ |
+| 3 | 7-dimension rubric + trend | ✅ |
+| 4 | Mock screen | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row).

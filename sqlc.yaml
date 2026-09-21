@@ -65,3 +65,20 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_empty_slices: true
+  - engine: "postgresql"
+    # assessment: the timed mock-interview aggregate (mock_session + 7-dim rubric) +
+    # transactional outbox + idempotent inbox + the S09 projection consume seam (S08).
+    # Same pattern — schema.sql declares the infra-provisioned schema, migrations supply
+    # tables.
+    schema:
+      - "internal/assessment/store/schema.sql"
+      - "internal/assessment/store/migrations"
+    queries: "internal/assessment/store/queries"
+    gen:
+      go:
+        package: "gen"
+        out: "internal/assessment/store/gen"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_json_tags: false
+        emit_empty_slices: true

@@ -51,18 +51,20 @@ func run() int {
 	}
 
 	gw := gateway.New(gateway.Options{
-		BasePath:          cfg.BasePath,
-		Version:           xlearn.Version,
-		Dist:              dist,
-		Logger:            logger,
-		Signer:            signer,
-		IdentityBaseURL:   cfg.IdentityBaseURL,
-		AudienceIdentity:  cfg.JWT.AudienceIdentity,
-		CurriculumBaseURL: cfg.CurriculumBaseURL,
-		PracticeBaseURL:   cfg.PracticeBaseURL,
-		AudiencePractice:  cfg.JWT.AudiencePractice,
-		ReviewBaseURL:     cfg.ReviewBaseURL,
-		AudienceReview:    cfg.JWT.AudienceReview,
+		BasePath:           cfg.BasePath,
+		Version:            xlearn.Version,
+		Dist:               dist,
+		Logger:             logger,
+		Signer:             signer,
+		IdentityBaseURL:    cfg.IdentityBaseURL,
+		AudienceIdentity:   cfg.JWT.AudienceIdentity,
+		CurriculumBaseURL:  cfg.CurriculumBaseURL,
+		PracticeBaseURL:    cfg.PracticeBaseURL,
+		AudiencePractice:   cfg.JWT.AudiencePractice,
+		ReviewBaseURL:      cfg.ReviewBaseURL,
+		AudienceReview:     cfg.JWT.AudienceReview,
+		AssessmentBaseURL:  cfg.AssessmentBaseURL,
+		AudienceAssessment: cfg.JWT.AudienceAssessment,
 	})
 
 	handler := httpx.Chain(gw.Handler(),
