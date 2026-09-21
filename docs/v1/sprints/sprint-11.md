@@ -6,7 +6,7 @@
 
 ## Status
 
-_Overall:_ ✅ Done — code-complete + green; shipping
+_Overall:_ ✅ Done — merged & deployed to prod (`0.1.27`)
 
 | # | Task | Status |
 |---|------|--------|
