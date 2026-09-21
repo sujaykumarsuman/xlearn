@@ -44,6 +44,11 @@ func (g *Gateway) newAPIMux() *http.ServeMux {
 	mux.HandleFunc("POST /api/problems/{id}/attempt/start", g.handleAttemptStart)
 	mux.HandleFunc("POST /api/problems/{id}/reveal", g.handleReveal)
 	mux.HandleFunc("POST /api/problems/{id}/outcome", g.handleOutcome)
+	// Revision (api.md): the due queue is a BFF aggregation (review's bare-id queue +
+	// curriculum problem metadata); the score write proxies to review with a minted
+	// review-scoped JWT. External /revision maps to review's internal /revisions.
+	mux.HandleFunc("GET /api/revision/due", g.handleRevisionDue)
+	mux.HandleFunc("POST /api/revision/{itemId}/score", g.handleRevisionScore)
 	// Catch-all: unknown /api/* is a 404 envelope, never the SPA shell.
 	mux.HandleFunc("/api/", g.apiNotFound)
 	return mux
@@ -355,6 +360,73 @@ func (g *Gateway) mintForPractice(accountID string) (string, bool) {
 // mintForPracticeW mints a practice-scoped JWT, writing the error envelope on failure.
 func (g *Gateway) mintForPracticeW(w http.ResponseWriter, accountID string) (string, bool) {
 	return g.mintFor(w, accountID, g.audPractice)
+}
+
+// --- revision (review service) ---
+
+// handleRevisionDue is the Revision-queue BFF aggregation (api.md): it fetches the
+// learner's prioritised due queue from review, then enriches each bare-id item with
+// its curriculum problem metadata (title/difficulty/pattern) so the screen renders
+// full cards. If curriculum can't resolve a problem the item degrades to id-only.
+func (g *Gateway) handleRevisionDue(w http.ResponseWriter, r *http.Request) {
+	accountID, ok := g.authAccount(w, r)
+	if !ok {
+		return
+	}
+	if g.review == nil {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "review not configured")
+		return
+	}
+	token, ok := g.mintForReviewW(w, accountID)
+	if !ok {
+		return
+	}
+	body, status, err := g.review.get(r.Context(), token, "/revisions/due")
+	if err != nil {
+		g.log.Error("bff revision/due: review call failed", "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "review unavailable")
+		return
+	}
+	if status != http.StatusOK {
+		passthrough(w, status, body)
+		return
+	}
+	passthrough(w, http.StatusOK, g.enrichDueQueue(r.Context(), body))
+}
+
+// handleRevisionScore proxies the auto-score submission to review (POST
+// /revisions/{id}/score), passing its status + JSON envelope straight through.
+func (g *Gateway) handleRevisionScore(w http.ResponseWriter, r *http.Request) {
+	accountID, ok := g.authAccount(w, r)
+	if !ok {
+		return
+	}
+	if g.review == nil {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "review not configured")
+		return
+	}
+	token, ok := g.mintForReviewW(w, accountID)
+	if !ok {
+		return
+	}
+	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
+		return
+	}
+	upstream := "/revisions/" + url.PathEscape(r.PathValue("itemId")) + "/score"
+	body, status, err := g.review.post(r.Context(), token, upstream, reqBody)
+	if err != nil {
+		g.log.Error("bff revision score: review call failed", "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "review unavailable")
+		return
+	}
+	passthrough(w, status, body)
+}
+
+// mintForReviewW mints a review-scoped JWT, writing the error envelope on failure.
+func (g *Gateway) mintForReviewW(w http.ResponseWriter, accountID string) (string, bool) {
+	return g.mintFor(w, accountID, g.audReview)
 }
 
 func (g *Gateway) handleGetConcept(w http.ResponseWriter, r *http.Request) {

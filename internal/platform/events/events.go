@@ -4,9 +4,9 @@
 // publishes unacked rows and marks them sent; consumers dedupe on Event.ID.
 //
 // This package ships the event envelope, the Publisher/Consumer/Handler seams, the
-// Relay (relay.go), the JetStream NatsPublisher (nats.go, S05) and the no-broker
-// LogPublisher fallback. Durable JetStream consumers (review/assessment) land in
-// S06/S08.
+// Relay (relay.go), the JetStream NatsPublisher (nats.go, S05), the durable pull
+// NatsConsumer (consumer.go, S06 — review is the first consumer) and the no-broker
+// LogPublisher fallback.
 package events
 
 import "context"
@@ -36,8 +36,10 @@ type Handler interface {
 	Handle(ctx context.Context, e Event) error
 }
 
-// Consumer subscribes a durable handler to a subject.
+// Consumer binds a durable handler to a subject filter on a JetStream stream.
 type Consumer interface {
-	// Subscribe registers h for events on subject until ctx is cancelled.
-	Subscribe(ctx context.Context, subject string, h Handler) error
+	// Subscribe registers h under durable-consumer name `durable` for events
+	// matching filterSubject, delivering until Stop or ctx cancellation. The
+	// durable name makes delivery resumable (offline catch-up) and at-least-once.
+	Subscribe(ctx context.Context, durable, filterSubject string, h Handler) (Subscription, error)
 }

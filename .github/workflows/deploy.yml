@@ -18,6 +18,7 @@ jobs:
       identity: ${{ steps.filter.outputs.identity }}
       curriculum: ${{ steps.filter.outputs.curriculum }}
       practice: ${{ steps.filter.outputs.practice }}
+      review: ${{ steps.filter.outputs.review }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -58,6 +59,14 @@ jobs:
               - 'go.mod'
               - 'go.sum'
               - 'deploy/practice.Dockerfile'
+              - '.github/workflows/deploy.yml'
+            review:
+              - 'cmd/review/**'
+              - 'internal/review/**'
+              - 'internal/platform/**'
+              - 'go.mod'
+              - 'go.sum'
+              - 'deploy/review.Dockerfile'
               - '.github/workflows/deploy.yml'
 
   gateway:
@@ -114,5 +123,18 @@ jobs:
     with:
       image: ghcr.io/sujaykumarsuman/xlearn-practice
       dockerfile: deploy/practice.Dockerfile
+      build-args: |
+        VERSION=0.1.${{ github.run_number }}
+
+  review:
+    needs: changes
+    if: ${{ needs.changes.outputs.review == 'true' }}
+    permissions:
+      contents: read
+      packages: write
+    uses: sujaykumarsuman/.github/.github/workflows/build-push.yml@main
+    with:
+      image: ghcr.io/sujaykumarsuman/xlearn-review
+      dockerfile: deploy/review.Dockerfile
       build-args: |
         VERSION=0.1.${{ github.run_number }}
