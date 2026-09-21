@@ -6,7 +6,7 @@
 
 ## Status
 
-_Overall:_ ✅ Done — built, reviewed & green (deploy tracked in [status.md](../status.md))
+_Overall:_ ✅ Done — merged & deployed to prod via Flux (`0.1.21`)
 
 | # | Task | Status |
 |---|------|--------|
