@@ -75,10 +75,17 @@ func (g *Gateway) newAPIMux() *http.ServeMux {
 	// due revisions, weak area, and streak/solved/mock stats — fanned out to assessment,
 	// review and curriculum in parallel.
 	mux.HandleFunc("GET /api/dashboard", g.handleDashboard)
-	// Coach key (api.md, S10 shell): the masked read only. Proxies to coach when it is
-	// configured (S11), else renders the "no key — coach off" empty state so Settings
-	// works before the coach service exists. Store/delete land in S11.
+	// Coach (api.md, S11): the masked key read/store/delete, the per-page thread history,
+	// and the streaming chat. The key routes proxy to coach with a minted coach-scoped
+	// JWT (coach encrypts + masks; the gateway never sees the raw key). Chat is an SSE
+	// proxy — the gateway derives the SERVER-AUTHORITATIVE behaviour mode from practice's
+	// state and relays coach's token stream live. GET /coach/key degrades to the "no key —
+	// coach off" empty state when coach is unconfigured.
 	mux.HandleFunc("GET /api/coach/key", g.handleCoachKey)
+	mux.HandleFunc("PUT /api/coach/key", g.handlePutCoachKey)
+	mux.HandleFunc("DELETE /api/coach/key", g.handleDeleteCoachKey)
+	mux.HandleFunc("GET /api/coach/thread", g.handleCoachThread)
+	mux.HandleFunc("POST /api/coach/chat", g.handleCoachChat)
 	// Catch-all: unknown /api/* is a 404 envelope, never the SPA shell.
 	mux.HandleFunc("/api/", g.apiNotFound)
 	return mux

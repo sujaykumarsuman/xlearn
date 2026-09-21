@@ -20,6 +20,7 @@ jobs:
       practice: ${{ steps.filter.outputs.practice }}
       review: ${{ steps.filter.outputs.review }}
       assessment: ${{ steps.filter.outputs.assessment }}
+      coach: ${{ steps.filter.outputs.coach }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -76,6 +77,14 @@ jobs:
               - 'go.mod'
               - 'go.sum'
               - 'deploy/assessment.Dockerfile'
+              - '.github/workflows/deploy.yml'
+            coach:
+              - 'cmd/coach/**'
+              - 'internal/coach/**'
+              - 'internal/platform/**'
+              - 'go.mod'
+              - 'go.sum'
+              - 'deploy/coach.Dockerfile'
               - '.github/workflows/deploy.yml'
 
   gateway:
@@ -158,5 +167,18 @@ jobs:
     with:
       image: ghcr.io/sujaykumarsuman/xlearn-assessment
       dockerfile: deploy/assessment.Dockerfile
+      build-args: |
+        VERSION=0.1.${{ github.run_number }}
+
+  coach:
+    needs: changes
+    if: ${{ needs.changes.outputs.coach == 'true' }}
+    permissions:
+      contents: read
+      packages: write
+    uses: sujaykumarsuman/.github/.github/workflows/build-push.yml@main
+    with:
+      image: ghcr.io/sujaykumarsuman/xlearn-coach
+      dockerfile: deploy/coach.Dockerfile
       build-args: |
         VERSION=0.1.${{ github.run_number }}

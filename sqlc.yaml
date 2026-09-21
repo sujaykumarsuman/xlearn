@@ -82,3 +82,20 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_empty_slices: true
+  - engine: "postgresql"
+    # coach: the AI-coach state (S11) — the envelope-encrypted provider key config plus
+    # per-page-context chat threads/messages. No outbox/inbox (coach emits no events and
+    # consumes none via NATS). Same pattern — schema.sql declares the infra-provisioned
+    # schema, migrations supply tables.
+    schema:
+      - "internal/coach/store/schema.sql"
+      - "internal/coach/store/migrations"
+    queries: "internal/coach/store/queries"
+    gen:
+      go:
+        package: "gen"
+        out: "internal/coach/store/gen"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_json_tags: false
+        emit_empty_slices: true

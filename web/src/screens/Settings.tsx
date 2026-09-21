@@ -3,7 +3,7 @@ import { Icon } from "../components/Icon";
 import { BudgetFields } from "../components/BudgetFields";
 import { DEFAULT_WEEKDAY, DEFAULT_WEEKEND, budgetEta, clampWeekday, weekendLabel } from "../lib/budget";
 import { useMe, usePatchMe, type Account, type WeekendBand } from "../lib/auth";
-import { useCoachKey, type CoachKey } from "../lib/settings";
+import { providerLabel, useCoachKey, useDeleteCoachKey, usePutCoachKey, type CoachKey } from "../lib/settings";
 
 /**
  * Settings is the D6 account surface (Settings.dc.html): Profile, Study budget and
@@ -195,33 +195,43 @@ function BudgetSection({ account }: { account: Account }) {
   );
 }
 
-// --- API keys (S10 shell) ---
+// --- API keys (S11: functional against PUT/GET/DELETE /coach/key) ---
 
 const ADD_PROVIDERS = [
   { key: "anthropic", label: "Anthropic" },
   { key: "openai", label: "OpenAI" },
-  { key: "google", label: "Google" },
 ] as const;
+
+type ProviderKey = (typeof ADD_PROVIDERS)[number]["key"];
 
 function ApiKeysSection() {
   const coach = useCoachKey();
   const keys = coach.data?.keys ?? [];
-  const connected = coach.data?.connected ?? false;
+  const activeKey = keys[0];
   const [addOpen, setAddOpen] = useState(false);
-  const [provider, setProvider] = useState<(typeof ADD_PROVIDERS)[number]["key"]>("anthropic");
+  const [provider, setProvider] = useState<ProviderKey>("anthropic");
+  const [rawKey, setRawKey] = useState("");
+  const [model, setModel] = useState("");
+  const put = usePutCoachKey();
+
+  const canSubmit = rawKey.trim().length > 0 && !put.isPending;
+
+  const submit = () => {
+    if (!canSubmit) return;
+    put.mutate(
+      { provider, key: rawKey.trim(), default_model: model.trim() || undefined },
+      {
+        onSuccess: () => {
+          setAddOpen(false);
+          setRawKey("");
+          setModel("");
+        },
+      },
+    );
+  };
 
   return (
-    <Panel
-      title="API keys · your coach"
-      icon="key"
-      right={
-        connected ? (
-          <span className="ds-badge ds-badge--ok">Connected</span>
-        ) : (
-          <span className="ds-badge ds-badge--warn">No key — coach off</span>
-        )
-      }
-    >
+    <Panel title="API keys · your coach" icon="key" right={<KeyStatusBadge k={activeKey} />}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--ds-muted)" }}>
           <Icon name="lock" className="xl-ico--sm" style={{ color: "var(--ds-ok)" }} />
@@ -250,7 +260,7 @@ function ApiKeysSection() {
 
         {!addOpen && (
           <button type="button" className="ds-btn ds-btn--secondary" onClick={() => setAddOpen(true)} style={{ alignSelf: "flex-start" }}>
-            <Icon name="plus" className="xl-ico--sm" /> Add a provider
+            <Icon name="plus" className="xl-ico--sm" /> {keys.length === 0 ? "Add a provider" : "Replace key"}
           </button>
         )}
 
@@ -276,17 +286,51 @@ function ApiKeysSection() {
               <label className="ds-field__label" htmlFor="add-key">
                 API key
               </label>
-              <input id="add-key" className="ds-input ds-input--mono" type="password" placeholder={keyPlaceholder(provider)} aria-label="API key" />
+              <input
+                id="add-key"
+                className="ds-input ds-input--mono"
+                type="password"
+                placeholder={keyPlaceholder(provider)}
+                aria-label="API key"
+                value={rawKey}
+                onChange={(e) => setRawKey(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && submit()}
+              />
+            </div>
+            <div className="ds-field">
+              <label className="ds-field__label" htmlFor="add-model">
+                Default model <span style={{ color: "var(--ds-muted)", fontWeight: 400 }}>(optional)</span>
+              </label>
+              <input
+                id="add-model"
+                className="ds-input ds-input--mono"
+                placeholder={modelPlaceholder(provider)}
+                aria-label="Default model"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && submit()}
+              />
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <button type="button" className="ds-btn ds-btn--primary ds-btn--sm" disabled title="Coach key storage arrives with the coach">
-                <Icon name="check" className="xl-ico--sm" /> Add key
+              <button type="button" className="ds-btn ds-btn--primary ds-btn--sm" disabled={!canSubmit} onClick={submit}>
+                <Icon name="check" className="xl-ico--sm" /> {put.isPending ? "Saving…" : "Add key"}
               </button>
-              <button type="button" className="ds-btn ds-btn--ghost ds-btn--sm" onClick={() => setAddOpen(false)}>
+              <button
+                type="button"
+                className="ds-btn ds-btn--ghost ds-btn--sm"
+                onClick={() => {
+                  setAddOpen(false);
+                  setRawKey("");
+                  setModel("");
+                }}
+              >
                 Cancel
               </button>
-              <span style={{ fontSize: 11.5, color: "var(--ds-muted)", marginLeft: "auto" }}>Key storage arrives with the AI coach.</span>
+              <span style={{ fontSize: 11.5, color: "var(--ds-muted)", marginLeft: "auto" }}>
+                Sent straight to your encrypted store — never shown again.
+              </span>
             </div>
+            {put.isError && <span style={{ fontSize: 12, color: "var(--ds-err)" }}>Couldn’t store the key — check it and try again.</span>}
           </div>
         )}
       </div>
@@ -294,7 +338,16 @@ function ApiKeysSection() {
   );
 }
 
+/** KeyStatusBadge is the section header status: connected / disabled / no key. */
+function KeyStatusBadge({ k }: { k?: CoachKey }) {
+  if (!k) return <span className="ds-badge ds-badge--warn">No key — coach off</span>;
+  if (!k.enabled) return <span className="ds-badge ds-badge--warn">Key disabled</span>;
+  return <span className="ds-badge ds-badge--ok">Connected</span>;
+}
+
 function KeyRow({ k }: { k: CoachKey }) {
+  const put = usePutCoachKey();
+  const del = useDeleteCoachKey();
   return (
     <div
       style={{
@@ -309,29 +362,49 @@ function KeyRow({ k }: { k: CoachKey }) {
     >
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <b style={{ fontSize: 13.5 }}>{k.provider}</b>
-          <span className="ds-chip ds-chip--xs ds-mono">{k.default_model}</span>
-          {k.tested ? (
-            <span className="ds-badge ds-badge--ok">Connected</span>
-          ) : (
-            <span className="ds-chip ds-chip--xs">Untested</span>
-          )}
+          <b style={{ fontSize: 13.5 }}>{providerLabel(k.provider)}</b>
+          {k.default_model && <span className="ds-chip ds-chip--xs ds-mono">{k.default_model}</span>}
+          {k.enabled ? <span className="ds-badge ds-badge--ok">On</span> : <span className="ds-chip ds-chip--xs">Off</span>}
         </div>
         <div className="ds-mono" style={{ fontSize: 12, color: "var(--ds-muted)", marginTop: 3 }}>
           {k.masked_key}
         </div>
       </div>
-      <label className={k.enabled ? "ds-toggle ds-toggle--on" : "ds-toggle"} aria-hidden="true">
+      <button
+        type="button"
+        className="ds-iconbtn"
+        aria-label="Remove key"
+        title="Remove key"
+        onClick={() => del.mutate()}
+        disabled={del.isPending}
+        style={{ color: "var(--ds-muted)" }}
+      >
+        <Icon name="close" className="xl-ico--sm" />
+      </button>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={k.enabled}
+        aria-label={`${providerLabel(k.provider)} key enabled`}
+        className={k.enabled ? "ds-toggle ds-toggle--on" : "ds-toggle"}
+        onClick={() => put.mutate({ enabled: !k.enabled })}
+        disabled={put.isPending}
+        style={{ background: "none", border: "none", padding: 0 }}
+      >
         <span className="ds-toggle__track">
           <span className="ds-toggle__knob" />
         </span>
-      </label>
+      </button>
     </div>
   );
 }
 
-function keyPlaceholder(provider: string): string {
-  return provider === "anthropic" ? "sk-ant-…" : provider === "openai" ? "sk-…" : "AIza…";
+function keyPlaceholder(provider: ProviderKey): string {
+  return provider === "anthropic" ? "sk-ant-…" : "sk-…";
+}
+
+function modelPlaceholder(provider: ProviderKey): string {
+  return provider === "anthropic" ? "claude-3-5-sonnet-latest" : "gpt-4o-mini";
 }
 
 // --- Reminders ---

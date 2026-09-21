@@ -15,7 +15,7 @@ function renderApp(initialPath: string) {
   );
 }
 
-/** A settings fetch mock: /me (GET), /coach/key, and a PATCH /me capture. */
+/** A settings fetch mock: /me (GET), /coach/key (GET), and a PATCH /me capture. */
 function settingsMock(onPatch?: (body: unknown) => void, coach: { keys: unknown[]; connected: boolean } = { keys: [], connected: false }) {
   return installFetchMock((url, init) => {
     if (url.endsWith("/api/me") && init?.method === "PATCH") {
@@ -49,21 +49,84 @@ describe("Settings screen", () => {
     settingsMock();
     renderApp("/xlearn/settings");
     expect(await screen.findByText(/no key — coach off/i)).toBeInTheDocument();
-    // The store/delete are shell-only: the add form's "Add key" is present but disabled.
+    // Add key is disabled until a key is typed (S11: the store is now functional).
     fireEvent.click(await screen.findByRole("button", { name: /add a provider/i }));
     expect(screen.getByRole("button", { name: /add key/i })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText(/^api key$/i), { target: { value: "sk-ant-secret-key-1234" } });
+    expect(screen.getByRole("button", { name: /add key/i })).toBeEnabled();
   });
 
-  it("shows a Connected badge when coach reports an enabled key", async () => {
+  it("stores a key via PUT /coach/key and refreshes the masked read", async () => {
+    let putBody: unknown = null;
+    let keyState: { keys: unknown[]; connected: boolean } = { keys: [], connected: false };
+    installFetchMock((url, init) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.endsWith("/api/coach/key") && init?.method === "PUT") {
+        putBody = init?.body ? JSON.parse(String(init.body)) : null;
+        keyState = { keys: [{ provider: "openai", masked_key: "sk-...1234", default_model: "gpt-4o-mini", enabled: true }], connected: true };
+        return { status: 200, body: keyState };
+      }
+      if (url.endsWith("/api/coach/key")) return { status: 200, body: keyState };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/settings");
+
+    fireEvent.click(await screen.findByRole("button", { name: /add a provider/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^openai$/i }));
+    fireEvent.change(screen.getByLabelText(/^api key$/i), { target: { value: "sk-openai-secret-1234" } });
+    fireEvent.click(screen.getByRole("button", { name: /add key/i }));
+
+    await waitFor(() => expect(putBody).toEqual({ provider: "openai", key: "sk-openai-secret-1234" }));
+    expect(await screen.findByText("sk-...1234")).toBeInTheDocument();
+  });
+
+  it("shows a Connected badge and the masked key/model when a key is enabled", async () => {
     settingsMock(undefined, {
-      keys: [{ provider: "Anthropic", masked_key: "sk-ant-****4a2f", default_model: "claude-sonnet-5", enabled: true, tested: true }],
+      keys: [{ provider: "anthropic", masked_key: "sk-ant-...4a2f", default_model: "claude-sonnet-5", enabled: true }],
       connected: true,
     });
     renderApp("/xlearn/settings");
-    // "Connected" appears both as the header status and the per-key badge.
     expect((await screen.findAllByText(/^connected$/i)).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("sk-ant-****4a2f")).toBeInTheDocument();
+    expect(screen.getByText("sk-ant-...4a2f")).toBeInTheDocument();
     expect(screen.getByText("claude-sonnet-5")).toBeInTheDocument();
+    expect(screen.getByText("Anthropic")).toBeInTheDocument();
+  });
+
+  it("toggles a key's enabled flag via PUT /coach/key", async () => {
+    let putBody: unknown = null;
+    installFetchMock((url, init) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.endsWith("/api/coach/key") && init?.method === "PUT") {
+        putBody = init?.body ? JSON.parse(String(init.body)) : null;
+        return { status: 200, body: { keys: [{ provider: "openai", masked_key: "sk-...1234", default_model: "gpt-4o-mini", enabled: false }], connected: true } };
+      }
+      if (url.endsWith("/api/coach/key")) return { status: 200, body: { keys: [{ provider: "openai", masked_key: "sk-...1234", default_model: "gpt-4o-mini", enabled: true }], connected: true } };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/settings");
+    fireEvent.click(await screen.findByRole("switch", { name: /openai key enabled/i }));
+    await waitFor(() => expect(putBody).toEqual({ enabled: false }));
+  });
+
+  it("removes a key via DELETE /coach/key", async () => {
+    let deleted = false;
+    installFetchMock((url, init) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.endsWith("/api/coach/key") && init?.method === "DELETE") {
+        deleted = true;
+        return { status: 204 };
+      }
+      if (url.endsWith("/api/coach/key")) {
+        return deleted
+          ? { status: 200, body: { keys: [], connected: false } }
+          : { status: 200, body: { keys: [{ provider: "openai", masked_key: "sk-...1234", default_model: "gpt-4o-mini", enabled: true }], connected: true } };
+      }
+      return { status: 404 };
+    });
+    renderApp("/xlearn/settings");
+    fireEvent.click(await screen.findByRole("button", { name: /remove key/i }));
+    await waitFor(() => expect(deleted).toBe(true));
+    expect(await screen.findByText(/no key — coach off/i)).toBeInTheDocument();
   });
 
   it("saves profile edits via PATCH /me", async () => {
