@@ -43,6 +43,12 @@ type Options struct {
 	// CurriculumBaseURL is the curriculum service's internal URL. Empty disables the
 	// curriculum content proxy routes (they 503).
 	CurriculumBaseURL string
+	// PracticeBaseURL is the practice service's internal URL. Empty disables the
+	// practice-backed routes (attempt/reveal/outcome 503; the problem agg + week dots
+	// degrade to content-only).
+	PracticeBaseURL string
+	// AudiencePractice is the "aud" for JWTs forwarded to practice.
+	AudiencePractice string
 }
 
 // Gateway serves the SPA, the app BFF API and the k8s probes.
@@ -56,7 +62,9 @@ type Gateway struct {
 	signer      *auth.Signer
 	identity    *identityClient
 	curriculum  *curriculumClient
+	practice    *practiceClient
 	audIdentity string
+	audPractice string
 	api         *http.ServeMux
 }
 
@@ -74,12 +82,16 @@ func New(opt Options) *Gateway {
 		health:      health.New(),
 		signer:      opt.Signer,
 		audIdentity: opt.AudienceIdentity,
+		audPractice: opt.AudiencePractice,
 	}
 	if opt.IdentityBaseURL != "" {
 		g.identity = newIdentityClient(opt.IdentityBaseURL)
 	}
 	if opt.CurriculumBaseURL != "" {
 		g.curriculum = newCurriculumClient(opt.CurriculumBaseURL)
+	}
+	if opt.PracticeBaseURL != "" {
+		g.practice = newPracticeClient(opt.PracticeBaseURL)
 	}
 	g.api = g.newAPIMux()
 	return g

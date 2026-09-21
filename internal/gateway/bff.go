@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
@@ -35,8 +36,14 @@ func (g *Gateway) newAPIMux() *http.ServeMux {
 	mux.HandleFunc("GET /api/paths", g.handleListPaths)
 	mux.HandleFunc("GET /api/paths/{slug}", g.handleGetPath)
 	mux.HandleFunc("GET /api/paths/{slug}/weeks/{n}", g.handleGetWeek)
-	mux.HandleFunc("GET /api/problems/{id}", g.handleGetProblem)
 	mux.HandleFunc("GET /api/concepts/{slug}", g.handleGetConcept)
+	// Problem workspace (api.md): the GET is a BFF aggregation (curriculum content
+	// limited to unlocked stages + practice state + active timer); the writes proxy
+	// to practice with a minted practice-scoped JWT (ADR-0006).
+	mux.HandleFunc("GET /api/problems/{id}", g.handleGetProblem)
+	mux.HandleFunc("POST /api/problems/{id}/attempt/start", g.handleAttemptStart)
+	mux.HandleFunc("POST /api/problems/{id}/reveal", g.handleReveal)
+	mux.HandleFunc("POST /api/problems/{id}/outcome", g.handleOutcome)
 	// Catch-all: unknown /api/* is a 404 envelope, never the SPA shell.
 	mux.HandleFunc("/api/", g.apiNotFound)
 	return mux
@@ -151,11 +158,13 @@ func (g *Gateway) handleGetPath(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleGetWeek is the week BFF aggregation (api.md `agg`): it fetches the curriculum
-// week content, then layers a per-user five-touch/solve state (placeholder until
-// practice/review land — S05/S06, ADR-0013). Curriculum's own status/envelope for a
-// bad path or unknown week is propagated unchanged.
+// week content, then layers the learner's per-problem solve state from practice
+// (S05) — falling back to the honest placeholder when practice is unavailable
+// (ADR-0013; the five-touch schedule itself lands with review, S06). Curriculum's own
+// status/envelope for a bad path or unknown week is propagated unchanged.
 func (g *Gateway) handleGetWeek(w http.ResponseWriter, r *http.Request) {
-	if _, ok := g.authAccount(w, r); !ok {
+	accountID, ok := g.authAccount(w, r)
+	if !ok {
 		return
 	}
 	n := r.PathValue("n")
@@ -179,7 +188,8 @@ func (g *Gateway) handleGetWeek(w http.ResponseWriter, r *http.Request) {
 		passthrough(w, status, body)
 		return
 	}
-	merged, err := aggregateWeek(body)
+	states, populated := g.weekPracticeStates(r, accountID, body)
+	merged, err := aggregateWeek(body, states, populated)
 	if err != nil {
 		g.log.Error("bff week aggregation: merge failed", "path", upstream, "err", err)
 		writeError(w, http.StatusBadGateway, "upstream", "curriculum returned malformed content")
@@ -188,11 +198,163 @@ func (g *Gateway) handleGetWeek(w http.ResponseWriter, r *http.Request) {
 	passthrough(w, http.StatusOK, merged)
 }
 
+// weekPracticeStates fetches the learner's practice states for the week's problems.
+// It parses the problem ids out of the curriculum content, calls practice
+// GET /state?ids=…, and returns the states keyed by id plus a `populated` flag
+// (false when practice is unavailable — the honest placeholder path, ADR-0013).
+func (g *Gateway) weekPracticeStates(r *http.Request, accountID string, content []byte) (map[string]practiceProblemState, bool) {
+	if g.practice == nil {
+		return nil, false
+	}
+	ids := problemIDsFromWeek(content)
+	if len(ids) == 0 {
+		// No problems to look up: still "populated" (practice exists; nothing to fill).
+		return map[string]practiceProblemState{}, true
+	}
+	token, ok := g.mintForPractice(accountID)
+	if !ok {
+		return nil, false
+	}
+	n := r.PathValue("n")
+	pbody, pstatus, perr := g.practice.get(r.Context(), token, "/state?week="+url.QueryEscape(n)+"&ids="+url.QueryEscape(strings.Join(ids, ",")))
+	if perr != nil {
+		g.log.Warn("bff week aggregation: practice call failed; placeholder state", "err", perr)
+		return nil, false
+	}
+	if pstatus != http.StatusOK {
+		g.log.Warn("bff week aggregation: practice non-200; placeholder state", "status", pstatus)
+		return nil, false
+	}
+	states, ok := parseWeekStates(pbody)
+	if !ok {
+		g.log.Warn("bff week aggregation: malformed practice states; placeholder state")
+		return nil, false
+	}
+	return states, true
+}
+
+// handleGetProblem is the Problem workspace BFF aggregation (api.md `agg`): it
+// composes curriculum content, filtered to the learner's UNLOCKED stages (R-PF1), and
+// the practice state + active timer. Practice is the authority on which stages are
+// unlocked; the gateway drops locked-stage sections server-side so hint/solution
+// content is never delivered before its stage. If practice is unavailable the problem
+// still renders with only the statement (attempt stage) and a default state.
 func (g *Gateway) handleGetProblem(w http.ResponseWriter, r *http.Request) {
-	if _, ok := g.authAccount(w, r); !ok {
+	accountID, ok := g.authAccount(w, r)
+	if !ok {
 		return
 	}
-	g.proxyCurriculum(w, r, "/problems/"+url.PathEscape(r.PathValue("id")))
+	if g.curriculum == nil {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "curriculum not configured")
+		return
+	}
+	id := r.PathValue("id")
+	body, status, err := g.curriculum.get(r.Context(), "/problems/"+url.PathEscape(id))
+	if err != nil {
+		g.log.Error("bff problem aggregation: curriculum call failed", "id", id, "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "curriculum unavailable")
+		return
+	}
+	if status != http.StatusOK {
+		// Propagate curriculum's own status + envelope (e.g. 404 for an unknown problem).
+		passthrough(w, status, body)
+		return
+	}
+
+	stateRaw, unlocked := g.problemState(r, accountID, id)
+	merged, err := aggregateProblem(body, stateRaw, unlocked)
+	if err != nil {
+		g.log.Error("bff problem aggregation: merge failed", "id", id, "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "curriculum returned malformed content")
+		return
+	}
+	passthrough(w, http.StatusOK, merged)
+}
+
+// problemState fetches the learner's practice state for a problem, returning the raw
+// state JSON to embed and the set of unlocked stages to filter sections by. When
+// practice is unavailable it degrades to the default state (available, statement-only)
+// so the workspace still renders.
+func (g *Gateway) problemState(r *http.Request, accountID, id string) (json.RawMessage, map[string]bool) {
+	if g.practice != nil {
+		if token, ok := g.mintForPractice(accountID); ok {
+			pbody, pstatus, perr := g.practice.get(r.Context(), token, "/state/"+url.PathEscape(id))
+			if perr != nil {
+				g.log.Warn("bff problem aggregation: practice call failed; using default state", "id", id, "err", perr)
+			} else if pstatus == http.StatusOK {
+				if raw, unlocked, ok := parseProblemState(pbody); ok {
+					return raw, unlocked
+				}
+				g.log.Warn("bff problem aggregation: malformed practice state; using default", "id", id)
+			} else {
+				g.log.Warn("bff problem aggregation: practice returned non-200; using default state", "id", id, "status", pstatus)
+			}
+		}
+	}
+	return defaultProblemState(id)
+}
+
+// handleAttemptStart proxies POST /problems/{id}/attempt/start to practice.
+func (g *Gateway) handleAttemptStart(w http.ResponseWriter, r *http.Request) {
+	g.proxyPracticeWrite(w, r, "/problems/"+url.PathEscape(r.PathValue("id"))+"/attempt/start")
+}
+
+// handleReveal proxies POST /problems/{id}/reveal to practice (returns the penalty ack).
+func (g *Gateway) handleReveal(w http.ResponseWriter, r *http.Request) {
+	g.proxyPracticeWrite(w, r, "/problems/"+url.PathEscape(r.PathValue("id"))+"/reveal")
+}
+
+// handleOutcome proxies POST /problems/{id}/outcome to practice.
+func (g *Gateway) handleOutcome(w http.ResponseWriter, r *http.Request) {
+	g.proxyPracticeWrite(w, r, "/problems/"+url.PathEscape(r.PathValue("id"))+"/outcome")
+}
+
+// proxyPracticeWrite validates the session, mints a practice-scoped JWT, and forwards
+// a POST (with body) to practice, passing its status + JSON envelope straight through.
+func (g *Gateway) proxyPracticeWrite(w http.ResponseWriter, r *http.Request, upstreamPath string) {
+	accountID, ok := g.authAccount(w, r)
+	if !ok {
+		return
+	}
+	if g.practice == nil {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "practice not configured")
+		return
+	}
+	token, ok := g.mintForPracticeW(w, accountID)
+	if !ok {
+		return
+	}
+	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
+		return
+	}
+	body, status, err := g.practice.post(r.Context(), token, upstreamPath, reqBody)
+	if err != nil {
+		g.log.Error("bff practice write failed", "path", upstreamPath, "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "practice unavailable")
+		return
+	}
+	passthrough(w, status, body)
+}
+
+// mintForPractice mints a practice-scoped JWT without writing an error response (used
+// on the best-effort agg read path); ok reports success.
+func (g *Gateway) mintForPractice(accountID string) (string, bool) {
+	if g.signer == nil {
+		return "", false
+	}
+	token, err := g.signer.Mint(context.Background(), accountID, g.audPractice, []string{"learner"})
+	if err != nil {
+		g.log.Error("mint practice jwt", "err", err)
+		return "", false
+	}
+	return token, true
+}
+
+// mintForPracticeW mints a practice-scoped JWT, writing the error envelope on failure.
+func (g *Gateway) mintForPracticeW(w http.ResponseWriter, accountID string) (string, bool) {
+	return g.mintFor(w, accountID, g.audPractice)
 }
 
 func (g *Gateway) handleGetConcept(w http.ResponseWriter, r *http.Request) {
@@ -240,11 +402,17 @@ func (g *Gateway) authAccount(w http.ResponseWriter, r *http.Request) (string, b
 
 // mint issues an identity-scoped JWT for accountID (roles: learner).
 func (g *Gateway) mint(w http.ResponseWriter, accountID string) (string, bool) {
+	return g.mintFor(w, accountID, g.audIdentity)
+}
+
+// mintFor issues a JWT for accountID scoped to a specific downstream audience
+// (ADR-0006: one token per audience).
+func (g *Gateway) mintFor(w http.ResponseWriter, accountID, audience string) (string, bool) {
 	if g.signer == nil {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "signing not configured")
 		return "", false
 	}
-	token, err := g.signer.Mint(context.Background(), accountID, g.audIdentity, []string{"learner"})
+	token, err := g.signer.Mint(context.Background(), accountID, audience, []string{"learner"})
 	if err != nil {
 		g.log.Error("mint jwt", "err", err)
 		writeError(w, http.StatusInternalServerError, "internal", "could not mint token")

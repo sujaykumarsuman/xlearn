@@ -1,11 +1,12 @@
 // Package events is the asynchronous-messaging seam for xLearn: a transactional
 // outbox feeding NATS JetStream, with idempotent consumers (ADR-0004). Producers
-// write a domain change and an outbox row in one Postgres transaction; a relay
+// write a domain change and an outbox row in one Postgres transaction; the Relay
 // publishes unacked rows and marks them sent; consumers dedupe on Event.ID.
 //
-// TODO(S05/S06): implement the outbox relay (practice) and JetStream durable
-// consumers (review/assessment). This sprint ships only the interfaces + the
-// event envelope so producers/consumers can be written against a stable seam.
+// This package ships the event envelope, the Publisher/Consumer/Handler seams, the
+// Relay (relay.go), the JetStream NatsPublisher (nats.go, S05) and the no-broker
+// LogPublisher fallback. Durable JetStream consumers (review/assessment) land in
+// S06/S08.
 package events
 
 import "context"

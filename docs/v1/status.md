@@ -5,8 +5,8 @@ Cross-sprint living tracker. Updated per the
 state (it's baked into every `prompt-sNN.md`). Per-task detail lives in each
 [`sprints/sprint-NN.md`](sprints/); newest decisions at the top of the log.
 
-- **Build line:** v1 · **Phase:** S04 Week + Concept screens + the BFF **week-aggregation** endpoint (placeholder five-touch/solve `userState`, frozen shape — [ADR-0013](../adr/0013-bff-week-aggregation-userstate-contract.md)) **merged & deployed to prod via Flux** (`xlearn-gateway`/`xlearn-curriculum:0.1.13`). Completes the read-only browse path → **M2 reached**. Verified live: gateway `0.1.13`, `/api/paths/dsa/weeks/{n}` + `/api/concepts/{slug}` present and session-gated (→401). Adversarial review clean (1 finding fixed).
-- **Deploy mode:** build-semver auto-deploy from `main` ([ADR-0009](../adr/0009-deployment-and-gitops.md)) — proven again for S04 (gateway + curriculum → `0.1.13`; identity unchanged, path-filtered out). S04 touched no infra; the images auto-updated via Flux image-automation from `main` (no `../infra` change).
+- **Build line:** v1 · **Phase:** S05 **practice** service (the first per-user, event-producing service) + the hero **Problem ★** workspace. Guided gated flow (attempt 15m → hint 10m → solution → re-implement → log) with **server-authoritative timers**, the reveal penalty, and outcome logging; emits `problem_solved`/`attempt_logged`/`solution_revealed_early` via a **transactional outbox** to **NATS JetStream** (`XLEARN_PRACTICE`). New infra: NATS in its own `messaging` namespace + the `xlearn_practice` DB role/schema + the `xlearn-practice` HelmRelease ([ADR-0014](../adr/0014-nats-jetstream-topology-and-outbox-relay.md)). Code complete, full suite green (incl. a real-Postgres integration run of the gated flow + outbox); shipping to prod via Flux → **M3**.
+- **Deploy mode:** build-semver auto-deploy from `main` ([ADR-0009](../adr/0009-deployment-and-gitops.md)). S05 touches infra (new NATS messaging component, practice HelmRelease + DB role/schema/secret, gateway `PRACTICE_BASE_URL`/`JWT_AUD_PRACTICE`), so it ships in **both** repos (this + `../infra`).
 - **Last updated:** 2026-09-21
 
 ## Snapshot
@@ -19,8 +19,8 @@ state (it's baked into every `prompt-sNN.md`). Per-task detail lives in each
 | Git strategy | ✅ drafted |
 | v1 build plan | ✅ done |
 | Sprint plans + prompts (S01-S12) | ✅ all scaffolded |
-| Application code | 🔄 S01 gateway + web shell live; S02 identity **merged & deployed** (`0.1.7`); S03 `curriculum` + gateway content proxy + Catalog/Roadmap **merged & deployed** (`0.1.11`); S04 Week + Concept screens + gateway **week-aggregation** (`agg`, placeholder `userState`) + `/concepts/{slug}` passthrough + sanitized markdown renderer + route-aware breadcrumbs **merged & deployed** (`0.1.13`) |
-| `infra` xlearn wiring | 🔄 gateway + identity + **curriculum live** (`0.1.11`); S03 merged: `xlearn-curriculum` HelmRelease (ClusterIP), `curriculum` schema + `xlearn_curriculum` role (4-step), SOPS `xlearn-curriculum-db`/`pg-xlearn-curriculum`, curriculum image-automation, gateway `CURRICULUM_BASE_URL`; DB Flux Kustomizations set to 1m reconcile |
+| Application code | 🔄 S01 gateway + web shell live; S02 identity **merged & deployed** (`0.1.7`); S03 `curriculum` + Catalog/Roadmap **merged & deployed** (`0.1.11`); S04 Week + Concept + week-aggregation `agg` **merged & deployed** (`0.1.13`); S05 `practice` service (schema `practice`, goose/sqlc, gating engine, server timers, reveal/penalty, outcome logging, `internal/platform/events` outbox relay + JetStream `NatsPublisher`) + gateway Problem `agg`/proxies + Week dots wired to real state + the Problem ★ screen — **code complete, shipping** |
+| `infra` xlearn wiring | 🔄 gateway + identity + curriculum live (`0.1.11`/`0.1.13`); S05 adds: `infra/infrastructure/messaging/` (NATS JetStream + Longhorn PVC, `messaging` ns) + `clusters/vps/messaging.yaml`; `xlearn-practice` HelmRelease (ClusterIP, `route.enabled:false`, `NATS_URL`); `practice` schema + `xlearn_practice` role (4-step) + SOPS `xlearn-practice-db`/`pg-xlearn-practice`; `xlearn-practice` image-automation; gateway `PRACTICE_BASE_URL`/`JWT_AUD_PRACTICE` — **shipping** |
 
 ## Sprint board
 
@@ -30,7 +30,7 @@ state (it's baked into every `prompt-sNN.md`). Per-task detail lives in each
 | [S02](sprints/sprint-02.md) | identity / auth (→ M1) | 🔄 Merged & deployed (`0.1.7`), verified live; login pending real GitHub OAuth creds |
 | [S03](sprints/sprint-03.md) | curriculum + Catalog/Roadmap | ✅ Done — merged & deployed (`0.1.11`) |
 | [S04](sprints/sprint-04.md) | Week + Concept (→ M2) | ✅ Done — merged & deployed (`0.1.13`) |
-| [S05](sprints/sprint-05.md) | practice / Problem ★ (→ M3) | ⬜ Planned |
+| [S05](sprints/sprint-05.md) | practice / Problem ★ (→ M3) | 🔄 Code complete — full suite green (incl. real-Postgres integration run); shipping to prod via Flux |
 | [S06](sprints/sprint-06.md) | review scheduler / Revision | ⬜ Planned |
 | [S07](sprints/sprint-07.md) | mistakes + notifications (→ M4) | ⬜ Planned |
 | [S08](sprints/sprint-08.md) | assessment / Mock | ⬜ Planned |
@@ -49,7 +49,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ planned/not started · ⛔ blocked. 
 | M0 live at `/xlearn` | end S01 | ✅ **live** at `projects.sujaykumar.dev/xlearn` (`xlearn-gateway:0.1.3`, Flux-deployed 2026-09-20) |
 | M1 login | end S02 | 🔄 **identity + gateway deployed to prod via Flux** (`0.1.7`), verified live (JWKS, `/me`→401, OAuth `start`→302, schema migrated, SOPS secrets); GitHub login goes live once the real OAuth client id/secret replace the placeholders |
 | M2 browse curriculum | end S04 | ✅ **reached** — **Catalog → Roadmap → Week → Concept** all built on real seeded content and **deployed via Flux** (`0.1.13`); week `agg` returns the frozen placeholder `userState`. Routes verified live (session-gated →401); full authed browse pending real GitHub OAuth creds (same ceiling as M1). |
-| M3 guided problem | end S05 | ⬜ |
+| M3 guided problem | end S05 | 🔄 **practice + Problem ★ code complete**, full suite green — the gated flow (attempt→hint→solution→re-implement→log) with server timers, reveal penalty, and outcome logging works end-to-end (verified against real Postgres incl. the transactional outbox); NATS JetStream + practice charts render/build clean. **Shipping to prod via Flux** (both repos); met once deployed + verified live. |
 | M4 repetition+mistakes | end S07 | ⬜ |
 | M5 mock+analytics | end S09 | ⬜ |
 | M6 feature-complete | end S11 | ⬜ |
@@ -61,6 +61,8 @@ Notable calls not (yet) worth a full ADR, newest first. Promote to an ADR if the
 
 | Date | Decision | Notes |
 |------|----------|-------|
+| 2026-09-21 | **S05 practice engine + Problem ★ built.** New `practice` service owns schema `practice` (goose/sqlc, gating engine, server-authoritative timers, reveal/penalty, outcome logging); the shared `internal/platform/events` gains a JetStream `NatsPublisher` alongside the outbox `Relay`. Emits `problem_solved`/`attempt_logged`/`solution_revealed_early` on `XLEARN_PRACTICE`. Gateway gains the Problem `agg` (content limited to unlocked stages + practice state + timer) + attempt/reveal/outcome proxies; Week five-touch dots now read real practice state (frozen `userState` shape filled in place, [ADR-0013](../adr/0013-bff-week-aggregation-userstate-contract.md)). Full suite green incl. a real-Postgres integration run of the whole gated flow + the 3-event outbox. | `dependsOn` design keeps NATS off the apps critical path; practice connects resiliently so it need not hard-order after NATS. Re-implement + log are client stages (no server content); code execution stays out of v1 (self-assessed, PRD Q1). |
+| 2026-09-21 | **NATS placement resolved → its own `messaging` namespace** (not inside `xlearn`); topology, stream/subject layout, and the outbox-relay delivery semantics hardened beyond ADR-0004 → **[ADR-0014](../adr/0014-nats-jetstream-topology-and-outbox-relay.md)**. Single non-clustered NATS, JetStream file store on a 5Gi Longhorn PVC, no auth in v1 (ClusterIP-only; token/mTLS deferred to S12); `nats-box` disabled. Producer self-provisions `XLEARN_PRACTICE`; relay publishes with `event_id` as the NATS `Msg-Id` (broker dedupe) at-least-once. | Chart `nats` `2.14.6` pinned (verified against the Helm repo index). Reached cross-namespace by FQDN `nats://nats.messaging.svc.cluster.local:4222`. Resolves the open assumption below. |
 | 2026-09-21 | **S04 merged + deployed to prod** (xlearn#14); GitOps loop fired — Flux built + bumped `xlearn-gateway` + `xlearn-curriculum` to `0.1.13` (identity path-filtered out, unchanged). Verified live: gateway `0.1.13`, `/api/paths/dsa/weeks/{n}` (`agg`) + `/api/concepts/{slug}` present and session-gated (→401). **M2 reached.** | No `../infra` change this sprint (images auto-update from `main`). End-to-end authed browse still gated on real GitHub OAuth creds (same ceiling as S02/S03). |
 | 2026-09-21 | **S04 week-aggregation `userState` shape FROZEN → [ADR-0013](../adr/0013-bff-week-aggregation-userstate-contract.md).** `GET /paths/{slug}/weeks/{n}` is now a gateway `agg`: curriculum content passes through unchanged (+ its 404s), with one added `userState` key — per-problem `{status,lastOutcome,currentTouch,touches[5]}` (levels 1..5 = Day 1/3/7/21/45) + week rollup `{solved,coreTotal,byDifficulty,populated:false}`. camelCase (vs snake_case content) is deliberate. Curriculum's week endpoint also gained `phase` + slim `path` (for the eyebrow). | S05/S06 fill the same fields in place (flip `populated`) with no client change. Placeholder is honest — neutral dots, "Available", 0/core; never faked. `coreTotal`/`byDifficulty` count non-reinforcement problems only. |
 | 2026-09-21 | **S04 Week + Concept passed a 4-dimension adversarial review** (correctness / contract-honesty / security / conventions → verify): **1 confirmed defect fixed** — a malformed week URL (`/dsa/week/0`,`abc`) disabled the query and rendered a blank "Week NaN of 16" page; now an explicit not-found state (regression test added). Security/contract/conventions clean. | Sanitized markdown renderer builds React nodes (no `dangerouslySetInnerHTML`); `.dc.html` `.cn` styles ported to `app.css`; C++ template tab stubbed/disabled (Go-first). |
@@ -94,7 +96,7 @@ Tracked from the PRD [open questions](../prd/xlearn-prd.md#10-open-questions) an
 - [ ] **Curriculum source:** versioned **seed in-repo** (`curriculum/`), not an in-app CMS.
 - [ ] **LLM providers at launch:** **OpenAI + Anthropic**.
 - [ ] **Staging:** **none** in v1 (single node; trunk-based auto-deploy).
-- [ ] **NATS placement:** its own `messaging` namespace vs inside `xlearn` — default `xlearn`.
+- [x] **NATS placement:** **resolved (S05) → its own `messaging` namespace** ([ADR-0014](../adr/0014-nats-jetstream-topology-and-outbox-relay.md)); reached cross-namespace by FQDN.
 - [ ] **Data isolation:** schema-per-service in one `xlearndb` (not DB-per-service) for v1.
 
 ## Blocked / needs input

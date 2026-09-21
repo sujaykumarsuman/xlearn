@@ -17,8 +17,10 @@ const (
 	defaultBasePath           = "/xlearn"
 	defaultIdentityBaseURL    = "http://localhost:8081"
 	defaultCurriculumBaseURL  = "http://localhost:8082"
+	defaultPracticeBaseURL    = "http://localhost:8083"
 	defaultJWTIssuer          = "xlearn-gateway"
 	defaultJWTAudIdentity     = "identity"
+	defaultJWTAudPractice     = "practice"
 	defaultJWTTTL             = 5 * time.Minute
 	defaultSessionCookieScope = "/xlearn"
 )
@@ -38,6 +40,9 @@ type Config struct {
 	// CurriculumBaseURL is the internal ClusterIP URL of the curriculum service
 	// (env CURRICULUM_BASE_URL), e.g. http://xlearn-curriculum.xlearn.svc.cluster.local:8082.
 	CurriculumBaseURL string
+	// PracticeBaseURL is the internal ClusterIP URL of the practice service
+	// (env PRACTICE_BASE_URL), e.g. http://xlearn-practice.xlearn.svc.cluster.local:8083.
+	PracticeBaseURL string
 	// JWT holds the RS256 signing config for gateway-minted internal JWTs (ADR-0006).
 	JWT JWTConfig
 }
@@ -53,6 +58,8 @@ type JWTConfig struct {
 	Issuer string
 	// AudienceIdentity is the "aud" for tokens forwarded to identity (env JWT_AUD_IDENTITY).
 	AudienceIdentity string
+	// AudiencePractice is the "aud" for tokens forwarded to practice (env JWT_AUD_PRACTICE).
+	AudiencePractice string
 	// TTL is the token lifetime (env JWT_TTL, e.g. "5m").
 	TTL time.Duration
 	// AdditionalPublicKeysPEM holds extra RSA public keys (PEM, one or more blocks;
@@ -69,11 +76,13 @@ func Load() Config {
 		BasePath:          normalizeBasePath(env("BASE_PATH", defaultBasePath)),
 		IdentityBaseURL:   strings.TrimRight(env("IDENTITY_BASE_URL", defaultIdentityBaseURL), "/"),
 		CurriculumBaseURL: strings.TrimRight(env("CURRICULUM_BASE_URL", defaultCurriculumBaseURL), "/"),
+		PracticeBaseURL:   strings.TrimRight(env("PRACTICE_BASE_URL", defaultPracticeBaseURL), "/"),
 		JWT: JWTConfig{
 			PrivateKeyPEM:           os.Getenv("JWT_PRIVATE_KEY"),
 			PrivateKeyFile:          strings.TrimSpace(os.Getenv("JWT_PRIVATE_KEY_FILE")),
 			Issuer:                  env("JWT_ISSUER", defaultJWTIssuer),
 			AudienceIdentity:        env("JWT_AUD_IDENTITY", defaultJWTAudIdentity),
+			AudiencePractice:        env("JWT_AUD_PRACTICE", defaultJWTAudPractice),
 			TTL:                     envDuration("JWT_TTL", defaultJWTTTL),
 			AdditionalPublicKeysPEM: os.Getenv("JWT_ADDITIONAL_PUBLIC_KEYS"),
 		},
