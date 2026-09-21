@@ -62,6 +62,59 @@ func (f *fakeStore) GetAccount(_ context.Context, id string) (store.Account, err
 	return a, nil
 }
 
+func (f *fakeStore) UpdateAccount(_ context.Context, id string, in store.AccountUpdate) (store.Account, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	a, ok := f.accounts[id]
+	if !ok {
+		return store.Account{}, store.ErrNotFound
+	}
+	if in.DisplayName != nil {
+		a.DisplayName = *in.DisplayName
+	}
+	if in.Timezone != nil {
+		a.Timezone = *in.Timezone
+	}
+	if in.StudyBudget != nil {
+		a.StudyBudget = in.StudyBudget
+	}
+	if in.Reminders != nil {
+		a.Reminders = in.Reminders
+	}
+	f.accounts[id] = a
+	return a, nil
+}
+
+func (f *fakeStore) SetOnboardingBudget(_ context.Context, accountID string, budgetJSON []byte) (store.Onboarding, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	o, ok := f.onboarding[accountID]
+	if !ok {
+		return store.Onboarding{}, store.ErrNotFound
+	}
+	if a, ok := f.accounts[accountID]; ok {
+		a.StudyBudget = budgetJSON
+		f.accounts[accountID] = a
+	}
+	o.BudgetSet = true
+	f.onboarding[accountID] = o
+	return o, nil
+}
+
+func (f *fakeStore) CompleteOnboarding(_ context.Context, accountID string) (store.Onboarding, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	o, ok := f.onboarding[accountID]
+	if !ok {
+		return store.Onboarding{}, store.ErrNotFound
+	}
+	if o.CompletedAt.IsZero() {
+		o.CompletedAt = time.Now()
+	}
+	f.onboarding[accountID] = o
+	return o, nil
+}
+
 func (f *fakeStore) GetOnboarding(_ context.Context, accountID string) (store.Onboarding, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

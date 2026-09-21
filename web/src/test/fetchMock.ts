@@ -22,16 +22,20 @@ export function restoreFetch() {
   vi.unstubAllGlobals();
 }
 
-/** authedMe is a convenient authenticated GET /me payload. */
-export function authedMe(pathChosen: string | null = "dsa") {
+/** authedMe is a convenient authenticated GET /me payload. By default a chosen path
+ *  implies a fully-onboarded (completed) account; pass `completed` explicitly to model
+ *  a mid-onboarding user (e.g. path chosen but budget not set). */
+export function authedMe(pathChosen: string | null = "dsa", completed: boolean = pathChosen !== null) {
   return {
     account: {
       id: "acct-1",
       display_name: "Ada Lovelace",
       email: "ada@example.com",
       timezone: "UTC",
+      study_budget: {},
+      reminders: {},
       created_at: "2026-09-20T00:00:00Z",
     },
-    onboarding: { path_chosen: pathChosen, budget_set: false, key_added: false, completed: false },
+    onboarding: { path_chosen: pathChosen, budget_set: completed, key_added: false, completed },
   };
 }

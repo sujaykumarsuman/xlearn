@@ -48,9 +48,17 @@ export type IconName =
   | "db"
   | "chat";
 
-export function Icon({ name, className }: { name: IconName; className?: string }) {
+export function Icon({
+  name,
+  className,
+  style,
+}: {
+  name: IconName;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
   return (
-    <svg className={className ? `xl-ico ${className}` : "xl-ico"} aria-hidden="true">
+    <svg className={className ? `xl-ico ${className}` : "xl-ico"} style={style} aria-hidden="true">
       <use href={`#i-${name}`} />
     </svg>
   );

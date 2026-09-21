@@ -70,6 +70,7 @@ func (s *Service) Handler() http.Handler {
 
 	// User-data routes: verify the gateway-minted JWT via JWKS + ownership.
 	mux.Handle("GET /accounts/{id}", s.requireJWT(http.HandlerFunc(s.handleGetAccount)))
+	mux.Handle("PATCH /accounts/{id}", s.requireJWT(http.HandlerFunc(s.handlePatchAccount)))
 	mux.Handle("POST /onboarding/step", s.requireJWT(http.HandlerFunc(s.handleOnboardingStep)))
 
 	return mux

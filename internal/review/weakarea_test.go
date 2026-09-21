@@ -93,8 +93,8 @@ func (f *fakeWeakStore) SaveWeakAreaSnapshot(_ context.Context, accountID string
 
 type fakeResolver struct{ tz map[string]string }
 
-func (f fakeResolver) ResolveAccount(_ context.Context, accountID string) (string, []byte, error) {
-	return f.tz[accountID], nil, nil
+func (f fakeResolver) ResolveAccount(_ context.Context, accountID string) (string, []byte, []byte, error) {
+	return f.tz[accountID], nil, nil, nil
 }
 
 func TestWeakAreaRecompute(t *testing.T) {

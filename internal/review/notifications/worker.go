@@ -17,9 +17,10 @@ type ReminderStore interface {
 	HandleRevisionDue(ctx context.Context, eventID, accountID, kind string, dueAt time.Time) (bool, error)
 }
 
-// AccountResolver resolves an account's timezone + study budget (the identity client).
+// AccountResolver resolves an account's timezone + study budget + reminder prefs (the
+// identity client) so reminders can be localized and gated (S10).
 type AccountResolver interface {
-	ResolveAccount(ctx context.Context, accountID string) (timezone string, studyBudget []byte, err error)
+	ResolveAccount(ctx context.Context, accountID string) (timezone string, studyBudget, reminders []byte, err error)
 }
 
 // Handler consumes xlearn.review.revision_due and writes an in-app reminder scheduled
@@ -36,7 +37,7 @@ type Handler struct {
 var _ events.Handler = (*Handler)(nil)
 
 // NewHandler builds the notifications handler. accounts may be nil (local dev / no
-// identity URL) — reminders then schedule immediately (UTC, no budget window).
+// identity URL) — reminders then use the default prefs (a daily nudge at 20:00 UTC).
 func NewHandler(store ReminderStore, accounts AccountResolver, log *slog.Logger) *Handler {
 	return &Handler{store: store, accounts: accounts, log: log}
 }
@@ -71,20 +72,29 @@ func (h *Handler) Handle(ctx context.Context, e events.Event) error {
 	}
 
 	tz := "UTC"
-	var budget []byte
+	var budget, reminders []byte
 	if h.accounts != nil {
-		if resolvedTz, resolvedBudget, err := h.accounts.ResolveAccount(ctx, env.AccountID); err != nil {
-			// A resolve failure must not drop the reminder — schedule it immediately (UTC).
-			h.log.Warn("notifications: account resolve failed; scheduling immediately", "account_id", env.AccountID, "err", err)
-		} else {
-			if resolvedTz != "" {
-				tz = resolvedTz
-			}
-			budget = resolvedBudget
+		resolvedTz, resolvedBudget, resolvedReminders, err := h.accounts.ResolveAccount(ctx, env.AccountID)
+		if err != nil {
+			// Don't decide send-vs-suppress without the learner's real prefs: a resolve
+			// failure naks for redelivery (at-least-once, escalating backoff) so a transient
+			// identity blip can't override an explicit reminders opt-out with the ON defaults.
+			// A nil client (local dev / no identity URL) returns no error and uses defaults.
+			return fmt.Errorf("resolve account prefs: %w", err)
 		}
+		if resolvedTz != "" {
+			tz = resolvedTz
+		}
+		budget = resolvedBudget
+		reminders = resolvedReminders
 	}
 
-	dueAt := computeReminderTime(h.clock(), tz, budget)
+	write, dueAt := computeReminder(h.clock(), tz, budget, reminders)
+	if !write {
+		// The learner has turned off the applicable channel (daily nudge / due alerts).
+		h.log.Info("notifications: reminder suppressed by prefs", "account_id", env.AccountID)
+		return nil
+	}
 	wrote, err := h.store.HandleRevisionDue(ctx, eventID, env.AccountID, ReminderKind, dueAt)
 	if err != nil {
 		return fmt.Errorf("write reminder: %w", err)

@@ -59,6 +59,12 @@ type Options struct {
 	AssessmentBaseURL string
 	// AudienceAssessment is the "aud" for JWTs forwarded to assessment.
 	AudienceAssessment string
+	// CoachBaseURL is the coach service's internal URL. Empty (the S10 default —
+	// coach lands in S11) makes GET /coach/key return the "no key" empty state
+	// instead of dialling a non-existent service.
+	CoachBaseURL string
+	// AudienceCoach is the "aud" for JWTs forwarded to coach.
+	AudienceCoach string
 }
 
 // Gateway serves the SPA, the app BFF API and the k8s probes.
@@ -75,10 +81,12 @@ type Gateway struct {
 	practice      *practiceClient
 	review        *reviewClient
 	assessment    *assessmentClient
+	coach         *coachClient
 	audIdentity   string
 	audPractice   string
 	audReview     string
 	audAssessment string
+	audCoach      string
 	api           *http.ServeMux
 }
 
@@ -99,6 +107,7 @@ func New(opt Options) *Gateway {
 		audPractice:   opt.AudiencePractice,
 		audReview:     opt.AudienceReview,
 		audAssessment: opt.AudienceAssessment,
+		audCoach:      opt.AudienceCoach,
 	}
 	if opt.IdentityBaseURL != "" {
 		g.identity = newIdentityClient(opt.IdentityBaseURL)
@@ -114,6 +123,9 @@ func New(opt Options) *Gateway {
 	}
 	if opt.AssessmentBaseURL != "" {
 		g.assessment = newAssessmentClient(opt.AssessmentBaseURL)
+	}
+	if opt.CoachBaseURL != "" {
+		g.coach = newCoachClient(opt.CoachBaseURL)
 	}
 	g.api = g.newAPIMux()
 	return g

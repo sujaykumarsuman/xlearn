@@ -25,6 +25,7 @@ const (
 	defaultJWTAudPractice     = "practice"
 	defaultJWTAudReview       = "review"
 	defaultJWTAudAssessment   = "assessment"
+	defaultJWTAudCoach        = "coach"
 	defaultJWTTTL             = 5 * time.Minute
 	defaultSessionCookieScope = "/xlearn"
 )
@@ -53,6 +54,11 @@ type Config struct {
 	// AssessmentBaseURL is the internal ClusterIP URL of the assessment service
 	// (env ASSESSMENT_BASE_URL), e.g. http://xlearn-assessment.xlearn.svc.cluster.local:8085.
 	AssessmentBaseURL string
+	// CoachBaseURL is the internal ClusterIP URL of the coach service (env
+	// COACH_BASE_URL). It defaults to EMPTY: coach is not deployed until S11, and an
+	// empty URL makes GET /coach/key render the "no key — coach off" empty state
+	// instead of dialling a non-existent service. S11 sets it to bring the coach live.
+	CoachBaseURL string
 	// JWT holds the RS256 signing config for gateway-minted internal JWTs (ADR-0006).
 	JWT JWTConfig
 }
@@ -74,6 +80,8 @@ type JWTConfig struct {
 	AudienceReview string
 	// AudienceAssessment is the "aud" for tokens forwarded to assessment (env JWT_AUD_ASSESSMENT).
 	AudienceAssessment string
+	// AudienceCoach is the "aud" for tokens forwarded to coach (env JWT_AUD_COACH).
+	AudienceCoach string
 	// TTL is the token lifetime (env JWT_TTL, e.g. "5m").
 	TTL time.Duration
 	// AdditionalPublicKeysPEM holds extra RSA public keys (PEM, one or more blocks;
@@ -93,6 +101,7 @@ func Load() Config {
 		PracticeBaseURL:   strings.TrimRight(env("PRACTICE_BASE_URL", defaultPracticeBaseURL), "/"),
 		ReviewBaseURL:     strings.TrimRight(env("REVIEW_BASE_URL", defaultReviewBaseURL), "/"),
 		AssessmentBaseURL: strings.TrimRight(env("ASSESSMENT_BASE_URL", defaultAssessmentBaseURL), "/"),
+		CoachBaseURL:      strings.TrimRight(env("COACH_BASE_URL", ""), "/"),
 		JWT: JWTConfig{
 			PrivateKeyPEM:           os.Getenv("JWT_PRIVATE_KEY"),
 			PrivateKeyFile:          strings.TrimSpace(os.Getenv("JWT_PRIVATE_KEY_FILE")),
@@ -101,6 +110,7 @@ func Load() Config {
 			AudiencePractice:        env("JWT_AUD_PRACTICE", defaultJWTAudPractice),
 			AudienceReview:          env("JWT_AUD_REVIEW", defaultJWTAudReview),
 			AudienceAssessment:      env("JWT_AUD_ASSESSMENT", defaultJWTAudAssessment),
+			AudienceCoach:           env("JWT_AUD_COACH", defaultJWTAudCoach),
 			TTL:                     envDuration("JWT_TTL", defaultJWTTTL),
 			AdditionalPublicKeysPEM: os.Getenv("JWT_ADDITIONAL_PUBLIC_KEYS"),
 		},

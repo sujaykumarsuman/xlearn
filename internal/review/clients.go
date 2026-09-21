@@ -93,40 +93,41 @@ func NewIdentityClient(baseURL string) *IdentityClient {
 	return &IdentityClient{baseURL: baseURL, httpc: &http.Client{Timeout: clientTimeout}}
 }
 
-// ResolveAccount returns an account's IANA timezone and raw study_budget JSON. A nil
-// client or any failure yields ("UTC", nil, err?) so callers degrade gracefully; the
-// timezone is never empty.
-func (c *IdentityClient) ResolveAccount(ctx context.Context, accountID string) (string, []byte, error) {
+// ResolveAccount returns an account's IANA timezone, raw study_budget JSON, and raw
+// reminders JSON. A nil client or any failure yields ("UTC", nil, nil, err?) so callers
+// degrade gracefully; the timezone is never empty.
+func (c *IdentityClient) ResolveAccount(ctx context.Context, accountID string) (string, []byte, []byte, error) {
 	if c == nil {
-		return "UTC", nil, nil
+		return "UTC", nil, nil, nil
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/internal/accounts/"+url.PathEscape(accountID), nil)
 	if err != nil {
-		return "UTC", nil, err
+		return "UTC", nil, nil, err
 	}
 	req.Header.Set("Accept", "application/json")
 	resp, err := c.httpc.Do(req)
 	if err != nil {
-		return "UTC", nil, err
+		return "UTC", nil, nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "UTC", nil, fmt.Errorf("identity internal accounts: status %d", resp.StatusCode)
+		return "UTC", nil, nil, fmt.Errorf("identity internal accounts: status %d", resp.StatusCode)
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return "UTC", nil, err
+		return "UTC", nil, nil, err
 	}
 	var out struct {
 		Timezone    string          `json:"timezone"`
 		StudyBudget json.RawMessage `json:"study_budget"`
+		Reminders   json.RawMessage `json:"reminders"`
 	}
 	if err := json.Unmarshal(body, &out); err != nil {
-		return "UTC", nil, err
+		return "UTC", nil, nil, err
 	}
 	tz := out.Timezone
 	if tz == "" {
 		tz = "UTC"
 	}
-	return tz, out.StudyBudget, nil
+	return tz, out.StudyBudget, out.Reminders, nil
 }

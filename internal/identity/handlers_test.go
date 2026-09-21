@@ -272,13 +272,13 @@ func TestProtectedRoutesJWT(t *testing.T) {
 		t.Fatalf("path not persisted: %q", got)
 	}
 
-	// unsupported step → 400
+	// unknown step → 400
 	rec = httptest.NewRecorder()
-	stepReq = jsonReq("/onboarding/step", `{"step":"budget"}`)
+	stepReq = jsonReq("/onboarding/step", `{"step":"nope"}`)
 	stepReq.Header.Set("Authorization", "Bearer good-token")
 	handler.ServeHTTP(rec, stepReq)
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("unsupported step: %d", rec.Code)
+		t.Fatalf("unknown step: %d", rec.Code)
 	}
 }
 

@@ -92,6 +92,62 @@ func TestStoreIntegration(t *testing.T) {
 		t.Fatalf("path not persisted: %+v", ob)
 	}
 
+	// S10 — partial account update (PATCH /me). Only the provided fields change.
+	name := "Sujay Kumar"
+	tz := "Asia/Kolkata"
+	budget := []byte(`{"weekday_minutes":120,"weekend_band":"5"}`)
+	reminders := []byte(`{"daily_reminder_on":true,"daily_reminder_time":"20:00","revision_due_alerts_on":false}`)
+	upd, err := st.UpdateAccount(ctx, acct.ID, store.AccountUpdate{
+		DisplayName: &name, Timezone: &tz, StudyBudget: budget, Reminders: reminders,
+	})
+	if err != nil {
+		t.Fatalf("UpdateAccount: %v", err)
+	}
+	if upd.DisplayName != name || upd.Timezone != tz {
+		t.Fatalf("update not applied: %+v", upd)
+	}
+	if string(upd.StudyBudget) == "" || string(upd.Reminders) == "" {
+		t.Fatalf("budget/reminders not stored: %+v", upd)
+	}
+	// A partial update (name only) must leave the timezone + budget untouched.
+	// (jsonb reorders keys + adds whitespace, so compare parsed values, not raw bytes.)
+	rename := "Renamed"
+	upd2, err := st.UpdateAccount(ctx, acct.ID, store.AccountUpdate{DisplayName: &rename})
+	if err != nil {
+		t.Fatalf("partial UpdateAccount: %v", err)
+	}
+	if upd2.DisplayName != rename || upd2.Timezone != tz || weekdayMinutes(t, upd2.StudyBudget) != 120 {
+		t.Fatalf("partial update changed untouched columns: %+v", upd2)
+	}
+
+	// S10 — onboarding budget step writes the account budget + flips budget_set (one tx).
+	obBudget, err := st.SetOnboardingBudget(ctx, acct.ID, []byte(`{"weekday_minutes":60,"weekend_band":"2"}`))
+	if err != nil {
+		t.Fatalf("SetOnboardingBudget: %v", err)
+	}
+	if !obBudget.BudgetSet {
+		t.Fatalf("budget_set not persisted: %+v", obBudget)
+	}
+	if acctAfter, _ := st.GetAccount(ctx, acct.ID); weekdayMinutes(t, acctAfter.StudyBudget) != 60 {
+		t.Fatalf("onboarding budget not written to account: %s", acctAfter.StudyBudget)
+	}
+
+	// S10 — Finish stamps completed_at, idempotently.
+	obDone, err := st.CompleteOnboarding(ctx, acct.ID)
+	if err != nil {
+		t.Fatalf("CompleteOnboarding: %v", err)
+	}
+	if obDone.CompletedAt.IsZero() || obDone.KeyAdded {
+		t.Fatalf("completion state wrong: %+v", obDone)
+	}
+	obDone2, err := st.CompleteOnboarding(ctx, acct.ID)
+	if err != nil {
+		t.Fatalf("re-CompleteOnboarding: %v", err)
+	}
+	if !obDone2.CompletedAt.Equal(obDone.CompletedAt) {
+		t.Fatalf("completed_at moved on re-finish: %v != %v", obDone2.CompletedAt, obDone.CompletedAt)
+	}
+
 	// Session lifecycle.
 	sid := "sess-" + newTestID()
 	sess, err := st.CreateSession(ctx, sid, acct.ID, time.Now().Add(time.Hour))

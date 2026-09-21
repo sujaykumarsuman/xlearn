@@ -32,13 +32,14 @@ func (f *fakeReminderStore) HandleRevisionDue(_ context.Context, eventID, accoun
 }
 
 type stubResolver struct {
-	tz     string
-	budget []byte
-	err    error
+	tz        string
+	budget    []byte
+	reminders []byte
+	err       error
 }
 
-func (s stubResolver) ResolveAccount(context.Context, string) (string, []byte, error) {
-	return s.tz, s.budget, s.err
+func (s stubResolver) ResolveAccount(context.Context, string) (string, []byte, []byte, error) {
+	return s.tz, s.budget, s.reminders, s.err
 }
 
 func testWorker(store ReminderStore, accounts AccountResolver) *Handler {
@@ -63,7 +64,9 @@ func dueEvent(t *testing.T, eventID, accountID string) events.Event {
 
 func TestWorkerWritesReminder(t *testing.T) {
 	st := &fakeReminderStore{wrote: true}
-	h := testWorker(st, stubResolver{tz: "UTC"}) // no budget → immediate
+	// Empty prefs → defaults (daily nudge at 20:00 local, alerts on). now is 15:00 UTC,
+	// before today's 20:00 window → the reminder fires at 20:00 UTC.
+	h := testWorker(st, stubResolver{tz: "UTC"})
 	if err := h.Handle(context.Background(), dueEvent(t, "evt-1", "acct-1")); err != nil {
 		t.Fatalf("handle: %v", err)
 	}
@@ -74,8 +77,21 @@ func TestWorkerWritesReminder(t *testing.T) {
 	if c.eventID != "evt-1" || c.accountID != "acct-1" || c.kind != ReminderKind {
 		t.Fatalf("call = %+v, want evt-1/acct-1/%s", c, ReminderKind)
 	}
-	if !c.dueAt.Equal(time.Date(2026, 9, 21, 15, 0, 0, 0, time.UTC)) {
-		t.Fatalf("dueAt = %v, want immediate (no budget)", c.dueAt)
+	if !c.dueAt.Equal(time.Date(2026, 9, 21, 20, 0, 0, 0, time.UTC)) {
+		t.Fatalf("dueAt = %v, want 2026-09-21 20:00Z (default daily time)", c.dueAt.UTC())
+	}
+}
+
+func TestWorkerSuppressesWhenPrefsOff(t *testing.T) {
+	st := &fakeReminderStore{wrote: true}
+	// Both channels off → the reminder is suppressed and the store is never touched.
+	off := []byte(`{"daily_reminder_on":false,"daily_reminder_time":"20:00","revision_due_alerts_on":false}`)
+	h := testWorker(st, stubResolver{tz: "UTC", reminders: off})
+	if err := h.Handle(context.Background(), dueEvent(t, "evt-1", "acct-1")); err != nil {
+		t.Fatalf("handle: %v", err)
+	}
+	if len(st.calls) != 0 {
+		t.Fatalf("store calls = %d, want 0 (suppressed)", len(st.calls))
 	}
 }
 
@@ -95,15 +111,16 @@ func TestWorkerStoreErrorNaks(t *testing.T) {
 	}
 }
 
-func TestWorkerResolveFailureStillWrites(t *testing.T) {
-	// An account-resolve failure must not drop the reminder — it schedules immediately.
+func TestWorkerResolveFailureNaks(t *testing.T) {
+	// An account-resolve failure must NOT decide send-vs-suppress from default prefs
+	// (that could override an explicit opt-out) — it naks for redelivery and writes nothing.
 	st := &fakeReminderStore{wrote: true}
 	h := testWorker(st, stubResolver{err: errors.New("identity down")})
-	if err := h.Handle(context.Background(), dueEvent(t, "evt-1", "acct-1")); err != nil {
-		t.Fatalf("handle: %v", err)
+	if err := h.Handle(context.Background(), dueEvent(t, "evt-1", "acct-1")); err == nil {
+		t.Fatalf("a resolve failure must propagate for redelivery")
 	}
-	if len(st.calls) != 1 {
-		t.Fatalf("store calls = %d, want 1 (reminder still written)", len(st.calls))
+	if len(st.calls) != 0 {
+		t.Fatalf("store calls = %d, want 0 (no reminder written on resolve failure)", len(st.calls))
 	}
 }
 
