@@ -66,8 +66,13 @@ func (g *Gateway) newAPIMux() *http.ServeMux {
 	mux.HandleFunc("GET /api/mocks/trend", g.handleMockTrend)
 	mux.HandleFunc("GET /api/mocks/{id}", g.handleGetMock)
 	mux.HandleFunc("POST /api/mocks/{id}/score", g.handleScoreMock)
-	// Dashboard "Today" (api.md agg, S07 slice): due revisions + in-app reminders +
-	// the weak-area card, composed from review (+ curriculum enrichment).
+	// Progress (api.md agg, S09): assessment projections (tiles + heatmap + mastery +
+	// trend) composed with the curriculum taxonomy (by-phase completion, by-pattern
+	// mastery) and the review weak-area. Parallel fan-out with per-call timeouts.
+	mux.HandleFunc("GET /api/progress", g.handleProgress)
+	// Dashboard "Today" (api.md agg, S09): the daily plan (reviews before new work),
+	// due revisions, weak area, and streak/solved/mock stats — fanned out to assessment,
+	// review and curriculum in parallel.
 	mux.HandleFunc("GET /api/dashboard", g.handleDashboard)
 	// Catch-all: unknown /api/* is a 404 envelope, never the SPA shell.
 	mux.HandleFunc("/api/", g.apiNotFound)
@@ -366,12 +371,19 @@ func (g *Gateway) proxyPracticeWrite(w http.ResponseWriter, r *http.Request, ups
 // mintForPractice mints a practice-scoped JWT without writing an error response (used
 // on the best-effort agg read path); ok reports success.
 func (g *Gateway) mintForPractice(accountID string) (string, bool) {
+	return g.mintQuiet(accountID, g.audPractice)
+}
+
+// mintQuiet mints an audience-scoped JWT without writing an error response, for the
+// best-effort fan-out read paths (Progress / Dashboard aggregations) where a single
+// section degrades rather than failing the whole response. ok reports success.
+func (g *Gateway) mintQuiet(accountID, audience string) (string, bool) {
 	if g.signer == nil {
 		return "", false
 	}
-	token, err := g.signer.Mint(context.Background(), accountID, g.audPractice, []string{"learner"})
+	token, err := g.signer.Mint(context.Background(), accountID, audience, []string{"learner"})
 	if err != nil {
-		g.log.Error("mint practice jwt", "err", err)
+		g.log.Error("mint jwt", "aud", audience, "err", err)
 		return "", false
 	}
 	return token, true

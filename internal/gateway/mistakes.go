@@ -84,64 +84,6 @@ func (g *Gateway) handleWeakArea(w http.ResponseWriter, r *http.Request) {
 	passthrough(w, http.StatusOK, g.enrichMistakeEnvelope(r.Context(), body, "entries"))
 }
 
-// handleDashboard: GET /dashboard (agg) — the "Today" surface this sprint owns: due
-// revisions (enriched), in-app reminders, and the weak-area card. Each section
-// degrades independently to an empty value if its review call fails, so the screen
-// still renders; the richer daily-plan/streak/stats land in S09.
-func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
-	accountID, ok := g.authAccount(w, r)
-	if !ok {
-		return
-	}
-	if g.review == nil {
-		writeError(w, http.StatusServiceUnavailable, "unavailable", "review not configured")
-		return
-	}
-	token, ok := g.mintForReviewW(w, accountID)
-	if !ok {
-		return
-	}
-	ctx := r.Context()
-
-	revisions := json.RawMessage("null")
-	if body, status, err := g.review.get(ctx, token, "/revisions/due"); err == nil && status == http.StatusOK {
-		revisions = json.RawMessage(g.enrichDueQueue(ctx, body))
-	} else if err != nil {
-		g.log.Warn("bff dashboard: revisions/due failed; empty", "err", err)
-	}
-
-	reminders := json.RawMessage("[]")
-	if body, status, err := g.review.get(ctx, token, "/reminders"); err == nil && status == http.StatusOK {
-		var env struct {
-			Reminders json.RawMessage `json:"reminders"`
-		}
-		if json.Unmarshal(body, &env) == nil && len(env.Reminders) > 0 {
-			reminders = env.Reminders
-		}
-	} else if err != nil {
-		g.log.Warn("bff dashboard: reminders failed; empty", "err", err)
-	}
-
-	weakArea := json.RawMessage("null")
-	if body, status, err := g.review.get(ctx, token, "/weak-area/current"); err == nil && status == http.StatusOK {
-		weakArea = json.RawMessage(g.enrichMistakeEnvelope(ctx, body, "entries"))
-	} else if err != nil {
-		g.log.Warn("bff dashboard: weak-area failed; null", "err", err)
-	}
-
-	out, err := json.Marshal(map[string]json.RawMessage{
-		"revisions": revisions,
-		"reminders": reminders,
-		"weakArea":  weakArea,
-	})
-	if err != nil {
-		g.log.Error("bff dashboard: marshal failed", "err", err)
-		writeError(w, http.StatusBadGateway, "upstream", "dashboard compose failed")
-		return
-	}
-	passthrough(w, http.StatusOK, out)
-}
-
 // proxyReviewWrite validates the session, mints a review-scoped JWT, and forwards a
 // write (POST/PATCH with body) to review, passing its status + JSON envelope through.
 func (g *Gateway) proxyReviewWrite(w http.ResponseWriter, r *http.Request, method, upstreamPath string) {

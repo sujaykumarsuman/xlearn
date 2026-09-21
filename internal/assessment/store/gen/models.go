@@ -37,6 +37,40 @@ type AssessmentOutbox struct {
 	SentAt      pgtype.Timestamptz
 }
 
+type AssessmentProjCoverage struct {
+	AccountID       pgtype.UUID
+	ProblemID       string
+	Solved          bool
+	FirstSolvedAt   pgtype.Timestamptz
+	Level1Schedules int32
+	UpdatedAt       pgtype.Timestamptz
+}
+
+type AssessmentProjHeatmap struct {
+	AccountID    pgtype.UUID
+	ActivityDate pgtype.Date
+	Solves       int32
+	Reviews      int32
+	UpdatedAt    pgtype.Timestamptz
+}
+
+type AssessmentProjMastery struct {
+	AccountID   pgtype.UUID
+	ProblemID   string
+	BestOutcome string
+	BestRank    int16
+	CleanSolves int32
+	SolveCount  int32
+	UpdatedAt   pgtype.Timestamptz
+}
+
+type AssessmentProjOutcomeMix struct {
+	AccountID pgtype.UUID
+	Outcome   string
+	Cnt       int32
+	UpdatedAt pgtype.Timestamptz
+}
+
 type AssessmentRubricScore struct {
 	ID            pgtype.UUID
 	MockSessionID pgtype.UUID

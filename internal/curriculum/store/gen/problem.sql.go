@@ -55,6 +55,58 @@ func (q *Queries) GetProblem(ctx context.Context, id string) (GetProblemRow, err
 	return i, err
 }
 
+const listProblemsByPath = `-- name: ListProblemsByPath :many
+SELECT id, path_slug, week_n, title, difficulty, pattern, leetcode_url, neetcode_url, is_reinforcement
+FROM curriculum.problem
+WHERE path_slug = $1
+ORDER BY week_n, sort_order, id
+`
+
+type ListProblemsByPathRow struct {
+	ID              string
+	PathSlug        string
+	WeekN           int32
+	Title           string
+	Difficulty      string
+	Pattern         string
+	LeetcodeUrl     string
+	NeetcodeUrl     string
+	IsReinforcement bool
+}
+
+// The whole problem index for a path (id -> week_n / pattern / difficulty /
+// reinforcement). The gateway reads this once to compose the Progress + Dashboard
+// roll-ups (by-phase completion, by-pattern mastery) without N per-problem calls.
+func (q *Queries) ListProblemsByPath(ctx context.Context, pathSlug string) ([]ListProblemsByPathRow, error) {
+	rows, err := q.db.Query(ctx, listProblemsByPath, pathSlug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListProblemsByPathRow{}
+	for rows.Next() {
+		var i ListProblemsByPathRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PathSlug,
+			&i.WeekN,
+			&i.Title,
+			&i.Difficulty,
+			&i.Pattern,
+			&i.LeetcodeUrl,
+			&i.NeetcodeUrl,
+			&i.IsReinforcement,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProblemsByWeek = `-- name: ListProblemsByWeek :many
 SELECT id, path_slug, week_n, title, difficulty, pattern, leetcode_url, neetcode_url, is_reinforcement
 FROM curriculum.problem

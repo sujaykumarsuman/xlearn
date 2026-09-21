@@ -18,6 +18,26 @@ function renderApp(initialPath: string) {
 const past = new Date(Date.now() - 24 * 3600_000).toISOString();
 
 const DASHBOARD = {
+  stats: {
+    streak: { current: 12, longest: 18 },
+    solved: { count: 28, total: 151 },
+    revisionsDue: 1,
+    mock: { best: 24, last: 24, count: 3, target: 24 },
+  },
+  plan: [
+    { kind: "review", itemId: "it-1", problemId: "3", title: "Two Sum", dayLabel: "Day 1", touchLevel: 1, mockMode: false },
+    { kind: "problem", problemId: "16", title: "3Sum", difficulty: "med", pattern: "Two pointers", status: "available" },
+  ],
+  week: {
+    n: 2,
+    title: "Two Pointers",
+    solved: 2,
+    total: 5,
+    problems: [
+      { problemId: "16", title: "3Sum", status: "available" },
+      { problemId: "17", title: "Container", status: "solved" },
+    ],
+  },
   revisions: {
     items: [
       {
@@ -28,16 +48,14 @@ const DASHBOARD = {
     ],
     dueCount: 1,
   },
+  weakArea: { weekOf: "2026-09-21", topCategory: "off_by_one", topCount: 3, counts: { off_by_one: 3 }, entries: [] },
   reminders: [{ id: "r1", kind: "revision_due", dueAt: past }],
-  weakArea: {
-    weekOf: "2026-09-21", topCategory: "off_by_one", topCount: 3, counts: { off_by_one: 3 }, entries: [],
-  },
 };
 
 describe("Dashboard (Today)", () => {
   afterEach(restoreFetch);
 
-  it("renders the revisions-due panel and the weak-area card", async () => {
+  it("renders quick stats, the plan with reviews first, and the revisions panel", async () => {
     installFetchMock((url) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
       if (url.includes("/api/dashboard")) return { status: 200, body: DASHBOARD };
@@ -46,30 +64,43 @@ describe("Dashboard (Today)", () => {
     renderApp("/xlearn/dsa/dashboard");
 
     expect(await screen.findByRole("heading", { level: 1, name: "Today" })).toBeInTheDocument();
-    // Await a data-dependent element (the h1 renders before the query resolves).
-    expect(await screen.findByText("Two Sum")).toBeInTheDocument();
-    // Revisions-due panel with the enriched due item.
+    // Quick stats.
+    expect(await screen.findByText("28")).toBeInTheDocument(); // solved
+    expect(screen.getByText("/ 151")).toBeInTheDocument();
+    // The plan leads with the review (reviews before new work), then the new problem.
+    expect(screen.getByText(/re-solve/)).toBeInTheDocument();
+    expect(screen.getByText(/New problem/)).toBeInTheDocument();
+    expect(screen.getByText("Medium")).toBeInTheDocument();
+    // Week-progress panel.
+    expect(screen.getByText(/Week 2 progress/)).toBeInTheDocument();
+    expect(screen.getByText(/2 of 5 core problems solved/)).toBeInTheDocument();
+    // Revisions-due panel + weak-area card.
     expect(screen.getByRole("heading", { name: /Revisions due today/ })).toBeInTheDocument();
-    expect(screen.getByText("Day 1")).toBeInTheDocument();
-    // Weak-area card.
-    expect(screen.getByText("Weak area this week")).toBeInTheDocument();
     expect(screen.getByText("Off-by-one / boundary")).toBeInTheDocument();
-    // In-app reminders surfaced (the panel footer + the reminders card).
-    expect(screen.getAllByText(/in-app reminder/).length).toBeGreaterThan(0);
   });
 
-  it("shows the empty state when no reviews are due", async () => {
+  it("shows the caught-up state when there is no plan and no reviews", async () => {
     installFetchMock((url) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
       if (url.includes("/api/dashboard")) {
-        return { status: 200, body: { revisions: { items: [], dueCount: 0 }, reminders: [], weakArea: null } };
+        return {
+          status: 200,
+          body: {
+            stats: { streak: { current: 0, longest: 0 }, solved: { count: 0, total: 151 }, revisionsDue: 0, mock: { best: 0, last: 0, count: 0, target: 24 } },
+            plan: [],
+            week: null,
+            revisions: { items: [], dueCount: 0 },
+            weakArea: null,
+            reminders: [],
+          },
+        };
       }
       return { status: 404 };
     });
     renderApp("/xlearn/dsa/dashboard");
 
-    expect(await screen.findByText(/Queue clear/)).toBeInTheDocument();
-    // With no weak area yet, the card prompts to classify.
+    expect(await screen.findByText(/All caught up/)).toBeInTheDocument();
+    expect(screen.getByText(/no reviews due/)).toBeInTheDocument();
     expect(screen.getByText(/No weak area yet/)).toBeInTheDocument();
   });
 });

@@ -108,6 +108,7 @@ type Store interface {
 	GetWeek(ctx context.Context, pathSlug string, n int) (Week, error)
 	ListConceptsByWeek(ctx context.Context, pathSlug string, n int) ([]ConceptRef, error)
 	ListProblemsByWeek(ctx context.Context, pathSlug string, n int) ([]Problem, error)
+	ListProblemsByPath(ctx context.Context, pathSlug string) ([]Problem, error)
 	GetProblem(ctx context.Context, id string) (Problem, error)
 	ListSections(ctx context.Context, problemID string) ([]Section, error)
 	GetConcept(ctx context.Context, slug string) (Concept, error)
@@ -235,6 +236,28 @@ func (s *PgStore) ListProblemsByWeek(ctx context.Context, pathSlug string, n int
 	rows, err := s.q.ListProblemsByWeek(ctx, gen.ListProblemsByWeekParams{PathSlug: pathSlug, WeekN: int32(n)})
 	if err != nil {
 		return nil, fmt.Errorf("list problems by week: %w", err)
+	}
+	out := make([]Problem, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, Problem{
+			ID:              r.ID,
+			PathSlug:        r.PathSlug,
+			WeekN:           int(r.WeekN),
+			Title:           r.Title,
+			Difficulty:      r.Difficulty,
+			Pattern:         r.Pattern,
+			LeetcodeURL:     r.LeetcodeUrl,
+			NeetcodeURL:     r.NeetcodeUrl,
+			IsReinforcement: r.IsReinforcement,
+		})
+	}
+	return out, nil
+}
+
+func (s *PgStore) ListProblemsByPath(ctx context.Context, pathSlug string) ([]Problem, error) {
+	rows, err := s.q.ListProblemsByPath(ctx, pathSlug)
+	if err != nil {
+		return nil, fmt.Errorf("list problems by path: %w", err)
 	}
 	out := make([]Problem, 0, len(rows))
 	for _, r := range rows {

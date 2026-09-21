@@ -61,11 +61,16 @@ since FKs can't cross ownership.
 |-------|-------------|-------|
 | `mock_session` | `id`, `account_id`, `set_id`, `problem_id`, `date`, `total_35`, `notes` | The `MockSession` entity. |
 | `rubric_score` | `id`, `mock_session_id`, `dimension` (7-enum), `score` (1..5) | 7 dims × 1–5 = /35 ([R-MK2](../prd/xlearn-prd.md#65-mock-interview)). |
-| `proj_coverage` | `account_id`, `week_n`, `solved`, `total`, … | Progress projection — coverage. |
-| `proj_heatmap` | `account_id`, `date`, `reviews_done` | Revision heatmap projection. |
-| `proj_mastery` | `account_id`, `pattern`, `mastery_score` | Pattern-mastery projection. |
-| `proj_outcome_mix` | `account_id`, `outcome`, `count` | Outcome-mix projection. |
+| `proj_coverage` | `account_id`, `problem_id`, `solved`, `first_solved_at`, `level1_schedules` | Progress projection — the solved set + ladder anchors. **Keyed per (account, problem)**, not per week — the gateway maps problem → week/phase from curriculum ([ADR-0018](../adr/0018-progress-projection-grain-and-rebuild.md)). |
+| `proj_heatmap` | `account_id`, `activity_date`, `solves`, `reviews` | Revision-activity heatmap (per UTC day). |
+| `proj_mastery` | `account_id`, `problem_id`, `best_outcome`, `best_rank`, `clean_solves`, `solve_count` | Per-problem solve quality; the gateway rolls it up **by pattern**. |
+| `proj_outcome_mix` | `account_id`, `outcome`, `cnt` | First-solve outcome mix. |
 | `inbox` | `event_id`, `consumed_at` | Idempotency/dedupe for consumed events. |
+
+> The `proj_*` tables are keyed at the **event grain** (per problem / day / outcome), because the
+> practice/review events carry only a bare `problem_id` — the by-week / by-phase / by-pattern
+> roll-ups are composed in the gateway from curriculum, keeping the projections a pure function of
+> the event log ([ADR-0018](../adr/0018-progress-projection-grain-and-rebuild.md)).
 
 ## schema `coach`
 
