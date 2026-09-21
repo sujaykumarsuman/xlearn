@@ -125,6 +125,12 @@ func (s *statusWriter) Write(b []byte) (int, error) {
 	return n, err
 }
 
+// Unwrap exposes the wrapped ResponseWriter so http.ResponseController can reach the
+// base writer's Flusher / deadline setter through this middleware. Without it, a
+// streaming handler (the coach SSE endpoint, and the gateway's SSE proxy) could not
+// flush or clear the server WriteTimeout and the stream would buffer or stall.
+func (s *statusWriter) Unwrap() http.ResponseWriter { return s.ResponseWriter }
+
 // newID returns a random 16-byte hex request-id.
 func newID() string {
 	var b [16]byte

@@ -6,14 +6,14 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done — code-complete + green; shipping
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | coach service + schema + secrets | ⬜ |
-| 2 | BYO-key envelope encryption | ⬜ |
-| 3 | provider fan-out + context prompts | ⬜ |
-| 4 | coach panel wired across screens | ⬜ |
+| 1 | coach service + schema + secrets | ✅ |
+| 2 | BYO-key envelope encryption | ✅ |
+| 3 | provider fan-out + context prompts | ✅ |
+| 4 | coach panel wired across screens | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + the
