@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Icon } from "../components/Icon";
+import { Spinner } from "../components/States";
 import { BudgetFields } from "../components/BudgetFields";
 import { DEFAULT_WEEKDAY, DEFAULT_WEEKEND, budgetEta, clampWeekday, weekendLabel } from "../lib/budget";
 import { useMe, usePatchMe, type Account, type WeekendBand } from "../lib/auth";
@@ -551,11 +552,10 @@ function SaveRow({
   );
 }
 
-function Centered({ children }: { children: React.ReactNode }) {
+function Centered({ children }: { children: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--ds-dim)", padding: "24px 0" }}>
-      <span className="ds-spin" aria-hidden="true" />
-      <span>{children}</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "24px 0" }}>
+      <Spinner label={children} />
     </div>
   );
 }

@@ -8,7 +8,11 @@ export type RouteHandler = (url: string, init?: RequestInit) => { status: number
  *  so tests can assert on calls. Pair with restoreFetch() in afterEach. */
 export function installFetchMock(handler: RouteHandler) {
   const fn = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = typeof input === "string" ? input : input.toString();
+    const raw = typeof input === "string" ? input : input.toString();
+    // The client calls the versioned surface (/api/v1/…); the gateway aliases it onto
+    // /api/… (ADR-0021). Normalise here so the route handlers can keep matching the
+    // unversioned paths regardless of which surface the client uses.
+    const url = raw.replace("/api/v1/", "/api/");
     const result = handler(url, init);
     if (result instanceof Response) return result;
     const { status, body } = result;

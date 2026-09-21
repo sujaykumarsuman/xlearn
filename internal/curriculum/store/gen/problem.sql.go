@@ -55,6 +55,59 @@ func (q *Queries) GetProblem(ctx context.Context, id string) (GetProblemRow, err
 	return i, err
 }
 
+const getProblemsByIDs = `-- name: GetProblemsByIDs :many
+SELECT id, path_slug, week_n, title, difficulty, pattern, leetcode_url, neetcode_url, is_reinforcement
+FROM curriculum.problem
+WHERE id = ANY($1::text[])
+ORDER BY week_n, sort_order, id
+`
+
+type GetProblemsByIDsRow struct {
+	ID              string
+	PathSlug        string
+	WeekN           int32
+	Title           string
+	Difficulty      string
+	Pattern         string
+	LeetcodeUrl     string
+	NeetcodeUrl     string
+	IsReinforcement bool
+}
+
+// Bulk problem-metadata read: resolve many bare problem ids in ONE round-trip so the
+// gateway can enrich the Revision due queue / mistake journal without N per-id GETs
+// (ADR-0005: the gateway composes cross-context state; this keeps it a single query).
+// Ordered by the same (week_n, sort_order, id) key as the path index for stability.
+func (q *Queries) GetProblemsByIDs(ctx context.Context, ids []string) ([]GetProblemsByIDsRow, error) {
+	rows, err := q.db.Query(ctx, getProblemsByIDs, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetProblemsByIDsRow{}
+	for rows.Next() {
+		var i GetProblemsByIDsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PathSlug,
+			&i.WeekN,
+			&i.Title,
+			&i.Difficulty,
+			&i.Pattern,
+			&i.LeetcodeUrl,
+			&i.NeetcodeUrl,
+			&i.IsReinforcement,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProblemsByPath = `-- name: ListProblemsByPath :many
 SELECT id, path_slug, week_n, title, difficulty, pattern, leetcode_url, neetcode_url, is_reinforcement
 FROM curriculum.problem

@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
 import { useMe } from "../lib/auth";
 import AppShell from "./AppShell";
+import { Spinner } from "./States";
 
 /**
  * AuthedShell gates the app: it reads GET /me and renders the AppShell only when
@@ -16,8 +17,7 @@ export default function AuthedShell() {
   if (me.isLoading) {
     return (
       <FullScreen>
-        <span className="ds-spin" aria-hidden="true" />
-        <span>Loading…</span>
+        <Spinner label="Loading…" />
       </FullScreen>
     );
   }

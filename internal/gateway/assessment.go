@@ -156,6 +156,8 @@ func (g *Gateway) handleScoreMock(w http.ResponseWriter, r *http.Request) {
 		passthrough(w, status, body)
 		return
 	}
+	// A scored mock updates the Dashboard mock stats → invalidate this account's cache.
+	g.invalidateAgg(status, accountID)
 	passthrough(w, http.StatusOK, g.enrichMockView(r.Context(), body))
 }
 

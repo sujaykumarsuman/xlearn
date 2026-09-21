@@ -104,6 +104,13 @@ func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if cached, ok := g.cache.get(accountID, "dashboard"); ok {
+		passthrough(w, http.StatusOK, cached)
+		return
+	}
+	// Capture the invalidation epoch at the start of the compose so a write that lands
+	// during the (lock-free) fan-out voids our cache put (putFresh).
+	cacheEpoch := g.cache.epoch(accountID)
 	aToken, _ := g.mintQuiet(accountID, g.audAssessment)
 	rToken, _ := g.mintQuiet(accountID, g.audReview)
 
@@ -224,6 +231,13 @@ func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		g.log.Error("bff dashboard: marshal failed", "err", err)
 		writeError(w, http.StatusBadGateway, "upstream", "dashboard compose failed")
 		return
+	}
+	// Only cache a fully-composed dashboard: if a core leg degraded (assessment summary
+	// or the curriculum problem index), the body carries placeholder/zeroed stats, so
+	// caching it would pin that degraded snapshot for the whole TTL even after the
+	// upstream recovers. Skip the cache and recompute next time instead.
+	if len(summaryRaw) > 0 && len(problemsRaw) > 0 {
+		g.cache.putFresh(accountID, "dashboard", body, cacheEpoch)
 	}
 	passthrough(w, http.StatusOK, body)
 }

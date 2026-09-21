@@ -42,6 +42,7 @@ func (s *Service) Handler() http.Handler {
 	mux.HandleFunc("GET /paths/{slug}", s.handleGetPath)
 	mux.HandleFunc("GET /paths/{slug}/problems", s.handleListPathProblems)
 	mux.HandleFunc("GET /paths/{slug}/weeks/{n}", s.handleGetWeek)
+	mux.HandleFunc("GET /problems", s.handleGetProblemsByIDs)
 	mux.HandleFunc("GET /problems/{id}", s.handleGetProblem)
 	mux.HandleFunc("GET /concepts/{slug}", s.handleGetConcept)
 

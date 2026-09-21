@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -82,6 +83,15 @@ func newAggHarness(t *testing.T) *aggHarness {
 		}}),
 		"GET /problems/{id}": func(w http.ResponseWriter, r *http.Request) {
 			_ = json.NewEncoder(w).Encode(map[string]any{"problem": map[string]any{"id": r.PathValue("id"), "title": "P" + r.PathValue("id")}})
+		},
+		"GET /problems": func(w http.ResponseWriter, r *http.Request) {
+			problems := []any{}
+			for _, id := range strings.Split(r.URL.Query().Get("ids"), ",") {
+				if id != "" {
+					problems = append(problems, map[string]any{"id": id, "title": "P" + id})
+				}
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"problems": problems})
 		},
 	}))
 	t.Cleanup(curriculum.Close)

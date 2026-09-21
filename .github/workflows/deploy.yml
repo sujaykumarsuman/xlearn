@@ -1,98 +1,23 @@
 name: deploy
 
-# Publish service images to GHCR on push to main. Each service builds only when
-# its own code (or shared code) changes — path-filtered, per ADR-0009. The
-# reusable workflow tags images with a build semver (0.1.<run>); Flux
-# image-automation (ImagePolicy range >=0.1.0) picks them up and deploys them to
-# the k3s cluster (sujaykumarsuman/infra). Switch to release tags at 1.0.
+# Publish service images to GHCR on a RELEASE TAG (1.0+). A `git tag vX.Y.Z` builds all
+# seven xlearn-<svc> images tagged X.Y.Z — the reusable build-push.yml strips the leading
+# `v` (VERSION carries the raw tag) — and Flux image-automation (ImagePolicy range
+# >=1.0.0) picks them up and deploys them to the k3s cluster (sujaykumarsuman/infra).
+#
+# This replaces the pre-1.0 build-semver auto-deploy from `main`: at 1.0 the deploy
+# trigger moved from "push to main" to "push a release tag" (ADR-0009 / ADR-0021,
+# docs/git-strategy.md). A release is a coordinated version bump, so all seven services
+# rebuild at the tagged version — path-filtering has no reliable base on a tag push, and
+# the whole fleet should carry the same X.Y.Z for the ImagePolicy range to select.
 on:
   push:
-    branches: [main]
+    tags: ["v*"]
 
 jobs:
-  # Detect which services changed so only those rebuild.
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      gateway: ${{ steps.filter.outputs.gateway }}
-      identity: ${{ steps.filter.outputs.identity }}
-      curriculum: ${{ steps.filter.outputs.curriculum }}
-      practice: ${{ steps.filter.outputs.practice }}
-      review: ${{ steps.filter.outputs.review }}
-      assessment: ${{ steps.filter.outputs.assessment }}
-      coach: ${{ steps.filter.outputs.coach }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            gateway:
-              - 'cmd/gateway/**'
-              - 'internal/gateway/**'
-              - 'internal/platform/**'
-              - 'web/**'
-              - 'embed.go'
-              - 'go.mod'
-              - 'go.sum'
-              - 'deploy/gateway.Dockerfile'
-              - '.github/workflows/deploy.yml'
-            identity:
-              - 'cmd/identity/**'
-              - 'internal/identity/**'
-              - 'internal/platform/**'
-              - 'go.mod'
-              - 'go.sum'
-              - 'deploy/identity.Dockerfile'
-              - '.github/workflows/deploy.yml'
-            curriculum:
-              - 'cmd/curriculum/**'
-              - 'internal/curriculum/**'
-              - 'internal/platform/**'
-              - 'curriculum/**'
-              - 'go.mod'
-              - 'go.sum'
-              - 'deploy/curriculum.Dockerfile'
-              - '.github/workflows/deploy.yml'
-            practice:
-              - 'cmd/practice/**'
-              - 'internal/practice/**'
-              - 'internal/platform/**'
-              - 'go.mod'
-              - 'go.sum'
-              - 'deploy/practice.Dockerfile'
-              - '.github/workflows/deploy.yml'
-            review:
-              - 'cmd/review/**'
-              - 'internal/review/**'
-              - 'internal/platform/**'
-              - 'go.mod'
-              - 'go.sum'
-              - 'deploy/review.Dockerfile'
-              - '.github/workflows/deploy.yml'
-            assessment:
-              - 'cmd/assessment/**'
-              - 'internal/assessment/**'
-              - 'internal/platform/**'
-              - 'go.mod'
-              - 'go.sum'
-              - 'deploy/assessment.Dockerfile'
-              - '.github/workflows/deploy.yml'
-            coach:
-              - 'cmd/coach/**'
-              - 'internal/coach/**'
-              - 'internal/platform/**'
-              - 'go.mod'
-              - 'go.sum'
-              - 'deploy/coach.Dockerfile'
-              - '.github/workflows/deploy.yml'
-
   gateway:
-    needs: changes
-    if: ${{ needs.changes.outputs.gateway == 'true' }}
-    # The reusable workflow pushes to GHCR, so the calling job must grant
-    # packages: write (this repo's default workflow token is read-only). Scoped
-    # to this job rather than flipping the repo-wide default.
+    # The reusable workflow pushes to GHCR, so the calling job must grant packages: write
+    # (this repo's default workflow token is read-only). Scoped per job.
     permissions:
       contents: read
       packages: write
@@ -100,14 +25,12 @@ jobs:
     with:
       image: ghcr.io/sujaykumarsuman/xlearn-gateway
       dockerfile: deploy/gateway.Dockerfile
-      # Stamp the binary version to match the build-semver image tag
-      # (0.1.<run_number>) the reusable workflow publishes on a branch push.
+      # The release tag (e.g. v1.0.0) is the binary version; build-push tags the image
+      # with the clean semver (v1.0.0 -> 1.0.0).
       build-args: |
-        VERSION=0.1.${{ github.run_number }}
+        VERSION=${{ github.ref_name }}
 
   identity:
-    needs: changes
-    if: ${{ needs.changes.outputs.identity == 'true' }}
     permissions:
       contents: read
       packages: write
@@ -116,11 +39,9 @@ jobs:
       image: ghcr.io/sujaykumarsuman/xlearn-identity
       dockerfile: deploy/identity.Dockerfile
       build-args: |
-        VERSION=0.1.${{ github.run_number }}
+        VERSION=${{ github.ref_name }}
 
   curriculum:
-    needs: changes
-    if: ${{ needs.changes.outputs.curriculum == 'true' }}
     permissions:
       contents: read
       packages: write
@@ -129,11 +50,9 @@ jobs:
       image: ghcr.io/sujaykumarsuman/xlearn-curriculum
       dockerfile: deploy/curriculum.Dockerfile
       build-args: |
-        VERSION=0.1.${{ github.run_number }}
+        VERSION=${{ github.ref_name }}
 
   practice:
-    needs: changes
-    if: ${{ needs.changes.outputs.practice == 'true' }}
     permissions:
       contents: read
       packages: write
@@ -142,11 +61,9 @@ jobs:
       image: ghcr.io/sujaykumarsuman/xlearn-practice
       dockerfile: deploy/practice.Dockerfile
       build-args: |
-        VERSION=0.1.${{ github.run_number }}
+        VERSION=${{ github.ref_name }}
 
   review:
-    needs: changes
-    if: ${{ needs.changes.outputs.review == 'true' }}
     permissions:
       contents: read
       packages: write
@@ -155,11 +72,9 @@ jobs:
       image: ghcr.io/sujaykumarsuman/xlearn-review
       dockerfile: deploy/review.Dockerfile
       build-args: |
-        VERSION=0.1.${{ github.run_number }}
+        VERSION=${{ github.ref_name }}
 
   assessment:
-    needs: changes
-    if: ${{ needs.changes.outputs.assessment == 'true' }}
     permissions:
       contents: read
       packages: write
@@ -168,11 +83,9 @@ jobs:
       image: ghcr.io/sujaykumarsuman/xlearn-assessment
       dockerfile: deploy/assessment.Dockerfile
       build-args: |
-        VERSION=0.1.${{ github.run_number }}
+        VERSION=${{ github.ref_name }}
 
   coach:
-    needs: changes
-    if: ${{ needs.changes.outputs.coach == 'true' }}
     permissions:
       contents: read
       packages: write
@@ -181,4 +94,4 @@ jobs:
       image: ghcr.io/sujaykumarsuman/xlearn-coach
       dockerfile: deploy/coach.Dockerfile
       build-args: |
-        VERSION=0.1.${{ github.run_number }}
+        VERSION=${{ github.ref_name }}

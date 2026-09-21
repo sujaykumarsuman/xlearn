@@ -34,6 +34,9 @@ under [`../v1/`](../v1/).
 | [0016](0016-mistake-journal-and-worker-service-auth.md) | Mistake journal, weekly weak-area & the worker service-auth path | Accepted |
 | [0017](0017-mock-model-and-projection-consumer-scaffold.md) | Mock-interview model & the S09 projection-consumer scaffold | Accepted |
 | [0018](0018-progress-projection-grain-and-rebuild.md) | Progress projections: event grain, gateway roll-up & drop-and-replay rebuild | Accepted |
+| [0019](0019-account-settings-onboarding-and-reminder-gating.md) | Account settings, onboarding completion & reminder gating | Accepted |
+| [0020](0020-coach-service-realization-and-behaviour-gate.md) | Coach service realization & the server-authoritative behaviour gate | Accepted |
+| [0021](0021-release-tagging-and-api-versioning.md) | Release tagging, API v1 & the 1.0 hardening cut | Accepted |
 
 ## Adding an ADR
 

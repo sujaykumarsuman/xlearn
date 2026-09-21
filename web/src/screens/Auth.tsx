@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Icon, IconSprite } from "../components/Icon";
+import { Spinner } from "../components/States";
 import { BudgetFields } from "../components/BudgetFields";
 import { DEFAULT_WEEKDAY, DEFAULT_WEEKEND, budgetEta, clampWeekday } from "../lib/budget";
 import {
@@ -487,11 +488,10 @@ function StepCoach({ onBack, onFinish }: { onBack: () => void; onFinish: () => v
   );
 }
 
-function Centered({ children }: { children: React.ReactNode }) {
+function Centered({ children }: { children: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--ds-dim)", padding: "24px 0" }}>
-      <span className="ds-spin" aria-hidden="true" />
-      <span>{children}</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "24px 0" }}>
+      <Spinner label={children} />
     </div>
   );
 }

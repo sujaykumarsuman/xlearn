@@ -1,0 +1,1280 @@
+# xLearn BFF API — OpenAPI 3.1 contract.
+#
+# GENERATED-CONTRACT: this file is the machine-readable form of the gateway's public
+# surface (the human table lives in api.md). It is kept in lock-step with the route
+# table in internal/gateway/bff.go (apiRoutes) by a CI drift check
+# (internal/gateway/openapi_drift_test.go): adding or removing a gateway route without
+# updating this file fails the build. Request/response schemas are authored by hand
+# because the gateway composes several of them from map[string]json.RawMessage
+# (aggregations), which no struct-reflection generator can introspect (ADR-0021).
+#
+# Not listed here (served outside the /xlearn/api surface): the k8s probes GET /healthz
+# and GET /readyz at the pod root, GET /api/healthz (app health), and the public
+# GET /.well-known/jwks.json (JWKS verification keys). See api.md.
+openapi: 3.1.0
+info:
+  title: xLearn BFF API
+  version: 1.0.0
+  description: |
+    The only public xLearn API — the gateway's BFF, same-origin with the SPA at
+    `projects.sujaykumar.dev/xlearn/api/v1` (cookie auth, no CORS). The unversioned
+    `/xlearn/api` prefix is kept as a compat alias (ADR-0021).
+
+    **Auth.** An HttpOnly `Secure` `SameSite=Lax` session cookie (`xl_session`). The
+    SPA sends it with `credentials: include`. Unauthenticated requests get `401` with
+    `{"error":{"code":"unauthenticated"}}`, on which the SPA redirects to OAuth. The
+    gateway validates the session against identity and mints a short-TTL RS256 JWT per
+    downstream audience (ADR-0006); clients never see it.
+
+    **Errors.** Every error is the envelope `{"error":{"code","message"?,"details"?}}`;
+    the HTTP status reflects the class (`400/401/403/404/409/422/429/5xx`). A failed
+    upstream is `502 {"error":{"code":"upstream"}}`; an unconfigured one is `503`.
+
+    **Aggregations.** Endpoints marked `agg` fan out to several services server-side
+    (Week, Problem, Dashboard, Progress). Each degrades a section independently rather
+    than failing the whole response, except `GET /progress`, whose summary leg is
+    required.
+
+    **Streaming.** `POST /coach/chat` responds `text/event-stream` (SSE): `data:` frames
+    carrying `{"delta"}`, a terminal `event: done`, or `event: error` on a mid-stream
+    failure. Errors before the first byte are the normal JSON envelope.
+servers:
+  - url: /xlearn/api/v1
+    description: The 1.0 API surface (same origin as the SPA).
+  - url: /xlearn/api
+    description: Unversioned compat alias — the gateway serves it identically to /xlearn/api/v1 (ADR-0021).
+tags:
+  - name: account
+  - name: curriculum
+  - name: problem
+  - name: revision
+  - name: mistakes
+  - name: mock
+  - name: progress
+  - name: coach
+
+security:
+  - cookieAuth: []
+
+paths:
+  /me:
+    get:
+      tags: [account]
+      operationId: getMe
+      summary: Current account + onboarding state.
+      responses:
+        "200":
+          description: The caller's account and onboarding state.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MeResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+    patch:
+      tags: [account]
+      operationId: patchMe
+      summary: Update profile / study budget / timezone / reminders.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PatchMeRequest" }
+      responses:
+        "200":
+          description: The updated account + onboarding state.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MeResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /onboarding/step:
+    post:
+      tags: [account]
+      operationId: onboardingStep
+      summary: Advance the 3-step onboarding (path → budget → finish).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OnboardingStepRequest" }
+      responses:
+        "200":
+          description: The updated onboarding state.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  onboarding: { $ref: "#/components/schemas/Onboarding" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /auth/logout:
+    post:
+      tags: [account]
+      operationId: logout
+      summary: Revoke the session and clear the cookie (idempotent).
+      security: []
+      responses:
+        "204": { description: Session revoked; cookie cleared. }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /auth/{provider}/start:
+    post:
+      tags: [account]
+      operationId: authStart
+      summary: Begin OAuth; 302 to the provider.
+      security: []
+      parameters:
+        - { $ref: "#/components/parameters/Provider" }
+      responses:
+        "302": { description: Redirect to the OAuth provider (sets an oauth-tx cookie). }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /auth/{provider}/callback:
+    get:
+      tags: [account]
+      operationId: authCallback
+      summary: OAuth callback; sets the session cookie and 302s into the app.
+      security: []
+      parameters:
+        - { $ref: "#/components/parameters/Provider" }
+        - { name: code, in: query, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string } }
+        - { name: error, in: query, schema: { type: string } }
+      responses:
+        "302": { description: Redirect into the SPA (sets xl_session on success). }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /paths:
+    get:
+      tags: [curriculum]
+      operationId: listPaths
+      summary: Catalog — all learning paths + status.
+      responses:
+        "200":
+          description: All paths.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  paths:
+                    type: array
+                    items: { $ref: "#/components/schemas/PathSummary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /paths/{slug}:
+    get:
+      tags: [curriculum]
+      operationId: getPath
+      summary: Roadmap — phases, weeks, totals.
+      parameters:
+        - { $ref: "#/components/parameters/Slug" }
+      responses:
+        "200":
+          description: The path roadmap.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Roadmap" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /paths/{slug}/weeks/{n}:
+    get:
+      tags: [curriculum]
+      operationId: getWeek
+      summary: Week thesis + concepts + problems with the user's five-touch state (agg).
+      parameters:
+        - { $ref: "#/components/parameters/Slug" }
+        - { name: n, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Week content with the injected per-user `userState` block.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WeekView" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /concepts/{slug}:
+    get:
+      tags: [curriculum]
+      operationId: getConcept
+      summary: Concept reading + code template.
+      parameters:
+        - { $ref: "#/components/parameters/Slug" }
+      responses:
+        "200":
+          description: The concept.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  concept: { $ref: "#/components/schemas/Concept" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /problems/{id}:
+    get:
+      tags: [problem]
+      operationId: getProblem
+      summary: Problem + only the unlocked stage sections + user state + timer (agg).
+      parameters:
+        - { $ref: "#/components/parameters/ProblemID" }
+      responses:
+        "200":
+          description: Problem content filtered to unlocked stages, plus practice state.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProblemView" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /problems/{id}/attempt/start:
+    post:
+      tags: [problem]
+      operationId: startAttempt
+      summary: Start/resume the attempt; starts the 15-min server timer.
+      parameters:
+        - { $ref: "#/components/parameters/ProblemID" }
+      responses:
+        "200":
+          description: The updated practice state.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state: { $ref: "#/components/schemas/PracticeState" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /problems/{id}/reveal:
+    post:
+      tags: [problem]
+      operationId: reveal
+      summary: Reveal hint/solution; returns the penalty ack if solution revealed early.
+      parameters:
+        - { $ref: "#/components/parameters/ProblemID" }
+      responses:
+        "200":
+          description: What was revealed, the updated state, and any penalty.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RevealResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /problems/{id}/outcome:
+    post:
+      tags: [problem]
+      operationId: logOutcome
+      summary: Log Clean/Rough/Assisted/Miss (may open a mistake via an event).
+      parameters:
+        - { $ref: "#/components/parameters/ProblemID" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outcome]
+              properties:
+                outcome: { $ref: "#/components/schemas/Outcome" }
+      responses:
+        "200":
+          description: The updated practice state.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state: { $ref: "#/components/schemas/PracticeState" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /revision/due:
+    get:
+      tags: [revision]
+      operationId: revisionDue
+      summary: The prioritised due queue, enriched with problem metadata (agg).
+      responses:
+        "200":
+          description: The due queue.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DueQueue" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /revision/{itemId}/score:
+    post:
+      tags: [revision]
+      operationId: scoreRevision
+      summary: Submit a re-solve; auto-scores → advance or reset.
+      parameters:
+        - { name: itemId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RevisionScoreRequest" }
+      responses:
+        "200":
+          description: The scored result (advance or reset, next touch).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RevisionScoreResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /mistakes:
+    get:
+      tags: [mistakes]
+      operationId: listMistakes
+      summary: The mistake journal, each entry enriched with problem metadata (agg).
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [open, closed] }
+      responses:
+        "200":
+          description: The journal.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MistakeList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+    post:
+      tags: [mistakes]
+      operationId: createMistake
+      summary: Create/edit a journal entry (root cause, insight, category).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MistakeCreateRequest" }
+      responses:
+        "201":
+          description: The created entry.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Mistake" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /mistakes/{id}:
+    patch:
+      tags: [mistakes]
+      operationId: patchMistake
+      summary: Update status / revisit / fields of an entry.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MistakePatchRequest" }
+      responses:
+        "200":
+          description: The updated entry.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Mistake" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /weak-area:
+    get:
+      tags: [mistakes]
+      operationId: weakArea
+      summary: The current weekly weak-area banner (agg).
+      responses:
+        "200":
+          description: The weak-area rollup.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WeakArea" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /mocks:
+    post:
+      tags: [mock]
+      operationId: startMock
+      summary: Start a 45-min mock (setup → session).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MockStartRequest" }
+      responses:
+        "201":
+          description: The live mock session view.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MockView" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /mocks/trend:
+    get:
+      tags: [mock]
+      operationId: mockTrend
+      summary: The scored /35 history vs the readiness targets.
+      responses:
+        "200":
+          description: The trend points + targets.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MockTrend" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /mocks/{id}:
+    get:
+      tags: [mock]
+      operationId: getMock
+      summary: Live session + phase-rail state.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The mock session view.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MockView" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /mocks/{id}/score:
+    post:
+      tags: [mock]
+      operationId: scoreMock
+      summary: Submit the 7-dim rubric → /35 + trend.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MockScoreRequest" }
+      responses:
+        "200":
+          description: The scored mock view (total35 + dimensions).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MockView" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /progress:
+    get:
+      tags: [progress]
+      operationId: getProgress
+      summary: Coverage, heatmap, mastery, rubric trend, outcome mix (agg).
+      responses:
+        "200":
+          description: The composed progress view.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProgressView" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /dashboard:
+    get:
+      tags: [progress]
+      operationId: getDashboard
+      summary: The "Today" home — daily plan, due reviews, weak area, streak, stats (agg).
+      responses:
+        "200":
+          description: The composed dashboard.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardView" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /coach/key:
+    get:
+      tags: [coach]
+      operationId: getCoachKey
+      summary: Masked key(s) + provider + model + enabled (never the raw key).
+      responses:
+        "200":
+          description: The masked key config (empty when coach is unconfigured).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoachKeyList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    put:
+      tags: [coach]
+      operationId: putCoachKey
+      summary: Store/replace the user's provider key (encrypted) or toggle it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CoachKeyRequest" }
+      responses:
+        "200":
+          description: The updated masked key config.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoachKeyList" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+    delete:
+      tags: [coach]
+      operationId: deleteCoachKey
+      summary: Remove the stored key.
+      responses:
+        "204": { description: Key removed. }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /coach/thread:
+    get:
+      tags: [coach]
+      operationId: coachThread
+      summary: Thread history for a page context.
+      parameters:
+        - { name: context, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The thread messages for the context.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoachThread" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /coach/chat:
+    post:
+      tags: [coach]
+      operationId: coachChat
+      summary: Send a message with page context; streams the coach reply (SSE).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CoachChatRequest" }
+      responses:
+        "200":
+          description: |
+            An SSE stream (`text/event-stream`). Each `data:` frame carries
+            `{"delta":"…"}`; a terminal `event: done` carries `{"done":true}`; a
+            mid-stream failure is `event: error` with `{"error","message"}`.
+          content:
+            text/event-stream:
+              schema: { type: string }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: xl_session
+      description: HttpOnly session cookie set by the OAuth callback.
+
+  parameters:
+    Slug:
+      name: slug
+      in: path
+      required: true
+      schema: { type: string }
+    ProblemID:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    Provider:
+      name: provider
+      in: path
+      required: true
+      schema: { type: string, enum: [github, google] }
+
+  responses:
+    BadRequest:
+      description: Malformed request.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    Unauthorized:
+      description: No/invalid session; the SPA redirects to OAuth.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+          example: { error: { code: unauthenticated } }
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    Conflict:
+      description: Conflicting state (e.g. no active attempt, already solved).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    Unprocessable:
+      description: Semantically invalid (e.g. bad outcome/category/rubric value).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    BadGateway:
+      description: An upstream service failed.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+          example: { error: { code: upstream, message: review unavailable } }
+    Unavailable:
+      description: A required upstream is not configured.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  schemas:
+    Error:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        details: {}
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error: { $ref: "#/components/schemas/Error" }
+    Difficulty:
+      type: string
+      enum: [easy, med, hard]
+    Outcome:
+      type: string
+      enum: [clean, rough, assisted, miss]
+    Account:
+      type: object
+      properties:
+        id: { type: string }
+        display_name: { type: string }
+        email: { type: [string, "null"] }
+        timezone: { type: string }
+        study_budget: { type: object }
+        reminders: { type: object }
+        created_at: { type: string, format: date-time }
+    Onboarding:
+      type: object
+      properties:
+        path_chosen: { type: [string, "null"] }
+        budget_set: { type: boolean }
+        key_added: { type: boolean }
+        completed: { type: boolean }
+    MeResponse:
+      type: object
+      properties:
+        account: { $ref: "#/components/schemas/Account" }
+        onboarding: { $ref: "#/components/schemas/Onboarding" }
+    PatchMeRequest:
+      type: object
+      description: Partial update; server fields (id/email/created_at) are accepted and ignored.
+      properties:
+        display_name: { type: string }
+        timezone: { type: string, description: IANA zone. }
+        study_budget:
+          type: object
+          properties:
+            weekday_minutes: { type: integer, minimum: 30, maximum: 240 }
+            weekend_band: { type: string, enum: ["2", "3-4", "5"] }
+        reminders:
+          type: object
+          properties:
+            daily_reminder_on: { type: boolean }
+            daily_reminder_time: { type: string, description: "HH:MM" }
+            revision_due_alerts_on: { type: boolean }
+    OnboardingStepRequest:
+      type: object
+      required: [step]
+      properties:
+        step: { type: string, enum: [path, budget, finish] }
+        path_chosen: { type: string }
+        study_budget: { type: object }
+    PathSummary:
+      type: object
+      properties:
+        slug: { type: string }
+        title: { type: string }
+        status: { type: string }
+        summary: { type: string }
+        problem_total: { type: integer }
+        week_total: { type: integer }
+    Phase:
+      type: object
+      properties:
+        order: { type: integer }
+        name: { type: string }
+        theme: { type: string }
+        week_from: { type: integer }
+        week_to: { type: integer }
+    WeekSummary:
+      type: object
+      properties:
+        n: { type: integer }
+        title: { type: string }
+        thesis: { type: string }
+        easy: { type: integer }
+        med: { type: integer }
+        hard: { type: integer }
+        total: { type: integer }
+    Roadmap:
+      type: object
+      properties:
+        path: { $ref: "#/components/schemas/PathSummary" }
+        phases: { type: array, items: { $ref: "#/components/schemas/Phase" } }
+        weeks: { type: array, items: { $ref: "#/components/schemas/WeekSummary" } }
+    Problem:
+      type: object
+      properties:
+        id: { type: string }
+        path_slug: { type: string }
+        week_n: { type: integer }
+        title: { type: string }
+        difficulty: { $ref: "#/components/schemas/Difficulty" }
+        pattern: { type: string }
+        leetcode_url: { type: string }
+        neetcode_url: { type: string }
+        is_reinforcement: { type: boolean }
+    Concept:
+      type: object
+      properties:
+        slug: { type: string }
+        path_slug: { type: string }
+        title: { type: string }
+        body_md: { type: string }
+        when_to_use_md: { type: string }
+        code_template: { type: string }
+    Touch:
+      type: object
+      properties:
+        level: { type: integer, description: "1..5 = Day 1/3/7/21/45" }
+        dueDate: { type: [string, "null"] }
+        result: { type: string, enum: [none, pass, fail] }
+    ProblemState:
+      type: object
+      properties:
+        status: { type: string, enum: [locked, available, attempting, solved] }
+        lastOutcome:
+          oneOf:
+            - { $ref: "#/components/schemas/Outcome" }
+            - { type: "null" }
+        currentTouch: { type: integer }
+        touches: { type: array, items: { $ref: "#/components/schemas/Touch" } }
+    WeekView:
+      type: object
+      description: Curriculum week content plus the injected per-user `userState` (ADR-0013).
+      properties:
+        week: { type: object }
+        path: { type: object }
+        concepts: { type: array, items: { type: object } }
+        problems: { type: array, items: { $ref: "#/components/schemas/Problem" } }
+        phase: { type: object }
+        userState:
+          type: object
+          properties:
+            week:
+              type: object
+              properties:
+                solved: { type: integer }
+                coreTotal: { type: integer }
+                byDifficulty:
+                  type: object
+                  properties:
+                    easy: { type: integer }
+                    med: { type: integer }
+                    hard: { type: integer }
+                populated: { type: boolean }
+            problems:
+              type: object
+              additionalProperties: { $ref: "#/components/schemas/ProblemState" }
+    Timer:
+      type: object
+      properties:
+        kind: { type: string }
+        deadlineAt: { type: string, format: date-time }
+        remainingSeconds: { type: integer }
+        expired: { type: boolean }
+    PracticeState:
+      type: object
+      properties:
+        problemId: { type: string }
+        status: { type: string, enum: [locked, available, attempting, solved] }
+        stageReached: { type: string }
+        unlockedStages: { type: array, items: { type: string } }
+        currentTouch: { type: integer }
+        lastOutcome: { type: [string, "null"] }
+        firstSolvedAt: { type: [string, "null"] }
+        revealedEarly: { type: boolean }
+        timer:
+          oneOf:
+            - { $ref: "#/components/schemas/Timer" }
+            - { type: "null" }
+    ProblemView:
+      type: object
+      properties:
+        problem: { $ref: "#/components/schemas/Problem" }
+        sections:
+          type: array
+          description: Only the learner's UNLOCKED stage sections (R-PF1).
+          items:
+            type: object
+            properties:
+              stage: { type: string }
+              kind: { type: string }
+              order: { type: integer }
+              body_md: { type: string }
+              code: { type: string }
+        state: { $ref: "#/components/schemas/PracticeState" }
+    RevealResponse:
+      type: object
+      properties:
+        revealed: { type: string }
+        state: { $ref: "#/components/schemas/PracticeState" }
+        penalty:
+          oneOf:
+            - type: object
+              properties:
+                owedAttempt: { type: boolean }
+                dueInDays: { type: integer }
+                message: { type: string }
+            - { type: "null" }
+    DueItem:
+      type: object
+      properties:
+        itemId: { type: string }
+        problemId: { type: string }
+        touchLevel: { type: integer }
+        dayLabel: { type: string }
+        dueDate: { type: string }
+        due: { type: boolean }
+        mockMode: { type: boolean }
+        status: { type: string }
+        problem:
+          oneOf:
+            - { $ref: "#/components/schemas/Problem" }
+            - { type: "null" }
+    DueQueue:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/DueItem" } }
+        dueCount: { type: integer }
+    RevisionScoreRequest:
+      type: object
+      required: [namedPatternSecs, solvedInTimer, statedComplexity]
+      properties:
+        namedPatternSecs: { type: integer, minimum: 0 }
+        solvedInTimer: { type: boolean }
+        statedComplexity: { type: boolean }
+    RevisionScoreResult:
+      type: object
+      properties:
+        itemId: { type: string }
+        problemId: { type: string }
+        touchLevel: { type: integer }
+        autoPass: { type: boolean }
+        status: { type: string, enum: [passed, failed] }
+        mockMode: { type: boolean }
+        reset: { type: boolean }
+        nextTouchLevel: { type: integer }
+        nextDayLabel: { type: string }
+        nextDueDate: { type: [string, "null"] }
+    Mistake:
+      type: object
+      properties:
+        id: { type: string }
+        problemId: { type: string }
+        pattern: { type: string }
+        mistake: { type: string }
+        rootCause: { type: string }
+        insight: { type: string }
+        category: { type: string, description: '"" = uncategorised' }
+        status: { type: string, enum: [open, closed] }
+        revisitCount: { type: integer }
+        revisitDate: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+        problem:
+          oneOf:
+            - { $ref: "#/components/schemas/Problem" }
+            - { type: "null" }
+    MistakeList:
+      type: object
+      properties:
+        mistakes: { type: array, items: { $ref: "#/components/schemas/Mistake" } }
+        openCount: { type: integer }
+        closedCount: { type: integer }
+        closeThreshold: { type: integer }
+        categories: { type: array, items: { type: string } }
+    MistakeCreateRequest:
+      type: object
+      required: [problemId]
+      properties:
+        problemId: { type: string }
+        pattern: { type: string }
+        mistake: { type: string }
+        rootCause: { type: string }
+        insight: { type: string }
+        category: { type: string }
+        status: { type: string, enum: [open, closed] }
+    MistakePatchRequest:
+      type: object
+      properties:
+        pattern: { type: string }
+        mistake: { type: string }
+        rootCause: { type: string }
+        insight: { type: string }
+        category: { type: string }
+        status: { type: string, enum: [open, closed] }
+        revisitCount: { type: integer }
+    WeakArea:
+      type: object
+      properties:
+        topCategory: { type: string }
+        topCount: { type: integer }
+        counts: { type: object, additionalProperties: { type: integer } }
+        entries: { type: array, items: { $ref: "#/components/schemas/Mistake" } }
+        weekOf: { type: string, description: "YYYY-MM-DD" }
+    MockStartRequest:
+      type: object
+      required: [setId]
+      properties:
+        setId: { type: string }
+        problemId: { type: string }
+        difficulty: { $ref: "#/components/schemas/Difficulty" }
+    RailPhase:
+      type: object
+      properties:
+        index: { type: integer }
+        label: { type: string }
+        range: { type: string }
+        startMin: { type: integer }
+        endMin: { type: integer }
+        grow: { type: integer }
+        prompt: { type: string }
+        state: { type: string, enum: [past, current, upcoming] }
+    RailState:
+      type: object
+      properties:
+        elapsedSeconds: { type: integer }
+        remainingSeconds: { type: integer }
+        overtime: { type: boolean }
+        phaseIndex: { type: integer }
+        phaseLabel: { type: string }
+        phases: { type: array, items: { $ref: "#/components/schemas/RailPhase" } }
+    MockView:
+      type: object
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [live, scored] }
+        setId: { type: string }
+        problemId: { type: string }
+        difficulty: { $ref: "#/components/schemas/Difficulty" }
+        date: { type: string, description: "YYYY-MM-DD" }
+        startedAt: { type: string, format: date-time }
+        deadlineAt: { type: string, format: date-time }
+        total35: { type: [integer, "null"] }
+        notes: { type: string }
+        rail: { $ref: "#/components/schemas/RailState" }
+        dimensions:
+          type: array
+          items:
+            type: object
+            properties:
+              key: { type: string }
+              name: { type: string }
+              score: { type: integer }
+        targets:
+          type: object
+          properties:
+            w13: { type: integer }
+            w15: { type: integer }
+            pre: { type: integer }
+        problem:
+          oneOf:
+            - { $ref: "#/components/schemas/Problem" }
+            - { type: "null" }
+    MockScoreRequest:
+      type: object
+      required: [scores]
+      properties:
+        scores:
+          type: object
+          description: Each dimension is an integer 1..5.
+          properties:
+            communication: { type: integer, minimum: 1, maximum: 5 }
+            problem_understanding: { type: integer, minimum: 1, maximum: 5 }
+            brute_force: { type: integer, minimum: 1, maximum: 5 }
+            optimisation: { type: integer, minimum: 1, maximum: 5 }
+            code_quality: { type: integer, minimum: 1, maximum: 5 }
+            edge_cases: { type: integer, minimum: 1, maximum: 5 }
+            complexity: { type: integer, minimum: 1, maximum: 5 }
+        notes: { type: string }
+    MockTrend:
+      type: object
+      properties:
+        points:
+          type: array
+          items:
+            type: object
+            properties:
+              mockId: { type: string }
+              setId: { type: string }
+              problemId: { type: string }
+              difficulty: { $ref: "#/components/schemas/Difficulty" }
+              date: { type: string }
+              startedAt: { type: string, format: date-time }
+              total35: { type: integer }
+        targets:
+          type: object
+          properties:
+            w13: { type: integer }
+            w15: { type: integer }
+            pre: { type: integer }
+    ProgressView:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            solved: { type: integer }
+            total: { type: integer }
+            streak:
+              type: object
+              properties:
+                current: { type: integer }
+                longest: { type: integer }
+            retention:
+              type: object
+              properties:
+                pct: { type: integer }
+                resets: { type: integer }
+                ladders: { type: integer }
+            mock:
+              type: object
+              properties:
+                count: { type: integer }
+                average: { type: integer }
+                best: { type: integer }
+                last: { type: integer }
+                delta: { type: integer }
+            outcomeMix:
+              type: object
+              properties:
+                total: { type: integer }
+                clean: { type: integer }
+                rough: { type: integer }
+                assisted: { type: integer }
+                miss: { type: integer }
+        heatmap:
+          oneOf:
+            - type: object
+              properties:
+                days:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      date: { type: string }
+                      solves: { type: integer }
+                      reviews: { type: integer }
+            - { type: "null" }
+        trend:
+          oneOf:
+            - { $ref: "#/components/schemas/MockTrend" }
+            - { type: "null" }
+        weakArea:
+          oneOf:
+            - { $ref: "#/components/schemas/WeakArea" }
+            - { type: "null" }
+        phases:
+          type: array
+          items:
+            type: object
+            properties:
+              order: { type: integer }
+              name: { type: string }
+              theme: { type: string }
+              weekFrom: { type: integer }
+              weekTo: { type: integer }
+              solved: { type: integer }
+              total: { type: integer }
+        patterns:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              solved: { type: integer }
+              total: { type: integer }
+              pct: { type: integer }
+    PlanItem:
+      oneOf:
+        - type: object
+          properties:
+            kind: { type: string, enum: [review] }
+            itemId: { type: string }
+            problemId: { type: string }
+            title: { type: string }
+            dayLabel: { type: string }
+            touchLevel: { type: integer }
+            mockMode: { type: boolean }
+        - type: object
+          properties:
+            kind: { type: string, enum: [problem] }
+            problemId: { type: string }
+            title: { type: string }
+            difficulty: { $ref: "#/components/schemas/Difficulty" }
+            pattern: { type: string }
+            status: { type: string }
+    DashboardView:
+      type: object
+      properties:
+        stats:
+          type: object
+          properties:
+            streak:
+              type: object
+              properties:
+                current: { type: integer }
+                longest: { type: integer }
+            solved:
+              type: object
+              properties:
+                count: { type: integer }
+                total: { type: integer }
+            revisionsDue: { type: integer }
+            mock:
+              type: object
+              properties:
+                best: { type: integer }
+                last: { type: integer }
+                count: { type: integer }
+                target: { type: integer }
+        plan:
+          type: array
+          items: { $ref: "#/components/schemas/PlanItem" }
+        week:
+          oneOf:
+            - type: object
+              properties:
+                n: { type: integer }
+                title: { type: string }
+                solved: { type: integer }
+                total: { type: integer }
+                problems:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      problemId: { type: string }
+                      title: { type: string }
+                      status: { type: string }
+            - { type: "null" }
+        revisions:
+          oneOf:
+            - { $ref: "#/components/schemas/DueQueue" }
+            - { type: "null" }
+        weakArea:
+          oneOf:
+            - { $ref: "#/components/schemas/WeakArea" }
+            - { type: "null" }
+        reminders:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              kind: { type: string }
+              dueAt: { type: string, format: date-time }
+    CoachKey:
+      type: object
+      properties:
+        provider: { type: string, enum: [openai, anthropic] }
+        masked_key: { type: string }
+        default_model: { type: string }
+        enabled: { type: boolean }
+    CoachKeyList:
+      type: object
+      properties:
+        keys: { type: array, items: { $ref: "#/components/schemas/CoachKey" } }
+        connected: { type: boolean }
+    CoachKeyRequest:
+      type: object
+      required: [provider]
+      properties:
+        provider: { type: string, enum: [openai, anthropic] }
+        key: { type: string, description: Omit (with `enabled`) to toggle without changing the key. }
+        default_model: { type: string }
+        enabled: { type: boolean }
+    CoachThread:
+      type: object
+      properties:
+        context: { type: string }
+        messages:
+          type: array
+          items:
+            type: object
+            properties:
+              role: { type: string }
+              content: { type: string }
+              createdAt: { type: string, format: date-time }
+    CoachChatRequest:
+      type: object
+      required: [context, message]
+      properties:
+        context: { type: string, description: 'e.g. "problem:16"' }
+        message: { type: string }
+        kind: { type: string }
+        label: { type: string }
+        problemId: { type: string, description: Non-authoritative; the gateway rewrites it from practice state. }
+        problemTitle: { type: string }
+        pattern: { type: string }
+        stage: { type: string }
+        weakArea: { type: string }
+        recentOutcome: { type: string }

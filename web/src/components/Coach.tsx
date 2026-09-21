@@ -127,7 +127,13 @@ export function Coach() {
         <Icon name={ctx.chipIcon} className="xl-ico--sm" /> Context · {ctx.label}
       </div>
 
-      <div className="xl-coach__body xl-scroll" ref={bodyRef}>
+      <div
+        className="xl-coach__body xl-scroll"
+        ref={bodyRef}
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions text"
+      >
         {keyQuery.isLoading && <div style={{ fontSize: 12.5, color: "var(--ds-muted)" }}>Loading your coach…</div>}
 
         {!keyQuery.isLoading && !usable && <CoachEmptyState disabled={!!key && !key.enabled} onOpenSettings={() => navigate("/settings")} />}

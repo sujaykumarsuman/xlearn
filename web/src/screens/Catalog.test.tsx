@@ -77,4 +77,17 @@ describe("Catalog screen", () => {
     expect(await screen.findByText(/Couldn’t load the catalog/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
+
+  it("shows an empty state when the API returns no paths", async () => {
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.endsWith("/api/paths")) return { status: 200, body: { paths: [] } };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/");
+
+    expect(await screen.findByText(/No learning paths yet/)).toBeInTheDocument();
+    // Not the populated body: no "More paths" header, no engine footer.
+    expect(screen.queryByText(/More paths/)).not.toBeInTheDocument();
+  });
 });

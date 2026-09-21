@@ -89,8 +89,8 @@ func (s *Service) Handler() http.Handler {
 
 // NewOutboxRelay builds the assessment outbox relay over pub (a JetStream publisher in
 // prod, the log publisher in local dev). Call Run in a goroutine.
-func (s *Service) NewOutboxRelay(pub events.Publisher) *events.Relay {
-	return events.NewRelay(outboxSource{s.store}, pub, s.log)
+func (s *Service) NewOutboxRelay(pub events.Publisher, opts ...events.RelayOption) *events.Relay {
+	return events.NewRelay(outboxSource{s.store}, pub, s.log, opts...)
 }
 
 // StartProjectionConsumer binds a durable pull consumer for the progress projections on

@@ -15,77 +15,83 @@ import (
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 )
 
-// newAPIMux builds the BFF routes. The gateway validates the opaque session cookie
-// with identity, mints a short-TTL JWT (ADR-0006), and forwards it on internal
-// calls; OAuth start/callback are proxied through to identity so the browser only
-// ever talks to the gateway origin.
+// apiRoute is one registered BFF endpoint. The set of routes is a first-class value
+// (apiRoutes) so both the mux and the OpenAPI drift check read the SAME source of
+// truth — a route can't be added without the spec-drift test noticing (see
+// openapi_drift_test.go).
+type apiRoute struct {
+	Method  string // GET|POST|PUT|PATCH|DELETE
+	Pattern string // the app path, e.g. "/api/paths/{slug}/weeks/{n}"
+	Handler http.HandlerFunc
+	// Doc is false for routes intentionally excluded from the public OpenAPI contract
+	// (ops/JWKS): they are served but not part of the documented /xlearn/api surface.
+	Doc bool
+}
+
+// apiRoutes is the authoritative BFF route table. Order is irrelevant to correctness
+// (Go 1.22's ServeMux matches most-specific-first, so /mocks/trend beats /mocks/{id}
+// regardless of registration order); it is grouped by feature for readability.
+func (g *Gateway) apiRoutes() []apiRoute {
+	return []apiRoute{
+		// System / auth infra.
+		{"GET", "/api/healthz", g.appHealth, false},
+		{"GET", "/.well-known/jwks.json", g.handleJWKS, false},
+		// Account + onboarding (identity-backed). OAuth start/callback are proxied so the
+		// browser only ever talks to the gateway origin.
+		{"GET", "/api/me", g.handleMe, true},
+		{"PATCH", "/api/me", g.handlePatchMe, true},
+		{"POST", "/api/auth/logout", g.handleLogout, true},
+		{"POST", "/api/onboarding/step", g.handleOnboardingStep, true},
+		{"POST", "/api/auth/{provider}/start", g.handleAuthProxy, true},
+		{"GET", "/api/auth/{provider}/callback", g.handleAuthProxy, true},
+		// Curriculum content (read-only, session-gated). The week route is a BFF
+		// aggregation (api.md `agg`): the gateway layers per-user five-touch/solve state
+		// onto curriculum content (ADR-0005/0013).
+		{"GET", "/api/paths", g.handleListPaths, true},
+		{"GET", "/api/paths/{slug}", g.handleGetPath, true},
+		{"GET", "/api/paths/{slug}/weeks/{n}", g.handleGetWeek, true},
+		{"GET", "/api/concepts/{slug}", g.handleGetConcept, true},
+		// Problem workspace: the GET is a BFF aggregation (content limited to unlocked
+		// stages + practice state + timer); the writes proxy to practice.
+		{"GET", "/api/problems/{id}", g.handleGetProblem, true},
+		{"POST", "/api/problems/{id}/attempt/start", g.handleAttemptStart, true},
+		{"POST", "/api/problems/{id}/reveal", g.handleReveal, true},
+		{"POST", "/api/problems/{id}/outcome", g.handleOutcome, true},
+		// Revision (review). External /revision maps to review's internal /revisions.
+		{"GET", "/api/revision/due", g.handleRevisionDue, true},
+		{"POST", "/api/revision/{itemId}/score", g.handleRevisionScore, true},
+		// Mistake journal + weak-area (review), enriched with curriculum metadata.
+		{"GET", "/api/mistakes", g.handleMistakes, true},
+		{"POST", "/api/mistakes", g.handleCreateMistake, true},
+		{"PATCH", "/api/mistakes/{id}", g.handlePatchMistake, true},
+		{"GET", "/api/weak-area", g.handleWeakArea, true},
+		// Mock interview (assessment). /mocks/trend is more specific than /mocks/{id},
+		// so it wins regardless of order.
+		{"POST", "/api/mocks", g.handleStartMock, true},
+		{"GET", "/api/mocks/trend", g.handleMockTrend, true},
+		{"GET", "/api/mocks/{id}", g.handleGetMock, true},
+		{"POST", "/api/mocks/{id}/score", g.handleScoreMock, true},
+		// Progress + Dashboard "Today" (parallel fan-out aggregations, S09).
+		{"GET", "/api/progress", g.handleProgress, true},
+		{"GET", "/api/dashboard", g.handleDashboard, true},
+		// Coach (S11): masked key CRUD, per-page thread, and the SSE chat relay.
+		{"GET", "/api/coach/key", g.handleCoachKey, true},
+		{"PUT", "/api/coach/key", g.handlePutCoachKey, true},
+		{"DELETE", "/api/coach/key", g.handleDeleteCoachKey, true},
+		{"GET", "/api/coach/thread", g.handleCoachThread, true},
+		{"POST", "/api/coach/chat", g.handleCoachChat, true},
+	}
+}
+
+// newAPIMux builds the BFF routes from the authoritative apiRoutes table. The gateway
+// validates the opaque session cookie with identity, mints a short-TTL JWT (ADR-0006),
+// and forwards it on internal calls; OAuth start/callback are proxied through to
+// identity so the browser only ever talks to the gateway origin.
 func (g *Gateway) newAPIMux() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/healthz", g.appHealth)
-	mux.HandleFunc("GET /.well-known/jwks.json", g.handleJWKS)
-	mux.HandleFunc("GET /api/me", g.handleMe)
-	mux.HandleFunc("PATCH /api/me", g.handlePatchMe)
-	mux.HandleFunc("POST /api/auth/logout", g.handleLogout)
-	mux.HandleFunc("POST /api/onboarding/step", g.handleOnboardingStep)
-	mux.HandleFunc("POST /api/auth/{provider}/start", g.handleAuthProxy)
-	mux.HandleFunc("GET /api/auth/{provider}/callback", g.handleAuthProxy)
-	// Curriculum content (read-only). Session-gated. Most routes are a straight proxy
-	// (curriculum has no per-user state, so no user JWT is forwarded). The week route
-	// is the exception: it is a BFF aggregation (api.md `agg`) — the gateway layers a
-	// per-user five-touch/solve state onto the curriculum content (ADR-0005). That
-	// state is a stable placeholder until practice/review exist (S05/S06, ADR-0013).
-	mux.HandleFunc("GET /api/paths", g.handleListPaths)
-	mux.HandleFunc("GET /api/paths/{slug}", g.handleGetPath)
-	mux.HandleFunc("GET /api/paths/{slug}/weeks/{n}", g.handleGetWeek)
-	mux.HandleFunc("GET /api/concepts/{slug}", g.handleGetConcept)
-	// Problem workspace (api.md): the GET is a BFF aggregation (curriculum content
-	// limited to unlocked stages + practice state + active timer); the writes proxy
-	// to practice with a minted practice-scoped JWT (ADR-0006).
-	mux.HandleFunc("GET /api/problems/{id}", g.handleGetProblem)
-	mux.HandleFunc("POST /api/problems/{id}/attempt/start", g.handleAttemptStart)
-	mux.HandleFunc("POST /api/problems/{id}/reveal", g.handleReveal)
-	mux.HandleFunc("POST /api/problems/{id}/outcome", g.handleOutcome)
-	// Revision (api.md): the due queue is a BFF aggregation (review's bare-id queue +
-	// curriculum problem metadata); the score write proxies to review with a minted
-	// review-scoped JWT. External /revision maps to review's internal /revisions.
-	mux.HandleFunc("GET /api/revision/due", g.handleRevisionDue)
-	mux.HandleFunc("POST /api/revision/{itemId}/score", g.handleRevisionScore)
-	// Mistake journal + weak-area (api.md, S07): the list/banner are BFF aggregations
-	// (review's bare-id entries enriched with curriculum problem metadata); create/edit
-	// proxy to review with a minted review-scoped JWT.
-	mux.HandleFunc("GET /api/mistakes", g.handleMistakes)
-	mux.HandleFunc("POST /api/mistakes", g.handleCreateMistake)
-	mux.HandleFunc("PATCH /api/mistakes/{id}", g.handlePatchMistake)
-	mux.HandleFunc("GET /api/weak-area", g.handleWeakArea)
-	// Mock interview (api.md, S08): start a 45-min server-timed session, poll its
-	// phase-rail state, submit the 7-dim rubric (-> /35), and read the trend vs targets.
-	// The single-mock views proxy to assessment with a minted assessment-scoped JWT and
-	// are enriched with curriculum problem metadata; trend is a straight proxy. The
-	// static /mocks/trend is registered before /mocks/{id} — Go's mux prefers the more
-	// specific literal, so "trend" never collides with an {id}.
-	mux.HandleFunc("POST /api/mocks", g.handleStartMock)
-	mux.HandleFunc("GET /api/mocks/trend", g.handleMockTrend)
-	mux.HandleFunc("GET /api/mocks/{id}", g.handleGetMock)
-	mux.HandleFunc("POST /api/mocks/{id}/score", g.handleScoreMock)
-	// Progress (api.md agg, S09): assessment projections (tiles + heatmap + mastery +
-	// trend) composed with the curriculum taxonomy (by-phase completion, by-pattern
-	// mastery) and the review weak-area. Parallel fan-out with per-call timeouts.
-	mux.HandleFunc("GET /api/progress", g.handleProgress)
-	// Dashboard "Today" (api.md agg, S09): the daily plan (reviews before new work),
-	// due revisions, weak area, and streak/solved/mock stats — fanned out to assessment,
-	// review and curriculum in parallel.
-	mux.HandleFunc("GET /api/dashboard", g.handleDashboard)
-	// Coach (api.md, S11): the masked key read/store/delete, the per-page thread history,
-	// and the streaming chat. The key routes proxy to coach with a minted coach-scoped
-	// JWT (coach encrypts + masks; the gateway never sees the raw key). Chat is an SSE
-	// proxy — the gateway derives the SERVER-AUTHORITATIVE behaviour mode from practice's
-	// state and relays coach's token stream live. GET /coach/key degrades to the "no key —
-	// coach off" empty state when coach is unconfigured.
-	mux.HandleFunc("GET /api/coach/key", g.handleCoachKey)
-	mux.HandleFunc("PUT /api/coach/key", g.handlePutCoachKey)
-	mux.HandleFunc("DELETE /api/coach/key", g.handleDeleteCoachKey)
-	mux.HandleFunc("GET /api/coach/thread", g.handleCoachThread)
-	mux.HandleFunc("POST /api/coach/chat", g.handleCoachChat)
+	for _, rt := range g.apiRoutes() {
+		mux.HandleFunc(rt.Method+" "+rt.Pattern, rt.Handler)
+	}
 	// Catch-all: unknown /api/* is a 404 envelope, never the SPA shell.
 	mux.HandleFunc("/api/", g.apiNotFound)
 	return mux
@@ -244,6 +250,12 @@ func (g *Gateway) handleGetWeek(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "curriculum not configured")
 		return
 	}
+	cacheName := "week:" + r.PathValue("slug") + ":" + n
+	if cached, ok := g.cache.get(accountID, cacheName); ok {
+		passthrough(w, http.StatusOK, cached)
+		return
+	}
+	cacheEpoch := g.cache.epoch(accountID)
 	upstream := "/paths/" + url.PathEscape(r.PathValue("slug")) + "/weeks/" + url.PathEscape(n)
 	body, status, err := g.curriculum.get(r.Context(), upstream)
 	if err != nil {
@@ -262,6 +274,13 @@ func (g *Gateway) handleGetWeek(w http.ResponseWriter, r *http.Request) {
 		g.log.Error("bff week aggregation: merge failed", "path", upstream, "err", err)
 		writeError(w, http.StatusBadGateway, "upstream", "curriculum returned malformed content")
 		return
+	}
+	// Only cache when practice actually sourced the solve state. When practice is
+	// degraded the merge is the honest placeholder (every problem "available",
+	// populated:false); caching that would pin the learner's progress as unsolved for
+	// the whole TTL after practice recovers, so recompute next time instead.
+	if populated {
+		g.cache.putFresh(accountID, cacheName, merged, cacheEpoch)
 	}
 	passthrough(w, http.StatusOK, merged)
 }
@@ -403,7 +422,19 @@ func (g *Gateway) proxyPracticeWrite(w http.ResponseWriter, r *http.Request, ups
 		writeError(w, http.StatusBadGateway, "upstream", "practice unavailable")
 		return
 	}
+	// A practice mutation (attempt/reveal/outcome) changes the learner's Week/Dashboard
+	// state; drop this account's cached aggregations so the next read recomputes fresh.
+	g.invalidateAgg(status, accountID)
 	passthrough(w, status, body)
+}
+
+// invalidateAgg drops the account's cached Dashboard/Week aggregations after a
+// successful (2xx) mutating write, so a post-write read never serves stale composed
+// state. Non-2xx writes changed nothing, so nothing is invalidated.
+func (g *Gateway) invalidateAgg(status int, accountID string) {
+	if status/100 == 2 {
+		g.cache.invalidate(accountID)
+	}
 }
 
 // mintForPractice mints a practice-scoped JWT without writing an error response (used
@@ -491,6 +522,9 @@ func (g *Gateway) handleRevisionScore(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadGateway, "upstream", "review unavailable")
 		return
 	}
+	// A re-solve advances/resets the touch ladder + due queue → invalidate this
+	// account's cached Dashboard/Week.
+	g.invalidateAgg(status, accountID)
 	passthrough(w, status, body)
 }
 

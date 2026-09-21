@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/sujaykumarsuman/xlearn/internal/curriculum/store"
 )
@@ -229,6 +230,56 @@ func (s *Service) handleGetWeek(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// maxBulkProblemIDs caps a single bulk problem-metadata request. The curriculum has
+// 151 problems total, so a due queue / journal enrichment never needs more; the cap
+// just bounds a malformed/abusive query.
+const maxBulkProblemIDs = 256
+
+// handleGetProblemsByIDs: GET /problems?ids=a,b,c — bulk problem metadata (no
+// sections). This is the gateway's one-call enrichment path for the Revision due
+// queue and the mistake journal, replacing N per-id GETs (ADR-0005). Unknown ids are
+// silently absent from the result; an empty/missing `ids` returns an empty list.
+func (s *Service) handleGetProblemsByIDs(w http.ResponseWriter, r *http.Request) {
+	ids := dedupeNonEmpty(strings.Split(r.URL.Query().Get("ids"), ","))
+	if len(ids) == 0 {
+		writeJSON(w, http.StatusOK, map[string]any{"problems": []problemJSON{}})
+		return
+	}
+	if len(ids) > maxBulkProblemIDs {
+		writeError(w, http.StatusBadRequest, "bad_request", "too many ids")
+		return
+	}
+	problems, err := s.store.GetProblemsByIDs(r.Context(), ids)
+	if err != nil {
+		s.internal(w, "get problems by ids", err)
+		return
+	}
+	out := make([]problemJSON, 0, len(problems))
+	for _, p := range problems {
+		out = append(out, toProblemJSON(p))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"problems": out})
+}
+
+// dedupeNonEmpty trims each element and returns the distinct non-empty ones, order
+// preserved (first occurrence wins).
+func dedupeNonEmpty(in []string) []string {
+	seen := make(map[string]struct{}, len(in))
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		if _, ok := seen[s]; ok {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	return out
 }
 
 // handleGetProblem: GET /problems/{id} — problem + its problem_sections keyed by

@@ -3,8 +3,13 @@
 // contract from docs/architecture/api.md (same-origin cookie auth, no CORS).
 
 // API_BASE is derived from Vite's base URL so it always matches the mount
-// prefix: base "/xlearn/" -> "/xlearn/api".
-export const API_BASE = `${import.meta.env.BASE_URL.replace(/\/+$/, "")}/api`;
+// prefix: base "/xlearn/" -> "/xlearn/api/v1". v1 is the canonical 1.0 surface; the
+// gateway also serves the unversioned /xlearn/api as a compat alias (ADR-0021).
+export const API_BASE = `${import.meta.env.BASE_URL.replace(/\/+$/, "")}/api/v1`;
+
+// REQUEST_TIMEOUT_MS bounds a single BFF call so a hung socket surfaces as an error
+// (the screen's error state) instead of an indefinite loading skeleton.
+const REQUEST_TIMEOUT_MS = 15_000;
 
 /** The error object inside the BFF's error envelope. */
 export interface ApiError {
@@ -44,14 +49,29 @@ export class ApiRequestError extends Error {
  * ApiRequestError. `path` must start with "/".
  */
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    credentials: "include",
-    ...init,
-    headers: {
-      Accept: "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      credentials: "include",
+      ...init,
+      signal: init?.signal ?? controller.signal,
+      headers: {
+        Accept: "application/json",
+        ...(init?.headers ?? {}),
+      },
+    });
+  } catch (err) {
+    // A timeout aborts the request — surface it as an error the screen can render,
+    // rather than leaving the caller (and its loading skeleton) hanging forever.
+    if (controller.signal.aborted) {
+      throw new ApiRequestError(0, { code: "timeout", message: "The request timed out." });
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (!res.ok) {
     let error: ApiError = { code: "internal", message: res.statusText };
