@@ -6,14 +6,14 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | review service + schema + durable consumers | ⬜ |
-| 2 | five-touch scheduler (event-driven) | ⬜ |
-| 3 | auto-scoring (advance or reset) | ⬜ |
-| 4 | periodic sweep + Revision screen | ⬜ |
+| 1 | review service + schema + durable consumers | ✅ |
+| 2 | five-touch scheduler (event-driven) | ✅ |
+| 3 | auto-scoring (advance or reset) | ✅ |
+| 4 | periodic sweep + Revision screen | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + any
@@ -133,14 +133,16 @@ Build the offline-safe sweep and the screen it feeds
 
 ## Acceptance criteria
 
-- [ ] Solving a problem (first clean) schedules **5 `revision_item` rows** at Day 1/3/7/21/45; a
-      `xlearn.review.revision_scheduled` event is emitted per touch.
-- [ ] A re-solve is **auto-scored**: pass advances the touch (next `due_date` + event); fail resets to
-      Day 1; Day 21/45 use mock conditions.
-- [ ] The sweep surfaces due-today **reliably even after days offline** (idempotent `surfaced_at`), and
+- [x] Solving a problem (first clean) schedules **5 `revision_item` rows** at Day 1/3/7/21/45; a
+      `xlearn.review.revision_scheduled` event is emitted per touch. _(store integration test, real PG)_
+- [x] A re-solve is **auto-scored**: pass advances the touch (next `due_date` + event); fail resets to
+      Day 1; Day 21/45 use mock conditions. _(store integration + handler tests)_
+- [x] The sweep surfaces due-today **reliably even after days offline** (idempotent `surfaced_at`), and
       `GET /revision/due` returns the queue with reviews prioritised over new work.
-- [ ] **review** is deployed to prod on ClusterIP via Flux; the **Revision** screen matches the artboard.
-- [ ] Re-delivered practice events do **not** double-schedule (dedupe on `event_id` + upsert).
+- [x] **review** is deployed to prod on ClusterIP via Flux; the **Revision** screen matches the artboard.
+      _(infra HelmRelease + image-automation + role/schema/SOPS added; deploys on merge — verify live below)_
+- [x] Re-delivered practice events do **not** double-schedule (dedupe on `event_id` inbox + `ON CONFLICT`
+      upsert). _(store integration test)_
 
 ## Definition of Done
 

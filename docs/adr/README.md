@@ -29,6 +29,8 @@ under [`../v1/`](../v1/).
 | [0011](0011-jwks-publication-and-shared-db-schema-ownership.md) | JWKS publication & shared-DB schema ownership | Accepted |
 | [0012](0012-curriculum-content-model-and-seeding.md) | Curriculum content model & seeding | Accepted |
 | [0013](0013-bff-week-aggregation-userstate-contract.md) | BFF week-aggregation `userState` contract | Accepted |
+| [0014](0014-nats-jetstream-topology-and-outbox-relay.md) | NATS JetStream topology & the practice outbox relay | Accepted |
+| [0015](0015-five-touch-scheduler-model.md) | Five-touch scheduler model & the first durable consumer | Accepted |
 
 ## Adding an ADR
 

@@ -49,3 +49,19 @@ sql:
         emit_interface: true
         emit_json_tags: false
         emit_empty_slices: true
+  - engine: "postgresql"
+    # review: the five-touch spaced-repetition scheduler + transactional outbox +
+    # idempotent inbox (S06). Same pattern — schema.sql declares the infra-provisioned
+    # schema, migrations supply tables.
+    schema:
+      - "internal/review/store/schema.sql"
+      - "internal/review/store/migrations"
+    queries: "internal/review/store/queries"
+    gen:
+      go:
+        package: "gen"
+        out: "internal/review/store/gen"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_json_tags: false
+        emit_empty_slices: true

@@ -49,6 +49,11 @@ type Options struct {
 	PracticeBaseURL string
 	// AudiencePractice is the "aud" for JWTs forwarded to practice.
 	AudiencePractice string
+	// ReviewBaseURL is the review service's internal URL. Empty disables the
+	// revision routes (the due queue + auto-score 503).
+	ReviewBaseURL string
+	// AudienceReview is the "aud" for JWTs forwarded to review.
+	AudienceReview string
 }
 
 // Gateway serves the SPA, the app BFF API and the k8s probes.
@@ -63,8 +68,10 @@ type Gateway struct {
 	identity    *identityClient
 	curriculum  *curriculumClient
 	practice    *practiceClient
+	review      *reviewClient
 	audIdentity string
 	audPractice string
+	audReview   string
 	api         *http.ServeMux
 }
 
@@ -83,6 +90,7 @@ func New(opt Options) *Gateway {
 		signer:      opt.Signer,
 		audIdentity: opt.AudienceIdentity,
 		audPractice: opt.AudiencePractice,
+		audReview:   opt.AudienceReview,
 	}
 	if opt.IdentityBaseURL != "" {
 		g.identity = newIdentityClient(opt.IdentityBaseURL)
@@ -92,6 +100,9 @@ func New(opt Options) *Gateway {
 	}
 	if opt.PracticeBaseURL != "" {
 		g.practice = newPracticeClient(opt.PracticeBaseURL)
+	}
+	if opt.ReviewBaseURL != "" {
+		g.review = newReviewClient(opt.ReviewBaseURL)
 	}
 	g.api = g.newAPIMux()
 	return g
