@@ -54,6 +54,11 @@ type Options struct {
 	ReviewBaseURL string
 	// AudienceReview is the "aud" for JWTs forwarded to review.
 	AudienceReview string
+	// AssessmentBaseURL is the assessment service's internal URL. Empty disables the
+	// mock routes (start/get/score/trend 503).
+	AssessmentBaseURL string
+	// AudienceAssessment is the "aud" for JWTs forwarded to assessment.
+	AudienceAssessment string
 }
 
 // Gateway serves the SPA, the app BFF API and the k8s probes.
@@ -64,15 +69,17 @@ type Gateway struct {
 	log      *slog.Logger
 	health   *health.Handler
 
-	signer      *auth.Signer
-	identity    *identityClient
-	curriculum  *curriculumClient
-	practice    *practiceClient
-	review      *reviewClient
-	audIdentity string
-	audPractice string
-	audReview   string
-	api         *http.ServeMux
+	signer        *auth.Signer
+	identity      *identityClient
+	curriculum    *curriculumClient
+	practice      *practiceClient
+	review        *reviewClient
+	assessment    *assessmentClient
+	audIdentity   string
+	audPractice   string
+	audReview     string
+	audAssessment string
+	api           *http.ServeMux
 }
 
 // New builds a Gateway. Readiness is trivially OK this sprint (stateless; no DB).
@@ -82,15 +89,16 @@ func New(opt Options) *Gateway {
 		log = slog.New(slog.NewTextHandler(nopWriter{}, nil))
 	}
 	g := &Gateway{
-		basePath:    opt.BasePath,
-		version:     opt.Version,
-		dist:        opt.Dist,
-		log:         log,
-		health:      health.New(),
-		signer:      opt.Signer,
-		audIdentity: opt.AudienceIdentity,
-		audPractice: opt.AudiencePractice,
-		audReview:   opt.AudienceReview,
+		basePath:      opt.BasePath,
+		version:       opt.Version,
+		dist:          opt.Dist,
+		log:           log,
+		health:        health.New(),
+		signer:        opt.Signer,
+		audIdentity:   opt.AudienceIdentity,
+		audPractice:   opt.AudiencePractice,
+		audReview:     opt.AudienceReview,
+		audAssessment: opt.AudienceAssessment,
 	}
 	if opt.IdentityBaseURL != "" {
 		g.identity = newIdentityClient(opt.IdentityBaseURL)
@@ -103,6 +111,9 @@ func New(opt Options) *Gateway {
 	}
 	if opt.ReviewBaseURL != "" {
 		g.review = newReviewClient(opt.ReviewBaseURL)
+	}
+	if opt.AssessmentBaseURL != "" {
+		g.assessment = newAssessmentClient(opt.AssessmentBaseURL)
 	}
 	g.api = g.newAPIMux()
 	return g

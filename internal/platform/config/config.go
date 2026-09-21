@@ -19,10 +19,12 @@ const (
 	defaultCurriculumBaseURL  = "http://localhost:8082"
 	defaultPracticeBaseURL    = "http://localhost:8083"
 	defaultReviewBaseURL      = "http://localhost:8084"
+	defaultAssessmentBaseURL  = "http://localhost:8085"
 	defaultJWTIssuer          = "xlearn-gateway"
 	defaultJWTAudIdentity     = "identity"
 	defaultJWTAudPractice     = "practice"
 	defaultJWTAudReview       = "review"
+	defaultJWTAudAssessment   = "assessment"
 	defaultJWTTTL             = 5 * time.Minute
 	defaultSessionCookieScope = "/xlearn"
 )
@@ -48,6 +50,9 @@ type Config struct {
 	// ReviewBaseURL is the internal ClusterIP URL of the review service
 	// (env REVIEW_BASE_URL), e.g. http://xlearn-review.xlearn.svc.cluster.local:8084.
 	ReviewBaseURL string
+	// AssessmentBaseURL is the internal ClusterIP URL of the assessment service
+	// (env ASSESSMENT_BASE_URL), e.g. http://xlearn-assessment.xlearn.svc.cluster.local:8085.
+	AssessmentBaseURL string
 	// JWT holds the RS256 signing config for gateway-minted internal JWTs (ADR-0006).
 	JWT JWTConfig
 }
@@ -67,6 +72,8 @@ type JWTConfig struct {
 	AudiencePractice string
 	// AudienceReview is the "aud" for tokens forwarded to review (env JWT_AUD_REVIEW).
 	AudienceReview string
+	// AudienceAssessment is the "aud" for tokens forwarded to assessment (env JWT_AUD_ASSESSMENT).
+	AudienceAssessment string
 	// TTL is the token lifetime (env JWT_TTL, e.g. "5m").
 	TTL time.Duration
 	// AdditionalPublicKeysPEM holds extra RSA public keys (PEM, one or more blocks;
@@ -85,6 +92,7 @@ func Load() Config {
 		CurriculumBaseURL: strings.TrimRight(env("CURRICULUM_BASE_URL", defaultCurriculumBaseURL), "/"),
 		PracticeBaseURL:   strings.TrimRight(env("PRACTICE_BASE_URL", defaultPracticeBaseURL), "/"),
 		ReviewBaseURL:     strings.TrimRight(env("REVIEW_BASE_URL", defaultReviewBaseURL), "/"),
+		AssessmentBaseURL: strings.TrimRight(env("ASSESSMENT_BASE_URL", defaultAssessmentBaseURL), "/"),
 		JWT: JWTConfig{
 			PrivateKeyPEM:           os.Getenv("JWT_PRIVATE_KEY"),
 			PrivateKeyFile:          strings.TrimSpace(os.Getenv("JWT_PRIVATE_KEY_FILE")),
@@ -92,6 +100,7 @@ func Load() Config {
 			AudienceIdentity:        env("JWT_AUD_IDENTITY", defaultJWTAudIdentity),
 			AudiencePractice:        env("JWT_AUD_PRACTICE", defaultJWTAudPractice),
 			AudienceReview:          env("JWT_AUD_REVIEW", defaultJWTAudReview),
+			AudienceAssessment:      env("JWT_AUD_ASSESSMENT", defaultJWTAudAssessment),
 			TTL:                     envDuration("JWT_TTL", defaultJWTTTL),
 			AdditionalPublicKeysPEM: os.Getenv("JWT_ADDITIONAL_PUBLIC_KEYS"),
 		},

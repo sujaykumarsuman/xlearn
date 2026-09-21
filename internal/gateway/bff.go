@@ -56,6 +56,16 @@ func (g *Gateway) newAPIMux() *http.ServeMux {
 	mux.HandleFunc("POST /api/mistakes", g.handleCreateMistake)
 	mux.HandleFunc("PATCH /api/mistakes/{id}", g.handlePatchMistake)
 	mux.HandleFunc("GET /api/weak-area", g.handleWeakArea)
+	// Mock interview (api.md, S08): start a 45-min server-timed session, poll its
+	// phase-rail state, submit the 7-dim rubric (-> /35), and read the trend vs targets.
+	// The single-mock views proxy to assessment with a minted assessment-scoped JWT and
+	// are enriched with curriculum problem metadata; trend is a straight proxy. The
+	// static /mocks/trend is registered before /mocks/{id} — Go's mux prefers the more
+	// specific literal, so "trend" never collides with an {id}.
+	mux.HandleFunc("POST /api/mocks", g.handleStartMock)
+	mux.HandleFunc("GET /api/mocks/trend", g.handleMockTrend)
+	mux.HandleFunc("GET /api/mocks/{id}", g.handleGetMock)
+	mux.HandleFunc("POST /api/mocks/{id}/score", g.handleScoreMock)
 	// Dashboard "Today" (api.md agg, S07 slice): due revisions + in-app reminders +
 	// the weak-area card, composed from review (+ curriculum enrichment).
 	mux.HandleFunc("GET /api/dashboard", g.handleDashboard)
