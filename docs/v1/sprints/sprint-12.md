@@ -6,14 +6,14 @@
 
 ## Status
 
-_Overall:_ 🔄 Code-complete + green, shipping (1.0 tag + infra PR pending)
+_Overall:_ ✅ Done — merged & deployed to prod; **`v1.0.0` tagged, M7 reached**
 
 | # | Task | Status |
 |---|------|--------|
 | 1 | Performance pass (p95 screen API < 300ms) | ✅ |
 | 2 | States + accessibility polish (all 12 screens) | ✅ |
 | 3 | Core-loop e2e + OpenAPI (generated, CI drift check) | ✅ |
-| 4 | Cut 1.0 (release-semver switch, tag v1.0.0) | 🔄 |
+| 4 | Cut 1.0 (release-semver switch, tag v1.0.0) | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + the
