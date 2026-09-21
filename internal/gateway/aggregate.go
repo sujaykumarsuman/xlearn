@@ -2,15 +2,20 @@ package gateway
 
 import "encoding/json"
 
-// Week aggregation (api.md GET /paths/{slug}/weeks/{n}, marked `agg`).
+// BFF aggregation (api.md `agg`). The gateway stitches read-only curriculum content
+// to the learner's practice/review state, because services cannot cross-join
+// (ADR-0005).
 //
-// The gateway stitches read-only curriculum content to the learner's five-touch /
-// solve state, because services cannot cross-join (ADR-0005). Practice (S05) and
-// review (S06) do not exist yet, so this sprint layers a PLACEHOLDER `userState` with
-// a FROZEN shape (ADR-0013): every problem is honestly "available" with five empty
-// touches, and the week rollup is `populated:false`. S05/S06 fill the same fields —
-// no client change — so these field names and the 5-entry touches array must not
-// drift. Nothing here is faked as done: no green dots, no "solved" chips.
+// Week (GET /paths/{slug}/weeks/{n}): curriculum content + a `userState` block whose
+// shape is FROZEN (ADR-0013). S05 fills the solve fields from practice
+// (status/lastOutcome, the rollup's solved count, and `populated`); the five-touch
+// `touches` stay neutral until review lands (S06) — same fields, filled in place.
+// When practice is unavailable the block degrades honestly to the placeholder
+// (every problem "available", 0 solved, `populated:false`) rather than guessing.
+//
+// Problem (GET /problems/{id}): curriculum content with its sections filtered to the
+// learner's UNLOCKED stages (R-PF1 — locked hint/solution content is never delivered)
+// plus the practice `state` (status, stage, unlocked stages, active timer).
 
 // touchCount is the five spaced-repetition touches — levels 1..5 = Day 1/3/7/21/45.
 const touchCount = 5
@@ -39,31 +44,39 @@ type weekByDifficulty struct {
 
 // weekRollup is the "Week N progress" meter state.
 type weekRollup struct {
-	Solved       int              `json:"solved"`       // core problems solved (0 until practice exists)
+	Solved       int              `json:"solved"`       // core problems solved (from practice)
 	CoreTotal    int              `json:"coreTotal"`    // non-reinforcement problems in the week
 	ByDifficulty weekByDifficulty `json:"byDifficulty"` // mix over the core problems
-	Populated    bool             `json:"populated"`    // false while un-sourced (S05/S06 flip it)
+	Populated    bool             `json:"populated"`    // true once practice sourced the solve state
 }
 
-// userState is the placeholder per-user block layered onto the week content.
+// userState is the per-user block layered onto the week content.
 type userState struct {
 	Week     weekRollup              `json:"week"`
 	Problems map[string]problemState `json:"problems"` // keyed by problem id
 }
 
-// aggProblem is the slice of a curriculum problem the aggregation reads to build
-// the placeholder state (difficulty + reinforcement flag drive the rollup).
+// aggProblem is the slice of a curriculum problem the aggregation reads to build the
+// state (difficulty + reinforcement flag drive the rollup).
 type aggProblem struct {
 	ID              string `json:"id"`
 	Difficulty      string `json:"difficulty"`
 	IsReinforcement bool   `json:"is_reinforcement"`
 }
 
-// aggregateWeek merges curriculum week content with the placeholder userState. It
-// preserves every field curriculum returned (week/phase/path/concepts/problems) and
-// adds a single `userState` key, so the curriculum content model can evolve without
-// touching the gateway.
-func aggregateWeek(content []byte) ([]byte, error) {
+// practiceProblemState is the slice of practice state the week rollup needs.
+type practiceProblemState struct {
+	Status       string
+	LastOutcome  *string
+	CurrentTouch int
+}
+
+// aggregateWeek merges curriculum week content with the userState block. states holds
+// the learner's practice states keyed by problem id (a subset — untouched problems
+// are absent); populated reports whether practice actually sourced them (false ⇒ the
+// honest placeholder). Every field curriculum returned is preserved; a single
+// `userState` key is added.
+func aggregateWeek(content []byte, states map[string]practiceProblemState, populated bool) ([]byte, error) {
 	var obj map[string]json.RawMessage
 	if err := json.Unmarshal(content, &obj); err != nil {
 		return nil, err
@@ -74,7 +87,7 @@ func aggregateWeek(content []byte) ([]byte, error) {
 			return nil, err
 		}
 	}
-	us, err := json.Marshal(placeholderUserState(problems))
+	us, err := json.Marshal(buildUserState(problems, states, populated))
 	if err != nil {
 		return nil, err
 	}
@@ -82,24 +95,37 @@ func aggregateWeek(content []byte) ([]byte, error) {
 	return json.Marshal(obj)
 }
 
-// placeholderUserState builds an honest empty state for the week's problems: every
-// problem "available" with five empty touches, the rollup 0-solved and unpopulated.
-func placeholderUserState(problems []aggProblem) userState {
+// buildUserState layers the practice states onto the week's problems. A problem with
+// no practice row is honestly "available"; the rollup counts solved core problems.
+func buildUserState(problems []aggProblem, states map[string]practiceProblemState, populated bool) userState {
 	us := userState{
-		Week:     weekRollup{Solved: 0, Populated: false},
+		Week:     weekRollup{Populated: populated},
 		Problems: make(map[string]problemState, len(problems)),
 	}
 	for _, p := range problems {
+		status := "available"
+		var lastOutcome *string
+		currentTouch := 0
+		if ps, ok := states[p.ID]; ok {
+			if ps.Status != "" {
+				status = ps.Status
+			}
+			lastOutcome = ps.LastOutcome
+			currentTouch = ps.CurrentTouch
+		}
 		us.Problems[p.ID] = problemState{
-			Status:       "available",
-			LastOutcome:  nil,
-			CurrentTouch: 0,
-			Touches:      emptyTouches(),
+			Status:       status,
+			LastOutcome:  lastOutcome,
+			CurrentTouch: currentTouch,
+			Touches:      emptyTouches(), // review (S06) fills the five-touch schedule
 		}
 		if p.IsReinforcement {
 			continue // reinforcement problems are not part of the week's "core" rollup
 		}
 		us.Week.CoreTotal++
+		if status == "solved" {
+			us.Week.Solved++
+		}
 		switch p.Difficulty {
 		case "easy":
 			us.Week.ByDifficulty.Easy++
@@ -119,4 +145,40 @@ func emptyTouches() []touchState {
 		t[i] = touchState{Level: i + 1, DueDate: nil, Result: "none"}
 	}
 	return t
+}
+
+// aggregateProblem merges curriculum problem content with the practice state: it
+// filters `sections` to the unlocked stages (R-PF1) and adds a `state` key. stateRaw
+// is the practice state JSON object to embed; unlocked is the set of stages whose
+// sections may be delivered.
+func aggregateProblem(content []byte, stateRaw json.RawMessage, unlocked map[string]bool) ([]byte, error) {
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(content, &obj); err != nil {
+		return nil, err
+	}
+	if raw, ok := obj["sections"]; ok {
+		var sections []json.RawMessage
+		if err := json.Unmarshal(raw, &sections); err != nil {
+			return nil, err
+		}
+		kept := make([]json.RawMessage, 0, len(sections))
+		for _, sec := range sections {
+			var meta struct {
+				Stage string `json:"stage"`
+			}
+			if err := json.Unmarshal(sec, &meta); err != nil {
+				return nil, err
+			}
+			if unlocked[meta.Stage] {
+				kept = append(kept, sec)
+			}
+		}
+		filtered, err := json.Marshal(kept)
+		if err != nil {
+			return nil, err
+		}
+		obj["sections"] = filtered
+	}
+	obj["state"] = stateRaw
+	return json.Marshal(obj)
 }

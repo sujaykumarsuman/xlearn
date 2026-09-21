@@ -37,8 +37,23 @@ describe("AppShell + routing (authenticated)", () => {
   });
 
   it("renders params-driven screens", async () => {
+    // The Problem workspace fetches its BFF aggregate; give it a minimal one.
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.includes("/api/problems/16")) {
+        return {
+          status: 200,
+          body: {
+            problem: { id: "16", path_slug: "dsa", week_n: 2, title: "3Sum", difficulty: "med", pattern: "Two Pointers", leetcode_url: "", neetcode_url: "", is_reinforcement: false },
+            sections: [{ stage: "attempt", kind: "summary", order: 1, body_md: "Find all triplets that sum to zero.", code: "" }],
+            state: { problemId: "16", status: "available", stageReached: "", unlockedStages: ["attempt"], currentTouch: 0, lastOutcome: null, firstSolvedAt: null, revealedEarly: false, timer: null },
+          },
+        };
+      }
+      return { status: 404 };
+    });
     renderAt("/xlearn/dsa/problem/16");
-    expect(await screen.findByRole("heading", { level: 1, name: "Problem #16" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "3Sum" })).toBeInTheDocument();
   });
 
   it("expanded: the path switcher opens the dropdown", async () => {

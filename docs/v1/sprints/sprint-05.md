@@ -6,14 +6,15 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done — code complete, full suite green (incl. a real-Postgres integration run of the
+gated flow + outbox), practice image + project/NATS charts render/build clean; shipping to prod via Flux.
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | practice service + schema + NATS/outbox bootstrap | ⬜ |
-| 2 | Stage gating + server-authoritative timers | ⬜ |
-| 3 | Reveal + penalty + outcome logging | ⬜ |
-| 4 | Problem screen ★ + BFF | ⬜ |
+| 1 | practice service + schema + NATS/outbox bootstrap | ✅ |
+| 2 | Stage gating + server-authoritative timers | ✅ |
+| 3 | Reveal + penalty + outcome logging | ✅ |
+| 4 | Problem screen ★ + BFF | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + the

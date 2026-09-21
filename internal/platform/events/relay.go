@@ -79,11 +79,11 @@ func (r *Relay) drain(ctx context.Context) {
 	}
 }
 
-// LogPublisher is the placeholder Publisher used until NATS JetStream is stood up
-// (S05/S06, per this package's TODO). It logs each event and reports success so the
-// outbox drains rather than growing unbounded; the account_created event has no
-// consumer yet (events.md: reserved). Swap for a JetStream publisher when the
-// messaging infra lands.
+// LogPublisher is the no-broker fallback Publisher: it logs each event and reports
+// success so the outbox drains rather than growing unbounded. It is used in local dev
+// (no NATS_URL) and by producers whose JetStream stream isn't provisioned yet (e.g.
+// identity's account_created — events.md: reserved, no consumer). Production practice
+// uses NatsPublisher (S05); swap other producers to it as their streams land.
 type LogPublisher struct {
 	log    *slog.Logger
 	stream string
@@ -94,9 +94,10 @@ func NewLogPublisher(log *slog.Logger, stream string) *LogPublisher {
 	return &LogPublisher{log: log, stream: stream}
 }
 
-// Publish logs the event and returns nil (placeholder — no broker yet).
+// Publish logs the event and returns nil (fallback — events are not delivered to a
+// broker).
 func (p *LogPublisher) Publish(_ context.Context, e Event) error {
-	p.log.Info("outbox event published (placeholder: NATS pending S05/S06)",
+	p.log.Info("outbox event published (log fallback: no NATS configured)",
 		"stream", p.stream, "subject", e.Subject, "event_id", e.ID)
 	return nil
 }

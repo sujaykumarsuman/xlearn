@@ -59,6 +59,8 @@ func run() int {
 		IdentityBaseURL:   cfg.IdentityBaseURL,
 		AudienceIdentity:  cfg.JWT.AudienceIdentity,
 		CurriculumBaseURL: cfg.CurriculumBaseURL,
+		PracticeBaseURL:   cfg.PracticeBaseURL,
+		AudiencePractice:  cfg.JWT.AudiencePractice,
 	})
 
 	handler := httpx.Chain(gw.Handler(),

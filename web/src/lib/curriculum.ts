@@ -131,6 +131,72 @@ export interface WeekAggregate {
   userState: UserState;
 }
 
+/** One stage-scoped content section of a problem (only UNLOCKED stages are delivered
+ *  — the gateway filters by the learner's practice state, R-PF1). */
+export interface ProblemSection {
+  stage: "attempt" | "hint" | "solution";
+  kind: string;
+  order: number;
+  body_md: string;
+  code: string;
+}
+
+/** The server-authoritative countdown for the active stage (attempt 15m / hint 10m).
+ *  `remainingSeconds` is computed server-side at response time; the HUD re-syncs on
+ *  poll rather than trusting a standalone local clock (R-PF3). */
+export interface PracticeTimer {
+  kind: "attempt" | "hint";
+  deadlineAt: string;
+  remainingSeconds: number;
+  expired: boolean;
+}
+
+/** The learner's practice state for one problem (from the Problem BFF agg). */
+export interface PracticeState {
+  problemId: string;
+  status: "locked" | "available" | "attempting" | "solved";
+  /** Deepest content stage reached; "" before an attempt starts. */
+  stageReached: "" | "attempt" | "hint" | "solution";
+  /** The content stages the learner may see (always includes "attempt"). */
+  unlockedStages: ("attempt" | "hint" | "solution")[];
+  currentTouch: number;
+  lastOutcome: "clean" | "rough" | "assisted" | "miss" | null;
+  firstSolvedAt: string | null;
+  revealedEarly: boolean;
+  timer: PracticeTimer | null;
+}
+
+/** GET /problems/{id} payload (Problem, BFF `agg`): curriculum content limited to the
+ *  unlocked stages + the practice state + active timer. */
+export interface ProblemAggregate {
+  problem: Problem;
+  sections: ProblemSection[];
+  state: PracticeState;
+}
+
+/** The reveal penalty acknowledgement (R-PF2) returned when the solution is revealed
+ *  before the attempt timer elapses. */
+export interface RevealPenalty {
+  owedAttempt: boolean;
+  dueInDays: number;
+  message: string;
+}
+
+/** POST /problems/{id}/reveal response. */
+export interface RevealResponse {
+  revealed: "hint" | "solution";
+  penalty: RevealPenalty | null;
+  state: PracticeState;
+}
+
+/** POST /problems/{id}/attempt/start and /outcome response. */
+export interface StateResponse {
+  state: PracticeState;
+}
+
+/** An outcome the learner logs for a solved problem (R-OL1). */
+export type Outcome = "clean" | "rough" | "assisted" | "miss";
+
 /** A full concept/pattern reading + code template (Concept screen). */
 export interface Concept {
   slug: string;
@@ -174,6 +240,36 @@ export function patternMatchesConcept(pattern: string, conceptSlugOrTitle: strin
   const b = norm(conceptSlugOrTitle);
   if (!a || !b) return false;
   return a.includes(b) || b.includes(a);
+}
+
+/** useProblem fetches the Problem workspace aggregate: curriculum content limited to
+ *  the learner's unlocked stages + practice state + active timer (Problem screen). */
+export function useProblem(id: string) {
+  return useQuery<ProblemAggregate, ApiRequestError>({
+    queryKey: ["problem", id],
+    queryFn: () => apiFetch<ProblemAggregate>(`/problems/${encodeURIComponent(id)}`),
+    enabled: id !== "",
+  });
+}
+
+/** startAttempt starts/resumes the attempt (POST /problems/{id}/attempt/start). */
+export function startAttempt(id: string): Promise<StateResponse> {
+  return apiFetch<StateResponse>(`/problems/${encodeURIComponent(id)}/attempt/start`, { method: "POST" });
+}
+
+/** revealNext unlocks the next content stage (POST /problems/{id}/reveal); the
+ *  response carries the penalty ack when the solution is revealed early. */
+export function revealNext(id: string): Promise<RevealResponse> {
+  return apiFetch<RevealResponse>(`/problems/${encodeURIComponent(id)}/reveal`, { method: "POST" });
+}
+
+/** logOutcome logs the outcome (POST /problems/{id}/outcome). */
+export function logOutcome(id: string, outcome: Outcome): Promise<StateResponse> {
+  return apiFetch<StateResponse>(`/problems/${encodeURIComponent(id)}/outcome`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ outcome }),
+  });
 }
 
 /** usePaths fetches every path + status for the Catalog. */
