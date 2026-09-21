@@ -65,6 +65,10 @@ type Options struct {
 	CoachBaseURL string
 	// AudienceCoach is the "aud" for JWTs forwarded to coach.
 	AudienceCoach string
+	// AggCacheTTL is the TTL for the per-account Dashboard/Week aggregation cache
+	// (S12). Zero (the default in tests) disables caching so behaviour is unchanged;
+	// the deployment sets a short TTL (env AGG_CACHE_TTL, default 15s).
+	AggCacheTTL time.Duration
 }
 
 // Gateway serves the SPA, the app BFF API and the k8s probes.
@@ -87,6 +91,7 @@ type Gateway struct {
 	audReview     string
 	audAssessment string
 	audCoach      string
+	cache         *aggCache
 	api           *http.ServeMux
 }
 
@@ -108,6 +113,7 @@ func New(opt Options) *Gateway {
 		audReview:     opt.AudienceReview,
 		audAssessment: opt.AudienceAssessment,
 		audCoach:      opt.AudienceCoach,
+		cache:         newAggCache(opt.AggCacheTTL),
 	}
 	if opt.IdentityBaseURL != "" {
 		g.identity = newIdentityClient(opt.IdentityBaseURL)
@@ -157,6 +163,14 @@ func (g *Gateway) Handler() http.Handler {
 		}
 
 		p := g.stripBase(r.URL.Path)
+
+		// /xlearn/api/v1 is the canonical 1.0 API surface (api.md versioning note). It
+		// is an ALIAS onto the unversioned mux: rewrite /api/v1/… to /api/… before
+		// dispatch so one route table serves both the versioned path (what the SPA
+		// calls) and the bare /api/… (kept as a same-origin compat alias, ADR-0021).
+		if p == "/api/v1" || strings.HasPrefix(p, "/api/v1/") {
+			p = "/api" + strings.TrimPrefix(p, "/api/v1")
+		}
 
 		// The BFF API and the (non-secret) JWKS go through the API mux — which
 		// handles method/pattern routing and 404s unknown /api/* paths (never

@@ -71,6 +71,9 @@ func newRevisionHarness(t *testing.T) *revisionHarness {
 	// Fake curriculum: problem metadata for enrichment (no user JWT).
 	titles := map[string]string{"3": "Two Sum", "16": "3Sum", "18": "Minimum Window Substring"}
 	curriculumMux := http.NewServeMux()
+	problemMeta := func(id, title string) map[string]any {
+		return map[string]any{"id": id, "title": title, "difficulty": "easy", "pattern": "Complement lookup", "week_n": 1}
+	}
 	curriculumMux.HandleFunc("GET /problems/{id}", func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		title, ok := titles[id]
@@ -79,9 +82,17 @@ func newRevisionHarness(t *testing.T) *revisionHarness {
 			_, _ = w.Write([]byte(`{"error":{"code":"not_found"}}`))
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"problem": map[string]any{"id": id, "title": title, "difficulty": "easy", "pattern": "Complement lookup", "week_n": 1},
-		})
+		_ = json.NewEncoder(w).Encode(map[string]any{"problem": problemMeta(id, title)})
+	})
+	// Bulk metadata for the gateway's enrichment fan-outs (GET /problems?ids=…).
+	curriculumMux.HandleFunc("GET /problems", func(w http.ResponseWriter, r *http.Request) {
+		problems := []map[string]any{}
+		for _, id := range strings.Split(r.URL.Query().Get("ids"), ",") {
+			if title, ok := titles[id]; ok {
+				problems = append(problems, problemMeta(id, title))
+			}
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"problems": problems})
 	})
 	curriculum := httptest.NewServer(curriculumMux)
 	t.Cleanup(curriculum.Close)

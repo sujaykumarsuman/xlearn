@@ -37,9 +37,42 @@ jobs:
       - run: npm --prefix web ci && npm --prefix web run build
       - run: test -z "$(gofmt -l .)"
       - run: go vet ./...
+      # The default lane (no build tag) runs unit tests + the OpenAPI drift check
+      # (internal/gateway/openapi_drift_test.go), which keeps openapi.yaml in sync with
+      # the gateway route table. The real-broker e2e is tagged `e2e` and runs separately.
       - run: go test -race ./...
       # sqlc-generated code is committed; verify it is in sync (ADR-0005).
       - uses: sqlc-dev/setup-sqlc@v4
         with:
           sqlc-version: "1.31.1"
       - run: sqlc diff
+
+  # Core-loop e2e over REAL JetStream + the transactional outbox (events.md Flows 1-4).
+  # NATS runs IN-PROCESS (an embedded nats-server with JetStream), so the job needs only
+  # a Postgres — the outbox → relay → JetStream → durable-consumer path is the production
+  # one, nothing is mocked. The test is behind the `e2e` build tag + gated on the DB URL,
+  # so it never compiles or runs in the default `go` lane above.
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: xlearndb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Core-loop e2e (real embedded NATS JetStream + outbox)
+        env:
+          XLEARN_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/xlearndb?sslmode=disable
+        run: go test -tags e2e -race -count=1 ./internal/e2e/...

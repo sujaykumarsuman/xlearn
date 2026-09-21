@@ -39,7 +39,7 @@ describe("Auth screen", () => {
     expect(form).not.toBeNull();
     // BASE_URL is "/" under vitest and "/xlearn/" in the build, so match the
     // suffix (the API-relative path) rather than the absolute prefix.
-    expect(form?.getAttribute("action")).toMatch(/\/api\/auth\/github\/start$/);
+    expect(form?.getAttribute("action")).toMatch(/\/api\/v1\/auth\/github\/start$/);
     expect(form?.getAttribute("method")).toBe("post");
   });
 

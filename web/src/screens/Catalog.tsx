@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Icon, type IconName } from "../components/Icon";
+import { EmptyState, ErrorState, LoadingState } from "../components/States";
 import type { Path } from "../lib/curriculum";
 import { usePaths } from "../lib/curriculum";
 
@@ -38,10 +39,10 @@ export default function Catalog() {
         </p>
       </div>
 
-      {paths.isLoading && <LoadingRow label="Loading paths…" />}
+      {paths.isLoading && <LoadingState label="Loading paths…" />}
 
       {paths.isError && (
-        <ErrorPanel onRetry={() => paths.refetch()} />
+        <ErrorState message="Couldn’t load the catalog." onRetry={() => paths.refetch()} />
       )}
 
       {paths.data && <CatalogBody paths={paths.data.paths} />}
@@ -52,6 +53,15 @@ export default function Catalog() {
 function CatalogBody({ paths }: { paths: Path[] }) {
   const active = paths.filter((p) => p.status === "active");
   const comingSoon = paths.filter((p) => p.status === "coming_soon");
+
+  // No paths at all — an honest empty state rather than a bare "More paths" header.
+  if (active.length === 0 && comingSoon.length === 0) {
+    return (
+      <EmptyState icon="map" title="No learning paths yet">
+        Paths appear here as they’re published. Check back soon.
+      </EmptyState>
+    );
+  }
 
   return (
     <>
@@ -196,25 +206,3 @@ function ComingSoonCard({ path }: { path: Path }) {
   );
 }
 
-function LoadingRow({ label }: { label: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--ds-dim)", padding: "24px 0" }}>
-      <span className="ds-spin" aria-hidden="true" />
-      <span>{label}</span>
-    </div>
-  );
-}
-
-function ErrorPanel({ onRetry }: { onRetry: () => void }) {
-  return (
-    <div className="xl-panel" style={{ padding: 20, display: "flex", alignItems: "center", gap: 12 }}>
-      <Icon name="alert" />
-      <span className="xl-mut" style={{ flex: 1 }}>
-        Couldn’t load the catalog.
-      </span>
-      <button type="button" className="ds-btn ds-btn--secondary ds-btn--sm" onClick={onRetry}>
-        Retry
-      </button>
-    </div>
-  );
-}

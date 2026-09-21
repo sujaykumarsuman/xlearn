@@ -28,6 +28,11 @@ const (
 	defaultJWTAudCoach        = "coach"
 	defaultJWTTTL             = 5 * time.Minute
 	defaultSessionCookieScope = "/xlearn"
+	// defaultAggCacheTTL is the short per-account TTL for the BFF's Dashboard/Week
+	// aggregation cache (env AGG_CACHE_TTL). Short so async events the gateway does
+	// not observe directly (the review sweep, the assessment projections) converge
+	// within it; the account's own mutating writes invalidate their entries eagerly.
+	defaultAggCacheTTL = 15 * time.Second
 )
 
 // Config is the resolved gateway configuration.
@@ -59,6 +64,12 @@ type Config struct {
 	// empty URL makes GET /coach/key render the "no key — coach off" empty state
 	// instead of dialling a non-existent service. S11 sets it to bring the coach live.
 	CoachBaseURL string
+	// AggCacheTTL is the TTL for the per-account Dashboard/Week aggregation cache
+	// (env AGG_CACHE_TTL, e.g. "15s"). Zero disables caching. The cache is
+	// process-local and per-account, and is invalidated on the account's own
+	// mutating writes (outcome / revision score / mock score / mistake edit) so a
+	// user never sees another user's data or their own stale post-write state.
+	AggCacheTTL time.Duration
 	// JWT holds the RS256 signing config for gateway-minted internal JWTs (ADR-0006).
 	JWT JWTConfig
 }
@@ -102,6 +113,7 @@ func Load() Config {
 		ReviewBaseURL:     strings.TrimRight(env("REVIEW_BASE_URL", defaultReviewBaseURL), "/"),
 		AssessmentBaseURL: strings.TrimRight(env("ASSESSMENT_BASE_URL", defaultAssessmentBaseURL), "/"),
 		CoachBaseURL:      strings.TrimRight(env("COACH_BASE_URL", ""), "/"),
+		AggCacheTTL:       envDuration("AGG_CACHE_TTL", defaultAggCacheTTL),
 		JWT: JWTConfig{
 			PrivateKeyPEM:           os.Getenv("JWT_PRIVATE_KEY"),
 			PrivateKeyFile:          strings.TrimSpace(os.Getenv("JWT_PRIVATE_KEY_FILE")),

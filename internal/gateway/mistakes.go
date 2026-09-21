@@ -117,6 +117,8 @@ func (g *Gateway) proxyReviewWrite(w http.ResponseWriter, r *http.Request, metho
 		writeError(w, http.StatusBadGateway, "upstream", "review unavailable")
 		return
 	}
+	// A mistake create/edit changes the weak-area the Dashboard shows → invalidate.
+	g.invalidateAgg(status, accountID)
 	passthrough(w, status, body)
 }
 
@@ -141,17 +143,20 @@ func (g *Gateway) enrichMistakeEnvelope(ctx context.Context, body []byte, arrayK
 	if err := json.Unmarshal(rawArr, &items); err != nil {
 		return body
 	}
-	metas := make(map[string]json.RawMessage)
+	// First pass: collect each entry's problem id. Second pass: attach the metadata,
+	// resolving all ids in ONE bulk curriculum call (no N+1).
+	pids := make([]string, len(items))
+	ids := make([]string, 0, len(items))
 	for i := range items {
 		var pid string
-		if raw, ok := items[i]["problemId"]; !ok || json.Unmarshal(raw, &pid) != nil || pid == "" {
-			items[i]["problem"] = json.RawMessage("null")
-			continue
+		if raw, ok := items[i]["problemId"]; ok && json.Unmarshal(raw, &pid) == nil && pid != "" {
+			pids[i] = pid
+			ids = append(ids, pid)
 		}
-		if _, seen := metas[pid]; !seen {
-			metas[pid] = g.curriculumProblemMeta(ctx, pid)
-		}
-		meta := metas[pid]
+	}
+	metas := g.curriculumProblemMetas(ctx, ids)
+	for i := range items {
+		meta := metas[pids[i]] // "" or unresolved ⇒ nil
 		if meta == nil {
 			meta = json.RawMessage("null")
 		}

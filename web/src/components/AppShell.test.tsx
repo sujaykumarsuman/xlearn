@@ -123,6 +123,8 @@ describe("auth gating", () => {
     });
     renderAt("/xlearn/dsa/dashboard");
     await screen.findByRole("navigation");
+    // Open the account menu (button-disclosure) before reaching Sign out.
+    fireEvent.click(screen.getByRole("button", { name: /account menu/i }));
     fireEvent.click(screen.getByRole("button", { name: /sign out/i }));
     // A failed logout surfaces an error and does NOT navigate to /auth.
     expect(await screen.findByText(/couldn’t sign out/i)).toBeInTheDocument();

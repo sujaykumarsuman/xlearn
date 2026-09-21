@@ -206,8 +206,12 @@ function CountdownRing({ timer, remaining }: { timer: NonNullable<PracticeState[
   const circ = 150.8;
   const color = remaining <= 30 ? "var(--ds-err)" : remaining <= 120 ? "var(--ds-warn)" : "var(--ds-teal)";
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <svg width={46} height={46} viewBox="0 0 56 56" style={{ transform: "rotate(-90deg)" }}>
+    <div
+      style={{ display: "flex", alignItems: "center", gap: 10 }}
+      role="timer"
+      aria-label={`${timer.kind} timer — ${formatMMSS(remaining)} remaining`}
+    >
+      <svg width={46} height={46} viewBox="0 0 56 56" style={{ transform: "rotate(-90deg)" }} aria-hidden="true">
         <circle className="xl-ring-track" cx={28} cy={28} r={24} fill="none" strokeWidth={4} />
         <circle cx={28} cy={28} r={24} fill="none" stroke={color} strokeWidth={4} strokeLinecap="round" strokeDasharray={`${frac * circ} ${circ}`} />
       </svg>

@@ -110,6 +110,7 @@ type Store interface {
 	ListProblemsByWeek(ctx context.Context, pathSlug string, n int) ([]Problem, error)
 	ListProblemsByPath(ctx context.Context, pathSlug string) ([]Problem, error)
 	GetProblem(ctx context.Context, id string) (Problem, error)
+	GetProblemsByIDs(ctx context.Context, ids []string) ([]Problem, error)
 	ListSections(ctx context.Context, problemID string) ([]Section, error)
 	GetConcept(ctx context.Context, slug string) (Concept, error)
 	CountProblems(ctx context.Context, pathSlug string) (int, error)
@@ -292,6 +293,35 @@ func (s *PgStore) GetProblem(ctx context.Context, id string) (Problem, error) {
 		NeetcodeURL:     r.NeetcodeUrl,
 		IsReinforcement: r.IsReinforcement,
 	}, nil
+}
+
+// GetProblemsByIDs resolves many problems in one query (the gateway's due-queue /
+// mistake-journal enrichment). An empty id list short-circuits to no rows; unknown
+// ids are simply absent from the result (not an error), so the caller maps what it
+// got and degrades the rest.
+func (s *PgStore) GetProblemsByIDs(ctx context.Context, ids []string) ([]Problem, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	rows, err := s.q.GetProblemsByIDs(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("get problems by ids: %w", err)
+	}
+	out := make([]Problem, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, Problem{
+			ID:              r.ID,
+			PathSlug:        r.PathSlug,
+			WeekN:           int(r.WeekN),
+			Title:           r.Title,
+			Difficulty:      r.Difficulty,
+			Pattern:         r.Pattern,
+			LeetcodeURL:     r.LeetcodeUrl,
+			NeetcodeURL:     r.NeetcodeUrl,
+			IsReinforcement: r.IsReinforcement,
+		})
+	}
+	return out, nil
 }
 
 func (s *PgStore) ListSections(ctx context.Context, problemID string) ([]Section, error) {

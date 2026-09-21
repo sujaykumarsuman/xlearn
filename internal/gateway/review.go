@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -91,9 +92,9 @@ type reviewDueResponse struct {
 }
 
 // enrichDueQueue parses review's due-queue response and attaches each item's
-// curriculum problem metadata. It fetches each distinct problem id once. Returns the
-// re-marshalled JSON. On a parse failure it returns the raw body unchanged so the
-// screen still gets review's data.
+// curriculum problem metadata, resolving every distinct problem id in ONE bulk call
+// (no N+1). Returns the re-marshalled JSON. On a parse failure it returns the raw body
+// unchanged so the screen still gets review's data.
 func (g *Gateway) enrichDueQueue(ctx context.Context, body []byte) []byte {
 	var resp reviewDueResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
@@ -104,16 +105,15 @@ func (g *Gateway) enrichDueQueue(ctx context.Context, body []byte) []byte {
 		return body
 	}
 
-	metas := make(map[string]json.RawMessage)
+	ids := make([]string, 0, len(resp.Items))
 	for i := range resp.Items {
-		pid := resp.Items[i].ProblemID
-		if pid == "" {
-			continue
+		if resp.Items[i].ProblemID != "" {
+			ids = append(ids, resp.Items[i].ProblemID)
 		}
-		if _, seen := metas[pid]; !seen {
-			metas[pid] = g.curriculumProblemMeta(ctx, pid)
-		}
-		resp.Items[i].Problem = metas[pid]
+	}
+	metas := g.curriculumProblemMetas(ctx, ids)
+	for i := range resp.Items {
+		resp.Items[i].Problem = metas[resp.Items[i].ProblemID] // nil ⇒ null problem
 	}
 
 	merged, err := json.Marshal(resp)
@@ -124,8 +124,9 @@ func (g *Gateway) enrichDueQueue(ctx context.Context, body []byte) []byte {
 	return merged
 }
 
-// curriculumProblemMeta fetches a problem's `problem` object from curriculum, or nil
-// when it can't be resolved (curriculum down, unknown id, malformed body).
+// curriculumProblemMeta fetches a single problem's `problem` object from curriculum,
+// or nil when it can't be resolved (curriculum down, unknown id, malformed body). Used
+// on the single-id enrichment paths (mock view, coach context).
 func (g *Gateway) curriculumProblemMeta(ctx context.Context, problemID string) json.RawMessage {
 	cbody, cstatus, cerr := g.curriculum.get(ctx, "/problems/"+url.PathEscape(problemID))
 	if cerr != nil || cstatus != http.StatusOK {
@@ -138,4 +139,56 @@ func (g *Gateway) curriculumProblemMeta(ctx context.Context, problemID string) j
 		return nil
 	}
 	return env.Problem
+}
+
+// curriculumProblemMetas resolves many problems' metadata in a single curriculum call
+// (GET /problems?ids=…), returning a map keyed by problem id. Ids not curriculum can't
+// resolve are simply absent from the map (the caller treats a miss as a null problem).
+// An empty result (curriculum down / unconfigured / malformed) degrades every item to
+// null rather than failing the response.
+func (g *Gateway) curriculumProblemMetas(ctx context.Context, ids []string) map[string]json.RawMessage {
+	out := make(map[string]json.RawMessage, len(ids))
+	if g.curriculum == nil {
+		return out
+	}
+	distinct := dedupeIDs(ids)
+	if len(distinct) == 0 {
+		return out
+	}
+	cbody, cstatus, cerr := g.curriculum.get(ctx, "/problems?ids="+url.QueryEscape(strings.Join(distinct, ",")))
+	if cerr != nil || cstatus != http.StatusOK {
+		return out
+	}
+	var env struct {
+		Problems []json.RawMessage `json:"problems"`
+	}
+	if err := json.Unmarshal(cbody, &env); err != nil {
+		return out
+	}
+	for _, p := range env.Problems {
+		var meta struct {
+			ID string `json:"id"`
+		}
+		if json.Unmarshal(p, &meta) == nil && meta.ID != "" {
+			out[meta.ID] = p
+		}
+	}
+	return out
+}
+
+// dedupeIDs returns the distinct non-empty ids, order preserved.
+func dedupeIDs(ids []string) []string {
+	seen := make(map[string]struct{}, len(ids))
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
 }

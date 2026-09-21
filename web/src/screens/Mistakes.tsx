@@ -99,7 +99,7 @@ export default function Mistakes() {
             onCat={setCat}
             onStatus={setStatus}
           />
-          <JournalTable rows={rows} closeThreshold={closeThreshold} />
+          <JournalTable rows={rows} closeThreshold={closeThreshold} journalEmpty={all.length === 0} />
           <div style={{ marginTop: 12, fontSize: 11.5, color: "var(--ds-muted)", display: "flex", alignItems: "center", gap: 8 }}>
             <Icon name="refresh" className="xl-ico--sm" />
             A closed entry that fails a future review re-opens automatically and re-enters the revision queue at Day 1.
@@ -193,7 +193,15 @@ function Filters({
   );
 }
 
-function JournalTable({ rows, closeThreshold }: { rows: Mistake[]; closeThreshold: number }) {
+function JournalTable({
+  rows,
+  closeThreshold,
+  journalEmpty,
+}: {
+  rows: Mistake[];
+  closeThreshold: number;
+  journalEmpty: boolean;
+}) {
   return (
     <div className="xl-panel" style={{ overflow: "hidden" }}>
       <table className="xl-table">
@@ -215,7 +223,9 @@ function JournalTable({ rows, closeThreshold }: { rows: Mistake[]; closeThreshol
       </table>
       {rows.length === 0 && (
         <div style={{ padding: 36, textAlign: "center", color: "var(--ds-muted)", fontSize: 13 }}>
-          No entries in this category — clean record here. Keep it that way.
+          {journalEmpty
+            ? "No mistakes logged yet. A below-clean solve or a failed review opens an entry here automatically."
+            : "No entries in this category — clean record here. Keep it that way."}
         </div>
       )}
     </div>

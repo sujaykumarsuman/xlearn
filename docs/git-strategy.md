@@ -32,7 +32,12 @@ Two modes exist on the platform; xLearn adopts them in sequence.
 | Phase | Mode | Image tag | ImagePolicy | Trigger |
 |-------|------|-----------|-------------|---------|
 | **v1 (pre-1.0)** | **Build-semver auto-deploy** (like `projects-hub`/`landscape`) | `0.<ci-run>.x` | `>=0.1.0` | **push/merge to `main`** |
-| **1.0+** | **Release-semver tags** (like `airlift`) | `vX.Y.Z` → `X.Y.Z` | `>=1.0.0` | **git tag `vX.Y.Z`** |
+| **1.0+ ← current** | **Release-semver tags** (like `airlift`) | `vX.Y.Z` → `X.Y.Z` | `>=1.0.0` | **git tag `vX.Y.Z`** |
+
+**Status: xLearn is in the 1.0+ phase as of `v1.0.0` (S12, M7).** `deploy.yml` triggers on a release tag,
+and the infra `ImagePolicy` ranges are `>=1.0.0` ([ADR-0021](adr/0021-release-tagging-and-api-versioning.md)).
+The tag↔range flip is coordinated: land the repo changes → tag `vX.Y.Z` (build the images) → **then** flip
+the infra range, or auto-deploy stalls with no matching image.
 
 - **v1:** every merge to `main` builds the changed service images and Flux deploys them — fast solo
   iteration, no ceremony. Roll back by reverting the commit (Flux redeploys the prior image) or by
@@ -44,11 +49,11 @@ Two modes exist on the platform; xLearn adopts them in sequence.
 ### Release train
 
 ```
-branch (feat/…) ──PR──▶ main ──CI(ci.yml)──▶ green
+branch (feat/…) ──PR──▶ main ──CI(ci.yml)──▶ green   (no deploy — main is build-only from 1.0)
                                    │
-                          push→deploy.yml builds changed xlearn-<svc> images ▶ GHCR
+                     git tag vX.Y.Z ──deploy.yml──▶ build all xlearn-<svc> images @ X.Y.Z ▶ GHCR
                                    │
-                    Flux image-automation bumps infra/apps/xlearn-<svc>.yaml ▶ commit
+                    Flux image-automation (range >=1.0.0) bumps infra/apps/xlearn-<svc>.yaml ▶ commit
                                    │
                          Flux helm-controller upgrades HelmRelease ▶ prod
 ```

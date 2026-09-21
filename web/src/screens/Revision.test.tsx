@@ -120,7 +120,7 @@ describe("Revision queue", () => {
     expect(await screen.findByText(/Passed — advances to Day 3/)).toBeInTheDocument();
     // The score endpoint was actually called with a POST.
     expect(
-      fetchMock.mock.calls.some(([u, i]) => String(u).includes("/api/revision/it-1/score") && (i as RequestInit)?.method === "POST"),
+      fetchMock.mock.calls.some(([u, i]) => String(u).includes("/api/v1/revision/it-1/score") && (i as RequestInit)?.method === "POST"),
     ).toBe(true);
   });
 

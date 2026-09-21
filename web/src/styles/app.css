@@ -214,3 +214,64 @@ button.xl-acct-item:disabled {
     animation: none;
   }
 }
+
+/* --- a11y + shared states (S12 hardening) --- */
+
+/* A visible, branded keyboard-focus ring for every interactive control. Text inputs
+   keep their own :focus rule (theme.css); this covers buttons, links, cards, tabs,
+   segmented controls, chips and the nav — none of which had a focus indicator before. */
+:focus-visible {
+  outline: 2px solid var(--ds-teal);
+  outline-offset: 2px;
+  border-radius: var(--ds-radius-sm);
+}
+
+/* Screen-reader-only text: labels for icon-only controls and color-only affordances
+   (e.g. a heatmap cell's count) that must reach assistive tech without being drawn. */
+.xl-vh {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Inline loading spinner: the DS rotation on a glyph, next to its label. */
+.xl-spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ds-dim);
+  font-size: 13px;
+}
+
+/* Centered empty state — a calm, DS-toned "nothing here yet" block. */
+.xl-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 34px 20px;
+  text-align: center;
+  color: var(--ds-dim);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.xl-state .xl-ico {
+  color: var(--ds-muted);
+}
+.xl-state__title {
+  color: var(--ds-text);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* The coach text input sits in a bordered wrapper whose child input has its outline
+   removed; light it up on focus-within so keyboard focus is still visible there. */
+.xl-coach__input:focus-within {
+  border-color: var(--ds-teal);
+}

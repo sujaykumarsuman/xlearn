@@ -165,11 +165,12 @@ function Heatmap({ days, streak }: { days: HeatmapDay[]; streak: { current: numb
   // Build a 15-week × 7-day grid ending today, oldest column first.
   const today = new Date();
   const total = HEATMAP_WEEKS * 7;
-  const cells: { key: string; level: number }[] = [];
+  const cells: { key: string; level: number; count: number }[] = [];
   for (let i = total - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setUTCDate(d.getUTCDate() - i);
-    cells.push({ key: isoDay(d), level: heatLevel(byDate.get(isoDay(d)) ?? 0) });
+    const count = byDate.get(isoDay(d)) ?? 0;
+    cells.push({ key: isoDay(d), level: heatLevel(count), count });
   }
 
   return (
@@ -193,7 +194,13 @@ function Heatmap({ days, streak }: { days: HeatmapDay[]; streak: { current: numb
             }}
           >
             {cells.map((c) => (
-              <span key={c.key} title={c.key} style={{ width: 13, height: 13, borderRadius: 3, background: HEATMAP_RAMP[c.level] }} />
+              <span
+                key={c.key}
+                role="img"
+                aria-label={`${c.key}: ${c.count} ${c.count === 1 ? "activity" : "activities"}`}
+                title={`${c.key} · ${c.count} activit${c.count === 1 ? "y" : "ies"}`}
+                style={{ width: 13, height: 13, borderRadius: 3, background: HEATMAP_RAMP[c.level] }}
+              />
             ))}
           </div>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, color: "var(--ds-muted)" }}>

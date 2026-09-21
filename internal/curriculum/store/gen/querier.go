@@ -15,6 +15,11 @@ type Querier interface {
 	GetConcept(ctx context.Context, slug string) (GetConceptRow, error)
 	GetPath(ctx context.Context, slug string) (CurriculumPath, error)
 	GetProblem(ctx context.Context, id string) (GetProblemRow, error)
+	// Bulk problem-metadata read: resolve many bare problem ids in ONE round-trip so the
+	// gateway can enrich the Revision due queue / mistake journal without N per-id GETs
+	// (ADR-0005: the gateway composes cross-context state; this keeps it a single query).
+	// Ordered by the same (week_n, sort_order, id) key as the path index for stability.
+	GetProblemsByIDs(ctx context.Context, ids []string) ([]GetProblemsByIDsRow, error)
 	GetWeek(ctx context.Context, arg GetWeekParams) (GetWeekRow, error)
 	LinkWeekConcept(ctx context.Context, arg LinkWeekConceptParams) error
 	ListConceptsByWeek(ctx context.Context, arg ListConceptsByWeekParams) ([]ListConceptsByWeekRow, error)

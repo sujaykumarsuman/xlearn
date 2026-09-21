@@ -91,6 +91,16 @@ func (f *fakeStore) GetProblem(_ context.Context, id string) (store.Problem, err
 	return store.Problem{}, store.ErrNotFound
 }
 
+func (f *fakeStore) GetProblemsByIDs(_ context.Context, ids []string) ([]store.Problem, error) {
+	var out []store.Problem
+	for _, id := range ids {
+		if p, ok := f.problem[id]; ok {
+			out = append(out, p)
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeStore) ListSections(_ context.Context, id string) ([]store.Section, error) {
 	return f.sections[id], nil
 }

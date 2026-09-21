@@ -118,7 +118,7 @@ describe("Mock interview", () => {
     expect(screen.getByText(/Now · Clarify/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Finish & score/ })).toBeInTheDocument();
     // POST /mocks actually fired.
-    expect(fetchMock.mock.calls.some(([u, i]) => String(u).endsWith("/api/mocks") && (i as RequestInit)?.method === "POST")).toBe(true);
+    expect(fetchMock.mock.calls.some(([u, i]) => String(u).endsWith("/api/v1/mocks") && (i as RequestInit)?.method === "POST")).toBe(true);
   });
 
   it("finishes, scores the seven dimensions, and shows the /35 result + trend", async () => {

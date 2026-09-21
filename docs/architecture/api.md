@@ -1,8 +1,9 @@
 # External / BFF API surface
 
-The **only** public API is the gateway's, mounted at **`/xlearn/api`** on `projects.sujaykumar.dev`
-(same origin as the SPA → cookie auth, no CORS). Internal service APIs are in
-[`services.md`](services.md). Auth model: [ADR-0006](../adr/0006-authn-authz.md).
+The **only** public API is the gateway's, mounted at **`/xlearn/api/v1`** on `projects.sujaykumar.dev`
+(same origin as the SPA → cookie auth, no CORS). The unversioned **`/xlearn/api`** prefix is kept as a
+compat alias, served identically ([ADR-0021](../adr/0021-release-tagging-and-api-versioning.md)). Internal
+service APIs are in [`services.md`](services.md). Auth model: [ADR-0006](../adr/0006-authn-authz.md).
 
 ## Conventions
 
@@ -12,7 +13,8 @@ The **only** public API is the gateway's, mounted at **`/xlearn/api`** on `proje
 - **Errors:** consistent envelope `{ "error": { "code", "message", "details"? } }`; HTTP status
   reflects the class (`400/401/403/404/409/422/429/5xx`).
 - **IDs & time:** string ids as in the domain; timestamps ISO-8601 UTC. Pagination via `?cursor=&limit=`.
-- **Versioning:** unversioned while pre-1.0 (build-semver); introduce `/xlearn/api/v1` at the 1.0 milestone.
+- **Versioning:** `/xlearn/api/v1` is the 1.0 surface (introduced at the 1.0 milestone, S12); the
+  unversioned `/xlearn/api` is kept as a same-origin compat alias ([ADR-0021](../adr/0021-release-tagging-and-api-versioning.md)).
 - **BFF aggregation:** endpoints marked **`agg`** fan out to several services server-side.
 
 ## Endpoints (v1)
@@ -78,5 +80,7 @@ The **only** public API is the gateway's, mounted at **`/xlearn/api`** on `proje
 
 ## OpenAPI
 
-A generated OpenAPI 3.1 spec is a **Sprint-01+ deliverable** (`docs/architecture/openapi.yaml`,
-generated from the gateway handlers). This table is the human contract until then.
+The machine-readable contract lives in [`openapi.yaml`](openapi.yaml) (OpenAPI 3.1), kept in
+lock-step with the gateway route table by a CI drift check (`internal/gateway/openapi_drift_test.go`):
+a route added or removed without updating the spec fails the build ([ADR-0021](../adr/0021-release-tagging-and-api-versioning.md)).
+This table is the human-readable companion.

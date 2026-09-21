@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Icon } from "../components/Icon";
+import { EmptyState, ErrorState, LoadingState } from "../components/States";
 import type { Phase, WeekSummary } from "../lib/curriculum";
 import { usePath } from "../lib/curriculum";
 
@@ -29,26 +30,19 @@ export default function Roadmap() {
         </Link>
       </div>
 
-      {detail.isLoading && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--ds-dim)", padding: "24px 0" }}>
-          <span className="ds-spin" aria-hidden="true" />
-          <span>Loading roadmap…</span>
-        </div>
-      )}
+      {detail.isLoading && <LoadingState label="Loading roadmap…" />}
 
       {detail.isError && (
-        <div className="xl-panel" style={{ padding: 20, display: "flex", alignItems: "center", gap: 12 }}>
-          <Icon name="alert" />
-          <span className="xl-mut" style={{ flex: 1 }}>
-            Couldn’t load the roadmap.
-          </span>
-          <button type="button" className="ds-btn ds-btn--secondary ds-btn--sm" onClick={() => detail.refetch()}>
-            Retry
-          </button>
-        </div>
+        <ErrorState message="Couldn’t load the roadmap." onRetry={() => detail.refetch()} />
       )}
 
-      {detail.data && (
+      {detail.data && detail.data.phases.length === 0 && (
+        <EmptyState icon="map" title="This roadmap has no phases yet">
+          Its weeks and problems will appear here once the curriculum is published.
+        </EmptyState>
+      )}
+
+      {detail.data && detail.data.phases.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 26, alignItems: "start" }}>
           <div>
             {detail.data.phases.map((phase) => (

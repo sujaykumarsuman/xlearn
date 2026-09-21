@@ -57,6 +57,27 @@ func TestUnknownAPI404(t *testing.T) {
 	}
 }
 
+// TestAPIv1Alias: the 1.0 /xlearn/api/v1 surface routes identically to the unversioned
+// /xlearn/api (it is an alias onto the same mux), including the 404 discrimination.
+func TestAPIv1Alias(t *testing.T) {
+	g := testGateway("/xlearn")
+	// A known endpoint resolves the same under both surfaces...
+	for _, p := range []string{"/xlearn/api/healthz", "/xlearn/api/v1/healthz"} {
+		resp := do(g, http.MethodGet, p)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("%s = %d, want 200", p, resp.StatusCode)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		if !strings.Contains(string(body), `"service":"gateway"`) {
+			t.Errorf("%s body = %q", p, body)
+		}
+	}
+	// ...and an unknown one 404s under v1 too (never falls through to the SPA shell).
+	if resp := do(g, http.MethodGet, "/xlearn/api/v1/does-not-exist"); resp.StatusCode != http.StatusNotFound {
+		t.Errorf("unknown /api/v1/* = %d, want 404", resp.StatusCode)
+	}
+}
+
 func TestHashedAssetImmutable(t *testing.T) {
 	g := testGateway("/xlearn")
 	resp := do(g, http.MethodGet, "/xlearn/assets/index-abc123.js")

@@ -18,6 +18,16 @@ SELECT id, path_slug, week_n, title, difficulty, pattern, leetcode_url, neetcode
 FROM curriculum.problem
 WHERE id = $1;
 
+-- name: GetProblemsByIDs :many
+-- Bulk problem-metadata read: resolve many bare problem ids in ONE round-trip so the
+-- gateway can enrich the Revision due queue / mistake journal without N per-id GETs
+-- (ADR-0005: the gateway composes cross-context state; this keeps it a single query).
+-- Ordered by the same (week_n, sort_order, id) key as the path index for stability.
+SELECT id, path_slug, week_n, title, difficulty, pattern, leetcode_url, neetcode_url, is_reinforcement
+FROM curriculum.problem
+WHERE id = ANY(sqlc.arg(ids)::text[])
+ORDER BY week_n, sort_order, id;
+
 -- name: CountProblemsByPath :one
 SELECT COUNT(*) FROM curriculum.problem WHERE path_slug = $1;
 
