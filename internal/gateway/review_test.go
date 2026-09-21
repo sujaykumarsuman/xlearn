@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"testing/fstest"
 
@@ -19,13 +20,25 @@ import (
 // services. The fake review verifies the gateway-minted REVIEW-scoped JWT against the
 // gateway's real JWKS (ADR-0006), so these tests exercise the mint→forward→verify path
 // for the review audience, plus the Revision-queue enrichment and the score proxy.
+//
+// mu guards the recorded fields: the S09 Dashboard aggregation fans out to review's
+// endpoints (due / weak-area / reminders) in PARALLEL, so their fake handlers run
+// concurrently and must not race on the shared harness state.
 type revisionHarness struct {
 	gwServer       *httptest.Server
+	mu             sync.Mutex
 	reviewAuthErr  error
 	lastScoreBody  string
 	lastScorePath  string
 	lastCreateBody string
 	lastPatchPath  string
+}
+
+// authErr returns the last recorded review-JWT verification error (mu-guarded).
+func (h *revisionHarness) authErr() error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.reviewAuthErr
 }
 
 func newRevisionHarness(t *testing.T) *revisionHarness {
@@ -77,7 +90,9 @@ func newRevisionHarness(t *testing.T) *revisionHarness {
 		v := auth.NewJWKSVerifier(gwJWKSURL, "review", "xlearn-gateway")
 		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 		claims, err := v.Verify(r.Context(), token)
+		h.mu.Lock()
 		h.reviewAuthErr = err
+		h.mu.Unlock()
 		return err == nil && claims.Subject == "acct-1"
 	}
 	reviewMux := http.NewServeMux()
@@ -215,8 +230,8 @@ func TestBFFRevisionDueEnrichesWithCurriculum(t *testing.T) {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
 	body := decode(t, resp)
-	if h.reviewAuthErr != nil {
-		t.Fatalf("review rejected the minted review-aud JWT: %v", h.reviewAuthErr)
+	if h.authErr() != nil {
+		t.Fatalf("review rejected the minted review-aud JWT: %v", h.authErr())
 	}
 	if dc, _ := body["dueCount"].(float64); dc != 1 {
 		t.Fatalf("dueCount = %v, want 1", body["dueCount"])
@@ -239,8 +254,8 @@ func TestBFFRevisionScoreProxies(t *testing.T) {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
 	body := decode(t, resp)
-	if h.reviewAuthErr != nil {
-		t.Fatalf("review rejected the minted review-aud JWT: %v", h.reviewAuthErr)
+	if h.authErr() != nil {
+		t.Fatalf("review rejected the minted review-aud JWT: %v", h.authErr())
 	}
 	if body["autoPass"] != true || body["nextDayLabel"] != "Day 3" {
 		t.Fatalf("score result = %v", body)

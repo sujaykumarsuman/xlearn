@@ -11,6 +11,8 @@ import (
 )
 
 type Querier interface {
+	// The "solved / 151" numerator: distinct problems the account has solved.
+	CountSolvedProblems(ctx context.Context, accountID pgtype.UUID) (int64, error)
 	// Read one session scoped to its owner (soft account ownership check).
 	GetMockSession(ctx context.Context, arg GetMockSessionParams) (AssessmentMockSession, error)
 	// Read + row-lock one session scoped to its owner, so concurrent score submits on the
@@ -29,15 +31,52 @@ type Querier interface {
 	// Record one dimension's score (1..5) for a session. Called once per dimension inside
 	// the scoring transaction; the UNIQUE (mock_session_id, dimension) is the backstop.
 	InsertRubricScore(ctx context.Context, arg InsertRubricScoreParams) error
+	// The per-day revision-activity rows on/after `since` (the heatmap window + the streak).
+	ListHeatmap(ctx context.Context, arg ListHeatmapParams) ([]ListHeatmapRow, error)
+	// The first-solve outcome mix (Clean/Rough/Assisted/Miss counts).
+	ListOutcomeMix(ctx context.Context, accountID pgtype.UUID) ([]ListOutcomeMixRow, error)
 	// All rubric rows for a session (the results radar + per-dimension meters).
 	ListRubricScores(ctx context.Context, mockSessionID pgtype.UUID) ([]ListRubricScoresRow, error)
 	// An account's scored mocks oldest-first — the trend series (R-MK3).
 	ListScoredMocks(ctx context.Context, accountID pgtype.UUID) ([]ListScoredMocksRow, error)
+	// Every solved problem with its solve quality — the gateway groups these by curriculum
+	// pattern (mastery bars) and by week -> phase (completion table). Coverage is the solved
+	// authority; mastery supplies the quality (absent -> zeros for a not-yet-scored row).
+	ListSolvedMastery(ctx context.Context, accountID pgtype.UUID) ([]ListSolvedMasteryRow, error)
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]AssessmentOutbox, error)
 	// Latch a live session to scored with its /35 total + notes. The status='live' guard
 	// makes a double-submit idempotent at the SQL level (no row -> already scored).
 	MarkMockScored(ctx context.Context, arg MarkMockScoredParams) (pgtype.UUID, error)
 	MarkOutboxSent(ctx context.Context, eventID pgtype.UUID) error
+	// Scored-mock roll-up for the Progress + Dashboard tiles: how many, the average /35, and
+	// the best /35. `last`/`delta` come from the ordered trend in Go.
+	MockAggregate(ctx context.Context, accountID pgtype.UUID) (MockAggregateRow, error)
+	// Day-7 retention inputs: `ladders` is problems that started a spaced-repetition ladder
+	// (a Day-1 anchor), `resets` is how many times a ladder was reset by a failed re-solve.
+	RetentionStats(ctx context.Context, accountID pgtype.UUID) (RetentionStatsRow, error)
+	// revision_scheduled(touch_level=1) -> count Day-1 ladder anchors. The first is the
+	// initial ladder; each subsequent one is a reset (a failed re-solve reset the ladder).
+	// Inserts a not-yet-solved row if the schedule outran its problem_solved (out of order).
+	UpsertCoverageLevel1(ctx context.Context, arg UpsertCoverageLevel1Params) error
+	// S09 progress-projection read model (ADR-0017/0018). Every write is an UPSERT with
+	// additive or GREATEST(...) accumulation so out-of-order delivery is safe and a
+	// drop-and-replay rebuild converges to an identical result (a pure function of the
+	// event log). Each runs inside the SAME transaction as the inbox claim (00001), so
+	// inbox <-> projected stays atomic (effectively-once).
+	// problem_solved -> mark the problem solved and keep the EARLIEST solve time. solved
+	// latches true on any solve (out-of-order safe); level1_schedules is left untouched.
+	UpsertCoverageSolve(ctx context.Context, arg UpsertCoverageSolveParams) error
+	// revision_scheduled -> +1 review on the event's UTC day (each advance / reset /
+	// initial-ladder schedule is same-day review work).
+	UpsertHeatmapReview(ctx context.Context, arg UpsertHeatmapReviewParams) error
+	// problem_solved -> +1 solve on the event's UTC day.
+	UpsertHeatmapSolve(ctx context.Context, arg UpsertHeatmapSolveParams) error
+	// problem_solved -> accumulate per-problem solve quality. best_rank is the best outcome
+	// ever (clean=4 > rough=3 > assisted=2 > miss=1), taken by GREATEST so it is a
+	// commutative max under replay; best_outcome tracks the label of that best rank.
+	UpsertMastery(ctx context.Context, arg UpsertMasteryParams) error
+	// problem_solved(first_solve) -> +1 for the first-solve outcome (Clean/Rough/Assisted/Miss).
+	UpsertOutcomeMix(ctx context.Context, arg UpsertOutcomeMixParams) error
 }
 
 var _ Querier = (*Queries)(nil)

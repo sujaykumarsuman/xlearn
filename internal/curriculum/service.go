@@ -40,6 +40,7 @@ func (s *Service) Handler() http.Handler {
 	// Content reads (proxied through the gateway BFF under /xlearn/api).
 	mux.HandleFunc("GET /paths", s.handleListPaths)
 	mux.HandleFunc("GET /paths/{slug}", s.handleGetPath)
+	mux.HandleFunc("GET /paths/{slug}/problems", s.handleListPathProblems)
 	mux.HandleFunc("GET /paths/{slug}/weeks/{n}", s.handleGetWeek)
 	mux.HandleFunc("GET /problems/{id}", s.handleGetProblem)
 	mux.HandleFunc("GET /concepts/{slug}", s.handleGetConcept)

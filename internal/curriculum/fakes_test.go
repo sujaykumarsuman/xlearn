@@ -74,6 +74,16 @@ func (f *fakeStore) ListProblemsByWeek(_ context.Context, slug string, n int) ([
 	return f.problems[wkKey{slug, n}], nil
 }
 
+func (f *fakeStore) ListProblemsByPath(_ context.Context, slug string) ([]store.Problem, error) {
+	var out []store.Problem
+	for k, ps := range f.problems {
+		if k.slug == slug {
+			out = append(out, ps...)
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeStore) GetProblem(_ context.Context, id string) (store.Problem, error) {
 	if p, ok := f.problem[id]; ok {
 		return p, nil

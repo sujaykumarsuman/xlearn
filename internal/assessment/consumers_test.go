@@ -3,22 +3,21 @@ package assessment
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 
+	"github.com/sujaykumarsuman/xlearn/internal/assessment/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 )
 
-func TestProjectionHandlerRecordsAndAcks(t *testing.T) {
-	var gotEventID, gotSubject, gotAccount string
-	var gotData []byte
-	fs := &fakeStore{recordProjection: func(_ context.Context, eventID, subject, accountID string, data []byte) (bool, error) {
-		gotEventID, gotSubject, gotAccount, gotData = eventID, subject, accountID, data
+func TestProjectionHandlerDecodesAndApplies(t *testing.T) {
+	var got store.ProjectionEvent
+	fs := &fakeStore{applyProjection: func(_ context.Context, ev store.ProjectionEvent) (bool, error) {
+		got = ev
 		return true, nil
 	}}
 	h := &projectionHandler{store: fs, log: testLogger()}
 
-	env := `{"event_id":"e1","subject":"xlearn.practice.problem_solved","account_id":"acct-1","data":{"problem_id":"16","outcome":"clean"}}`
+	env := `{"event_id":"e1","subject":"xlearn.practice.problem_solved","occurred_at":"2026-09-20T10:00:00Z","account_id":"acct-1","data":{"problem_id":"16","outcome":"clean","first_solve":true}}`
 	err := h.Handle(context.Background(), events.Event{
 		ID:      "e1",
 		Subject: "xlearn.practice.problem_solved",
@@ -27,21 +26,37 @@ func TestProjectionHandlerRecordsAndAcks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handle: %v", err)
 	}
-	if gotEventID != "e1" || gotAccount != "acct-1" {
-		t.Fatalf("recorded event_id=%q account=%q", gotEventID, gotAccount)
+	// The handler forwards the NATS subject (not the envelope's) and the decoded fields.
+	if got.EventID != "e1" || got.AccountID != "acct-1" || got.Subject != "xlearn.practice.problem_solved" {
+		t.Fatalf("event ids wrong: %+v", got)
 	}
-	// The handler passes the NATS subject (not the envelope's), and the raw data.
-	if gotSubject != "xlearn.practice.problem_solved" {
-		t.Fatalf("subject = %q", gotSubject)
+	if got.ProblemID != "16" || got.Outcome != "clean" || !got.FirstSolve {
+		t.Fatalf("decoded data wrong: %+v", got)
 	}
-	if !strings.Contains(string(gotData), "problem_id") {
-		t.Fatalf("data not forwarded: %s", gotData)
+	if got.OccurredAt.IsZero() || got.OccurredAt.Year() != 2026 {
+		t.Fatalf("occurred_at not parsed: %v", got.OccurredAt)
+	}
+}
+
+func TestProjectionHandlerDecodesRevisionTouch(t *testing.T) {
+	var got store.ProjectionEvent
+	fs := &fakeStore{applyProjection: func(_ context.Context, ev store.ProjectionEvent) (bool, error) {
+		got = ev
+		return true, nil
+	}}
+	h := &projectionHandler{store: fs, log: testLogger()}
+	env := `{"event_id":"e2","account_id":"a","occurred_at":"2026-09-20T10:00:00Z","data":{"problem_id":"3","touch_level":1,"due_date":"2026-09-21T10:00:00Z"}}`
+	if err := h.Handle(context.Background(), events.Event{ID: "e2", Subject: "xlearn.review.revision_scheduled", Data: []byte(env)}); err != nil {
+		t.Fatalf("handle: %v", err)
+	}
+	if got.TouchLevel != 1 || got.ProblemID != "3" {
+		t.Fatalf("revision touch not decoded: %+v", got)
 	}
 }
 
 func TestProjectionHandlerDuplicateIsAck(t *testing.T) {
-	fs := &fakeStore{recordProjection: func(context.Context, string, string, string, []byte) (bool, error) {
-		return false, nil // already consumed (inbox conflict)
+	fs := &fakeStore{applyProjection: func(context.Context, store.ProjectionEvent) (bool, error) {
+		return false, nil // already applied (inbox conflict)
 	}}
 	h := &projectionHandler{store: fs, log: testLogger()}
 	err := h.Handle(context.Background(), events.Event{
@@ -54,7 +69,7 @@ func TestProjectionHandlerDuplicateIsAck(t *testing.T) {
 }
 
 func TestProjectionHandlerDropsMalformedEnvelope(t *testing.T) {
-	fs := &fakeStore{recordProjection: func(context.Context, string, string, string, []byte) (bool, error) {
+	fs := &fakeStore{applyProjection: func(context.Context, store.ProjectionEvent) (bool, error) {
 		t.Fatal("store must not be called for a malformed envelope")
 		return false, nil
 	}}
@@ -66,7 +81,7 @@ func TestProjectionHandlerDropsMalformedEnvelope(t *testing.T) {
 }
 
 func TestProjectionHandlerDropsMissingAccount(t *testing.T) {
-	fs := &fakeStore{recordProjection: func(context.Context, string, string, string, []byte) (bool, error) {
+	fs := &fakeStore{applyProjection: func(context.Context, store.ProjectionEvent) (bool, error) {
 		t.Fatal("store must not be called when account_id is missing")
 		return false, nil
 	}}
@@ -81,9 +96,9 @@ func TestProjectionHandlerDropsMissingAccount(t *testing.T) {
 }
 
 func TestProjectionHandlerFallsBackToMsgID(t *testing.T) {
-	var gotEventID string
-	fs := &fakeStore{recordProjection: func(_ context.Context, eventID, _, _ string, _ []byte) (bool, error) {
-		gotEventID = eventID
+	var got store.ProjectionEvent
+	fs := &fakeStore{applyProjection: func(_ context.Context, ev store.ProjectionEvent) (bool, error) {
+		got = ev
 		return true, nil
 	}}
 	h := &projectionHandler{store: fs, log: testLogger()}
@@ -95,13 +110,13 @@ func TestProjectionHandlerFallsBackToMsgID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handle: %v", err)
 	}
-	if gotEventID != "msg-42" {
-		t.Fatalf("event_id = %q, want fallback msg-42", gotEventID)
+	if got.EventID != "msg-42" {
+		t.Fatalf("event_id = %q, want fallback msg-42", got.EventID)
 	}
 }
 
 func TestProjectionHandlerNaksOnStoreError(t *testing.T) {
-	fs := &fakeStore{recordProjection: func(context.Context, string, string, string, []byte) (bool, error) {
+	fs := &fakeStore{applyProjection: func(context.Context, store.ProjectionEvent) (bool, error) {
 		return false, errors.New("db unavailable")
 	}}
 	h := &projectionHandler{store: fs, log: testLogger()}

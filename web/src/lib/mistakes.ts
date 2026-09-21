@@ -4,7 +4,6 @@
 // metadata); create/edit proxy to review.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiRequestError, apiFetch } from "./api";
-import type { DueQueue } from "./revision";
 
 /** The eight mistake categories (R-MJ2), in canonical order. `key` is the stored enum
  *  value; `label` is the display text; `badge` is the artboard badge class. */
@@ -91,13 +90,6 @@ export interface Reminder {
   dueAt: string;
 }
 
-/** GET /dashboard (agg) payload — the S07 slice: due revisions + reminders + weak area. */
-export interface DashboardData {
-  revisions: DueQueue | null;
-  reminders: Reminder[];
-  weakArea: WeakArea | null;
-}
-
 /** useMistakes fetches the full journal (the screen filters client-side). */
 export function useMistakes() {
   return useQuery<MistakesResponse, ApiRequestError>({
@@ -111,14 +103,6 @@ export function useWeakArea() {
   return useQuery<WeakArea, ApiRequestError>({
     queryKey: ["weak-area"],
     queryFn: () => apiFetch<WeakArea>("/weak-area"),
-  });
-}
-
-/** useDashboard fetches the "Today" aggregation (due revisions + reminders + weak area). */
-export function useDashboard() {
-  return useQuery<DashboardData, ApiRequestError>({
-    queryKey: ["dashboard"],
-    queryFn: () => apiFetch<DashboardData>("/dashboard"),
   });
 }
 

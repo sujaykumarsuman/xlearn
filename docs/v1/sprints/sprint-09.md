@@ -6,14 +6,14 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done — merged & deployed to prod (M5 reached)
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | projection consumers | ⬜ |
-| 2 | progress API + Progress screen | ⬜ |
-| 3 | BFF Dashboard aggregation + finalize Dashboard ★ | ⬜ |
-| 4 | replay/rebuild verification | ⬜ |
+| 1 | projection consumers | ✅ |
+| 2 | progress API + Progress screen | ✅ |
+| 3 | BFF Dashboard aggregation + finalize Dashboard ★ | ✅ |
+| 4 | replay/rebuild verification | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + any
@@ -104,10 +104,10 @@ rebuild runbook and any notable call as an ADR under `docs/adr/`.
 
 ## Acceptance criteria
 
-- [ ] Progress shows coverage, revision heatmap, pattern mastery, rubric trend and outcome mix, all read from projections.
-- [ ] The Dashboard ★ aggregates real daily plan + due reviews + weak area + streak/stats, with reviews prioritised over new work.
-- [ ] Projections are idempotent (dedupe on `event_id`) and can be rebuilt by replaying JetStream from the start (verified).
-- [ ] Deployed to prod via Flux — **M5 (mock + analytics complete)** — and Progress + Dashboard match the artboards.
+- [x] Progress shows coverage, revision heatmap, pattern mastery, rubric trend and outcome mix, all read from projections.
+- [x] The Dashboard ★ aggregates real daily plan + due reviews + weak area + streak/stats, with reviews prioritised over new work.
+- [x] Projections are idempotent (dedupe on `event_id`) and can be rebuilt by replaying JetStream from the start (verified — real-Postgres replay test + [runbook](../../runbooks/projection-rebuild.md)).
+- [x] Deployed to prod via Flux — **M5 (mock + analytics complete)** — and Progress + Dashboard match the artboards.
 
 ## Definition of Done
 

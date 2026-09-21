@@ -4,6 +4,15 @@ FROM curriculum.problem
 WHERE path_slug = $1 AND week_n = $2
 ORDER BY sort_order, id;
 
+-- name: ListProblemsByPath :many
+-- The whole problem index for a path (id -> week_n / pattern / difficulty /
+-- reinforcement). The gateway reads this once to compose the Progress + Dashboard
+-- roll-ups (by-phase completion, by-pattern mastery) without N per-problem calls.
+SELECT id, path_slug, week_n, title, difficulty, pattern, leetcode_url, neetcode_url, is_reinforcement
+FROM curriculum.problem
+WHERE path_slug = $1
+ORDER BY week_n, sort_order, id;
+
 -- name: GetProblem :one
 SELECT id, path_slug, week_n, title, difficulty, pattern, leetcode_url, neetcode_url, is_reinforcement
 FROM curriculum.problem

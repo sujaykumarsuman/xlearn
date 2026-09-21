@@ -165,11 +165,32 @@ type Store interface {
 	// Trend returns the account's scored mocks oldest-first (R-MK3).
 	Trend(ctx context.Context, accountID string) ([]TrendPoint, error)
 
-	// RecordProjectionEvent is the S09 progress-projection consume seam: it dedupes a
-	// consumed practice/review event on event_id via the inbox (effectively-once) and,
-	// this sprint, no-ops the projection body. S09 fills the proj_* upserts into the
-	// same transaction. Returns whether the event was freshly consumed.
-	RecordProjectionEvent(ctx context.Context, eventID, subject, accountID string, data []byte) (bool, error)
+	// ApplyProjection applies a decoded practice/review event to the S09 read-model
+	// projections (coverage / mastery / heatmap / outcome-mix), deduped on event_id via
+	// the inbox — all in ONE transaction so inbox <-> projected stays atomic
+	// (effectively-once, ADR-0017). Handlers are a pure function of the event log (no
+	// external reads, no wall-clock state branching) and every write is an idempotent
+	// UPSERT, so out-of-order delivery is safe and a drop-and-replay from the stream
+	// start rebuilds an identical result (ADR-0018). Returns whether the event was
+	// freshly applied (false = a duplicate delivery that was a no-op).
+	ApplyProjection(ctx context.Context, ev ProjectionEvent) (bool, error)
+
+	// --- progress read model (S09) ---
+
+	// SolvedCount is the "solved / 151" numerator: distinct problems solved.
+	SolvedCount(ctx context.Context, accountID string) (int, error)
+	// Retention returns the Day-7-retention inputs: `ladders` is problems that started a
+	// spaced-repetition ladder; `resets` is how many times a ladder was reset by a fail.
+	Retention(ctx context.Context, accountID string) (ladders, resets int, err error)
+	// Heatmap returns the per-day revision-activity rows on/after `since` (UTC days).
+	Heatmap(ctx context.Context, accountID string, since time.Time) ([]HeatmapDay, error)
+	// Mastery returns every solved problem with its solve quality; the gateway rolls
+	// these up by curriculum pattern (mastery bars) and week -> phase (completion table).
+	Mastery(ctx context.Context, accountID string) ([]ProblemMastery, error)
+	// OutcomeMix returns the first-solve outcome counts (clean/rough/assisted/miss).
+	OutcomeMix(ctx context.Context, accountID string) (map[string]int, error)
+	// MockStats returns the scored-mock roll-up (count, average /35, best /35).
+	MockStats(ctx context.Context, accountID string) (MockStats, error)
 
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]OutboxRow, error)
 	MarkOutboxSent(ctx context.Context, eventID string) error
@@ -352,34 +373,6 @@ func (s *PgStore) Trend(ctx context.Context, accountID string) ([]TrendPoint, er
 		})
 	}
 	return out, nil
-}
-
-// RecordProjectionEvent dedupes a consumed event on event_id via the inbox and no-ops
-// the projection body (S08 scaffold). S09 fills the proj_* upserts into this same tx.
-func (s *PgStore) RecordProjectionEvent(ctx context.Context, eventID, subject, accountID string, data []byte) (bool, error) {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return false, fmt.Errorf("begin tx: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	qtx := s.q.WithTx(tx)
-
-	fresh, err := claimInbox(ctx, qtx, eventID)
-	if err != nil {
-		return false, err
-	}
-	// S09: apply the coverage / heatmap / mastery / outcome-mix projection for this
-	// (subject, accountID, data) HERE, inside this transaction, so the inbox claim and
-	// the projection write commit atomically (inbox <-> projected). This sprint the
-	// body is a deliberate no-op — only the durable-consumer + dedupe seam is wired.
-	_ = subject
-	_ = accountID
-	_ = data
-
-	if err := tx.Commit(ctx); err != nil {
-		return false, fmt.Errorf("commit tx: %w", err)
-	}
-	return fresh, nil
 }
 
 // ListUnsentOutbox returns up to limit unsent outbox rows for the relay.

@@ -20,6 +20,10 @@ type Querier interface {
 	ListConceptsByWeek(ctx context.Context, arg ListConceptsByWeekParams) ([]ListConceptsByWeekRow, error)
 	ListPaths(ctx context.Context) ([]CurriculumPath, error)
 	ListPhasesByPath(ctx context.Context, pathSlug string) ([]ListPhasesByPathRow, error)
+	// The whole problem index for a path (id -> week_n / pattern / difficulty /
+	// reinforcement). The gateway reads this once to compose the Progress + Dashboard
+	// roll-ups (by-phase completion, by-pattern mastery) without N per-problem calls.
+	ListProblemsByPath(ctx context.Context, pathSlug string) ([]ListProblemsByPathRow, error)
 	ListProblemsByWeek(ctx context.Context, arg ListProblemsByWeekParams) ([]ListProblemsByWeekRow, error)
 	// All content sections for a problem, ordered by stage (attempt -> hint -> solution)
 	// then position. S05 will filter to only the user's unlocked stages; this sprint

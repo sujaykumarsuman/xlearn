@@ -193,20 +193,107 @@ func TestStoreIntegration(t *testing.T) {
 	t.Run("projection consume dedupes on event_id", func(t *testing.T) {
 		acct := newTestUUID()
 		eid := newTestUUID()
-		fresh, err := st.RecordProjectionEvent(ctx, eid, "xlearn.practice.problem_solved", acct, []byte(`{"problem_id":"16"}`))
+		ev := store.ProjectionEvent{
+			EventID: eid, Subject: store.SubjectProblemSolved, AccountID: acct,
+			ProblemID: "16", Outcome: "clean", FirstSolve: true, OccurredAt: time.Now(),
+		}
+		fresh, err := st.ApplyProjection(ctx, ev)
 		if err != nil {
-			t.Fatalf("record: %v", err)
+			t.Fatalf("apply: %v", err)
 		}
 		if !fresh {
 			t.Fatal("first delivery should be fresh")
 		}
-		fresh2, err := st.RecordProjectionEvent(ctx, eid, "xlearn.practice.problem_solved", acct, []byte(`{"problem_id":"16"}`))
+		fresh2, err := st.ApplyProjection(ctx, ev)
 		if err != nil {
-			t.Fatalf("record dup: %v", err)
+			t.Fatalf("apply dup: %v", err)
 		}
 		if fresh2 {
 			t.Fatal("re-delivery of the same event_id must be a no-op (not fresh)")
 		}
+		// Deduped: exactly one solve counted despite two deliveries.
+		if n, _ := st.SolvedCount(ctx, acct); n != 1 {
+			t.Fatalf("solved count after dup delivery = %d, want 1 (deduped)", n)
+		}
+	})
+
+	t.Run("projections build coverage/mastery/heatmap/outcome-mix and rebuild on replay", func(t *testing.T) {
+		acct := newTestUUID()
+		day := func(s string) time.Time {
+			tm, _ := time.Parse("2006-01-02", s)
+			return tm
+		}
+		// A deterministic event log: two problems solved (one clean-first, one rough-first
+		// then re-solved clean), a Day-1 ladder for each, and one reset (a second Day-1).
+		log := []store.ProjectionEvent{
+			{EventID: newTestUUID(), Subject: store.SubjectProblemSolved, AccountID: acct, ProblemID: "16", Outcome: "clean", FirstSolve: true, OccurredAt: day("2026-09-01")},
+			{EventID: newTestUUID(), Subject: store.SubjectRevisionScheduled, AccountID: acct, ProblemID: "16", TouchLevel: 1, OccurredAt: day("2026-09-01")},
+			{EventID: newTestUUID(), Subject: store.SubjectRevisionScheduled, AccountID: acct, ProblemID: "16", TouchLevel: 3, OccurredAt: day("2026-09-01")},
+			{EventID: newTestUUID(), Subject: store.SubjectProblemSolved, AccountID: acct, ProblemID: "17", Outcome: "rough", FirstSolve: true, OccurredAt: day("2026-09-02")},
+			{EventID: newTestUUID(), Subject: store.SubjectRevisionScheduled, AccountID: acct, ProblemID: "17", TouchLevel: 1, OccurredAt: day("2026-09-02")},
+			{EventID: newTestUUID(), Subject: store.SubjectProblemSolved, AccountID: acct, ProblemID: "17", Outcome: "clean", FirstSolve: false, OccurredAt: day("2026-09-05")},
+			{EventID: newTestUUID(), Subject: store.SubjectRevisionScheduled, AccountID: acct, ProblemID: "17", TouchLevel: 1, OccurredAt: day("2026-09-05")}, // reset
+			{EventID: newTestUUID(), Subject: store.SubjectAttemptLogged, AccountID: acct, ProblemID: "18", OccurredAt: day("2026-09-05")},                    // ignored subject
+		}
+		apply := func(evs []store.ProjectionEvent) {
+			for _, e := range evs {
+				if _, err := st.ApplyProjection(ctx, e); err != nil {
+					t.Fatalf("apply %s: %v", e.Subject, err)
+				}
+			}
+		}
+		assertState := func(label string) {
+			if n, _ := st.SolvedCount(ctx, acct); n != 2 {
+				t.Fatalf("%s: solved = %d, want 2", label, n)
+			}
+			ladders, resets, _ := st.Retention(ctx, acct)
+			if ladders != 2 || resets != 1 {
+				t.Fatalf("%s: ladders/resets = %d/%d, want 2/1", label, ladders, resets)
+			}
+			mix, _ := st.OutcomeMix(ctx, acct)
+			if mix["clean"] != 1 || mix["rough"] != 1 {
+				t.Fatalf("%s: outcome mix = %+v, want clean:1 rough:1", label, mix)
+			}
+			mastery, _ := st.Mastery(ctx, acct)
+			if len(mastery) != 2 {
+				t.Fatalf("%s: mastery rows = %d, want 2", label, len(mastery))
+			}
+			for _, m := range mastery {
+				if m.ProblemID == "17" && m.BestOutcome != "clean" {
+					t.Fatalf("%s: #17 best outcome = %q, want clean (re-solve raised it)", label, m.BestOutcome)
+				}
+			}
+			days, _ := st.Heatmap(ctx, acct, day("2026-08-01"))
+			total := 0
+			for _, d := range days {
+				total += d.Solves + d.Reviews
+			}
+			// 3 solves + 4 reviews (2 for #16, 2 for #17) across the log.
+			if total != 7 {
+				t.Fatalf("%s: heatmap activity total = %d, want 7", label, total)
+			}
+		}
+
+		apply(log)
+		assertState("first pass")
+
+		// Replay/rebuild: truncate the projection tables + inbox, then replay the SAME log
+		// from the start. Because handlers are a pure function of the log, the read model
+		// rebuilds to an identical result (ADR-0018 replay proof).
+		for _, tbl := range []string{"proj_coverage", "proj_mastery", "proj_heatmap", "proj_outcome_mix"} {
+			if _, err := pool.Exec(ctx, "DELETE FROM assessment."+tbl+" WHERE account_id = $1", acct); err != nil {
+				t.Fatalf("truncate %s: %v", tbl, err)
+			}
+		}
+		// The inbox is keyed by event_id (no account_id) — clear this log's ids so replay
+		// re-applies instead of deduping.
+		for _, e := range log {
+			if _, err := pool.Exec(ctx, "DELETE FROM assessment.inbox WHERE event_id = $1", e.EventID); err != nil {
+				t.Fatalf("clear inbox: %v", err)
+			}
+		}
+		apply(log)
+		assertState("after replay")
 	})
 
 	t.Run("concurrent scoring stays idempotent (one event, one settle)", func(t *testing.T) {

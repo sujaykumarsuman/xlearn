@@ -13,8 +13,8 @@ func TestBFFMistakesEnrichesWithCurriculum(t *testing.T) {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
 	body := decode(t, resp)
-	if h.reviewAuthErr != nil {
-		t.Fatalf("review rejected the minted review-aud JWT: %v", h.reviewAuthErr)
+	if h.authErr() != nil {
+		t.Fatalf("review rejected the minted review-aud JWT: %v", h.authErr())
 	}
 	if oc, _ := body["openCount"].(float64); oc != 1 {
 		t.Fatalf("openCount = %v, want 1", body["openCount"])

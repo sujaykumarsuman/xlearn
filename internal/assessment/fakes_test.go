@@ -19,11 +19,17 @@ func testLogger() *slog.Logger {
 // database). Each method delegates to an overridable func so a test sets only what it
 // exercises; an unset func panics, surfacing an unexpected call.
 type fakeStore struct {
-	createMock       func(ctx context.Context, accountID, setID, problemID, difficulty string, startedAt, deadlineAt time.Time) (store.MockSession, error)
-	getMock          func(ctx context.Context, accountID, mockID string) (store.MockSession, []store.RubricScore, error)
-	scoreMock        func(ctx context.Context, accountID, mockID string, scores map[string]int, notes string) (store.MockSession, []store.RubricScore, error)
-	trend            func(ctx context.Context, accountID string) ([]store.TrendPoint, error)
-	recordProjection func(ctx context.Context, eventID, subject, accountID string, data []byte) (bool, error)
+	createMock      func(ctx context.Context, accountID, setID, problemID, difficulty string, startedAt, deadlineAt time.Time) (store.MockSession, error)
+	getMock         func(ctx context.Context, accountID, mockID string) (store.MockSession, []store.RubricScore, error)
+	scoreMock       func(ctx context.Context, accountID, mockID string, scores map[string]int, notes string) (store.MockSession, []store.RubricScore, error)
+	trend           func(ctx context.Context, accountID string) ([]store.TrendPoint, error)
+	applyProjection func(ctx context.Context, ev store.ProjectionEvent) (bool, error)
+	solvedCount     func(ctx context.Context, accountID string) (int, error)
+	retention       func(ctx context.Context, accountID string) (int, int, error)
+	heatmap         func(ctx context.Context, accountID string, since time.Time) ([]store.HeatmapDay, error)
+	mastery         func(ctx context.Context, accountID string) ([]store.ProblemMastery, error)
+	outcomeMix      func(ctx context.Context, accountID string) (map[string]int, error)
+	mockStats       func(ctx context.Context, accountID string) (store.MockStats, error)
 
 	pingErr error
 }
@@ -44,8 +50,32 @@ func (f *fakeStore) Trend(ctx context.Context, accountID string) ([]store.TrendP
 	return f.trend(ctx, accountID)
 }
 
-func (f *fakeStore) RecordProjectionEvent(ctx context.Context, eventID, subject, accountID string, data []byte) (bool, error) {
-	return f.recordProjection(ctx, eventID, subject, accountID, data)
+func (f *fakeStore) ApplyProjection(ctx context.Context, ev store.ProjectionEvent) (bool, error) {
+	return f.applyProjection(ctx, ev)
+}
+
+func (f *fakeStore) SolvedCount(ctx context.Context, accountID string) (int, error) {
+	return f.solvedCount(ctx, accountID)
+}
+
+func (f *fakeStore) Retention(ctx context.Context, accountID string) (int, int, error) {
+	return f.retention(ctx, accountID)
+}
+
+func (f *fakeStore) Heatmap(ctx context.Context, accountID string, since time.Time) ([]store.HeatmapDay, error) {
+	return f.heatmap(ctx, accountID, since)
+}
+
+func (f *fakeStore) Mastery(ctx context.Context, accountID string) ([]store.ProblemMastery, error) {
+	return f.mastery(ctx, accountID)
+}
+
+func (f *fakeStore) OutcomeMix(ctx context.Context, accountID string) (map[string]int, error) {
+	return f.outcomeMix(ctx, accountID)
+}
+
+func (f *fakeStore) MockStats(ctx context.Context, accountID string) (store.MockStats, error) {
+	return f.mockStats(ctx, accountID)
 }
 
 func (f *fakeStore) ListUnsentOutbox(context.Context, int32) ([]store.OutboxRow, error) {

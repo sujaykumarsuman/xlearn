@@ -135,6 +135,30 @@ func (s *Service) handleGetPath(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleListPathProblems: GET /paths/{slug}/problems — the whole problem index for a
+// path (id / week_n / pattern / difficulty / reinforcement). It powers the gateway's
+// Progress + Dashboard roll-ups (by-phase completion, by-pattern mastery) in one call,
+// so the BFF need not fan out per problem (ADR-0005: cross-context composition in the
+// gateway). Content-only; the per-user solve state is layered on in the gateway.
+func (s *Service) handleListPathProblems(w http.ResponseWriter, r *http.Request) {
+	slug := r.PathValue("slug")
+	// Validate the path exists so an unknown slug is a 404 (not an empty list).
+	if _, err := s.store.GetPath(r.Context(), slug); err != nil {
+		s.mapErr(w, "get path", err)
+		return
+	}
+	problems, err := s.store.ListProblemsByPath(r.Context(), slug)
+	if err != nil {
+		s.internal(w, "list problems by path", err)
+		return
+	}
+	out := make([]problemJSON, 0, len(problems))
+	for _, p := range problems {
+		out = append(out, toProblemJSON(p))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"problems": out})
+}
+
 // handleGetWeek: GET /paths/{slug}/weeks/{n} — week thesis + its phase + concepts
 // + problem list. This is the CONTENT read; the gateway's `agg` version layers the
 // per-user five-touch/solve state on top (ADR-0005: cross-context stitching lives in

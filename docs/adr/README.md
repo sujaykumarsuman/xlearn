@@ -32,6 +32,8 @@ under [`../v1/`](../v1/).
 | [0014](0014-nats-jetstream-topology-and-outbox-relay.md) | NATS JetStream topology & the practice outbox relay | Accepted |
 | [0015](0015-five-touch-scheduler-model.md) | Five-touch scheduler model & the first durable consumer | Accepted |
 | [0016](0016-mistake-journal-and-worker-service-auth.md) | Mistake journal, weekly weak-area & the worker service-auth path | Accepted |
+| [0017](0017-mock-model-and-projection-consumer-scaffold.md) | Mock-interview model & the S09 projection-consumer scaffold | Accepted |
+| [0018](0018-progress-projection-grain-and-rebuild.md) | Progress projections: event grain, gateway roll-up & drop-and-replay rebuild | Accepted |
 
 ## Adding an ADR
 

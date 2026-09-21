@@ -14,7 +14,8 @@ import (
 // JetStream topology (events.md / ADR-0014). assessment OWNS XLEARN_ASSESSMENT for its
 // own emissions (mock_completed) and SUBSCRIBES to XLEARN_PRACTICE (xlearn.practice.*)
 // and XLEARN_REVIEW (xlearn.review.*) as durable pull consumers named DurableName —
-// the S09 progress-projection consume seam (no-op handler bodies this sprint).
+// the progress-projection consumers that upsert the coverage / mastery / heatmap /
+// outcome-mix read model (S09, ADR-0018).
 const (
 	// StreamAssessment is assessment's own stream; the relay publishes mock_completed
 	// here. main uses StreamAssessment + StreamSubjects to provision it.
@@ -76,6 +77,13 @@ func (s *Service) Handler() http.Handler {
 	mux.Handle("GET /mocks/{id}", s.requireJWT(http.HandlerFunc(s.handleGetMock)))
 	mux.Handle("POST /mocks/{id}/score", s.requireJWT(http.HandlerFunc(s.handleScoreMock)))
 
+	// Progress read model (S09): the four tiles + outcome mix (summary), the
+	// revision-activity heatmap, and per-problem solve quality (mastery) the gateway
+	// rolls up by curriculum pattern + phase. All read the assessment projections only.
+	mux.Handle("GET /progress/summary", s.requireJWT(http.HandlerFunc(s.handleProgressSummary)))
+	mux.Handle("GET /progress/heatmap", s.requireJWT(http.HandlerFunc(s.handleProgressHeatmap)))
+	mux.Handle("GET /progress/mastery", s.requireJWT(http.HandlerFunc(s.handleProgressMastery)))
+
 	return mux
 }
 
@@ -85,11 +93,11 @@ func (s *Service) NewOutboxRelay(pub events.Publisher) *events.Relay {
 	return events.NewRelay(outboxSource{s.store}, pub, s.log)
 }
 
-// StartProjectionConsumer binds a durable pull consumer for the S09 progress
-// projections on a consumed stream (XLEARN_PRACTICE or XLEARN_REVIEW), filtered to
-// filterSubject. The handler dedupes on event_id via the inbox and no-ops the
-// projection body this sprint (S09 fills it). It returns the running subscription
-// (Stop it on shutdown).
+// StartProjectionConsumer binds a durable pull consumer for the progress projections on
+// a consumed stream (XLEARN_PRACTICE or XLEARN_REVIEW), filtered to filterSubject. The
+// handler dedupes on event_id via the inbox and applies the coverage / mastery /
+// heatmap / outcome-mix upserts in the same transaction (ADR-0018). It returns the
+// running subscription (Stop it on shutdown).
 //
 // DeliverNew: both consumed streams already hold prior sprints' history (S05 practice,
 // S06/S07 review). Because the projection bodies are no-op stubs this sprint, replaying
