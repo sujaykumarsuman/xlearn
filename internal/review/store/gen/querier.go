@@ -11,23 +11,66 @@ import (
 )
 
 type Querier interface {
+	// Per-category counts of an account's OPEN entries opened within [start, end) (the
+	// week window in the account timezone, computed by the caller). Uncategorised entries
+	// (category IS NULL) are excluded — they don't define a weak area until classified.
+	CountOpenMistakesByCategoryInRange(ctx context.Context, arg CountOpenMistakesByCategoryInRangeParams) ([]CountOpenMistakesByCategoryInRangeRow, error)
+	// Manually create a journal entry (POST /mistakes). A plain insert: if the learner
+	// already has an open entry for the problem the partial unique index rejects it
+	// (mapped to 409 by the handler).
+	CreateMistake(ctx context.Context, arg CreateMistakeParams) (ReviewMistakeEntry, error)
+	// The most-recent entry for (account, problem), open or closed — the Score fail path
+	// reads this to decide open-vs-reopen-vs-reset.
+	GetLatestMistake(ctx context.Context, arg GetLatestMistakeParams) (ReviewMistakeEntry, error)
+	// The account's most recent weekly snapshot — the single signal both the Mistakes
+	// banner and the Dashboard weak-area card read (GET /weak-area).
+	GetLatestWeakArea(ctx context.Context, accountID pgtype.UUID) (ReviewWeakAreaSnapshot, error)
+	// One entry scoped to its owner (the account from the gateway-minted JWT).
+	GetMistake(ctx context.Context, arg GetMistakeParams) (ReviewMistakeEntry, error)
 	// Fetch one touch scoped to its owner (the account from the gateway-minted JWT).
 	GetRevisionItem(ctx context.Context, arg GetRevisionItemParams) (ReviewRevisionItem, error)
 	GetTouch(ctx context.Context, arg GetTouchParams) (ReviewRevisionItem, error)
+	// A clean revisit (an auto-passed re-solve for account+problem) increments the open
+	// entry's count; at 2 it closes (R-MJ4). Returns the new count + status so the caller
+	// emits mistake_closed exactly on the close transition. At most one open row exists
+	// (the partial unique index), so this affects a single entry; no open entry → no row.
+	IncrementCleanRevisit(ctx context.Context, arg IncrementCleanRevisitParams) (IncrementCleanRevisitRow, error)
 	// Record a consumed event's id for idempotency. ON CONFLICT DO NOTHING so a
 	// re-delivered event returns no row (pgx.ErrNoRows) → the handler no-ops instead of
 	// re-applying its side effects (effectively-once, ADR-0004).
 	InsertInbox(ctx context.Context, eventID string) (string, error)
 	InsertOutbox(ctx context.Context, arg InsertOutboxParams) error
+	// Write one in-app reminder (the notifications worker, inside the dedupe tx).
+	InsertReminder(ctx context.Context, arg InsertReminderParams) (ReviewReminder, error)
 	// The durable auto-score record for one re-solve (R-SR2). auto_pass is computed by
 	// the service (pattern < 2 min AND solved in-timer AND complexity stated); mock_mode
 	// marks the stricter Day 21 / Day 45 touches (R-SR4).
 	InsertTouchResult(ctx context.Context, arg InsertTouchResultParams) error
+	// Every account that has at least one mistake entry — the recompute job iterates these
+	// to build a weak-area snapshot per account.
+	ListAccountsWithMistakes(ctx context.Context) ([]pgtype.UUID, error)
 	// The account's live queue: every not-yet-passed touch, soonest-due first (most
 	// overdue reviews lead). The caller splits due (due_date <= now) from upcoming and
 	// groups by touch_level for the Revision screen. Bounded so the queue stays light.
 	ListActiveTouches(ctx context.Context, arg ListActiveTouchesParams) ([]ReviewRevisionItem, error)
+	// An account's undelivered reminders that are due (due_at <= now), soonest-due first,
+	// capped — the Dashboard "revisions due today" surface (GET /dashboard).
+	ListDueReminders(ctx context.Context, arg ListDueRemindersParams) ([]ReviewReminder, error)
+	// The journal for an account, newest first (GET /mistakes with no status filter).
+	ListMistakes(ctx context.Context, accountID pgtype.UUID) ([]ReviewMistakeEntry, error)
+	// The journal filtered to open|closed (GET /mistakes?status=).
+	ListMistakesByStatus(ctx context.Context, arg ListMistakesByStatusParams) ([]ReviewMistakeEntry, error)
+	// The supporting entries behind the weak-area banner: an account's open entries in one
+	// category, newest first (GET /weak-area).
+	ListOpenMistakesByCategory(ctx context.Context, arg ListOpenMistakesByCategoryParams) ([]ReviewMistakeEntry, error)
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]ReviewOutbox, error)
+	// Serialise all journal mutations for one (account, problem) across BOTH entry points
+	// (the below-clean/fail opener and the clean-revisit incrementer) with a transaction
+	// advisory lock, so a concurrent open can't collide with a close→open re-open on the
+	// one-open-entry partial unique index. The salted string namespaces the key away from
+	// goose's migration lock and other services' advisory locks. Re-acquiring it within the
+	// same tx is a harmless no-op (advisory locks are re-entrant, released at commit).
+	LockMistakeJournal(ctx context.Context, arg LockMistakeJournalParams) error
 	MarkOutboxSent(ctx context.Context, eventID pgtype.UUID) error
 	// Idempotently latch surfaced_at. The `surfaced_at IS NULL AND status = 'pending'`
 	// guard makes a re-run (or a concurrent sweep) a no-op AND closes the TOCTOU between
@@ -35,10 +78,25 @@ type Querier interface {
 	// revision_due is emitted at most once and never for a settled touch.
 	MarkSurfaced(ctx context.Context, id pgtype.UUID) (MarkSurfacedRow, error)
 	MarkTouchPassed(ctx context.Context, id pgtype.UUID) (ReviewRevisionItem, error)
+	// Open a mistake for (account, problem). ON CONFLICT on the partial unique index
+	// (one OPEN entry per account+problem) DO NOTHING, so a repeat below-clean solve or a
+	// redelivered event never opens a duplicate: on conflict it returns no row
+	// (pgx.ErrNoRows), which the caller reads as "already open — don't re-emit
+	// mistake_opened". A closed prior entry does not conflict, so a recurring problem
+	// opens a fresh entry.
+	OpenMistake(ctx context.Context, arg OpenMistakeParams) (ReviewMistakeEntry, error)
 	// Re-anchor one touch to a fresh schedule (the fail → reset-to-Day-1 path, R-SR3):
 	// create it if missing, else overwrite due_date, re-open it to pending, and clear
 	// surfaced_at so the sweep re-surfaces it when due.
 	ReanchorTouch(ctx context.Context, arg ReanchorTouchParams) (ReviewRevisionItem, error)
+	// Re-open a closed entry after a later fail (R-MJ4): status back to open, the clean
+	// revisit count reset to 0, and revisit_date re-anchored to the fresh Day-1 schedule.
+	// Pattern/category/root-cause/insight are preserved (the learner's classification
+	// survives the re-open).
+	ReopenMistake(ctx context.Context, arg ReopenMistakeParams) (ReviewMistakeEntry, error)
+	// A fail on an already-OPEN entry resets its clean-revisit streak to 0 (a fail never
+	// counts toward the 2). No re-emit — the entry is already open.
+	ResetCleanRevisitCount(ctx context.Context, arg ResetCleanRevisitCountParams) (ReviewMistakeEntry, error)
 	// Idempotently schedule one touch. ON CONFLICT DO NOTHING so a re-delivered or
 	// out-of-order practice event never double-schedules or clobbers a touch already
 	// scored: on conflict the query returns no row (pgx.ErrNoRows), which the caller
@@ -50,6 +108,14 @@ type Querier interface {
 	// without it the sweep would emit a spurious revision_due for an already-completed
 	// touch. Cheap via the (account_id, due_date, surfaced_at) index.
 	SweepDueCandidates(ctx context.Context, limit int32) ([]ReviewRevisionItem, error)
+	// Overwrite the editable fields of an entry (POST edit / PATCH). The handler loads the
+	// current row, overlays the request's fields, and writes the full set — so this is a
+	// straight assignment, no COALESCE ambiguity (category can be set back to NULL).
+	UpdateMistake(ctx context.Context, arg UpdateMistakeParams) (ReviewMistakeEntry, error)
+	// Idempotent per (account, week_of): the weekly recompute upserts the same row so a
+	// re-run of the tick never double-counts. top_category is NULL when the account has no
+	// categorised open entries this week.
+	UpsertWeakAreaSnapshot(ctx context.Context, arg UpsertWeakAreaSnapshotParams) (ReviewWeakAreaSnapshot, error)
 }
 
 var _ Querier = (*Queries)(nil)

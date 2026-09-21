@@ -41,5 +41,25 @@ type Consumer interface {
 	// Subscribe registers h under durable-consumer name `durable` for events
 	// matching filterSubject, delivering until Stop or ctx cancellation. The
 	// durable name makes delivery resumable (offline catch-up) and at-least-once.
-	Subscribe(ctx context.Context, durable, filterSubject string, h Handler) (Subscription, error)
+	// Options tune the first-creation delivery policy (see WithDeliverNew).
+	Subscribe(ctx context.Context, durable, filterSubject string, h Handler, opts ...SubscribeOption) (Subscription, error)
+}
+
+// SubscribeConfig holds the tunable bits of a durable subscription.
+type SubscribeConfig struct {
+	// DeliverNew makes a BRAND-NEW durable start at the stream head (only events
+	// published after it is created), instead of replaying all retained history. It has
+	// no effect once the durable exists — a restart always resumes from its committed
+	// offset (offline catch-up). Use it for a consumer added to an already-populated
+	// stream (e.g. a notifications worker attached to a long-lived stream) so it doesn't
+	// flood on stale history.
+	DeliverNew bool
+}
+
+// SubscribeOption configures a Subscribe call.
+type SubscribeOption func(*SubscribeConfig)
+
+// WithDeliverNew sets SubscribeConfig.DeliverNew.
+func WithDeliverNew() SubscribeOption {
+	return func(c *SubscribeConfig) { c.DeliverNew = true }
 }

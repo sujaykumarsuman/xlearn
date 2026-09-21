@@ -20,10 +20,12 @@ import (
 // gateway's real JWKS (ADR-0006), so these tests exercise the mint→forward→verify path
 // for the review audience, plus the Revision-queue enrichment and the score proxy.
 type revisionHarness struct {
-	gwServer      *httptest.Server
-	reviewAuthErr error
-	lastScoreBody string
-	lastScorePath string
+	gwServer       *httptest.Server
+	reviewAuthErr  error
+	lastScoreBody  string
+	lastScorePath  string
+	lastCreateBody string
+	lastPatchPath  string
 }
 
 func newRevisionHarness(t *testing.T) *revisionHarness {
@@ -54,7 +56,7 @@ func newRevisionHarness(t *testing.T) *revisionHarness {
 	t.Cleanup(identity.Close)
 
 	// Fake curriculum: problem metadata for enrichment (no user JWT).
-	titles := map[string]string{"3": "Two Sum", "16": "3Sum"}
+	titles := map[string]string{"3": "Two Sum", "16": "3Sum", "18": "Minimum Window Substring"}
 	curriculumMux := http.NewServeMux()
 	curriculumMux.HandleFunc("GET /problems/{id}", func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
@@ -103,6 +105,57 @@ func newRevisionHarness(t *testing.T) *revisionHarness {
 			"itemId": r.PathValue("id"), "problemId": "3", "touchLevel": 1,
 			"autoPass": true, "status": "passed", "mockMode": false, "reset": false,
 			"nextTouchLevel": 2, "nextDayLabel": "Day 3", "nextDueDate": "2026-09-24T00:00:00Z",
+		})
+	})
+	// S07: mistake journal (bare-id, gateway enriches with curriculum problem meta).
+	reviewMux.HandleFunc("GET /mistakes", func(w http.ResponseWriter, r *http.Request) {
+		if !verify(r) {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"mistakes": []any{
+				map[string]any{"id": "m1", "problemId": "18", "pattern": "Sliding window", "mistake": "", "rootCause": "", "insight": "", "category": "off_by_one", "status": "open", "revisitCount": 1, "revisitDate": nil, "createdAt": "2026-09-21T00:00:00Z"},
+			},
+			"openCount": 1, "closedCount": 0, "closeThreshold": 2, "categories": []any{"off_by_one"},
+		})
+	})
+	reviewMux.HandleFunc("POST /mistakes", func(w http.ResponseWriter, r *http.Request) {
+		if !verify(r) {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		b, _ := io.ReadAll(r.Body)
+		h.lastCreateBody = string(b)
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "new", "problemId": "18", "status": "open"})
+	})
+	reviewMux.HandleFunc("PATCH /mistakes/{id}", func(w http.ResponseWriter, r *http.Request) {
+		h.lastPatchPath = r.URL.Path
+		if !verify(r) {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": r.PathValue("id"), "category": "off_by_one", "status": "open"})
+	})
+	reviewMux.HandleFunc("GET /weak-area/current", func(w http.ResponseWriter, r *http.Request) {
+		if !verify(r) {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"weekOf": "2026-09-21", "topCategory": "off_by_one", "topCount": 1,
+			"counts":  map[string]any{"off_by_one": 1},
+			"entries": []any{map[string]any{"id": "m1", "problemId": "18", "category": "off_by_one", "status": "open"}},
+		})
+	})
+	reviewMux.HandleFunc("GET /reminders", func(w http.ResponseWriter, r *http.Request) {
+		if !verify(r) {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"reminders": []any{map[string]any{"id": "r1", "kind": "revision_due", "dueAt": "2026-09-21T00:00:00Z"}},
 		})
 	})
 	review := httptest.NewServer(reviewMux)

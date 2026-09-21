@@ -160,6 +160,34 @@ func (s *Service) handleGetAccount(w http.ResponseWriter, r *http.Request) {
 	s.writeAccount(w, r, id)
 }
 
+// handleInternalGetAccount serves an account's scheduling preferences (timezone +
+// study budget) to background workers over the ClusterIP (no user JWT; ADR-0016). It
+// deliberately returns only what a worker needs — never OAuth identities, email or
+// session data — and the raw jsonb blobs pass through unchanged.
+func (s *Service) handleInternalGetAccount(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	acct, err := s.store.GetAccount(r.Context(), id)
+	if err != nil {
+		s.mapStoreErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"id":           acct.ID,
+		"timezone":     acct.Timezone,
+		"study_budget": rawJSONOrEmpty(acct.StudyBudget),
+		"reminders":    rawJSONOrEmpty(acct.Reminders),
+	})
+}
+
+// rawJSONOrEmpty passes a jsonb blob through as raw JSON (not a base64 string),
+// defaulting an empty/nil blob to an empty object.
+func rawJSONOrEmpty(b []byte) json.RawMessage {
+	if len(b) == 0 {
+		return json.RawMessage("{}")
+	}
+	return json.RawMessage(b)
+}
+
 func (s *Service) handleOnboardingStep(w http.ResponseWriter, r *http.Request) {
 	claims := claimsFrom(r.Context())
 	var body struct {

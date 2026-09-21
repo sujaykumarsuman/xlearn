@@ -61,6 +61,13 @@ func (s *Service) Handler() http.Handler {
 	mux.HandleFunc("POST /sessions/validate", s.handleValidateSession)
 	mux.HandleFunc("POST /sessions/revoke", s.handleRevokeSession)
 
+	// Service-to-service account lookup for BACKGROUND workers with no user request
+	// context (the review weak-area recompute + notifications worker resolve account
+	// timezone/study-budget here, ADR-0016). Same trust model as the session endpoints:
+	// ClusterIP-only, no user JWT — cluster-internal isolation (ADR-0006). It exposes
+	// only non-sensitive scheduling prefs (timezone, study budget), never OAuth data.
+	mux.HandleFunc("GET /internal/accounts/{id}", s.handleInternalGetAccount)
+
 	// User-data routes: verify the gateway-minted JWT via JWKS + ownership.
 	mux.Handle("GET /accounts/{id}", s.requireJWT(http.HandlerFunc(s.handleGetAccount)))
 	mux.Handle("POST /onboarding/step", s.requireJWT(http.HandlerFunc(s.handleOnboardingStep)))

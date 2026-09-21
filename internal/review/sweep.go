@@ -21,7 +21,9 @@ type Sweeper struct {
 	batch    int
 }
 
-// NewSweeper builds the sweep worker. Call Run in a goroutine.
+// NewSweeper builds the sweep worker. Call Run in a goroutine. The weekly weak-area
+// recompute runs on its OWN worker (NewWeakAreaWorker), not here, so the core
+// offline-safe due-sweep's liveness never depends on identity latency (R-SR6; ADR-0016).
 func (s *Service) NewSweeper(interval time.Duration, batch int) *Sweeper {
 	if interval <= 0 {
 		interval = 15 * time.Minute
@@ -32,8 +34,8 @@ func (s *Service) NewSweeper(interval time.Duration, batch int) *Sweeper {
 	return &Sweeper{store: s.store, log: s.log, interval: interval, batch: batch}
 }
 
-// Run sweeps until ctx is cancelled. It sweeps once immediately (so a just-started
-// pod catches up any backlog), then on each tick.
+// Run sweeps until ctx is cancelled. It sweeps once immediately (so a just-started pod
+// catches up any backlog), then on each tick.
 func (w *Sweeper) Run(ctx context.Context) {
 	t := time.NewTicker(w.interval)
 	defer t.Stop()

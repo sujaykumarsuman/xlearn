@@ -31,6 +31,7 @@ under [`../v1/`](../v1/).
 | [0013](0013-bff-week-aggregation-userstate-contract.md) | BFF week-aggregation `userState` contract | Accepted |
 | [0014](0014-nats-jetstream-topology-and-outbox-relay.md) | NATS JetStream topology & the practice outbox relay | Accepted |
 | [0015](0015-five-touch-scheduler-model.md) | Five-touch scheduler model & the first durable consumer | Accepted |
+| [0016](0016-mistake-journal-and-worker-service-auth.md) | Mistake journal, weekly weak-area & the worker service-auth path | Accepted |
 
 ## Adding an ADR
 

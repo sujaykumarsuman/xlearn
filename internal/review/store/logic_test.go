@@ -82,6 +82,39 @@ func TestMarshalEnvelope(t *testing.T) {
 	}
 }
 
+func TestIsBelowClean(t *testing.T) {
+	for _, o := range []string{"rough", "assisted", "miss"} {
+		if !isBelowClean(o) {
+			t.Errorf("isBelowClean(%q) = false, want true", o)
+		}
+	}
+	// clean + malformed/empty must NOT open a mistake.
+	for _, o := range []string{"clean", "", "CLEAN", "unknown"} {
+		if isBelowClean(o) {
+			t.Errorf("isBelowClean(%q) = true, want false", o)
+		}
+	}
+}
+
+func TestValidMistakeCategory(t *testing.T) {
+	if len(MistakeCategories) != 8 {
+		t.Fatalf("MistakeCategories has %d entries, want 8 (R-MJ2)", len(MistakeCategories))
+	}
+	for _, c := range MistakeCategories {
+		if !ValidMistakeCategory(c) {
+			t.Errorf("ValidMistakeCategory(%q) = false, want true", c)
+		}
+	}
+	for _, c := range []string{"", "misspelled", "off-by-one"} {
+		if ValidMistakeCategory(c) {
+			t.Errorf("ValidMistakeCategory(%q) = true, want false", c)
+		}
+	}
+	if MistakeCloseThreshold != 2 {
+		t.Errorf("MistakeCloseThreshold = %d, want 2 (R-MJ4)", MistakeCloseThreshold)
+	}
+}
+
 func contains(b []byte, sub string) bool {
 	s := string(b)
 	for i := 0; i+len(sub) <= len(s); i++ {

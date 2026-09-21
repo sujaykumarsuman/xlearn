@@ -57,9 +57,20 @@ func run() int {
 	}
 	defer pool.Close()
 
-	st := store.New(pool)
+	// Internal clients for soft cross-context references (ADR-0005/0016): curriculum
+	// pre-fills a mistake's pattern; identity resolves account timezone/study-budget for
+	// the background workers. Both are nil when their base URL is unset (local dev),
+	// which the store + workers degrade around (empty pattern / UTC / immediate).
+	var storeOpts []store.Option
+	if curriculum := review.NewCurriculumClient(cfg.CurriculumBaseURL); curriculum != nil {
+		storeOpts = append(storeOpts, store.WithPatternResolver(curriculum))
+	}
+	st := store.New(pool, storeOpts...)
 	verifier := auth.NewJWKSVerifier(cfg.JWT.JWKSURL, cfg.JWT.Audience, cfg.JWT.Issuer)
 	svc := review.NewService(st, verifier, logger)
+	if identity := review.NewIdentityClient(cfg.IdentityBaseURL); identity != nil {
+		svc.WithAccountResolver(identity)
+	}
 
 	handler := httpx.Chain(svc.Handler(),
 		httpx.RequestID,
@@ -84,20 +95,38 @@ func run() int {
 	// scheduler's event source. With no NATS_URL (local dev) there is no broker, so
 	// no consumer runs; the HTTP API + sweep still work. sub is stopped explicitly on
 	// shutdown (before the HTTP drain) so no event is dispatched while draining.
-	var sub events.Subscription
-	if cons := newConsumer(ctx, cfg.NATS.URL, logger); cons != nil {
+	var subs []events.Subscription
+	if cons := newConsumer(ctx, cfg.NATS.URL, review.StreamPractice, logger); cons != nil {
 		defer cons.Close()
 		s, serr := svc.StartConsumers(ctx, cons)
 		if serr != nil {
 			logger.Error("start practice consumer", "err", serr)
 			return 1
 		}
-		sub = s
+		subs = append(subs, s)
+	}
+
+	// Durable pull consumer on XLEARN_REVIEW (xlearn.review.revision_due) — the in-app
+	// notifications worker (S07), a separate consumer on review's own stream. It reads
+	// back the sweep's revision_due events and writes reminder rows (ADR-0016).
+	if cons := newConsumer(ctx, cfg.NATS.URL, review.StreamReview, logger); cons != nil {
+		defer cons.Close()
+		s, serr := svc.StartNotifications(ctx, cons)
+		if serr != nil {
+			logger.Error("start notifications consumer", "err", serr)
+			return 1
+		}
+		subs = append(subs, s)
 	}
 
 	// Periodic sweep: materialises due-today reliably even after days offline (R-SR6).
 	sweeper := svc.NewSweeper(cfg.Sweep.Interval, cfg.Sweep.Batch)
 	go sweeper.Run(ctx)
+
+	// Weekly weak-area recompute: same cadence, but its OWN goroutine so a slow identity
+	// or a large account count can't stall the due-sweep above (S07, ADR-0016).
+	weakArea := svc.NewWeakAreaWorker(cfg.Sweep.Interval)
+	go weakArea.Run(ctx)
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -115,11 +144,11 @@ func run() int {
 		logger.Info("shutdown signal received; draining")
 	}
 
-	// Stop consuming BEFORE draining HTTP: halt the Consume loop so no new practice
-	// event is dispatched during shutdown (in-flight handlers run on their own bounded
-	// context and finish + ack; the durable consumer resumes from its offset on the
-	// next start, so nothing is lost).
-	if sub != nil {
+	// Stop consuming BEFORE draining HTTP: halt the Consume loops so no new event is
+	// dispatched during shutdown (in-flight handlers run on their own bounded context
+	// and finish + ack; the durable consumers resume from their offset on the next
+	// start, so nothing is lost).
+	for _, sub := range subs {
 		sub.Stop()
 	}
 
@@ -151,20 +180,20 @@ func newPublisher(ctx context.Context, natsURL string, logger *slog.Logger) even
 	return pub
 }
 
-// newConsumer builds the durable JetStream consumer when NATS_URL is set, else nil
-// (local dev / no broker: the service runs without consuming). A failed connect is
+// newConsumer builds a durable JetStream consumer on stream when NATS_URL is set, else
+// nil (local dev / no broker: the service runs without consuming). A failed connect is
 // fatal only if NATS_URL was set but unreachable at construction — but the consumer
 // auto-reconnects, so construction succeeds and Subscribe retries the stream.
-func newConsumer(ctx context.Context, natsURL string, logger *slog.Logger) *events.NatsConsumer {
+func newConsumer(ctx context.Context, natsURL, stream string, logger *slog.Logger) *events.NatsConsumer {
 	if natsURL == "" {
-		logger.Warn("NATS_URL not set; the practice consumer is disabled (no five-touch scheduling from events)")
+		logger.Warn("NATS_URL not set; consumers are disabled", "stream", stream)
 		return nil
 	}
 	natsCtx, cancel := context.WithTimeout(ctx, natsTimeout)
 	defer cancel()
-	cons, err := events.NewNatsConsumer(natsCtx, natsURL, review.StreamPractice, logger)
+	cons, err := events.NewNatsConsumer(natsCtx, natsURL, stream, logger)
 	if err != nil {
-		logger.Error("nats consumer init failed; the practice consumer is disabled", "err", err)
+		logger.Error("nats consumer init failed; consumer disabled", "stream", stream, "err", err)
 		return nil
 	}
 	return cons

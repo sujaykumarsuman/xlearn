@@ -187,7 +187,9 @@ func bearer(r *http.Request) string {
 func (s *Service) mapErr(w http.ResponseWriter, what string, err error) {
 	switch {
 	case errors.Is(err, store.ErrNotFound):
-		writeError(w, http.StatusNotFound, "not_found", "revision item not found")
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+	case mapMistakeErr(w, err):
+		// Handled (409 conflict / 422 invalid category|status).
 	default:
 		s.log.Error("review store error", "op", what, "err", err)
 		writeError(w, http.StatusInternalServerError, "internal", "internal error")
