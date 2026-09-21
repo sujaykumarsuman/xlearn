@@ -22,7 +22,7 @@ import Week from "./screens/Week";
 // Route → screen → fills-in sprint:
 //   /                    Catalog     (S03)
 //   /dsa                 Roadmap     (S03)
-//   /dsa/dashboard       Dashboard   (S09)
+//   /dsa/dashboard       Dashboard   (S07 weak-area + reviews-due cards; full plan/stats S09)
 //   /dsa/week/:n         Week        (S04)
 //   /dsa/concept/:slug   Concept     (S04)
 //   /dsa/problem/:id     Problem     (S05)

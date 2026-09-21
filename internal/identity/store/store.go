@@ -36,6 +36,10 @@ type Account struct {
 	DisplayName string
 	Email       string // "" when the provider gave no email
 	Timezone    string
+	// StudyBudget / Reminders are the raw jsonb blobs, surfaced only on the internal
+	// service-to-service endpoint the review workers call (ADR-0016); never on /me.
+	StudyBudget []byte
+	Reminders   []byte
 	CreatedAt   time.Time
 }
 
@@ -304,6 +308,8 @@ func toAccount(a gen.IdentityAccount) Account {
 		DisplayName: a.DisplayName,
 		Email:       a.Email.String,
 		Timezone:    a.Timezone,
+		StudyBudget: a.StudyBudgetJson,
+		Reminders:   a.RemindersJson,
 		CreatedAt:   a.CreatedAt.Time,
 	}
 }

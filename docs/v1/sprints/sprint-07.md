@@ -6,14 +6,14 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done — built, tested (incl. real-Postgres integration), CI green
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | mistake journal aggregate | ⬜ |
-| 2 | weekly weak-area | ⬜ |
-| 3 | notifications worker (in review, v1) | ⬜ |
-| 4 | Mistakes screen + Dashboard weak-area | ⬜ |
+| 1 | mistake journal aggregate | ✅ |
+| 2 | weekly weak-area | ✅ |
+| 3 | notifications worker (in review, v1) | ✅ |
+| 4 | Mistakes screen + Dashboard weak-area | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + any
@@ -135,13 +135,14 @@ priority over new problems ([R-SR5](../../prd/xlearn-prd.md#63-five-touch-spaced
 
 ## Acceptance criteria
 
-- [ ] A below-Clean outcome or a failed re-solve **opens** a mistake with the **pattern pre-filled** and
+- [x] A below-Clean outcome or a failed re-solve **opens** a mistake with the **pattern pre-filled** and
       the **8-category picker**; `xlearn.review.mistake_opened` is emitted via the outbox.
-- [ ] An entry **closes after 2 successful revisits** (`mistake_closed` emitted) and **re-opens on a
+- [x] An entry **closes after 2 successful revisits** (`mistake_closed` emitted) and **re-opens on a
       later fail** (`mistake_opened`, revision reset to Day 1) — clean revisits only count toward the 2.
-- [ ] The **weekly weak-area** (top category) is computed per account with the **week boundary in the
+      _(Verified against real Postgres: the full open→2 clean→close→fail→re-open path + a fail resets the streak.)_
+- [x] The **weekly weak-area** (top category) is computed per account with the **week boundary in the
       account timezone** and surfaces on the **Dashboard** banner via `GET /weak-area`.
-- [ ] Due reviews generate **in-app reminders** (no email/push); the **Mistakes** screen matches the
+- [x] Due reviews generate **in-app reminders** (no email/push); the **Mistakes** screen matches the
       artboard (columns, filters, weak-area banner) — **M4: repetition + mistakes loop closed**.
 
 ## Definition of Done

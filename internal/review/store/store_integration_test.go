@@ -3,7 +3,9 @@ package store_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -353,3 +355,269 @@ func touchByLevel(ctx context.Context, t *testing.T, st *store.PgStore, accountI
 	t.Fatalf("no touch at level %d for account %s", level, accountID)
 	return store.DueItem{}
 }
+
+// TestMistakeJournalIntegration exercises the S07 mistake-journal state machine, the
+// weak-area store pieces, and the reminder dedupe against a real Postgres (gated on
+// XLEARN_TEST_DATABASE_URL, like TestStoreIntegration).
+func TestMistakeJournalIntegration(t *testing.T) {
+	dsn := os.Getenv("XLEARN_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("set XLEARN_TEST_DATABASE_URL to run the review store integration test")
+	}
+	ctx := context.Background()
+	if err := store.Migrate(ctx, dsn, testLogger()); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("pool: %v", err)
+	}
+	defer pool.Close()
+	st := store.New(pool)
+
+	pass := store.ScoreInput{NamedPatternSecs: 30, SolvedInTimer: true, StatedComplexity: true}
+	fail := store.ScoreInput{NamedPatternSecs: 200, SolvedInTimer: true, StatedComplexity: true}
+
+	t.Run("below-clean solve opens a mistake (deduped, uncategorised) + emits mistake_opened", func(t *testing.T) {
+		acct := newTestUUID()
+		const problem = "bc-1"
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "miss", true, time.Now()); err != nil {
+			t.Fatalf("problem_solved miss: %v", err)
+		}
+		open, err := st.ListMistakes(ctx, acct, "open")
+		if err != nil {
+			t.Fatalf("list mistakes: %v", err)
+		}
+		if len(open) != 1 || open[0].Status != store.MistakeOpen || open[0].RevisitCount != 0 || open[0].Category != "" {
+			t.Fatalf("open mistakes = %+v, want one uncategorised open entry with count 0", open)
+		}
+		if c := countOutbox(ctx, t, st, acct, store.SubjectMistakeOpened); c != 1 {
+			t.Fatalf("mistake_opened events = %d, want 1", c)
+		}
+		// A second below-clean solve of the same problem must not open a duplicate.
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "rough", true, time.Now()); err != nil {
+			t.Fatalf("second below-clean: %v", err)
+		}
+		open, _ = st.ListMistakes(ctx, acct, "open")
+		if len(open) != 1 {
+			t.Fatalf("after repeat miss: open entries = %d, want 1 (one-open-entry invariant)", len(open))
+		}
+	})
+
+	t.Run("failed re-solve opens; 2 clean revisits close; a later fail re-opens", func(t *testing.T) {
+		acct := newTestUUID()
+		const problem = "sm-1"
+		// Clean first solve → 5 touches, no mistake yet.
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "clean", true, time.Now()); err != nil {
+			t.Fatalf("clean solve: %v", err)
+		}
+		if ms, _ := st.ListMistakes(ctx, acct, ""); len(ms) != 0 {
+			t.Fatalf("clean solve opened %d mistakes, want 0", len(ms))
+		}
+
+		// Fail the Day-1 re-solve → opens a mistake (open, count 0) + resets to Day 1.
+		day1 := touchByLevel(ctx, t, st, acct, 1)
+		if _, err := st.Score(ctx, acct, day1.ItemID, fail); err != nil {
+			t.Fatalf("fail day1: %v", err)
+		}
+		if m := onlyOpen(ctx, t, st, acct); m.RevisitCount != 0 {
+			t.Fatalf("after fail: count = %d, want 0", m.RevisitCount)
+		}
+		if c := countOutbox(ctx, t, st, acct, store.SubjectMistakeOpened); c != 1 {
+			t.Fatalf("mistake_opened = %d, want 1", c)
+		}
+
+		// Clean revisit 1 (Day 1 passes) → count 1.
+		if _, err := st.Score(ctx, acct, touchByLevel(ctx, t, st, acct, 1).ItemID, pass); err != nil {
+			t.Fatalf("pass day1: %v", err)
+		}
+		if m := onlyOpen(ctx, t, st, acct); m.RevisitCount != 1 {
+			t.Fatalf("after 1 clean revisit: count = %d, want 1", m.RevisitCount)
+		}
+
+		// Clean revisit 2 (Day 3 passes) → count 2 → closed + mistake_closed.
+		if _, err := st.Score(ctx, acct, touchByLevel(ctx, t, st, acct, 2).ItemID, pass); err != nil {
+			t.Fatalf("pass day3: %v", err)
+		}
+		if open, _ := st.ListMistakes(ctx, acct, "open"); len(open) != 0 {
+			t.Fatalf("after 2 clean revisits: open entries = %d, want 0 (closed)", len(open))
+		}
+		if closed, _ := st.ListMistakes(ctx, acct, "closed"); len(closed) != 1 || closed[0].RevisitCount != 2 {
+			t.Fatalf("closed entries = %+v, want one with count 2", closed)
+		}
+		if c := countOutbox(ctx, t, st, acct, store.SubjectMistakeClosed); c != 1 {
+			t.Fatalf("mistake_closed = %d, want 1", c)
+		}
+
+		// A later fail (Day 7) re-opens the closed entry (count 0) + a 2nd mistake_opened.
+		if _, err := st.Score(ctx, acct, touchByLevel(ctx, t, st, acct, 3).ItemID, fail); err != nil {
+			t.Fatalf("fail day7: %v", err)
+		}
+		if m := onlyOpen(ctx, t, st, acct); m.RevisitCount != 0 {
+			t.Fatalf("after re-open: count = %d, want 0", m.RevisitCount)
+		}
+		if closed, _ := st.ListMistakes(ctx, acct, "closed"); len(closed) != 0 {
+			t.Fatalf("after re-open: closed entries = %d, want 0", len(closed))
+		}
+		if c := countOutbox(ctx, t, st, acct, store.SubjectMistakeOpened); c != 2 {
+			t.Fatalf("mistake_opened = %d, want 2 (open + re-open)", c)
+		}
+	})
+
+	t.Run("a fail mid-streak resets the clean-revisit count (fails never count)", func(t *testing.T) {
+		acct := newTestUUID()
+		const problem = "sm-2"
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "clean", true, time.Now()); err != nil {
+			t.Fatalf("clean solve: %v", err)
+		}
+		// Fail once to open the entry, then one clean revisit (count 1), then a fail.
+		if _, err := st.Score(ctx, acct, touchByLevel(ctx, t, st, acct, 1).ItemID, fail); err != nil {
+			t.Fatalf("fail: %v", err)
+		}
+		if _, err := st.Score(ctx, acct, touchByLevel(ctx, t, st, acct, 1).ItemID, pass); err != nil {
+			t.Fatalf("pass: %v", err)
+		}
+		if m := onlyOpen(ctx, t, st, acct); m.RevisitCount != 1 {
+			t.Fatalf("count = %d, want 1", m.RevisitCount)
+		}
+		if _, err := st.Score(ctx, acct, touchByLevel(ctx, t, st, acct, 2).ItemID, fail); err != nil {
+			t.Fatalf("fail again: %v", err)
+		}
+		if m := onlyOpen(ctx, t, st, acct); m.RevisitCount != 0 {
+			t.Fatalf("after mid-streak fail: count = %d, want 0 (reset, still open)", m.RevisitCount)
+		}
+	})
+
+	t.Run("clean re-solve of a never-missed problem touches no journal", func(t *testing.T) {
+		acct := newTestUUID()
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "nm-1", "clean", true, time.Now()); err != nil {
+			t.Fatalf("clean solve: %v", err)
+		}
+		if _, err := st.Score(ctx, acct, touchByLevel(ctx, t, st, acct, 1).ItemID, pass); err != nil {
+			t.Fatalf("pass: %v", err)
+		}
+		if ms, _ := st.ListMistakes(ctx, acct, ""); len(ms) != 0 {
+			t.Fatalf("journal has %d entries, want 0 (no mistake for a clean problem)", len(ms))
+		}
+	})
+
+	t.Run("weak-area: count in range, classify, snapshot upsert idempotent, current banner", func(t *testing.T) {
+		acct := newTestUUID()
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "wa-1", "miss", true, time.Now()); err != nil {
+			t.Fatalf("open mistake: %v", err)
+		}
+		open := onlyOpen(ctx, t, st, acct)
+		if _, err := st.UpdateMistake(ctx, acct, open.ID, store.MistakePatch{Category: strptr("off_by_one")}); err != nil {
+			t.Fatalf("classify: %v", err)
+		}
+		start := time.Now().Add(-24 * time.Hour)
+		end := time.Now().Add(24 * time.Hour)
+		counts, err := st.CountOpenMistakesByCategory(ctx, acct, start, end)
+		if err != nil {
+			t.Fatalf("count by category: %v", err)
+		}
+		if counts["off_by_one"] != 1 {
+			t.Fatalf("counts = %v, want off_by_one:1", counts)
+		}
+		weekOf := time.Date(2026, 9, 21, 0, 0, 0, 0, time.UTC)
+		if err := st.SaveWeakAreaSnapshot(ctx, acct, weekOf, "off_by_one", counts); err != nil {
+			t.Fatalf("save snapshot: %v", err)
+		}
+		// Idempotent per week_of: a second save upserts, doesn't duplicate.
+		if err := st.SaveWeakAreaSnapshot(ctx, acct, weekOf, "off_by_one", counts); err != nil {
+			t.Fatalf("save snapshot (rerun): %v", err)
+		}
+		wa, found, err := st.WeakAreaCurrent(ctx, acct)
+		if err != nil || !found {
+			t.Fatalf("weak area current: found=%v err=%v", found, err)
+		}
+		if wa.TopCategory != "off_by_one" || wa.TopCount != 1 || len(wa.Entries) != 1 {
+			t.Fatalf("weak area = %+v, want off_by_one/1/1 entry", wa)
+		}
+	})
+
+	t.Run("concurrent below-clean open + failed re-solve re-open don't collide (advisory lock)", func(t *testing.T) {
+		// The race the journal advisory lock closes: a below-clean problem_solved opens a
+		// NEW entry while a failed re-solve re-opens the problem's CLOSED entry — without
+		// serialisation both would leave two open rows and trip the one-open partial
+		// unique index, rolling back a legitimate failed re-solve. Run several rounds.
+		for i := 0; i < 12; i++ {
+			acct := newTestUUID()
+			problem := fmt.Sprintf("race-%d", i)
+			if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "clean", true, time.Now()); err != nil {
+				t.Fatalf("iter %d: clean solve: %v", i, err)
+			}
+			if _, err := st.CreateMistake(ctx, acct, store.MistakeInput{ProblemID: problem, Category: "off_by_one", Status: "closed"}); err != nil {
+				t.Fatalf("iter %d: seed closed entry: %v", i, err)
+			}
+			day1 := touchByLevel(ctx, t, st, acct, 1)
+
+			var wg sync.WaitGroup
+			var errOpen, errScore error
+			wg.Add(2)
+			go func() {
+				defer wg.Done()
+				_, errOpen = st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "miss", false, time.Now())
+			}()
+			go func() {
+				defer wg.Done()
+				_, errScore = st.Score(ctx, acct, day1.ItemID, fail)
+			}()
+			wg.Wait()
+			if errOpen != nil || errScore != nil {
+				t.Fatalf("iter %d: concurrent ops errored (no serialisation?): open=%v score=%v", i, errOpen, errScore)
+			}
+			open, err := st.ListMistakes(ctx, acct, "open")
+			if err != nil {
+				t.Fatalf("iter %d: list open: %v", i, err)
+			}
+			n := 0
+			for _, m := range open {
+				if m.ProblemID == problem {
+					n++
+				}
+			}
+			if n != 1 {
+				t.Fatalf("iter %d: open entries for %s = %d, want exactly 1 (one-open invariant)", i, problem, n)
+			}
+		}
+	})
+
+	t.Run("reminder: revision_due writes once (deduped) and lists as due", func(t *testing.T) {
+		acct := newTestUUID()
+		evt := newTestUUID()
+		wrote, err := st.HandleRevisionDue(ctx, evt, acct, "revision_due", time.Now().Add(-time.Minute))
+		if err != nil || !wrote {
+			t.Fatalf("first revision_due: wrote=%v err=%v", wrote, err)
+		}
+		wrote2, err := st.HandleRevisionDue(ctx, evt, acct, "revision_due", time.Now().Add(-time.Minute))
+		if err != nil {
+			t.Fatalf("dup revision_due: %v", err)
+		}
+		if wrote2 {
+			t.Fatalf("duplicate revision_due wrote a second reminder")
+		}
+		rems, err := st.ListDueReminders(ctx, acct, 10)
+		if err != nil {
+			t.Fatalf("list reminders: %v", err)
+		}
+		if len(rems) != 1 || rems[0].Kind != "revision_due" {
+			t.Fatalf("reminders = %+v, want one revision_due", rems)
+		}
+	})
+}
+
+// onlyOpen returns the account's single open mistake, failing if there isn't exactly one.
+func onlyOpen(ctx context.Context, t *testing.T, st *store.PgStore, accountID string) store.Mistake {
+	t.Helper()
+	open, err := st.ListMistakes(ctx, accountID, "open")
+	if err != nil {
+		t.Fatalf("list open mistakes: %v", err)
+	}
+	if len(open) != 1 {
+		t.Fatalf("open mistakes = %d, want exactly 1", len(open))
+	}
+	return open[0]
+}
+
+func strptr(s string) *string { return &s }

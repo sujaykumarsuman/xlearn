@@ -35,7 +35,15 @@ func (c *reviewClient) get(ctx context.Context, token, path string) ([]byte, int
 }
 
 func (c *reviewClient) post(ctx context.Context, token, path string, body []byte) ([]byte, int, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, bytes.NewReader(body))
+	return c.write(ctx, http.MethodPost, token, path, body)
+}
+
+func (c *reviewClient) patch(ctx context.Context, token, path string, body []byte) ([]byte, int, error) {
+	return c.write(ctx, http.MethodPatch, token, path, body)
+}
+
+func (c *reviewClient) write(ctx context.Context, method, token, path string, body []byte) ([]byte, int, error) {
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return nil, 0, err
 	}

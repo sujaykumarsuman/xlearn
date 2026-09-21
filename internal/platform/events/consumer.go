@@ -101,7 +101,18 @@ func NewNatsConsumer(ctx context.Context, url, stream string, log *slog.Logger) 
 // The consumer is created lazily with retry because the producer that owns the
 // stream may still be provisioning it on a fresh cluster; Subscribe blocks (with
 // backoff, honouring ctx) until the stream exists.
-func (c *NatsConsumer) Subscribe(ctx context.Context, durable, filterSubject string, h Handler) (Subscription, error) {
+func (c *NatsConsumer) Subscribe(ctx context.Context, durable, filterSubject string, h Handler, opts ...SubscribeOption) (Subscription, error) {
+	var sc SubscribeConfig
+	for _, opt := range opts {
+		opt(&sc)
+	}
+	// A brand-new durable defaults to DeliverAll (replay history — correct for the
+	// first-ever consumer of a fresh stream). DeliverNew starts at the stream head
+	// instead, for a consumer attached to an already-populated stream.
+	deliver := jetstream.DeliverAllPolicy
+	if sc.DeliverNew {
+		deliver = jetstream.DeliverNewPolicy
+	}
 	cfg := jetstream.ConsumerConfig{
 		Durable:       durable,
 		FilterSubject: filterSubject,
@@ -109,7 +120,7 @@ func (c *NatsConsumer) Subscribe(ctx context.Context, durable, filterSubject str
 		AckWait:       ackWait,
 		MaxDeliver:    maxDeliver,
 		BackOff:       redeliveryBackoff,
-		DeliverPolicy: jetstream.DeliverAllPolicy,
+		DeliverPolicy: deliver,
 	}
 
 	cons, err := c.createConsumer(ctx, cfg)

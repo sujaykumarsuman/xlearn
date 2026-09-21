@@ -49,6 +49,16 @@ func (g *Gateway) newAPIMux() *http.ServeMux {
 	// review-scoped JWT. External /revision maps to review's internal /revisions.
 	mux.HandleFunc("GET /api/revision/due", g.handleRevisionDue)
 	mux.HandleFunc("POST /api/revision/{itemId}/score", g.handleRevisionScore)
+	// Mistake journal + weak-area (api.md, S07): the list/banner are BFF aggregations
+	// (review's bare-id entries enriched with curriculum problem metadata); create/edit
+	// proxy to review with a minted review-scoped JWT.
+	mux.HandleFunc("GET /api/mistakes", g.handleMistakes)
+	mux.HandleFunc("POST /api/mistakes", g.handleCreateMistake)
+	mux.HandleFunc("PATCH /api/mistakes/{id}", g.handlePatchMistake)
+	mux.HandleFunc("GET /api/weak-area", g.handleWeakArea)
+	// Dashboard "Today" (api.md agg, S07 slice): due revisions + in-app reminders +
+	// the weak-area card, composed from review (+ curriculum enrichment).
+	mux.HandleFunc("GET /api/dashboard", g.handleDashboard)
 	// Catch-all: unknown /api/* is a 404 envelope, never the SPA shell.
 	mux.HandleFunc("/api/", g.apiNotFound)
 	return mux

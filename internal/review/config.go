@@ -26,6 +26,15 @@ type Config struct {
 	JWT   JWTVerifyConfig
 	NATS  NATSConfig
 	Sweep SweepConfig
+
+	// CurriculumBaseURL is the curriculum service's internal URL. Used by the mistake
+	// journal to pre-fill a problem's pattern (a soft reference; ADR-0005). Empty →
+	// patterns are left blank (best-effort).
+	CurriculumBaseURL string
+	// IdentityBaseURL is the identity service's internal URL. Used by the background
+	// workers (weak-area recompute + notifications) to resolve account timezone +
+	// study-budget without a user JWT (ADR-0016). Empty → UTC / immediate reminders.
+	IdentityBaseURL string
 }
 
 // DBConfig is the Postgres connection (coords as plain env, creds from the SOPS
@@ -90,6 +99,8 @@ func LoadConfig() Config {
 			Interval: envDuration("REVIEW_SWEEP_INTERVAL", 15*time.Minute),
 			Batch:    envInt("REVIEW_SWEEP_BATCH", 500),
 		},
+		CurriculumBaseURL: strings.TrimSpace(os.Getenv("CURRICULUM_BASE_URL")),
+		IdentityBaseURL:   strings.TrimSpace(os.Getenv("IDENTITY_BASE_URL")),
 	}
 }
 

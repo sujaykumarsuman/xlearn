@@ -43,6 +43,13 @@ const (
 	OutcomeClean = "clean"
 )
 
+// belowCleanOutcomes are the outcome values that open a mistake (R-OL2 / R-MJ). An
+// allowlist (not "!= clean") so a malformed/empty outcome never opens a spurious entry.
+var belowCleanOutcomes = map[string]bool{"rough": true, "assisted": true, "miss": true}
+
+// isBelowClean reports whether an outcome opens a mistake entry.
+func isBelowClean(outcome string) bool { return belowCleanOutcomes[outcome] }
+
 // Revision-item status values.
 const (
 	StatusPending = "pending"
@@ -58,14 +65,63 @@ const (
 
 	SubjectRevisionScheduled = "xlearn.review.revision_scheduled"
 	SubjectRevisionDue       = "xlearn.review.revision_due"
+	SubjectMistakeOpened     = "xlearn.review.mistake_opened"
+	SubjectMistakeClosed     = "xlearn.review.mistake_closed"
 
 	eventVersion = 1
 )
 
+// Mistake-journal status values + the close rule (R-MJ4).
+const (
+	MistakeOpen   = "open"
+	MistakeClosed = "closed"
+
+	// MistakeCloseThreshold is the number of CLEAN revisits that closes an entry
+	// (R-MJ4). Kept in sync with the SQL literal in IncrementCleanRevisit.
+	MistakeCloseThreshold = 2
+)
+
+// MistakeCategories is the 8-value picker (R-MJ2), stored as an enum (not free text).
+// A NULL/"" category is an auto-opened entry the learner has not classified yet.
+var MistakeCategories = []string{
+	"misread",
+	"wrong_pattern",
+	"right_pattern_wrong_state",
+	"off_by_one",
+	"language_bug",
+	"complexity_misjudged",
+	"communication",
+	"time_management",
+}
+
+// ValidMistakeCategory reports whether c is one of the eight categories (R-MJ2).
+func ValidMistakeCategory(c string) bool {
+	for _, v := range MistakeCategories {
+		if v == c {
+			return true
+		}
+	}
+	return false
+}
+
 // Errors mapped to HTTP status by the handlers.
 var (
 	ErrNotFound = errors.New("review: not found")
+	// ErrConflict is returned when a manual create would violate the one-open-entry
+	// invariant (the learner already has an open mistake for that problem).
+	ErrConflict = errors.New("review: conflict")
+	// ErrInvalidCategory is returned when a supplied category is not one of the eight.
+	ErrInvalidCategory = errors.New("review: invalid category")
 )
+
+// PatternResolver resolves a problem's pattern (a soft cross-context reference,
+// ADR-0005) — the curriculum client in prod, nil/omitted in local dev + unit tests
+// (yielding an empty pattern, which is acceptable: pattern pre-fill is best-effort).
+// It is called only when a mistake is being opened (below-clean or a failed re-solve),
+// never on a clean solve or a passing re-solve.
+type PatternResolver interface {
+	Pattern(ctx context.Context, problemID string) (string, error)
+}
 
 // ScoreInput is one re-solve's auto-score inputs (R-SR2).
 type ScoreInput struct {
@@ -129,6 +185,45 @@ type Store interface {
 	// it latches surfaced_at (idempotent) and emits revision_due per item, each in one
 	// transaction. Returns the number of items surfaced this run.
 	Sweep(ctx context.Context, batch int) (int, error)
+
+	// --- mistake journal (S07) ---
+
+	// ListMistakes returns an account's journal, newest first. status "" lists all;
+	// "open"/"closed" filters.
+	ListMistakes(ctx context.Context, accountID, status string) ([]Mistake, error)
+	// GetMistake returns one entry scoped to its owner.
+	GetMistake(ctx context.Context, accountID, id string) (Mistake, error)
+	// CreateMistake manually creates a journal entry. ErrConflict if an open entry for
+	// the problem already exists; ErrInvalidCategory for a bad category.
+	CreateMistake(ctx context.Context, accountID string, in MistakeInput) (Mistake, error)
+	// UpdateMistake overlays the editable fields of an entry (root cause / insight /
+	// category / mistake / status). ErrNotFound if it isn't the account's.
+	UpdateMistake(ctx context.Context, accountID, id string, in MistakePatch) (Mistake, error)
+
+	// --- weekly weak-area (S07) ---
+
+	// AccountsWithMistakes lists every account that has a mistake entry (the recompute
+	// job iterates these).
+	AccountsWithMistakes(ctx context.Context) ([]string, error)
+	// SaveWeakAreaSnapshot upserts one account's weekly snapshot (idempotent per
+	// week_of). counts maps category → count; topCategory "" means none.
+	SaveWeakAreaSnapshot(ctx context.Context, accountID string, weekOf time.Time, topCategory string, counts map[string]int) error
+	// CountOpenMistakesByCategory counts an account's open entries opened within
+	// [start, end), grouped by category (uncategorised excluded).
+	CountOpenMistakesByCategory(ctx context.Context, accountID string, start, end time.Time) (map[string]int, error)
+	// WeakAreaCurrent reads the account's latest snapshot + the supporting open entries
+	// in the top category. found is false when no snapshot exists yet.
+	WeakAreaCurrent(ctx context.Context, accountID string) (wa WeakArea, found bool, err error)
+
+	// --- notifications (S07) ---
+
+	// HandleRevisionDue reacts to a revision_due event: dedupes on eventID (inbox) and
+	// writes one reminder scheduled at dueAt, all in one transaction. Returns true when
+	// a reminder was newly written (false on a duplicate delivery).
+	HandleRevisionDue(ctx context.Context, eventID, accountID, kind string, dueAt time.Time) (bool, error)
+	// ListDueReminders returns an account's undelivered, now-due reminders (Dashboard).
+	ListDueReminders(ctx context.Context, accountID string, limit int) ([]Reminder, error)
+
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]OutboxRow, error)
 	MarkOutboxSent(ctx context.Context, eventID string) error
 	Ping(ctx context.Context) error
@@ -136,13 +231,41 @@ type Store interface {
 
 // PgStore is the pgxpool-backed Store.
 type PgStore struct {
-	pool *pgxpool.Pool
-	q    *gen.Queries
+	pool     *pgxpool.Pool
+	q        *gen.Queries
+	patterns PatternResolver // nil → empty pattern pre-fill (local dev / tests)
+}
+
+// Option configures a PgStore.
+type Option func(*PgStore)
+
+// WithPatternResolver injects the resolver used to pre-fill a mistake's pattern from
+// curriculum (a soft reference; ADR-0005). Omit it in local dev / tests.
+func WithPatternResolver(r PatternResolver) Option {
+	return func(s *PgStore) { s.patterns = r }
 }
 
 // New wraps a pgxpool with the generated queries.
-func New(pool *pgxpool.Pool) *PgStore {
-	return &PgStore{pool: pool, q: gen.New(pool)}
+func New(pool *pgxpool.Pool, opts ...Option) *PgStore {
+	s := &PgStore{pool: pool, q: gen.New(pool)}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}
+
+// resolvePattern best-effort resolves a problem's pattern for a mistake pre-fill. A
+// nil resolver or any error yields "" (pattern pre-fill never blocks opening a
+// mistake — the id is the source of truth; the pattern is a convenience).
+func (s *PgStore) resolvePattern(ctx context.Context, problemID string) string {
+	if s.patterns == nil {
+		return ""
+	}
+	p, err := s.patterns.Pattern(ctx, problemID)
+	if err != nil {
+		return ""
+	}
+	return p
 }
 
 var _ Store = (*PgStore)(nil)
@@ -156,6 +279,16 @@ func (s *PgStore) HandleProblemSolved(ctx context.Context, eventID, accountID, p
 	if err != nil {
 		return 0, fmt.Errorf("parse account id: %w", err)
 	}
+
+	// Resolve the mistake's pattern (a curriculum HTTP call) BEFORE opening the tx, so
+	// no network call runs while a pooled connection is checked out (ADR-0016). Only
+	// below-clean outcomes open a mistake, so only they need it.
+	belowClean := isBelowClean(outcome)
+	var pattern string
+	if belowClean {
+		pattern = s.resolvePattern(ctx, problemID)
+	}
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("begin tx: %w", err)
@@ -171,9 +304,7 @@ func (s *PgStore) HandleProblemSolved(ctx context.Context, eventID, accountID, p
 		return 0, nil // duplicate delivery — already processed
 	}
 
-	// The five-touch ladder is scheduled from the FIRST CLEAN solve (R-SR1). A
-	// below-clean or repeat solve is consumed (inbox recorded) but schedules nothing
-	// here — mistake handling lands in S07.
+	// The five-touch ladder is scheduled from the FIRST CLEAN solve (R-SR1).
 	scheduled := 0
 	if firstSolve && outcome == OutcomeClean {
 		anchor := occurredAt
@@ -196,6 +327,20 @@ func (s *PgStore) HandleProblemSolved(ctx context.Context, eventID, accountID, p
 			default:
 				return 0, fmt.Errorf("schedule touch %d: %w", level, err)
 			}
+		}
+	}
+
+	// A below-Clean outcome (rough/assisted/miss) opens a mistake entry (R-OL2 / flow
+	// 2): pattern pre-filled (soft ref, resolved above), category left for the learner
+	// to pick, in the SAME transaction as the inbox claim + an outbox mistake_opened.
+	// The journal lock + partial unique index make a repeat miss on an already-open
+	// problem a no-op and serialise against a concurrent failed-re-solve re-open.
+	if belowClean {
+		if err := lockJournal(ctx, qtx, accountID, problemID); err != nil {
+			return 0, err
+		}
+		if _, err := s.openMistakeTx(ctx, qtx, aid, accountID, problemID, pattern, pgtype.Timestamptz{}); err != nil {
+			return 0, err
 		}
 	}
 
@@ -265,6 +410,23 @@ func (s *PgStore) Score(ctx context.Context, accountID, itemID string, in ScoreI
 	if err != nil {
 		return ScoreResult{}, ErrNotFound
 	}
+
+	// A fail may open a fresh mistake, which needs the problem's pattern. Resolve it
+	// (a curriculum HTTP call) BEFORE the tx — never while a pooled connection is held
+	// (ADR-0016). AutoPass is pure, so we know here whether a fail is possible; the
+	// pre-read also surfaces a not-found item early.
+	autoPass := AutoPass(in)
+	var failPattern string
+	if !autoPass {
+		item0, rerr := s.q.GetRevisionItem(ctx, gen.GetRevisionItemParams{ID: iid, AccountID: aid})
+		if errors.Is(rerr, pgx.ErrNoRows) {
+			return ScoreResult{}, ErrNotFound
+		}
+		if rerr == nil {
+			failPattern = s.resolvePattern(ctx, item0.ProblemID)
+		}
+	}
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return ScoreResult{}, fmt.Errorf("begin tx: %w", err)
@@ -299,8 +461,6 @@ func (s *PgStore) Score(ctx context.Context, accountID, itemID string, in ScoreI
 		}
 		return res, nil
 	}
-
-	autoPass := AutoPass(in)
 
 	if err := qtx.InsertTouchResult(ctx, gen.InsertTouchResultParams{
 		RevisionItemID:   item.ID,
@@ -340,6 +500,13 @@ func (s *PgStore) Score(ctx context.Context, accountID, itemID string, in ScoreI
 			res.NextDueDate = nextDue
 		}
 		// level == MaxTouchLevel: the ladder is complete (no further touch).
+
+		// A clean revisit counts toward closing any OPEN mistake for this problem
+		// (R-MJ4): increment its count and, at the threshold, close it + emit
+		// mistake_closed — all in this transaction. No open entry → no-op.
+		if err := s.recordCleanRevisitTx(ctx, qtx, aid, accountID, item.ProblemID); err != nil {
+			return ScoreResult{}, err
+		}
 	} else {
 		// Fail (R-SR3): reset the whole problem to Day 1. Re-anchor every touch to a
 		// fresh Day 1/3/7/21/45 schedule from now (all pending, surfaced_at cleared),
@@ -364,6 +531,14 @@ func (s *PgStore) Score(ctx context.Context, accountID, itemID string, in ScoreI
 		res.Reset = true
 		res.NextTouchLevel = 1
 		res.NextDueDate = day1Due
+
+		// A failed re-solve opens (or re-opens) a mistake for this problem (flow 3 /
+		// R-MJ4), re-anchored to the fresh Day-1 schedule, in this same transaction —
+		// so the ladder reset and the journal state change never diverge. failPattern
+		// was resolved outside the tx.
+		if err := s.recordFailedResolveTx(ctx, qtx, aid, accountID, item.ProblemID, failPattern, tsz(day1Due)); err != nil {
+			return ScoreResult{}, err
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {

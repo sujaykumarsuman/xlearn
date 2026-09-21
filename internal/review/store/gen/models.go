@@ -13,12 +13,37 @@ type ReviewInbox struct {
 	ConsumedAt pgtype.Timestamptz
 }
 
+type ReviewMistakeEntry struct {
+	ID           pgtype.UUID
+	AccountID    pgtype.UUID
+	ProblemID    string
+	Pattern      string
+	Mistake      string
+	RootCause    string
+	Insight      string
+	Category     pgtype.Text
+	RevisitDate  pgtype.Timestamptz
+	Status       string
+	RevisitCount int32
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
 type ReviewOutbox struct {
 	EventID     pgtype.UUID
 	Subject     string
 	PayloadJson []byte
 	CreatedAt   pgtype.Timestamptz
 	SentAt      pgtype.Timestamptz
+}
+
+type ReviewReminder struct {
+	ID          pgtype.UUID
+	AccountID   pgtype.UUID
+	Kind        string
+	DueAt       pgtype.Timestamptz
+	DeliveredAt pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
 }
 
 type ReviewRevisionItem struct {
@@ -42,4 +67,13 @@ type ReviewTouchResult struct {
 	AutoPass         bool
 	MockMode         bool
 	ScoredAt         pgtype.Timestamptz
+}
+
+type ReviewWeakAreaSnapshot struct {
+	ID          pgtype.UUID
+	AccountID   pgtype.UUID
+	WeekOf      pgtype.Date
+	TopCategory pgtype.Text
+	CountsJson  []byte
+	ComputedAt  pgtype.Timestamptz
 }
