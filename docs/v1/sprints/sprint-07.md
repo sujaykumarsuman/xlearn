@@ -6,7 +6,7 @@
 
 ## Status
 
-_Overall:_ ✅ Done — built, tested (incl. real-Postgres integration), CI green
+_Overall:_ ✅ Done — merged & deployed to prod via Flux (`0.1.19`); real-Postgres integration + 5-dimension adversarial review; routes verified live. **M4 reached.**
 
 | # | Task | Status |
 |---|------|--------|
