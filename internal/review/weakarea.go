@@ -22,10 +22,11 @@ type weakAreaStore interface {
 	SaveWeakAreaSnapshot(ctx context.Context, accountID string, weekOf time.Time, topCategory string, counts map[string]int) error
 }
 
-// accountResolver resolves an account's timezone + study budget (the identity client
-// in prod; nil-safe — a nil resolver falls back to UTC).
+// accountResolver resolves an account's timezone + study budget + reminder prefs (the
+// identity client in prod; nil-safe — a nil resolver falls back to UTC). The weak-area
+// recompute uses only the timezone; the notifications worker uses all three (S10).
 type accountResolver interface {
-	ResolveAccount(ctx context.Context, accountID string) (timezone string, studyBudget []byte, err error)
+	ResolveAccount(ctx context.Context, accountID string) (timezone string, studyBudget, reminders []byte, err error)
 }
 
 // weakAreaComputer builds weak-area snapshots on the periodic tick.
@@ -93,7 +94,7 @@ func (c *weakAreaComputer) Recompute(ctx context.Context) (int, error) {
 	for _, acct := range accounts {
 		tz := "UTC"
 		if c.accounts != nil {
-			if resolved, _, rerr := c.accounts.ResolveAccount(ctx, acct); rerr != nil {
+			if resolved, _, _, rerr := c.accounts.ResolveAccount(ctx, acct); rerr != nil {
 				c.log.Warn("weak-area: timezone resolve failed; using UTC", "account_id", acct, "err", rerr)
 			} else if resolved != "" {
 				tz = resolved

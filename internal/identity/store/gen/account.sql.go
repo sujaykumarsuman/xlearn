@@ -83,3 +83,45 @@ func (q *Queries) GetAccountByProviderIdentity(ctx context.Context, arg GetAccou
 	)
 	return i, err
 }
+
+const updateAccount = `-- name: UpdateAccount :one
+UPDATE identity.account
+SET display_name      = COALESCE($2, display_name),
+    timezone          = COALESCE($3, timezone),
+    study_budget_json = COALESCE($4::jsonb, study_budget_json),
+    reminders_json    = COALESCE($5::jsonb, reminders_json)
+WHERE id = $1
+RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at
+`
+
+type UpdateAccountParams struct {
+	ID              pgtype.UUID
+	DisplayName     pgtype.Text
+	Timezone        pgtype.Text
+	StudyBudgetJson []byte
+	RemindersJson   []byte
+}
+
+// Partial update of the caller's own account (PATCH /me, S10). A NULL narg leaves
+// the column unchanged (COALESCE), so profile / budget / timezone / reminders can be
+// saved independently. The jsonb blobs are validated + canonicalised in the handler.
+func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (IdentityAccount, error) {
+	row := q.db.QueryRow(ctx, updateAccount,
+		arg.ID,
+		arg.DisplayName,
+		arg.Timezone,
+		arg.StudyBudgetJson,
+		arg.RemindersJson,
+	)
+	var i IdentityAccount
+	err := row.Scan(
+		&i.ID,
+		&i.DisplayName,
+		&i.Email,
+		&i.Timezone,
+		&i.StudyBudgetJson,
+		&i.RemindersJson,
+		&i.CreatedAt,
+	)
+	return i, err
+}

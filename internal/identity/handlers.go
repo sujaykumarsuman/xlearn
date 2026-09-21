@@ -191,8 +191,9 @@ func rawJSONOrEmpty(b []byte) json.RawMessage {
 func (s *Service) handleOnboardingStep(w http.ResponseWriter, r *http.Request) {
 	claims := claimsFrom(r.Context())
 	var body struct {
-		Step       string `json:"step"`
-		PathChosen string `json:"path_chosen"`
+		Step        string          `json:"step"`
+		PathChosen  string          `json:"path_chosen"`
+		StudyBudget json.RawMessage `json:"study_budget"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "invalid body")
@@ -210,9 +211,31 @@ func (s *Service) handleOnboardingStep(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"onboarding": toOnboardingJSON(ob)})
+	case "budget":
+		// Step 2: persist the study budget to the account and set onboarding.budget_set
+		// (one transaction). Same validated shape as PATCH /me.
+		budget, err := validateStudyBudget(body.StudyBudget)
+		if err != nil {
+			writeError(w, http.StatusUnprocessableEntity, "invalid_budget", err.Error())
+			return
+		}
+		ob, err := s.store.SetOnboardingBudget(r.Context(), claims.Subject, budget)
+		if err != nil {
+			s.mapStoreErr(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"onboarding": toOnboardingJSON(ob)})
+	case "finish":
+		// Step 3 (Finish / Skip): stamp completed_at (idempotent). key_added stays false
+		// until the coach key store works (S11) — we never fake it here.
+		ob, err := s.store.CompleteOnboarding(r.Context(), claims.Subject)
+		if err != nil {
+			s.mapStoreErr(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"onboarding": toOnboardingJSON(ob)})
 	default:
-		// Steps 2-3 (budget, key) are deferred to S10/S11.
-		writeError(w, http.StatusBadRequest, "unsupported_step", "only the path step is supported in v1")
+		writeError(w, http.StatusBadRequest, "unsupported_step", "unknown onboarding step")
 	}
 }
 
@@ -278,11 +301,13 @@ func (s *Service) mapStoreErr(w http.ResponseWriter, err error) {
 // --- JSON response shapes + helpers ---
 
 type accountJSON struct {
-	ID          string    `json:"id"`
-	DisplayName string    `json:"display_name"`
-	Email       string    `json:"email,omitempty"`
-	Timezone    string    `json:"timezone"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          string          `json:"id"`
+	DisplayName string          `json:"display_name"`
+	Email       string          `json:"email,omitempty"`
+	Timezone    string          `json:"timezone"`
+	StudyBudget json.RawMessage `json:"study_budget"`
+	Reminders   json.RawMessage `json:"reminders"`
+	CreatedAt   time.Time       `json:"created_at"`
 }
 
 type onboardingJSON struct {
@@ -298,6 +323,10 @@ func toAccountJSON(a store.Account) accountJSON {
 		DisplayName: a.DisplayName,
 		Email:       a.Email,
 		Timezone:    a.Timezone,
+		// The learner's own budget/reminder prefs, returned only to the owner via the
+		// JWT-gated /me so the Settings form can load its current values (S10).
+		StudyBudget: rawJSONOrEmpty(a.StudyBudget),
+		Reminders:   rawJSONOrEmpty(a.Reminders),
 		CreatedAt:   a.CreatedAt.UTC(),
 	}
 }

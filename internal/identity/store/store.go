@@ -75,6 +75,17 @@ type OAuthUpsert struct {
 	Email          string // "" when unavailable
 }
 
+// AccountUpdate is a partial update to an account (PATCH /me, S10). A nil field
+// leaves that column unchanged. DisplayName/Timezone use pointers so an intentional
+// value is distinguishable from "not provided"; the jsonb blobs are validated +
+// canonicalised by the handler before they reach the store.
+type AccountUpdate struct {
+	DisplayName *string
+	Timezone    *string
+	StudyBudget []byte // canonical study_budget_json; nil = leave unchanged
+	Reminders   []byte // canonical reminders_json; nil = leave unchanged
+}
+
 // Store is the identity persistence seam. The HTTP handlers depend on this
 // interface so they can be unit-tested against an in-memory fake.
 type Store interface {
@@ -83,8 +94,17 @@ type Store interface {
 	// account_created outbox row in one transaction. created reports first sign-in.
 	FindOrCreateAccount(ctx context.Context, in OAuthUpsert) (acct Account, created bool, err error)
 	GetAccount(ctx context.Context, id string) (Account, error)
+	// UpdateAccount applies a partial profile/budget/timezone/reminders update to the
+	// caller's own account and returns the updated row (PATCH /me).
+	UpdateAccount(ctx context.Context, id string, in AccountUpdate) (Account, error)
 	GetOnboarding(ctx context.Context, accountID string) (Onboarding, error)
 	SetOnboardingPath(ctx context.Context, accountID, path string) (Onboarding, error)
+	// SetOnboardingBudget writes the study budget to the account and sets
+	// onboarding.budget_set in one transaction (onboarding step 2).
+	SetOnboardingBudget(ctx context.Context, accountID string, budgetJSON []byte) (Onboarding, error)
+	// CompleteOnboarding stamps onboarding.completed_at (idempotent) — onboarding
+	// step 3 (Finish / Skip). key_added is NOT set here (deferred to S11).
+	CompleteOnboarding(ctx context.Context, accountID string) (Onboarding, error)
 	CreateSession(ctx context.Context, id, accountID string, expiresAt time.Time) (Session, error)
 	GetValidSession(ctx context.Context, id string) (Session, error)
 	RevokeSession(ctx context.Context, id string) (revoked bool, err error)
@@ -221,6 +241,66 @@ func (s *PgStore) SetOnboardingPath(ctx context.Context, accountID, path string)
 	return toOnboarding(row), nil
 }
 
+// UpdateAccount applies a partial update (PATCH /me) and returns the updated row.
+func (s *PgStore) UpdateAccount(ctx context.Context, id string, in AccountUpdate) (Account, error) {
+	uid, err := parseUUID(id)
+	if err != nil {
+		return Account{}, ErrNotFound
+	}
+	row, err := s.q.UpdateAccount(ctx, gen.UpdateAccountParams{
+		ID:              uid,
+		DisplayName:     textPtr(in.DisplayName),
+		Timezone:        textPtr(in.Timezone),
+		StudyBudgetJson: in.StudyBudget,
+		RemindersJson:   in.Reminders,
+	})
+	if err != nil {
+		return Account{}, mapErr(err)
+	}
+	return toAccount(row), nil
+}
+
+// SetOnboardingBudget writes the study budget to the account and flips
+// onboarding.budget_set in one transaction (onboarding step 2). Both rows are keyed
+// on the same account, so a missing account/onboarding row maps to ErrNotFound.
+func (s *PgStore) SetOnboardingBudget(ctx context.Context, accountID string, budgetJSON []byte) (Onboarding, error) {
+	uid, err := parseUUID(accountID)
+	if err != nil {
+		return Onboarding{}, ErrNotFound
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Onboarding{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := s.q.WithTx(tx)
+
+	if _, err := qtx.UpdateAccount(ctx, gen.UpdateAccountParams{ID: uid, StudyBudgetJson: budgetJSON}); err != nil {
+		return Onboarding{}, mapErr(err)
+	}
+	row, err := qtx.SetOnboardingBudgetSet(ctx, uid)
+	if err != nil {
+		return Onboarding{}, mapErr(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Onboarding{}, fmt.Errorf("commit tx: %w", err)
+	}
+	return toOnboarding(row), nil
+}
+
+// CompleteOnboarding stamps onboarding.completed_at (idempotent) and returns the row.
+func (s *PgStore) CompleteOnboarding(ctx context.Context, accountID string) (Onboarding, error) {
+	uid, err := parseUUID(accountID)
+	if err != nil {
+		return Onboarding{}, ErrNotFound
+	}
+	row, err := s.q.CompleteOnboarding(ctx, uid)
+	if err != nil {
+		return Onboarding{}, mapErr(err)
+	}
+	return toOnboarding(row), nil
+}
+
 // CreateSession inserts a session row with the opaque id and expiry.
 func (s *PgStore) CreateSession(ctx context.Context, id, accountID string, expiresAt time.Time) (Session, error) {
 	uid, err := parseUUID(accountID)
@@ -335,6 +415,16 @@ func toSession(s gen.IdentitySession) Session {
 
 func textOrNull(s string) pgtype.Text {
 	return pgtype.Text{String: s, Valid: s != ""}
+}
+
+// textPtr maps an optional string to a nullable pgtype.Text: nil → NULL (COALESCE
+// leaves the column unchanged), non-nil → the value (even if empty — the caller
+// validates non-emptiness before it reaches here).
+func textPtr(s *string) pgtype.Text {
+	if s == nil {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: *s, Valid: true}
 }
 
 func mapErr(err error) error {

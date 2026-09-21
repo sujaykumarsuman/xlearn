@@ -23,6 +23,7 @@ type bffHarness struct {
 	verifyErr          error // last error the fake identity's verifier returned
 	lastRevoke         string
 	lastCurriculumPath string // last path the fake curriculum service received
+	lastPatchBody      string // last PATCH /accounts/{id} body the fake identity received
 }
 
 func newBFFHarness(t *testing.T) *bffHarness {
@@ -70,6 +71,23 @@ func newBFFHarness(t *testing.T) *bffHarness {
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"account":    map[string]any{"id": claims.Subject, "display_name": "Ada"},
 			"onboarding": map[string]any{"path_chosen": nil, "budget_set": false, "key_added": false, "completed": false},
+		})
+	})
+	identityMux.HandleFunc("PATCH /accounts/{id}", func(w http.ResponseWriter, r *http.Request) {
+		v := auth.NewJWKSVerifier(gwJWKSURL, "identity", "xlearn-gateway")
+		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		claims, err := v.Verify(r.Context(), token)
+		h.verifyErr = err
+		if err != nil || claims.Subject != r.PathValue("id") {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"error":{"code":"unauthenticated"}}`))
+			return
+		}
+		body, _ := io.ReadAll(r.Body)
+		h.lastPatchBody = string(body)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"account":    map[string]any{"id": claims.Subject, "display_name": "Renamed", "timezone": "Asia/Kolkata", "study_budget": map[string]any{}, "reminders": map[string]any{}},
+			"onboarding": map[string]any{"path_chosen": "dsa", "budget_set": true, "key_added": false, "completed": false},
 		})
 	})
 	identityMux.HandleFunc("POST /onboarding/step", func(w http.ResponseWriter, r *http.Request) {

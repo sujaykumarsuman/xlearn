@@ -1,13 +1,26 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Icon, IconSprite } from "../components/Icon";
-import { oauthStartAction, useMe, useSetOnboardingPath, type Me } from "../lib/auth";
+import { BudgetFields } from "../components/BudgetFields";
+import { DEFAULT_WEEKDAY, DEFAULT_WEEKEND, budgetEta, clampWeekday } from "../lib/budget";
+import {
+  oauthStartAction,
+  useCompleteOnboarding,
+  useMe,
+  useSetOnboardingBudget,
+  useSetOnboardingPath,
+  type Me,
+  type StudyBudget,
+  type WeekendBand,
+} from "../lib/auth";
 
 /**
  * Auth is the standalone pre-auth screen (no app shell): a two-column layout with a
- * marketing panel and either OAuth sign-in or the 3-step onboarding. v1 is
- * OAuth-only (ADR-0006) — the email/password fields are inert, and onboarding
- * steps 2-3 are visual shells (S10/S11). Step 1 (pick your path) is persisted.
+ * marketing panel and either OAuth sign-in or the 3-step onboarding. v1 is OAuth-only
+ * (ADR-0006) — the email/password fields are inert. Onboarding runs all 3 steps: path
+ * (step 1), study budget (step 2, persisted), and the optional coach key (step 3, whose
+ * key store lands in S11 — Skip/Finish completes onboarding). The learner resumes at the
+ * first unfinished step and is routed into the app once complete.
  */
 export default function Auth() {
   const me = useMe();
@@ -208,17 +221,19 @@ function oauthErrorMessage(code: string): string {
 
 function Onboarding({ me }: { me: Me }) {
   const navigate = useNavigate();
-  // Returning, already-onboarded users skip straight into the app.
-  const [alreadyChosen] = useState(() => Boolean(me.onboarding.path_chosen));
-  const [step, setStep] = useState(1);
-  const [path, setPath] = useState("dsa");
+  // Returning, fully-onboarded users skip straight into the app; everyone else resumes
+  // at the first unfinished step. Both are computed ONCE from the initial /me so a
+  // background refetch (the invalidate after saving a step) can't reset the flow.
+  const [alreadyDone] = useState(() => me.onboarding.completed);
+  const [step, setStep] = useState(() => firstUnfinishedStep(me));
+  const [path, setPath] = useState(me.onboarding.path_chosen ?? "dsa");
   const setOnboardingPath = useSetOnboardingPath();
 
   useEffect(() => {
-    if (alreadyChosen) navigate("/", { replace: true });
-  }, [alreadyChosen, navigate]);
+    if (alreadyDone) navigate("/", { replace: true });
+  }, [alreadyDone, navigate]);
 
-  if (alreadyChosen) return <Centered>Taking you in…</Centered>;
+  if (alreadyDone) return <Centered>Taking you in…</Centered>;
 
   const enterApp = () => navigate("/", { replace: true });
 
@@ -234,10 +249,17 @@ function Onboarding({ me }: { me: Me }) {
           onContinue={() => setOnboardingPath.mutate(path, { onSuccess: () => setStep(2) })}
         />
       )}
-      {step === 2 && <StepBudget onBack={() => setStep(1)} onContinue={() => setStep(3)} />}
+      {step === 2 && <StepBudget initial={me.account.study_budget} onBack={() => setStep(1)} onContinue={() => setStep(3)} />}
       {step === 3 && <StepCoach onBack={() => setStep(2)} onFinish={enterApp} />}
     </>
   );
+}
+
+/** firstUnfinishedStep maps onboarding state to the step to resume at (1..3). */
+function firstUnfinishedStep(me: Me): number {
+  if (!me.onboarding.path_chosen) return 1;
+  if (!me.onboarding.budget_set) return 2;
+  return 3;
 }
 
 function Stepper({ step }: { step: number }) {
@@ -331,7 +353,13 @@ function StepPath({
   );
 }
 
-function StepBudget({ onBack, onContinue }: { onBack: () => void; onContinue: () => void }) {
+function StepBudget({ initial, onBack, onContinue }: { initial: StudyBudget; onBack: () => void; onContinue: () => void }) {
+  const save = useSetOnboardingBudget();
+  // Seed from any already-saved budget so returning to this step (Back from step 3)
+  // doesn't reset the picker to the defaults and overwrite the saved value on Continue.
+  const [weekday, setWeekday] = useState(clampWeekday(initial.weekday_minutes ?? DEFAULT_WEEKDAY));
+  const [weekend, setWeekend] = useState<WeekendBand>(initial.weekend_band ?? DEFAULT_WEEKEND);
+
   return (
     <>
       <div className="xl-eyebrow">Step 2 of 3</div>
@@ -340,17 +368,42 @@ function StepBudget({ onBack, onContinue }: { onBack: () => void; onContinue: ()
         We’ll size each day’s plan to fit. You can change this anytime.
       </p>
 
-      <InertNote>
-        Study-budget setup arrives with Settings. For now we’ll use a sensible default — you can tune it
-        later.
-      </InertNote>
+      <div style={{ marginTop: 22 }}>
+        <BudgetFields weekday={weekday} weekend={weekend} onWeekday={setWeekday} onWeekend={setWeekend} />
+        <div
+          style={{
+            marginTop: 18,
+            padding: "12px 14px",
+            background: "var(--ds-inset)",
+            borderRadius: 9,
+            fontSize: 12,
+            color: "var(--ds-dim)",
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+          }}
+        >
+          <Icon name="clock" className="xl-ico--sm" style={{ color: "var(--ds-teal)" }} /> ~{budgetEta(weekday, weekend)} to
+          interview-ready at this pace.
+        </div>
+      </div>
+
+      {save.isError && (
+        <p style={{ color: "var(--ds-err)", fontSize: 12.5, marginTop: 12 }}>Couldn’t save your budget. Please try again.</p>
+      )}
 
       <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
-        <button type="button" className="ds-btn ds-btn--ghost" onClick={onBack}>
+        <button type="button" className="ds-btn ds-btn--ghost" onClick={onBack} disabled={save.isPending}>
           Back
         </button>
-        <button type="button" className="ds-btn ds-btn--primary ds-btn--lg" style={{ flex: 1 }} onClick={onContinue}>
-          Continue <Icon name="arrow" className="xl-ico--sm" />
+        <button
+          type="button"
+          className="ds-btn ds-btn--primary ds-btn--lg"
+          style={{ flex: 1 }}
+          disabled={save.isPending}
+          onClick={() => save.mutate({ weekday_minutes: weekday, weekend_band: weekend }, { onSuccess: onContinue })}
+        >
+          {save.isPending ? "Saving…" : "Continue"} <Icon name="arrow" className="xl-ico--sm" />
         </button>
       </div>
     </>
@@ -358,47 +411,79 @@ function StepBudget({ onBack, onContinue }: { onBack: () => void; onContinue: ()
 }
 
 function StepCoach({ onBack, onFinish }: { onBack: () => void; onFinish: () => void }) {
+  const complete = useCompleteOnboarding();
+  const [provider, setProvider] = useState<"anthropic" | "openai" | "google">("anthropic");
+
+  // Step 3 is optional: the key store lands with the coach (S11), so Finish/Skip simply
+  // completes onboarding here — we never fake key storage. The key form is a preview.
+  const finish = () => complete.mutate(undefined, { onSuccess: onFinish });
+  const providerPlaceholder = provider === "anthropic" ? "sk-ant-…" : provider === "openai" ? "sk-…" : "AIza…";
+
   return (
     <>
       <div className="xl-eyebrow">Step 3 of 3 · optional</div>
       <h2 style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>Power up your coach</h2>
       <p style={{ fontSize: 13, color: "var(--ds-muted)", marginTop: 4 }}>
-        Add an API key later to enable the AI coach on every screen. Used only for your coach.
+        Add an API key to enable the AI coach on every screen. Used only for your coach.
       </p>
 
-      <InertNote>Coach setup arrives with the coach. You’re all set to start learning now.</InertNote>
+      <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className="ds-field">
+          <span className="ds-field__label">Provider</span>
+          <div className="ds-seg" role="group" aria-label="Coach provider">
+            {(["anthropic", "openai", "google"] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                className={provider === p ? "ds-seg__btn ds-seg__btn--on" : "ds-seg__btn"}
+                aria-pressed={provider === p}
+                onClick={() => setProvider(p)}
+              >
+                {p === "anthropic" ? "Anthropic" : p === "openai" ? "OpenAI" : "Google"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="ds-field">
+          <label className="ds-field__label" htmlFor="onb-key">
+            API key
+          </label>
+          <input id="onb-key" className="ds-input ds-input--mono" type="password" placeholder={providerPlaceholder} aria-label="API key" />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11.5, color: "var(--ds-muted)" }}>
+          <Icon name="lock" className="xl-ico--sm" style={{ color: "var(--ds-ok)" }} /> Stored encrypted with the coach — you can add it
+          anytime from Settings.
+        </div>
+      </div>
 
-      <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
-        <button type="button" className="ds-btn ds-btn--ghost" onClick={onBack}>
+      {complete.isError && (
+        <p style={{ color: "var(--ds-err)", fontSize: 12.5, marginTop: 12 }}>Couldn’t finish setup. Please try again.</p>
+      )}
+
+      <button
+        type="button"
+        className="ds-btn ds-btn--primary ds-btn--block ds-btn--lg"
+        style={{ marginTop: 20 }}
+        disabled={complete.isPending}
+        onClick={finish}
+      >
+        <Icon name="spark" className="xl-ico--sm" /> {complete.isPending ? "Finishing…" : "Finish & enter xLearn"}
+      </button>
+      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+        <button type="button" className="ds-btn ds-btn--ghost" onClick={onBack} disabled={complete.isPending}>
           Back
         </button>
-        <button type="button" className="ds-btn ds-btn--primary ds-btn--lg" style={{ flex: 1 }} onClick={onFinish}>
-          <Icon name="spark" className="xl-ico--sm" /> Finish &amp; enter xLearn
+        <button
+          type="button"
+          className="ds-btn ds-btn--ghost"
+          style={{ flex: 1, justifyContent: "center" }}
+          disabled={complete.isPending}
+          onClick={finish}
+        >
+          Skip for now
         </button>
       </div>
     </>
-  );
-}
-
-function InertNote({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        marginTop: 18,
-        display: "flex",
-        gap: 10,
-        alignItems: "center",
-        padding: "12px 14px",
-        borderRadius: 9,
-        background: "var(--ds-inset)",
-        border: "1px dashed var(--ds-line-2)",
-      }}
-    >
-      <Icon name="lock" className="xl-ico--sm" />
-      <span className="xl-mut" style={{ fontSize: 12.5 }}>
-        {children}
-      </span>
-    </div>
   );
 }
 

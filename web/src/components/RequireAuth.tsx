@@ -4,10 +4,11 @@ import AppShell from "./AppShell";
 
 /**
  * AuthedShell gates the app: it reads GET /me and renders the AppShell only when
- * the session is valid AND onboarding step 1 is done (ADR-0006; prompt-s02 route
- * gating). An unauthenticated response (401) or an account that hasn't picked a
- * path yet redirects to the standalone /auth screen, which begins OAuth or resumes
- * onboarding. /auth lives outside this gate, so there is no redirect loop.
+ * the session is valid AND onboarding is complete (ADR-0006; S10 route gating). An
+ * unauthenticated response (401) or an account with onboarding still incomplete
+ * (completed_at IS NULL) redirects to the standalone /auth screen, which begins OAuth
+ * or resumes onboarding at the first unfinished step. /auth lives outside this gate,
+ * so there is no redirect loop.
  */
 export default function AuthedShell() {
   const me = useMe();
@@ -36,9 +37,10 @@ export default function AuthedShell() {
   if (!me.data) {
     return <Navigate to="/auth" replace />;
   }
-  // First-run gate: an authenticated account that hasn't chosen a path yet belongs
-  // in onboarding, not the app (its screens assume a chosen path).
-  if (!me.data.onboarding.path_chosen) {
+  // First-run gate: an authenticated account whose onboarding is not complete belongs
+  // in the flow (path → budget → key), not the app. /auth resumes at the first
+  // unfinished step and routes away once complete.
+  if (!me.data.onboarding.completed) {
     return <Navigate to="/auth" replace />;
   }
   return <AppShell />;

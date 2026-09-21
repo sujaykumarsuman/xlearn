@@ -6,14 +6,14 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Code-complete + green — shipping
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | profile / budget / timezone / reminders | ⬜ |
-| 2 | onboarding completion (steps 2-3) | ⬜ |
-| 3 | reminders wired to notifications | ⬜ |
-| 4 | API-keys section shell | ⬜ |
+| 1 | profile / budget / timezone / reminders | ✅ |
+| 2 | onboarding completion (steps 2-3) | ✅ |
+| 3 | reminders wired to notifications | ✅ |
+| 4 | API-keys section shell | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row — this

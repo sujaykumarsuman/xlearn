@@ -11,6 +11,29 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const completeOnboarding = `-- name: CompleteOnboarding :one
+UPDATE identity.onboarding
+SET completed_at = COALESCE(completed_at, now())
+WHERE account_id = $1
+RETURNING account_id, path_chosen, budget_set, key_added, completed_at
+`
+
+// Onboarding step 3 (Finish / Skip). Idempotent: an already-completed account keeps
+// its original completed_at (COALESCE) so re-submitting Finish never moves the timestamp.
+// key_added is NOT set here — it flips true only once the coach key store works (S11).
+func (q *Queries) CompleteOnboarding(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error) {
+	row := q.db.QueryRow(ctx, completeOnboarding, accountID)
+	var i IdentityOnboarding
+	err := row.Scan(
+		&i.AccountID,
+		&i.PathChosen,
+		&i.BudgetSet,
+		&i.KeyAdded,
+		&i.CompletedAt,
+	)
+	return i, err
+}
+
 const createOnboarding = `-- name: CreateOnboarding :one
 INSERT INTO identity.onboarding (account_id)
 VALUES ($1)
@@ -37,6 +60,28 @@ WHERE account_id = $1
 
 func (q *Queries) GetOnboarding(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error) {
 	row := q.db.QueryRow(ctx, getOnboarding, accountID)
+	var i IdentityOnboarding
+	err := row.Scan(
+		&i.AccountID,
+		&i.PathChosen,
+		&i.BudgetSet,
+		&i.KeyAdded,
+		&i.CompletedAt,
+	)
+	return i, err
+}
+
+const setOnboardingBudgetSet = `-- name: SetOnboardingBudgetSet :one
+UPDATE identity.onboarding
+SET budget_set = true
+WHERE account_id = $1
+RETURNING account_id, path_chosen, budget_set, key_added, completed_at
+`
+
+// Onboarding step 2 flag. The study budget itself is written to account.study_budget_json
+// (via UpdateAccount) in the SAME transaction as this flag.
+func (q *Queries) SetOnboardingBudgetSet(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error) {
+	row := q.db.QueryRow(ctx, setOnboardingBudgetSet, accountID)
 	var i IdentityOnboarding
 	err := row.Scan(
 		&i.AccountID,

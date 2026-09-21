@@ -24,6 +24,7 @@ func (g *Gateway) newAPIMux() *http.ServeMux {
 	mux.HandleFunc("GET /api/healthz", g.appHealth)
 	mux.HandleFunc("GET /.well-known/jwks.json", g.handleJWKS)
 	mux.HandleFunc("GET /api/me", g.handleMe)
+	mux.HandleFunc("PATCH /api/me", g.handlePatchMe)
 	mux.HandleFunc("POST /api/auth/logout", g.handleLogout)
 	mux.HandleFunc("POST /api/onboarding/step", g.handleOnboardingStep)
 	mux.HandleFunc("POST /api/auth/{provider}/start", g.handleAuthProxy)
@@ -74,6 +75,10 @@ func (g *Gateway) newAPIMux() *http.ServeMux {
 	// due revisions, weak area, and streak/solved/mock stats — fanned out to assessment,
 	// review and curriculum in parallel.
 	mux.HandleFunc("GET /api/dashboard", g.handleDashboard)
+	// Coach key (api.md, S10 shell): the masked read only. Proxies to coach when it is
+	// configured (S11), else renders the "no key — coach off" empty state so Settings
+	// works before the coach service exists. Store/delete land in S11.
+	mux.HandleFunc("GET /api/coach/key", g.handleCoachKey)
 	// Catch-all: unknown /api/* is a 404 envelope, never the SPA shell.
 	mux.HandleFunc("/api/", g.apiNotFound)
 	return mux
@@ -104,6 +109,32 @@ func (g *Gateway) handleMe(w http.ResponseWriter, r *http.Request) {
 	body, status, err := g.identity.getAccount(r.Context(), token, accountID)
 	if err != nil {
 		g.log.Error("bff /me: identity call failed", "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "identity unavailable")
+		return
+	}
+	passthrough(w, status, body)
+}
+
+// handlePatchMe updates the caller's own profile / study budget / timezone / reminders
+// (api.md PATCH /me), forwarding the JWT + body to identity's PATCH /accounts/{id}
+// (identity enforces ownership from the token subject; ADR-0006).
+func (g *Gateway) handlePatchMe(w http.ResponseWriter, r *http.Request) {
+	accountID, ok := g.authAccount(w, r)
+	if !ok {
+		return
+	}
+	token, ok := g.mint(w, accountID)
+	if !ok {
+		return
+	}
+	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
+		return
+	}
+	body, status, err := g.identity.patchAccount(r.Context(), token, accountID, reqBody)
+	if err != nil {
+		g.log.Error("bff PATCH /me: identity call failed", "err", err)
 		writeError(w, http.StatusBadGateway, "upstream", "identity unavailable")
 		return
 	}
@@ -612,6 +643,17 @@ func (c *identityClient) getAccount(ctx context.Context, token, accountID string
 		return nil, 0, err
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/json")
+	return c.do(req)
+}
+
+func (c *identityClient) patchAccount(ctx context.Context, token, accountID string, body []byte) ([]byte, int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, c.baseURL+"/accounts/"+accountID, bytes.NewReader(body))
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	return c.do(req)
 }

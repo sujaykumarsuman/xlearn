@@ -11,6 +11,10 @@ import (
 )
 
 type Querier interface {
+	// Onboarding step 3 (Finish / Skip). Idempotent: an already-completed account keeps
+	// its original completed_at (COALESCE) so re-submitting Finish never moves the timestamp.
+	// key_added is NOT set here — it flips true only once the coach key store works (S11).
+	CompleteOnboarding(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error)
 	CreateAccount(ctx context.Context, arg CreateAccountParams) (IdentityAccount, error)
 	CreateOauthIdentity(ctx context.Context, arg CreateOauthIdentityParams) (IdentityOauthIdentity, error)
 	CreateOnboarding(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error)
@@ -23,7 +27,14 @@ type Querier interface {
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]IdentityOutbox, error)
 	MarkOutboxSent(ctx context.Context, eventID pgtype.UUID) error
 	RevokeSession(ctx context.Context, id string) (int64, error)
+	// Onboarding step 2 flag. The study budget itself is written to account.study_budget_json
+	// (via UpdateAccount) in the SAME transaction as this flag.
+	SetOnboardingBudgetSet(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error)
 	SetOnboardingPath(ctx context.Context, arg SetOnboardingPathParams) (IdentityOnboarding, error)
+	// Partial update of the caller's own account (PATCH /me, S10). A NULL narg leaves
+	// the column unchanged (COALESCE), so profile / budget / timezone / reminders can be
+	// saved independently. The jsonb blobs are validated + canonicalised in the handler.
+	UpdateAccount(ctx context.Context, arg UpdateAccountParams) (IdentityAccount, error)
 }
 
 var _ Querier = (*Queries)(nil)
