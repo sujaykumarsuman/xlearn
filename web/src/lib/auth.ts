@@ -42,10 +42,19 @@ export interface Account {
   created_at: string;
 }
 
-/** GET /me payload: account + onboarding. */
+/** A learner's per-path enrollment (F002). `started_at` anchors the "current day"
+ *  on that path; a path with no enrollment has not been started yet. */
+export interface PathEnrollment {
+  path_slug: string;
+  status: "active" | "paused";
+  started_at: string;
+}
+
+/** GET /me payload: account + onboarding + the caller's path enrollments. */
 export interface Me {
   account: Account;
   onboarding: Onboarding;
+  enrollments: PathEnrollment[];
 }
 
 /** useMe fetches the current session's account + onboarding. A 401 surfaces as an
@@ -138,5 +147,33 @@ export function useLogout() {
   return useMutation({
     mutationFn: () => apiFetch<void>("/auth/logout", { method: "POST" }),
     onSuccess: () => qc.clear(),
+  });
+}
+
+/** useDevAuthEnabled reports whether the LOCAL-ONLY dev login is available (GET
+ *  /auth/dev/enabled → 404 when disabled). The SPA shows the dev button only when true;
+ *  in a prod image the endpoint 404s, so this is always false. (F002 / ADR-0022) */
+export function useDevAuthEnabled() {
+  return useQuery<boolean>({
+    queryKey: ["dev-auth-enabled"],
+    queryFn: async () => {
+      try {
+        const r = await apiFetch<{ enabled: boolean }>("/auth/dev/enabled");
+        return !!r.enabled;
+      } catch {
+        return false;
+      }
+    },
+    retry: false,
+    staleTime: Infinity,
+  });
+}
+
+/** useDevLogin mints a local dev session (no OAuth) and refreshes ["me"]. Local only. */
+export function useDevLogin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch<{ ok: boolean }>("/auth/dev/login", { method: "POST" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
   });
 }

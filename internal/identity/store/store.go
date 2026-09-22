@@ -60,6 +60,16 @@ type Session struct {
 	ExpiresAt time.Time
 }
 
+// Enrollment is a learner's per-path enrollment (F002). started_at anchors the
+// learner's "current day" on that path; status leaves room for a later pause/leave
+// without dropping the start date.
+type Enrollment struct {
+	AccountID string
+	PathSlug  string
+	Status    string
+	StartedAt time.Time
+}
+
 // OutboxRow is one unsent domain event awaiting relay to NATS.
 type OutboxRow struct {
 	EventID string
@@ -105,6 +115,11 @@ type Store interface {
 	// CompleteOnboarding stamps onboarding.completed_at (idempotent) — onboarding
 	// step 3 (Finish / Skip). key_added is NOT set here (deferred to S11).
 	CompleteOnboarding(ctx context.Context, accountID string) (Onboarding, error)
+	// StartEnrollment enrolls the account in a path (F002). Idempotent: a repeat start
+	// only re-activates the row and keeps the original started_at. ListEnrollments
+	// returns all of an account's enrollments (surfaced on GET /me).
+	StartEnrollment(ctx context.Context, accountID, pathSlug string) (Enrollment, error)
+	ListEnrollments(ctx context.Context, accountID string) ([]Enrollment, error)
 	CreateSession(ctx context.Context, id, accountID string, expiresAt time.Time) (Session, error)
 	GetValidSession(ctx context.Context, id string) (Session, error)
 	RevokeSession(ctx context.Context, id string) (revoked bool, err error)
@@ -301,6 +316,36 @@ func (s *PgStore) CompleteOnboarding(ctx context.Context, accountID string) (Onb
 	return toOnboarding(row), nil
 }
 
+// StartEnrollment enrolls the account in a path (idempotent; F002).
+func (s *PgStore) StartEnrollment(ctx context.Context, accountID, pathSlug string) (Enrollment, error) {
+	uid, err := parseUUID(accountID)
+	if err != nil {
+		return Enrollment{}, ErrNotFound
+	}
+	row, err := s.q.StartEnrollment(ctx, gen.StartEnrollmentParams{AccountID: uid, PathSlug: pathSlug})
+	if err != nil {
+		return Enrollment{}, mapErr(err)
+	}
+	return toEnrollment(row), nil
+}
+
+// ListEnrollments returns all of an account's path enrollments (oldest first).
+func (s *PgStore) ListEnrollments(ctx context.Context, accountID string) ([]Enrollment, error) {
+	uid, err := parseUUID(accountID)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	rows, err := s.q.ListEnrollments(ctx, uid)
+	if err != nil {
+		return nil, mapErr(err)
+	}
+	out := make([]Enrollment, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, toEnrollment(r))
+	}
+	return out, nil
+}
+
 // CreateSession inserts a session row with the opaque id and expiry.
 func (s *PgStore) CreateSession(ctx context.Context, id, accountID string, expiresAt time.Time) (Session, error) {
 	uid, err := parseUUID(accountID)
@@ -410,6 +455,15 @@ func toSession(s gen.IdentitySession) Session {
 		AccountID: uuidString(s.AccountID),
 		CreatedAt: s.CreatedAt.Time,
 		ExpiresAt: s.ExpiresAt.Time,
+	}
+}
+
+func toEnrollment(e gen.IdentityPathEnrollment) Enrollment {
+	return Enrollment{
+		AccountID: uuidString(e.AccountID),
+		PathSlug:  e.PathSlug,
+		Status:    e.Status,
+		StartedAt: e.StartedAt.Time,
 	}
 }
 

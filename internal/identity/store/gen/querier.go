@@ -24,6 +24,7 @@ type Querier interface {
 	GetOnboarding(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error)
 	GetValidSession(ctx context.Context, id string) (IdentitySession, error)
 	InsertOutbox(ctx context.Context, arg InsertOutboxParams) error
+	ListEnrollments(ctx context.Context, accountID pgtype.UUID) ([]IdentityPathEnrollment, error)
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]IdentityOutbox, error)
 	MarkOutboxSent(ctx context.Context, eventID pgtype.UUID) error
 	RevokeSession(ctx context.Context, id string) (int64, error)
@@ -31,6 +32,10 @@ type Querier interface {
 	// (via UpdateAccount) in the SAME transaction as this flag.
 	SetOnboardingBudgetSet(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error)
 	SetOnboardingPath(ctx context.Context, arg SetOnboardingPathParams) (IdentityOnboarding, error)
+	// Idempotent: the first call records started_at (default now()); re-starting only
+	// re-activates the row and keeps the ORIGINAL started_at (it is not in the SET),
+	// so a learner's "current day" never resets on a repeat Start.
+	StartEnrollment(ctx context.Context, arg StartEnrollmentParams) (IdentityPathEnrollment, error)
 	// Partial update of the caller's own account (PATCH /me, S10). A NULL narg leaves
 	// the column unchanged (COALESCE), so profile / budget / timezone / reminders can be
 	// saved independently. The jsonb blobs are validated + canonicalised in the handler.

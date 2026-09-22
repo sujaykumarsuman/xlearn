@@ -25,7 +25,8 @@ type problemHarness struct {
 	practiceAuthErr     error  // last verify error the fake practice saw
 	lastPracticePath    string // last path (incl. query) the fake practice received
 	lastPracticeMethod  string
-	practiceStateStatus int // status the fake practice GET /state/{id} returns (default 200)
+	practiceStateStatus int  // status the fake practice GET /state/{id} returns (default 200)
+	notEnrolled         bool // when set, the fake identity reports acct-1 as NOT started (gate → 403)
 }
 
 func newProblemHarness(t *testing.T) *problemHarness {
@@ -52,6 +53,19 @@ func newProblemHarness(t *testing.T) *problemHarness {
 			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]string{"account_id": "acct-1"})
+	})
+	// Account read carries the enrollments the practice gate checks (review round 2):
+	// acct-1 has started dsa, so attempt/reveal/outcome are permitted.
+	identityMux.HandleFunc("GET /accounts/{id}", func(w http.ResponseWriter, r *http.Request) {
+		enrollments := []any{map[string]any{"path_slug": "dsa", "status": "active", "started_at": "2026-09-20T00:00:00Z"}}
+		if h.notEnrolled {
+			enrollments = []any{}
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"account":     map[string]any{"id": r.PathValue("id"), "display_name": "Ada"},
+			"onboarding":  map[string]any{"completed": true},
+			"enrollments": enrollments,
+		})
 	})
 	identity := httptest.NewServer(identityMux)
 	t.Cleanup(identity.Close)
@@ -273,6 +287,91 @@ func TestBFFRevealProxiesPenalty(t *testing.T) {
 	_ = json.Unmarshal(body, &out)
 	if out.Revealed != "solution" || out.Penalty == nil || !out.Penalty.OwedAttempt {
 		t.Fatalf("penalty ack not passed through: %s", body)
+	}
+}
+
+// TestBFFPracticeGatedByEnrollment locks the review-round-2 gate: a learner who has NOT
+// started the path is refused every practice write with a 403 not_enrolled envelope
+// (the SPA turns this into the "Start the path" gate), and practice is never called.
+func TestBFFPracticeGatedByEnrollment(t *testing.T) {
+	for _, path := range []string{"/attempt/start", "/reveal", "/outcome"} {
+		h := newProblemHarness(t)
+		h.notEnrolled = true
+		body := ""
+		if path == "/outcome" {
+			body = `{"outcome":"clean"}`
+		}
+		resp := h.do(t, http.MethodPost, "/xlearn/api/problems/16"+path, body)
+		out, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusForbidden {
+			t.Fatalf("%s: status %d, want 403", path, resp.StatusCode)
+		}
+		if !strings.Contains(string(out), "not_enrolled") {
+			t.Fatalf("%s: body %s, want not_enrolled", path, out)
+		}
+		if h.lastPracticePath != "" {
+			t.Fatalf("%s: practice was called (%s) despite the gate", path, h.lastPracticePath)
+		}
+	}
+}
+
+// TestBFFPracticeArenaOpen: the Problems arena (?practice=1) is open even when NOT started,
+// and — crucially — every arena write is a NO-OP that never reaches practice, so an arena
+// visit can't create course-affecting state (no attempt, no timer).
+func TestBFFPracticeArenaOpen(t *testing.T) {
+	h := newProblemHarness(t)
+	h.notEnrolled = true
+
+	for _, path := range []string{"/attempt/start", "/reveal", "/outcome"} {
+		h.lastPracticePath = ""
+		body := ""
+		if path == "/outcome" {
+			body = `{"outcome":"clean"}`
+		}
+		resp := h.do(t, http.MethodPost, "/xlearn/api/problems/16"+path+"?practice=1", body)
+		out, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("%s?practice=1: status %d, want 200", path, resp.StatusCode)
+		}
+		if !strings.Contains(string(out), `"practice":true`) {
+			t.Fatalf("%s?practice=1: body %s, want practice:true", path, out)
+		}
+		// The whole point: practice is NEVER called for an arena write.
+		if h.lastPracticePath != "" {
+			t.Fatalf("%s?practice=1 forwarded to practice (%q) — arena must not touch state", path, h.lastPracticePath)
+		}
+	}
+}
+
+// TestBFFProblemAggPracticeDeliversAllStages: the arena GET (?practice=1) delivers ALL
+// stages (statement + hint + solution) for study, without touching practice.
+func TestBFFProblemAggPracticeDeliversAllStages(t *testing.T) {
+	h := newProblemHarness(t)
+	h.notEnrolled = true
+	resp := h.do(t, http.MethodGet, "/xlearn/api/problems/16?practice=1", "")
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d, want 200", resp.StatusCode)
+	}
+	var out struct {
+		Sections []struct {
+			Stage string `json:"stage"`
+		} `json:"sections"`
+	}
+	body, _ := io.ReadAll(resp.Body)
+	_ = json.Unmarshal(body, &out)
+	stages := map[string]bool{}
+	for _, s := range out.Sections {
+		stages[s.Stage] = true
+	}
+	if !stages["attempt"] || !stages["hint"] || !stages["solution"] {
+		t.Fatalf("practice agg should deliver all stages, got %+v", out.Sections)
+	}
+	// The arena GET must not fetch practice state.
+	if h.lastPracticePath != "" {
+		t.Fatalf("practice agg touched practice (%q)", h.lastPracticePath)
 	}
 }
 

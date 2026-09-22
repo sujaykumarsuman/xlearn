@@ -166,12 +166,23 @@ export interface PracticeState {
   timer: PracticeTimer | null;
 }
 
+/** The curriculum gate on the Problem workspace (review round 2): must be enrolled to
+ *  solve; `scheduled` is false when the problem is ahead of the frontier week (attempt
+ *  freely, but it won't count toward the course). */
+export interface ProblemGate {
+  enrolled: boolean;
+  scheduled: boolean;
+  currentWeek: number; // the learner's frontier week (0 when not enrolled)
+  problemWeek: number;
+}
+
 /** GET /problems/{id} payload (Problem, BFF `agg`): curriculum content limited to the
- *  unlocked stages + the practice state + active timer. */
+ *  unlocked stages + the practice state + active timer + the curriculum gate. */
 export interface ProblemAggregate {
   problem: Problem;
   sections: ProblemSection[];
   state: PracticeState;
+  gate?: ProblemGate;
 }
 
 /** The reveal penalty acknowledgement (R-PF2) returned when the solution is revealed
@@ -192,6 +203,24 @@ export interface RevealResponse {
 /** POST /problems/{id}/attempt/start and /outcome response. */
 export interface StateResponse {
   state: PracticeState;
+}
+
+/** The outcome response when a solve is NOT counted toward the course: either ahead of
+ *  the frontier week (scheduledWeek/currentWeek set) or a pure practice-arena run
+ *  (`practice:true`). Not recorded, so the workspace shows a note, not a solved state. */
+export interface AheadOutcome {
+  counted: false;
+  scheduledWeek?: number;
+  currentWeek?: number;
+  practice?: boolean;
+}
+
+/** logOutcome's response: a normal state update, or the ahead-of-schedule ack. */
+export type OutcomeResponse = StateResponse | AheadOutcome;
+
+/** isAhead narrows an OutcomeResponse to the ahead-of-schedule (not counted) ack. */
+export function isAhead(r: OutcomeResponse): r is AheadOutcome {
+  return (r as AheadOutcome).counted === false;
 }
 
 /** An outcome the learner logs for a solved problem (R-OL1). */
@@ -242,30 +271,41 @@ export function patternMatchesConcept(pattern: string, conceptSlugOrTitle: strin
   return a.includes(b) || b.includes(a);
 }
 
-/** useProblem fetches the Problem workspace aggregate: curriculum content limited to
- *  the learner's unlocked stages + practice state + active timer (Problem screen). */
-export function useProblem(id: string) {
+/** useProblem fetches the Problem workspace aggregate. Course mode: content limited to the
+ *  learner's unlocked stages + practice state + timer. Practice mode (`?practice=1`, the
+ *  Problems arena): ALL stages for study, a default no-timer state, and no practice state
+ *  touched. Cached separately by mode so the two section sets don't clobber each other. */
+export function useProblem(id: string, practice = false) {
   return useQuery<ProblemAggregate, ApiRequestError>({
-    queryKey: ["problem", id],
-    queryFn: () => apiFetch<ProblemAggregate>(`/problems/${encodeURIComponent(id)}`),
+    queryKey: ["problem", id, practice ? "practice" : "course"],
+    queryFn: () =>
+      apiFetch<ProblemAggregate>(`/problems/${encodeURIComponent(id)}${practice ? "?practice=1" : ""}`),
     enabled: id !== "",
   });
 }
 
+/** `?practice=1` marks a write as a Problems-arena run (open to everyone, never counts). */
+const practiceQuery = (practice: boolean) => (practice ? "?practice=1" : "");
+
 /** startAttempt starts/resumes the attempt (POST /problems/{id}/attempt/start). */
-export function startAttempt(id: string): Promise<StateResponse> {
-  return apiFetch<StateResponse>(`/problems/${encodeURIComponent(id)}/attempt/start`, { method: "POST" });
+export function startAttempt(id: string, practice = false): Promise<StateResponse> {
+  return apiFetch<StateResponse>(`/problems/${encodeURIComponent(id)}/attempt/start${practiceQuery(practice)}`, {
+    method: "POST",
+  });
 }
 
 /** revealNext unlocks the next content stage (POST /problems/{id}/reveal); the
  *  response carries the penalty ack when the solution is revealed early. */
-export function revealNext(id: string): Promise<RevealResponse> {
-  return apiFetch<RevealResponse>(`/problems/${encodeURIComponent(id)}/reveal`, { method: "POST" });
+export function revealNext(id: string, practice = false): Promise<RevealResponse> {
+  return apiFetch<RevealResponse>(`/problems/${encodeURIComponent(id)}/reveal${practiceQuery(practice)}`, {
+    method: "POST",
+  });
 }
 
-/** logOutcome logs the outcome (POST /problems/{id}/outcome). */
-export function logOutcome(id: string, outcome: Outcome): Promise<StateResponse> {
-  return apiFetch<StateResponse>(`/problems/${encodeURIComponent(id)}/outcome`, {
+/** logOutcome logs the outcome (POST /problems/{id}/outcome). Returns counted:false when
+ *  the solve doesn't count — ahead of the frontier week, or a practice-arena run. */
+export function logOutcome(id: string, outcome: Outcome, practice = false): Promise<OutcomeResponse> {
+  return apiFetch<OutcomeResponse>(`/problems/${encodeURIComponent(id)}/outcome${practiceQuery(practice)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ outcome }),
@@ -277,6 +317,21 @@ export function usePaths() {
   return useQuery<PathsResponse, ApiRequestError>({
     queryKey: ["paths"],
     queryFn: () => apiFetch<PathsResponse>("/paths"),
+  });
+}
+
+/** GET /paths/{slug}/problems payload (the Problems arena). */
+export interface PathProblemsResponse {
+  problems: Problem[];
+}
+
+/** usePathProblems fetches the whole problem index for a path — the Problems arena where
+ *  you can browse + attempt any problem (review round 2). */
+export function usePathProblems(slug: string) {
+  return useQuery<PathProblemsResponse, ApiRequestError>({
+    queryKey: ["path-problems", slug],
+    queryFn: () => apiFetch<PathProblemsResponse>(`/paths/${encodeURIComponent(slug)}/problems`),
+    enabled: slug !== "",
   });
 }
 

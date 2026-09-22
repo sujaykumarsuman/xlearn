@@ -44,11 +44,18 @@ func (g *Gateway) apiRoutes() []apiRoute {
 		{"POST", "/api/onboarding/step", g.handleOnboardingStep, true},
 		{"POST", "/api/auth/{provider}/start", g.handleAuthProxy, true},
 		{"GET", "/api/auth/{provider}/callback", g.handleAuthProxy, true},
+		// Local-only dev login (F002 / ADR-0022): proxied to identity, which 404s them
+		// unless DEV_AUTH is set. Undocumented (Doc:false) — never part of the prod surface.
+		{"POST", "/api/auth/dev/login", g.handleAuthDevProxy, false},
+		{"GET", "/api/auth/dev/enabled", g.handleAuthDevProxy, false},
+		// Per-user path enrollment (F002): starting a path is an explicit, durable action.
+		{"POST", "/api/paths/{slug}/start", g.handleStartPath, true},
 		// Curriculum content (read-only, session-gated). The week route is a BFF
 		// aggregation (api.md `agg`): the gateway layers per-user five-touch/solve state
 		// onto curriculum content (ADR-0005/0013).
 		{"GET", "/api/paths", g.handleListPaths, true},
 		{"GET", "/api/paths/{slug}", g.handleGetPath, true},
+		{"GET", "/api/paths/{slug}/problems", g.handleListPathProblems, true},
 		{"GET", "/api/paths/{slug}/weeks/{n}", g.handleGetWeek, true},
 		{"GET", "/api/concepts/{slug}", g.handleGetConcept, true},
 		// Problem workspace: the GET is a BFF aggregation (content limited to unlocked
@@ -207,6 +214,38 @@ func (g *Gateway) handleAuthProxy(w http.ResponseWriter, r *http.Request) {
 	g.identity.forward(w, r, upstreamPath)
 }
 
+// handleAuthDevProxy forwards the LOCAL-ONLY dev-login endpoints to identity, which
+// gates them on DEV_AUTH (they 404 in prod). Cookies + Set-Cookie pass through so the
+// minted dev session lands in the browser (F002 / ADR-0022).
+func (g *Gateway) handleAuthDevProxy(w http.ResponseWriter, r *http.Request) {
+	if g.identity == nil {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "identity not configured")
+		return
+	}
+	// r.URL.Path is the stripped app path, e.g. /api/auth/dev/login → /auth/dev/login.
+	g.identity.forward(w, r, "/auth/dev/"+lastSegment(r.URL.Path))
+}
+
+// handleStartPath enrolls the caller in a path (F002 · POST /paths/{slug}/start),
+// minting an identity-scoped JWT and forwarding to identity. Idempotent.
+func (g *Gateway) handleStartPath(w http.ResponseWriter, r *http.Request) {
+	accountID, ok := g.authAccount(w, r)
+	if !ok {
+		return
+	}
+	token, ok := g.mint(w, accountID)
+	if !ok {
+		return
+	}
+	body, status, err := g.identity.startEnrollment(r.Context(), token, r.PathValue("slug"))
+	if err != nil {
+		g.log.Error("bff /paths/{slug}/start: identity call failed", "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "identity unavailable")
+		return
+	}
+	passthrough(w, status, body)
+}
+
 func (g *Gateway) apiNotFound(w http.ResponseWriter, r *http.Request) {
 	writeError(w, http.StatusNotFound, "not_found", "no such endpoint")
 }
@@ -229,6 +268,15 @@ func (g *Gateway) handleGetPath(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	g.proxyCurriculum(w, r, "/paths/"+url.PathEscape(r.PathValue("slug")))
+}
+
+// handleListPathProblems proxies the whole problem index for a path (the Problems arena,
+// review round 2 — a flat list you can browse + attempt any problem from).
+func (g *Gateway) handleListPathProblems(w http.ResponseWriter, r *http.Request) {
+	if _, ok := g.authAccount(w, r); !ok {
+		return
+	}
+	g.proxyCurriculum(w, r, "/paths/"+url.PathEscape(r.PathValue("slug"))+"/problems")
 }
 
 // handleGetWeek is the week BFF aggregation (api.md `agg`): it fetches the curriculum
@@ -348,6 +396,22 @@ func (g *Gateway) handleGetProblem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Practice arena (?practice=1): a study view. Deliver ALL sections (all stages) with a
+	// default (available, no-timer) state and DON'T touch practice — so opening a problem
+	// in the arena creates no course-affecting state. The course flow reads practice state
+	// + gates sections to the unlocked stages as usual.
+	if r.URL.Query().Get("practice") == "1" {
+		stateRaw, _ := defaultProblemState(id)
+		merged, err := aggregateProblem(body, stateRaw, map[string]bool{"attempt": true, "hint": true, "solution": true})
+		if err != nil {
+			g.log.Error("bff problem aggregation (practice): merge failed", "id", id, "err", err)
+			writeError(w, http.StatusBadGateway, "upstream", "curriculum returned malformed content")
+			return
+		}
+		passthrough(w, http.StatusOK, merged)
+		return
+	}
+
 	stateRaw, unlocked := g.problemState(r, accountID, id)
 	merged, err := aggregateProblem(body, stateRaw, unlocked)
 	if err != nil {
@@ -355,7 +419,33 @@ func (g *Gateway) handleGetProblem(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadGateway, "upstream", "curriculum returned malformed content")
 		return
 	}
+	// Layer the curriculum gate (enrolled? scheduled?) so the workspace can render the
+	// "Start the path" gate or the "ahead of schedule" banner (review round 2).
+	merged = g.injectProblemGate(r.Context(), accountID, id, merged)
 	passthrough(w, http.StatusOK, merged)
+}
+
+// injectProblemGate adds the `gate` block (enrolled/scheduled/currentWeek) to the Problem
+// aggregate, reading the problem's week from the merged content.
+func (g *Gateway) injectProblemGate(ctx context.Context, accountID, problemID string, merged []byte) []byte {
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(merged, &obj) != nil {
+		return merged
+	}
+	week := 0
+	if pr, ok := obj["problem"]; ok {
+		var p struct {
+			WeekN int `json:"week_n"`
+		}
+		if json.Unmarshal(pr, &p) == nil {
+			week = p.WeekN
+		}
+	}
+	obj["gate"] = mustJSON(g.problemGateFor(ctx, accountID, "dsa", problemID, week))
+	if out, err := json.Marshal(obj); err == nil {
+		return out
+	}
+	return merged
 }
 
 // problemState fetches the learner's practice state for a problem, returning the raw
@@ -381,24 +471,33 @@ func (g *Gateway) problemState(r *http.Request, accountID, id string) (json.RawM
 	return defaultProblemState(id)
 }
 
-// handleAttemptStart proxies POST /problems/{id}/attempt/start to practice.
+// handleAttemptStart proxies POST /problems/{id}/attempt/start to practice (enrollment-gated).
 func (g *Gateway) handleAttemptStart(w http.ResponseWriter, r *http.Request) {
-	g.proxyPracticeWrite(w, r, "/problems/"+url.PathEscape(r.PathValue("id"))+"/attempt/start")
+	id := r.PathValue("id")
+	g.proxyPracticeWrite(w, r, id, "/problems/"+url.PathEscape(id)+"/attempt/start", false)
 }
 
-// handleReveal proxies POST /problems/{id}/reveal to practice (returns the penalty ack).
+// handleReveal proxies POST /problems/{id}/reveal to practice (enrollment-gated).
 func (g *Gateway) handleReveal(w http.ResponseWriter, r *http.Request) {
-	g.proxyPracticeWrite(w, r, "/problems/"+url.PathEscape(r.PathValue("id"))+"/reveal")
+	id := r.PathValue("id")
+	g.proxyPracticeWrite(w, r, id, "/problems/"+url.PathEscape(id)+"/reveal", false)
 }
 
-// handleOutcome proxies POST /problems/{id}/outcome to practice.
+// handleOutcome proxies POST /problems/{id}/outcome to practice. Enrollment-gated AND
+// schedule-gated: an ahead-of-schedule outcome is acknowledged without counting.
 func (g *Gateway) handleOutcome(w http.ResponseWriter, r *http.Request) {
-	g.proxyPracticeWrite(w, r, "/problems/"+url.PathEscape(r.PathValue("id"))+"/outcome")
+	id := r.PathValue("id")
+	g.proxyPracticeWrite(w, r, id, "/problems/"+url.PathEscape(id)+"/outcome", true)
 }
 
-// proxyPracticeWrite validates the session, mints a practice-scoped JWT, and forwards
-// a POST (with body) to practice, passing its status + JSON envelope straight through.
-func (g *Gateway) proxyPracticeWrite(w http.ResponseWriter, r *http.Request, upstreamPath string) {
+// proxyPracticeWrite validates the session, enforces the curriculum gates, mints a
+// practice-scoped JWT, and forwards a POST (with body) to practice, passing its status +
+// JSON envelope straight through. The gates (review round 2):
+//   - enrollment: every practice write requires the path to be started (403 not_enrolled).
+//   - schedule (scheduleGate=true, the outcome): a NEW-problem solve counts only when the
+//     problem is at/before the frontier week; an ahead solve is acknowledged (counted:false)
+//     and NOT forwarded, so it records no solve, emits no events, and schedules no revision.
+func (g *Gateway) proxyPracticeWrite(w http.ResponseWriter, r *http.Request, problemID, upstreamPath string, scheduleGate bool) {
 	accountID, ok := g.authAccount(w, r)
 	if !ok {
 		return
@@ -406,6 +505,30 @@ func (g *Gateway) proxyPracticeWrite(w http.ResponseWriter, r *http.Request, ups
 	if g.practice == nil {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "practice not configured")
 		return
+	}
+	// The Problems ARENA (?practice=1) is a client-side study view, decoupled from the
+	// course: it NEVER creates server-side practice state (no attempt, no timer, no
+	// outcome), so an arena visit can't leak "in progress"/timer state into the course.
+	// Every arena write is a benign no-op. The COURSE flow keeps the enrollment gate +
+	// the schedule check.
+	if r.URL.Query().Get("practice") == "1" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"practice":true}`))
+		return
+	}
+	if !g.requireEnrolled(w, r.Context(), accountID, "dsa") {
+		return
+	}
+	if scheduleGate {
+		if frontier, byID, resolved := g.pathFrontier(r.Context(), accountID); resolved {
+			if p, found := byID[problemID]; found && p.WeekN > frontier {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = fmt.Fprintf(w, `{"counted":false,"scheduledWeek":%d,"currentWeek":%d}`, p.WeekN, frontier)
+				return
+			}
+		}
 	}
 	token, ok := g.mintForPracticeW(w, accountID)
 	if !ok {
@@ -706,6 +829,17 @@ func (c *identityClient) onboardingStep(ctx context.Context, token string, body 
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
+	return c.do(req)
+}
+
+// startEnrollment enrolls the caller in a path (F002 · POST /paths/{slug}/start).
+func (c *identityClient) startEnrollment(ctx context.Context, token, slug string) ([]byte, int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/paths/"+url.PathEscape(slug)+"/start", nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/json")
 	return c.do(req)
 }
 

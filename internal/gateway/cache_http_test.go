@@ -35,6 +35,11 @@ func TestAggCacheServesAndInvalidates(t *testing.T) {
 			}
 			_ = json.NewEncoder(w).Encode(map[string]string{"account_id": "acct-1"})
 		},
+		// The practice outcome write is enrollment-gated (review round 2); acct-1 is started.
+		"GET /accounts/{id}": writeJSONFn(map[string]any{
+			"onboarding":  map[string]any{"completed": true},
+			"enrollments": []any{map[string]any{"path_slug": "dsa", "status": "active", "started_at": "2026-09-20T00:00:00Z"}},
+		}),
 	}))
 	t.Cleanup(identity.Close)
 

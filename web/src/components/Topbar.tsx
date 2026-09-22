@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useLogout, useMe } from "../lib/auth";
 import { buildCrumbs } from "../nav";
 import { Icon } from "./Icon";
+import { PathSwitcher } from "./PathSwitcher";
 
 /** Breadcrumb derived from the app-relative path + query (basename already
  *  stripped). The trail — and the Week/Concept special cases — live in buildCrumbs. */
@@ -25,8 +26,28 @@ function Crumb() {
   );
 }
 
-/** The top bar: breadcrumb, cmd-K search pill, notifications, account menu. */
-export function Topbar() {
+/** The brand lockup, shown at the top-left on shells without a sidebar (home /
+ *  Settings) so xLearn is still identified there. Links back to the Catalog. */
+function BrandInline() {
+  return (
+    <Link to="/" className="xl-topbar__brand" aria-label="xLearn — all paths">
+      <span className="xl-brand__mark" style={{ width: 26, height: 26, fontSize: 14 }}>
+        x
+      </span>
+      <span className="xl-brand__name">
+        x<b>Learn</b>
+      </span>
+    </Link>
+  );
+}
+
+/**
+ * The top bar (F001): breadcrumb + curriculum selector inside a curriculum
+ * (`variant:"curriculum"`), or the brand lockup on the sidebar-less home / Settings
+ * (`variant:"plain"`). The ⌘K search is gone — the selector took its place. Both
+ * variants carry the notifications bell + account menu.
+ */
+export function Topbar({ variant, slug }: { variant: "plain" | "curriculum"; slug?: string }) {
   const me = useMe();
   const navigate = useNavigate();
   const logout = useLogout();
@@ -68,13 +89,11 @@ export function Topbar() {
 
   return (
     <div className="xl-topbar">
-      <Crumb />
+      {variant === "curriculum" ? <Crumb /> : <BrandInline />}
 
-      <button className="xl-cmdk" disabled title="Command palette — coming soon">
-        <Icon name="search" className="xl-ico--sm" />
-        <span style={{ flex: 1, textAlign: "left" }}>Search or jump to…</span>
-        <span className="xl-kbd">⌘K</span>
-      </button>
+      <div className="xl-topbar__spacer" />
+
+      {variant === "curriculum" && slug && <PathSwitcher slug={slug} />}
 
       <button className="ds-iconbtn" aria-label="Notifications">
         <Icon name="bell" />

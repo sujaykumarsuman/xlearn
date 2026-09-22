@@ -186,6 +186,28 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "502": { $ref: "#/components/responses/BadGateway" }
         "503": { $ref: "#/components/responses/Unavailable" }
+  /paths/{slug}/problems:
+    get:
+      tags: [curriculum]
+      operationId: listPathProblems
+      summary: The whole problem index for a path (the Problems arena — browse + attempt any).
+      parameters:
+        - { $ref: "#/components/parameters/Slug" }
+      responses:
+        "200":
+          description: Every problem in the path (id, title, difficulty, pattern, week, reinforcement).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  problems:
+                    type: array
+                    items: { $ref: "#/components/schemas/Problem" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
   /paths/{slug}/weeks/{n}:
     get:
       tags: [curriculum]
@@ -203,6 +225,26 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /paths/{slug}/start:
+    post:
+      tags: [curriculum]
+      operationId: startPath
+      summary: Enroll the caller in a path (idempotent) — sets the start date for "current day".
+      parameters:
+        - { $ref: "#/components/parameters/Slug" }
+      responses:
+        "200":
+          description: The caller's enrollment on this path.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enrollment: { $ref: "#/components/schemas/Enrollment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
         "502": { $ref: "#/components/responses/BadGateway" }
         "503": { $ref: "#/components/responses/Unavailable" }
   /concepts/{slug}:
@@ -708,11 +750,21 @@ components:
         budget_set: { type: boolean }
         key_added: { type: boolean }
         completed: { type: boolean }
+    Enrollment:
+      type: object
+      description: A learner's per-path enrollment (F002). started_at anchors "current day".
+      properties:
+        path_slug: { type: string }
+        status: { type: string, enum: [active, paused] }
+        started_at: { type: string, format: date-time }
     MeResponse:
       type: object
       properties:
         account: { $ref: "#/components/schemas/Account" }
         onboarding: { $ref: "#/components/schemas/Onboarding" }
+        enrollments:
+          type: array
+          items: { $ref: "#/components/schemas/Enrollment" }
     PatchMeRequest:
       type: object
       description: Partial update; server fields (id/email/created_at) are accepted and ignored.
