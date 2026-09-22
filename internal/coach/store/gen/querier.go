@@ -11,28 +11,44 @@ import (
 )
 
 type Querier interface {
-	// Remove an account's key. Returns the affected row count so DELETE can 404 a no-op.
-	DeleteApiKeyConfig(ctx context.Context, accountID pgtype.UUID) (int64, error)
-	// Read an account's key config (all columns incl. the sealed material — the service
-	// decrypts in memory only for a provider call and never returns it). ErrNoRows when the
-	// account has no key.
-	GetApiKeyConfig(ctx context.Context, accountID pgtype.UUID) (CoachApiKeyConfig, error)
+	// How many providers the account has connected (drives "is this the first key?").
+	CountApiKeyConfigs(ctx context.Context, accountID pgtype.UUID) (int64, error)
+	// Remove one provider's key. Returns the affected row count so DELETE can 404 a no-op.
+	DeleteApiKeyConfig(ctx context.Context, arg DeleteApiKeyConfigParams) (int64, error)
+	// One (account, provider) key config. ErrNoRows when that provider isn't connected.
+	GetApiKeyConfig(ctx context.Context, arg GetApiKeyConfigParams) (CoachApiKeyConfig, error)
+	// The account's DEFAULT provider key — the one the coach answers with. ErrNoRows when the
+	// account has no keys at all.
+	GetDefaultApiKeyConfig(ctx context.Context, accountID pgtype.UUID) (CoachApiKeyConfig, error)
 	// Resolve an existing thread id for (account, page context). ErrNoRows when the account
 	// has never chatted on that page (GET /coach/thread returns empty history).
 	GetThread(ctx context.Context, arg GetThreadParams) (pgtype.UUID, error)
 	// Append one message to a thread. seq (identity) orders it; created_at is the wall time.
 	InsertMessage(ctx context.Context, arg InsertMessageParams) (InsertMessageRow, error)
+	// All of an account's provider key configs (0..2), stable-ordered. Includes the sealed
+	// material (service-only — the HTTP layer returns only the masked view).
+	ListApiKeyConfigs(ctx context.Context, accountID pgtype.UUID) ([]CoachApiKeyConfig, error)
 	// A thread's messages oldest-first (seq is the stable total order). Used both for
 	// GET /coach/thread history and to build the provider request's prior turns.
 	ListMessages(ctx context.Context, threadID pgtype.UUID) ([]ListMessagesRow, error)
-	// Flip enabled without touching the sealed key. Used both by the Settings toggle and by
-	// the chat path when a provider auth failure disables a bad key (ADR-0007). Returns the
-	// affected row count.
+	// After deleting the default, make the earliest-created remaining key the default. Does
+	// nothing (ErrNoRows) when a default already exists or no keys remain. Keeps exactly one
+	// default per account.
+	PromoteEarliestDefault(ctx context.Context, accountID pgtype.UUID) (string, error)
+	// Flip one provider's enabled flag (Settings toggle / provider-auth failure). Returns the
+	// affected row count so a no-op can 404.
 	SetApiKeyEnabled(ctx context.Context, arg SetApiKeyEnabledParams) (int64, error)
-	// Store or replace an account's provider key (ADR-0007). v1 is single-key per account
-	// (account_id UNIQUE), so PUT /coach/key upserts: a second key REPLACES the first,
-	// re-enabling the config. Only the sealed material + the display mask are written; the
-	// raw key never reaches this layer as a column.
+	// Make one provider the account's default and clear the others, in a single statement
+	// (exactly one row matches $2 → exactly one default). The store verifies the target
+	// provider exists first, so an unknown provider can't blank the default.
+	SetDefaultProvider(ctx context.Context, arg SetDefaultProviderParams) (int64, error)
+	// Update a provider's model + name WITHOUT touching the sealed key (switch model / rename).
+	// ErrNoRows when that provider isn't connected.
+	UpdateApiKeyMeta(ctx context.Context, arg UpdateApiKeyMetaParams) (CoachApiKeyConfig, error)
+	// Store or replace the (account, provider) key with pre-sealed material, re-enabling it.
+	// $8 is_default: the store passes true only when this is the account's first key. On
+	// conflict the row keeps its default flag unless $8 promotes it. The raw key never reaches
+	// this layer as a column.
 	UpsertApiKeyConfig(ctx context.Context, arg UpsertApiKeyConfigParams) (CoachApiKeyConfig, error)
 	// Get-or-create the thread for (account, page context). The no-op DO UPDATE makes the
 	// existing row's id come back via RETURNING on a conflict, so concurrent first-messages

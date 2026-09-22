@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useLogout, useMe } from "../lib/auth";
 import { buildCrumbs } from "../nav";
+import { CoachModelSwitcher } from "./CoachModelSwitcher";
 import { Icon } from "./Icon";
 import { PathSwitcher } from "./PathSwitcher";
 
@@ -94,6 +95,8 @@ export function Topbar({ variant, slug }: { variant: "plain" | "curriculum"; slu
       <div className="xl-topbar__spacer" />
 
       {variant === "curriculum" && slug && <PathSwitcher slug={slug} />}
+
+      <CoachModelSwitcher />
 
       <button className="ds-iconbtn" aria-label="Notifications">
         <Icon name="bell" />

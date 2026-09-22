@@ -28,7 +28,8 @@ export function Coach() {
   const ctx = useCoachContext(pathname);
 
   const keyQuery = useCoachKey(open);
-  const key = keyQuery.data?.keys?.[0];
+  // The coach answers with the DEFAULT provider's key, so usability tracks that one.
+  const key = keyQuery.data?.keys?.find((k) => k.is_default) ?? keyQuery.data?.keys?.[0];
   const usable = !!key && key.enabled;
   const thread = useCoachThread(ctx.context, open && usable);
 

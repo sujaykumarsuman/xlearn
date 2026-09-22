@@ -51,25 +51,26 @@ func TestStoreIntegration(t *testing.T) {
 
 	cipher := newTestCipher(t)
 
-	t.Run("key store/get/replace/delete with envelope round-trip", func(t *testing.T) {
+	t.Run("multi-provider keys, default, and delete-promotes", func(t *testing.T) {
 		acct := newTestUUID()
 		raw := "sk-openai-integration-secret-cdef"
 		encKey, encDataKey, err := cipher.Seal([]byte(raw))
 		if err != nil {
 			t.Fatalf("seal: %v", err)
 		}
+		// First key (openai) → becomes the account default.
 		stored, err := st.PutKey(ctx, store.KeyConfig{
 			AccountID: acct, Provider: store.ProviderOpenAI,
-			EncKey: encKey, EncDataKey: encDataKey, Masked: secrets.Mask(raw), DefaultModel: "gpt-4o-mini",
+			EncKey: encKey, EncDataKey: encDataKey, Masked: secrets.Mask(raw), DefaultModel: "gpt-5.6-sol",
 		})
 		if err != nil {
 			t.Fatalf("put: %v", err)
 		}
-		if !stored.Enabled || stored.Masked != secrets.Mask(raw) {
-			t.Fatalf("stored = %+v", stored)
+		if !stored.Enabled || !stored.IsDefault || stored.Masked != secrets.Mask(raw) {
+			t.Fatalf("first key = %+v (want enabled + default)", stored)
 		}
 
-		got, err := st.GetKey(ctx, acct)
+		got, err := st.GetKey(ctx, acct, store.ProviderOpenAI)
 		if err != nil {
 			t.Fatalf("get: %v", err)
 		}
@@ -78,31 +79,56 @@ func TestStoreIntegration(t *testing.T) {
 			t.Fatalf("round trip: dec=%q err=%v", dec, err)
 		}
 
-		// Replace (upsert) with a different provider re-enables + overwrites.
+		// Second key (anthropic) → connected, NOT default.
 		raw2 := "sk-ant-integration-secret-9999"
 		e2, d2, _ := cipher.Seal([]byte(raw2))
-		if _, err := st.PutKey(ctx, store.KeyConfig{AccountID: acct, Provider: store.ProviderAnthropic, EncKey: e2, EncDataKey: d2, Masked: secrets.Mask(raw2), DefaultModel: "claude-3-5-sonnet-latest"}); err != nil {
-			t.Fatalf("replace: %v", err)
+		ant, err := st.PutKey(ctx, store.KeyConfig{AccountID: acct, Provider: store.ProviderAnthropic, EncKey: e2, EncDataKey: d2, Masked: secrets.Mask(raw2), DefaultModel: "claude-sonnet-5"})
+		if err != nil {
+			t.Fatalf("second put: %v", err)
 		}
-		got2, _ := st.GetKey(ctx, acct)
-		if got2.Provider != store.ProviderAnthropic {
-			t.Fatalf("replace did not overwrite provider: %+v", got2)
+		if ant.IsDefault {
+			t.Fatal("second key must not be default")
+		}
+		if keys, _ := st.ListKeys(ctx, acct); len(keys) != 2 {
+			t.Fatalf("want 2 keys, got %d", len(keys))
+		}
+		if def, _ := st.GetDefaultKey(ctx, acct); def.Provider != store.ProviderOpenAI {
+			t.Fatalf("default = %q, want openai", def.Provider)
 		}
 
-		// Disable, then delete.
-		if err := st.SetKeyEnabled(ctx, acct, false); err != nil {
+		// Move the default to anthropic.
+		moved, err := st.SetDefault(ctx, acct, store.ProviderAnthropic)
+		if err != nil || !moved.IsDefault || moved.Provider != store.ProviderAnthropic {
+			t.Fatalf("set default: %+v err=%v", moved, err)
+		}
+		if def, _ := st.GetDefaultKey(ctx, acct); def.Provider != store.ProviderAnthropic {
+			t.Fatalf("default did not move: %q", def.Provider)
+		}
+
+		// Disable anthropic, confirm per-provider.
+		if err := st.SetKeyEnabled(ctx, acct, store.ProviderAnthropic, false); err != nil {
 			t.Fatalf("disable: %v", err)
 		}
-		if g, _ := st.GetKey(ctx, acct); g.Enabled {
+		if g, _ := st.GetKey(ctx, acct, store.ProviderAnthropic); g.Enabled {
 			t.Fatal("still enabled after disable")
 		}
-		if err := st.DeleteKey(ctx, acct); err != nil {
+
+		// Delete the default (anthropic) → openai is promoted back to default.
+		if err := st.DeleteKey(ctx, acct, store.ProviderAnthropic); err != nil {
 			t.Fatalf("delete: %v", err)
 		}
-		if _, err := st.GetKey(ctx, acct); err != store.ErrNotFound {
-			t.Fatalf("get after delete = %v, want ErrNotFound", err)
+		if def, _ := st.GetDefaultKey(ctx, acct); def.Provider != store.ProviderOpenAI {
+			t.Fatalf("delete-default did not promote openai: %q", def.Provider)
 		}
-		if err := st.DeleteKey(ctx, acct); err != store.ErrNotFound {
+
+		// Delete the last key → no default remains, and a re-delete is a no-op.
+		if err := st.DeleteKey(ctx, acct, store.ProviderOpenAI); err != nil {
+			t.Fatalf("delete last: %v", err)
+		}
+		if _, err := st.GetDefaultKey(ctx, acct); err != store.ErrNotFound {
+			t.Fatalf("default after all deleted = %v, want ErrNotFound", err)
+		}
+		if err := st.DeleteKey(ctx, acct, store.ProviderOpenAI); err != store.ErrNotFound {
 			t.Fatalf("delete no-op = %v, want ErrNotFound", err)
 		}
 	})
@@ -113,8 +139,11 @@ func TestStoreIntegration(t *testing.T) {
 		if _, err := st.PutKey(ctx, store.KeyConfig{AccountID: a, Provider: store.ProviderOpenAI, EncKey: e, EncDataKey: d, Masked: "sk-...cdef"}); err != nil {
 			t.Fatalf("put: %v", err)
 		}
-		if _, err := st.GetKey(ctx, b); err != store.ErrNotFound {
+		if _, err := st.GetKey(ctx, b, store.ProviderOpenAI); err != store.ErrNotFound {
 			t.Fatalf("other account get = %v, want ErrNotFound", err)
+		}
+		if keys, _ := st.ListKeys(ctx, b); len(keys) != 0 {
+			t.Fatalf("other account list = %+v, want empty", keys)
 		}
 	})
 
