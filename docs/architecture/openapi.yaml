@@ -575,10 +575,10 @@ paths:
     get:
       tags: [coach]
       operationId: getCoachKey
-      summary: Masked key(s) + provider + model + enabled (never the raw key).
+      summary: Masked provider keys (0..2) + which one is the default (never the raw key).
       responses:
         "200":
-          description: The masked key config (empty when coach is unconfigured).
+          description: The masked key configs (empty when coach is unconfigured).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CoachKeyList" }
@@ -586,7 +586,7 @@ paths:
     put:
       tags: [coach]
       operationId: putCoachKey
-      summary: Store/replace the user's provider key (encrypted) or toggle it.
+      summary: Store/replace a provider key, toggle it, rename/re-model it, or set the default.
       requestBody:
         required: true
         content:
@@ -594,7 +594,7 @@ paths:
             schema: { $ref: "#/components/schemas/CoachKeyRequest" }
       responses:
         "200":
-          description: The updated masked key config.
+          description: The updated masked key configs.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CoachKeyList" }
@@ -606,9 +606,15 @@ paths:
     delete:
       tags: [coach]
       operationId: deleteCoachKey
-      summary: Remove the stored key.
+      summary: Remove one provider's key (promotes a survivor to default if needed).
+      parameters:
+        - name: provider
+          in: query
+          required: true
+          schema: { type: string, enum: [openai, anthropic] }
       responses:
         "204": { description: Key removed. }
+        "422": { $ref: "#/components/responses/Unprocessable" }
         "502": { $ref: "#/components/responses/BadGateway" }
         "503": { $ref: "#/components/responses/Unavailable" }
   /coach/thread:
@@ -1290,19 +1296,30 @@ components:
         provider: { type: string, enum: [openai, anthropic] }
         masked_key: { type: string }
         default_model: { type: string }
+        name: { type: string, description: Display name for this coach (defaults to the model id). }
         enabled: { type: boolean }
+        is_default: { type: boolean, description: True for the provider the coach answers with. }
     CoachKeyList:
       type: object
       properties:
         keys: { type: array, items: { $ref: "#/components/schemas/CoachKey" } }
         connected: { type: boolean }
+        default_provider: { type: string, description: The default provider id, or "" when none connected. }
     CoachKeyRequest:
       type: object
+      description: >-
+        Every mode is keyed to a `provider`. Modes: (1) store/replace — `provider` + `key`
+        (+ `default_model`, `name`); (2) set default — `provider` + `default: true`;
+        (3) toggle — `provider` + `enabled`; (4) meta update — `provider` + `default_model`
+        and/or `name` (no `key`) to change the model/name in place. An account may connect one
+        key per provider; the first becomes the default.
       required: [provider]
       properties:
         provider: { type: string, enum: [openai, anthropic] }
-        key: { type: string, description: Omit (with `enabled`) to toggle without changing the key. }
+        key: { type: string, description: Present → store/replace this provider's key. Omit for the other modes. }
+        default: { type: boolean, description: True → make this provider the account's default. }
         default_model: { type: string }
+        name: { type: string, description: Display name for this coach (defaults to the model id). }
         enabled: { type: boolean }
     CoachThread:
       type: object

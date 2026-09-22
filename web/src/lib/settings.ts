@@ -5,19 +5,63 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, ApiRequestError, apiFetch } from "./api";
 
-/** One provider key as the coach service masks it (never the raw secret). */
+/** One provider key as the coach service masks it (never the raw secret). `is_default`
+ *  marks the provider the coach answers with. */
 export interface CoachKey {
   provider: string;
   masked_key: string;
   default_model: string;
+  name: string;
   enabled: boolean;
+  is_default: boolean;
   tested?: boolean;
 }
 
-/** GET /coach/key payload. `connected` is true when the account has a stored key. */
+/** GET /coach/key payload. An account may connect one key per provider (0..2); exactly one
+ *  is the default. `connected` is true when at least one key is stored. */
 export interface CoachKeyResponse {
   keys: CoachKey[];
   connected: boolean;
+  default_provider: string;
+}
+
+/** The two coach providers, in display order (each with its key-format hint). */
+export type ProviderId = "anthropic" | "openai";
+export const COACH_PROVIDERS: { id: ProviderId; label: string; keyHint: string }[] = [
+  { id: "anthropic", label: "Anthropic", keyHint: "sk-ant-…" },
+  { id: "openai", label: "OpenAI", keyHint: "sk-…" },
+];
+
+/** One selectable coach model. */
+export interface CoachModelOption {
+  id: string;
+  label: string;
+  hint: string;
+  tag?: string;
+}
+
+/** Curated coach models per provider (F006) — the ones we recommend for coaching. The
+ *  Settings form also offers a Custom… escape hatch for any exact id the provider accepts. */
+export const COACH_MODELS: Record<ProviderId, CoachModelOption[]> = {
+  anthropic: [
+    { id: "claude-opus-5", label: "Opus 5", hint: "Most capable — deep reasoning", tag: "Recommended" },
+    { id: "claude-opus-4-8", label: "Opus 4.8", hint: "Capable, lower cost" },
+    { id: "claude-sonnet-5", label: "Sonnet 5", hint: "Balanced speed & smarts", tag: "Balanced" },
+  ],
+  openai: [
+    { id: "gpt-5.6-sol", label: "GPT-5.6 Sol", hint: "Deepest reasoning", tag: "Deepest" },
+    { id: "gpt-5.6-terra", label: "GPT-5.6 Terra", hint: "Balanced", tag: "Balanced" },
+    { id: "gpt-5.6-luna", label: "GPT-5.6 Luna", hint: "Fastest, cheapest", tag: "Fastest" },
+  ],
+};
+
+/** coachModelLabel renders a model id as its friendly label, falling back to the id. */
+export function coachModelLabel(id: string): string {
+  for (const list of Object.values(COACH_MODELS)) {
+    const m = list.find((x) => x.id === id);
+    if (m) return m.label;
+  }
+  return id;
 }
 
 /** useCoachKey fetches the masked coach-key config. Retry is off so the empty state
@@ -33,13 +77,18 @@ export function useCoachKey(enabled = true) {
   });
 }
 
-/** The PUT /coach/key body: store/replace a key (provider + key [+ model]) OR toggle an
- *  existing key's enabled flag (enabled only, no key). */
+/** The PUT /coach/key body — every mode is keyed to a `provider`:
+ *   {provider, key[, default_model, name]} → store/replace that provider's key
+ *   {provider, default:true}               → make that provider the default
+ *   {provider, enabled}                    → toggle that provider's enabled flag
+ *   {provider, default_model|name}         → change that provider's model/name (no key) */
 export interface PutCoachKeyBody {
-  provider?: string;
+  provider: string;
   key?: string;
   default_model?: string;
+  name?: string;
   enabled?: boolean;
+  default?: boolean;
 }
 
 /** usePutCoachKey stores/replaces a key or toggles enabled, then refreshes the masked
@@ -57,11 +106,12 @@ export function usePutCoachKey() {
   });
 }
 
-/** useDeleteCoachKey removes the account's key. */
+/** useDeleteCoachKey removes ONE provider's key (a survivor is promoted to default if the
+ *  removed key was the default). */
 export function useDeleteCoachKey() {
   const qc = useQueryClient();
-  return useMutation<void, ApiRequestError, void>({
-    mutationFn: () => apiFetch<void>("/coach/key", { method: "DELETE" }),
+  return useMutation<void, ApiRequestError, string>({
+    mutationFn: (provider) => apiFetch<void>(`/coach/key?provider=${encodeURIComponent(provider)}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["coach-key"] }),
   });
 }

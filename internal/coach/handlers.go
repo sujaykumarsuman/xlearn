@@ -35,133 +35,182 @@ const (
 
 // --- JSON response shapes ---
 
-// keyViewJSON is the masked, safe-to-return view of a key config (NEVER the raw key or
-// sealed material). Matches the Settings API-keys contract (S10 shell).
+// keyViewJSON is the masked, safe-to-return view of ONE provider key config (NEVER the raw
+// key or sealed material). is_default marks the provider the coach answers with.
 type keyViewJSON struct {
 	Provider     string `json:"provider"`
 	MaskedKey    string `json:"masked_key"`
 	DefaultModel string `json:"default_model"`
+	Name         string `json:"name"`
 	Enabled      bool   `json:"enabled"`
+	IsDefault    bool   `json:"is_default"`
 }
 
-// keysResponse is the GET /keys payload: the (0-or-1) masked key + a connected flag.
+// keysResponse is the GET /keys payload: the account's masked provider keys (0..2), a
+// connected flag, and which provider is the default (empty when none).
 type keysResponse struct {
-	Keys      []keyViewJSON `json:"keys"`
-	Connected bool          `json:"connected"`
+	Keys            []keyViewJSON `json:"keys"`
+	Connected       bool          `json:"connected"`
+	DefaultProvider string        `json:"default_provider"`
 }
 
 func keyView(k store.KeyConfig) keyViewJSON {
-	return keyViewJSON{Provider: k.Provider, MaskedKey: k.Masked, DefaultModel: k.DefaultModel, Enabled: k.Enabled}
+	return keyViewJSON{Provider: k.Provider, MaskedKey: k.Masked, DefaultModel: k.DefaultModel, Name: k.Name, Enabled: k.Enabled, IsDefault: k.IsDefault}
+}
+
+// keysResponseFrom builds the masked list payload from the stored configs.
+func keysResponseFrom(keys []store.KeyConfig) keysResponse {
+	views := make([]keyViewJSON, 0, len(keys))
+	def := ""
+	for _, k := range keys {
+		views = append(views, keyView(k))
+		if k.IsDefault {
+			def = k.Provider
+		}
+	}
+	return keysResponse{Keys: views, Connected: len(views) > 0, DefaultProvider: def}
 }
 
 // --- key config handlers ---
 
-// handleGetKey: GET /keys — the masked key config + connected flag (never the raw key).
-func (s *Service) handleGetKey(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
-	k, err := s.store.GetKey(r.Context(), accountID)
-	if errors.Is(err, store.ErrNotFound) {
-		writeJSON(w, http.StatusOK, keysResponse{Keys: []keyViewJSON{}, Connected: false})
-		return
-	}
+// writeKeys reads the account's provider keys and writes the masked list + default.
+func (s *Service) writeKeys(w http.ResponseWriter, r *http.Request, accountID string) {
+	keys, err := s.store.ListKeys(r.Context(), accountID)
 	if err != nil {
-		s.mapErr(w, "get key", err)
+		s.mapErr(w, "list keys", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, keysResponse{Keys: []keyViewJSON{keyView(k)}, Connected: true})
+	writeJSON(w, http.StatusOK, keysResponseFrom(keys))
 }
 
-// handlePutKey: PUT /keys — store/replace the provider key (envelope-encrypted), OR flip
-// enabled without re-entering the key when only {enabled} is sent (the Settings toggle).
+// handleGetKey: GET /keys — the masked provider keys + connected + default (never a raw key).
+func (s *Service) handleGetKey(w http.ResponseWriter, r *http.Request) {
+	s.writeKeys(w, r, claimsFrom(r.Context()).Subject)
+}
+
+// handlePutKey: PUT /keys — one body, four modes, every mode keyed to a provider:
+//
+//	{provider, key[, default_model, name]} → store/replace that provider's key (sealed)
+//	{provider, default:true}               → make that provider the account's default
+//	{provider, enabled}                    → toggle that provider's enabled flag
+//	{provider, default_model|name}         → change that provider's model/name (no key)
+//
+// The gateway never sees the raw key beyond forwarding it; coach seals it here.
 func (s *Service) handlePutKey(w http.ResponseWriter, r *http.Request) {
 	accountID := claimsFrom(r.Context()).Subject
 	var body struct {
 		Provider     string `json:"provider"`
 		Key          string `json:"key"`
 		DefaultModel string `json:"default_model"`
+		Name         string `json:"name"`
 		Enabled      *bool  `json:"enabled"`
+		Default      bool   `json:"default"`
 	}
 	if err := decodeJSONStrict(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "invalid body")
 		return
 	}
-	rawKey := strings.TrimSpace(body.Key)
-
-	// Toggle-only path: {enabled} with no key flips the stored key's enabled flag.
-	if rawKey == "" {
-		if body.Enabled == nil {
-			writeError(w, http.StatusBadRequest, "bad_request", "provide a key to store, or enabled to toggle")
-			return
-		}
-		if err := s.store.SetKeyEnabled(r.Context(), accountID, *body.Enabled); err != nil {
-			s.mapErr(w, "set enabled", err)
-			return
-		}
-		s.writeCurrentKey(w, r, accountID)
-		return
-	}
-
-	// Store/replace path: validate + seal + mask.
 	provider := strings.ToLower(strings.TrimSpace(body.Provider))
 	if !store.ValidProvider(provider) {
 		writeError(w, http.StatusUnprocessableEntity, "invalid_provider", "provider must be openai or anthropic")
 		return
 	}
-	if len(rawKey) > maxRawKeyLen {
-		writeError(w, http.StatusUnprocessableEntity, "invalid_key", "key is too long")
-		return
-	}
-	defaultModel := strings.TrimSpace(body.DefaultModel)
-	if len(defaultModel) > maxDescFieldLen {
+	rawKey := strings.TrimSpace(body.Key)
+	model := strings.TrimSpace(body.DefaultModel)
+	name := strings.TrimSpace(body.Name)
+	if len(model) > maxDescFieldLen {
 		writeError(w, http.StatusUnprocessableEntity, "invalid_model", "default model is too long")
 		return
 	}
-	if defaultModel == "" {
-		if p, ok := s.providerFor(provider); ok {
-			defaultModel = p.DefaultModel()
-		}
+	if len(name) > maxDescFieldLen {
+		writeError(w, http.StatusUnprocessableEntity, "invalid_name", "name is too long")
+		return
 	}
 
-	encKey, encDataKey, err := s.cipher.Seal([]byte(rawKey))
-	if err != nil {
-		// Never log the key; the seal error carries no secret bytes.
-		s.log.Error("coach: seal key failed", "err", err)
-		writeError(w, http.StatusInternalServerError, "internal", "could not store key")
+	switch {
+	case rawKey != "":
+		// Store / replace this provider's key (validate + seal + mask).
+		if len(rawKey) > maxRawKeyLen {
+			writeError(w, http.StatusUnprocessableEntity, "invalid_key", "key is too long")
+			return
+		}
+		if model == "" {
+			if p, ok := s.providerFor(provider); ok {
+				model = p.DefaultModel()
+			}
+		}
+		if name == "" {
+			name = model
+		}
+		encKey, encDataKey, err := s.cipher.Seal([]byte(rawKey))
+		if err != nil {
+			// Never log the key; the seal error carries no secret bytes.
+			s.log.Error("coach: seal key failed", "err", err)
+			writeError(w, http.StatusInternalServerError, "internal", "could not store key")
+			return
+		}
+		if _, err := s.store.PutKey(r.Context(), store.KeyConfig{
+			AccountID: accountID, Provider: provider, EncKey: encKey, EncDataKey: encDataKey,
+			Masked: secrets.Mask(rawKey), DefaultModel: model, Name: name,
+		}); err != nil {
+			s.mapErr(w, "put key", err)
+			return
+		}
+
+	case body.Default:
+		// Make this provider the account's default.
+		if _, err := s.store.SetDefault(r.Context(), accountID, provider); err != nil {
+			s.mapErr(w, "set default", err)
+			return
+		}
+
+	case body.Enabled != nil:
+		// Toggle this provider's enabled flag without touching the key.
+		if err := s.store.SetKeyEnabled(r.Context(), accountID, provider, *body.Enabled); err != nil {
+			s.mapErr(w, "set enabled", err)
+			return
+		}
+
+	case model != "" || name != "":
+		// Meta update: switch model / rename this provider's coach without re-entering the key.
+		// A partial edit keeps the untouched field; an empty name falls back to the model id.
+		cur, err := s.store.GetKey(r.Context(), accountID, provider)
+		if err != nil {
+			s.mapErr(w, "meta: get key", err)
+			return
+		}
+		if model == "" {
+			model = cur.DefaultModel
+		}
+		if name == "" {
+			name = model
+		}
+		if _, err := s.store.UpdateKeyMeta(r.Context(), accountID, provider, model, name); err != nil {
+			s.mapErr(w, "update meta", err)
+			return
+		}
+
+	default:
+		writeError(w, http.StatusBadRequest, "bad_request", "provide a key, default_model/name, enabled, or default")
 		return
 	}
-	stored, err := s.store.PutKey(r.Context(), store.KeyConfig{
-		AccountID:    accountID,
-		Provider:     provider,
-		EncKey:       encKey,
-		EncDataKey:   encDataKey,
-		Masked:       secrets.Mask(rawKey),
-		DefaultModel: defaultModel,
-	})
-	if err != nil {
-		s.mapErr(w, "put key", err)
-		return
-	}
-	writeJSON(w, http.StatusOK, keysResponse{Keys: []keyViewJSON{keyView(stored)}, Connected: true})
+
+	s.writeKeys(w, r, accountID)
 }
 
-// handleDeleteKey: DELETE /keys — remove the account's key.
+// handleDeleteKey: DELETE /keys?provider= — remove one provider's key.
 func (s *Service) handleDeleteKey(w http.ResponseWriter, r *http.Request) {
 	accountID := claimsFrom(r.Context()).Subject
-	if err := s.store.DeleteKey(r.Context(), accountID); err != nil {
+	provider := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("provider")))
+	if !store.ValidProvider(provider) {
+		writeError(w, http.StatusUnprocessableEntity, "invalid_provider", "provider must be openai or anthropic")
+		return
+	}
+	if err := s.store.DeleteKey(r.Context(), accountID, provider); err != nil {
 		s.mapErr(w, "delete key", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-// writeCurrentKey re-reads and returns the account's masked key (used after a toggle).
-func (s *Service) writeCurrentKey(w http.ResponseWriter, r *http.Request, accountID string) {
-	k, err := s.store.GetKey(r.Context(), accountID)
-	if err != nil {
-		s.mapErr(w, "read key", err)
-		return
-	}
-	writeJSON(w, http.StatusOK, keysResponse{Keys: []keyViewJSON{keyView(k)}, Connected: true})
 }
 
 // --- thread history ---
@@ -230,9 +279,10 @@ func (s *Service) handleChat(w http.ResponseWriter, r *http.Request) {
 		message = message[:maxMessageLen]
 	}
 
-	// Load the key config. No key / disabled key → a clean 4xx the client maps to the
-	// Settings empty state (this is BEFORE any SSE bytes, so a real status is possible).
-	kc, err := s.store.GetKey(r.Context(), accountID)
+	// Load the DEFAULT provider's key config (the one the coach answers with). No key /
+	// disabled key → a clean 4xx the client maps to the Settings empty state (this is BEFORE
+	// any SSE bytes, so a real status is possible).
+	kc, err := s.store.GetDefaultKey(r.Context(), accountID)
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusConflict, "no_key", "no provider key configured")
 		return
@@ -307,14 +357,14 @@ func (s *Service) handleChat(w http.ResponseWriter, r *http.Request) {
 	})
 	secrets.Zero(rawKey) // zero as soon as the provider call is done (before persistence)
 
-	s.finishChat(r, accountID, threadID, &reply, sse, streamErr)
+	s.finishChat(r, accountID, kc.Provider, threadID, &reply, sse, streamErr)
 }
 
 // finishChat handles the terminal outcome of a chat stream: it persists the assistant
 // reply (best-effort, on a detached context so a client disconnect doesn't abort the
 // write), and emits the closing SSE event — or, when the provider rejected the key before
 // any byte was sent, a clean 4xx + an enabled=false flip.
-func (s *Service) finishChat(r *http.Request, accountID, threadID string, reply *strings.Builder, sse *sseWriter, streamErr error) {
+func (s *Service) finishChat(r *http.Request, accountID, provider, threadID string, reply *strings.Builder, sse *sseWriter, streamErr error) {
 	// A detached context so persistence survives a cancelled request (client gone).
 	bg, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Second)
 	defer cancel()
@@ -329,8 +379,8 @@ func (s *Service) finishChat(r *http.Request, accountID, threadID string, reply 
 		_ = sse.event("done", map[string]any{"done": true})
 
 	case errors.Is(streamErr, ErrProviderAuth):
-		// The user's key is bad: disable it so the client routes back to Settings.
-		if err := s.store.SetKeyEnabled(bg, accountID, false); err != nil {
+		// The user's key is bad: disable that provider so the client routes back to Settings.
+		if err := s.store.SetKeyEnabled(bg, accountID, provider, false); err != nil {
 			s.log.Warn("coach: disable bad key failed", "err", err)
 		}
 		if sse.started {

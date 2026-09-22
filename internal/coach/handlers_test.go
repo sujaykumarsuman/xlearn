@@ -106,6 +106,10 @@ func TestPutGetDeleteKey(t *testing.T) {
 	if put.Keys[0].MaskedKey != secrets.Mask(raw) {
 		t.Fatalf("masked = %q, want %q", put.Keys[0].MaskedKey, secrets.Mask(raw))
 	}
+	// The account's first key becomes its default.
+	if !put.Keys[0].IsDefault || put.DefaultProvider != "openai" {
+		t.Fatalf("first key should be the default: %+v", put)
+	}
 
 	// GET returns the masked view — never the raw key.
 	resp = h.do(t, http.MethodGet, "/keys", nil, nil)
@@ -121,14 +125,14 @@ func TestPutGetDeleteKey(t *testing.T) {
 	}
 
 	// The stored material must decrypt back to the raw key (envelope round-trip).
-	kc, _ := h.store.GetKey(context.Background(), h.account)
+	kc, _ := h.store.GetKey(context.Background(), h.account, "openai")
 	dec, err := h.cipher.Open(kc.EncKey, kc.EncDataKey)
 	if err != nil || string(dec) != raw {
 		t.Fatalf("stored key did not round-trip: dec=%q err=%v", dec, err)
 	}
 
 	// DELETE removes it.
-	resp = h.do(t, http.MethodDelete, "/keys", nil, nil)
+	resp = h.do(t, http.MethodDelete, "/keys?provider=openai", nil, nil)
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("DELETE status %d", resp.StatusCode)
 	}
@@ -164,13 +168,13 @@ func TestPutToggleEnabled(t *testing.T) {
 	h := newHarness(t)
 	h.do(t, http.MethodPut, "/keys", map[string]any{"provider": "openai", "key": "sk-openai-abcdefghij-cdef"}, nil).Body.Close()
 
-	resp := h.do(t, http.MethodPut, "/keys", map[string]any{"enabled": false}, nil)
+	resp := h.do(t, http.MethodPut, "/keys", map[string]any{"provider": "openai", "enabled": false}, nil)
 	var off keysResponse
 	decode(t, resp, &off)
 	if off.Keys[0].Enabled {
 		t.Fatal("toggle off did not disable")
 	}
-	resp = h.do(t, http.MethodPut, "/keys", map[string]any{"enabled": true}, nil)
+	resp = h.do(t, http.MethodPut, "/keys", map[string]any{"provider": "openai", "enabled": true}, nil)
 	var on keysResponse
 	decode(t, resp, &on)
 	if !on.Keys[0].Enabled {
@@ -180,7 +184,101 @@ func TestPutToggleEnabled(t *testing.T) {
 
 func TestToggleWithoutKey404(t *testing.T) {
 	h := newHarness(t)
-	resp := h.do(t, http.MethodPut, "/keys", map[string]any{"enabled": true}, nil)
+	resp := h.do(t, http.MethodPut, "/keys", map[string]any{"provider": "openai", "enabled": true}, nil)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status %d, want 404", resp.StatusCode)
+	}
+}
+
+// TestPutUpdateMeta covers F006: switching the coach's model + name with NO key in the
+// body updates the config in place without re-sealing (the stored secret is untouched).
+func TestPutUpdateMeta(t *testing.T) {
+	h := newHarness(t)
+	raw := "sk-openai-abcdefghijklmnop-cdef"
+	h.do(t, http.MethodPut, "/keys", map[string]any{"provider": "openai", "key": raw, "default_model": "gpt-5.6-terra", "name": "Terra"}, nil).Body.Close()
+
+	// Meta-only edit: new model + name, no key.
+	resp := h.do(t, http.MethodPut, "/keys", map[string]any{"provider": "openai", "default_model": "gpt-5.6-sol", "name": "Deep Thinker"}, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("meta PUT status %d", resp.StatusCode)
+	}
+	var out keysResponse
+	decode(t, resp, &out)
+	if len(out.Keys) != 1 || out.Keys[0].DefaultModel != "gpt-5.6-sol" || out.Keys[0].Name != "Deep Thinker" {
+		t.Fatalf("meta update = %+v", out)
+	}
+	if !out.Keys[0].Enabled || out.Keys[0].MaskedKey != secrets.Mask(raw) {
+		t.Fatalf("meta update should keep the key enabled + masked: %+v", out)
+	}
+
+	// The sealed material must still round-trip to the ORIGINAL raw key (never re-sealed).
+	kc, _ := h.store.GetKey(context.Background(), h.account, "openai")
+	dec, err := h.cipher.Open(kc.EncKey, kc.EncDataKey)
+	if err != nil || string(dec) != raw {
+		t.Fatalf("meta update disturbed the sealed key: dec=%q err=%v", dec, err)
+	}
+
+	// A partial edit (name only) keeps the current model.
+	resp = h.do(t, http.MethodPut, "/keys", map[string]any{"provider": "openai", "name": "Renamed"}, nil)
+	var partial keysResponse
+	decode(t, resp, &partial)
+	if partial.Keys[0].DefaultModel != "gpt-5.6-sol" || partial.Keys[0].Name != "Renamed" {
+		t.Fatalf("partial meta update = %+v", partial)
+	}
+}
+
+func TestUpdateMetaWithoutKey404(t *testing.T) {
+	h := newHarness(t)
+	resp := h.do(t, http.MethodPut, "/keys", map[string]any{"provider": "openai", "default_model": "gpt-5.6-sol"}, nil)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status %d, want 404", resp.StatusCode)
+	}
+}
+
+// TestMultiProviderAndDefault covers F006 round 2: connect both providers, flip the default,
+// and confirm deleting the default promotes the survivor.
+func TestMultiProviderAndDefault(t *testing.T) {
+	h := newHarness(t)
+	// First key (anthropic) becomes the default.
+	h.do(t, http.MethodPut, "/keys", map[string]any{"provider": "anthropic", "key": "sk-ant-abcdefghij-4a2f", "default_model": "claude-sonnet-5", "name": "Sonnet 5"}, nil).Body.Close()
+	// Second key (openai) — connected, not default.
+	resp := h.do(t, http.MethodPut, "/keys", map[string]any{"provider": "openai", "key": "sk-openai-abcdefghij-9f2c", "default_model": "gpt-5.6-sol"}, nil)
+	var two keysResponse
+	decode(t, resp, &two)
+	if len(two.Keys) != 2 || two.DefaultProvider != "anthropic" {
+		t.Fatalf("two keys, anthropic default = %+v", two)
+	}
+
+	// Flip the default to openai (no key in the body).
+	resp = h.do(t, http.MethodPut, "/keys", map[string]any{"provider": "openai", "default": true}, nil)
+	var flipped keysResponse
+	decode(t, resp, &flipped)
+	if flipped.DefaultProvider != "openai" {
+		t.Fatalf("set-default did not move: %+v", flipped)
+	}
+	for _, k := range flipped.Keys {
+		if (k.Provider == "openai") != k.IsDefault {
+			t.Fatalf("is_default flags wrong after flip: %+v", flipped)
+		}
+	}
+
+	// Delete the default (openai) → anthropic is promoted back to default.
+	h.do(t, http.MethodDelete, "/keys?provider=openai", nil, nil).Body.Close()
+	resp = h.do(t, http.MethodGet, "/keys", nil, nil)
+	var after keysResponse
+	decode(t, resp, &after)
+	if len(after.Keys) != 1 || after.DefaultProvider != "anthropic" || !after.Keys[0].IsDefault {
+		t.Fatalf("delete-default did not promote survivor: %+v", after)
+	}
+}
+
+func TestSetDefaultUnknownProvider404(t *testing.T) {
+	h := newHarness(t)
+	h.do(t, http.MethodPut, "/keys", map[string]any{"provider": "anthropic", "key": "sk-ant-abcdefghij-4a2f"}, nil).Body.Close()
+	// openai isn't connected → can't be made default.
+	resp := h.do(t, http.MethodPut, "/keys", map[string]any{"provider": "openai", "default": true}, nil)
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("status %d, want 404", resp.StatusCode)
@@ -277,7 +375,7 @@ func TestChatNoKeyReturns409(t *testing.T) {
 func TestChatDisabledKeyReturns409(t *testing.T) {
 	h := newHarness(t)
 	h.storeOpenAIKey(t, "sk-openai-abcdefghij-cdef")
-	_ = h.store.SetKeyEnabled(context.Background(), h.account, false)
+	_ = h.store.SetKeyEnabled(context.Background(), h.account, "openai", false)
 	resp := h.do(t, http.MethodPost, "/chat", map[string]any{"context": "dashboard", "message": "hi"}, nil)
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusConflict {
@@ -301,7 +399,7 @@ func TestChatProviderAuthFailureDisablesKey(t *testing.T) {
 	}
 	resp.Body.Close()
 	// The bad key is now disabled.
-	kc, _ := h.store.GetKey(context.Background(), h.account)
+	kc, _ := h.store.GetKey(context.Background(), h.account, "openai")
 	if kc.Enabled {
 		t.Fatal("provider-auth failure did not disable the key")
 	}

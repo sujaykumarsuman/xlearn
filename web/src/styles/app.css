@@ -180,6 +180,504 @@ button.xl-acct-item:disabled {
   cursor: default;
 }
 
+/* --- Settings (F006): two-column layout, per-provider coach, pill/circle controls --- */
+
+.xl-settings {
+  width: 100%;
+  max-width: 1060px;
+  margin: 0 auto;
+}
+.xl-settings__grid {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 30px;
+  align-items: start;
+}
+.xl-settings__content {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* The requested shape language: fully-rounded controls, circular avatars, within Settings. */
+.xl-settings .ds-btn,
+.xl-settings .ds-input,
+.xl-settings .ds-chip,
+.xl-settings .ds-badge {
+  border-radius: 999px;
+}
+.xl-settings .ds-input {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+.xl-settings select.ds-input {
+  padding-right: 32px;
+}
+
+/* Section rail (sticky nav + identity). */
+.xl-set-rail {
+  position: sticky;
+  top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* Profile in the rail, styled like a GitHub profile: big avatar, name, an Edit-profile
+   button, then meta rows (local time, email). Editing swaps in a compact form. */
+.xl-pf {
+  border: 1px solid var(--ds-line);
+  border-radius: 16px;
+  background: var(--ds-panel);
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.xl-pf__avatar {
+  position: relative;
+  align-self: center;
+  margin: 4px 0;
+}
+.xl-pf__av {
+  width: 108px;
+  height: 108px;
+  font-size: 40px;
+}
+.xl-pf__avatar .xl-pf__avedit {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 32px;
+  height: 32px;
+}
+.xl-pf__name {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.xl-pf__editbtn {
+  width: 100%;
+}
+.xl-pf__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin-top: 2px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ds-line);
+}
+.xl-pf__metarow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--ds-dim);
+}
+.xl-pf__metarow > svg,
+.xl-pf__metarow > .xl-ico {
+  color: var(--ds-muted);
+  flex: none;
+}
+.xl-pf__metaval {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.xl-pf__form {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.xl-pf__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.xl-pf-btn {
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--ds-line-2);
+  background: var(--ds-panel-2);
+  color: var(--ds-dim);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex: none;
+  transition: 0.14s;
+}
+.xl-pf-btn:hover:not(:disabled) {
+  border-color: var(--ds-teal);
+  color: var(--ds-teal);
+}
+.xl-pf-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.xl-pf-err {
+  font-size: 11.5px;
+  color: var(--ds-err);
+}
+.xl-set-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.xl-rail {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ds-dim);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 550;
+  text-align: left;
+  cursor: pointer;
+}
+.xl-rail:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ds-text);
+}
+.xl-rail--on {
+  background: rgba(53, 208, 192, 0.1);
+  color: var(--ds-teal);
+}
+
+.xl-set-card {
+  border: 1px solid var(--ds-line);
+  border-radius: 14px;
+  background: var(--ds-panel);
+  overflow: hidden;
+}
+.xl-set-card__h {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--ds-line);
+}
+.xl-set-card__ic {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(53, 208, 192, 0.13);
+  color: var(--ds-teal);
+}
+.xl-set-card__b {
+  padding: 18px;
+}
+
+/* Inset info/hint strip (budget ETA, etc.). */
+.xl-set-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  background: var(--ds-inset);
+  border: 1px solid var(--ds-line);
+  border-radius: 12px;
+  font-size: 12px;
+  color: var(--ds-dim);
+}
+
+/* Coach: the default summary line + per-provider panels. */
+.xl-coach-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--ds-dim);
+}
+.xl-coach-summary > svg {
+  color: var(--ds-teal);
+}
+.xl-prov {
+  border: 1px solid var(--ds-line-2);
+  border-radius: 16px;
+  background: var(--ds-panel-2);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.xl-prov--default {
+  border-color: var(--ds-teal);
+  box-shadow: inset 0 0 0 1px rgba(53, 208, 192, 0.45);
+  background: rgba(53, 208, 192, 0.05);
+}
+.xl-prov__head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.xl-prov__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--ds-ok);
+}
+.xl-prov__status--off {
+  color: var(--ds-muted);
+}
+.xl-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ds-ok);
+  flex: none;
+  box-shadow: 0 0 0 3px rgba(87, 211, 154, 0.16);
+}
+.xl-prov__grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 12px;
+}
+.xl-prov__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.xl-keyline {
+  display: flex;
+  gap: 8px;
+}
+.xl-keyline .ds-input {
+  flex: 1;
+}
+
+/* Model pills (curated + Custom). */
+.xl-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.xl-mpill {
+  height: 34px;
+  padding: 0 15px;
+  border-radius: 999px;
+  border: 1px solid var(--ds-line-2);
+  background: var(--ds-input-bg);
+  color: var(--ds-dim);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.xl-mpill:hover {
+  border-color: rgba(53, 208, 192, 0.5);
+  color: var(--ds-text);
+}
+.xl-mpill--on {
+  border-color: var(--ds-teal);
+  color: var(--ds-teal);
+  background: rgba(53, 208, 192, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(53, 208, 192, 0.35);
+}
+
+/* Default badge + set-default button. */
+.xl-defbadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #06231f;
+  background: var(--ds-teal);
+  flex: none;
+}
+.xl-setdef {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 999px;
+  border: 1px solid var(--ds-line-2);
+  background: var(--ds-input-bg);
+  color: var(--ds-dim);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  flex: none;
+}
+.xl-setdef:hover {
+  border-color: var(--ds-teal);
+  color: var(--ds-teal);
+}
+
+/* Provider logo tile (shared by Settings + the header switch). */
+.xl-logo {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* --- header coach quick-switch (F006) --- */
+.xl-coachsw {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.xl-pillsw {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--ds-input-bg);
+  border: 1px solid var(--ds-line-2);
+  border-radius: 999px;
+}
+.xl-pillsw__btn {
+  width: 34px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ds-text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0.5;
+}
+.xl-pillsw__btn:hover {
+  opacity: 0.85;
+}
+.xl-pillsw__btn--on {
+  opacity: 1;
+  background: var(--ds-panel-2);
+  box-shadow: inset 0 0 0 1px rgba(53, 208, 192, 0.45);
+}
+.xl-modelbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--ds-line-2);
+  background: var(--ds-panel-2);
+  color: var(--ds-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.xl-modelbtn:hover {
+  border-color: rgba(53, 208, 192, 0.5);
+}
+.xl-modelbtn__lg {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--ds-inset);
+  flex: none;
+}
+.xl-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 280px;
+  z-index: 40;
+  padding: 7px;
+  background: var(--ds-panel-2);
+  border: 1px solid var(--ds-line-2);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+.xl-menu__head {
+  padding: 8px 10px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ds-muted);
+}
+.xl-menu__sep {
+  height: 1px;
+  background: var(--ds-line);
+  margin: 6px 4px;
+}
+.xl-mitem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ds-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+}
+.xl-mitem:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.xl-mitem--on {
+  background: rgba(53, 208, 192, 0.1);
+}
+.xl-mitem--link {
+  color: var(--ds-dim);
+  font-size: 12.5px;
+}
+.xl-mitem__label {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.xl-mitem__hint {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ds-muted);
+}
+
+/* Header icon buttons as circles (matches the pill/circle language). */
+.xl-topbar .ds-iconbtn {
+  border-radius: 50%;
+}
+
+@media (max-width: 720px) {
+  .xl-settings__grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .xl-set-rail {
+    position: static;
+  }
+  .xl-set-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .xl-rail {
+    flex: none;
+  }
+  .xl-prov__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* --- shell chrome fixes (layered on the verbatim theme.css) --- */
 
 /* The account-menu header avatar is a <span class="ds-avatar">, but theme.css's

@@ -14,7 +14,7 @@ import (
 // coachEmptyKey is the "no key — coach off" empty state (api.md GET /coach/key). It is
 // returned when coach is not deployed or has no key for the account. The masked read
 // never carries a raw key.
-var coachEmptyKey = []byte(`{"keys":[],"connected":false}`)
+var coachEmptyKey = []byte(`{"keys":[],"connected":false,"default_provider":""}`)
 
 // coachModeHeader carries the SERVER-AUTHORITATIVE behaviour gate to coach: the gateway
 // derives it from practice's state (not the client), so a browser can't unlock reviewer
@@ -57,9 +57,9 @@ func (c *coachClient) putKey(ctx context.Context, token string, body []byte) ([]
 	return c.jsonReq(ctx, http.MethodPut, "/keys", token, body)
 }
 
-// deleteKey removes the account's key.
-func (c *coachClient) deleteKey(ctx context.Context, token string) ([]byte, int, error) {
-	return c.jsonReq(ctx, http.MethodDelete, "/keys", token, nil)
+// deleteKey removes one provider's key (provider carried through as a query param).
+func (c *coachClient) deleteKey(ctx context.Context, token, provider string) ([]byte, int, error) {
+	return c.jsonReq(ctx, http.MethodDelete, "/keys?provider="+url.QueryEscape(provider), token, nil)
 }
 
 // getThread fetches the message history for a page context.
@@ -178,7 +178,7 @@ func (g *Gateway) handleDeleteCoachKey(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	body, status, err := g.coach.deleteKey(r.Context(), token)
+	body, status, err := g.coach.deleteKey(r.Context(), token, r.URL.Query().Get("provider"))
 	if err != nil {
 		g.log.Error("bff DELETE /coach/key: coach call failed", "err", err)
 		writeError(w, http.StatusBadGateway, "upstream", "coach unavailable")

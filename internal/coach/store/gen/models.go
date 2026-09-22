@@ -19,6 +19,8 @@ type CoachApiKeyConfig struct {
 	Enabled      bool
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
+	Name         string
+	IsDefault    bool
 }
 
 type CoachCoachMessage struct {

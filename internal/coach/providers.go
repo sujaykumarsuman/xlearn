@@ -75,7 +75,7 @@ func NewOpenAIProvider(baseURL string, httpc *http.Client) *OpenAIProvider {
 	return &OpenAIProvider{baseURL: strings.TrimRight(baseURL, "/"), httpc: httpc}
 }
 
-func (p *OpenAIProvider) DefaultModel() string { return "gpt-4o-mini" }
+func (p *OpenAIProvider) DefaultModel() string { return "gpt-5.6-sol" }
 
 func (p *OpenAIProvider) Stream(ctx context.Context, apiKey string, req ChatRequest, sink func(string) error) error {
 	msgs := make([]map[string]string, 0, len(req.Messages)+1)
@@ -157,7 +157,7 @@ func NewAnthropicProvider(baseURL string, httpc *http.Client) *AnthropicProvider
 	return &AnthropicProvider{baseURL: strings.TrimRight(baseURL, "/"), httpc: httpc}
 }
 
-func (p *AnthropicProvider) DefaultModel() string { return "claude-3-5-sonnet-latest" }
+func (p *AnthropicProvider) DefaultModel() string { return "claude-sonnet-5" }
 
 func (p *AnthropicProvider) Stream(ctx context.Context, apiKey string, req ChatRequest, sink func(string) error) error {
 	msgs := make([]map[string]string, 0, len(req.Messages))
