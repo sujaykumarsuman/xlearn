@@ -74,10 +74,10 @@ building. The design landed on **more than one coach**:
 
 ## Status
 
-✅ **Done — in local review.** Code-complete and green (Go build/vet/test, `sqlc diff`, web
-typecheck/lint, 83 web tests). Rebuilt on the local docker-compose stack for the owner to
-review at `http://localhost:8080/xlearn` → Settings + the header quick-switch. Land-and-sync
-only after an explicit go-ahead — it ships as `v1.2.0` (coach schema migration included).
+🚀 **Shipped as `v1.2.0`** (2026-09-22). Merged (xlearn#34) → `v1.2.0` tag → `deploy.yml`
+(7 images) → Flux → **verified live**: gateway `v1.2.0`; the multi-key coach API
+(`GET`/`PUT`/`DELETE /coach/key`) is session-gated (401, not 404) and dev-login is 404 in prod;
+the coach schema migrated (`is_default` + `UNIQUE(account_id, provider)`). Local `main` synced.
 
 ## Notes
 
