@@ -22,17 +22,17 @@ Legend: ⬜ planned · 🔄 in progress · ✅ done (in local review) · 🚀 sh
 
 | ID | Feedback | Status |
 |----|----------|--------|
-| [F001](F001-shell-and-nav-restructure.md) | Shell & nav restructure: no left nav on the home/Catalog, curriculum-scoped nav, curriculum selector → top bar (replacing search), drop Settings/Progress from the nav | ✅ done (local review) |
-| [F002](F002-start-path-enrollment.md) | Stop DSA being pre-"Active": a per-user **Start path** action; once started show current day, streak, and today's scheduled item | ✅ done (local review) |
-| [F003](F003-rename-dsa-path.md) | Rename **DSA Interview Mastery** → **Data Structures & Algorithms** | ✅ done (local review) |
-| [F004](F004-projects-hub-entry.md) | Add xLearn to **projects-hub** (`projects.sujaykumar.dev`), as the first project | ✅ done (local review) |
-| [F005](F005-curriculum-gating-and-problems-arena.md) | Round 2: enrollment gates solving, scheduled-only counting, the **Problems** arena, Roadmap wired, top-bar overlap fix | 🔄 core done (local review); one dual-state nuance deferred |
+| [F001](F001-shell-and-nav-restructure.md) | Shell & nav restructure: no left nav on the home/Catalog, curriculum-scoped nav, curriculum selector → top bar (replacing search), drop Settings/Progress from the nav | 🚀 shipped (`v1.1.0`) |
+| [F002](F002-start-path-enrollment.md) | Stop DSA being pre-"Active": a per-user **Start path** action; once started show current day, streak, and today's scheduled item | 🚀 shipped (`v1.1.0`) |
+| [F003](F003-rename-dsa-path.md) | Rename **DSA Interview Mastery** → **Data Structures & Algorithms** | 🚀 shipped (`v1.1.0`) |
+| [F004](F004-projects-hub-entry.md) | Add xLearn to **projects-hub** (`projects.sujaykumar.dev`), as the first project | 🚀 shipped (`github.io#28`) |
+| [F005](F005-curriculum-gating-and-problems-arena.md) | Rounds 2–3: enrollment gates solving, scheduled-only counting, the **Problems** arena (untimed study), Roadmap wired, top-bar overlap fix | 🚀 shipped (`v1.1.0`) — one dual-state nuance deferred |
 
-F001–F004 are built + green + verified in the local stack. F005 (review rounds 2–3) lands the enrollment
-gate, scheduled-only counting, the Problems arena (an untimed, state-free study view), and the
-consistency/overlap fixes; one nuance (ahead solves *marking* personal-solved + re-attempt-from-course)
-is deferred pending a careful practice-engine change. **Go-ahead given 2026-09-22 → shipping in
-`v1.1.0`** (branch → PR → CI → merge → `v1.1.0` tag → Flux deploy → verify → sync `main`).
+**Shipped as `v1.1.0`** (2026-09-22): merged (xlearn#32) → `v1.1.0` tag → Flux deploy → verified live
+(gateway `v1.1.0`; the arena/enrollment/progress routes session-gated; dev login 404 in prod).
+projects-hub shipped separately (`sujaykumarsuman.github.io#28`). One F005 nuance (ahead/practice
+attempts *marking* personal-solved + re-attempt-from-course-to-credit) is deferred pending a careful
+practice-engine change.
 
 ## Forward context (not this batch)
 
