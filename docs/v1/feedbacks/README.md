@@ -27,7 +27,12 @@ Legend: ⬜ planned · 🔄 in progress · ✅ done (in local review) · 🚀 sh
 | [F003](F003-rename-dsa-path.md) | Rename **DSA Interview Mastery** → **Data Structures & Algorithms** | 🚀 shipped (`v1.1.0`) |
 | [F004](F004-projects-hub-entry.md) | Add xLearn to **projects-hub** (`projects.sujaykumar.dev`), as the first project | 🚀 shipped (`github.io#28`) |
 | [F005](F005-curriculum-gating-and-problems-arena.md) | Rounds 2–3: enrollment gates solving, scheduled-only counting, the **Problems** arena (untimed study), Roadmap wired, top-bar overlap fix | 🚀 shipped (`v1.1.0`) — one dual-state nuance deferred |
-| [F006](F006-settings-redesign-and-coach-model.md) | Round 4–5: **Settings redesign** (section rail + cards, pill/circle controls) + **multi-provider coach** — connect Anthropic *and* OpenAI, each with its model/name, one marked the **default**; a **header quick-switch** (provider pill + model dropdown) sets it from anywhere | 🔄 in local review |
+| [F006](F006-settings-redesign-and-coach-model.md) | Round 4–5: **Settings redesign** (section rail + cards, pill/circle controls, GitHub-style profile card) + **multi-provider coach** — connect Anthropic *and* OpenAI, each with its model/name, one marked the **default**; a **header quick-switch** (provider pill + model dropdown) sets it from anywhere | 🚀 shipped (`v1.2.0`) |
+
+**Shipped as `v1.2.0`** (2026-09-22): merged (xlearn#34) → `v1.2.0` tag → Flux deploy → verified live
+(gateway `v1.2.0`). The coach schema migrated to one key per (account, provider) + a default pointer;
+the multi-key coach API (`PUT`/`DELETE /coach/key`) + the header quick-switch are session-gated behind
+auth in prod. bio/location/website profile fields were deferred (visual-only profile restyle).
 
 **Shipped as `v1.1.0`** (2026-09-22): merged (xlearn#32) → `v1.1.0` tag → Flux deploy → verified live
 (gateway `v1.1.0`; the arena/enrollment/progress routes session-gated; dev login 404 in prod).
