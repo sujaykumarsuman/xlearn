@@ -32,7 +32,7 @@ func do(t *testing.T, h http.Handler, method, path string) (*httptest.ResponseRe
 func seededFake() *fakeStore {
 	f := newFakeStore()
 	f.paths = []store.Path{
-		{Slug: "dsa", Title: "DSA Interview Mastery", Status: "active", Summary: "s", ProblemTotal: 151, WeekTotal: 16},
+		{Slug: "dsa", Title: "Data Structures & Algorithms", Status: "active", Summary: "s", ProblemTotal: 151, WeekTotal: 16},
 		{Slug: "system-design", Title: "System Design Interviews", Status: "coming_soon", Summary: "sd", ProblemTotal: 40, WeekTotal: 12},
 	}
 	f.phases["dsa"] = []store.Phase{

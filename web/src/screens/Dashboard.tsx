@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import { Icon } from "../components/Icon";
+import { useMe } from "../lib/auth";
 import { useDashboard } from "../lib/dashboard";
 import type { DashboardData, DashboardWeek, PlanItem, PlanProblem, PlanReview } from "../lib/dashboard";
+import { currentDay, enrollmentFor } from "../lib/enrollment";
 import { categoryLabel } from "../lib/mistakes";
 import type { Reminder, WeakArea } from "../lib/mistakes";
 import type { DueItem } from "../lib/revision";
@@ -15,14 +17,17 @@ import type { DueItem } from "../lib/revision";
 export default function Dashboard() {
   const q = useDashboard();
   const data = q.data;
+  const me = useMe();
+  const day = currentDay(enrollmentFor(me.data, "dsa"));
 
   return (
     <div>
       <div className="xl-page-h" style={{ borderBottom: "1px solid var(--ds-line)", paddingBottom: 16, marginBottom: 20 }}>
         <div>
-          <div className="xl-eyebrow">DSA Interview Mastery</div>
+          <div className="xl-eyebrow">Data Structures &amp; Algorithms</div>
           <h1 style={{ marginTop: 6, fontSize: 26, fontWeight: 700, letterSpacing: "-.3px" }}>Today</h1>
           <p style={{ margin: "8px 0 0", fontSize: 13.5, color: "var(--ds-dim)" }}>
+            {day != null ? `Day ${day} · ` : ""}
             {todayLabel()}
             {data?.week ? ` · Week ${data.week.n}${data.week.title ? ` — ${data.week.title}` : ""}` : ""} · reviews come before new problems.
           </p>

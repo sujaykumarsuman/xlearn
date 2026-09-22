@@ -43,6 +43,35 @@ function agg(status: string, stageReached: string, unlocked: string[], sections:
 describe("Problem workspace", () => {
   afterEach(restoreFetch);
 
+  it("gates the workspace behind starting the path when not enrolled (review round 2)", async () => {
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.includes("/api/problems/16"))
+        return { status: 200, body: { ...agg("available", "", ["attempt"], [STATEMENT]), gate: { enrolled: false, scheduled: false, currentWeek: 0, problemWeek: 2 } } };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/dsa/problem/16");
+
+    expect(await screen.findByRole("heading", { name: /start the path to begin/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /start path/i })).toBeInTheDocument();
+    // The workspace itself (the statement) is not rendered while gated.
+    expect(screen.queryByText("Find all unique triplets that sum to zero.")).not.toBeInTheDocument();
+  });
+
+  it("shows an ahead-of-schedule banner but still renders the workspace (free practice)", async () => {
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.includes("/api/problems/16"))
+        return { status: 200, body: { ...agg("available", "", ["attempt"], [STATEMENT]), gate: { enrolled: true, scheduled: false, currentWeek: 1, problemWeek: 2 } } };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/dsa/problem/16");
+
+    expect(await screen.findByText(/Ahead of schedule/)).toBeInTheDocument();
+    // Enrolled → you can still practice it; the statement renders.
+    expect(screen.getByText("Find all unique triplets that sum to zero.")).toBeInTheDocument();
+  });
+
   it("shows the statement + Start attempt, and withholds locked hint/solution", async () => {
     installFetchMock((url) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };

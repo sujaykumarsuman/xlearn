@@ -239,6 +239,24 @@ func (s *Service) handleOnboardingStep(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleStartEnrollment enrolls the caller in a path (F002 · POST /paths/{slug}/start).
+// JWT-scoped to the caller's own account; idempotent (a repeat start keeps the original
+// started_at, so "current day" never resets).
+func (s *Service) handleStartEnrollment(w http.ResponseWriter, r *http.Request) {
+	claims := claimsFrom(r.Context())
+	slug := r.PathValue("slug")
+	if slug == "" {
+		writeError(w, http.StatusUnprocessableEntity, "invalid_path", "path slug is required")
+		return
+	}
+	e, err := s.store.StartEnrollment(r.Context(), claims.Subject, slug)
+	if err != nil {
+		s.mapStoreErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"enrollment": toEnrollmentJSON(e)})
+}
+
 func (s *Service) writeAccount(w http.ResponseWriter, r *http.Request, id string) {
 	acct, err := s.store.GetAccount(r.Context(), id)
 	if err != nil {
@@ -250,9 +268,15 @@ func (s *Service) writeAccount(w http.ResponseWriter, r *http.Request, id string
 		s.mapStoreErr(w, err)
 		return
 	}
+	enrollments, err := s.store.ListEnrollments(r.Context(), id)
+	if err != nil {
+		s.mapStoreErr(w, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"account":    toAccountJSON(acct),
-		"onboarding": toOnboardingJSON(ob),
+		"account":     toAccountJSON(acct),
+		"onboarding":  toOnboardingJSON(ob),
+		"enrollments": toEnrollmentsJSON(enrollments),
 	})
 }
 
@@ -315,6 +339,25 @@ type onboardingJSON struct {
 	BudgetSet  bool    `json:"budget_set"`
 	KeyAdded   bool    `json:"key_added"`
 	Completed  bool    `json:"completed"`
+}
+
+// enrollmentJSON is a learner's per-path enrollment on GET /me (+ the start response).
+type enrollmentJSON struct {
+	PathSlug  string    `json:"path_slug"`
+	Status    string    `json:"status"`
+	StartedAt time.Time `json:"started_at"`
+}
+
+func toEnrollmentJSON(e store.Enrollment) enrollmentJSON {
+	return enrollmentJSON{PathSlug: e.PathSlug, Status: e.Status, StartedAt: e.StartedAt.UTC()}
+}
+
+func toEnrollmentsJSON(es []store.Enrollment) []enrollmentJSON {
+	out := make([]enrollmentJSON, 0, len(es))
+	for _, e := range es {
+		out = append(out, toEnrollmentJSON(e))
+	}
+	return out
 }
 
 func toAccountJSON(a store.Account) accountJSON {

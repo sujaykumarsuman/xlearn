@@ -1,0 +1,172 @@
+# Local review stack for xLearn: the full service topology (gateway + the six internal
+# services) on a local Postgres + NATS/JetStream, so UI/UX changes can be reviewed
+# end-to-end without the k3s cluster. NOT a production artifact — prod is GitOps via
+# ../infra + Flux. Bring it up with:  docker compose up --build   (see deploy/local/README.md)
+#
+# Sign in with the "Dev sign in (local)" button on /auth — DEV_AUTH is on for identity
+# here (and never in the prod images). Open http://localhost:8080/xlearn once it's up.
+
+name: xlearn-local
+
+# Every service shares the same Postgres coords + a pinned per-service search_path.
+x-pg-env: &pg-env
+  PGHOST: postgres
+  PGPORT: "5432"
+  PGDATABASE: xlearndb
+  PGUSER: xlearn
+  PGPASSWORD: xlearn
+  PGSSLMODE: disable
+
+# The gateway mints RSA-signed JWTs and publishes JWKS; the internal services verify
+# against it. The gateway self-generates an ephemeral dev key when none is configured.
+x-jwt-env: &jwt-env
+  JWKS_URL: http://gateway:8080/.well-known/jwks.json
+  JWT_ISSUER: xlearn-gateway
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: xlearn
+      POSTGRES_PASSWORD: xlearn
+      POSTGRES_DB: xlearndb
+    ports:
+      - "5433:5432" # host 5433 to avoid clashing with a local Postgres on 5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/local/initdb.sql:/docker-entrypoint-initdb.d/00-schemas.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U xlearn -d xlearndb"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  nats:
+    image: nats:2.10-alpine
+    command: ["-js", "-sd", "/data", "-m", "8222"]
+    volumes:
+      - natsdata:/data
+
+  identity:
+    build:
+      context: .
+      dockerfile: deploy/identity.Dockerfile
+    environment:
+      <<: [*pg-env, *jwt-env]
+      PORT: "8081"
+      PGSEARCHPATH: identity
+      JWT_AUDIENCE: identity
+      PUBLIC_BASE_URL: http://localhost:8080/xlearn
+      COOKIE_SECURE: "false"
+      # Local-only dev login (F002 / ADR-0022). NEVER set in a prod image.
+      DEV_AUTH: "1"
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  curriculum:
+    build:
+      context: .
+      dockerfile: deploy/curriculum.Dockerfile
+    environment:
+      <<: *pg-env
+      PORT: "8082"
+      PGSEARCHPATH: curriculum
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  practice:
+    build:
+      context: .
+      dockerfile: deploy/practice.Dockerfile
+    environment:
+      <<: [*pg-env, *jwt-env]
+      PORT: "8083"
+      PGSEARCHPATH: practice
+      JWT_AUDIENCE: practice
+      NATS_URL: nats://nats:4222
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_started
+
+  review:
+    build:
+      context: .
+      dockerfile: deploy/review.Dockerfile
+    environment:
+      <<: [*pg-env, *jwt-env]
+      PORT: "8084"
+      PGSEARCHPATH: review
+      JWT_AUDIENCE: review
+      NATS_URL: nats://nats:4222
+      CURRICULUM_BASE_URL: http://curriculum:8082
+      IDENTITY_BASE_URL: http://identity:8081
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_started
+
+  assessment:
+    build:
+      context: .
+      dockerfile: deploy/assessment.Dockerfile
+    environment:
+      <<: [*pg-env, *jwt-env]
+      PORT: "8085"
+      PGSEARCHPATH: assessment
+      JWT_AUDIENCE: assessment
+      NATS_URL: nats://nats:4222
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_started
+
+  coach:
+    build:
+      context: .
+      dockerfile: deploy/coach.Dockerfile
+    environment:
+      <<: [*pg-env, *jwt-env]
+      PORT: "8086"
+      PGSEARCHPATH: coach
+      JWT_AUDIENCE: coach
+      # Local-only envelope master key (32 bytes, hex). Prod uses a SOPS secret.
+      COACH_MASTER_KEY: "0011223344556677889900112233445566778899001122334455667788990011"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: .
+      dockerfile: deploy/gateway.Dockerfile
+    environment:
+      PORT: "8080"
+      LOG_LEVEL: info
+      BASE_PATH: /xlearn
+      IDENTITY_BASE_URL: http://identity:8081
+      CURRICULUM_BASE_URL: http://curriculum:8082
+      PRACTICE_BASE_URL: http://practice:8083
+      REVIEW_BASE_URL: http://review:8084
+      ASSESSMENT_BASE_URL: http://assessment:8085
+      COACH_BASE_URL: http://coach:8086
+    ports:
+      - "8080:8080"
+    depends_on:
+      - identity
+      - curriculum
+      - practice
+      - review
+      - assessment
+      - coach
+
+volumes:
+  pgdata:
+  natsdata:

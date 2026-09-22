@@ -56,25 +56,14 @@ describe("AppShell + routing (authenticated)", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "3Sum" })).toBeInTheDocument();
   });
 
-  it("expanded: the path switcher opens the dropdown", async () => {
+  it("opens the top-bar curriculum switcher dropdown (F001)", async () => {
     renderAt("/xlearn/dsa/dashboard");
-    fireEvent.click(await screen.findByRole("button", { name: /DSA/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /switch curriculum/i }));
     expect(screen.getByText("Browse all paths")).toBeInTheDocument();
   });
 
-  it("collapsed: the path switcher navigates to Catalog instead of the cramped menu", async () => {
-    renderAt("/xlearn/dsa/dashboard");
-    await screen.findByRole("navigation");
-    const checkbox = document.getElementById("xl-collapse") as HTMLInputElement;
-    checkbox.checked = true;
-    fireEvent.click(screen.getByRole("button", { name: /DSA/i }));
-    expect(await screen.findByRole("heading", { level: 1, name: "Learning paths" })).toBeInTheDocument();
-    expect(screen.queryByText("Browse all paths")).not.toBeInTheDocument();
-  });
-
-  it("renders all 11 app routes (plus the 404) inside the shell without crashing", async () => {
-    const paths = [
-      "/xlearn",
+  it("renders every app route without crashing — curriculum routes get the sidebar, hub routes don't (F001)", async () => {
+    const curriculum = [
       "/xlearn/dsa",
       "/xlearn/dsa/dashboard",
       "/xlearn/dsa/week/2",
@@ -84,13 +73,21 @@ describe("AppShell + routing (authenticated)", () => {
       "/xlearn/dsa/mistakes",
       "/xlearn/dsa/mock",
       "/xlearn/dsa/progress",
-      "/xlearn/settings",
-      "/xlearn/nope-404",
     ];
-    for (const path of paths) {
+    const hub = ["/xlearn", "/xlearn/settings", "/xlearn/nope-404"];
+
+    for (const path of curriculum) {
       const { unmount } = renderAt(path);
       expect(await screen.findByRole("navigation")).toBeInTheDocument();
       expect(document.querySelector(".xl-app")).not.toBeNull();
+      unmount();
+    }
+    for (const path of hub) {
+      const { unmount } = renderAt(path);
+      // The sidebar-less shell: brand lockup present, no sidebar nav.
+      expect(await screen.findByRole("link", { name: /all paths/i })).toBeInTheDocument();
+      expect(document.querySelector(".xl-app")).not.toBeNull();
+      expect(document.querySelector(".xl-side")).toBeNull();
       unmount();
     }
   });

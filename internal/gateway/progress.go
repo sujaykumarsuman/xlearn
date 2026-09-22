@@ -107,7 +107,7 @@ func (g *Gateway) handleProgress(w http.ResponseWriter, r *http.Request) {
 
 	var (
 		summaryRaw, heatmapRaw, trendRaw json.RawMessage
-		masteryRaw, weakAreaRaw          json.RawMessage
+		masteryRaw, weakAreaRaw, dueRaw  json.RawMessage
 		roadmapRaw, problemsRaw          []byte
 		summaryOK                        bool
 		wg                               sync.WaitGroup
@@ -155,15 +155,24 @@ func (g *Gateway) handleProgress(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 
-	// review: the weekly weak-area (the coach-context signal; enriched like elsewhere).
+	// review: the weekly weak-area (the coach-context signal) + the due-queue count (for
+	// the Roadmap rail's "Revisions due").
 	if g.review != nil && rToken != "" {
-		wg.Add(1)
+		wg.Add(2)
 		go func() {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(r.Context(), aggCallTimeout)
 			defer cancel()
 			if body, status, err := g.review.get(ctx, rToken, "/weak-area/current"); err == nil && status == http.StatusOK {
 				weakAreaRaw = g.enrichMistakeEnvelope(ctx, body, "entries")
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			ctx, cancel := context.WithTimeout(r.Context(), aggCallTimeout)
+			defer cancel()
+			if body, status, err := g.review.get(ctx, rToken, "/revisions/due"); err == nil && status == http.StatusOK {
+				dueRaw = body
 			}
 		}()
 	}
@@ -187,6 +196,24 @@ func (g *Gateway) handleProgress(w http.ResponseWriter, r *http.Request) {
 	phases := composePhaseCompletion(roadmap.Phases, problems.Problems, mastery.Problems)
 	patterns := composePatternMastery(problems.Problems, mastery.Problems)
 
+	// Enrollment + frontier + due count drive the Roadmap rail (review round 2): the
+	// "Current" week is the frontier only once the path is started, else "Not started".
+	solvedSet := make(map[string]bool, len(mastery.Problems))
+	for _, m := range mastery.Problems {
+		solvedSet[m.ProblemID] = true
+	}
+	enrolled := g.isEnrolled(r.Context(), accountID, "dsa")
+	cur := 0
+	if enrolled {
+		cur = currentWeek(problems.Problems, solvedSet)
+	}
+	dueCount := 0
+	for _, it := range parseDueItems(dueRaw) {
+		if it.Due {
+			dueCount++
+		}
+	}
+
 	out := map[string]json.RawMessage{
 		"summary":  overrideSolvedTotal(summaryRaw, roadmap.Path.ProblemTotal),
 		"heatmap":  orNull(heatmapRaw),
@@ -195,6 +222,9 @@ func (g *Gateway) handleProgress(w http.ResponseWriter, r *http.Request) {
 	}
 	out["phases"] = mustJSON(phases)
 	out["patterns"] = mustJSON(patterns)
+	out["enrolled"] = mustJSON(enrolled)
+	out["currentWeek"] = mustJSON(cur)
+	out["revisionsDue"] = mustJSON(dueCount)
 
 	body, err := json.Marshal(out)
 	if err != nil {

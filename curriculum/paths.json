@@ -1,7 +1,7 @@
 [
   {
     "slug": "dsa",
-    "title": "DSA Interview Mastery",
+    "title": "Data Structures & Algorithms",
     "status": "active",
     "summary": "From arrays to graphs and DP, built to make you interview-ready — and to keep it retained.",
     "problem_total": 151,

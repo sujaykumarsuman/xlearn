@@ -12,22 +12,24 @@ import (
 
 // fakeStore is an in-memory store.Store for handler tests (no database).
 type fakeStore struct {
-	mu         sync.Mutex
-	seq        int
-	accounts   map[string]store.Account
-	byProvider map[string]string // provider|providerUserID -> accountID
-	onboarding map[string]store.Onboarding
-	sessions   map[string]store.Session
-	outbox     []store.OutboxRow
-	pingErr    error
+	mu          sync.Mutex
+	seq         int
+	accounts    map[string]store.Account
+	byProvider  map[string]string // provider|providerUserID -> accountID
+	onboarding  map[string]store.Onboarding
+	sessions    map[string]store.Session
+	enrollments map[string][]store.Enrollment
+	outbox      []store.OutboxRow
+	pingErr     error
 }
 
 func newFakeStore() *fakeStore {
 	return &fakeStore{
-		accounts:   map[string]store.Account{},
-		byProvider: map[string]string{},
-		onboarding: map[string]store.Onboarding{},
-		sessions:   map[string]store.Session{},
+		accounts:    map[string]store.Account{},
+		byProvider:  map[string]string{},
+		onboarding:  map[string]store.Onboarding{},
+		sessions:    map[string]store.Session{},
+		enrollments: map[string][]store.Enrollment{},
 	}
 }
 
@@ -135,6 +137,26 @@ func (f *fakeStore) SetOnboardingPath(_ context.Context, accountID, path string)
 	o.PathChosen = path
 	f.onboarding[accountID] = o
 	return o, nil
+}
+
+func (f *fakeStore) StartEnrollment(_ context.Context, accountID, pathSlug string) (store.Enrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, e := range f.enrollments[accountID] {
+		if e.PathSlug == pathSlug {
+			e.Status = "active"
+			return e, nil // idempotent: keep the original started_at
+		}
+	}
+	e := store.Enrollment{AccountID: accountID, PathSlug: pathSlug, Status: "active", StartedAt: time.Now()}
+	f.enrollments[accountID] = append(f.enrollments[accountID], e)
+	return e, nil
+}
+
+func (f *fakeStore) ListEnrollments(_ context.Context, accountID string) ([]store.Enrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]store.Enrollment(nil), f.enrollments[accountID]...), nil
 }
 
 func (f *fakeStore) CreateSession(_ context.Context, id, accountID string, expiresAt time.Time) (store.Session, error) {

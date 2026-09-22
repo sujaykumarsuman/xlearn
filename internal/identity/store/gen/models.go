@@ -42,6 +42,13 @@ type IdentityOutbox struct {
 	SentAt      pgtype.Timestamptz
 }
 
+type IdentityPathEnrollment struct {
+	AccountID pgtype.UUID
+	PathSlug  string
+	Status    string
+	StartedAt pgtype.Timestamptz
+}
+
 type IdentitySession struct {
 	ID        string
 	AccountID pgtype.UUID

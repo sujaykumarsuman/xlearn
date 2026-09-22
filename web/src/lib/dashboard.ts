@@ -64,10 +64,12 @@ export interface DashboardData {
   reminders: Reminder[];
 }
 
-/** useDashboard fetches the composed "Today" aggregation. */
-export function useDashboard() {
+/** useDashboard fetches the composed "Today" aggregation. `enabled` lets callers that
+ *  only need it conditionally (e.g. the Catalog's started-path summary) skip the fetch. */
+export function useDashboard(enabled = true) {
   return useQuery<DashboardData, ApiRequestError>({
     queryKey: ["dashboard"],
     queryFn: () => apiFetch<DashboardData>("/dashboard"),
+    enabled,
   });
 }

@@ -4,22 +4,30 @@ import { Icon } from "../components/Icon";
 import { EmptyState, ErrorState, LoadingState } from "../components/States";
 import type { Phase, WeekSummary } from "../lib/curriculum";
 import { usePath } from "../lib/curriculum";
+import { useProgress } from "../lib/progress";
 
 const RING_R = 30;
 const RING_C = 2 * Math.PI * RING_R;
 
-/** Roadmap (`/xlearn/dsa`): the 4-phase / 16-week rail plus a summary column, all
- *  from GET /paths/dsa. Progress — the overall ring and phase meters — renders at 0
- *  (placeholder) until per-user practice state lands in a later sprint. */
+const pctOf = (solved: number, total: number) => (total > 0 ? Math.round((100 * solved) / total) : 0);
+
+/** Roadmap (`/xlearn/dsa`): the 4-phase / 16-week rail plus a summary column. Content is
+ *  GET /paths/dsa; the rail's real per-user progress (overall ring, current week, streak,
+ *  revisions due, phase meters) comes from GET /progress (review round 2). */
 export default function Roadmap() {
   const detail = usePath("dsa");
+  const progress = useProgress();
+  const prog = progress.data;
+  // order → completion pct, from the progress agg's by-phase rollup.
+  const phasePct: Record<number, number> = {};
+  for (const ph of prog?.phases ?? []) phasePct[ph.order] = pctOf(ph.solved, ph.total);
 
   return (
     <>
       <div className="xl-page-h">
         <div>
           <div className="xl-eyebrow">Learning path · /xlearn/dsa</div>
-          <h1 style={{ marginTop: 6 }}>{detail.data?.path.title ?? "DSA Interview Mastery"}</h1>
+          <h1 style={{ marginTop: 6 }}>{detail.data?.path.title ?? "Data Structures & Algorithms"}</h1>
           <p>
             16 weeks · 4 phases · 151 problems · Go-first. The method is enforced: sequential
             unlocks, timed practice, and five-touch spaced revision.
@@ -49,18 +57,29 @@ export default function Roadmap() {
               <PhaseBlock
                 key={phase.order}
                 phase={phase}
+                pct={phasePct[phase.order] ?? 0}
                 weeks={detail.data!.weeks.filter((w) => w.n >= phase.week_from && w.n <= phase.week_to)}
               />
             ))}
           </div>
-          <SummaryColumn problemTotal={detail.data.path.problem_total} phases={detail.data.phases} />
+          <SummaryColumn
+            problemTotal={detail.data.path.problem_total}
+            phases={detail.data.phases}
+            phasePct={phasePct}
+            enrolled={prog?.enrolled ?? false}
+            currentWeek={prog?.currentWeek ?? 0}
+            solved={prog?.summary.solved ?? 0}
+            total={prog?.summary.total ?? detail.data.path.problem_total}
+            streak={prog?.summary.streak.current ?? 0}
+            revisionsDue={prog?.revisionsDue ?? 0}
+          />
         </div>
       )}
     </>
   );
 }
 
-function PhaseBlock({ phase, weeks }: { phase: Phase; weeks: WeekSummary[] }) {
+function PhaseBlock({ phase, weeks, pct }: { phase: Phase; weeks: WeekSummary[]; pct: number }) {
   return (
     <div style={{ marginBottom: 26 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 2 }}>
@@ -71,9 +90,8 @@ function PhaseBlock({ phase, weeks }: { phase: Phase; weeks: WeekSummary[] }) {
         <span className="ds-chip ds-chip--xs ds-mono">
           W{phase.week_from}–{phase.week_to}
         </span>
-        {/* Phase progress is user state (S05); placeholder until then. */}
         <span className="ds-mono" style={{ marginLeft: "auto", fontSize: 11.5, color: "var(--ds-muted)" }}>
-          0%
+          {pct}%
         </span>
       </div>
       <p style={{ fontSize: 12.5, color: "var(--ds-muted)", marginBottom: 14 }}>{phase.theme}</p>
@@ -169,13 +187,35 @@ function DiffMix({ week }: { week: WeekSummary }) {
   );
 }
 
-function SummaryColumn({ problemTotal, phases }: { problemTotal: number; phases: Phase[] }) {
+function SummaryColumn({
+  problemTotal,
+  phases,
+  phasePct,
+  enrolled,
+  currentWeek,
+  solved,
+  total,
+  streak,
+  revisionsDue,
+}: {
+  problemTotal: number;
+  phases: Phase[];
+  phasePct: Record<number, number>;
+  enrolled: boolean;
+  currentWeek: number;
+  solved: number;
+  total: number;
+  streak: number;
+  revisionsDue: number;
+}) {
+  const denom = total > 0 ? total : problemTotal;
+  const pct = pctOf(solved, denom);
+  const filled = (pct / 100) * RING_C;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, position: "sticky", top: 0 }}>
       <div className="xl-panel" style={{ padding: 20, display: "flex", flexDirection: "column", alignItems: "center" }}>
         <svg width={132} height={132} viewBox="0 0 76 76" style={{ transform: "rotate(-90deg)" }}>
           <circle className="xl-ring-track" cx={38} cy={38} r={RING_R} fill="none" strokeWidth={7} />
-          {/* 0% until practice state exists. */}
           <circle
             cx={38}
             cy={38}
@@ -184,18 +224,25 @@ function SummaryColumn({ problemTotal, phases }: { problemTotal: number; phases:
             strokeWidth={7}
             strokeLinecap="round"
             stroke="var(--ds-teal)"
-            strokeDasharray={`0 ${RING_C.toFixed(1)}`}
+            strokeDasharray={`${filled.toFixed(1)} ${RING_C.toFixed(1)}`}
           />
         </svg>
         <div style={{ marginTop: -88, textAlign: "center", marginBottom: 52 }}>
           <div className="ds-mono" style={{ fontSize: 30, fontWeight: 700 }}>
-            0%
+            {pct}%
           </div>
-          <div style={{ fontSize: 11, color: "var(--ds-muted)" }}>0 / {problemTotal} solved</div>
+          <div style={{ fontSize: 11, color: "var(--ds-muted)" }}>
+            {solved} / {denom} solved
+          </div>
         </div>
-        <SummaryRow label="Current" value="Not started" valueColor="var(--ds-teal)" first />
-        <SummaryRow label="Streak" value="—" valueColor="var(--ds-warn)" />
-        <SummaryRow label="Revisions due" value="—" valueColor="var(--ds-dim)" />
+        <SummaryRow
+          label="Current"
+          value={enrolled ? `Week ${currentWeek}` : "Not started"}
+          valueColor="var(--ds-teal)"
+          first
+        />
+        <SummaryRow label="Streak" value={enrolled ? `${streak}` : "—"} valueColor="var(--ds-warn)" />
+        <SummaryRow label="Revisions due" value={enrolled ? `${revisionsDue}` : "—"} valueColor="var(--ds-dim)" />
       </div>
 
       <div className="xl-panel">
@@ -204,17 +251,20 @@ function SummaryColumn({ problemTotal, phases }: { problemTotal: number; phases:
           <h3 style={{ fontSize: 13 }}>Phase progress</h3>
         </div>
         <div className="xl-panel__b" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 13 }}>
-          {phases.map((p) => (
-            <div key={p.order}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, marginBottom: 5 }}>
-                <span style={{ color: "var(--ds-dim)" }}>{p.name}</span>
-                <span className="ds-mono xl-mut">0%</span>
+          {phases.map((p) => {
+            const ppct = phasePct[p.order] ?? 0;
+            return (
+              <div key={p.order}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, marginBottom: 5 }}>
+                  <span style={{ color: "var(--ds-dim)" }}>{p.name}</span>
+                  <span className="ds-mono xl-mut">{ppct}%</span>
+                </div>
+                <div className="ds-meter">
+                  <div className="ds-meter__fill" style={{ width: `${ppct}%` }} />
+                </div>
               </div>
-              <div className="ds-meter">
-                <div className="ds-meter__fill" style={{ width: "0%" }} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

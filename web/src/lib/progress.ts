@@ -52,6 +52,11 @@ export interface ProgressData {
   phases: PhaseCompletion[];
   patterns: PatternMastery[];
   weakArea: WeakArea | null;
+  /** Whether the caller has started this path, and their frontier week (0 when not
+   *  started) + count of revisions due today — drives the Roadmap rail (review round 2). */
+  enrolled: boolean;
+  currentWeek: number;
+  revisionsDue: number;
 }
 
 /** useProgress fetches the composed Progress aggregation. */

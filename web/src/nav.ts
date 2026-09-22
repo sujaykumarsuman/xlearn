@@ -20,29 +20,39 @@ export interface NavSection {
   items: NavItem[];
 }
 
-// The sidebar structure from the Dashboard/Roadmap artboards. Badge counts are
-// static scaffold decoration until the practice/review services back them.
-export const NAV: NavSection[] = [
-  {
-    items: [
-      { label: "Today", icon: "today", to: "/dsa/dashboard" },
-      { label: "Roadmap", icon: "map", to: "/dsa", end: true },
-    ],
-  },
-  {
-    cap: "Practice loop",
-    items: [
-      { label: "Revision", icon: "refresh", to: "/dsa/revision", badge: { text: "4", teal: true } },
-      { label: "Mistakes", icon: "journal", to: "/dsa/mistakes", badge: { text: "3" } },
-      { label: "Mock interview", icon: "target", to: "/dsa/mock" },
-      { label: "Progress", icon: "chart", to: "/dsa/progress" },
-    ],
-  },
-  {
-    cap: "Account",
-    items: [{ label: "Settings", icon: "settings", to: "/settings" }],
-  },
-];
+/**
+ * navForPath builds the left-nav for a curriculum. The nav is curriculum-SCOPED
+ * (F001): it renders only inside a path, and each path can expose its own options —
+ * a System Design path need not carry DSA's five-touch "Practice loop". Today,
+ * Roadmap and Mock interview are the cross-curriculum staples. Settings + Progress are
+ * intentionally absent (they live in the avatar menu). Badge counts are static scaffold
+ * decoration until the practice/review services back them.
+ *
+ * Only `dsa` is populated today; the switch is the extension point for future paths.
+ */
+export function navForPath(slug: string): NavSection[] {
+  const base = `/${slug}`;
+  switch (slug) {
+    default:
+      return [
+        {
+          items: [
+            { label: "Today", icon: "today", to: `${base}/dashboard` },
+            { label: "Roadmap", icon: "map", to: base, end: true },
+            { label: "Problems", icon: "list", to: `${base}/problems` },
+          ],
+        },
+        {
+          cap: "Practice loop",
+          items: [
+            { label: "Revision", icon: "refresh", to: `${base}/revision`, badge: { text: "4", teal: true } },
+            { label: "Mistakes", icon: "journal", to: `${base}/mistakes`, badge: { text: "3" } },
+            { label: "Mock interview", icon: "target", to: `${base}/mock` },
+          ],
+        },
+      ];
+  }
+}
 
 /** One breadcrumb: a label, and a link target unless it is the current page. */
 export interface Crumb {
@@ -75,6 +85,13 @@ export function buildCrumbs(pathname: string, search = ""): Crumb[] {
       crumbs.push({ label: `week ${week}`, to: `/dsa/week/${week}` });
     }
     crumbs.push({ label: `concept/${segs[2]}` });
+    return crumbs;
+  }
+
+  // Problem: /dsa/problem/:id — there is no /dsa/problem index, so link the middle crumb
+  // to the Problems arena (/dsa/problems), not the (404) singular path.
+  if (segs.length === 3 && segs[0] === "dsa" && segs[1] === "problem") {
+    crumbs.push({ label: "dsa", to: "/dsa" }, { label: "problems", to: "/dsa/problems" }, { label: `#${segs[2]}` });
     return crumbs;
   }
 

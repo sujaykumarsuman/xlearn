@@ -88,6 +88,98 @@ button.xl-acct-item:disabled {
   cursor: not-allowed;
 }
 
+/* --- top bar: brand + curriculum selector (F001, layered on theme.css) --- */
+
+/* Lift the whole top bar above the scrolling content so its dropdowns (the curriculum
+   selector + the account menu) paint over the page — otherwise a positioned/sticky
+   content element (e.g. the Roadmap's `position:sticky` summary column) paints on top of
+   the open menu. Kept below the coach panel (z-index 45) so the coach still overlays. */
+.xl-topbar {
+  position: relative;
+  z-index: 20;
+}
+
+/* A flex spacer that pushes the right cluster (selector + bell + avatar) over,
+   replacing the removed ⌘K search's `margin-left:auto`. */
+.xl-topbar__spacer {
+  flex: 1;
+}
+
+/* Brand lockup shown at top-left on the sidebar-less shells (home / Settings). */
+.xl-topbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+  color: var(--ds-text);
+}
+.xl-topbar__brand .xl-brand__name {
+  font-size: 15px;
+}
+
+/* The top-bar curriculum selector (replaces search; shown only inside a curriculum). */
+.xl-topsw {
+  position: relative;
+}
+.xl-topsw__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 34px;
+  padding: 0 10px;
+  max-width: 260px;
+  background: var(--ds-panel-2);
+  border: 1px solid var(--ds-line-2);
+  border-radius: 8px;
+  color: var(--ds-text);
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: border-color 0.14s;
+}
+.xl-topsw__btn:hover {
+  border-color: var(--ds-teal);
+}
+.xl-topsw__btn .xl-pathsw__t {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.xl-topsw__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 244px;
+  padding: 6px;
+  z-index: 46;
+  background: var(--ds-panel);
+  border: 1px solid var(--ds-line);
+  border-radius: 10px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+/* Clickable rows (links/buttons) reuse the DS `.xl-pathsw__opt` look; reset chrome. */
+.xl-topsw__menu a.xl-pathsw__opt,
+.xl-topsw__menu button.xl-pathsw__opt {
+  width: 100%;
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--ds-text);
+}
+.xl-topsw__menu a.xl-pathsw__opt:hover,
+.xl-topsw__menu button.xl-pathsw__opt:hover {
+  background: var(--ds-panel-2);
+}
+.xl-topsw__menu .xl-pathsw__opt--active:hover {
+  background: rgba(53, 208, 192, 0.1);
+}
+.xl-topsw__menu .xl-pathsw__opt--locked {
+  cursor: default;
+}
+
 /* --- shell chrome fixes (layered on the verbatim theme.css) --- */
 
 /* The account-menu header avatar is a <span class="ds-avatar">, but theme.css's

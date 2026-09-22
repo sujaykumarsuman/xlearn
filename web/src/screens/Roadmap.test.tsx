@@ -18,7 +18,7 @@ function renderApp(initialPath: string) {
 const DSA = {
   path: {
     slug: "dsa",
-    title: "DSA Interview Mastery",
+    title: "Data Structures & Algorithms",
     status: "active",
     summary: "From arrays to graphs and DP.",
     problem_total: 151,

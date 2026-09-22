@@ -21,7 +21,7 @@ const emptyTouches = () => [1, 2, 3, 4, 5].map((level) => ({ level, dueDate: nul
 const WEEK2 = {
   week: { n: 2, title: "Two Pointers & Sliding Window", thesis: "Collapse nested loops into a single sweep." },
   phase: { order: 1, name: "Fundamentals", theme: "Arrays.", week_from: 1, week_to: 3 },
-  path: { slug: "dsa", title: "DSA Interview Mastery", problem_total: 151, week_total: 16 },
+  path: { slug: "dsa", title: "Data Structures & Algorithms", problem_total: 151, week_total: 16 },
   concepts: [
     { slug: "sliding-window", title: "Sliding Window" },
     { slug: "two-pointers", title: "Two Pointers" },

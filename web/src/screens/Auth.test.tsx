@@ -56,7 +56,7 @@ describe("Auth screen", () => {
     renderApp("/xlearn/auth");
 
     expect(await screen.findByRole("heading", { name: /pick your path/i })).toBeInTheDocument();
-    expect(screen.getByText(/DSA Interview Mastery/)).toBeInTheDocument();
+    expect(screen.getByText(/Data Structures & Algorithms/)).toBeInTheDocument();
     expect(screen.getByText(/Coming soon/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /continue/i }));
@@ -67,11 +67,19 @@ describe("Auth screen", () => {
   });
 
   it("redirects a returning, onboarded user into the app", async () => {
-    installFetchMock((url) => (url.endsWith("/api/me") ? { status: 200, body: authedMe("dsa") } : { status: 404 }));
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.endsWith("/api/paths"))
+        return {
+          status: 200,
+          body: { paths: [{ slug: "dsa", title: "Data Structures & Algorithms", status: "active", summary: "s", problem_total: 151, week_total: 16 }] },
+        };
+      return { status: 404 };
+    });
     renderApp("/xlearn/auth");
 
-    // Lands in the app shell rather than showing onboarding.
-    expect(await screen.findByRole("navigation")).toBeInTheDocument();
+    // Lands on the sidebar-less Catalog home (F001) rather than showing onboarding.
+    expect(await screen.findByRole("heading", { name: /learning paths/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /pick your path/i })).not.toBeInTheDocument();
   });
 

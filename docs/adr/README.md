@@ -37,6 +37,7 @@ under [`../v1/`](../v1/).
 | [0019](0019-account-settings-onboarding-and-reminder-gating.md) | Account settings, onboarding completion & reminder gating | Accepted |
 | [0020](0020-coach-service-realization-and-behaviour-gate.md) | Coach service realization & the server-authoritative behaviour gate | Accepted |
 | [0021](0021-release-tagging-and-api-versioning.md) | Release tagging, API v1 & the 1.0 hardening cut | Accepted |
+| [0022](0022-path-enrollment-and-dev-login.md) | Per-user path enrollment & the local dev login | Accepted |
 
 ## Adding an ADR
 

@@ -7,6 +7,8 @@ import { DEFAULT_WEEKDAY, DEFAULT_WEEKEND, budgetEta, clampWeekday } from "../li
 import {
   oauthStartAction,
   useCompleteOnboarding,
+  useDevAuthEnabled,
+  useDevLogin,
   useMe,
   useSetOnboardingBudget,
   useSetOnboardingPath,
@@ -143,6 +145,8 @@ function Feature({ icon, title, desc }: { icon: "code" | "refresh" | "target"; t
 function SignIn() {
   const [params] = useSearchParams();
   const error = params.get("error");
+  const devEnabled = useDevAuthEnabled();
+  const devLogin = useDevLogin();
   return (
     <>
       <h2 style={{ fontSize: 24, fontWeight: 700 }}>Sign in to xLearn</h2>
@@ -173,6 +177,26 @@ function SignIn() {
             <GitHubMark /> Continue with GitHub
           </button>
         </form>
+
+        {/* Local-only dev sign-in (F002 / ADR-0022): rendered only when the gateway
+            reports DEV_AUTH is on — never in a prod image. Lets a reviewer enter the
+            app from docker-compose without OAuth. */}
+        {devEnabled.data && (
+          <button
+            type="button"
+            className="ds-btn ds-btn--ghost ds-btn--block"
+            disabled={devLogin.isPending}
+            onClick={() => devLogin.mutate()}
+          >
+            <Icon name="key" className="xl-ico--sm" />{" "}
+            {devLogin.isPending ? "Signing in…" : "Dev sign in (local)"}
+          </button>
+        )}
+        {devLogin.isError && (
+          <p role="alert" style={{ fontSize: 12, color: "var(--ds-err)", margin: 0 }}>
+            Dev sign-in failed. Is DEV_AUTH enabled?
+          </p>
+        )}
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0" }}>
@@ -311,7 +335,7 @@ function StepPath({
           <Icon name="code" />
         </span>
         <span style={{ flex: 1 }}>
-          <b style={{ fontSize: 14 }}>DSA Interview Mastery</b>
+          <b style={{ fontSize: 14 }}>Data Structures &amp; Algorithms</b>
           <br />
           <span style={{ fontSize: 11.5, color: "var(--ds-muted)" }}>16 weeks · 151 problems · Go-first</span>
         </span>

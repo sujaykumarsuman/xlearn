@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Icon } from "../components/Icon";
 import type { IconName } from "../components/Icon";
 import { Markdown } from "../components/Markdown";
 import type { Outcome, PracticeState, Problem as ProblemMeta, ProblemAggregate, ProblemSection, RevealPenalty } from "../lib/curriculum";
-import { logOutcome, revealNext, startAttempt, useProblem } from "../lib/curriculum";
+import { isAhead, logOutcome, revealNext, startAttempt, useProblem } from "../lib/curriculum";
+import { useStartPath } from "../lib/enrollment";
 
 const DIFF_CLASS: Record<ProblemMeta["difficulty"], string> = {
   easy: "xl-diff xl-diff--easy",
@@ -36,7 +37,11 @@ const OUTCOME_LABEL: Record<Outcome, string> = { clean: "Clean", rough: "Rough",
  */
 export default function Problem() {
   const { id = "" } = useParams();
-  const q = useProblem(id);
+  const [sp] = useSearchParams();
+  // Practice mode = reached from the Problems arena (?practice=1): open to everyone,
+  // never counts. Course mode (no flag) keeps the enrollment gate.
+  const practice = sp.get("practice") === "1";
+  const q = useProblem(id, practice);
 
   return (
     <div>
@@ -56,7 +61,66 @@ export default function Problem() {
         </div>
       )}
 
-      {q.data && <Workspace id={id} data={q.data} />}
+      {q.data &&
+        (practice ? (
+          <PracticeWorkspace data={q.data} />
+        ) : q.data.gate && !q.data.gate.enrolled ? (
+          <StartGate />
+        ) : (
+          <Workspace id={id} data={q.data} />
+        ))}
+    </div>
+  );
+}
+
+// StartGate blocks solving until the path is started (review round 2): you must start the
+// curriculum before any attempt counts. Browsing the roadmap/problems stays open.
+function StartGate() {
+  const qc = useQueryClient();
+  const startPath = useStartPath();
+  return (
+    <div
+      className="xl-panel"
+      style={{ padding: 30, maxWidth: 460, margin: "48px auto", textAlign: "center" }}
+    >
+      <span
+        style={{
+          width: 46,
+          height: 46,
+          borderRadius: 12,
+          display: "inline-grid",
+          placeItems: "center",
+          background: "rgba(53,208,192,.14)",
+          color: "var(--ds-teal)",
+          marginBottom: 14,
+        }}
+      >
+        <Icon name="lock" />
+      </span>
+      <h2 style={{ fontSize: 18, fontWeight: 700 }}>Start the path to begin</h2>
+      <p style={{ fontSize: 13, color: "var(--ds-dim)", margin: "8px auto 20px", maxWidth: 360 }}>
+        Solving counts toward your curriculum once you start{" "}
+        <b style={{ color: "var(--ds-text)" }}>Data Structures &amp; Algorithms</b>. Start it to
+        unlock the guided flow and your daily schedule — or browse the problems freely first.
+      </p>
+      <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+        <button
+          type="button"
+          className="ds-btn ds-btn--primary"
+          disabled={startPath.isPending}
+          onClick={() => startPath.mutate("dsa", { onSuccess: () => qc.invalidateQueries() })}
+        >
+          <Icon name="play" className="xl-ico--sm" /> {startPath.isPending ? "Starting…" : "Start path"}
+        </button>
+        <Link className="ds-btn ds-btn--secondary" to="/dsa/problems">
+          Browse problems
+        </Link>
+      </div>
+      {startPath.isError && (
+        <p role="alert" style={{ fontSize: 12, color: "var(--ds-err)", marginTop: 12 }}>
+          Couldn’t start the path — try again.
+        </p>
+      )}
     </div>
   );
 }
@@ -68,6 +132,11 @@ function Workspace({ id, data }: { id: string; data: ProblemAggregate }) {
   const [reimplementing, setReimplementing] = useState(false);
   const [draft, setDraft] = useState("");
   const [penalty, setPenalty] = useState<RevealPenalty | null>(null);
+  const [aheadNote, setAheadNote] = useState<string | null>(null);
+
+  // Ahead of the frontier week (a future-week problem reached via the course): usable, but a
+  // solve here won't count until the schedule reaches this week.
+  const ahead = !!data.gate && data.gate.enrolled && !data.gate.scheduled;
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["problem", id] });
 
@@ -79,7 +148,20 @@ function Workspace({ id, data }: { id: string; data: ProblemAggregate }) {
       invalidate();
     },
   });
-  const outcomeM = useMutation({ mutationFn: (o: Outcome) => logOutcome(id, o), onSuccess: invalidate });
+  const outcomeM = useMutation({
+    mutationFn: (o: Outcome) => logOutcome(id, o),
+    onSuccess: (res) => {
+      if (isAhead(res)) {
+        // Ahead of schedule — not counted, not recorded; the practice state is unchanged.
+        setAheadNote(
+          `Logged for practice — this is Week ${res.scheduledWeek}, ahead of your current Week ${res.currentWeek}. It won’t count toward the course until your schedule reaches it.`,
+        );
+        return;
+      }
+      setAheadNote(null);
+      invalidate();
+    },
+  });
 
   const unlocked = new Set(state.unlockedStages);
   const solutionUnlocked = unlocked.has("solution");
@@ -90,6 +172,33 @@ function Workspace({ id, data }: { id: string; data: ProblemAggregate }) {
   return (
     <>
       <ProblemHeader problem={problem} state={state} />
+
+      {ahead && (
+        <div
+          className="ds-card"
+          style={{
+            marginTop: 14,
+            padding: "12px 16px",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            borderColor: "rgba(240,180,41,.4)",
+            background: "rgba(240,180,41,.06)",
+          }}
+        >
+          <Icon name="lock" className="xl-ico--sm" style={{ color: "var(--ds-warn)" }} />
+          <span style={{ fontSize: 12.5, color: "var(--ds-dim)" }}>
+            <b style={{ color: "var(--ds-text)" }}>Ahead of schedule</b> — this is Week{" "}
+            {data.gate!.problemWeek}, past your current Week {data.gate!.currentWeek}. Practice
+            it freely; it won’t count toward the course until your schedule reaches it.
+          </span>
+        </div>
+      )}
+      {aheadNote && (
+        <div role="status" className="xl-mut" style={{ marginTop: 10, fontSize: 12.5, color: "var(--ds-warn)" }}>
+          {aheadNote}
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 320px", gap: 20, alignItems: "start", marginTop: 18 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 18, minWidth: 0 }}>
@@ -114,6 +223,87 @@ function Workspace({ id, data }: { id: string; data: ProblemAggregate }) {
           onOutcome={(o) => outcomeM.mutate(o)}
           loggingOutcome={outcomeM.isPending}
         />
+      </div>
+    </>
+  );
+}
+
+// PracticeWorkspace is the Problems-ARENA study view (review round 2): all stages delivered
+// for study, UNTIMED, and it makes NO server calls — so opening a problem here never creates
+// course-affecting practice state. Reveal is client-side; nothing is saved. Course credit
+// comes only from solving via the schedule (Today/Week).
+function PracticeWorkspace({ data }: { data: ProblemAggregate }) {
+  const { problem, sections, state } = data;
+  const [showHints, setShowHints] = useState(false);
+  const [showSolution, setShowSolution] = useState(false);
+  const [scratch, setScratch] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const hasHints = sections.some((s) => s.stage === "hint");
+  const hasSolution = sections.some((s) => s.stage === "solution");
+  const visible = sections.filter(
+    (s) => s.stage === "attempt" || (s.stage === "hint" && showHints) || (s.stage === "solution" && showSolution),
+  );
+
+  return (
+    <>
+      <ProblemHeader problem={problem} state={state} />
+
+      <div
+        className="ds-card"
+        style={{ marginTop: 14, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}
+      >
+        <Icon name="code" className="xl-ico--sm" style={{ color: "var(--ds-teal)" }} />
+        <span style={{ fontSize: 12.5, color: "var(--ds-dim)" }}>
+          <b style={{ color: "var(--ds-text)" }}>Practice arena</b> — untimed study. Reveal as much as
+          you like; nothing is saved and it doesn’t touch your course. Solve it from your schedule
+          (Today / Week) for course credit.
+        </span>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 320px", gap: 20, alignItems: "start", marginTop: 18 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 18, minWidth: 0 }}>
+          <ReadingPane sections={visible} />
+          {scratch && <Editor reimplementing draft={draft} setDraft={setDraft} />}
+        </div>
+
+        <div className="xl-panel">
+          <div className="xl-panel__h" style={{ padding: "12px 14px" }}>
+            <Icon name="code" className="xl-ico--sm" />
+            <h3 style={{ fontSize: 13 }}>Practice</h3>
+          </div>
+          <div className="xl-panel__b" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+            <button
+              type="button"
+              className="ds-btn ds-btn--secondary ds-btn--block"
+              disabled={!hasHints || showHints}
+              onClick={() => setShowHints(true)}
+            >
+              <Icon name="key" className="xl-ico--sm" /> {showHints ? "Hints revealed" : "Reveal hints"}
+            </button>
+            <button
+              type="button"
+              className="ds-btn ds-btn--secondary ds-btn--block"
+              disabled={!hasSolution || showSolution}
+              onClick={() => {
+                setShowSolution(true);
+                setShowHints(true);
+              }}
+            >
+              <Icon name="check" className="xl-ico--sm" /> {showSolution ? "Solution revealed" : "Reveal solution"}
+            </button>
+            <button
+              type="button"
+              className="ds-btn ds-btn--ghost ds-btn--block"
+              onClick={() => setScratch((v) => !v)}
+            >
+              <Icon name="code" className="xl-ico--sm" /> {scratch ? "Hide scratchpad" : "Open scratchpad"}
+            </button>
+            <p style={{ fontSize: 11.5, color: "var(--ds-muted)", margin: 0 }}>
+              Untimed and unsaved. To earn course credit, solve this from Today or the Week view.
+            </p>
+          </div>
+        </div>
       </div>
     </>
   );

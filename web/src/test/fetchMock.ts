@@ -44,8 +44,13 @@ export function restoreFetch() {
 
 /** authedMe is a convenient authenticated GET /me payload. By default a chosen path
  *  implies a fully-onboarded (completed) account; pass `completed` explicitly to model
- *  a mid-onboarding user (e.g. path chosen but budget not set). */
-export function authedMe(pathChosen: string | null = "dsa", completed: boolean = pathChosen !== null) {
+ *  a mid-onboarding user (e.g. path chosen but budget not set). `enrollments` models the
+ *  per-path Start state (F002) — default none (nothing started). */
+export function authedMe(
+  pathChosen: string | null = "dsa",
+  completed: boolean = pathChosen !== null,
+  enrollments: Array<{ path_slug: string; status: string; started_at: string }> = [],
+) {
   return {
     account: {
       id: "acct-1",
@@ -57,5 +62,11 @@ export function authedMe(pathChosen: string | null = "dsa", completed: boolean =
       created_at: "2026-09-20T00:00:00Z",
     },
     onboarding: { path_chosen: pathChosen, budget_set: completed, key_added: false, completed },
+    enrollments,
   };
+}
+
+/** enrolled models a started-path enrollment for authedMe's third arg. */
+export function enrolled(slug = "dsa", startedAt = "2026-09-20T00:00:00Z") {
+  return [{ path_slug: slug, status: "active", started_at: startedAt }];
 }

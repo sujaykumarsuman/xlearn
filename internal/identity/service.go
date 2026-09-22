@@ -56,6 +56,11 @@ func (s *Service) Handler() http.Handler {
 	mux.HandleFunc("POST /auth/{provider}/start", s.handleStart)
 	mux.HandleFunc("GET /auth/{provider}/callback", s.handleCallback)
 
+	// Local-only dev login (F002 / ADR-0022): 404 unless DEV_AUTH is set. Never
+	// enabled in a prod image. Also reached through the gateway proxy.
+	mux.HandleFunc("GET /auth/dev/enabled", s.handleDevEnabled)
+	mux.HandleFunc("POST /auth/dev/login", s.handleDevLogin)
+
 	// Gateway trust endpoints (ClusterIP + NetworkPolicy; no user JWT — these
 	// establish identity from the opaque session).
 	mux.HandleFunc("POST /sessions/validate", s.handleValidateSession)
@@ -72,6 +77,7 @@ func (s *Service) Handler() http.Handler {
 	mux.Handle("GET /accounts/{id}", s.requireJWT(http.HandlerFunc(s.handleGetAccount)))
 	mux.Handle("PATCH /accounts/{id}", s.requireJWT(http.HandlerFunc(s.handlePatchAccount)))
 	mux.Handle("POST /onboarding/step", s.requireJWT(http.HandlerFunc(s.handleOnboardingStep)))
+	mux.Handle("POST /paths/{slug}/start", s.requireJWT(http.HandlerFunc(s.handleStartEnrollment)))
 
 	return mux
 }

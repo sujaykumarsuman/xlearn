@@ -56,6 +56,10 @@ type AuthConfig struct {
 	GitHub        OAuthClient
 	CookieSecure  bool
 	SessionTTL    time.Duration
+	// DevAuth enables the local-only dev login (POST /auth/dev/login), which mints a
+	// session for a fixed local account WITHOUT OAuth. Off unless DEV_AUTH is truthy;
+	// it must never be set in a prod image (F002 / ADR-0022).
+	DevAuth bool
 }
 
 // OAuthClient is a provider's registered app credentials.
@@ -100,6 +104,7 @@ func LoadConfig() Config {
 			// Overridable with COOKIE_SECURE.
 			CookieSecure: envBool("COOKIE_SECURE", strings.HasPrefix(base, "https://")),
 			SessionTTL:   envDuration("SESSION_TTL", 30*24*time.Hour),
+			DevAuth:      envBool("DEV_AUTH", false),
 		},
 	}
 }
