@@ -53,7 +53,7 @@ via identity's **non-PII** ClusterIP resolver, then composes only public aggrega
 
 ## Status
 
-🚀 **Shipped (`v1.4.0`, refined in `v1.4.1`)** — merged (xlearn#39) → `v1.4.0` tag → deploy built all seven
+🚀 **Shipped (`v1.4.0`, refined in `v1.4.1`; the profile-URL and reserved-word follow-ups in `v1.5.0`)** — merged (xlearn#39) → `v1.4.0` tag → deploy built all seven
 `1.4.0` images → Flux deployed → **verified live**: gateway `v1.4.0`; the public `GET /api/v1/u/{username}` is live
 **unauthenticated** (unknown user → `404 "no such user"`, vs `404 "no such endpoint"` for a bogus path —
 route discrimination); `POST /api/v1/me/username` and `GET /api/v1/username/available` are present and
@@ -94,14 +94,14 @@ the avatar → Dashboard. Frontend-only. A focused adversarial review found 5 is
 (the availability/claim hint is now an `aria-live` region + `aria-describedby` + `role=alert`), a 350ms
 debounce race on the claim button, and three stale onboarding doc comments.
 
-**Follow-up (profile URL, ADR-0025 — merged to `main`, not yet released):** the public profile moved from the bare
+**Follow-up (profile URL, ADR-0025 — shipped in `v1.5.0`):** the public profile moved from the bare
 `/xlearn/<username>` to **`/xlearn/u/<username>`** (matching the existing `GET /api/v1/u/{username}`),
 and the bare route was **dropped with no redirect** (owner's call: links had existed for under a day).
 Usernames no longer share a namespace with app routes, so a new course/route can't shadow a profile and
 an unknown `/xlearn/<x>` is the in-shell 404. Avatar → Dashboard, the Settings "Live at" link and the
 onboarding URL preview all use `/u/`. Frontend-only.
 
-**Follow-up (reserved words, owner direction — in review):** usernames are **not** reserved for courses.
+**Follow-up (reserved words, owner direction — shipped in `v1.5.0`):** usernames are **not** reserved for courses.
 Courses live at `/xlearn/<course-id>` and profiles at `/xlearn/u/<username>`, so nothing can collide. The
 reserved list drops every course slug and route word, including those the same-day hardening added (#43).
 It keeps only impersonation/system handles (`@admin`, `@support`, `@xlearn`, `@login`, …), a default the

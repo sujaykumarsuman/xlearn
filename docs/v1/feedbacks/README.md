@@ -30,7 +30,15 @@ Legend: ⬜ planned · 🔄 in progress · ✅ done (in local review) · 🚀 sh
 | [F006](F006-settings-redesign-and-coach-model.md) | Round 4–5: **Settings redesign** (section rail + cards, pill/circle controls, GitHub-style profile card) + **multi-provider coach** — connect Anthropic *and* OpenAI, each with its model/name, one marked the **default**; a **header quick-switch** (provider pill + model dropdown) sets it from anywhere | 🚀 shipped (`v1.2.0`) |
 | [F007](F007-email-password-auth.md) | **Login flow**: a Sign in / Sign up pill + functional email/password auth; GitHub users set a password + email users connect GitHub in **Settings** (auto-link on matching verified email). No email verification yet. Review round added: full-width pill, **Settings section tabs** (replacing the scroll-spy rail), clearer OAuth wording | 🚀 shipped (`v1.3.0`) |
 | [F008](F008-shell-logo-and-live-badges.md) | **Shell polish**: the sidebar xLearn logo routes home (login when signed out); the Practice-loop **badge counts go live** (reviews due · open mistakes, hidden at 0) instead of hard-coded scaffold | 🚀 shipped (`v1.3.0`) |
-| [F009](F009-usernames-and-public-dashboards.md) | **Usernames + public dashboards**: per-course progress moves into the course nav; the avatar menu gains **Dashboard**; **usernames** (claim in Settings, sign in with email OR username); and a **public** LeetCode-style profile at `/xlearn/<username>` (moved to `/xlearn/u/<username>` by ADR-0025, merged to `main`, not yet released) — xLearn's first unauthenticated route (non-PII only). ADR-0024 | 🚀 shipped (`v1.4.0`; username→onboarding-step in `v1.4.1`) |
+| [F009](F009-usernames-and-public-dashboards.md) | **Usernames + public dashboards**: per-course progress moves into the course nav; the avatar menu gains **Dashboard**; **usernames** (claim in Settings, sign in with email OR username); and a **public** LeetCode-style profile at `/xlearn/<username>` (moved to `/xlearn/u/<username>` by ADR-0025 in `v1.5.0`) — xLearn's first unauthenticated route (non-PII only). ADR-0024 | 🚀 shipped (`v1.4.0`; username→onboarding-step in `v1.4.1`; `/u/` profiles + impersonation-only reserved names in `v1.5.0`) |
+
+**Shipped as `v1.5.0`** (2026-09-24): merged (xlearn#43, #46, #47) → `v1.5.0` tag → deploy built all seven
+`1.5.0` images → Flux deployed → verified live (all seven services report `v1.5.0`). Two F009 follow-ups:
+- **Profile URL.** Public profiles moved from the bare `/xlearn/<username>` to **`/xlearn/u/<username>`**
+  ([ADR-0025](../../adr/0025-public-profiles-under-u-prefix.md)). The bare route was dropped with no redirect,
+  so usernames and courses (`/xlearn/<course-id>`) can never collide.
+- **Reserved words.** Per the owner, usernames are **not** reserved for courses or routes. The list keeps only
+  impersonation/system handles (`@admin`, `@support`, `@xlearn`, …).
 
 **Shipped as `v1.4.1`** (2026-09-23): merged (xlearn#41) → `v1.4.1` tag → Flux deploy → verified live
 (gateway `v1.4.1`). F009 review follow-up: the awkward standalone `/claim-username` page was replaced by a
