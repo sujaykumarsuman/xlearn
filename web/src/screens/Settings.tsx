@@ -1,10 +1,12 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Icon, type IconName } from "../components/Icon";
 import { ProviderLogo } from "../components/ProviderLogo";
 import { Spinner } from "../components/States";
 import { BudgetFields } from "../components/BudgetFields";
+import { type ApiRequestError } from "../lib/api";
 import { DEFAULT_WEEKDAY, DEFAULT_WEEKEND, budgetEta, clampWeekday, weekendLabel } from "../lib/budget";
-import { useMe, usePatchMe, type Account, type WeekendBand } from "../lib/auth";
+import { oauthLinkAction, useMe, usePatchMe, useSetPassword, useUnlinkOAuth, type Account, type WeekendBand } from "../lib/auth";
 import {
   COACH_MODELS,
   COACH_PROVIDERS,
@@ -20,13 +22,23 @@ import {
 
 /**
  * Settings is the account surface: Profile, Study budget, your Coach and Reminders.
- * Redesigned (F006): a two-column layout — a sticky section rail + a column of soft cards.
- * The Coach section connects one key PER PROVIDER (Anthropic and/or OpenAI), each with its
- * own model, and one marked the default the coach answers with. Fully-rounded (pill)
- * controls + circular tiles. Every write is live (PATCH /me · PUT/DELETE /coach/key).
+ * Redesigned (F006): a two-column layout — a section rail + a column of soft cards. The rail
+ * items are tabs (one section shown at a time), so navigation is a deterministic click rather
+ * than a scroll-spy. The Coach section connects one key PER PROVIDER (Anthropic and/or OpenAI),
+ * each with its own model, and one marked the default the coach answers with. Fully-rounded
+ * (pill) controls + circular tiles. Every write is live (PATCH /me · PUT/DELETE /coach/key).
  */
 export default function Settings() {
   const me = useMe();
+  const [params] = useSearchParams();
+  // Deep links pick the starting tab: ?tab=<id> (e.g. the coach "open settings" prompts), or
+  // the account tab when the GitHub link flow returns to ?linked=…/?error=… so its banner shows.
+  const [tab, setTab] = useState<string>(() => {
+    const t = params.get("tab");
+    if (t && RAIL.some((s) => s.id === t)) return t;
+    if (params.get("linked") || params.get("error")) return "account";
+    return RAIL[0]!.id;
+  });
 
   return (
     <div className="xl-settings">
@@ -52,21 +64,214 @@ export default function Settings() {
 
       {me.data && (
         <div className="xl-settings__grid">
-          <SettingsRail account={me.data.account} />
-          <div className="xl-settings__content">
-            <section id="budget">
-              <BudgetSection account={me.data.account} />
-            </section>
-            <section id="coach">
-              <CoachSection />
-            </section>
-            <section id="reminders">
-              <RemindersSection account={me.data.account} />
-            </section>
+          <SettingsRail account={me.data.account} active={tab} onSelect={setTab} />
+          <div className="xl-settings__content" role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+            {tab === "budget" && <BudgetSection account={me.data.account} />}
+            {tab === "coach" && <CoachSection />}
+            {tab === "reminders" && <RemindersSection account={me.data.account} />}
+            {tab === "account" && <AccountSection account={me.data.account} />}
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+// --- Sign-in & security (ADR-0023) ---
+
+function AccountSection({ account }: { account: Account }) {
+  const hasPassword = !!account.has_password;
+  const linked = account.linked_providers ?? [];
+  const githubLinked = linked.includes("github");
+  // The OAuth link flow redirects back here with ?linked=github or ?error=github_taken.
+  const [params, setParams] = useSearchParams();
+  const linkedOk = params.get("linked");
+  const linkErr = params.get("error");
+  const clearBanner = () => {
+    const next = new URLSearchParams(params);
+    next.delete("linked");
+    next.delete("error");
+    setParams(next, { replace: true });
+  };
+
+  return (
+    <Card icon="key" title="Sign-in & security" subtitle="How you sign in to xLearn.">
+      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        {(linkedOk || linkErr) && (
+          <div
+            role="status"
+            className="xl-set-hint"
+            style={{
+              justifyContent: "space-between",
+              borderColor: linkErr ? "var(--ds-err)" : "rgba(87,211,154,.4)",
+              color: linkErr ? "var(--ds-err)" : "var(--ds-ok)",
+            }}
+          >
+            <span>{linkErr ? "That GitHub account is already linked to another xLearn account." : "GitHub connected."}</span>
+            <button type="button" className="ds-btn ds-btn--ghost ds-btn--sm" onClick={clearBanner}>
+              Dismiss
+            </button>
+          </div>
+        )}
+        <PasswordForm hasPassword={hasPassword} />
+        <div style={{ borderTop: "1px solid var(--ds-line)", paddingTop: 16 }}>
+          <ProvidersRow githubLinked={githubLinked} canUnlink={hasPassword || linked.length > 1} />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
+  const setPw = useSetPassword();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const valid = next.length >= 8 && (!hasPassword || current.length >= 1) && !setPw.isPending;
+
+  const touch = () => {
+    if (setPw.isSuccess || setPw.isError) setPw.reset();
+  };
+  const save = () =>
+    setPw.mutate(
+      { new_password: next, ...(hasPassword ? { current_password: current } : {}) },
+      {
+        onSuccess: () => {
+          setCurrent("");
+          setNext("");
+        },
+      },
+    );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div>
+        <b style={{ fontSize: 13.5 }}>{hasPassword ? "Change password" : "Set a password"}</b>
+        <div style={{ fontSize: 11.5, color: "var(--ds-muted)", marginTop: 2 }}>
+          {hasPassword ? "Update the password you sign in with." : "Add a password so you can sign in without GitHub."}
+        </div>
+      </div>
+      {hasPassword && (
+        <Field label="Current password" htmlFor="pw-current">
+          <input
+            id="pw-current"
+            className="ds-input ds-input--mono"
+            type="password"
+            autoComplete="current-password"
+            value={current}
+            onChange={(e) => {
+              touch();
+              setCurrent(e.target.value);
+            }}
+          />
+        </Field>
+      )}
+      <Field label={hasPassword ? "New password" : "Password"} htmlFor="pw-new" hint="at least 8 characters">
+        <input
+          id="pw-new"
+          className="ds-input ds-input--mono"
+          type="password"
+          autoComplete="new-password"
+          value={next}
+          onChange={(e) => {
+            touch();
+            setNext(e.target.value);
+          }}
+        />
+      </Field>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <button type="button" className="ds-btn ds-btn--primary ds-btn--sm" disabled={!valid} onClick={save}>
+          {setPw.isPending ? "Saving…" : hasPassword ? "Change password" : "Set password"}
+        </button>
+        {setPw.isSuccess && (
+          <span style={{ fontSize: 12, color: "var(--ds-ok)", display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <Icon name="check" className="xl-ico--sm" /> Password updated
+          </span>
+        )}
+        {setPw.isError && <span style={{ fontSize: 12, color: "var(--ds-err)" }}>{passwordErrorMessage(setPw.error)}</span>}
+      </div>
+    </div>
+  );
+}
+
+function ProvidersRow({ githubLinked, canUnlink }: { githubLinked: boolean; canUnlink: boolean }) {
+  const unlink = useUnlinkOAuth();
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div>
+        <b style={{ fontSize: 13.5 }}>Connected accounts</b>
+        <div style={{ fontSize: 11.5, color: "var(--ds-muted)", marginTop: 2 }}>Sign in faster with a linked provider.</div>
+      </div>
+      <div className="xl-prov" style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: "12px 14px" }}>
+        <span className="xl-logo" style={{ width: 36, height: 36, background: "#161b22", border: "1px solid var(--ds-line-2)" }}>
+          <GitHubMark />
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>GitHub</div>
+          <div className="xl-prov__status" style={githubLinked ? undefined : { color: "var(--ds-muted)" }}>
+            {githubLinked ? (
+              <>
+                <span className="xl-dot" /> Connected
+              </>
+            ) : (
+              "Not connected"
+            )}
+          </div>
+        </div>
+        {githubLinked ? (
+          <button
+            type="button"
+            className="ds-btn ds-btn--ghost ds-btn--sm"
+            style={{ color: canUnlink ? "var(--ds-err)" : "var(--ds-muted)" }}
+            disabled={!canUnlink || unlink.isPending}
+            title={canUnlink ? undefined : "This is your only way to sign in, so it can’t be disconnected."}
+            onClick={() => unlink.mutate("github")}
+          >
+            {unlink.isPending ? "Disconnecting…" : "Disconnect"}
+          </button>
+        ) : (
+          <form method="post" action={oauthLinkAction("github")}>
+            <button type="submit" className="ds-btn ds-btn--secondary ds-btn--sm">
+              Connect
+            </button>
+          </form>
+        )}
+      </div>
+      {githubLinked && !canUnlink && (
+        <span style={{ fontSize: 11.5, color: "var(--ds-muted)" }}>
+          GitHub is currently your only way to sign in, so it can’t be disconnected. Add a password and both stay
+          available — you decide when to remove one.
+        </span>
+      )}
+      {unlink.isError && <span style={{ fontSize: 12, color: "var(--ds-err)" }}>{unlinkErrorMessage(unlink.error)}</span>}
+    </div>
+  );
+}
+
+function passwordErrorMessage(err: ApiRequestError | null): string {
+  switch (err?.code) {
+    case "wrong_password":
+      return "Your current password is incorrect.";
+    case "weak_password":
+      return "Password must be 8–72 characters.";
+    default:
+      return "Couldn’t update your password. Try again.";
+  }
+}
+
+function unlinkErrorMessage(err: ApiRequestError | null): string {
+  switch (err?.code) {
+    case "last_login_method":
+      return "Set a password before disconnecting your only sign-in method.";
+    default:
+      return "Couldn’t disconnect. Try again.";
+  }
+}
+
+function GitHubMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+    </svg>
   );
 }
 
@@ -76,38 +281,31 @@ const RAIL: { id: string; label: string; icon: IconName }[] = [
   { id: "budget", label: "Study budget", icon: "clock" },
   { id: "coach", label: "Your AI coach", icon: "spark" },
   { id: "reminders", label: "Reminders", icon: "bell" },
+  { id: "account", label: "Sign-in & security", icon: "key" },
 ];
 
-function SettingsRail({ account }: { account: Account }) {
-  const [active, setActive] = useState(RAIL[0]!.id);
-
-  useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        const vis = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (vis[0]) setActive(vis[0].target.id);
-      },
-      { rootMargin: "-15% 0px -75% 0px", threshold: 0 },
-    );
-    RAIL.forEach(({ id }) => {
-      const el = document.getElementById(id);
-      if (el) obs.observe(el);
-    });
-    return () => obs.disconnect();
-  }, []);
-
-  const go = (id: string) => document.getElementById(id)?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-
+function SettingsRail({ account, active, onSelect }: { account: Account; active: string; onSelect: (id: string) => void }) {
   return (
     <aside className="xl-set-rail">
       <ProfileCard account={account} />
-      <nav className="xl-set-nav" aria-label="Settings sections">
-        {RAIL.map((s) => (
-          <button key={s.id} type="button" className={active === s.id ? "xl-rail xl-rail--on" : "xl-rail"} aria-current={active === s.id} onClick={() => go(s.id)}>
-            <Icon name={s.icon} className="xl-ico--sm" /> {s.label}
-          </button>
-        ))}
+      <nav className="xl-set-nav" role="tablist" aria-orientation="vertical" aria-label="Settings sections">
+        {RAIL.map((s) => {
+          const on = active === s.id;
+          return (
+            <button
+              key={s.id}
+              type="button"
+              role="tab"
+              id={`tab-${s.id}`}
+              aria-selected={on}
+              aria-controls={`panel-${s.id}`}
+              className={on ? "xl-rail xl-rail--on" : "xl-rail"}
+              onClick={() => onSelect(s.id)}
+            >
+              <Icon name={s.icon} className="xl-ico--sm" /> {s.label}
+            </button>
+          );
+        })}
       </nav>
     </aside>
   );

@@ -16,18 +16,31 @@ type Querier interface {
 	// key_added is NOT set here — it flips true only once the coach key store works (S11).
 	CompleteOnboarding(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error)
 	CreateAccount(ctx context.Context, arg CreateAccountParams) (IdentityAccount, error)
+	// Create an account from an email sign-up (ADR-0023): email is required + case-insensitively
+	// unique (partial index), and password_hash is the pre-computed bcrypt hash.
+	CreateEmailAccount(ctx context.Context, arg CreateEmailAccountParams) (IdentityAccount, error)
 	CreateOauthIdentity(ctx context.Context, arg CreateOauthIdentityParams) (IdentityOauthIdentity, error)
 	CreateOnboarding(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (IdentitySession, error)
+	// Unlink a provider from an account (Settings: disconnect GitHub). Returns the affected
+	// row count so a no-op can 404.
+	DeleteOauthIdentity(ctx context.Context, arg DeleteOauthIdentityParams) (int64, error)
 	GetAccount(ctx context.Context, id pgtype.UUID) (IdentityAccount, error)
+	// Look up an account by email, case-insensitively (email sign-in + link-by-email). Returns
+	// the row incl. password_hash — never serialised to a client.
+	GetAccountByEmail(ctx context.Context, lower string) (IdentityAccount, error)
 	GetAccountByProviderIdentity(ctx context.Context, arg GetAccountByProviderIdentityParams) (IdentityAccount, error)
 	GetOnboarding(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error)
 	GetValidSession(ctx context.Context, id string) (IdentitySession, error)
 	InsertOutbox(ctx context.Context, arg InsertOutboxParams) error
 	ListEnrollments(ctx context.Context, accountID pgtype.UUID) ([]IdentityPathEnrollment, error)
+	// The providers linked to an account (Settings shows what's connected).
+	ListOauthProviders(ctx context.Context, accountID pgtype.UUID) ([]string, error)
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]IdentityOutbox, error)
 	MarkOutboxSent(ctx context.Context, eventID pgtype.UUID) error
 	RevokeSession(ctx context.Context, id string) (int64, error)
+	// Set or replace the account's bcrypt password hash (Settings: set/change password).
+	SetAccountPassword(ctx context.Context, arg SetAccountPasswordParams) (IdentityAccount, error)
 	// Onboarding step 2 flag. The study budget itself is written to account.study_budget_json
 	// (via UpdateAccount) in the SAME transaction as this flag.
 	SetOnboardingBudgetSet(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error)

@@ -20,18 +20,29 @@ export interface NavSection {
   items: NavItem[];
 }
 
+/** Live counts the Sidebar feeds into the Practice-loop badges. */
+export interface NavCounts {
+  /** Reviews due today (GET /revision/due → dueCount). */
+  revisionDue?: number;
+  /** Open journal entries (GET /mistakes → openCount). */
+  mistakesOpen?: number;
+}
+
 /**
  * navForPath builds the left-nav for a curriculum. The nav is curriculum-SCOPED
  * (F001): it renders only inside a path, and each path can expose its own options —
  * a System Design path need not carry DSA's five-touch "Practice loop". Today,
  * Roadmap and Mock interview are the cross-curriculum staples. Settings + Progress are
- * intentionally absent (they live in the avatar menu). Badge counts are static scaffold
- * decoration until the practice/review services back them.
+ * intentionally absent (they live in the avatar menu). The Practice-loop badges are LIVE
+ * counts the Sidebar passes in (reviews due · open mistakes); each is hidden until it
+ * loads and only shows when > 0, so a chip means there's something to act on.
  *
  * Only `dsa` is populated today; the switch is the extension point for future paths.
  */
-export function navForPath(slug: string): NavSection[] {
+export function navForPath(slug: string, counts: NavCounts = {}): NavSection[] {
   const base = `/${slug}`;
+  const badge = (n: number | undefined, teal: boolean): NavItem["badge"] =>
+    n && n > 0 ? { text: n > 99 ? "99+" : String(n), teal } : undefined;
   switch (slug) {
     default:
       return [
@@ -45,8 +56,8 @@ export function navForPath(slug: string): NavSection[] {
         {
           cap: "Practice loop",
           items: [
-            { label: "Revision", icon: "refresh", to: `${base}/revision`, badge: { text: "4", teal: true } },
-            { label: "Mistakes", icon: "journal", to: `${base}/mistakes`, badge: { text: "3" } },
+            { label: "Revision", icon: "refresh", to: `${base}/revision`, badge: badge(counts.revisionDue, true) },
+            { label: "Mistakes", icon: "journal", to: `${base}/mistakes`, badge: badge(counts.mistakesOpen, false) },
             { label: "Mock interview", icon: "target", to: `${base}/mock` },
           ],
         },

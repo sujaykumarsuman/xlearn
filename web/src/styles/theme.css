@@ -131,6 +131,10 @@ p { margin: 0; }
   font-family: var(--ds-font-sans); font-size: 12.5px; cursor: pointer; border-left: 1px solid var(--ds-line-2); }
 .ds-seg__btn:first-child { border-left: none; }
 .ds-seg__btn--on { background: rgba(53,208,192,.14); color: var(--ds-teal); }
+/* Full-width, circular-ended variant (e.g. the auth Sign in / Sign up selector). */
+.ds-seg--block { display: flex; width: 100%; }
+.ds-seg--block .ds-seg__btn { flex: 1; height: 38px; }
+.ds-seg--pill { border-radius: 999px; }
 
 /* Ring (gauge) track */
 .ds-ring__track { stroke: #1b2028; }

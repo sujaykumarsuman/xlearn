@@ -16,6 +16,7 @@ type IdentityAccount struct {
 	StudyBudgetJson []byte
 	RemindersJson   []byte
 	CreatedAt       pgtype.Timestamptz
+	PasswordHash    pgtype.Text
 }
 
 type IdentityOauthIdentity struct {

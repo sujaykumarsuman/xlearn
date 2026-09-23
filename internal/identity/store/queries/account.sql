@@ -3,9 +3,29 @@ INSERT INTO identity.account (display_name, email)
 VALUES ($1, $2)
 RETURNING *;
 
+-- name: CreateEmailAccount :one
+-- Create an account from an email sign-up (ADR-0023): email is required + case-insensitively
+-- unique (partial index), and password_hash is the pre-computed bcrypt hash.
+INSERT INTO identity.account (display_name, email, password_hash)
+VALUES ($1, $2, $3)
+RETURNING *;
+
 -- name: GetAccount :one
 SELECT * FROM identity.account
 WHERE id = $1;
+
+-- name: GetAccountByEmail :one
+-- Look up an account by email, case-insensitively (email sign-in + link-by-email). Returns
+-- the row incl. password_hash — never serialised to a client.
+SELECT * FROM identity.account
+WHERE lower(email) = lower($1);
+
+-- name: SetAccountPassword :one
+-- Set or replace the account's bcrypt password hash (Settings: set/change password).
+UPDATE identity.account
+SET password_hash = $2
+WHERE id = $1
+RETURNING *;
 
 -- name: GetAccountByProviderIdentity :one
 SELECT a.*

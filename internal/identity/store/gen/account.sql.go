@@ -14,7 +14,7 @@ import (
 const createAccount = `-- name: CreateAccount :one
 INSERT INTO identity.account (display_name, email)
 VALUES ($1, $2)
-RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at
+RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash
 `
 
 type CreateAccountParams struct {
@@ -33,12 +33,43 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (I
 		&i.StudyBudgetJson,
 		&i.RemindersJson,
 		&i.CreatedAt,
+		&i.PasswordHash,
+	)
+	return i, err
+}
+
+const createEmailAccount = `-- name: CreateEmailAccount :one
+INSERT INTO identity.account (display_name, email, password_hash)
+VALUES ($1, $2, $3)
+RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash
+`
+
+type CreateEmailAccountParams struct {
+	DisplayName  string
+	Email        pgtype.Text
+	PasswordHash pgtype.Text
+}
+
+// Create an account from an email sign-up (ADR-0023): email is required + case-insensitively
+// unique (partial index), and password_hash is the pre-computed bcrypt hash.
+func (q *Queries) CreateEmailAccount(ctx context.Context, arg CreateEmailAccountParams) (IdentityAccount, error) {
+	row := q.db.QueryRow(ctx, createEmailAccount, arg.DisplayName, arg.Email, arg.PasswordHash)
+	var i IdentityAccount
+	err := row.Scan(
+		&i.ID,
+		&i.DisplayName,
+		&i.Email,
+		&i.Timezone,
+		&i.StudyBudgetJson,
+		&i.RemindersJson,
+		&i.CreatedAt,
+		&i.PasswordHash,
 	)
 	return i, err
 }
 
 const getAccount = `-- name: GetAccount :one
-SELECT id, display_name, email, timezone, study_budget_json, reminders_json, created_at FROM identity.account
+SELECT id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash FROM identity.account
 WHERE id = $1
 `
 
@@ -53,12 +84,36 @@ func (q *Queries) GetAccount(ctx context.Context, id pgtype.UUID) (IdentityAccou
 		&i.StudyBudgetJson,
 		&i.RemindersJson,
 		&i.CreatedAt,
+		&i.PasswordHash,
+	)
+	return i, err
+}
+
+const getAccountByEmail = `-- name: GetAccountByEmail :one
+SELECT id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash FROM identity.account
+WHERE lower(email) = lower($1)
+`
+
+// Look up an account by email, case-insensitively (email sign-in + link-by-email). Returns
+// the row incl. password_hash — never serialised to a client.
+func (q *Queries) GetAccountByEmail(ctx context.Context, lower string) (IdentityAccount, error) {
+	row := q.db.QueryRow(ctx, getAccountByEmail, lower)
+	var i IdentityAccount
+	err := row.Scan(
+		&i.ID,
+		&i.DisplayName,
+		&i.Email,
+		&i.Timezone,
+		&i.StudyBudgetJson,
+		&i.RemindersJson,
+		&i.CreatedAt,
+		&i.PasswordHash,
 	)
 	return i, err
 }
 
 const getAccountByProviderIdentity = `-- name: GetAccountByProviderIdentity :one
-SELECT a.id, a.display_name, a.email, a.timezone, a.study_budget_json, a.reminders_json, a.created_at
+SELECT a.id, a.display_name, a.email, a.timezone, a.study_budget_json, a.reminders_json, a.created_at, a.password_hash
 FROM identity.account a
 JOIN identity.oauth_identity oi ON oi.account_id = a.id
 WHERE oi.provider = $1 AND oi.provider_user_id = $2
@@ -80,6 +135,36 @@ func (q *Queries) GetAccountByProviderIdentity(ctx context.Context, arg GetAccou
 		&i.StudyBudgetJson,
 		&i.RemindersJson,
 		&i.CreatedAt,
+		&i.PasswordHash,
+	)
+	return i, err
+}
+
+const setAccountPassword = `-- name: SetAccountPassword :one
+UPDATE identity.account
+SET password_hash = $2
+WHERE id = $1
+RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash
+`
+
+type SetAccountPasswordParams struct {
+	ID           pgtype.UUID
+	PasswordHash pgtype.Text
+}
+
+// Set or replace the account's bcrypt password hash (Settings: set/change password).
+func (q *Queries) SetAccountPassword(ctx context.Context, arg SetAccountPasswordParams) (IdentityAccount, error) {
+	row := q.db.QueryRow(ctx, setAccountPassword, arg.ID, arg.PasswordHash)
+	var i IdentityAccount
+	err := row.Scan(
+		&i.ID,
+		&i.DisplayName,
+		&i.Email,
+		&i.Timezone,
+		&i.StudyBudgetJson,
+		&i.RemindersJson,
+		&i.CreatedAt,
+		&i.PasswordHash,
 	)
 	return i, err
 }
@@ -91,7 +176,7 @@ SET display_name      = COALESCE($2, display_name),
     study_budget_json = COALESCE($4::jsonb, study_budget_json),
     reminders_json    = COALESCE($5::jsonb, reminders_json)
 WHERE id = $1
-RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at
+RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash
 `
 
 type UpdateAccountParams struct {
@@ -122,6 +207,7 @@ func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (I
 		&i.StudyBudgetJson,
 		&i.RemindersJson,
 		&i.CreatedAt,
+		&i.PasswordHash,
 	)
 	return i, err
 }

@@ -27,8 +27,15 @@ const (
 	accountCreatedVersion = 1
 )
 
-// ErrNotFound is returned when a lookup matches no row (mapped to 404/401 above).
-var ErrNotFound = errors.New("identity: not found")
+// Errors mapped to HTTP status by the handlers.
+var (
+	// ErrNotFound is returned when a lookup matches no row (mapped to 404/401 above).
+	ErrNotFound = errors.New("identity: not found")
+	// ErrEmailTaken is returned when an email sign-up collides with an existing account.
+	ErrEmailTaken = errors.New("identity: email already registered")
+	// ErrConflict is returned when linking a provider identity that already exists.
+	ErrConflict = errors.New("identity: conflict")
+)
 
 // Account is an xLearn user (the parts the HTTP layer needs this sprint).
 type Account struct {
@@ -36,6 +43,10 @@ type Account struct {
 	DisplayName string
 	Email       string // "" when the provider gave no email
 	Timezone    string
+	// PasswordHash is the bcrypt hash for email sign-in (ADR-0023), "" for OAuth-only
+	// accounts that never set one. NEVER serialised to a client — /me exposes only a
+	// derived has_password flag.
+	PasswordHash string
 	// StudyBudget / Reminders are the raw jsonb blobs, surfaced only on the internal
 	// service-to-service endpoint the review workers call (ADR-0016); never on /me.
 	StudyBudget []byte
@@ -104,6 +115,22 @@ type Store interface {
 	// account_created outbox row in one transaction. created reports first sign-in.
 	FindOrCreateAccount(ctx context.Context, in OAuthUpsert) (acct Account, created bool, err error)
 	GetAccount(ctx context.Context, id string) (Account, error)
+	// GetAccountByEmail looks up an account case-insensitively (email sign-in). The
+	// returned Account carries PasswordHash. ErrNotFound when no account has that email.
+	GetAccountByEmail(ctx context.Context, email string) (Account, error)
+	// CreateEmailAccount creates an account from an email sign-up (email + pre-hashed
+	// password) with onboarding + the account_created outbox row, in one transaction.
+	// ErrEmailTaken when the email is already registered.
+	CreateEmailAccount(ctx context.Context, email, passwordHash, displayName string) (Account, error)
+	// SetAccountPassword sets/replaces the account's bcrypt hash (Settings).
+	SetAccountPassword(ctx context.Context, id, passwordHash string) (Account, error)
+	// LinkOAuth attaches a provider identity to an existing account (Settings: connect).
+	// ErrConflict when that (provider, provider_user_id) is already linked.
+	LinkOAuth(ctx context.Context, accountID, provider, providerUserID string) error
+	// UnlinkOAuth removes a provider from an account; removed reports whether a row went.
+	UnlinkOAuth(ctx context.Context, accountID, provider string) (removed bool, err error)
+	// ListOAuthProviders returns the providers linked to an account (Settings display).
+	ListOAuthProviders(ctx context.Context, accountID string) ([]string, error)
 	// UpdateAccount applies a partial profile/budget/timezone/reminders update to the
 	// caller's own account and returns the updated row (PATCH /me).
 	UpdateAccount(ctx context.Context, id string, in AccountUpdate) (Account, error)
@@ -150,6 +177,25 @@ func (s *PgStore) FindOrCreateAccount(ctx context.Context, in OAuthUpsert) (Acco
 		return acct, false, nil
 	} else if !errors.Is(err, ErrNotFound) {
 		return Account{}, false, err
+	}
+
+	// Auto-link by verified provider email (ADR-0023): if this provider's email already
+	// belongs to an account, attach the new identity to it instead of creating a duplicate
+	// — provider emails are verified, so this safely merges GitHub↔email sign-ups.
+	if in.Email != "" {
+		if acct, err := s.GetAccountByEmail(ctx, in.Email); err == nil {
+			if lerr := s.LinkOAuth(ctx, acct.ID, in.Provider, in.ProviderUserID); lerr != nil {
+				if errors.Is(lerr, ErrConflict) {
+					// Raced with a concurrent link of the same identity — re-find the winner.
+					acct2, ferr := s.byProvider(ctx, in)
+					return acct2, false, ferr
+				}
+				return Account{}, false, lerr
+			}
+			return acct, false, nil
+		} else if !errors.Is(err, ErrNotFound) {
+			return Account{}, false, err
+		}
 	}
 
 	tx, err := s.pool.Begin(ctx)
@@ -225,6 +271,115 @@ func (s *PgStore) GetAccount(ctx context.Context, id string) (Account, error) {
 		return Account{}, mapErr(err)
 	}
 	return toAccount(row), nil
+}
+
+// GetAccountByEmail looks up an account case-insensitively (email sign-in / link-by-email).
+func (s *PgStore) GetAccountByEmail(ctx context.Context, email string) (Account, error) {
+	row, err := s.q.GetAccountByEmail(ctx, email)
+	if err != nil {
+		return Account{}, mapErr(err)
+	}
+	return toAccount(row), nil
+}
+
+// CreateEmailAccount creates an email/password account with onboarding + the outbox row.
+func (s *PgStore) CreateEmailAccount(ctx context.Context, email, passwordHash, displayName string) (Account, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Account{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := s.q.WithTx(tx)
+
+	acctRow, err := qtx.CreateEmailAccount(ctx, gen.CreateEmailAccountParams{
+		DisplayName:  displayName,
+		Email:        textOrNull(email),
+		PasswordHash: textOrNull(passwordHash),
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			return Account{}, ErrEmailTaken
+		}
+		return Account{}, fmt.Errorf("create email account: %w", err)
+	}
+	if _, err := qtx.CreateOnboarding(ctx, acctRow.ID); err != nil {
+		return Account{}, fmt.Errorf("create onboarding: %w", err)
+	}
+	eventID := newUUIDv4()
+	payload, err := marshalAccountCreated(eventID, uuidString(acctRow.ID), "email", displayName, acctRow.CreatedAt.Time)
+	if err != nil {
+		return Account{}, fmt.Errorf("marshal account_created: %w", err)
+	}
+	if err := qtx.InsertOutbox(ctx, gen.InsertOutboxParams{
+		EventID:     mustUUID(eventID),
+		Subject:     SubjectAccountCreated,
+		PayloadJson: payload,
+	}); err != nil {
+		return Account{}, fmt.Errorf("insert outbox: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Account{}, fmt.Errorf("commit tx: %w", err)
+	}
+	return toAccount(acctRow), nil
+}
+
+// SetAccountPassword sets or replaces the account's bcrypt hash.
+func (s *PgStore) SetAccountPassword(ctx context.Context, id, passwordHash string) (Account, error) {
+	uid, err := parseUUID(id)
+	if err != nil {
+		return Account{}, ErrNotFound
+	}
+	row, err := s.q.SetAccountPassword(ctx, gen.SetAccountPasswordParams{ID: uid, PasswordHash: textOrNull(passwordHash)})
+	if err != nil {
+		return Account{}, mapErr(err)
+	}
+	return toAccount(row), nil
+}
+
+// LinkOAuth attaches a provider identity to an existing account (ErrConflict if the
+// identity is already linked to some account).
+func (s *PgStore) LinkOAuth(ctx context.Context, accountID, provider, providerUserID string) error {
+	uid, err := parseUUID(accountID)
+	if err != nil {
+		return ErrNotFound
+	}
+	if _, err := s.q.CreateOauthIdentity(ctx, gen.CreateOauthIdentityParams{
+		AccountID:      uid,
+		Provider:       provider,
+		ProviderUserID: providerUserID,
+	}); err != nil {
+		if isUniqueViolation(err) {
+			return ErrConflict
+		}
+		return fmt.Errorf("link oauth: %w", err)
+	}
+	return nil
+}
+
+// UnlinkOAuth removes a provider from an account (removed=false when none was linked).
+func (s *PgStore) UnlinkOAuth(ctx context.Context, accountID, provider string) (bool, error) {
+	uid, err := parseUUID(accountID)
+	if err != nil {
+		return false, ErrNotFound
+	}
+	n, err := s.q.DeleteOauthIdentity(ctx, gen.DeleteOauthIdentityParams{AccountID: uid, Provider: provider})
+	if err != nil {
+		return false, fmt.Errorf("unlink oauth: %w", err)
+	}
+	return n > 0, nil
+}
+
+// ListOAuthProviders returns the providers linked to an account.
+func (s *PgStore) ListOAuthProviders(ctx context.Context, accountID string) ([]string, error) {
+	uid, err := parseUUID(accountID)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	ps, err := s.q.ListOauthProviders(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("list oauth providers: %w", err)
+	}
+	return ps, nil
 }
 
 // GetOnboarding returns an account's onboarding state.
@@ -429,13 +584,14 @@ func marshalAccountCreated(eventID, accountID, provider, displayName string, occ
 
 func toAccount(a gen.IdentityAccount) Account {
 	return Account{
-		ID:          uuidString(a.ID),
-		DisplayName: a.DisplayName,
-		Email:       a.Email.String,
-		Timezone:    a.Timezone,
-		StudyBudget: a.StudyBudgetJson,
-		Reminders:   a.RemindersJson,
-		CreatedAt:   a.CreatedAt.Time,
+		ID:           uuidString(a.ID),
+		DisplayName:  a.DisplayName,
+		Email:        a.Email.String,
+		Timezone:     a.Timezone,
+		PasswordHash: a.PasswordHash.String,
+		StudyBudget:  a.StudyBudgetJson,
+		Reminders:    a.RemindersJson,
+		CreatedAt:    a.CreatedAt.Time,
 	}
 }
 

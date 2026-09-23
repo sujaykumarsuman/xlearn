@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { routes } from "../router";
@@ -34,6 +34,29 @@ describe("AppShell + routing (authenticated)", () => {
     await screen.findByRole("navigation");
     const active = document.querySelector(".xl-nav__item--active");
     expect(active?.textContent).toContain("Revision");
+  });
+
+  it("shows live Practice-loop badge counts (reviews due · open mistakes)", async () => {
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.endsWith("/api/revision/due")) return { status: 200, body: { items: [], dueCount: 2 } };
+      if (url.endsWith("/api/mistakes"))
+        return { status: 200, body: { mistakes: [], openCount: 5, closedCount: 0, closeThreshold: 0, categories: [] } };
+      return { status: 404 };
+    });
+    renderAt("/xlearn/dsa/dashboard");
+
+    const nav = await screen.findByRole("navigation");
+    await waitFor(() => {
+      expect(within(nav).getByRole("link", { name: /revision/i })).toHaveTextContent("2");
+      expect(within(nav).getByRole("link", { name: /mistakes/i })).toHaveTextContent("5");
+    });
+  });
+
+  it("routes the sidebar brand home", async () => {
+    renderAt("/xlearn/dsa/dashboard");
+    const brand = await screen.findByRole("link", { name: /xlearn — home/i });
+    expect(brand).toHaveAttribute("href", "/xlearn");
   });
 
   it("renders params-driven screens", async () => {

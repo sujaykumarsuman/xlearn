@@ -48,16 +48,26 @@ function coachCard() {
 describe("Settings screen", () => {
   afterEach(restoreFetch);
 
-  it("renders the profile card (rail) + the budget, coach, and reminders sections", async () => {
+  it("renders the profile card + section tabs, and switches the panel on tab click", async () => {
     settingsMock();
     renderApp("/xlearn/settings");
 
     // Profile is the rail identity card (view mode): name + email on show.
     expect(await screen.findByText("Ada Lovelace")).toBeInTheDocument();
     expect(screen.getByText("ada@example.com")).toBeInTheDocument();
+
+    // The rail is a tablist; Study budget is selected by default and only its panel renders.
+    expect(screen.getByRole("tab", { name: /study budget/i })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("heading", { name: /study budget/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /your ai coach/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /reminders/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /your ai coach/i })).not.toBeInTheDocument();
+
+    // Switching tabs swaps the panel (this is what a scroll-spy rail couldn't do reliably).
+    fireEvent.click(screen.getByRole("tab", { name: /your ai coach/i }));
+    expect(await screen.findByRole("heading", { name: /your ai coach/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /study budget/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: /reminders/i }));
+    expect(await screen.findByRole("heading", { name: /reminders/i })).toBeInTheDocument();
   });
 
   it("edits the profile via the Edit-profile form and saves via PATCH /me", async () => {
@@ -90,6 +100,7 @@ describe("Settings screen", () => {
     settingsMock();
     renderApp("/xlearn/settings");
 
+    fireEvent.click(await screen.findByRole("tab", { name: /your ai coach/i }));
     await screen.findByRole("heading", { name: /your ai coach/i });
     const card = coachCard();
     expect((await within(card).findAllByText(/not connected/i)).length).toBe(2);
@@ -113,6 +124,7 @@ describe("Settings screen", () => {
     });
     renderApp("/xlearn/settings");
 
+    fireEvent.click(await screen.findByRole("tab", { name: /your ai coach/i }));
     await screen.findByRole("heading", { name: /your ai coach/i });
     const card = coachCard();
     fireEvent.change(await within(card).findByPlaceholderText("sk-ant-…"), { target: { value: "sk-ant-secret-key-1234" } });
@@ -137,6 +149,7 @@ describe("Settings screen", () => {
     });
     renderApp("/xlearn/settings");
 
+    fireEvent.click(await screen.findByRole("tab", { name: /your ai coach/i }));
     await screen.findByRole("heading", { name: /your ai coach/i });
     const card = coachCard();
     // Pick a different model pill, then Save (no key entered).
@@ -162,6 +175,7 @@ describe("Settings screen", () => {
     });
     renderApp("/xlearn/settings");
 
+    fireEvent.click(await screen.findByRole("tab", { name: /your ai coach/i }));
     await screen.findByRole("heading", { name: /your ai coach/i });
     // Anthropic is default (badge); OpenAI offers "Set as default".
     fireEvent.click(await within(coachCard()).findByRole("button", { name: /set as default/i }));
@@ -183,6 +197,7 @@ describe("Settings screen", () => {
     });
     renderApp("/xlearn/settings");
 
+    fireEvent.click(await screen.findByRole("tab", { name: /your ai coach/i }));
     await screen.findByRole("heading", { name: /your ai coach/i });
     fireEvent.click(await within(coachCard()).findByRole("button", { name: /^remove$/i }));
     await waitFor(() => expect(deletedProvider).toBe("anthropic"));
@@ -207,13 +222,55 @@ describe("Settings screen", () => {
     settingsMock((b) => (patched = b));
     renderApp("/xlearn/settings");
 
+    fireEvent.click(await screen.findByRole("tab", { name: /reminders/i }));
     fireEvent.click(await screen.findByRole("switch", { name: /daily study reminder/i }));
-    fireEvent.click(screen.getAllByRole("button", { name: /^save$/i })[1]!);
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
 
     await waitFor(() =>
       expect(patched).toEqual({
         reminders: { daily_reminder_on: false, daily_reminder_time: "20:00", revision_due_alerts_on: true },
       }),
     );
+  });
+
+  it("sets a password + offers Connect GitHub in the Sign-in & security card", async () => {
+    let posted: unknown = null;
+    installFetchMock((url, init) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.includes("/api/me/password")) {
+        posted = init?.body ? JSON.parse(String(init.body)) : null;
+        return { status: 200, body: { ok: true } };
+      }
+      if (url.includes("/api/coach/key")) return { status: 200, body: { keys: [], connected: false, default_provider: "" } };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/settings");
+
+    fireEvent.click(await screen.findByRole("tab", { name: /sign-in & security/i }));
+    await screen.findByRole("heading", { name: /sign-in & security/i });
+    // No password yet → "Set password"; GitHub not linked → a top-level Connect (link mode) form.
+    const connect = screen.getByRole("button", { name: /^connect$/i });
+    expect(connect.closest("form")?.getAttribute("action")).toMatch(/\/api\/v1\/auth\/github\/start\?link=1$/);
+
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "brand-new-pass" } });
+    fireEvent.click(screen.getByRole("button", { name: /set password/i }));
+    await waitFor(() => expect(posted).toEqual({ new_password: "brand-new-pass" }));
+  });
+
+  it("opens the tab named by ?tab= (the coach deep link)", async () => {
+    settingsMock();
+    renderApp("/xlearn/settings?tab=coach");
+
+    expect(await screen.findByRole("heading", { name: /your ai coach/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /your ai coach/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("heading", { name: /study budget/i })).not.toBeInTheDocument();
+  });
+
+  it("opens the Sign-in tab when returning from the GitHub link flow (?linked=)", async () => {
+    settingsMock();
+    renderApp("/xlearn/settings?linked=github");
+
+    expect(await screen.findByRole("heading", { name: /sign-in & security/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /sign-in & security/i })).toHaveAttribute("aria-selected", "true");
   });
 });
