@@ -30,7 +30,15 @@ Legend: ⬜ planned · 🔄 in progress · ✅ done (in local review) · 🚀 sh
 | [F006](F006-settings-redesign-and-coach-model.md) | Round 4–5: **Settings redesign** (section rail + cards, pill/circle controls, GitHub-style profile card) + **multi-provider coach** — connect Anthropic *and* OpenAI, each with its model/name, one marked the **default**; a **header quick-switch** (provider pill + model dropdown) sets it from anywhere | 🚀 shipped (`v1.2.0`) |
 | [F007](F007-email-password-auth.md) | **Login flow**: a Sign in / Sign up pill + functional email/password auth; GitHub users set a password + email users connect GitHub in **Settings** (auto-link on matching verified email). No email verification yet. Review round added: full-width pill, **Settings section tabs** (replacing the scroll-spy rail), clearer OAuth wording | 🚀 shipped (`v1.3.0`) |
 | [F008](F008-shell-logo-and-live-badges.md) | **Shell polish**: the sidebar xLearn logo routes home (login when signed out); the Practice-loop **badge counts go live** (reviews due · open mistakes, hidden at 0) instead of hard-coded scaffold | 🚀 shipped (`v1.3.0`) |
-| [F009](F009-usernames-and-public-dashboards.md) | **Usernames + public dashboards**: per-course progress moves into the course nav; the avatar menu gains **Dashboard**; **usernames** (claim in Settings, sign in with email OR username); and a **public** LeetCode-style profile at `/xlearn/<username>` — xLearn's first unauthenticated route (non-PII only). ADR-0024 | 🚀 shipped (`v1.4.0`) |
+| [F009](F009-usernames-and-public-dashboards.md) | **Usernames + public dashboards**: per-course progress moves into the course nav; the avatar menu gains **Dashboard**; **usernames** (claim in Settings, sign in with email OR username); and a **public** LeetCode-style profile at `/xlearn/<username>` — xLearn's first unauthenticated route (non-PII only). ADR-0024 | 🚀 shipped (`v1.4.0`; username→onboarding-step in `v1.4.1`) |
+
+**Shipped as `v1.4.1`** (2026-09-23): merged (xlearn#41) → `v1.4.1` tag → Flux deploy → verified live
+(gateway `v1.4.1`). F009 review follow-up: the awkward standalone `/claim-username` page was replaced by a
+dedicated **onboarding step** — the sign-up flow is now 4 steps (`path → budget → username → coach`), the
+username step styled like the budget/coach steps (live availability check, Claim & continue / Skip). The
+standalone screen + route were deleted; an existing account with no username is sent to Settings from the
+avatar → Dashboard. Frontend-only; a focused adversarial review fixed an a11y gap (aria-live/role=alert on
+the hint), a debounce race on the claim button, and stale onboarding doc comments.
 
 **Shipped as `v1.4.0`** (2026-09-23): merged (xlearn#39) → `v1.4.0` tag → deploy built all seven `1.4.0`
 images → Flux deployed → verified live (gateway `v1.4.0`). **F009** relocates per-course Progress into the
