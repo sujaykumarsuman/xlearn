@@ -28,8 +28,17 @@ Legend: ⬜ planned · 🔄 in progress · ✅ done (in local review) · 🚀 sh
 | [F004](F004-projects-hub-entry.md) | Add xLearn to **projects-hub** (`projects.sujaykumar.dev`), as the first project | 🚀 shipped (`github.io#28`) |
 | [F005](F005-curriculum-gating-and-problems-arena.md) | Rounds 2–3: enrollment gates solving, scheduled-only counting, the **Problems** arena (untimed study), Roadmap wired, top-bar overlap fix | 🚀 shipped (`v1.1.0`) — one dual-state nuance deferred |
 | [F006](F006-settings-redesign-and-coach-model.md) | Round 4–5: **Settings redesign** (section rail + cards, pill/circle controls, GitHub-style profile card) + **multi-provider coach** — connect Anthropic *and* OpenAI, each with its model/name, one marked the **default**; a **header quick-switch** (provider pill + model dropdown) sets it from anywhere | 🚀 shipped (`v1.2.0`) |
-| [F007](F007-email-password-auth.md) | **Login flow**: a Sign in / Sign up pill + functional email/password auth; GitHub users set a password + email users connect GitHub in **Settings** (auto-link on matching verified email). No email verification yet. Review round added: full-width pill, **Settings section tabs** (replacing the scroll-spy rail), clearer OAuth wording | 🔄 in local review |
-| [F008](F008-shell-logo-and-live-badges.md) | **Shell polish**: the sidebar xLearn logo routes home (login when signed out); the Practice-loop **badge counts go live** (reviews due · open mistakes, hidden at 0) instead of hard-coded scaffold | 🔄 in local review |
+| [F007](F007-email-password-auth.md) | **Login flow**: a Sign in / Sign up pill + functional email/password auth; GitHub users set a password + email users connect GitHub in **Settings** (auto-link on matching verified email). No email verification yet. Review round added: full-width pill, **Settings section tabs** (replacing the scroll-spy rail), clearer OAuth wording | 🚀 shipped (`v1.3.0`) |
+| [F008](F008-shell-logo-and-live-badges.md) | **Shell polish**: the sidebar xLearn logo routes home (login when signed out); the Practice-loop **badge counts go live** (reviews due · open mistakes, hidden at 0) instead of hard-coded scaffold | 🚀 shipped (`v1.3.0`) |
+
+**Shipped as `v1.3.0`** (2026-09-23): merged (xlearn#36) → `v1.3.0` tag → deploy → verified live
+(gateway `v1.3.0`). **F007** adds first-party email/password auth alongside GitHub OAuth (ADR-0023):
+`account.password_hash` (bcrypt) + a case-insensitive unique email (migration `00003`); the email
+routes + `/me/password` + `/me/oauth/{provider}` are session-gated in prod, and dev-login stays 404.
+The review round also turned the Settings section rail into **tabs** (the scroll-spy couldn't reach
+its last item) and reworded the OAuth-disconnect copy. **F008** links the sidebar brand home and makes
+the Practice-loop badges live (reviews due · open mistakes) instead of hard-coded. Email verification
++ real reminders remain deferred (no mail is sent yet).
 
 **Shipped as `v1.2.0`** (2026-09-22): merged (xlearn#34) → `v1.2.0` tag → Flux deploy → verified live
 (gateway `v1.2.0`). The coach schema migrated to one key per (account, provider) + a default pointer;

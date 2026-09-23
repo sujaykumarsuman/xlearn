@@ -59,10 +59,13 @@ tracked separately in [F008](F008-shell-logo-and-live-badges.md) and ships in th
 
 ## Status
 
-🔄 **In progress** — code-complete and green (Go build/vet/gofmt/test incl. new identity + gateway
-tests, `sqlc diff`, OpenAPI drift; web typecheck/lint + 88 tests). Bringing up the local
-docker-compose stack for review at `http://localhost:8080/xlearn/auth`. Land-and-sync only after an
-explicit go-ahead (ships as `v1.3.0` — identity schema migration included).
+🚀 **Shipped (`v1.3.0`)** — merged (xlearn#36) → `v1.3.0` tag → deploy → **verified live**: gateway
+reports `v1.3.0`; `POST /auth/signup` + `POST /auth/login` are live and validating (invalid email →
+422, bad creds → uniform 401); `POST /me/password` + `DELETE /me/oauth/{provider}` are session-gated
+(401 without a session); dev-login is 404 in prod (DEV_AUTH never in the prod image). The review-round
+refinements (full-width pill · Settings section tabs · clearer OAuth wording) shipped in the same
+release. Green before ship: Go (gofmt/vet/test/`sqlc diff`/OpenAPI drift) + web (typecheck/lint + 92
+tests).
 
 ## Notes
 

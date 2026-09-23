@@ -34,8 +34,9 @@ Two small shell issues raised while reviewing F007:
 
 ## Status
 
-🔄 **In progress** — code-complete and green (web typecheck/lint + tests; no backend change). In local
-review alongside [F007](F007-email-password-auth.md); ships in the same release (`v1.3.0`).
+🚀 **Shipped (`v1.3.0`)** — merged (xlearn#36) → `v1.3.0` tag → deploy → verified live alongside
+[F007](F007-email-password-auth.md). Web-only (no backend change); green before ship (typecheck/lint +
+92 tests, incl. a live-badge-count case and a brand-routes-home case).
 
 ## Notes
 
