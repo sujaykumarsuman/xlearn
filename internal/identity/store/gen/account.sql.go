@@ -14,7 +14,7 @@ import (
 const createAccount = `-- name: CreateAccount :one
 INSERT INTO identity.account (display_name, email)
 VALUES ($1, $2)
-RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash
+RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username
 `
 
 type CreateAccountParams struct {
@@ -34,6 +34,7 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (I
 		&i.RemindersJson,
 		&i.CreatedAt,
 		&i.PasswordHash,
+		&i.Username,
 	)
 	return i, err
 }
@@ -41,7 +42,7 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (I
 const createEmailAccount = `-- name: CreateEmailAccount :one
 INSERT INTO identity.account (display_name, email, password_hash)
 VALUES ($1, $2, $3)
-RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash
+RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username
 `
 
 type CreateEmailAccountParams struct {
@@ -64,12 +65,13 @@ func (q *Queries) CreateEmailAccount(ctx context.Context, arg CreateEmailAccount
 		&i.RemindersJson,
 		&i.CreatedAt,
 		&i.PasswordHash,
+		&i.Username,
 	)
 	return i, err
 }
 
 const getAccount = `-- name: GetAccount :one
-SELECT id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash FROM identity.account
+SELECT id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username FROM identity.account
 WHERE id = $1
 `
 
@@ -85,12 +87,13 @@ func (q *Queries) GetAccount(ctx context.Context, id pgtype.UUID) (IdentityAccou
 		&i.RemindersJson,
 		&i.CreatedAt,
 		&i.PasswordHash,
+		&i.Username,
 	)
 	return i, err
 }
 
 const getAccountByEmail = `-- name: GetAccountByEmail :one
-SELECT id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash FROM identity.account
+SELECT id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username FROM identity.account
 WHERE lower(email) = lower($1)
 `
 
@@ -108,12 +111,13 @@ func (q *Queries) GetAccountByEmail(ctx context.Context, lower string) (Identity
 		&i.RemindersJson,
 		&i.CreatedAt,
 		&i.PasswordHash,
+		&i.Username,
 	)
 	return i, err
 }
 
 const getAccountByProviderIdentity = `-- name: GetAccountByProviderIdentity :one
-SELECT a.id, a.display_name, a.email, a.timezone, a.study_budget_json, a.reminders_json, a.created_at, a.password_hash
+SELECT a.id, a.display_name, a.email, a.timezone, a.study_budget_json, a.reminders_json, a.created_at, a.password_hash, a.username
 FROM identity.account a
 JOIN identity.oauth_identity oi ON oi.account_id = a.id
 WHERE oi.provider = $1 AND oi.provider_user_id = $2
@@ -136,6 +140,31 @@ func (q *Queries) GetAccountByProviderIdentity(ctx context.Context, arg GetAccou
 		&i.RemindersJson,
 		&i.CreatedAt,
 		&i.PasswordHash,
+		&i.Username,
+	)
+	return i, err
+}
+
+const getAccountByUsername = `-- name: GetAccountByUsername :one
+SELECT id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username FROM identity.account
+WHERE username IS NOT NULL AND lower(username) = lower($1)
+`
+
+// Look up an account by username, case-insensitively (username sign-in + the public
+// profile at /xlearn/<username>). ErrNotFound when no account has claimed that username.
+func (q *Queries) GetAccountByUsername(ctx context.Context, lower string) (IdentityAccount, error) {
+	row := q.db.QueryRow(ctx, getAccountByUsername, lower)
+	var i IdentityAccount
+	err := row.Scan(
+		&i.ID,
+		&i.DisplayName,
+		&i.Email,
+		&i.Timezone,
+		&i.StudyBudgetJson,
+		&i.RemindersJson,
+		&i.CreatedAt,
+		&i.PasswordHash,
+		&i.Username,
 	)
 	return i, err
 }
@@ -144,7 +173,7 @@ const setAccountPassword = `-- name: SetAccountPassword :one
 UPDATE identity.account
 SET password_hash = $2
 WHERE id = $1
-RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash
+RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username
 `
 
 type SetAccountPasswordParams struct {
@@ -165,6 +194,40 @@ func (q *Queries) SetAccountPassword(ctx context.Context, arg SetAccountPassword
 		&i.RemindersJson,
 		&i.CreatedAt,
 		&i.PasswordHash,
+		&i.Username,
+	)
+	return i, err
+}
+
+const setUsername = `-- name: SetUsername :one
+UPDATE identity.account
+SET username = $2
+WHERE id = $1
+RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username
+`
+
+type SetUsernameParams struct {
+	ID       pgtype.UUID
+	Username pgtype.Text
+}
+
+// Claim or change the account's username (F009). The partial unique index on
+// lower(username) enforces case-insensitive uniqueness; a collision surfaces as a unique
+// violation the store maps to ErrUsernameTaken. The value is validated + normalised (lower,
+// reserved-word check) in the service before it reaches here.
+func (q *Queries) SetUsername(ctx context.Context, arg SetUsernameParams) (IdentityAccount, error) {
+	row := q.db.QueryRow(ctx, setUsername, arg.ID, arg.Username)
+	var i IdentityAccount
+	err := row.Scan(
+		&i.ID,
+		&i.DisplayName,
+		&i.Email,
+		&i.Timezone,
+		&i.StudyBudgetJson,
+		&i.RemindersJson,
+		&i.CreatedAt,
+		&i.PasswordHash,
+		&i.Username,
 	)
 	return i, err
 }
@@ -176,7 +239,7 @@ SET display_name      = COALESCE($2, display_name),
     study_budget_json = COALESCE($4::jsonb, study_budget_json),
     reminders_json    = COALESCE($5::jsonb, reminders_json)
 WHERE id = $1
-RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash
+RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username
 `
 
 type UpdateAccountParams struct {
@@ -208,6 +271,7 @@ func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (I
 		&i.RemindersJson,
 		&i.CreatedAt,
 		&i.PasswordHash,
+		&i.Username,
 	)
 	return i, err
 }

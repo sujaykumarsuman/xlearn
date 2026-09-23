@@ -14,10 +14,13 @@ describe("navForPath (F001: curriculum-scoped nav)", () => {
     expect(labels("dsa")).toEqual(expect.arrayContaining(["Today", "Roadmap", "Mock interview"]));
   });
 
-  it("drops Settings and Progress (they live in the avatar menu)", () => {
+  it("keeps Settings out of the nav, but surfaces per-course Progress (F009)", () => {
     const l = labels("dsa");
+    // Settings still lives in the avatar menu (hub-level, not curriculum-scoped).
     expect(l).not.toContain("Settings");
-    expect(l).not.toContain("Progress");
+    // Progress moved OUT of the avatar menu INTO the curriculum nav (F009): the avatar
+    // menu's Dashboard now links to the public profile instead.
+    expect(l).toContain("Progress");
   });
 });
 

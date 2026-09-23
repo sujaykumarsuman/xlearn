@@ -30,6 +30,9 @@ type Querier interface {
 	// the row incl. password_hash — never serialised to a client.
 	GetAccountByEmail(ctx context.Context, lower string) (IdentityAccount, error)
 	GetAccountByProviderIdentity(ctx context.Context, arg GetAccountByProviderIdentityParams) (IdentityAccount, error)
+	// Look up an account by username, case-insensitively (username sign-in + the public
+	// profile at /xlearn/<username>). ErrNotFound when no account has claimed that username.
+	GetAccountByUsername(ctx context.Context, lower string) (IdentityAccount, error)
 	GetOnboarding(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error)
 	GetValidSession(ctx context.Context, id string) (IdentitySession, error)
 	InsertOutbox(ctx context.Context, arg InsertOutboxParams) error
@@ -45,6 +48,11 @@ type Querier interface {
 	// (via UpdateAccount) in the SAME transaction as this flag.
 	SetOnboardingBudgetSet(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error)
 	SetOnboardingPath(ctx context.Context, arg SetOnboardingPathParams) (IdentityOnboarding, error)
+	// Claim or change the account's username (F009). The partial unique index on
+	// lower(username) enforces case-insensitive uniqueness; a collision surfaces as a unique
+	// violation the store maps to ErrUsernameTaken. The value is validated + normalised (lower,
+	// reserved-word check) in the service before it reaches here.
+	SetUsername(ctx context.Context, arg SetUsernameParams) (IdentityAccount, error)
 	// Idempotent: the first call records started_at (default now()); re-starting only
 	// re-activates the row and keeps the ORIGINAL started_at (it is not in the SET),
 	// so a learner's "current day" never resets on a repeat Start.

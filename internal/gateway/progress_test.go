@@ -39,6 +39,19 @@ func newAggHarness(t *testing.T) *aggHarness {
 			}
 			_ = json.NewEncoder(w).Encode(map[string]string{"account_id": "acct-1"})
 		},
+		// Public-profile resolver (F009): non-PII fields only.
+		"GET /internal/accounts/by-username/{username}": func(w http.ResponseWriter, r *http.Request) {
+			if r.PathValue("username") != "ada" {
+				w.WriteHeader(404)
+				_, _ = w.Write([]byte(`{"error":{"code":"not_found"}}`))
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"account_id": "acct-1", "username": "ada",
+				"display_name": "Ada Lovelace", "created_at": "2026-01-01T00:00:00Z",
+				"region": "UTC+05:30",
+			})
+		},
 	}))
 	t.Cleanup(identity.Close)
 
@@ -63,6 +76,10 @@ func newAggHarness(t *testing.T) *aggHarness {
 	t.Cleanup(assessment.Close)
 
 	curriculum := httptest.NewServer(jsonMux(map[string]handlerFn{
+		"GET /paths": writeJSONFn(map[string]any{"paths": []any{
+			map[string]any{"slug": "dsa", "title": "Data Structures & Algorithms", "status": "active"},
+			map[string]any{"slug": "sysdesign", "title": "System Design", "status": "coming_soon"},
+		}}),
 		"GET /paths/dsa": writeJSONFn(map[string]any{
 			"path": map[string]any{"slug": "dsa", "problem_total": 151},
 			"phases": []any{

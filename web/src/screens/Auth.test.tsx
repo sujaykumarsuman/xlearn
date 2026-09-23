@@ -77,8 +77,8 @@ describe("Auth screen", () => {
     renderApp("/xlearn/auth");
 
     await screen.findByRole("button", { name: /continue with github/i });
-    // Sign in is the default mode.
-    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "me@example.com" } });
+    // Sign in is the default mode; the identifier field accepts email or username (F009).
+    fireEvent.change(screen.getByLabelText("Email or username"), { target: { value: "me@example.com" } });
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "opensesame" } });
     fireEvent.click(screen.getByRole("button", { name: /^log in$/i }));
 

@@ -3,6 +3,7 @@ import { CurriculumShell, PlainShell } from "./components/AppShell";
 import AuthedShell from "./components/RequireAuth";
 import Auth from "./screens/Auth";
 import Catalog from "./screens/Catalog";
+import ClaimUsername from "./screens/ClaimUsername";
 import Concept from "./screens/Concept";
 import Dashboard from "./screens/Dashboard";
 import Mistakes from "./screens/Mistakes";
@@ -14,6 +15,7 @@ import Progress from "./screens/Progress";
 import Revision from "./screens/Revision";
 import Roadmap from "./screens/Roadmap";
 import Settings from "./screens/Settings";
+import UserDashboard from "./screens/UserDashboard";
 import Week from "./screens/Week";
 
 // All routes are app-relative; the router prepends the /xlearn basename.
@@ -37,8 +39,16 @@ import Week from "./screens/Week";
 //   /dsa/progress        Progress    (S09)
 //   /settings            Settings    (S10)
 //   /auth                Auth        (S02, standalone)
+//   /claim-username      ClaimUsername (F009; authed gate before a first public dashboard)
+//   /:username           UserDashboard (F009; PUBLIC — outside AuthedShell, like /auth)
+//
+// Routing note (F009): the public "/:username" profile sits OUTSIDE AuthedShell. React
+// Router ranks static segments above the dynamic ":username", so /settings, /dsa, /auth,
+// /claim-username (and any future top-level route + curriculum slug) still win — those
+// names are reserved so a username can never shadow a real route (ADR-0024).
 export const routes: RouteObject[] = [
   { path: "/auth", element: <Auth /> },
+  { path: "/:username", element: <UserDashboard /> },
   {
     path: "/",
     element: <AuthedShell />,
@@ -48,6 +58,7 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <Catalog /> },
           { path: "settings", element: <Settings /> },
+          { path: "claim-username", element: <ClaimUsername /> },
           { path: "*", element: <NotFound /> },
         ],
       },

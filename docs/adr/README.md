@@ -38,6 +38,8 @@ under [`../v1/`](../v1/).
 | [0020](0020-coach-service-realization-and-behaviour-gate.md) | Coach service realization & the server-authoritative behaviour gate | Accepted |
 | [0021](0021-release-tagging-and-api-versioning.md) | Release tagging, API v1 & the 1.0 hardening cut | Accepted |
 | [0022](0022-path-enrollment-and-dev-login.md) | Per-user path enrollment & the local dev login | Accepted |
+| [0023](0023-email-password-auth-and-account-linking.md) | Email/password sign-in + GitHub↔email account linking | Accepted |
+| [0024](0024-public-user-dashboards-and-usernames.md) | Public user dashboards + usernames (the first public route) | Accepted |
 
 ## Adding an ADR
 

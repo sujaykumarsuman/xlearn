@@ -1,12 +1,22 @@
-import { useState, type ReactNode } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Icon, type IconName } from "../components/Icon";
 import { ProviderLogo } from "../components/ProviderLogo";
 import { Spinner } from "../components/States";
 import { BudgetFields } from "../components/BudgetFields";
 import { type ApiRequestError } from "../lib/api";
 import { DEFAULT_WEEKDAY, DEFAULT_WEEKEND, budgetEta, clampWeekday, weekendLabel } from "../lib/budget";
-import { oauthLinkAction, useMe, usePatchMe, useSetPassword, useUnlinkOAuth, type Account, type WeekendBand } from "../lib/auth";
+import {
+  oauthLinkAction,
+  useMe,
+  usePatchMe,
+  useSetPassword,
+  useSetUsername,
+  useUnlinkOAuth,
+  useUsernameAvailability,
+  type Account,
+  type WeekendBand,
+} from "../lib/auth";
 import {
   COACH_MODELS,
   COACH_PROVIDERS,
@@ -113,13 +123,121 @@ function AccountSection({ account }: { account: Account }) {
             </button>
           </div>
         )}
-        <PasswordForm hasPassword={hasPassword} />
+        <UsernameForm account={account} />
+        <div style={{ borderTop: "1px solid var(--ds-line)", paddingTop: 16 }}>
+          <PasswordForm hasPassword={hasPassword} />
+        </div>
         <div style={{ borderTop: "1px solid var(--ds-line)", paddingTop: 16 }}>
           <ProvidersRow githubLinked={githubLinked} canUnlink={hasPassword || linked.length > 1} />
         </div>
       </div>
     </Card>
   );
+}
+
+/** UsernameForm claims or changes the account's public handle (F009). Live availability
+ *  check (debounced); a change warns that it moves the public dashboard URL. */
+function UsernameForm({ account }: { account: Account }) {
+  const setU = useSetUsername();
+  const current = account.username ?? "";
+  const [value, setValue] = useState(current);
+  const [debounced, setDebounced] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value.trim().toLowerCase()), 350);
+    return () => clearTimeout(t);
+  }, [value]);
+
+  const normalized = value.trim().toLowerCase();
+  const changed = normalized !== current;
+  const avail = useUsernameAvailability(debounced);
+  const canSave = changed && normalized.length >= 3 && avail.data?.available === true && !setU.isPending;
+
+  const touch = () => {
+    if (setU.isSuccess || setU.isError) setU.reset();
+  };
+  const save = () => {
+    if (!canSave) return;
+    setU.mutate(normalized);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div>
+        <b style={{ fontSize: 13.5 }}>Username</b>
+        <div style={{ fontSize: 11.5, color: "var(--ds-muted)", marginTop: 2 }}>
+          Your public dashboard address, and a second way to sign in.{" "}
+          {current && (
+            <>
+              Live at{" "}
+              <Link to={`/${current}`} className="ds-mono" style={{ color: "var(--ds-teal)" }}>
+                /xlearn/{current}
+              </Link>
+              .
+            </>
+          )}
+        </div>
+      </div>
+      <Field label="Username" htmlFor="username" hint="3–30 chars · lowercase, numbers, hyphens">
+        <input
+          id="username"
+          className="ds-input"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          placeholder="your-handle"
+          value={value}
+          onChange={(e) => {
+            touch();
+            setValue(e.target.value);
+          }}
+        />
+      </Field>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 20 }}>
+        <button type="button" className="ds-btn ds-btn--primary ds-btn--sm" disabled={!canSave} onClick={save}>
+          {setU.isPending ? "Saving…" : current ? "Change username" : "Claim username"}
+        </button>
+        <UsernameStatus current={current} normalized={normalized} changed={changed} avail={avail} setU={setU} />
+      </div>
+      {current && changed && normalized.length >= 3 && (
+        <span style={{ fontSize: 11.5, color: "var(--ds-muted)" }}>
+          Changing your username changes your public URL — the old address stops working.
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** The live validity/availability/result line beneath the username field. */
+function UsernameStatus({
+  current,
+  normalized,
+  changed,
+  avail,
+  setU,
+}: {
+  current: string;
+  normalized: string;
+  changed: boolean;
+  avail: ReturnType<typeof useUsernameAvailability>;
+  setU: ReturnType<typeof useSetUsername>;
+}) {
+  const ok = (t: string) => (
+    <span style={{ fontSize: 12, color: "var(--ds-ok)", display: "inline-flex", alignItems: "center", gap: 5 }}>
+      <Icon name="check" className="xl-ico--sm" /> {t}
+    </span>
+  );
+  const err = (t: string) => <span style={{ fontSize: 12, color: "var(--ds-err)" }}>{t}</span>;
+
+  if (setU.isSuccess) return ok("Username updated");
+  if (setU.isError) return err(setU.error.message || "Couldn’t save — try again.");
+  if (!current && normalized.length === 0) return null;
+  if (!changed) return current ? <span style={{ fontSize: 12, color: "var(--ds-muted)" }}>This is your current username.</span> : null;
+  if (normalized.length < 3) return <span style={{ fontSize: 12, color: "var(--ds-muted)" }}>At least 3 characters.</span>;
+  if (avail.isLoading) return <span style={{ fontSize: 12, color: "var(--ds-muted)" }}>Checking…</span>;
+  if (avail.data?.available) return ok(`@${normalized} is available`);
+  if (avail.data) return err(avail.data.reason ?? "That username isn’t available.");
+  return null;
 }
 
 function PasswordForm({ hasPassword }: { hasPassword: boolean }) {

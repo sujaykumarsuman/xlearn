@@ -43,6 +43,9 @@ func (g *Gateway) apiRoutes() []apiRoute {
 		// Account & sign-in management (ADR-0023): set/change password + disconnect a provider.
 		{"POST", "/api/me/password", g.handleSetPassword, true},
 		{"DELETE", "/api/me/oauth/{provider}", g.handleUnlinkOAuth, true},
+		// Username (F009 / ADR-0024): claim/change + availability check (session-gated).
+		{"POST", "/api/me/username", g.handleSetUsername, true},
+		{"GET", "/api/username/available", g.handleUsernameAvailable, true},
 		{"POST", "/api/auth/logout", g.handleLogout, true},
 		{"POST", "/api/onboarding/step", g.handleOnboardingStep, true},
 		// Email/password auth (ADR-0023): fetch-based signup/login (session cookie on the JSON
@@ -89,6 +92,9 @@ func (g *Gateway) apiRoutes() []apiRoute {
 		// Progress + Dashboard "Today" (parallel fan-out aggregations, S09).
 		{"GET", "/api/progress", g.handleProgress, true},
 		{"GET", "/api/dashboard", g.handleDashboard, true},
+		// PUBLIC user dashboard (F009 / ADR-0024): the ONLY unauthenticated /api route —
+		// resolves a username to non-PII public stats + a merged activity heatmap.
+		{"GET", "/api/u/{username}", g.handlePublicProfile, true},
 		// Coach (S11): masked key CRUD, per-page thread, and the SSE chat relay.
 		{"GET", "/api/coach/key", g.handleCoachKey, true},
 		{"PUT", "/api/coach/key", g.handlePutCoachKey, true},
@@ -285,6 +291,51 @@ func (g *Gateway) handleUnlinkOAuth(w http.ResponseWriter, r *http.Request) {
 	}
 	if status == http.StatusNoContent {
 		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	passthrough(w, status, body)
+}
+
+// handleSetUsername forwards a username claim/change to identity's POST /accounts/{id}/username
+// (JWT-gated; identity validates format + reserved words + case-insensitive uniqueness). F009.
+func (g *Gateway) handleSetUsername(w http.ResponseWriter, r *http.Request) {
+	accountID, ok := g.authAccount(w, r)
+	if !ok {
+		return
+	}
+	token, ok := g.mint(w, accountID)
+	if !ok {
+		return
+	}
+	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
+		return
+	}
+	body, status, err := g.identity.setUsername(r.Context(), token, accountID, reqBody)
+	if err != nil {
+		g.log.Error("bff /me/username: identity call failed", "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "identity unavailable")
+		return
+	}
+	passthrough(w, status, body)
+}
+
+// handleUsernameAvailable forwards the availability check to identity (session-gated; only
+// signed-in users claim usernames). F009.
+func (g *Gateway) handleUsernameAvailable(w http.ResponseWriter, r *http.Request) {
+	accountID, ok := g.authAccount(w, r)
+	if !ok {
+		return
+	}
+	token, ok := g.mint(w, accountID)
+	if !ok {
+		return
+	}
+	body, status, err := g.identity.usernameAvailable(r.Context(), token, r.URL.Query().Get("u"))
+	if err != nil {
+		g.log.Error("bff /username/available: identity call failed", "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "identity unavailable")
 		return
 	}
 	passthrough(w, status, body)
@@ -938,6 +989,41 @@ func (c *identityClient) startEnrollment(ctx context.Context, token, slug string
 		return nil, 0, err
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/json")
+	return c.do(req)
+}
+
+// setUsername forwards a username claim/change to identity (F009 · POST /accounts/{id}/username).
+func (c *identityClient) setUsername(ctx context.Context, token, accountID string, body []byte) ([]byte, int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/accounts/"+accountID+"/username", bytes.NewReader(body))
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	return c.do(req)
+}
+
+// usernameAvailable forwards the availability check to identity (F009 · GET /username/available?u=).
+func (c *identityClient) usernameAvailable(ctx context.Context, token, u string) ([]byte, int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/username/available?u="+url.QueryEscape(u), nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/json")
+	return c.do(req)
+}
+
+// publicAccountByUsername resolves a username to the account's non-PII public fields via
+// identity's ClusterIP-only internal endpoint (NO user JWT; F009). This is the only identity
+// call the public dashboard makes — it never touches the PII /accounts/{id}.
+func (c *identityClient) publicAccountByUsername(ctx context.Context, username string) ([]byte, int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/internal/accounts/by-username/"+url.PathEscape(username), nil)
+	if err != nil {
+		return nil, 0, err
+	}
 	req.Header.Set("Accept", "application/json")
 	return c.do(req)
 }
