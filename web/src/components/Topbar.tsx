@@ -56,10 +56,11 @@ export function Topbar({ variant, slug }: { variant: "plain" | "curriculum"; slu
   const name = me.data?.account.display_name ?? "Account";
   const email = me.data?.account.email ?? "";
   const initial = name.trim().charAt(0).toUpperCase() || "?";
-  // The avatar "Dashboard" links to the user's public profile, or the claim gate when they
-  // have no username yet (F009).
+  // The avatar "Dashboard" links to the user's public profile. New users claim a username in
+  // the sign-up flow (F009 review); an existing account without one is sent to Settings to
+  // claim it (the username field lives in the Sign-in & security tab).
   const username = me.data?.account.username;
-  const dashboardTo = username ? `/${username}` : "/claim-username";
+  const dashboardTo = username ? `/${username}` : "/settings?tab=account";
 
   // Account menu as an accessible button-disclosure (replaces the pure-CSS checkbox,
   // which announced as "checkbox" and had no visible keyboard focus). Escape and an
