@@ -4,9 +4,12 @@ BIN     := bin
 GATEWAY := gateway
 MODULE  := github.com/sujaykumarsuman/xlearn
 
-# The version stamped into the binary (GET <base>/api/healthz): the nearest git
-# tag, or pass VERSION=v1.2.3. On main the CI build-push workflow stamps a build
-# semver (0.<run>.x) instead — see .github/workflows/deploy.yml.
+# The version stamped into the binary (GET <base>/api/healthz, `gateway -version`):
+# the nearest git tag, or pass VERSION=v1.2.3. Released images are stamped with the
+# release tag itself — .github/workflows/deploy.yml runs only on a `v*` tag push
+# (tag-only deploys since v1.0, ADR-0021); pushes to main build nothing. The other
+# services stamp `main.version` instead (deploy/<svc>.Dockerfile, guarded by
+# deploy/version_test.go).
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X $(MODULE).Version=$(VERSION)
 

@@ -10,6 +10,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -33,7 +34,15 @@ const (
 	natsTimeout     = 10 * time.Second
 )
 
-func main() { os.Exit(run()) }
+func main() {
+	// `practice -version` prints the -ldflags-stamped version and exits (guarded by
+	// deploy/version_test.go).
+	if len(os.Args) == 2 && os.Args[1] == "-version" {
+		fmt.Println(buildVersion())
+		return
+	}
+	os.Exit(run())
+}
 
 func run() int {
 	cfg := practice.LoadConfig()
@@ -134,7 +143,9 @@ func newPool(ctx context.Context, db practice.DBConfig) (*pgxpool.Pool, error) {
 	return pgxpool.NewWithConfig(ctx, poolCfg)
 }
 
-// buildVersion is stamped via -ldflags at build time (mirrors the other services).
+// version is stamped at build time with -ldflags "-X main.version=vX.Y.Z" (see
+// deploy/practice.Dockerfile). It must be the main-package path: -X on a symbol that
+// does not exist is a silent no-op.
 var version = "dev"
 
 func buildVersion() string { return version }

@@ -11,6 +11,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -31,6 +32,12 @@ import (
 const shutdownTimeout = 10 * time.Second
 
 func main() {
+	// `gateway -version` prints the -ldflags-stamped version and exits (guarded by
+	// deploy/version_test.go).
+	if len(os.Args) == 2 && os.Args[1] == "-version" {
+		fmt.Println(xlearn.Version)
+		return
+	}
 	os.Exit(run())
 }
 

@@ -60,7 +60,8 @@ branch (feat/…) ──PR──▶ main ──CI(ci.yml)──▶ green   (no d
 
 ## Environments & promotion
 
-- **v1: one environment — prod** (single node). "Promotion" = merge to `main`. No staging.
+- **v1: one environment — prod** (single node). "Promotion" = tag a release on `main` (1.0+; merging
+  alone deploys nothing). No staging.
 - Later, a `xlearn-staging` namespace (separate schemas, `/xlearn-staging` route) can front `main`
   while tagged releases go to prod — additive, recorded as a new ADR if adopted.
 - **Never** `kubectl apply` by hand; all cluster change flows through `infra` + Flux.
@@ -69,8 +70,9 @@ branch (feat/…) ──PR──▶ main ──CI(ci.yml)──▶ green   (no d
 
 - **Tags:** `vX.Y.Z` (from 1.0). Pre-1.0 uses CI-run build numbers, not tags.
 - **Hotfix (post-1.0):** branch from the tag, `fix:`, tag `vX.Y.(Z+1)`.
-- **Rollback:** revert on `main` (auto-redeploys) or pin the previous image tag in `infra/apps/…`
-  and let Flux reconcile. Prefer revert for traceability.
+- **Rollback:** revert on `main` and tag a patch release (a merge alone no longer redeploys — 1.0+ is
+  tag-only), or pin the previous image tag in `infra/apps/…` and let Flux reconcile. Prefer revert for
+  traceability.
 
 ## CI gates (`.github/workflows/ci.yml`)
 
