@@ -54,7 +54,7 @@ export function Coach() {
     const message = text.trim();
     if (!message || sending) return;
     if (!usable) {
-      navigate("/settings");
+      navigate("/settings?tab=coach");
       return;
     }
     setInput("");
@@ -88,7 +88,7 @@ export function Coach() {
     } catch (err) {
       if (err instanceof CoachChatError && err.routesToSettings) {
         qc.invalidateQueries({ queryKey: ["coach-key"] });
-        navigate("/settings");
+        navigate("/settings?tab=coach");
       } else {
         setMessages((prev) => {
           const next = prev.slice();
@@ -137,7 +137,7 @@ export function Coach() {
       >
         {keyQuery.isLoading && <div style={{ fontSize: 12.5, color: "var(--ds-muted)" }}>Loading your coach…</div>}
 
-        {!keyQuery.isLoading && !usable && <CoachEmptyState disabled={!!key && !key.enabled} onOpenSettings={() => navigate("/settings")} />}
+        {!keyQuery.isLoading && !usable && <CoachEmptyState disabled={!!key && !key.enabled} onOpenSettings={() => navigate("/settings?tab=coach")} />}
 
         {usable && (
           <>
@@ -197,7 +197,7 @@ export function Coach() {
             </button>
           </div>
         ) : (
-          <button className="ds-btn ds-btn--primary ds-btn--sm" style={{ width: "100%" }} onClick={() => navigate("/settings")}>
+          <button className="ds-btn ds-btn--primary ds-btn--sm" style={{ width: "100%" }} onClick={() => navigate("/settings?tab=coach")}>
             <Icon name="key" className="xl-ico--sm" /> Add your key in Settings
           </button>
         )}

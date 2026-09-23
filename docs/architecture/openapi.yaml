@@ -91,6 +91,36 @@ paths:
         "422": { $ref: "#/components/responses/Unprocessable" }
         "502": { $ref: "#/components/responses/BadGateway" }
         "503": { $ref: "#/components/responses/Unavailable" }
+  /me/password:
+    post:
+      tags: [account]
+      operationId: setPassword
+      summary: Set or change the account password (ADR-0023). OAuth-only accounts set it without a current password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetPasswordRequest" }
+      responses:
+        "200": { description: Password set/changed. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /me/oauth/{provider}:
+    delete:
+      tags: [account]
+      operationId: unlinkOAuth
+      summary: Disconnect a linked provider (never the account's last sign-in method).
+      parameters:
+        - { $ref: "#/components/parameters/Provider" }
+      responses:
+        "204": { description: Provider disconnected. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Cannot remove the last sign-in method — set a password first. }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
   /onboarding/step:
     post:
       tags: [account]
@@ -124,14 +154,52 @@ paths:
       responses:
         "204": { description: Session revoked; cookie cleared. }
         "503": { $ref: "#/components/responses/Unavailable" }
+  /auth/signup:
+    post:
+      tags: [account]
+      operationId: signup
+      summary: Create an email/password account + session (ADR-0023). No email verification yet.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmailAuthRequest" }
+      responses:
+        "200": { description: Account created; session cookie set. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { description: An account with this email already exists. }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /auth/login:
+    post:
+      tags: [account]
+      operationId: login
+      summary: Email/password sign-in; sets a session cookie (ADR-0023). Uniform 401 on failure.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmailAuthRequest" }
+      responses:
+        "200": { description: Signed in; session cookie set. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503": { $ref: "#/components/responses/Unavailable" }
   /auth/{provider}/start:
     post:
       tags: [account]
       operationId: authStart
-      summary: Begin OAuth; 302 to the provider.
+      summary: Begin OAuth; 302 to the provider. `link=1` connects the provider to the signed-in account.
       security: []
       parameters:
         - { $ref: "#/components/parameters/Provider" }
+        - name: link
+          in: query
+          required: false
+          schema: { type: string, enum: ["1"] }
+          description: When "1", link the provider to the current session's account (Settings → Connect).
       responses:
         "302": { description: Redirect to the OAuth provider (sets an oauth-tx cookie). }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -746,9 +814,23 @@ components:
         display_name: { type: string }
         email: { type: [string, "null"] }
         timezone: { type: string }
+        has_password: { type: boolean, description: True when an email/password sign-in is set (ADR-0023). }
+        linked_providers: { type: array, items: { type: string }, description: OAuth providers linked to the account. }
         study_budget: { type: object }
         reminders: { type: object }
         created_at: { type: string, format: date-time }
+    EmailAuthRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8, maxLength: 72 }
+    SetPasswordRequest:
+      type: object
+      required: [new_password]
+      properties:
+        current_password: { type: string, description: Required when the account already has a password; omitted when setting one for the first time. }
+        new_password: { type: string, minLength: 8, maxLength: 72 }
     Onboarding:
       type: object
       properties:

@@ -4,14 +4,17 @@ import { Icon, IconSprite } from "../components/Icon";
 import { Spinner } from "../components/States";
 import { BudgetFields } from "../components/BudgetFields";
 import { DEFAULT_WEEKDAY, DEFAULT_WEEKEND, budgetEta, clampWeekday } from "../lib/budget";
+import { type ApiRequestError } from "../lib/api";
 import {
   oauthStartAction,
   useCompleteOnboarding,
   useDevAuthEnabled,
   useDevLogin,
+  useLogin,
   useMe,
   useSetOnboardingBudget,
   useSetOnboardingPath,
+  useSignup,
   type Me,
   type StudyBudget,
   type WeekendBand,
@@ -147,11 +150,37 @@ function SignIn() {
   const error = params.get("error");
   const devEnabled = useDevAuthEnabled();
   const devLogin = useDevLogin();
+
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const login = useLogin();
+  const signup = useSignup();
+  const pending = login.isPending || signup.isPending;
+  const err = mode === "signin" ? login.error : signup.error;
+
+  const emailOk = /^\S+@\S+\.\S+$/.test(email.trim());
+  const canSubmit = emailOk && password.length >= (mode === "signup" ? 8 : 1) && !pending;
+
+  const clearErrors = () => {
+    login.reset();
+    signup.reset();
+  };
+  const switchMode = (m: "signin" | "signup") => {
+    setMode(m);
+    clearErrors();
+  };
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+    (mode === "signup" ? signup : login).mutate({ email: email.trim(), password });
+  };
+
   return (
     <>
       <h2 style={{ fontSize: 24, fontWeight: 700 }}>Sign in to xLearn</h2>
       <p style={{ fontSize: 13, color: "var(--ds-muted)", marginTop: 4 }}>
-        Continue with GitHub to pick up your streak.
+        Continue with GitHub, or use your email.
       </p>
 
       {error && (
@@ -179,8 +208,7 @@ function SignIn() {
         </form>
 
         {/* Local-only dev sign-in (F002 / ADR-0022): rendered only when the gateway
-            reports DEV_AUTH is on — never in a prod image. Lets a reviewer enter the
-            app from docker-compose without OAuth. */}
+            reports DEV_AUTH is on — never in a prod image. */}
         {devEnabled.data && (
           <button
             type="button"
@@ -205,27 +233,63 @@ function SignIn() {
         <span style={{ flex: 1, height: 1, background: "var(--ds-line)" }} />
       </div>
 
-      {/* Email/password is inert in v1 (OAuth-only, ADR-0006). */}
-      <fieldset disabled style={{ border: 0, padding: 0, margin: 0, opacity: 0.55 }}>
+      {/* Sign in / Sign up selector (ADR-0023): full-width, circular-ended pill. */}
+      <div className="ds-seg ds-seg--block ds-seg--pill" role="group" aria-label="Sign in or sign up" style={{ marginBottom: 14 }}>
+        <button type="button" className={mode === "signin" ? "ds-seg__btn ds-seg__btn--on" : "ds-seg__btn"} aria-pressed={mode === "signin"} onClick={() => switchMode("signin")}>
+          Sign in
+        </button>
+        <button type="button" className={mode === "signup" ? "ds-seg__btn ds-seg__btn--on" : "ds-seg__btn"} aria-pressed={mode === "signup"} onClick={() => switchMode("signup")}>
+          Sign up
+        </button>
+      </div>
+
+      <form onSubmit={submit}>
         <div className="ds-field">
           <label className="ds-field__label" htmlFor="email">
             Email
           </label>
-          <input id="email" className="ds-input" type="email" placeholder="you@example.com" autoComplete="off" />
+          <input
+            id="email"
+            className="ds-input"
+            type="email"
+            placeholder="you@example.com"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => {
+              clearErrors();
+              setEmail(e.target.value);
+            }}
+          />
         </div>
         <div className="ds-field" style={{ marginTop: 12 }}>
           <label className="ds-field__label" htmlFor="password">
             Password
           </label>
-          <input id="password" className="ds-input" type="password" placeholder="••••••••••" autoComplete="off" />
+          <input
+            id="password"
+            className="ds-input"
+            type="password"
+            placeholder="••••••••••"
+            autoComplete={mode === "signup" ? "new-password" : "current-password"}
+            value={password}
+            onChange={(e) => {
+              clearErrors();
+              setPassword(e.target.value);
+            }}
+          />
+          {mode === "signup" && (
+            <p style={{ fontSize: 11, color: "var(--ds-muted)", margin: "6px 0 0" }}>At least 8 characters.</p>
+          )}
         </div>
-        <button type="button" className="ds-btn ds-btn--primary ds-btn--block ds-btn--lg" style={{ marginTop: 14 }}>
-          Log in
+        {err && (
+          <p role="alert" style={{ fontSize: 12.5, color: "var(--ds-err)", margin: "10px 0 0" }}>
+            {emailAuthErrorMessage(err, mode)}
+          </p>
+        )}
+        <button type="submit" className="ds-btn ds-btn--primary ds-btn--block ds-btn--lg" style={{ marginTop: 14 }} disabled={!canSubmit}>
+          {pending ? (mode === "signup" ? "Creating account…" : "Signing in…") : mode === "signup" ? "Create account" : "Log in"}
         </button>
-      </fieldset>
-      <p style={{ fontSize: 11.5, color: "var(--ds-muted)", marginTop: 10, textAlign: "center" }}>
-        Email sign-in isn’t available yet — xLearn is OAuth-only for now.
-      </p>
+      </form>
     </>
   );
 }
@@ -237,8 +301,25 @@ function oauthErrorMessage(code: string): string {
     case "oauth_state":
     case "oauth_code":
       return "That sign-in link expired. Please try again.";
+    case "link_auth":
+      return "Please sign in first, then connect GitHub from Settings.";
     default:
       return "Something went wrong signing in. Please try again.";
+  }
+}
+
+function emailAuthErrorMessage(err: ApiRequestError, mode: "signin" | "signup"): string {
+  switch (err.code) {
+    case "email_taken":
+      return "That email is already registered — switch to Sign in.";
+    case "invalid_credentials":
+      return "Incorrect email or password.";
+    case "weak_password":
+      return "Password must be 8–72 characters.";
+    case "invalid_email":
+      return "Enter a valid email address.";
+    default:
+      return mode === "signup" ? "Couldn’t create your account. Please try again." : "Couldn’t sign you in. Please try again.";
   }
 }
 

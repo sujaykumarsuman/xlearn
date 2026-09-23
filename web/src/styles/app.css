@@ -117,6 +117,15 @@ button.xl-acct-item:disabled {
   font-size: 15px;
 }
 
+/* The sidebar brand is a link home (or to sign-in when signed out); strip anchor styling. */
+a.xl-brand {
+  text-decoration: none;
+  color: var(--ds-text);
+}
+a.xl-brand:hover {
+  opacity: 0.85;
+}
+
 /* The top-bar curriculum selector (replaces search; shown only inside a curriculum). */
 .xl-topsw {
   position: relative;

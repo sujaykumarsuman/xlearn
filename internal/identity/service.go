@@ -52,9 +52,15 @@ func (s *Service) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", s.health.Live)
 	mux.HandleFunc("GET /readyz", s.health.Ready)
 
-	// Browser-facing OAuth (reached through the gateway proxy).
+	// Browser-facing OAuth (reached through the gateway proxy). `?link=1` on start attaches
+	// the provider to the signed-in account (Settings → Connect GitHub) instead of signing in.
 	mux.HandleFunc("POST /auth/{provider}/start", s.handleStart)
 	mux.HandleFunc("GET /auth/{provider}/callback", s.handleCallback)
+
+	// Email/password auth (ADR-0023), reached through the gateway proxy (fetch-based, so the
+	// session cookie is set on the JSON response, not a redirect).
+	mux.HandleFunc("POST /auth/signup", s.handleSignup)
+	mux.HandleFunc("POST /auth/login", s.handleLogin)
 
 	// Local-only dev login (F002 / ADR-0022): 404 unless DEV_AUTH is set. Never
 	// enabled in a prod image. Also reached through the gateway proxy.
@@ -78,6 +84,9 @@ func (s *Service) Handler() http.Handler {
 	mux.Handle("PATCH /accounts/{id}", s.requireJWT(http.HandlerFunc(s.handlePatchAccount)))
 	mux.Handle("POST /onboarding/step", s.requireJWT(http.HandlerFunc(s.handleOnboardingStep)))
 	mux.Handle("POST /paths/{slug}/start", s.requireJWT(http.HandlerFunc(s.handleStartEnrollment)))
+	// Account & sign-in management (ADR-0023): set/change password + disconnect a provider.
+	mux.Handle("POST /accounts/{id}/password", s.requireJWT(http.HandlerFunc(s.handleSetPassword)))
+	mux.Handle("DELETE /accounts/{id}/oauth/{provider}", s.requireJWT(http.HandlerFunc(s.handleUnlinkOAuth)))
 
 	return mux
 }

@@ -31,10 +31,35 @@ func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {
 
 	state := newState()
 	verifier, challenge := newPKCE()
-	setOAuthTxCookie(w, oauthTx{Provider: provider, State: state, Verifier: verifier}, s.cfg.Auth.CookieSecure)
+	tx := oauthTx{Provider: provider, State: state, Verifier: verifier}
+	// Link mode (Settings → Connect GitHub): stash the signed-in account so the callback
+	// attaches the identity to it instead of signing in. Requires an active session.
+	if r.URL.Query().Get("link") == "1" {
+		sess, ok := s.currentSession(r)
+		if !ok {
+			s.redirectToAuth(w, r, "link_auth")
+			return
+		}
+		tx.LinkAccountID = sess.AccountID
+	}
+	setOAuthTxCookie(w, tx, s.cfg.Auth.CookieSecure)
 
 	authURL := p.authCodeURL(s.callbackURL(provider), state, challenge)
 	http.Redirect(w, r, authURL, http.StatusFound)
+}
+
+// currentSession reads + validates the session cookie (used by link mode, which runs on
+// the browser's session, not a JWT).
+func (s *Service) currentSession(r *http.Request) (store.Session, bool) {
+	c, err := r.Cookie(auth.SessionCookieName)
+	if err != nil || c.Value == "" {
+		return store.Session{}, false
+	}
+	sess, err := s.store.GetValidSession(r.Context(), c.Value)
+	if err != nil {
+		return store.Session{}, false
+	}
+	return sess, true
 }
 
 func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
@@ -79,6 +104,23 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Link mode (Settings → Connect GitHub): attach the identity to the signed-in account
+	// and return to Settings, keeping the existing session (no new sign-in).
+	if tx.LinkAccountID != "" {
+		if err := s.store.LinkOAuth(ctx, tx.LinkAccountID, provider, prof.ProviderUserID); err != nil {
+			if errors.Is(err, store.ErrConflict) {
+				s.redirectToSettings(w, r, "error=github_taken")
+				return
+			}
+			s.log.Error("oauth callback: link failed", "provider", provider, "err", err)
+			s.redirectToSettings(w, r, "error=link_failed")
+			return
+		}
+		s.log.Info("oauth link", "provider", provider, "account_id", tx.LinkAccountID)
+		s.redirectToSettings(w, r, "linked="+provider)
+		return
+	}
+
 	acct, created, err := s.store.FindOrCreateAccount(ctx, store.OAuthUpsert{
 		Provider:       provider,
 		ProviderUserID: prof.ProviderUserID,
@@ -110,6 +152,11 @@ func (s *Service) callbackURL(provider string) string {
 // redirectToAuth sends the browser back to the SPA auth screen with an error hint.
 func (s *Service) redirectToAuth(w http.ResponseWriter, r *http.Request, reason string) {
 	http.Redirect(w, r, s.cfg.Auth.PublicBaseURL+"/auth?error="+reason, http.StatusFound)
+}
+
+// redirectToSettings returns the browser to the SPA Settings screen (OAuth link outcome).
+func (s *Service) redirectToSettings(w http.ResponseWriter, r *http.Request, query string) {
+	http.Redirect(w, r, s.cfg.Auth.PublicBaseURL+"/settings?"+query, http.StatusFound)
 }
 
 // --- Session trust endpoints (gateway → identity) ---
@@ -273,8 +320,17 @@ func (s *Service) writeAccount(w http.ResponseWriter, r *http.Request, id string
 		s.mapStoreErr(w, err)
 		return
 	}
+	providers, err := s.store.ListOAuthProviders(r.Context(), id)
+	if err != nil {
+		s.mapStoreErr(w, err)
+		return
+	}
+	aj := toAccountJSON(acct)
+	if len(providers) > 0 {
+		aj.LinkedProviders = providers
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"account":     toAccountJSON(acct),
+		"account":     aj,
 		"onboarding":  toOnboardingJSON(ob),
 		"enrollments": toEnrollmentsJSON(enrollments),
 	})
@@ -325,13 +381,17 @@ func (s *Service) mapStoreErr(w http.ResponseWriter, err error) {
 // --- JSON response shapes + helpers ---
 
 type accountJSON struct {
-	ID          string          `json:"id"`
-	DisplayName string          `json:"display_name"`
-	Email       string          `json:"email,omitempty"`
-	Timezone    string          `json:"timezone"`
-	StudyBudget json.RawMessage `json:"study_budget"`
-	Reminders   json.RawMessage `json:"reminders"`
-	CreatedAt   time.Time       `json:"created_at"`
+	ID          string `json:"id"`
+	DisplayName string `json:"display_name"`
+	Email       string `json:"email,omitempty"`
+	Timezone    string `json:"timezone"`
+	// HasPassword / LinkedProviders drive the Settings "Account & sign-in" card (ADR-0023).
+	// The password hash itself is NEVER serialised.
+	HasPassword     bool            `json:"has_password"`
+	LinkedProviders []string        `json:"linked_providers"`
+	StudyBudget     json.RawMessage `json:"study_budget"`
+	Reminders       json.RawMessage `json:"reminders"`
+	CreatedAt       time.Time       `json:"created_at"`
 }
 
 type onboardingJSON struct {
@@ -366,6 +426,9 @@ func toAccountJSON(a store.Account) accountJSON {
 		DisplayName: a.DisplayName,
 		Email:       a.Email,
 		Timezone:    a.Timezone,
+		HasPassword: a.PasswordHash != "",
+		// LinkedProviders is filled by writeAccount (a separate query); default to empty.
+		LinkedProviders: []string{},
 		// The learner's own budget/reminder prefs, returned only to the owner via the
 		// JWT-gated /me so the Settings form can load its current values (S10).
 		StudyBudget: rawJSONOrEmpty(a.StudyBudget),

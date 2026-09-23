@@ -40,8 +40,16 @@ func (g *Gateway) apiRoutes() []apiRoute {
 		// browser only ever talks to the gateway origin.
 		{"GET", "/api/me", g.handleMe, true},
 		{"PATCH", "/api/me", g.handlePatchMe, true},
+		// Account & sign-in management (ADR-0023): set/change password + disconnect a provider.
+		{"POST", "/api/me/password", g.handleSetPassword, true},
+		{"DELETE", "/api/me/oauth/{provider}", g.handleUnlinkOAuth, true},
 		{"POST", "/api/auth/logout", g.handleLogout, true},
 		{"POST", "/api/onboarding/step", g.handleOnboardingStep, true},
+		// Email/password auth (ADR-0023): fetch-based signup/login (session cookie on the JSON
+		// response). OAuth start/callback are the browser-redirect flow; `?link=1` on start
+		// connects the provider to the signed-in account.
+		{"POST", "/api/auth/signup", g.handleAuthSignup, true},
+		{"POST", "/api/auth/login", g.handleAuthLogin, true},
 		{"POST", "/api/auth/{provider}/start", g.handleAuthProxy, true},
 		{"GET", "/api/auth/{provider}/callback", g.handleAuthProxy, true},
 		// Local-only dev login (F002 / ADR-0022): proxied to identity, which 404s them
@@ -212,6 +220,74 @@ func (g *Gateway) handleAuthProxy(w http.ResponseWriter, r *http.Request) {
 	// r.URL.Path here is the stripped app path, e.g. /api/auth/github/start.
 	upstreamPath := "/auth/" + r.PathValue("provider") + "/" + lastSegment(r.URL.Path)
 	g.identity.forward(w, r, upstreamPath)
+}
+
+// handleAuthSignup / handleAuthLogin forward the email/password body to identity, which
+// creates/authenticates the account and sets the session cookie on its JSON response
+// (ADR-0023). The gateway passes Set-Cookie back so the browser talks only to the gateway.
+func (g *Gateway) handleAuthSignup(w http.ResponseWriter, r *http.Request) {
+	if g.identity == nil {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "identity not configured")
+		return
+	}
+	g.identity.forward(w, r, "/auth/signup")
+}
+
+func (g *Gateway) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
+	if g.identity == nil {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "identity not configured")
+		return
+	}
+	g.identity.forward(w, r, "/auth/login")
+}
+
+// handleSetPassword forwards a set/change-password request to identity's
+// POST /accounts/{id}/password (JWT-gated; identity enforces the current-password check).
+func (g *Gateway) handleSetPassword(w http.ResponseWriter, r *http.Request) {
+	accountID, ok := g.authAccount(w, r)
+	if !ok {
+		return
+	}
+	token, ok := g.mint(w, accountID)
+	if !ok {
+		return
+	}
+	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
+		return
+	}
+	body, status, err := g.identity.setPassword(r.Context(), token, accountID, reqBody)
+	if err != nil {
+		g.log.Error("bff /me/password: identity call failed", "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "identity unavailable")
+		return
+	}
+	passthrough(w, status, body)
+}
+
+// handleUnlinkOAuth forwards a disconnect-provider request to identity's
+// DELETE /accounts/{id}/oauth/{provider} (JWT-gated; identity guards the last login method).
+func (g *Gateway) handleUnlinkOAuth(w http.ResponseWriter, r *http.Request) {
+	accountID, ok := g.authAccount(w, r)
+	if !ok {
+		return
+	}
+	token, ok := g.mint(w, accountID)
+	if !ok {
+		return
+	}
+	body, status, err := g.identity.unlinkOAuth(r.Context(), token, accountID, r.PathValue("provider"))
+	if err != nil {
+		g.log.Error("bff DELETE /me/oauth: identity call failed", "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "identity unavailable")
+		return
+	}
+	if status == http.StatusNoContent {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	passthrough(w, status, body)
 }
 
 // handleAuthDevProxy forwards the LOCAL-ONLY dev-login endpoints to identity, which
@@ -829,6 +905,29 @@ func (c *identityClient) onboardingStep(ctx context.Context, token string, body 
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
+	return c.do(req)
+}
+
+// setPassword forwards a set/change-password request (ADR-0023 · POST /accounts/{id}/password).
+func (c *identityClient) setPassword(ctx context.Context, token, accountID string, body []byte) ([]byte, int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/accounts/"+accountID+"/password", bytes.NewReader(body))
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	return c.do(req)
+}
+
+// unlinkOAuth disconnects a provider (ADR-0023 · DELETE /accounts/{id}/oauth/{provider}).
+func (c *identityClient) unlinkOAuth(ctx context.Context, token, accountID, provider string) ([]byte, int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.baseURL+"/accounts/"+accountID+"/oauth/"+url.PathEscape(provider), nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/json")
 	return c.do(req)
 }
 

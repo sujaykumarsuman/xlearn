@@ -35,3 +35,50 @@ func (q *Queries) CreateOauthIdentity(ctx context.Context, arg CreateOauthIdenti
 	)
 	return i, err
 }
+
+const deleteOauthIdentity = `-- name: DeleteOauthIdentity :execrows
+DELETE FROM identity.oauth_identity
+WHERE account_id = $1 AND provider = $2
+`
+
+type DeleteOauthIdentityParams struct {
+	AccountID pgtype.UUID
+	Provider  string
+}
+
+// Unlink a provider from an account (Settings: disconnect GitHub). Returns the affected
+// row count so a no-op can 404.
+func (q *Queries) DeleteOauthIdentity(ctx context.Context, arg DeleteOauthIdentityParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteOauthIdentity, arg.AccountID, arg.Provider)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const listOauthProviders = `-- name: ListOauthProviders :many
+SELECT provider FROM identity.oauth_identity
+WHERE account_id = $1
+ORDER BY provider
+`
+
+// The providers linked to an account (Settings shows what's connected).
+func (q *Queries) ListOauthProviders(ctx context.Context, accountID pgtype.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listOauthProviders, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var provider string
+		if err := rows.Scan(&provider); err != nil {
+			return nil, err
+		}
+		items = append(items, provider)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

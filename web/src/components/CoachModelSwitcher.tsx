@@ -93,7 +93,7 @@ export function CoachModelSwitcher() {
               );
             })}
             <div className="xl-menu__sep" />
-            <Link to="/settings" className="xl-mitem xl-mitem--link" onClick={() => setOpen(false)}>
+            <Link to="/settings?tab=coach" className="xl-mitem xl-mitem--link" onClick={() => setOpen(false)}>
               Manage in Settings…
             </Link>
           </div>

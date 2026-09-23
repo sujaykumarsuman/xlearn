@@ -23,10 +23,13 @@ const (
 func newSessionID() string { return randToken(32) }
 
 // oauthTx is the in-flight OAuth state persisted (HttpOnly) between start/callback.
+// LinkAccountID is set in "link" mode (Settings → Connect GitHub) — the callback then
+// attaches the provider identity to that already-signed-in account instead of signing in.
 type oauthTx struct {
-	Provider string `json:"p"`
-	State    string `json:"s"`
-	Verifier string `json:"v"`
+	Provider      string `json:"p"`
+	State         string `json:"s"`
+	Verifier      string `json:"v"`
+	LinkAccountID string `json:"l,omitempty"`
 }
 
 // setSessionCookie writes the opaque session cookie (HttpOnly, Secure, SameSite=Lax,

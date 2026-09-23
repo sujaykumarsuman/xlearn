@@ -43,6 +43,65 @@ describe("Auth screen", () => {
     expect(form?.getAttribute("method")).toBe("post");
   });
 
+  it("signs up with email + password (POST /auth/signup)", async () => {
+    let posted: unknown = null;
+    installFetchMock((url, init) => {
+      if (url.endsWith("/api/me")) return { status: 401, body: { error: { code: "unauthenticated" } } };
+      if (url.includes("/api/auth/signup")) {
+        posted = init?.body ? JSON.parse(String(init.body)) : null;
+        return { status: 200, body: { ok: true } };
+      }
+      return { status: 404 };
+    });
+    renderApp("/xlearn/auth");
+
+    await screen.findByRole("button", { name: /continue with github/i });
+    fireEvent.click(screen.getByRole("button", { name: /^sign up$/i }));
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "new@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "hunter2hunter" } });
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    await waitFor(() => expect(posted).toEqual({ email: "new@example.com", password: "hunter2hunter" }));
+  });
+
+  it("signs in with email + password (POST /auth/login)", async () => {
+    let posted: unknown = null;
+    installFetchMock((url, init) => {
+      if (url.endsWith("/api/me")) return { status: 401, body: { error: { code: "unauthenticated" } } };
+      if (url.includes("/api/auth/login")) {
+        posted = init?.body ? JSON.parse(String(init.body)) : null;
+        return { status: 200, body: { ok: true } };
+      }
+      return { status: 404 };
+    });
+    renderApp("/xlearn/auth");
+
+    await screen.findByRole("button", { name: /continue with github/i });
+    // Sign in is the default mode.
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "me@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "opensesame" } });
+    fireEvent.click(screen.getByRole("button", { name: /^log in$/i }));
+
+    await waitFor(() => expect(posted).toEqual({ email: "me@example.com", password: "opensesame" }));
+  });
+
+  it("surfaces an error when the email is already registered", async () => {
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 401, body: { error: { code: "unauthenticated" } } };
+      if (url.includes("/api/auth/signup")) return { status: 409, body: { error: { code: "email_taken" } } };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/auth");
+
+    await screen.findByRole("button", { name: /continue with github/i });
+    fireEvent.click(screen.getByRole("button", { name: /^sign up$/i }));
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "taken@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "hunter2hunter" } });
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    expect(await screen.findByText(/already registered/i)).toBeInTheDocument();
+  });
+
   it("shows onboarding step 1 and persists the chosen path on Continue", async () => {
     let stepPosted: unknown = null;
     installFetchMock((url, init) => {

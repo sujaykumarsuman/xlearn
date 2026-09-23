@@ -37,6 +37,11 @@ export interface Account {
   display_name: string;
   email?: string;
   timezone: string;
+  /** True when an email/password sign-in is set (ADR-0023). OAuth-only accounts are false
+   *  until they set one from Settings. */
+  has_password?: boolean;
+  /** OAuth providers linked to the account (e.g. ["github"]) — drives Settings connect/disconnect. */
+  linked_providers?: string[];
   study_budget: StudyBudget;
   reminders: Reminders;
   created_at: string;
@@ -73,6 +78,66 @@ export function useMe() {
  *  ships GitHub only; Google (ADR-0006) is deferred. */
 export function oauthStartAction(provider: "github"): string {
   return `${API_BASE}/auth/${provider}/start`;
+}
+
+/** oauthLinkAction begins OAuth in "link" mode (Settings → Connect): the callback attaches
+ *  the provider to the signed-in account and returns to Settings (ADR-0023). */
+export function oauthLinkAction(provider: "github"): string {
+  return `${API_BASE}/auth/${provider}/start?link=1`;
+}
+
+/** useSignup creates an email/password account (ADR-0023) and, on success, refreshes /me so
+ *  the Auth screen advances into onboarding. */
+export function useSignup() {
+  const qc = useQueryClient();
+  return useMutation<{ ok: boolean }, ApiRequestError, { email: string; password: string }>({
+    mutationFn: (body) =>
+      apiFetch<{ ok: boolean }>("/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+  });
+}
+
+/** useLogin signs in with email/password (ADR-0023) and refreshes /me. */
+export function useLogin() {
+  const qc = useQueryClient();
+  return useMutation<{ ok: boolean }, ApiRequestError, { email: string; password: string }>({
+    mutationFn: (body) =>
+      apiFetch<{ ok: boolean }>("/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+  });
+}
+
+/** useSetPassword sets or changes the account password (Settings). `current_password` is
+ *  required only when the account already has one. */
+export function useSetPassword() {
+  const qc = useQueryClient();
+  return useMutation<{ ok: boolean }, ApiRequestError, { current_password?: string; new_password: string }>({
+    mutationFn: (body) =>
+      apiFetch<{ ok: boolean }>("/me/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+  });
+}
+
+/** useUnlinkOAuth disconnects a provider (Settings). Identity refuses to remove the last
+ *  sign-in method (409 last_login_method). */
+export function useUnlinkOAuth() {
+  const qc = useQueryClient();
+  return useMutation<void, ApiRequestError, string>({
+    mutationFn: (provider) => apiFetch<void>(`/me/oauth/${encodeURIComponent(provider)}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+  });
 }
 
 /** useSetOnboardingPath persists the chosen path (onboarding step 1). */

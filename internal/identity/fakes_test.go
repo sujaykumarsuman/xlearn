@@ -3,6 +3,7 @@ package identity
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,7 +16,9 @@ type fakeStore struct {
 	mu          sync.Mutex
 	seq         int
 	accounts    map[string]store.Account
-	byProvider  map[string]string // provider|providerUserID -> accountID
+	byProvider  map[string]string   // provider|providerUserID -> accountID
+	emailIndex  map[string]string   // lower(email) -> accountID
+	providers   map[string][]string // accountID -> linked providers
 	onboarding  map[string]store.Onboarding
 	sessions    map[string]store.Session
 	enrollments map[string][]store.Enrollment
@@ -27,6 +30,8 @@ func newFakeStore() *fakeStore {
 	return &fakeStore{
 		accounts:    map[string]store.Account{},
 		byProvider:  map[string]string{},
+		emailIndex:  map[string]string{},
+		providers:   map[string][]string{},
 		onboarding:  map[string]store.Onboarding{},
 		sessions:    map[string]store.Session{},
 		enrollments: map[string][]store.Enrollment{},
@@ -40,11 +45,23 @@ func (f *fakeStore) FindOrCreateAccount(_ context.Context, in store.OAuthUpsert)
 	if id, ok := f.byProvider[key]; ok {
 		return f.accounts[id], false, nil
 	}
+	// Auto-link by verified email (mirrors the real store).
+	if in.Email != "" {
+		if id, ok := f.emailIndex[strings.ToLower(in.Email)]; ok {
+			f.byProvider[key] = id
+			f.providers[id] = append(f.providers[id], in.Provider)
+			return f.accounts[id], false, nil
+		}
+	}
 	f.seq++
 	id := fmt.Sprintf("acct-%d", f.seq)
 	acct := store.Account{ID: id, DisplayName: in.DisplayName, Email: in.Email, Timezone: "UTC", CreatedAt: time.Now()}
 	f.accounts[id] = acct
 	f.byProvider[key] = id
+	if in.Email != "" {
+		f.emailIndex[strings.ToLower(in.Email)] = id
+	}
+	f.providers[id] = append(f.providers[id], in.Provider)
 	f.onboarding[id] = store.Onboarding{AccountID: id}
 	f.outbox = append(f.outbox, store.OutboxRow{
 		EventID: fmt.Sprintf("evt-%d", f.seq),
@@ -52,6 +69,91 @@ func (f *fakeStore) FindOrCreateAccount(_ context.Context, in store.OAuthUpsert)
 		Payload: []byte(`{"account_id":"` + id + `","data":{"provider":"` + in.Provider + `"}}`),
 	})
 	return acct, true, nil
+}
+
+func (f *fakeStore) GetAccountByEmail(_ context.Context, email string) (store.Account, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	id, ok := f.emailIndex[strings.ToLower(strings.TrimSpace(email))]
+	if !ok {
+		return store.Account{}, store.ErrNotFound
+	}
+	return f.accounts[id], nil
+}
+
+func (f *fakeStore) CreateEmailAccount(_ context.Context, email, passwordHash, displayName string) (store.Account, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	lk := strings.ToLower(email)
+	if _, ok := f.emailIndex[lk]; ok {
+		return store.Account{}, store.ErrEmailTaken
+	}
+	f.seq++
+	id := fmt.Sprintf("acct-%d", f.seq)
+	acct := store.Account{ID: id, DisplayName: displayName, Email: email, PasswordHash: passwordHash, Timezone: "UTC", CreatedAt: time.Now()}
+	f.accounts[id] = acct
+	f.emailIndex[lk] = id
+	f.onboarding[id] = store.Onboarding{AccountID: id}
+	f.outbox = append(f.outbox, store.OutboxRow{
+		EventID: fmt.Sprintf("evt-%d", f.seq),
+		Subject: store.SubjectAccountCreated,
+		Payload: []byte(`{"account_id":"` + id + `","data":{"provider":"email"}}`),
+	})
+	return acct, nil
+}
+
+func (f *fakeStore) SetAccountPassword(_ context.Context, id, passwordHash string) (store.Account, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	a, ok := f.accounts[id]
+	if !ok {
+		return store.Account{}, store.ErrNotFound
+	}
+	a.PasswordHash = passwordHash
+	f.accounts[id] = a
+	return a, nil
+}
+
+func (f *fakeStore) LinkOAuth(_ context.Context, accountID, provider, providerUserID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	key := provider + "|" + providerUserID
+	if _, ok := f.byProvider[key]; ok {
+		return store.ErrConflict
+	}
+	if _, ok := f.accounts[accountID]; !ok {
+		return store.ErrNotFound
+	}
+	f.byProvider[key] = accountID
+	f.providers[accountID] = append(f.providers[accountID], provider)
+	return nil
+}
+
+func (f *fakeStore) UnlinkOAuth(_ context.Context, accountID, provider string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	removed := false
+	kept := make([]string, 0, len(f.providers[accountID]))
+	for _, p := range f.providers[accountID] {
+		if p == provider {
+			removed = true
+			continue
+		}
+		kept = append(kept, p)
+	}
+	f.providers[accountID] = kept
+	for k, id := range f.byProvider {
+		if id == accountID && strings.HasPrefix(k, provider+"|") {
+			delete(f.byProvider, k)
+		}
+	}
+	return removed, nil
+}
+
+func (f *fakeStore) ListOAuthProviders(_ context.Context, accountID string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.providers[accountID]...), nil
 }
 
 func (f *fakeStore) GetAccount(_ context.Context, id string) (store.Account, error) {
