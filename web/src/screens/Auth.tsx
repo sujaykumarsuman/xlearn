@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Icon, IconSprite } from "../components/Icon";
 import { Spinner } from "../components/States";
@@ -14,7 +14,9 @@ import {
   useMe,
   useSetOnboardingBudget,
   useSetOnboardingPath,
+  useSetUsername,
   useSignup,
+  useUsernameAvailability,
   type Me,
   type StudyBudget,
   type WeekendBand,
@@ -22,11 +24,11 @@ import {
 
 /**
  * Auth is the standalone pre-auth screen (no app shell): a two-column layout with a
- * marketing panel and either OAuth sign-in or the 3-step onboarding. v1 is OAuth-only
- * (ADR-0006) — the email/password fields are inert. Onboarding runs all 3 steps: path
- * (step 1), study budget (step 2, persisted), and the optional coach key (step 3, whose
- * key store lands in S11 — Skip/Finish completes onboarding). The learner resumes at the
- * first unfinished step and is routed into the app once complete.
+ * marketing panel and either sign-in (GitHub OAuth + email/username + password, ADR-0023)
+ * or the 4-step onboarding. Onboarding: path (step 1) · study budget (step 2, persisted) ·
+ * username (step 3, optional — claim your public @handle, F009) · coach key (step 4,
+ * optional — Skip/Finish completes onboarding). The learner resumes at the first unfinished
+ * step and is routed into the app once complete.
  */
 export default function Auth() {
   const me = useMe();
@@ -329,7 +331,7 @@ function emailAuthErrorMessage(err: ApiRequestError, mode: "signin" | "signup"):
   }
 }
 
-// --- Onboarding (3-step; step 1 persisted, 2-3 inert shells) ---
+// --- Onboarding (4-step; path + budget + username persist; coach step 4 is a preview) ---
 
 function Onboarding({ me }: { me: Me }) {
   const navigate = useNavigate();
@@ -362,7 +364,8 @@ function Onboarding({ me }: { me: Me }) {
         />
       )}
       {step === 2 && <StepBudget initial={me.account.study_budget} onBack={() => setStep(1)} onContinue={() => setStep(3)} />}
-      {step === 3 && <StepCoach onBack={() => setStep(2)} onFinish={enterApp} />}
+      {step === 3 && <StepUsername currentUsername={me.account.username} onBack={() => setStep(2)} onContinue={() => setStep(4)} />}
+      {step === 4 && <StepCoach onBack={() => setStep(3)} onFinish={enterApp} />}
     </>
   );
 }
@@ -374,17 +377,18 @@ function firstUnfinishedStep(me: Me): number {
   return 3;
 }
 
-function Stepper({ step }: { step: number }) {
+function Stepper({ step, total = 4 }: { step: number; total?: number }) {
   const dot = (n: number) =>
     step > n ? "xl-touch__d xl-touch__d--pass" : step === n ? "xl-touch__d xl-touch__d--due" : "xl-touch__d";
   const bar = (n: number) => (step > n ? "var(--ds-teal)" : "var(--ds-line-2)");
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 26 }}>
-      <span className={dot(1)} />
-      <span style={{ flex: 1, height: 2, background: bar(1) }} />
-      <span className={dot(2)} />
-      <span style={{ flex: 1, height: 2, background: bar(2) }} />
-      <span className={dot(3)} />
+      {Array.from({ length: total }, (_, i) => i + 1).map((n) => (
+        <Fragment key={n}>
+          <span className={dot(n)} />
+          {n < total && <span style={{ flex: 1, height: 2, background: bar(n) }} />}
+        </Fragment>
+      ))}
     </div>
   );
 }
@@ -405,7 +409,7 @@ function StepPath({
   const dsaSelected = path === "dsa";
   return (
     <>
-      <div className="xl-eyebrow">Step 1 of 3</div>
+      <div className="xl-eyebrow">Step 1 of 4</div>
       <h2 style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>Pick your path</h2>
       <p style={{ fontSize: 13, color: "var(--ds-muted)", marginTop: 4 }}>
         Start with DSA — more paths are on the way.
@@ -474,7 +478,7 @@ function StepBudget({ initial, onBack, onContinue }: { initial: StudyBudget; onB
 
   return (
     <>
-      <div className="xl-eyebrow">Step 2 of 3</div>
+      <div className="xl-eyebrow">Step 2 of 4</div>
       <h2 style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>Set your study budget</h2>
       <p style={{ fontSize: 13, color: "var(--ds-muted)", marginTop: 4 }}>
         We’ll size each day’s plan to fit. You can change this anytime.
@@ -522,6 +526,147 @@ function StepBudget({ initial, onBack, onContinue }: { initial: StudyBudget; onB
   );
 }
 
+function StepUsername({
+  currentUsername,
+  onBack,
+  onContinue,
+}: {
+  currentUsername?: string;
+  onBack: () => void;
+  onContinue: () => void;
+}) {
+  const setU = useSetUsername();
+  const [value, setValue] = useState(currentUsername ?? "");
+  const [debounced, setDebounced] = useState("");
+
+  // Debounce the availability probe so it doesn't fire on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value.trim().toLowerCase()), 350);
+    return () => clearTimeout(t);
+  }, [value]);
+  const avail = useUsernameAvailability(debounced);
+
+  const normalized = value.trim().toLowerCase();
+  const changed = normalized !== (currentUsername ?? "");
+  // `settled` guards the debounce window: only enable a claim once the availability probe
+  // reflects the CURRENT input (avail is keyed on `debounced`, which trails `value` by 350ms).
+  const settled = debounced === normalized;
+  const canClaim = normalized.length >= 3 && changed && settled && avail.data?.available === true && !setU.isPending;
+
+  // Optional step: claim + advance when a valid name is entered, else Skip. If the user
+  // already has a username and didn't change it, the primary button just continues.
+  const primary = () => {
+    if (canClaim) {
+      setU.mutate(normalized, { onSuccess: onContinue });
+      return;
+    }
+    if (currentUsername && !changed) onContinue();
+  };
+
+  return (
+    <>
+      <div className="xl-eyebrow">Step 3 of 4 · optional</div>
+      <h2 style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>Claim your username</h2>
+      <p style={{ fontSize: 13, color: "var(--ds-muted)", marginTop: 4 }}>
+        Your public dashboard address —{" "}
+        <span className="ds-mono" style={{ color: "var(--ds-dim)" }}>projects.sujaykumar.dev/xlearn/&lt;you&gt;</span>. You can
+        also sign in with it.
+      </p>
+
+      <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="ds-field">
+          <label className="ds-field__label" htmlFor="onb-username">Username</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span className="ds-mono" style={{ color: "var(--ds-muted)" }}>/xlearn/</span>
+            <input
+              id="onb-username"
+              className="ds-input"
+              style={{ flex: 1 }}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="your-handle"
+              aria-describedby="onb-username-hint"
+              value={value}
+              onChange={(e) => {
+                if (setU.isError) setU.reset();
+                setValue(e.target.value);
+              }}
+              onKeyDown={(e) => e.key === "Enter" && canClaim && primary()}
+            />
+          </div>
+        </div>
+        {/* Stable polite live region so screen readers hear availability/claim results. */}
+        <div id="onb-username-hint" aria-live="polite">
+          <UsernameStepHint value={normalized} changed={changed} current={currentUsername} avail={avail} setU={setU} settled={settled} />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11.5, color: "var(--ds-muted)" }}>
+          <Icon name="eye" className="xl-ico--sm" style={{ color: "var(--ds-teal)" }} /> Public, non-PII only — solved counts,
+          streak and activity. Change it anytime in Settings.
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="ds-btn ds-btn--primary ds-btn--block ds-btn--lg"
+        style={{ marginTop: 20 }}
+        disabled={setU.isPending || !(canClaim || (!!currentUsername && !changed))}
+        onClick={primary}
+      >
+        {setU.isPending ? "Claiming…" : currentUsername && !changed ? "Continue" : "Claim & continue"}{" "}
+        <Icon name="arrow" className="xl-ico--sm" />
+      </button>
+      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+        <button type="button" className="ds-btn ds-btn--ghost" onClick={onBack} disabled={setU.isPending}>
+          Back
+        </button>
+        <button
+          type="button"
+          className="ds-btn ds-btn--ghost"
+          style={{ flex: 1, justifyContent: "center" }}
+          disabled={setU.isPending}
+          onClick={onContinue}
+        >
+          Skip for now
+        </button>
+      </div>
+    </>
+  );
+}
+
+/** The live validity/availability line beneath the onboarding username field. */
+function UsernameStepHint({
+  value,
+  changed,
+  current,
+  avail,
+  setU,
+  settled,
+}: {
+  value: string;
+  changed: boolean;
+  current?: string;
+  avail: ReturnType<typeof useUsernameAvailability>;
+  setU: ReturnType<typeof useSetUsername>;
+  settled: boolean;
+}) {
+  if (setU.isError) return <span role="alert" style={{ fontSize: 12, color: "var(--ds-err)" }}>{setU.error.message || "Couldn’t claim that — try another."}</span>;
+  if (value.length === 0) return <span style={{ fontSize: 11.5, color: "var(--ds-muted)" }}>3–30 chars · lowercase letters, numbers, hyphens. Optional — you can skip this.</span>;
+  if (!changed && current) return <span style={{ fontSize: 12, color: "var(--ds-muted)" }}>This is your current username.</span>;
+  if (value.length < 3) return <span style={{ fontSize: 11.5, color: "var(--ds-muted)" }}>Keep going — at least 3 characters.</span>;
+  // Until the debounced probe catches up to the current input, show "checking" rather than a
+  // stale availability result for the previous value.
+  if (!settled || avail.isLoading) return <span style={{ fontSize: 12, color: "var(--ds-muted)" }}>Checking availability…</span>;
+  if (avail.data?.available)
+    return (
+      <span style={{ fontSize: 12, color: "var(--ds-ok)", display: "inline-flex", alignItems: "center", gap: 5 }}>
+        <Icon name="check" className="xl-ico--sm" /> @{value} is available
+      </span>
+    );
+  if (avail.data) return <span style={{ fontSize: 12, color: "var(--ds-err)" }}>{avail.data.reason ?? "That username isn’t available."}</span>;
+  return null;
+}
+
 function StepCoach({ onBack, onFinish }: { onBack: () => void; onFinish: () => void }) {
   const complete = useCompleteOnboarding();
   const [provider, setProvider] = useState<"anthropic" | "openai" | "google">("anthropic");
@@ -533,7 +678,7 @@ function StepCoach({ onBack, onFinish }: { onBack: () => void; onFinish: () => v
 
   return (
     <>
-      <div className="xl-eyebrow">Step 3 of 3 · optional</div>
+      <div className="xl-eyebrow">Step 4 of 4 · optional</div>
       <h2 style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>Power up your coach</h2>
       <p style={{ fontSize: 13, color: "var(--ds-muted)", marginTop: 4 }}>
         Add an API key to enable the AI coach on every screen. Used only for your coach.

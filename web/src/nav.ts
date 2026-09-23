@@ -134,7 +134,6 @@ export function routeTitle(pathname: string): string {
   if (p === "/dsa/mock") return "Mock interview";
   if (p === "/dsa/progress") return "Progress";
   if (p === "/settings") return "Settings";
-  if (p === "/claim-username") return "Claim username";
   if (p === "/auth") return "Sign in";
   return "xLearn";
 }

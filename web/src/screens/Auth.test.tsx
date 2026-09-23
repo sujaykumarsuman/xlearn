@@ -161,7 +161,8 @@ describe("Auth screen", () => {
     await waitFor(() =>
       expect(posted).toEqual({ step: "budget", study_budget: { weekday_minutes: 90, weekend_band: "3-4" } }),
     );
-    expect(await screen.findByRole("heading", { name: /power up your coach/i })).toBeInTheDocument();
+    // Step 3 is now the username step (F009 review), ahead of the coach step.
+    expect(await screen.findByRole("heading", { name: /claim your username/i })).toBeInTheDocument();
   });
 
   it("step 2 seeds from an already-saved budget instead of overwriting it with defaults", async () => {
@@ -189,11 +190,36 @@ describe("Auth screen", () => {
     await waitFor(() => expect(posted).toEqual({ step: "budget", study_budget: { weekday_minutes: 150, weekend_band: "5" } }));
   });
 
-  it("resumes at step 3 and completes onboarding on Finish", async () => {
+  it("claims a username in the onboarding username step, then advances to the coach step", async () => {
+    let usernamePosted: unknown = null;
+    installFetchMock((url, init) => {
+      // path + budget done, not completed → the flow resumes at the username step (3).
+      if (url.endsWith("/api/me")) return { status: 200, body: onboardingMe(true, false) };
+      if (url.includes("/api/username/available")) return { status: 200, body: { available: true } };
+      if (url.includes("/api/me/username")) {
+        usernamePosted = init?.body ? JSON.parse(String(init.body)) : null;
+        return { status: 200, body: { ok: true, username: "ada-l" } };
+      }
+      return { status: 404 };
+    });
+    renderApp("/xlearn/auth");
+
+    expect(await screen.findByRole("heading", { name: /claim your username/i })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Username"), { target: { value: "ada-l" } });
+    const claim = await screen.findByRole("button", { name: /claim & continue/i });
+    await waitFor(() => expect(claim).toBeEnabled());
+    fireEvent.click(claim);
+
+    await waitFor(() => expect(usernamePosted).toEqual({ username: "ada-l" }));
+    // Advances to the (optional) coach step.
+    expect(await screen.findByRole("heading", { name: /power up your coach/i })).toBeInTheDocument();
+  });
+
+  it("resumes at step 3, skips username, and completes onboarding on Finish", async () => {
     let posted: unknown = null;
     let finished = false;
     installFetchMock((url, init) => {
-      // path + budget done, not completed → the flow resumes at step 3.
+      // path + budget done, not completed → the flow resumes at the username step (3).
       if (url.endsWith("/api/me")) return { status: 200, body: onboardingMe(true, finished) };
       if (url.endsWith("/api/onboarding/step")) {
         posted = init?.body ? JSON.parse(String(init.body)) : null;
@@ -204,13 +230,15 @@ describe("Auth screen", () => {
     });
     renderApp("/xlearn/auth");
 
+    // Skip the username step → coach step → Finish.
+    fireEvent.click(await screen.findByRole("button", { name: /skip for now/i }));
     expect(await screen.findByRole("heading", { name: /power up your coach/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /finish & enter xlearn/i }));
 
     await waitFor(() => expect(posted).toEqual({ step: "finish" }));
   });
 
-  it("Skip for now also completes onboarding without a key", async () => {
+  it("Skip for now on both optional steps still completes onboarding", async () => {
     let posted: unknown = null;
     let finished = false;
     installFetchMock((url, init) => {
@@ -224,7 +252,9 @@ describe("Auth screen", () => {
     });
     renderApp("/xlearn/auth");
 
-    fireEvent.click(await screen.findByRole("button", { name: /skip for now/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /skip for now/i })); // username step
+    expect(await screen.findByRole("heading", { name: /power up your coach/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /skip for now/i })); // coach step
     await waitFor(() => expect(posted).toEqual({ step: "finish" }));
   });
 });
