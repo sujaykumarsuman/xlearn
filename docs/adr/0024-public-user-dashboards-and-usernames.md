@@ -1,7 +1,9 @@
 # ADR-0024 — Public user dashboards + usernames (the first public route)
 
 - **Status:** Accepted — the bare `/xlearn/<username>` URL shape is **superseded by
-  [ADR-0025](0025-public-profiles-under-u-prefix.md)** (profiles now live at `/xlearn/u/<username>`).
+  [ADR-0025](0025-public-profiles-under-u-prefix.md)** (profiles now live at `/xlearn/u/<username>`), and
+  so are the reserved-word rules (§2 and the 2026-09-23 update below): the list is now impersonation-only
+  and course slugs are not reserved.
 - **Date:** 2026-09-23
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0006](0006-authn-authz.md) (session gating — this adds the first UNauthenticated
@@ -105,6 +107,9 @@ presentational views (`components/ProgressViews.tsx`) so they never drift.
 | **Fold mock attempts into the heatmap** | Needs an event/projection change + replay; the existing solves+reviews `proj_heatmap` is already account-wide and deterministic. Deferred. |
 
 ## Update — 2026-09-23: all path slugs + likely v2 routes reserved, slug coverage test-enforced
+
+> **Superseded** by [ADR-0025's 2026-09-23 update](0025-public-profiles-under-u-prefix.md): course slugs and
+> route words are no longer reserved, and `TestReservedCoversCurriculumPathSlugs` was removed.
 
 The original list reserved only `dsa` among the curriculum path slugs; the coming-soon paths in
 `curriculum/paths.json` (`system-design`, `go-concurrency`, `lld-ood`, `sql`, `behavioral`) are now
