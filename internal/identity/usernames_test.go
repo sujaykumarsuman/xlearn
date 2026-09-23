@@ -3,9 +3,11 @@ package identity
 import (
 	"context"
 	"encoding/json"
+	"io/fs"
 	"net/http"
 	"testing"
 
+	seeddata "github.com/sujaykumarsuman/xlearn/curriculum"
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 )
@@ -24,9 +26,37 @@ func TestValidateUsername(t *testing.T) {
 		}
 	}
 	// Reserved words (that share the /xlearn route namespace) are rejected.
-	for _, s := range []string{"settings", "dsa", "api", "admin", "auth", "u"} {
+	for _, s := range []string{"settings", "dsa", "system-design", "api", "admin", "auth", "u", "judge", "courses"} {
 		if err := validateUsername(s); err == nil {
 			t.Errorf("validateUsername(%q) = nil, want reserved error", s)
+		}
+	}
+}
+
+// Every curriculum path slug becomes a /xlearn/<slug> route that would shadow a same-named
+// profile (ADR-0024), so each one in the embedded seed must be reserved — this makes adding
+// a path without reserving its slug a test failure rather than a latent collision.
+func TestReservedCoversCurriculumPathSlugs(t *testing.T) {
+	b, err := fs.ReadFile(seeddata.FS, "paths.json")
+	if err != nil {
+		t.Fatalf("read curriculum paths.json: %v", err)
+	}
+	var paths []struct {
+		Slug string `json:"slug"`
+	}
+	if err := json.Unmarshal(b, &paths); err != nil {
+		t.Fatalf("decode curriculum paths.json: %v", err)
+	}
+	if len(paths) == 0 {
+		t.Fatal("curriculum paths.json has no paths")
+	}
+	for _, p := range paths {
+		if p.Slug == "" {
+			t.Errorf("curriculum path with an empty slug")
+			continue
+		}
+		if !reservedUsernames[p.Slug] {
+			t.Errorf("curriculum path slug %q is not in reservedUsernames (internal/identity/username.go)", p.Slug)
 		}
 	}
 }

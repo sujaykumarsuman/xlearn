@@ -25,14 +25,21 @@ var usernameRe = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
 // reservedUsernames are names a user may not claim because they are — or may become — a
 // top-level path under /xlearn, a gateway route, a static asset, or a confusable/system
-// word. This is the SINGLE source of truth for reservations; the web validation mirrors it
-// and the router keeps these as real routes. IMPORTANT: when a new top-level route or a new
-// curriculum path slug is added, add it here too (documented in ADR-0024).
+// word. This is the SINGLE source of truth for reservations: there is no web copy — the SPA's
+// claim UI asks GET /username/available and shows the reason returned — and the router keeps
+// the current ones as real routes. IMPORTANT: when a new top-level route or a new curriculum
+// path slug is added, add it here too (documented in ADR-0024; every slug in
+// curriculum/paths.json is enforced by TestReservedCoversCurriculumPathSlugs). Reserve BEFORE
+// the route ships: the public-profile resolver re-validates against this list, so reserving
+// a name someone already holds turns their profile into a 404.
 var reservedUsernames = map[string]bool{
-	// Current top-level SPA routes + curriculum path slugs (a username shares the /xlearn
-	// namespace with these; React Router's static routes win, so such a name would be an
-	// unreachable profile — reserve it).
-	"auth": true, "settings": true, "dsa": true, "xlearn": true,
+	// Current top-level SPA routes (a username shares the /xlearn namespace with these; React
+	// Router's static routes win, so such a name would be an unreachable profile — reserve it).
+	"auth": true, "settings": true, "xlearn": true,
+	// Curriculum path slugs — every path in curriculum/paths.json, active or coming_soon
+	// (each becomes a /xlearn/<slug> route when it goes live).
+	"dsa": true, "system-design": true, "go-concurrency": true, "lld-ood": true, "sql": true,
+	"behavioral": true,
 	// Gateway-served prefixes / probes / assets (never the SPA shell).
 	"api": true, "assets": true, "healthz": true, "readyz": true,
 	"well-known": true, "favicon": true, "robots": true, "static": true, "public": true,
@@ -41,6 +48,10 @@ var reservedUsernames = map[string]bool{
 	"dashboard": true, "progress": true, "me": true, "account": true, "accounts": true,
 	"onboarding": true, "catalog": true, "roadmap": true, "explore": true, "search": true,
 	"claim-username": true,
+	// Likely v2 top-level routes (judge / submissions / mock interviews / problem + course
+	// browsing) — reserved ahead of time so no one can claim them before the route ships.
+	"judge": true, "submissions": true, "interview": true, "interviews": true, "arena": true,
+	"problems": true, "courses": true, "course": true, "paths": true, "path": true,
 	// System / confusable / safety words.
 	"admin": true, "root": true, "support": true, "help": true, "about": true,
 	"login": true, "logout": true, "signin": true, "signup": true, "register": true,
