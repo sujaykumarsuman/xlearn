@@ -53,8 +53,8 @@ via identity's **non-PII** ClusterIP resolver, then composes only public aggrega
 
 ## Status
 
-🚀 **Shipped (`v1.4.0`)** — merged (xlearn#39) → `v1.4.0` tag → deploy built all seven `1.4.0` images →
-Flux deployed → **verified live**: gateway `v1.4.0`; the public `GET /api/v1/u/{username}` is live
+🚀 **Shipped (`v1.4.0`, refined in `v1.4.1`)** — merged (xlearn#39) → `v1.4.0` tag → deploy built all seven
+`1.4.0` images → Flux deployed → **verified live**: gateway `v1.4.0`; the public `GET /api/v1/u/{username}` is live
 **unauthenticated** (unknown user → `404 "no such user"`, vs `404 "no such endpoint"` for a bogus path —
 route discrimination); `POST /api/v1/me/username` and `GET /api/v1/username/available` are present and
 session-gated (→401). Built + reviewed on the local docker-compose stack first (the F001–F008 review-then-
@@ -84,6 +84,15 @@ design-intent) ran over the change: 3 dimensions clean, **1 confirmed finding fi
 course-row progress meter used `<span class="ds-meter">`, but `.ds-meter` needs block layout, so the bar
 never drew; since the meter sits inside the clickable `<button>` header (phrasing-content only), it's kept
 as spans with an explicit `display:block` rather than switched to `<div>`.
+
+**Follow-up (`v1.4.1`):** the standalone `/claim-username` page looked awkward, so the username claim moved
+**into the sign-up flow** as a dedicated onboarding step — the flow is now 4 steps
+(`path → budget → username → coach`), the username step styled like the budget/coach steps (live
+availability check, Claim & continue / Skip). The standalone `ClaimUsername` screen + route were deleted;
+an existing account with no username is sent to **Settings → Sign-in & security** (its username field) from
+the avatar → Dashboard. Frontend-only. A focused adversarial review found 5 issues, all fixed: an a11y gap
+(the availability/claim hint is now an `aria-live` region + `aria-describedby` + `role=alert`), a 350ms
+debounce race on the claim button, and three stale onboarding doc comments.
 
 ## Notes
 
