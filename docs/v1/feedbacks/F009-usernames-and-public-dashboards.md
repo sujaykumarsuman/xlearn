@@ -53,11 +53,14 @@ via identity's **non-PII** ClusterIP resolver, then composes only public aggrega
 
 ## Status
 
-✅ **Done — in local review.** Built and running on the local docker-compose stack
-(`docker compose up --build` → http://localhost:8080/xlearn) for the owner to review. Green before
-review: Go build/vet/`sqlc diff` + full `go test ./...`; web typecheck/lint/build + all tests. Land-and-
-sync (branch → PR → CI → merge → `v1.4.0` tag → Flux → verify → sync `main`) happens **only on an
-explicit go-ahead** (the F001–F008 review-then-ship convention).
+🚀 **Shipped (`v1.4.0`)** — merged (xlearn#39) → `v1.4.0` tag → deploy built all seven `1.4.0` images →
+Flux deployed → **verified live**: gateway `v1.4.0`; the public `GET /api/v1/u/{username}` is live
+**unauthenticated** (unknown user → `404 "no such user"`, vs `404 "no such endpoint"` for a bogus path —
+route discrimination); `POST /api/v1/me/username` and `GET /api/v1/username/available` are present and
+session-gated (→401). Built + reviewed on the local docker-compose stack first (the F001–F008 review-then-
+ship convention); shipped on the owner's explicit go-ahead. Green throughout: Go build/vet/`sqlc diff` +
+`go test ./...`; web typecheck/lint/build + 98 tests. No infra change (the additive `00004` migration runs
+on identity startup).
 
 ## Review round (public dashboard)
 

@@ -30,7 +30,20 @@ Legend: ⬜ planned · 🔄 in progress · ✅ done (in local review) · 🚀 sh
 | [F006](F006-settings-redesign-and-coach-model.md) | Round 4–5: **Settings redesign** (section rail + cards, pill/circle controls, GitHub-style profile card) + **multi-provider coach** — connect Anthropic *and* OpenAI, each with its model/name, one marked the **default**; a **header quick-switch** (provider pill + model dropdown) sets it from anywhere | 🚀 shipped (`v1.2.0`) |
 | [F007](F007-email-password-auth.md) | **Login flow**: a Sign in / Sign up pill + functional email/password auth; GitHub users set a password + email users connect GitHub in **Settings** (auto-link on matching verified email). No email verification yet. Review round added: full-width pill, **Settings section tabs** (replacing the scroll-spy rail), clearer OAuth wording | 🚀 shipped (`v1.3.0`) |
 | [F008](F008-shell-logo-and-live-badges.md) | **Shell polish**: the sidebar xLearn logo routes home (login when signed out); the Practice-loop **badge counts go live** (reviews due · open mistakes, hidden at 0) instead of hard-coded scaffold | 🚀 shipped (`v1.3.0`) |
-| [F009](F009-usernames-and-public-dashboards.md) | **Usernames + public dashboards**: per-course progress moves into the course nav; the avatar menu gains **Dashboard**; **usernames** (claim in Settings, sign in with email OR username); and a **public** LeetCode-style profile at `/xlearn/<username>` — xLearn's first unauthenticated route (non-PII only). ADR-0024 | ✅ done (in local review) |
+| [F009](F009-usernames-and-public-dashboards.md) | **Usernames + public dashboards**: per-course progress moves into the course nav; the avatar menu gains **Dashboard**; **usernames** (claim in Settings, sign in with email OR username); and a **public** LeetCode-style profile at `/xlearn/<username>` — xLearn's first unauthenticated route (non-PII only). ADR-0024 | 🚀 shipped (`v1.4.0`) |
+
+**Shipped as `v1.4.0`** (2026-09-23): merged (xlearn#39) → `v1.4.0` tag → deploy built all seven `1.4.0`
+images → Flux deployed → verified live (gateway `v1.4.0`). **F009** relocates per-course Progress into the
+curriculum nav (avatar menu gains **Dashboard**), adds **usernames** (`identity.account.username`, migration
+`00004`; claim in Settings + a `/claim-username` gate; **email OR username** sign-in), and ships xLearn's
+first **public** route — a LeetCode-style dashboard at `/xlearn/<username>` composed from non-PII
+`assessment`/`curriculum` projections via an identity non-PII by-username resolver, guarded by a
+reserved-word list (ADR-0024). Review round: an authenticated-viewer header, a 20:80 layout (silhouette +
+name + @handle + a coarse **UTC-offset** Region + a 16-week heatmap · tiles + collapsible course rows), and
+a segmented, colour-coded completion-by-phase bar (clean/rough/assisted/miss) with the count on hover. The
+public API is the only unauthenticated `/api` handler and touches no PII source. No infra change (the
+additive migration runs on identity startup). In-progress/attempted (not-yet-solved) states and per-path
+mocks/streak remain future work.
 
 **Shipped as `v1.3.0`** (2026-09-23): merged (xlearn#36) → `v1.3.0` tag → deploy → verified live
 (gateway `v1.3.0`). **F007** adds first-party email/password auth alongside GitHub OAuth (ADR-0023):
