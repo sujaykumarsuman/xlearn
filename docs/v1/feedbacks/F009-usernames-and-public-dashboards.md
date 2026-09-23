@@ -94,6 +94,14 @@ the avatar → Dashboard. Frontend-only. A focused adversarial review found 5 is
 (the availability/claim hint is now an `aria-live` region + `aria-describedby` + `role=alert`), a 350ms
 debounce race on the claim button, and three stale onboarding doc comments.
 
+**Follow-up (profile URL, ADR-0025 — in review):** the public profile moved from the bare
+`/xlearn/<username>` to **`/xlearn/u/<username>`** (matching the existing `GET /api/v1/u/{username}`),
+and the bare route was **dropped with no redirect** (owner's call: links had existed for under a day).
+Usernames no longer share a namespace with app routes, so a new course/route can't shadow a profile and
+an unknown `/xlearn/<x>` is the in-shell 404. Avatar → Dashboard, the Settings "Live at" link and the
+onboarding URL preview all use `/u/`. The reserved-word list stays, to keep official-looking handles
+(`@dsa`, `@admin`) out of public URLs and the username login. Frontend-only.
+
 ## Notes
 
 - **First public route.** Every other `/api` handler is session-gated; `GET /u/{username}` is the sole

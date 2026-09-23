@@ -60,7 +60,7 @@ export function Topbar({ variant, slug }: { variant: "plain" | "curriculum"; slu
   // the sign-up flow (F009 review); an existing account without one is sent to Settings to
   // claim it (the username field lives in the Sign-in & security tab).
   const username = me.data?.account.username;
-  const dashboardTo = username ? `/${username}` : "/settings?tab=account";
+  const dashboardTo = username ? `/u/${username}` : "/settings?tab=account";
 
   // Account menu as an accessible button-disclosure (replaces the pure-CSS checkbox,
   // which announced as "checkbox" and had no visible keyboard focus). Escape and an

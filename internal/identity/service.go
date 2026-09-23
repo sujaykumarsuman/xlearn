@@ -78,7 +78,7 @@ func (s *Service) Handler() http.Handler {
 	// ClusterIP-only, no user JWT — cluster-internal isolation (ADR-0006). It exposes
 	// only non-sensitive scheduling prefs (timezone, study budget), never OAuth data.
 	mux.HandleFunc("GET /internal/accounts/{id}", s.handleInternalGetAccount)
-	// Public-profile resolver (F009): the gateway resolves /xlearn/<username> → account id
+	// Public-profile resolver (F009): the gateway resolves /xlearn/u/<username> → account id
 	// here for the UNAUTHENTICATED public dashboard. Same ClusterIP trust model; returns
 	// only non-PII public fields (id, username, display name, join date).
 	mux.HandleFunc("GET /internal/accounts/by-username/{username}", s.handleInternalGetAccountByUsername)

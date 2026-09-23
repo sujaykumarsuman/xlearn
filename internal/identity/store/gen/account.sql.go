@@ -151,7 +151,7 @@ WHERE username IS NOT NULL AND lower(username) = lower($1)
 `
 
 // Look up an account by username, case-insensitively (username sign-in + the public
-// profile at /xlearn/<username>). ErrNotFound when no account has claimed that username.
+// profile at /xlearn/u/<username>). ErrNotFound when no account has claimed that username.
 func (q *Queries) GetAccountByUsername(ctx context.Context, lower string) (IdentityAccount, error) {
 	row := q.db.QueryRow(ctx, getAccountByUsername, lower)
 	var i IdentityAccount

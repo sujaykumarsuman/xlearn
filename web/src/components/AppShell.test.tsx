@@ -97,9 +97,9 @@ describe("AppShell + routing (authenticated)", () => {
       "/xlearn/dsa/mock",
       "/xlearn/dsa/progress",
     ];
-    // A multi-segment unknown still hits the in-shell NotFound. (A single-segment unknown
-    // like /xlearn/nope is now the PUBLIC profile route, tested in UserDashboard.test.)
-    const hub = ["/xlearn", "/xlearn/settings", "/xlearn/nope/404"];
+    // Unknown paths — single- or multi-segment — hit the in-shell NotFound: public profiles
+    // live under /xlearn/u/<username> (ADR-0025), so a bare /xlearn/<x> is no longer one.
+    const hub = ["/xlearn", "/xlearn/settings", "/xlearn/nope", "/xlearn/nope/404"];
 
     for (const path of curriculum) {
       const { unmount } = renderAt(path);

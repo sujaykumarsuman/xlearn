@@ -879,7 +879,7 @@ components:
         id: { type: string }
         display_name: { type: string }
         email: { type: [string, "null"] }
-        username: { type: string, description: URL-safe public handle powering /xlearn/<username> and username sign-in (F009). Omitted until claimed. }
+        username: { type: string, description: URL-safe public handle powering /xlearn/u/<username> and username sign-in (F009). Omitted until claimed. }
         timezone: { type: string }
         has_password: { type: boolean, description: True when an email/password sign-in is set (ADR-0023). }
         linked_providers: { type: array, items: { type: string }, description: OAuth providers linked to the account. }

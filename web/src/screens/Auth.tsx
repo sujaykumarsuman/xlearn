@@ -569,7 +569,7 @@ function StepUsername({
       <h2 style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>Claim your username</h2>
       <p style={{ fontSize: 13, color: "var(--ds-muted)", marginTop: 4 }}>
         Your public dashboard address —{" "}
-        <span className="ds-mono" style={{ color: "var(--ds-dim)" }}>projects.sujaykumar.dev/xlearn/&lt;you&gt;</span>. You can
+        <span className="ds-mono" style={{ color: "var(--ds-dim)" }}>projects.sujaykumar.dev/xlearn/u/&lt;you&gt;</span>. You can
         also sign in with it.
       </p>
 
@@ -577,7 +577,7 @@ function StepUsername({
         <div className="ds-field">
           <label className="ds-field__label" htmlFor="onb-username">Username</label>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span className="ds-mono" style={{ color: "var(--ds-muted)" }}>/xlearn/</span>
+            <span className="ds-mono" style={{ color: "var(--ds-muted)" }}>/xlearn/u/</span>
             <input
               id="onb-username"
               className="ds-input"

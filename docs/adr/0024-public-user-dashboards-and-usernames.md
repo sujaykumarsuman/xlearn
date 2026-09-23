@@ -1,6 +1,7 @@
 # ADR-0024 — Public user dashboards + usernames (the first public route)
 
-- **Status:** Accepted
+- **Status:** Accepted — the bare `/xlearn/<username>` URL shape is **superseded by
+  [ADR-0025](0025-public-profiles-under-u-prefix.md)** (profiles now live at `/xlearn/u/<username>`).
 - **Date:** 2026-09-23
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0006](0006-authn-authz.md) (session gating — this adds the first UNauthenticated

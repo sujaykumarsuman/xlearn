@@ -33,7 +33,7 @@ const adaProfile = {
   ],
 };
 
-describe("UserDashboard (public /xlearn/<username>)", () => {
+describe("UserDashboard (public /xlearn/u/<username>)", () => {
   afterEach(restoreFetch);
 
   it("renders a public profile with no login and no PII", async () => {
@@ -43,7 +43,7 @@ describe("UserDashboard (public /xlearn/<username>)", () => {
       if (url.includes("/api/u/ada")) return { status: 200, body: adaProfile };
       return { status: 404 };
     });
-    renderApp("/xlearn/ada");
+    renderApp("/xlearn/u/ada");
 
     expect(await screen.findByText("Ada Lovelace")).toBeInTheDocument();
     expect(screen.getByText("@ada")).toBeInTheDocument();
@@ -67,7 +67,7 @@ describe("UserDashboard (public /xlearn/<username>)", () => {
       if (url.includes("/api/coach/key")) return { status: 200, body: { keys: [] } };
       return { status: 404 };
     });
-    renderApp("/xlearn/ada");
+    renderApp("/xlearn/u/ada");
 
     expect(await screen.findByText("Ada Lovelace")).toBeInTheDocument();
     // Authenticated viewer → the app's account menu, and NO "Sign in" link.
@@ -81,7 +81,7 @@ describe("UserDashboard (public /xlearn/<username>)", () => {
       if (url.includes("/api/u/ada")) return { status: 200, body: adaProfile };
       return { status: 404 };
     });
-    renderApp("/xlearn/ada");
+    renderApp("/xlearn/u/ada");
 
     // The first course is expanded by default → its detail is visible.
     expect(await screen.findByText("Completion by phase")).toBeInTheDocument();
@@ -97,9 +97,29 @@ describe("UserDashboard (public /xlearn/<username>)", () => {
       if (url.includes("/api/u/ghost")) return { status: 404, body: { error: { code: "not_found" } } };
       return { status: 404 };
     });
-    renderApp("/xlearn/ghost");
+    renderApp("/xlearn/u/ghost");
 
     expect(await screen.findByText(/no profile for @ghost/i)).toBeInTheDocument();
     expect(document.querySelector(".xl-app")).toBeNull();
+  });
+
+  it("serves profiles only under /u/ — the retired bare /xlearn/<username> is a NotFound (ADR-0025)", async () => {
+    const me = authedMe("dsa");
+    const requested: string[] = [];
+    installFetchMock((url) => {
+      requested.push(url);
+      if (url.endsWith("/api/me")) return { status: 200, body: { ...me, account: { ...me.account, username: "ada" } } };
+      if (url.includes("/api/u/ada")) return { status: 200, body: adaProfile };
+      if (url.includes("/api/coach/key")) return { status: 200, body: { keys: [] } };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/ada");
+
+    expect(await screen.findByRole("heading", { name: /page not found/i })).toBeInTheDocument();
+    expect(requested.some((u) => u.includes("/api/u/"))).toBe(false);
+
+    // The avatar menu's Dashboard entry points at the /u/ profile.
+    fireEvent.click(await screen.findByRole("button", { name: /account menu/i }));
+    expect(screen.getByRole("link", { name: /dashboard/i })).toHaveAttribute("href", "/xlearn/u/ada");
   });
 });
