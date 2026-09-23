@@ -65,3 +65,18 @@ if a service needs independent backup/restore, its own cluster, or a non-Postgre
 | **ORM (GORM/ent)** | Hides SQL on the exact hot paths we need to tune; `sqlc` keeps SQL explicit and type-safe. |
 | **golang-migrate** | Fine alternative; `goose` chosen for simpler embedded Go usage + Go-function migrations if ever needed. |
 | **Separate migration Kubernetes Job** | More moving parts to sequence in Flux; startup-with-advisory-lock is simpler at this scale. |
+
+## Update — 2026-09-23: shared cluster right-sized to a single instance
+
+The shared `projects-pgstore` CNPG cluster was reduced from **3 instances → 1** (infra
+`chore(database)` PR #19). On the single VPS node the 2 replicas gave **no node-failure HA** (all
+pods + their Longhorn volumes share the one node; Longhorn `replicaCount: 1`), and every xLearn
+service connects to `projects-pgstore-rw` — nothing reads the `-ro` endpoint — so the replicas were
+pure overhead (2×10Gi PVCs + ~1Gi reserved RAM + 500m CPU + streaming IO), since reclaimed.
+
+This does **not** change xLearn's data model — still one `xlearndb`, schema-per-service, goose
+migrations, `sqlc`/`pgx`. It only lowers the shared cluster's **availability**: a primary-pod crash
+now recovers by pod restart + WAL replay (seconds) instead of replica promotion. Acceptable
+pre-announcement on one node; reversible when nodes are added (raise `instances`, raise Longhorn's
+replica count, set `podAntiAffinityType: required` for real HA). Rationale + rollback live with the
+infra `infrastructure/database/cluster/cluster.yaml`.
