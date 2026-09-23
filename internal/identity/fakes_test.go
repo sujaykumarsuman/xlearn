@@ -18,6 +18,7 @@ type fakeStore struct {
 	accounts    map[string]store.Account
 	byProvider  map[string]string   // provider|providerUserID -> accountID
 	emailIndex  map[string]string   // lower(email) -> accountID
+	usernameIdx map[string]string   // lower(username) -> accountID
 	providers   map[string][]string // accountID -> linked providers
 	onboarding  map[string]store.Onboarding
 	sessions    map[string]store.Session
@@ -31,6 +32,7 @@ func newFakeStore() *fakeStore {
 		accounts:    map[string]store.Account{},
 		byProvider:  map[string]string{},
 		emailIndex:  map[string]string{},
+		usernameIdx: map[string]string{},
 		providers:   map[string][]string{},
 		onboarding:  map[string]store.Onboarding{},
 		sessions:    map[string]store.Session{},
@@ -79,6 +81,36 @@ func (f *fakeStore) GetAccountByEmail(_ context.Context, email string) (store.Ac
 		return store.Account{}, store.ErrNotFound
 	}
 	return f.accounts[id], nil
+}
+
+func (f *fakeStore) GetAccountByUsername(_ context.Context, username string) (store.Account, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	id, ok := f.usernameIdx[strings.ToLower(strings.TrimSpace(username))]
+	if !ok {
+		return store.Account{}, store.ErrNotFound
+	}
+	return f.accounts[id], nil
+}
+
+func (f *fakeStore) SetUsername(_ context.Context, id, username string) (store.Account, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	a, ok := f.accounts[id]
+	if !ok {
+		return store.Account{}, store.ErrNotFound
+	}
+	lk := strings.ToLower(username)
+	if owner, taken := f.usernameIdx[lk]; taken && owner != id {
+		return store.Account{}, store.ErrUsernameTaken
+	}
+	if a.Username != "" {
+		delete(f.usernameIdx, strings.ToLower(a.Username))
+	}
+	a.Username = username
+	f.accounts[id] = a
+	f.usernameIdx[lk] = id
+	return a, nil
 }
 
 func (f *fakeStore) CreateEmailAccount(_ context.Context, email, passwordHash, displayName string) (store.Account, error) {

@@ -27,6 +27,22 @@ SET password_hash = $2
 WHERE id = $1
 RETURNING *;
 
+-- name: GetAccountByUsername :one
+-- Look up an account by username, case-insensitively (username sign-in + the public
+-- profile at /xlearn/<username>). ErrNotFound when no account has claimed that username.
+SELECT * FROM identity.account
+WHERE username IS NOT NULL AND lower(username) = lower($1);
+
+-- name: SetUsername :one
+-- Claim or change the account's username (F009). The partial unique index on
+-- lower(username) enforces case-insensitive uniqueness; a collision surfaces as a unique
+-- violation the store maps to ErrUsernameTaken. The value is validated + normalised (lower,
+-- reserved-word check) in the service before it reaches here.
+UPDATE identity.account
+SET username = $2
+WHERE id = $1
+RETURNING *;
+
 -- name: GetAccountByProviderIdentity :one
 SELECT a.*
 FROM identity.account a

@@ -27,6 +27,9 @@ const aggCallTimeout = 5 * time.Second
 type masteryProblem struct {
 	ProblemID string  `json:"problemId"`
 	Weight    float64 `json:"weight"`
+	// BestRank is the best first-solve outcome rank (clean=4 · rough=3 · assisted=2 ·
+	// miss=1), used to colour-segment the by-phase completion bar (F009 review).
+	BestRank int `json:"bestRank"`
 }
 
 type masteryDoc struct {
@@ -77,6 +80,12 @@ type phaseCompletion struct {
 	WeekTo   int    `json:"weekTo"`
 	Solved   int    `json:"solved"`
 	Total    int    `json:"total"`
+	// Solved broken down by first-solve outcome (F009 review) — colours the segmented
+	// completion bar. clean+rough+assisted+miss == solved.
+	Clean    int `json:"clean"`
+	Rough    int `json:"rough"`
+	Assisted int `json:"assisted"`
+	Miss     int `json:"miss"`
 }
 
 type patternMastery struct {
@@ -239,9 +248,9 @@ func (g *Gateway) handleProgress(w http.ResponseWriter, r *http.Request) {
 // range, `total` is the non-reinforcement problems and `solved` is how many of them the
 // learner has solved (from the mastery projection).
 func composePhaseCompletion(phases []roadmapPhase, index []problemIndexItem, solved []masteryProblem) []phaseCompletion {
-	solvedSet := make(map[string]bool, len(solved))
+	rankByID := make(map[string]int, len(solved))
 	for _, m := range solved {
-		solvedSet[m.ProblemID] = true
+		rankByID[m.ProblemID] = m.BestRank
 	}
 	out := make([]phaseCompletion, 0, len(phases))
 	for _, ph := range phases {
@@ -251,8 +260,18 @@ func composePhaseCompletion(phases []roadmapPhase, index []problemIndexItem, sol
 				continue
 			}
 			pc.Total++
-			if solvedSet[p.ID] {
+			if rank, ok := rankByID[p.ID]; ok {
 				pc.Solved++
+				switch rank {
+				case 4:
+					pc.Clean++
+				case 3:
+					pc.Rough++
+				case 2:
+					pc.Assisted++
+				case 1:
+					pc.Miss++
+				}
 			}
 		}
 		out = append(out, pc)

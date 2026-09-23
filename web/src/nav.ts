@@ -51,6 +51,9 @@ export function navForPath(slug: string, counts: NavCounts = {}): NavSection[] {
             { label: "Today", icon: "today", to: `${base}/dashboard` },
             { label: "Roadmap", icon: "map", to: base, end: true },
             { label: "Problems", icon: "list", to: `${base}/problems` },
+            // Per-course progress is curriculum-scoped now (F009): it moved out of the
+            // avatar menu (which now links to the public dashboard) into the course nav.
+            { label: "Progress", icon: "chart", to: `${base}/progress` },
           ],
         },
         {
@@ -131,6 +134,7 @@ export function routeTitle(pathname: string): string {
   if (p === "/dsa/mock") return "Mock interview";
   if (p === "/dsa/progress") return "Progress";
   if (p === "/settings") return "Settings";
+  if (p === "/claim-username") return "Claim username";
   if (p === "/auth") return "Sign in";
   return "xLearn";
 }

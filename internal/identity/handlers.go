@@ -384,7 +384,9 @@ type accountJSON struct {
 	ID          string `json:"id"`
 	DisplayName string `json:"display_name"`
 	Email       string `json:"email,omitempty"`
-	Timezone    string `json:"timezone"`
+	// Username is the URL-safe public handle (F009), omitted until the account claims one.
+	Username string `json:"username,omitempty"`
+	Timezone string `json:"timezone"`
 	// HasPassword / LinkedProviders drive the Settings "Account & sign-in" card (ADR-0023).
 	// The password hash itself is NEVER serialised.
 	HasPassword     bool            `json:"has_password"`
@@ -425,6 +427,7 @@ func toAccountJSON(a store.Account) accountJSON {
 		ID:          a.ID,
 		DisplayName: a.DisplayName,
 		Email:       a.Email,
+		Username:    a.Username,
 		Timezone:    a.Timezone,
 		HasPassword: a.PasswordHash != "",
 		// LinkedProviders is filled by writeAccount (a separate query); default to empty.

@@ -78,6 +78,10 @@ func (s *Service) Handler() http.Handler {
 	// ClusterIP-only, no user JWT — cluster-internal isolation (ADR-0006). It exposes
 	// only non-sensitive scheduling prefs (timezone, study budget), never OAuth data.
 	mux.HandleFunc("GET /internal/accounts/{id}", s.handleInternalGetAccount)
+	// Public-profile resolver (F009): the gateway resolves /xlearn/<username> → account id
+	// here for the UNAUTHENTICATED public dashboard. Same ClusterIP trust model; returns
+	// only non-PII public fields (id, username, display name, join date).
+	mux.HandleFunc("GET /internal/accounts/by-username/{username}", s.handleInternalGetAccountByUsername)
 
 	// User-data routes: verify the gateway-minted JWT via JWKS + ownership.
 	mux.Handle("GET /accounts/{id}", s.requireJWT(http.HandlerFunc(s.handleGetAccount)))
@@ -87,6 +91,9 @@ func (s *Service) Handler() http.Handler {
 	// Account & sign-in management (ADR-0023): set/change password + disconnect a provider.
 	mux.Handle("POST /accounts/{id}/password", s.requireJWT(http.HandlerFunc(s.handleSetPassword)))
 	mux.Handle("DELETE /accounts/{id}/oauth/{provider}", s.requireJWT(http.HandlerFunc(s.handleUnlinkOAuth)))
+	// Username claim/change + availability check (F009). JWT-scoped to the caller.
+	mux.Handle("POST /accounts/{id}/username", s.requireJWT(http.HandlerFunc(s.handleSetUsername)))
+	mux.Handle("GET /username/available", s.requireJWT(http.HandlerFunc(s.handleUsernameAvailable)))
 
 	return mux
 }

@@ -3,6 +3,7 @@ package identity
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
@@ -49,8 +50,10 @@ func (s *Service) handleSignup(w http.ResponseWriter, r *http.Request) {
 	s.startSession(w, r, acct.ID, "email_signup")
 }
 
-// handleLogin: POST /auth/login — email/password sign-in. A uniform 401 on any failure so
-// the response never reveals whether an email is registered.
+// handleLogin: POST /auth/login — sign in with email OR username + password (F009). The
+// `email` field carries either identifier (kept as the JSON key for back-compat); an '@'
+// resolves it as an email, otherwise as a username. A uniform 401 on any failure so the
+// response never reveals whether an identifier is registered.
 func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Email    string `json:"email"`
@@ -60,12 +63,21 @@ func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad_request", "invalid body")
 		return
 	}
-	acct, err := s.store.GetAccountByEmail(r.Context(), normalizeEmail(body.Email))
+	acct, err := s.resolveLoginIdentifier(r, body.Email)
 	if err != nil || acct.PasswordHash == "" || !checkPassword(acct.PasswordHash, body.Password) {
-		writeError(w, http.StatusUnauthorized, "invalid_credentials", "incorrect email or password")
+		writeError(w, http.StatusUnauthorized, "invalid_credentials", "incorrect email/username or password")
 		return
 	}
 	s.startSession(w, r, acct.ID, "email_login")
+}
+
+// resolveLoginIdentifier looks up the account for an email-or-username login identifier
+// (F009): an '@' means email (case-insensitive), otherwise username (case-insensitive).
+func (s *Service) resolveLoginIdentifier(r *http.Request, identifier string) (store.Account, error) {
+	if strings.Contains(identifier, "@") {
+		return s.store.GetAccountByEmail(r.Context(), normalizeEmail(identifier))
+	}
+	return s.store.GetAccountByUsername(r.Context(), normalizeUsername(identifier))
 }
 
 // startSession mints a server session + cookie and returns 200 {ok:true}. The email flows

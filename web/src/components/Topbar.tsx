@@ -56,6 +56,10 @@ export function Topbar({ variant, slug }: { variant: "plain" | "curriculum"; slu
   const name = me.data?.account.display_name ?? "Account";
   const email = me.data?.account.email ?? "";
   const initial = name.trim().charAt(0).toUpperCase() || "?";
+  // The avatar "Dashboard" links to the user's public profile, or the claim gate when they
+  // have no username yet (F009).
+  const username = me.data?.account.username;
+  const dashboardTo = username ? `/${username}` : "/claim-username";
 
   // Account menu as an accessible button-disclosure (replaces the pure-CSS checkbox,
   // which announced as "checkbox" and had no visible keyboard focus). Escape and an
@@ -134,11 +138,11 @@ export function Topbar({ variant, slug }: { variant: "plain" | "curriculum"; slu
                   {email && <span>{email}</span>}
                 </div>
               </div>
+              <Link to={dashboardTo} className="xl-acct-item" onClick={closeAcct}>
+                <Icon name="chart" className="xl-ico--sm" /> Dashboard
+              </Link>
               <Link to="/settings" className="xl-acct-item" onClick={closeAcct}>
                 <Icon name="settings" className="xl-ico--sm" /> Settings
-              </Link>
-              <Link to="/dsa/progress" className="xl-acct-item" onClick={closeAcct}>
-                <Icon name="chart" className="xl-ico--sm" /> Progress &amp; stats
               </Link>
               <div className="xl-acct-sep" />
               <button

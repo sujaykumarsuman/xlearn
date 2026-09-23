@@ -121,6 +121,51 @@ paths:
         "409": { description: Cannot remove the last sign-in method — set a password first. }
         "502": { $ref: "#/components/responses/BadGateway" }
         "503": { $ref: "#/components/responses/Unavailable" }
+  /me/username:
+    post:
+      tags: [account]
+      operationId: setUsername
+      summary: Claim or change the account's public username (F009 / ADR-0024).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetUsernameRequest" }
+      responses:
+        "200":
+          description: Username claimed/changed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  username: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { description: That username is already taken. }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /username/available:
+    get:
+      tags: [account]
+      operationId: usernameAvailable
+      summary: Live availability + validity check for a candidate username (F009).
+      parameters:
+        - { name: u, in: query, required: true, schema: { type: string }, description: The candidate username. }
+      responses:
+        "200":
+          description: Availability result (a malformed/reserved name reports available=false with a reason, not an error).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available: { type: boolean }
+                  reason: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
   /onboarding/step:
     post:
       tags: [account]
@@ -639,6 +684,27 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "502": { $ref: "#/components/responses/BadGateway" }
         "503": { $ref: "#/components/responses/Unavailable" }
+  /u/{username}:
+    get:
+      tags: [progress]
+      operationId: getPublicProfile
+      summary: PUBLIC user dashboard (F009 / ADR-0024) — non-PII stats + merged activity heatmap. No session.
+      description: >-
+        The only unauthenticated /api route. Resolves a username to non-PII public stats only
+        (never email/PII): per-course completion + pattern mastery, account-wide solved count,
+        streak, mock stats, and one activity heatmap merged across courses. Short-cached per user.
+      security: []
+      parameters:
+        - { name: username, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The public profile.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicProfile" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
   /coach/key:
     get:
       tags: [coach]
@@ -813,18 +879,65 @@ components:
         id: { type: string }
         display_name: { type: string }
         email: { type: [string, "null"] }
+        username: { type: string, description: URL-safe public handle powering /xlearn/<username> and username sign-in (F009). Omitted until claimed. }
         timezone: { type: string }
         has_password: { type: boolean, description: True when an email/password sign-in is set (ADR-0023). }
         linked_providers: { type: array, items: { type: string }, description: OAuth providers linked to the account. }
         study_budget: { type: object }
         reminders: { type: object }
         created_at: { type: string, format: date-time }
+    PublicProfile:
+      type: object
+      description: Public user dashboard payload (F009 / ADR-0024) — non-PII aggregates only.
+      properties:
+        user:
+          type: object
+          properties:
+            username: { type: string }
+            displayName: { type: string }
+            joinedAt: { type: string, format: date-time }
+            region: { type: string, description: "Coarse UTC-offset band (e.g. UTC+05:30) — never the IANA zone/city (F009)." }
+        totals:
+          type: object
+          properties:
+            solved: { type: integer }
+            streak:
+              type: object
+              properties:
+                current: { type: integer }
+                longest: { type: integer }
+        mock:
+          type: object
+          properties:
+            count: { type: integer }
+            best: { type: integer }
+            average: { type: integer }
+        heatmap:
+          type: [object, "null"]
+          description: "{ days: [{date, solves, reviews}] } merged across courses, or null when the projection is unavailable."
+        courses:
+          type: array
+          items:
+            type: object
+            properties:
+              slug: { type: string }
+              title: { type: string }
+              solved: { type: integer }
+              total: { type: integer }
+              pct: { type: integer }
+              phases: { type: array, items: { type: object } }
+              patterns: { type: array, items: { type: object } }
     EmailAuthRequest:
       type: object
       required: [email, password]
       properties:
-        email: { type: string, format: email }
+        email: { type: string, description: "On signup an email address; on login an email OR username (F009)." }
         password: { type: string, minLength: 8, maxLength: 72 }
+    SetUsernameRequest:
+      type: object
+      required: [username]
+      properties:
+        username: { type: string, description: "Lowercase slug, 3–30 chars; letters/digits/hyphens; not a reserved word (F009 / ADR-0024)." }
     SetPasswordRequest:
       type: object
       required: [new_password]

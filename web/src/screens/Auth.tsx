@@ -159,8 +159,12 @@ function SignIn() {
   const pending = login.isPending || signup.isPending;
   const err = mode === "signin" ? login.error : signup.error;
 
-  const emailOk = /^\S+@\S+\.\S+$/.test(email.trim());
-  const canSubmit = emailOk && password.length >= (mode === "signup" ? 8 : 1) && !pending;
+  // Login accepts an email OR a username (F009); signup still requires a real email. So the
+  // identifier is validated strictly only in signup mode.
+  const identifier = email.trim();
+  const emailOk = /^\S+@\S+\.\S+$/.test(identifier);
+  const identifierOk = mode === "signup" ? emailOk : identifier.length > 0;
+  const canSubmit = identifierOk && password.length >= (mode === "signup" ? 8 : 1) && !pending;
 
   const clearErrors = () => {
     login.reset();
@@ -173,7 +177,7 @@ function SignIn() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
-    (mode === "signup" ? signup : login).mutate({ email: email.trim(), password });
+    (mode === "signup" ? signup : login).mutate({ email: identifier, password });
   };
 
   return (
@@ -246,14 +250,16 @@ function SignIn() {
       <form onSubmit={submit}>
         <div className="ds-field">
           <label className="ds-field__label" htmlFor="email">
-            Email
+            {mode === "signup" ? "Email" : "Email or username"}
           </label>
           <input
             id="email"
             className="ds-input"
-            type="email"
-            placeholder="you@example.com"
-            autoComplete="email"
+            type={mode === "signup" ? "email" : "text"}
+            placeholder={mode === "signup" ? "you@example.com" : "you@example.com or your-handle"}
+            autoComplete={mode === "signup" ? "email" : "username"}
+            autoCapitalize="none"
+            spellCheck={false}
             value={email}
             onChange={(e) => {
               clearErrors();
@@ -313,7 +319,7 @@ function emailAuthErrorMessage(err: ApiRequestError, mode: "signin" | "signup"):
     case "email_taken":
       return "That email is already registered — switch to Sign in.";
     case "invalid_credentials":
-      return "Incorrect email or password.";
+      return "Incorrect email/username or password.";
     case "weak_password":
       return "Password must be 8–72 characters.";
     case "invalid_email":

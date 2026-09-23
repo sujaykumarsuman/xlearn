@@ -25,7 +25,9 @@ export interface HeatmapDay {
   reviews: number;
 }
 
-/** One phase's completion (solved / total core problems in its week range). */
+/** One phase's completion (solved / total core problems in its week range), with the
+ *  solved set broken down by first-solve outcome (F009 review) so the completion bar can
+ *  colour-segment by quality. clean+rough+assisted+miss === solved. */
 export interface PhaseCompletion {
   order: number;
   name: string;
@@ -34,6 +36,10 @@ export interface PhaseCompletion {
   weekTo: number;
   solved: number;
   total: number;
+  clean: number;
+  rough: number;
+  assisted: number;
+  miss: number;
 }
 
 /** One pattern's mastery: solved / total core problems and the quality-weighted pct. */

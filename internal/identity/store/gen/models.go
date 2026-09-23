@@ -17,6 +17,7 @@ type IdentityAccount struct {
 	RemindersJson   []byte
 	CreatedAt       pgtype.Timestamptz
 	PasswordHash    pgtype.Text
+	Username        pgtype.Text
 }
 
 type IdentityOauthIdentity struct {

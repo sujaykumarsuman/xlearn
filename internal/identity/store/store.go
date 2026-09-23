@@ -33,6 +33,9 @@ var (
 	ErrNotFound = errors.New("identity: not found")
 	// ErrEmailTaken is returned when an email sign-up collides with an existing account.
 	ErrEmailTaken = errors.New("identity: email already registered")
+	// ErrUsernameTaken is returned when a username claim collides with an existing one
+	// (F009). Mapped to 409 by the handler.
+	ErrUsernameTaken = errors.New("identity: username already taken")
 	// ErrConflict is returned when linking a provider identity that already exists.
 	ErrConflict = errors.New("identity: conflict")
 )
@@ -42,7 +45,10 @@ type Account struct {
 	ID          string
 	DisplayName string
 	Email       string // "" when the provider gave no email
-	Timezone    string
+	// Username is the URL-safe public handle (F009), "" until the account claims one.
+	// Stored lowercase; case-insensitively unique. Powers /xlearn/<username> + username login.
+	Username string
+	Timezone string
 	// PasswordHash is the bcrypt hash for email sign-in (ADR-0023), "" for OAuth-only
 	// accounts that never set one. NEVER serialised to a client — /me exposes only a
 	// derived has_password flag.
@@ -118,6 +124,12 @@ type Store interface {
 	// GetAccountByEmail looks up an account case-insensitively (email sign-in). The
 	// returned Account carries PasswordHash. ErrNotFound when no account has that email.
 	GetAccountByEmail(ctx context.Context, email string) (Account, error)
+	// GetAccountByUsername looks up an account by username case-insensitively (username
+	// sign-in + the public profile lookup, F009). ErrNotFound when unclaimed.
+	GetAccountByUsername(ctx context.Context, username string) (Account, error)
+	// SetUsername claims or changes the account's username (F009). ErrUsernameTaken when
+	// the (case-insensitive) name is already taken by another account.
+	SetUsername(ctx context.Context, id, username string) (Account, error)
 	// CreateEmailAccount creates an account from an email sign-up (email + pre-hashed
 	// password) with onboarding + the account_created outbox row, in one transaction.
 	// ErrEmailTaken when the email is already registered.
@@ -277,6 +289,31 @@ func (s *PgStore) GetAccount(ctx context.Context, id string) (Account, error) {
 func (s *PgStore) GetAccountByEmail(ctx context.Context, email string) (Account, error) {
 	row, err := s.q.GetAccountByEmail(ctx, email)
 	if err != nil {
+		return Account{}, mapErr(err)
+	}
+	return toAccount(row), nil
+}
+
+// GetAccountByUsername looks up an account by username case-insensitively (F009).
+func (s *PgStore) GetAccountByUsername(ctx context.Context, username string) (Account, error) {
+	row, err := s.q.GetAccountByUsername(ctx, username)
+	if err != nil {
+		return Account{}, mapErr(err)
+	}
+	return toAccount(row), nil
+}
+
+// SetUsername claims or changes the account's username; ErrUsernameTaken on a collision.
+func (s *PgStore) SetUsername(ctx context.Context, id, username string) (Account, error) {
+	uid, err := parseUUID(id)
+	if err != nil {
+		return Account{}, ErrNotFound
+	}
+	row, err := s.q.SetUsername(ctx, gen.SetUsernameParams{ID: uid, Username: textOrNull(username)})
+	if err != nil {
+		if isUniqueViolation(err) {
+			return Account{}, ErrUsernameTaken
+		}
 		return Account{}, mapErr(err)
 	}
 	return toAccount(row), nil
@@ -587,6 +624,7 @@ func toAccount(a gen.IdentityAccount) Account {
 		ID:           uuidString(a.ID),
 		DisplayName:  a.DisplayName,
 		Email:        a.Email.String,
+		Username:     a.Username.String,
 		Timezone:     a.Timezone,
 		PasswordHash: a.PasswordHash.String,
 		StudyBudget:  a.StudyBudgetJson,

@@ -36,6 +36,9 @@ export interface Account {
   id: string;
   display_name: string;
   email?: string;
+  /** URL-safe public handle (F009). Undefined until the account claims one; drives the
+   *  public dashboard link + username sign-in. */
+  username?: string;
   timezone: string;
   /** True when an email/password sign-in is set (ADR-0023). OAuth-only accounts are false
    *  until they set one from Settings. */
@@ -110,6 +113,39 @@ export function useLogin() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+  });
+}
+
+/** Username availability result from GET /username/available (F009). */
+export interface UsernameAvailability {
+  available: boolean;
+  reason?: string;
+}
+
+/** useUsernameAvailability checks a candidate username live (F009). Debounce the input in
+ *  the component; results cache per candidate. Disabled below 3 chars (the minimum length). */
+export function useUsernameAvailability(candidate: string) {
+  return useQuery<UsernameAvailability, ApiRequestError>({
+    queryKey: ["username-available", candidate],
+    queryFn: () => apiFetch<UsernameAvailability>(`/username/available?u=${encodeURIComponent(candidate)}`),
+    enabled: candidate.length >= 3,
+    retry: false,
+    staleTime: 30_000,
+  });
+}
+
+/** useSetUsername claims or changes the account's public username (F009) and refreshes /me.
+ *  A 409 (taken) / 422 (invalid or reserved) surfaces as an ApiRequestError for the form. */
+export function useSetUsername() {
+  const qc = useQueryClient();
+  return useMutation<{ ok: boolean; username: string }, ApiRequestError, string>({
+    mutationFn: (username) =>
+      apiFetch<{ ok: boolean; username: string }>("/me/username", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
   });
