@@ -9,7 +9,7 @@ import type { PublicProfile, PublicProfileCourse } from "../lib/profile";
 import type { HeatmapDay } from "../lib/progress";
 
 /**
- * UserDashboard (`/xlearn/<username>`, F009 / ADR-0024): the PUBLIC, no-login profile —
+ * UserDashboard (`/xlearn/u/<username>`, F009 / ADR-0024, ADR-0025): the PUBLIC, no-login profile —
  * xLearn's LeetCode-style page. Rendered OUTSIDE AuthedShell (like /auth), it reads the
  * public aggregation GET /u/{username} (non-PII only). Layout (F009 review): a 20:80 grid —
  * a left identity column (silhouette, name, @handle, region, join date, activity heatmap) and

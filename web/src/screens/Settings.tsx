@@ -170,8 +170,8 @@ function UsernameForm({ account }: { account: Account }) {
           {current && (
             <>
               Live at{" "}
-              <Link to={`/${current}`} className="ds-mono" style={{ color: "var(--ds-teal)" }}>
-                /xlearn/{current}
+              <Link to={`/u/${current}`} className="ds-mono" style={{ color: "var(--ds-teal)" }}>
+                /xlearn/u/{current}
               </Link>
               .
             </>

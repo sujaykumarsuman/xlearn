@@ -1,6 +1,6 @@
 // Shared, presentational Progress views (F009): the revision-activity heatmap, the
 // completion-by-phase table, and the pattern-mastery bars. Extracted from the Progress
-// screen so the PUBLIC user dashboard (/xlearn/<username>) renders the SAME visuals from
+// screen so the PUBLIC user dashboard (/xlearn/u/<username>) renders the SAME visuals from
 // the same source — one implementation, no drift. These are pure/props-only (no data
 // fetching), so both the authed Progress screen and the public profile feed them data.
 import { Icon } from "./Icon";

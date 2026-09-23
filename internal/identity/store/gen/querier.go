@@ -31,7 +31,7 @@ type Querier interface {
 	GetAccountByEmail(ctx context.Context, lower string) (IdentityAccount, error)
 	GetAccountByProviderIdentity(ctx context.Context, arg GetAccountByProviderIdentityParams) (IdentityAccount, error)
 	// Look up an account by username, case-insensitively (username sign-in + the public
-	// profile at /xlearn/<username>). ErrNotFound when no account has claimed that username.
+	// profile at /xlearn/u/<username>). ErrNotFound when no account has claimed that username.
 	GetAccountByUsername(ctx context.Context, lower string) (IdentityAccount, error)
 	GetOnboarding(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error)
 	GetValidSession(ctx context.Context, id string) (IdentitySession, error)

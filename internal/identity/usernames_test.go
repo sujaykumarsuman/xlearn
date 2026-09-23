@@ -33,9 +33,9 @@ func TestValidateUsername(t *testing.T) {
 	}
 }
 
-// Every curriculum path slug becomes a /xlearn/<slug> route that would shadow a same-named
-// profile (ADR-0024), so each one in the embedded seed must be reserved — this makes adding
-// a path without reserving its slug a test failure rather than a latent collision.
+// A handle named after a course (@dsa, @system-design) would read as official, so every
+// curriculum path slug in the embedded seed must be reserved — this makes adding a path
+// without reserving its slug a test failure rather than a silent gap (ADR-0024/0025).
 func TestReservedCoversCurriculumPathSlugs(t *testing.T) {
 	b, err := fs.ReadFile(seeddata.FS, "paths.json")
 	if err != nil {

@@ -71,7 +71,7 @@ func (s *Service) handleUsernameAvailable(w http.ResponseWriter, r *http.Request
 
 // handleInternalGetAccountByUsername: GET /internal/accounts/by-username/{username} — a
 // service-to-service lookup (ClusterIP + NetworkPolicy; no user JWT) the gateway uses to
-// resolve the PUBLIC profile at /xlearn/<username> → an account id. Like the other
+// resolve the PUBLIC profile at /xlearn/u/<username> → an account id. Like the other
 // /internal/* endpoints (ADR-0016) it exposes ONLY non-PII public fields — never email,
 // OAuth identities, timezone, budget or session data — so the public dashboard can never
 // leak PII no matter what the gateway composes on top.

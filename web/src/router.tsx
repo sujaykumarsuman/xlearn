@@ -38,15 +38,15 @@ import Week from "./screens/Week";
 //   /dsa/progress        Progress    (S09)
 //   /settings            Settings    (S10)
 //   /auth                Auth        (S02, standalone; username is claimed here in onboarding)
-//   /:username           UserDashboard (F009; PUBLIC — outside AuthedShell, like /auth)
+//   /u/:username         UserDashboard (F009; PUBLIC — outside AuthedShell, like /auth)
 //
-// Routing note (F009): the public "/:username" profile sits OUTSIDE AuthedShell. React
-// Router ranks static segments above the dynamic ":username", so /settings, /dsa, /auth
-// (and any future top-level route + curriculum slug) still win — those names are reserved
-// so a username can never shadow a real route (ADR-0024).
+// Routing note (ADR-0025): the public profile lives under its own /u/ prefix, OUTSIDE
+// AuthedShell, so usernames never share a namespace with app routes — a new course or
+// top-level route can't shadow a profile, and an unknown /xlearn/<x> is the in-shell
+// NotFound. (F009 first shipped bare /xlearn/<username>; that route was dropped.)
 export const routes: RouteObject[] = [
   { path: "/auth", element: <Auth /> },
-  { path: "/:username", element: <UserDashboard /> },
+  { path: "/u/:username", element: <UserDashboard /> },
   {
     path: "/",
     element: <AuthedShell />,

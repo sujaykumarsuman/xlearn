@@ -1,5 +1,5 @@
 // Public user dashboard data (F009 / ADR-0024): GET /u/{username} — the UNAUTHENTICATED
-// LeetCode-style profile at /xlearn/<username>. It returns only non-PII aggregates composed
+// LeetCode-style profile at /xlearn/u/<username>. It returns only non-PII aggregates composed
 // in the gateway (per-course completion + pattern mastery, account-wide solved/streak/mock,
 // and one activity heatmap merged across courses). Reuses the Progress taxonomy types so the
 // public views render identically to the authed screen.

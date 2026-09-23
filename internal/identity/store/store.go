@@ -46,7 +46,7 @@ type Account struct {
 	DisplayName string
 	Email       string // "" when the provider gave no email
 	// Username is the URL-safe public handle (F009), "" until the account claims one.
-	// Stored lowercase; case-insensitively unique. Powers /xlearn/<username> + username login.
+	// Stored lowercase; case-insensitively unique. Powers /xlearn/u/<username> + username login.
 	Username string
 	Timezone string
 	// PasswordHash is the bcrypt hash for email sign-in (ADR-0023), "" for OAuth-only

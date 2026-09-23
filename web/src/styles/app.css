@@ -876,7 +876,7 @@ a.xl-brand:hover {
 }
 
 /* ── Public user dashboard (F009 / ADR-0024) ──────────────────────────────
-   The LeetCode-style profile at /xlearn/<username>. A 20:80 two-column grid: a left
+   The LeetCode-style profile at /xlearn/u/<username>. A 20:80 two-column grid: a left
    identity/activity column and a right totals + collapsible-courses column. The left
    column floors at 240px so the 16-week heatmap never breaks, and the whole grid stacks
    on narrow viewports. These live in app.css (theme.css stays byte-identical to the

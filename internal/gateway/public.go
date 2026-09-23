@@ -8,8 +8,8 @@ import (
 	"sync"
 )
 
-// This file is the PUBLIC user dashboard aggregation (F009 / ADR-0024): the
-// LeetCode-style profile at projects.sujaykumar.dev/xlearn/<username>. It is the ONLY
+// This file is the PUBLIC user dashboard aggregation (F009 / ADR-0024, ADR-0025): the
+// LeetCode-style profile at projects.sujaykumar.dev/xlearn/u/<username>. It is the ONLY
 // unauthenticated /api route — every other handler starts with authAccount; this one
 // deliberately does not.
 //
