@@ -143,6 +143,7 @@ export function CompletionByPhase({ phases }: { phases: PhaseCompletion[] }) {
       <div className="xl-panel__h">
         <span style={{ color: "var(--ds-violet)" }}><Icon name="layers" className="xl-ico--sm" /></span>
         <h3>Completion by phase</h3>
+        <span style={{ marginLeft: "auto" }}><OutcomeLegend /></span>
       </div>
       <div className="xl-panel__b" style={{ padding: 0 }}>
         <table className="xl-table">
@@ -150,37 +151,72 @@ export function CompletionByPhase({ phases }: { phases: PhaseCompletion[] }) {
             <tr>
               <th>Phase</th>
               <th>Weeks</th>
-              <th style={{ textAlign: "right" }}>Solved</th>
-              <th style={{ width: 150 }}>Progress</th>
+              <th>Progress</th>
             </tr>
           </thead>
           <tbody>
             {phases.length === 0 && (
               <tr>
-                <td colSpan={4} style={{ color: "var(--ds-muted)", fontSize: 12.5 }}>No phase data yet.</td>
+                <td colSpan={3} style={{ color: "var(--ds-muted)", fontSize: 12.5 }}>No phase data yet.</td>
               </tr>
             )}
-            {phases.map((p) => {
-              const pct = p.total > 0 ? Math.round((p.solved / p.total) * 100) : 0;
-              return (
-                <tr key={p.order}>
-                  <td><b>{p.name}</b></td>
-                  <td className="ds-mono">W{p.weekFrom}–{p.weekTo}</td>
-                  <td className="ds-mono" style={{ textAlign: "right", color: p.solved > 0 ? "var(--ds-text)" : undefined }}>
-                    {p.solved} / {p.total}
-                  </td>
-                  <td>
-                    <div className="ds-meter">
-                      <div className="ds-meter__fill" style={{ width: `${pct}%` }} />
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+            {phases.map((p) => (
+              <tr key={p.order}>
+                <td><b>{p.name}</b></td>
+                <td className="ds-mono">W{p.weekFrom}–{p.weekTo}</td>
+                <td>
+                  <OutcomeBar p={p} />
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
     </div>
+  );
+}
+
+/** The segment colours for a first-solve outcome (F009 review): clean=green, rough=amber,
+ *  assisted=blue, miss=red — the unsolved remainder is the track background. */
+const OUTCOME_SEGMENTS = [
+  { key: "clean", label: "Clean", color: "var(--ds-ok)" },
+  { key: "rough", label: "Rough", color: "var(--ds-warn)" },
+  { key: "assisted", label: "Assisted", color: "var(--ds-info)" },
+  { key: "miss", label: "Miss", color: "var(--ds-err)" },
+] as const;
+
+/** OutcomeBar is the segmented completion meter: the solved problems coloured by outcome,
+ *  the rest left as the empty track. The solved/total count + full breakdown surface on
+ *  hover (title) and to assistive tech (aria-label), so no wrapping number column is needed. */
+function OutcomeBar({ p }: { p: PhaseCompletion }) {
+  const unsolved = Math.max(0, p.total - p.solved);
+  const summary =
+    p.total === 0
+      ? "No problems yet"
+      : `${p.solved} / ${p.total} solved · ${p.clean} clean · ${p.rough} rough · ${p.assisted} assisted · ${p.miss} miss · ${unsolved} unsolved`;
+  return (
+    <div className="ds-meter" style={{ display: "flex" }} role="img" title={summary} aria-label={summary}>
+      {p.total > 0 &&
+        OUTCOME_SEGMENTS.map((s) => {
+          const n = p[s.key];
+          if (!n) return null;
+          return <span key={s.key} style={{ width: `${(n / p.total) * 100}%`, background: s.color, flexShrink: 0 }} />;
+        })}
+    </div>
+  );
+}
+
+/** A compact colour key for the outcome segments, shown in the panel header. */
+function OutcomeLegend() {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 10, fontSize: 10.5, color: "var(--ds-muted)" }}>
+      {OUTCOME_SEGMENTS.map((s) => (
+        <span key={s.key} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <span style={{ width: 8, height: 8, borderRadius: 2, background: s.color, display: "inline-block" }} />
+          {s.label}
+        </span>
+      ))}
+    </span>
   );
 }
 

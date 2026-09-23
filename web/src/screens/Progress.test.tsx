@@ -33,8 +33,8 @@ const PROGRESS = {
     targets: { w13: 24, w15: 28, pre: 30 },
   },
   phases: [
-    { order: 1, name: "Fundamentals", theme: "t", weekFrom: 1, weekTo: 3, solved: 28, total: 36 },
-    { order: 2, name: "Core Data Structures", theme: "t", weekFrom: 4, weekTo: 8, solved: 0, total: 45 },
+    { order: 1, name: "Fundamentals", theme: "t", weekFrom: 1, weekTo: 3, solved: 28, total: 36, clean: 20, rough: 5, assisted: 2, miss: 1 },
+    { order: 2, name: "Core Data Structures", theme: "t", weekFrom: 4, weekTo: 8, solved: 0, total: 45, clean: 0, rough: 0, assisted: 0, miss: 0 },
   ],
   patterns: [
     { name: "Hashing / frequency", solved: 6, total: 7, pct: 86 },
@@ -59,14 +59,15 @@ describe("Progress", () => {
     expect(await screen.findByText("Problems solved")).toBeInTheDocument();
     expect(screen.getByText("Day-7 retention")).toBeInTheDocument();
     expect(screen.getByText("80%")).toBeInTheDocument();
-    // Completion by phase.
+    // Completion by phase — the count moved off the wrapping column onto the segmented
+    // bar's hover/aria label (F009 review).
     expect(screen.getByText("Fundamentals")).toBeInTheDocument();
-    expect(screen.getByText("28 / 36")).toBeInTheDocument();
+    expect(screen.getByLabelText(/28 \/ 36 solved/)).toBeInTheDocument();
     // Pattern mastery.
     expect(screen.getByText("Hashing / frequency")).toBeInTheDocument();
     expect(screen.getByText("Sliding window")).toBeInTheDocument();
-    // Outcome mix legend.
-    expect(screen.getByText("Clean")).toBeInTheDocument();
+    // Outcome mix legend ("Clean" also appears in the by-phase colour key now, so allow >1).
+    expect(screen.getAllByText("Clean").length).toBeGreaterThan(0);
     expect(screen.getByText("28 first-solves")).toBeInTheDocument();
   });
 

@@ -27,7 +27,7 @@ const adaProfile = {
       solved: 12,
       total: 151,
       pct: 8,
-      phases: [{ order: 1, name: "Fundamentals", theme: "t", weekFrom: 1, weekTo: 3, solved: 3, total: 10 }],
+      phases: [{ order: 1, name: "Fundamentals", theme: "t", weekFrom: 1, weekTo: 3, solved: 3, total: 10, clean: 2, rough: 1, assisted: 0, miss: 0 }],
       patterns: [{ name: "Hashing", solved: 2, total: 4, pct: 50 }],
     },
   ],

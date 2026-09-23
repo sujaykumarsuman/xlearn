@@ -67,9 +67,9 @@ func newAggHarness(t *testing.T) *aggHarness {
 			map[string]any{"date": "2026-09-20", "solves": 1, "reviews": 2},
 		}}),
 		"GET /progress/mastery": writeJSONFn(map[string]any{"problems": []any{
-			map[string]any{"problemId": "1", "weight": 1.0},  // week1 easy, Hashing
-			map[string]any{"problemId": "2", "weight": 0.7},  // week1 med, Two pointers
-			map[string]any{"problemId": "20", "weight": 1.0}, // week5 hard, Sliding window
+			map[string]any{"problemId": "1", "weight": 1.0, "bestRank": 4},  // week1 easy, Hashing, clean
+			map[string]any{"problemId": "2", "weight": 0.7, "bestRank": 3},  // week1 med, Two pointers, rough
+			map[string]any{"problemId": "20", "weight": 1.0, "bestRank": 4}, // week5 hard, Sliding window, clean
 		}}),
 		"GET /mocks/trend": writeJSONFn(map[string]any{"points": []any{}, "targets": map[string]any{"w13": 24}}),
 	}))
@@ -185,6 +185,10 @@ func TestBFFProgressComposes(t *testing.T) {
 	f0, _ := phases[0].(map[string]any)
 	if f0["name"] != "Fundamentals" || f0["total"].(float64) != 3 || f0["solved"].(float64) != 2 {
 		t.Fatalf("Fundamentals completion = %v", f0)
+	}
+	// Outcome breakdown (F009 review): #1 clean + #2 rough among the 2 solved.
+	if f0["clean"].(float64) != 1 || f0["rough"].(float64) != 1 || f0["assisted"].(float64) != 0 || f0["miss"].(float64) != 0 {
+		t.Fatalf("Fundamentals outcome breakdown = %v", f0)
 	}
 
 	// Pattern mastery: Hashing has 2 core (#1,#9), 1 solved clean → weight 1/2 = 50%.
