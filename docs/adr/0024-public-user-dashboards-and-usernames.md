@@ -102,3 +102,18 @@ presentational views (`components/ProgressViews.tsx`) so they never drift.
 | **Dedicated public projection service / `/internal/public-stats` endpoints** | Stronger isolation, but more surface to build; mint-for-account + a non-PII resolver + output filtering already contains exposure, since assessment/curriculum hold no PII. Revisit if a public endpoint ever needs data from a PII-holding service. |
 | **Opt-in (private by default)** | Safer, but the brief is LeetCode-style public profiles; only non-PII is exposed and unknown/unclaimed is a uniform 404. A visibility flag can be added later without a URL change. |
 | **Fold mock attempts into the heatmap** | Needs an event/projection change + replay; the existing solves+reviews `proj_heatmap` is already account-wide and deterministic. Deferred. |
+
+## Update — 2026-09-23: all path slugs + likely v2 routes reserved, slug coverage test-enforced
+
+The original list reserved only `dsa` among the curriculum path slugs; the coming-soon paths in
+`curriculum/paths.json` (`system-design`, `go-concurrency`, `lld-ood`, `sql`, `behavioral`) are now
+reserved too, plus likely v2 top-level route words (`judge`, `submissions`, `interview(s)`, `arena`,
+`problems`, `course(s)`, `path(s)`). A read-only prod check on 2026-09-23 found **0 accounts** holding
+any of the five slugs, so nothing was orphaned.
+
+The "add new slugs here too" rule from §2 is now **enforced by a test**
+(`TestReservedCoversCurriculumPathSlugs` reads the embedded `paths.json`), so adding a path without
+reserving its slug fails CI. Reserve a route word **before** the route ships: the public-profile
+resolver (`/internal/accounts/by-username/{username}`) re-validates against the list, so reserving a
+name someone already holds turns their public profile into a 404. There is no web copy of the list;
+the claim UI shows the reason returned by `GET /username/available`.

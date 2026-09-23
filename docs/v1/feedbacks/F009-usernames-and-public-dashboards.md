@@ -101,4 +101,9 @@ debounce race on the claim button, and three stale onboarding doc comments.
 - Per-course stats intersect account-wide projections with each path's problem set; streak/mock are
   account-wide (one shared streak). Path-scoped mocks/streak arrive when a second course ships.
 - Reserved-word upkeep: adding a new top-level route or curriculum slug means adding it to
-  `reservedUsernames` too (called out in ADR-0024).
+  `reservedUsernames` too (called out in ADR-0024). **Hardened 2026-09-23:** every slug in
+  `curriculum/paths.json` (incl. the coming-soon `system-design`, `go-concurrency`, `lld-ood`, `sql`,
+  `behavioral`) plus likely v2 route words (`judge`, `submissions`, `interview(s)`, `arena`, `problems`,
+  `course(s)`, `path(s)`) are now reserved, and `TestReservedCoversCurriculumPathSlugs` fails CI if a
+  new path's slug isn't. Reserve before a route ships — the profile resolver re-validates, so a later
+  reservation 404s an existing holder's profile.
