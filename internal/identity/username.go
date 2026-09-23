@@ -19,41 +19,28 @@ const (
 // usernameRe is the allowed shape: lower-case letters/digits/hyphens, starting and ending
 // with an alphanumeric (no leading/trailing hyphen). Length is checked separately so the
 // error can be specific. Dots and other URL-significant characters are excluded, which also
-// makes dotted reserved names (favicon.ico, robots.txt) unclaimable by construction.
+// makes dotted names (favicon.ico, robots.txt) unclaimable by construction.
 var usernameRe = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
-// reservedUsernames are names a user may not claim. Profiles live under their own /u/ prefix
-// (ADR-0025), so a username can no longer shadow an app route; the list instead keeps handles
-// that would read as official or confusing — a product/route word (@dsa, @settings), a
-// gateway/asset name, or a system word (@admin) — out of public URLs and the username login.
-// This is the SINGLE source of truth: there is no web copy — the SPA's claim UI asks
-// GET /username/available and shows the reason returned. Every slug in curriculum/paths.json
-// must be listed (TestReservedCoversCurriculumPathSlugs). Before adding a word, check no
-// account holds it: the public-profile resolver re-validates against this list, so reserving
-// a held name turns that profile into a 404.
+// reservedUsernames are the only names a user may not claim: handles that would impersonate
+// the platform or read as a system account (@admin, @support, @xlearn). Profiles live under
+// their own /u/ prefix and courses at /xlearn/<course-id> (ADR-0025), so a username can never
+// shadow a route — course slugs and route words are deliberately NOT reserved (owner
+// direction, ADR-0025 2026-09-23 update); keeping a course slug out of the /u/ and app-route
+// segments is a curriculum-side check, not a username rule. This is the SINGLE source of
+// truth: there is no web copy — the SPA's claim UI asks GET /username/available and shows the
+// reason returned. Removing a word is always safe; before ADDING one, check no account holds
+// it: the public-profile resolver re-validates against this list, so reserving a held name
+// turns that profile into a 404.
 var reservedUsernames = map[string]bool{
-	// Current top-level SPA routes.
-	"auth": true, "settings": true, "xlearn": true,
-	// Curriculum path slugs — every path in curriculum/paths.json, active or coming_soon.
-	"dsa": true, "system-design": true, "go-concurrency": true, "lld-ood": true, "sql": true,
-	"behavioral": true,
-	// Gateway-served prefixes / probes / assets (never the SPA shell).
-	"api": true, "assets": true, "healthz": true, "readyz": true,
-	"well-known": true, "favicon": true, "robots": true, "static": true, "public": true,
-	// Reserved for likely future top-level routes + the profile namespace itself.
-	"u": true, "user": true, "users": true, "profile": true, "profiles": true,
-	"dashboard": true, "progress": true, "me": true, "account": true, "accounts": true,
-	"onboarding": true, "catalog": true, "roadmap": true, "explore": true, "search": true,
-	"claim-username": true,
-	// Likely v2 top-level route words (judge / submissions / mock interviews / problem +
-	// course browsing) — they'd read as official handles.
-	"judge": true, "submissions": true, "interview": true, "interviews": true, "arena": true,
-	"problems": true, "courses": true, "course": true, "paths": true, "path": true,
-	// System / confusable / safety words.
-	"admin": true, "root": true, "support": true, "help": true, "about": true,
+	// Platform / brand / staff impersonation.
+	"xlearn": true, "admin": true, "root": true, "support": true, "help": true, "about": true,
+	"system": true,
+	// Auth-flow words (confusable in a sign-in form that accepts email OR username).
 	"login": true, "logout": true, "signin": true, "signup": true, "register": true,
+	// Legal / generic system words.
 	"terms": true, "privacy": true, "legal": true, "new": true, "edit": true, "index": true,
-	"null": true, "undefined": true, "none": true, "system": true, "anonymous": true,
+	"null": true, "undefined": true, "none": true, "anonymous": true,
 }
 
 // normalizeUsername trims surrounding whitespace and lower-cases the handle. The stored +

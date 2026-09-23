@@ -94,13 +94,19 @@ the avatar → Dashboard. Frontend-only. A focused adversarial review found 5 is
 (the availability/claim hint is now an `aria-live` region + `aria-describedby` + `role=alert`), a 350ms
 debounce race on the claim button, and three stale onboarding doc comments.
 
-**Follow-up (profile URL, ADR-0025 — in review):** the public profile moved from the bare
+**Follow-up (profile URL, ADR-0025 — merged to `main`, not yet released):** the public profile moved from the bare
 `/xlearn/<username>` to **`/xlearn/u/<username>`** (matching the existing `GET /api/v1/u/{username}`),
 and the bare route was **dropped with no redirect** (owner's call: links had existed for under a day).
 Usernames no longer share a namespace with app routes, so a new course/route can't shadow a profile and
 an unknown `/xlearn/<x>` is the in-shell 404. Avatar → Dashboard, the Settings "Live at" link and the
-onboarding URL preview all use `/u/`. The reserved-word list stays, to keep official-looking handles
-(`@dsa`, `@admin`) out of public URLs and the username login. Frontend-only.
+onboarding URL preview all use `/u/`. Frontend-only.
+
+**Follow-up (reserved words, owner direction — in review):** usernames are **not** reserved for courses.
+Courses live at `/xlearn/<course-id>` and profiles at `/xlearn/u/<username>`, so nothing can collide. The
+reserved list drops every course slug and route word, including those the same-day hardening added (#43).
+It keeps only impersonation/system handles (`@admin`, `@support`, `@xlearn`, `@login`, …), a default the
+owner can trim. `TestReservedCoversCurriculumPathSlugs` is gone. A course slug avoiding `u`, `auth`,
+`settings` and the gateway prefixes is a curriculum-side check, designed in v2 T0.
 
 ## Notes
 
@@ -108,10 +114,7 @@ onboarding URL preview all use `/u/`. The reserved-word list stays, to keep offi
   exception, and it never reads a PII source (see ADR-0024's security model). DEV_AUTH stays local-only.
 - Per-course stats intersect account-wide projections with each path's problem set; streak/mock are
   account-wide (one shared streak). Path-scoped mocks/streak arrive when a second course ships.
-- Reserved-word upkeep: adding a new top-level route or curriculum slug means adding it to
-  `reservedUsernames` too (called out in ADR-0024). **Hardened 2026-09-23:** every slug in
-  `curriculum/paths.json` (incl. the coming-soon `system-design`, `go-concurrency`, `lld-ood`, `sql`,
-  `behavioral`) plus likely v2 route words (`judge`, `submissions`, `interview(s)`, `arena`, `problems`,
-  `course(s)`, `path(s)`) are now reserved, and `TestReservedCoversCurriculumPathSlugs` fails CI if a
-  new path's slug isn't. Reserve before a route ships — the profile resolver re-validates, so a later
-  reservation 404s an existing holder's profile.
+- Reserved words: impersonation/system handles only (ADR-0025's 2026-09-23 update). New routes and
+  course slugs need **no** username reservation. Removing a word is always safe. Before **adding** one,
+  check prod, because the profile resolver re-validates and a new reservation 404s an existing holder's
+  profile.

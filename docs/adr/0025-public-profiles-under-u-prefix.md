@@ -52,3 +52,28 @@ path (ADR-0010).
 | **Keep bare `/xlearn/<username>`** (ADR-0024) | Needs the reserved list to predict every future route; reserving late 404s a live profile; typos render "no such profile". |
 | **`/u/` plus a redirect from the bare path** | Keeps usernames in the shared namespace for the redirect's lifetime; not worth it for links that existed for under a day. |
 | **`/@<username>`** | `@` in a path segment is legal but awkward to type/share and easy to mangle in chat/Markdown autolinkers; `/u/` matches the existing API and LeetCode's own `/u/<username>`. |
+
+## Update — 2026-09-23: course slugs and route words are not reserved; the list is impersonation-only
+
+Owner direction: usernames live at `/xlearn/u/<username>`, courses at `/xlearn/<course-id>`, and
+**usernames are not reserved for courses**. This replaces the Decision bullet above that kept the list
+"re-purposed" with every curriculum path slug required:
+
+- `reservedUsernames` drops every course slug (`dsa`, `system-design`, `go-concurrency`, `lld-ood`,
+  `sql`, `behavioral`), every route-collision word (`auth`, `settings`, `api`, `assets`, probes, the
+  profile namespace `u`/`user`/`profile`/…, `dashboard`, `progress`, …) and the likely-v2 route words
+  (`judge` … `path`) that the reservation hardening added. None of them can shadow anything under `/u/`.
+- `TestReservedCoversCurriculumPathSlugs` is deleted. `TestValidateUsername` now asserts that course
+  slugs and route words **are** claimable.
+- What remains is an **impersonation/system-only** list: `xlearn`, `admin`, `root`, `support`, `help`,
+  `about`, `system`, the auth-flow words (`login`, `logout`, `signin`, `signup`, `register`), and
+  `terms`, `privacy`, `legal`, `new`, `edit`, `index`, `null`, `undefined`, `none`, `anonymous`. This
+  is the default; the owner can veto or trim it.
+- The course-side guard moves to the curriculum: a course slug must avoid the static top-level SPA
+  segments (`u`, `auth`, `settings`) and the gateway-owned `api`, `assets`, `healthz`, `readyz` and
+  `.well-known`. It is designed with v2's dynamic `/:course/*` routes (`docs/v2/feasibility.md`, T0) as
+  a seed/test check, not as a username rule.
+
+Removing reserved words cannot orphan a profile; only **adding** a word can, because the by-username
+resolver re-validates. The shipped `v1.4.2` list is a superset of the new one, so no prod check was
+needed.

@@ -3,11 +3,9 @@ package identity
 import (
 	"context"
 	"encoding/json"
-	"io/fs"
 	"net/http"
 	"testing"
 
-	seeddata "github.com/sujaykumarsuman/xlearn/curriculum"
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 )
@@ -25,38 +23,17 @@ func TestValidateUsername(t *testing.T) {
 			t.Errorf("validateUsername(%q) = nil, want error", s)
 		}
 	}
-	// Reserved words (that share the /xlearn route namespace) are rejected.
-	for _, s := range []string{"settings", "dsa", "system-design", "api", "admin", "auth", "u", "judge", "courses"} {
+	// Impersonation / system handles are reserved.
+	for _, s := range []string{"admin", "support", "xlearn", "login", "system"} {
 		if err := validateUsername(s); err == nil {
 			t.Errorf("validateUsername(%q) = nil, want reserved error", s)
 		}
 	}
-}
-
-// A handle named after a course (@dsa, @system-design) would read as official, so every
-// curriculum path slug in the embedded seed must be reserved — this makes adding a path
-// without reserving its slug a test failure rather than a silent gap (ADR-0024/0025).
-func TestReservedCoversCurriculumPathSlugs(t *testing.T) {
-	b, err := fs.ReadFile(seeddata.FS, "paths.json")
-	if err != nil {
-		t.Fatalf("read curriculum paths.json: %v", err)
-	}
-	var paths []struct {
-		Slug string `json:"slug"`
-	}
-	if err := json.Unmarshal(b, &paths); err != nil {
-		t.Fatalf("decode curriculum paths.json: %v", err)
-	}
-	if len(paths) == 0 {
-		t.Fatal("curriculum paths.json has no paths")
-	}
-	for _, p := range paths {
-		if p.Slug == "" {
-			t.Errorf("curriculum path with an empty slug")
-			continue
-		}
-		if !reservedUsernames[p.Slug] {
-			t.Errorf("curriculum path slug %q is not in reservedUsernames (internal/identity/username.go)", p.Slug)
+	// Course slugs and route words are claimable: profiles live under /xlearn/u/<username>, so
+	// they can't shadow a route (owner direction, ADR-0025 2026-09-23 update).
+	for _, s := range []string{"dsa", "system-design", "sql", "settings", "auth", "api", "dashboard", "judge", "courses"} {
+		if err := validateUsername(s); err != nil {
+			t.Errorf("validateUsername(%q) = %v, want nil (course slugs / route words are not reserved)", s, err)
 		}
 	}
 }
@@ -70,7 +47,7 @@ func TestSetUsernameAndAvailability(t *testing.T) {
 	pvA := map[string]string{"id": a.ID}
 
 	// Reserved name → 422.
-	if rec := doJSON(t, svc.handleSetUsername, http.MethodPost, "/x", map[string]string{"username": "settings"}, claimsA, pvA); rec.Code != http.StatusUnprocessableEntity {
+	if rec := doJSON(t, svc.handleSetUsername, http.MethodPost, "/x", map[string]string{"username": "admin"}, claimsA, pvA); rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("reserved username status %d, want 422", rec.Code)
 	}
 	// Claim "ada" (normalises from mixed case) → 200.
