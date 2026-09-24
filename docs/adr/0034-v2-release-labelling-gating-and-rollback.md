@@ -1,6 +1,6 @@
 # ADR-0034 — v2 release labelling, feature gating and rollback
 
-- **Status:** Proposed. **The accidental-major guard (§1.3) shipped on 2026-09-24:** xlearn#53 (`.release-line` = `1` plus the `deploy.yml` check) and infra#29 (every `xlearn-*` ImagePolicy `>=1.0.0 <2.0.0`). Everything else applies from M1.
+- **Status:** Accepted (2026-09-24, v2 build-plan sign-off). Its §7 refinements are folded into [ADR-0021](0021-release-tagging-and-api-versioning.md) §1 and [ADR-0009](0009-deployment-and-gitops.md), and [`docs/git-strategy.md`](../git-strategy.md) is rewritten to match (2026-09-24). **The accidental-major guard (§1.3) shipped on 2026-09-24:** xlearn#53 (`.release-line` = `1` plus the `deploy.yml` check) and infra#29 (every `xlearn-*` ImagePolicy `>=1.0.0 <2.0.0`). Everything else applies from M1.
 - **Date:** 2026-09-24
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0021](0021-release-tagging-and-api-versioning.md) (Release tagging, API v1 and the 1.0 hardening cut; **§1 refined here**), [0009](0009-deployment-and-gitops.md) (Deployment & GitOps; **Versioning and Environments & promotion refined here**), [0033](0033-invite-only-admission-and-owner-admin.md) (`account.role`, `SIGNUP_MODE`, testers, the v2 audience), [0035](0035-v2-operations-nats-auth-limits-capacity.md) (NATS ACL ordering, memory sum, no alerting), [0026](0026-per-course-extensibility-model.md) (course manifest `status`), [0027](0027-content-evalpack-and-user-data-model.md) (evalpack stream, `contract_hash`), [0028](0028-object-storage-and-backups.md) (D12: no backups), [0029](0029-judge-contract-and-learning-signal.md), [0030](0030-runner-technology-and-host-hardening.md) (runner stream), [0031](0031-platform-ai-and-two-tier-keys.md) (`LLM_PLATFORM_ENABLED`), [0005](0005-data-ownership-and-migrations.md) (migrations, the 4-step), [0018](0018-progress-projection-grain-and-rebuild.md) (drop and replay).
@@ -282,6 +282,8 @@ D35 makes the last one cheap: throughout v2 (until the v3 opening), v2's only us
   - add the `-rc` convention, the runner and evalpack streams, `.release-line` (✅ landed with xlearn#53, with the bounded ranges and the GA steps), the §1.4 range rules, "image before HelmRelease/policy" and "infra ACL PR before a new consumer";
   - the staging note is updated;
   - the versioning table shows the bounded ranges.
+
+_(2026-09-24, v2 build-plan sign-off: all three are done. ADR-0021 §1 and ADR-0009 now carry dated "Amended 2026-09-24 by ADR-0034" sections, and [`docs/git-strategy.md`](../git-strategy.md) is rewritten.)_
 
 ## Consequences
 

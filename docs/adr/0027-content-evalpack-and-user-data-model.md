@@ -1,6 +1,6 @@
 # ADR-0027 — Content, private eval pack & per-user data model
 
-- **Status:** Proposed. **§3 (blob placement) and §6 (erase ledger) amended by [ADR-0028](0028-object-storage-and-backups.md):** blobs stay inline in Postgres permanently; the erase ledger is deferred with backups; the "backups gate non-owner grading" rule is withdrawn in favour of invite-only signup. **Amended by [ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) (T7, D34, no alerting in v2):** the `opscheck` PAT-expiry alert becomes an evalpack-CI plus manual check, and the `XLEARN_COACH` stream raises the Σ `MaxBytes` budget to 3.375 GiB (§3, Consequences). **D35 (T7):** §8's "v2.0 content scope" (D6) is the scope of the v2.x line, delivered in waves; `v2.0.0` ships the 14 pilot packs and the pilot course ([ADR-0034](0034-v2-release-labelling-gating-and-rollback.md) §1.1).
+- **Status:** Accepted (2026-09-24, v2 build-plan sign-off). **§3 (blob placement) and §6 (erase ledger) amended by [ADR-0028](0028-object-storage-and-backups.md) (Accepted 2026-09-24; folded into §3 and §6 below):** blobs stay inline in Postgres permanently; the erase ledger is deferred with backups; the "backups gate non-owner grading" rule is withdrawn in favour of invite-only signup. **Amended by [ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) (T7, D34, no alerting in v2; Accepted 2026-09-24; folded inline in §3 and Consequences):** the `opscheck` PAT-expiry alert becomes an evalpack-CI plus manual check, and the `XLEARN_COACH` stream raises the Σ `MaxBytes` budget to 3.375 GiB (§3, Consequences). **D35 (T7):** §8's "v2.0 content scope" (D6) is the scope of the v2.x line, delivered in waves; `v2.0.0` ships the 14 pilot packs and the pilot course ([ADR-0034](0034-v2-release-labelling-gating-and-rollback.md) §1.1).
 - **Date:** 2026-09-24
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0026](0026-per-course-extensibility-model.md) (the frame this fills in),
@@ -89,6 +89,12 @@ Problems found in v1:
 - **Growth** is about **86 KB per active learner-day**. The resize trigger is 60% of the PG or NATS volume, about 285 learner-years; decide pruning then.
 - **Stream limits must fit the 5 Gi store.** JetStream reserves each stream's `MaxBytes` against it, so the stream **`MaxBytes` sum is budgeted to ≤ 3.25 GiB** and checked by a test. Replay streams use `Discard=New`. _(T7 / ADR-0035: an `XLEARN_COACH` stream (128 MiB) for coach's erase ack makes the sum **3.375 GiB**; the test asserts the 3.75 GiB ceiling, 75% of the store.)_
 
+> **Amended 2026-09-24 by [ADR-0028](0028-object-storage-and-backups.md) §1 and §3 (accepted at the v2 build-plan sign-off). No object store in v2.0.**
+> - The **Blobs (T2)** row above no longer applies. Canvas scenes and drafts and interview transcripts stay **inline in Postgres permanently**, as `bytea` with lz4 TOAST, in their owner's schema.
+> - The nullable `object_key` is **deferred**. It lands only when a trigger fires: judge body bytes exceed 1 GiB or 25% of the Postgres volume, or a payload kind larger than 1 MiB appears.
+> - Audio was left to T6 ([ADR-0032](0032-realtime-ai-mock-interviewer.md)).
+> - Growth and the 60% resize trigger are unchanged.
+
 ### 4. Problems arena
 
 - **Arena Submits are kept as a submission history.** Runs are not.
@@ -123,6 +129,14 @@ Problems found in v1:
 Notes:
 - Pseudonymous NATS events stay; a re-seal runbook (purge, then republish from the outbox) is available on request.
 - The backup PITR window is the erase SLA.
+
+> **Amended 2026-09-24 by [ADR-0028](0028-object-storage-and-backups.md) §3 (accepted at the v2 build-plan sign-off). The erase ledger is deferred with backups (D12).**
+> - Until backups exist, erase is **delete plus outbox delete plus tombstones in every service**. Steps 1 and 2 stand.
+> - Step 3 has nothing to delete, because there is no object store (§3 as amended).
+> - Step 4 (the ledger and its replay) and the "backup PITR window is the erase SLA" note arrive with the backup ADR.
+> - **T1's "CNPG backups gate grading for non-owner learners" is withdrawn.** Invite-only signup (D13, [ADR-0033](0033-invite-only-admission-and-owner-admin.md)) replaces it.
+> - With no ledger, a Hostinger snapshot restore brings back accounts erased after the snapshot. [ADR-0034](0034-v2-release-labelling-gating-and-rollback.md) §4.2 therefore lists those erases before a restore and re-runs them through the CLI afterwards.
+> - The re-seal runbook uses the offline NATS `ops` identity ([ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) §2).
 
 ### 7. Public profile deltas
 

@@ -1,6 +1,6 @@
 # ADR-0016 — Mistake journal, weekly weak-area & the worker service-auth path
 
-- **Status:** Accepted. **Refined by [ADR-0033](0033-invite-only-admission-and-owner-admin.md) (v2, Proposed):** the unauthenticated internal endpoints are fenced by the `xlearn` ingress NetworkPolicy before M3; still no service tokens.
+- **Status:** Accepted. **Refined by [ADR-0033](0033-invite-only-admission-and-owner-admin.md) (v2, Accepted 2026-09-24; see [Amended 2026-09-24 by ADR-0033](#amended-2026-09-24-by-adr-0033)):** the unauthenticated internal endpoints are fenced by the `xlearn` ingress NetworkPolicy before M3; still no service tokens.
 - **Date:** 2026-09-21
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0003](0003-service-decomposition.md) (notifications lives in review for v1),
@@ -76,6 +76,21 @@ Dashboard reads). The provisional study-budget window schema (`{"windows":[{star
 local time) clamps a reminder into the next window; an empty budget (the v1 default)
 schedules immediately. A later split into a standalone service (once email/push justifies
 it) is a lift-and-shift, not a rewrite.
+
+### Amended 2026-09-24 by ADR-0033
+
+[ADR-0033](0033-invite-only-admission-and-owner-admin.md) §12 and §14, accepted at the v2 build-plan
+sign-off, change §3's "when a NetworkPolicy lands (S12)". The text above stays as the v1 record.
+
+- **S12 never landed a NetworkPolicy. MI-5a is the fence**, and it lands **before M3**. The `xlearn`
+  ingress policy admits internal routes (`/sessions/*`, `/internal/*`) only from the `xlearn`
+  namespace, admits the gateway only from Traefik, and denies the runner. The unauthenticated
+  `GET /internal/accounts/{id}` keeps its trust model.
+- **`/internal/accounts/{id}` grows at M4.** judge reads `tier`, `status`, the consents and
+  `ai_disabled` there (5-minute cache). That is allowed only because the fence is live by then.
+- **Still no service tokens.** The NetworkPolicy is the only service-auth fence, and a regression fails
+  open. With no alerting (D34), `host-verify --cluster` checks that the policy is present, on demand
+  ([ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) §3).
 
 ## Consequences
 

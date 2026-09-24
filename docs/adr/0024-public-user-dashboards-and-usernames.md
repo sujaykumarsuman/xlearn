@@ -3,8 +3,10 @@
 - **Status:** Accepted — the bare `/xlearn/<username>` URL shape is **superseded by
   [ADR-0025](0025-public-profiles-under-u-prefix.md)** (profiles now live at `/xlearn/u/<username>`), and
   so are the reserved-word rules (§2 and the 2026-09-23 update below): the list is now impersonation-only
-  and course slugs are not reserved. **v2 (Proposed):** [ADR-0032](0032-realtime-ai-mock-interviewer.md) shows the mock
-  count only (D31); [ADR-0033](0033-invite-only-admission-and-owner-admin.md) enforces `public-read` and shows enrolled ∩ visible courses only.
+  and course slugs are not reserved. **v2:** [ADR-0033](0033-invite-only-admission-and-owner-admin.md) (Accepted
+  2026-09-24; see [Amended 2026-09-24 by ADR-0033](#amended-2026-09-24-by-adr-0033)) enforces `public-read`, shows
+  enrolled ∩ visible ∩ active courses only, and shows the mock count only (D31);
+  [ADR-0032](0032-realtime-ai-mock-interviewer.md) (v2, Proposed) records the same mock-count-only change (D31).
 - **Date:** 2026-09-23
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0006](0006-authn-authz.md) (session gating — this adds the first UNauthenticated
@@ -124,3 +126,22 @@ reserving its slug fails CI. Reserve a route word **before** the route ships: th
 resolver (`/internal/accounts/by-username/{username}`) re-validates against the list, so reserving a
 name someone already holds turns their public profile into a 404. There is no web copy of the list;
 the claim UI shows the reason returned by `GET /username/available`.
+
+## Amended 2026-09-24 by ADR-0033
+
+[ADR-0033](0033-invite-only-admission-and-owner-admin.md) §13 and §14, accepted at the v2 build-plan
+sign-off, change §3's composition and the Consequences above. The text above stays as the v1 record. The
+URL shape is ADR-0025's.
+
+| Change | Milestone |
+|---|---|
+| **Mock count only (D31).** `best` and `average` leave the public payload and tile; the authed Progress keeps them. [ADR-0032](0032-realtime-ai-mock-interviewer.md) records the same rule for interviewer mocks | M1b |
+| **Scope.** Only **enrolled ∩ visible ∩ active** courses show (D7); `preview` is hidden everywhere, public stats included. The resolver returns `visible_courses[]` | M1a columns → M1b filter |
+| **Abuse limits.** 60/min per IP (burst 20); 404s cached negatively for 60 s; ≤ 8 concurrent cold composes | M1b |
+| **Shape.** A public-shape allowlist test: no item ids, per-item pattern, sub-day timestamps, arena or Run counts, prose, `scored_by` or transcripts | M1b |
+| **Suspend and erase.** A uniform 404 at once; the username is held for 60 days after erase | M1b (suspend) / L-E (erase) |
+| **An enforced `public-read` role** replaces §3's ordinary learner mint. Only assessment's `GET /public/stats` accepts it; `/progress/*` and `/mocks/*` reject it; it gets its own cache namespace | M2b |
+| **Visibility.** Profile and per-course toggles; this is the "private toggle later" from Consequences. Private returns the same 404 as unknown. A toggle bumps the cache epoch synchronously. Header totals come from visible courses only | M2b |
+
+§3's safety argument still holds, and the mint is now narrower: a `public-read` token reaches only
+`/public/stats`.

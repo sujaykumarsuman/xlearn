@@ -563,7 +563,10 @@ The runner can never exceed 2 vCPU (50% of the VPS). Hostinger cuts CPU by 25% a
 - The draft's `ServiceAccount default` object is **dropped**: chart pods use their own service account, and the pod-level knob plus the VAP enforce no token.
 - A proposed rule forbidding the `privileged` PSA label elsewhere is **dropped**. Unlabelled namespaces are already privileged by default on this cluster (no PSA defaults configured **(inferred)**); Track B labels fix that.
 
-### 8.3 Chart 0.2.1 → 0.3.0 and the runner values
+### 8.3 Chart 0.2.2 → 0.3.0 and the runner values
+
+_(Fixed 2026-09-24 at the v2 build-plan sign-off: the live `charts/project` chart is **0.2.2**, not 0.2.1, as ADR-0030 §7 records. The heading used to say 0.2.1.)_
+
 - **New knobs, all default-off:**
   - `automountServiceAccountToken`, `runtimeClassName`, `priorityClassName`, `hostUsers`;
   - `dnsPolicy`/`dnsConfig`, `terminationGracePeriodSeconds`;

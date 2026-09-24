@@ -1,4 +1,4 @@
-> **T4 research appendix.** Method: four parallel research slices (contract and lifecycle; archetypes and plug-ins; evidence to learning signal; learner flows) were synthesized into one draft. The draft then faced two adversarial critiques: six-course loop correctness (6/10, 1 blocker) and integrity and ops (6/10, 2 blockers). This is the revised final. Decided in [ADR-0029](../../adr/0029-judge-contract-and-learning-signal.md) (Proposed).
+> **T4 research appendix.** Method: four parallel research slices (contract and lifecycle; archetypes and plug-ins; evidence to learning signal; learner flows) were synthesized into one draft. The draft then faced two adversarial critiques: six-course loop correctness (6/10, 1 blocker) and integrity and ops (6/10, 2 blockers). This is the revised final. Decided in [ADR-0029](../../adr/0029-judge-contract-and-learning-signal.md) (Accepted 2026-09-24).
 >
 > **Status:** settled with the owner 2026-09-24 (**D14–D19**, §13). **Where §13 conflicts with the body, §13 wins.** In particular:
 > - the hard timer limit (D15, D18) replaces "resumable forever" and the 15 + 10 golden rows in §6.2;
@@ -375,6 +375,7 @@ Why: LLM rubric scores vary between runs (α of 0.27–0.56, [Rating Roulette](h
   - Rate limits are in §2.3.
   - `ScoreMock` (`assessment/store/store.go:265-351`) stays the only mock signal. There is no `problem_solved`, no mistakes and no schedule.
 - **Arena** (D10):
+  > **Superseded by D17 (§13):** arena is unrestricted — no locks during live attempts or touches, and an early reveal is recorded but doesn't cap the course grade. The lock and cap bullets below are the pre-decision design.
   - `context_id = uuidv5(account, item)`. Submits are persisted; Runs are not.
   - A passing submit upserts `arena_progress(first_passed_at, submits, source=auto)` in the result transaction.
   - B and C items are **study mode**: editable parts, a revealable reference, and **"Mark studied"** (`source=manual`). LLD's `code` facade step is allowed in the arena; its AI step is not.
@@ -851,18 +852,20 @@ On failure, retry once, then `feedback_unavailable`. That never blocks conclusio
 - **Below 1024 px:** Statement / Work / Results tabs.
 - The pattern chip appears only from the hint stage. `Problem.dc.html:104` shows it during the attempt, which leaks.
 
-**Course attempt (A):**
-1. **Cover** ("Start attempt · 15:00"). The statement is shown on Start (D10).
+**Course attempt (A)** _(fixed 2026-09-24 at the v2 build-plan sign-off to match D15, D16 and D18 in §13. The draft had a "Start attempt · 15:00" cover, a re-implement step and a hint "available any time".)_:
+1. **Cover** ("Start attempt · 45:00", the D18 manifest default; per-item overrides allowed). The statement is shown on Start (D10), and the server timer starts then with no pause (D15).
 2. Solving: Run (⌘↵) and Submit (⌘⇧↵).
-3. Over time or hinted: the outlook drops.
-4. The **Give up · Miss** modal: "your draft is sent for feedback; the solution unlocks now; graded Miss unless a submit already in flight passes; enters revision tomorrow; opens a mistake entry".
-5. Re-implement (blank editor).
+3. **Hint unlocks at 15:00** (D18); taking it caps the attempt at Assisted. Past 20:00 Clean is gone, and the outlook drops.
+4. The **Give up · Miss** modal. Revealing the solution is a give-up (§3.4): "your draft is sent for feedback; the solution unlocks now; graded Miss unless a submit already in flight passes; enters revision tomorrow; opens a mistake entry".
+5. **Time's up at 45:00** with no pass: concluded as Miss at the deadline (D15), and the solution unlocks for study. **There is no re-implement step** (D16): a pass finishes the attempt, and after a Miss the Day-1 revision is the from-memory re-attempt.
 6. Grading: "Queued · 1 ahead" → "Running hidden tests…" → "Recording…" (the settling phase).
 7. Concluded: grade + provenance, facts, touch dots, and a mistake block with a pre-filled chip.
 
-Copy fix: `Problem.tsx:566` becomes "Hint available any time; it caps this attempt at Assisted."
+Copy fix: `Problem.tsx:566` becomes "Hint unlocks at 15:00; using it caps this attempt at Assisted."
 
 **Arena:**
+
+> **Superseded by D17 (§13):** no arena locks and no grade cap on reveal; the spoiler confirm only records `arena_revealed_at`.
 - "Nothing here counts toward your course." Dual markers. A manual timer popover. A History drawer (read-only, Copy to editor, Diff).
 - **While the item has an open attempt or a due or live touch:** Submit, Solution and History are locked ("Finish your review first"), and sample Run stays.
 - The spoiler confirm on reveal says "caps your course attempt at Assisted".
@@ -909,7 +912,7 @@ Copy fix: `Problem.tsx:566` becomes "Hint available any time; it caps this attem
 
 | # | Artboard | Frames |
 |---|---|---|
-| A1 | `Workspace-Code` | Cover · Solving + Run · Submit WA · perf TLE · Over-time / hinted · Give-up modal · solution · Re-implement · Concluded Clean · Concluded Miss + pre-fill · Resume · `self_grade_pending` |
+| A1 | `Workspace-Code` | Cover ("Start attempt · 45:00") · Solving + Run · Submit WA · perf TLE · Hint unlocked at 15:00 (caps Assisted) / past 20:00 · Give-up modal (reveal = Miss) · Time's up at 45:00 → Miss · solution (study) · Concluded Clean · Concluded Miss + pre-fill · Resume · `self_grade_pending`. **No re-implement frame** (D16; fixed 2026-09-24) |
 | A2 | `Results` | every dock state above, including settling |
 | A3 | `Grade-Dispute` | provisional card · dispute · re-grade compare · override confirm · honor claim |
 | A4 | `Problems` | dual markers, filters |

@@ -1,6 +1,6 @@
 # ADR-0029 — Judge contract, judge archetypes & learning-signal v2
 
-- **Status:** Proposed
+- **Status:** Accepted (2026-09-24, v2 build-plan sign-off)
 - **Date:** 2026-09-24
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0026](0026-per-course-extensibility-model.md) (frame), [0027](0027-content-evalpack-and-user-data-model.md)

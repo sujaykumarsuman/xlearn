@@ -1,6 +1,6 @@
 # ADR-0028 — Object storage & off-node backups for v2.0 (none yet; design ready)
 
-- **Status:** Proposed **§4's opscheck watch amended by [ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) (D34: no alerting in v2).**
+- **Status:** Accepted (2026-09-24, v2 build-plan sign-off). **§4's opscheck watch amended by [ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) (D34: no alerting in v2; Accepted 2026-09-24; folded into §4).** Its own §3 amendments are folded into [ADR-0027](0027-content-evalpack-and-user-data-model.md) §3 and §6.
 - **Date:** 2026-09-24
 - **Deciders:** @sujaykumarsuman
 - **Related:** amends [0027](0027-content-evalpack-and-user-data-model.md) §3 (blob placement) and §6
@@ -64,6 +64,8 @@ Findings (2026):
 - Outboxes remain the durable event log. NATS is rebuilt from them after any restore.
 - **Hostinger's weekly images stay enabled** as the only safety net. The Hostinger login gets 2FA and is treated as top-tier sensitive, because the images hold `sops-age` and every Secret.
 - `opscheck` watches disk and volume usage. Postgres and NATS PVCs are resized at 60%.
+
+> **Amended 2026-09-24 by [ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) §3 and §6 (accepted at the v2 build-plan sign-off; D34, no alerting in v2).** v2 has no `opscheck`. **`host-verify --cluster`** (the MI-8 extension, run on demand over `ssh vps`) reports PVC and node-disk usage instead. It runs after every host change and in the release checklist before any contract, erase or GA tag. It flags a Postgres or NATS PVC at ≥ 60% and node disk at ≥ 70%. **The 60% resize trigger is unchanged.** Nothing alerts; the owner reads it.
 
 ## Consequences
 

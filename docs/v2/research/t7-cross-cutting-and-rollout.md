@@ -4,7 +4,7 @@
 > - **release:** labelling, gating and rollback;
 > - **map:** the MI track, milestones and artboards.
 >
-> The draft then faced one adversarial critique (7/10: 6 majors, 13 minors). This is the revised final, with all 19 findings applied (see "Critique fixes applied" at the end). Decided in [ADR-0033](../../adr/0033-invite-only-admission-and-owner-admin.md), [ADR-0034](../../adr/0034-v2-release-labelling-gating-and-rollback.md) and [ADR-0035](../../adr/0035-v2-operations-nats-auth-limits-capacity.md) (Proposed). **The authoritative plan is [`docs/v2/rollout-plan.md`](../rollout-plan.md)**; this appendix is its evidence. Summary: [feasibility § T7](../feasibility.md#t7--cross-cutting-and-infra-first-rollout).
+> The draft then faced one adversarial critique (7/10: 6 majors, 13 minors). This is the revised final, with all 19 findings applied (see "Critique fixes applied" at the end). Decided in [ADR-0033](../../adr/0033-invite-only-admission-and-owner-admin.md), [ADR-0034](../../adr/0034-v2-release-labelling-gating-and-rollback.md) and [ADR-0035](../../adr/0035-v2-operations-nats-auth-limits-capacity.md) (all three Accepted 2026-09-24). **The authoritative plan is [`docs/v2/rollout-plan.md`](../rollout-plan.md)**; this appendix is its evidence. Summary: [feasibility § T7](../feasibility.md#t7--cross-cutting-and-infra-first-rollout).
 >
 > **Status:** settled with the owner 2026-09-24 (**D32–D35**, §11). §11 overrides the body where they conflict:
 > - **D32, release labels:** as recommended (§5.2). 1.x minors until GA, `v2.0.0` = v2.0 GA, `v2.1.0` = interviewer GA. The guard (MI-2a) shipped on 2026-09-24: xlearn#53 (`.release-line`) and infra#29 (ranges `<2.0.0`).
@@ -921,7 +921,7 @@ The owner answered the four questions and one follow-up on 2026-09-24. **They ov
 
 ### 11.2 Adopted without a question
 
-These are recommendations, recorded in ADR-0034 and ADR-0035 (Proposed). The owner may still override any of them.
+These are recommendations, recorded in ADR-0034 and ADR-0035 (Accepted 2026-09-24). The owner may still override any of them.
 - **No new pipeline component:** JetStream plus the outbox plus judge's Postgres `SKIP LOCKED` queue (§1.2), with the five code changes of §1.3.
 - **NATS auth:** nkey users in `$G`, **server-first** with a `no_auth_user: legacy` bridge (N0–N4, one restart), and **fine ACLs rendered from `topology.go` in the same step**.
   - Public keys go in plaintext `messaging` values; seeds are SOPS secrets in `apps/secrets`; `messaging` needs no SOPS decryption; the ops seed stays offline (m5 break-glass).

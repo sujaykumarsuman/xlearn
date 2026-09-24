@@ -1,6 +1,6 @@
 > **T2 research appendix.** Method: four parallel research slices (in-cluster S3 options and MinIO's 2026 status; external S3 providers and pricing; CNPG backup design; app integration) were synthesized into one draft. The draft then faced two adversarial critiques: resilience and security (6/10, 9 majors) and solo cost and YAGNI (7/10, 7 majors). This is the revised final.
 >
-> **Status:** settled with the owner 2026-09-24 (**D11–D13**, §10). **The owner deferred off-node backups.** The provider choices below (B2 Amsterdam, AWS Mumbai second copy, locks, the 30-day window) were **not adopted**. §3 stays as the ready-made design for when backups land, targeted at the owner's second VPS or a provider chosen then. The no-object-store findings (§1, §2, §4) **were adopted**. Decided in [ADR-0028](../../adr/0028-object-storage-and-backups.md) (Proposed).
+> **Status:** settled with the owner 2026-09-24 (**D11–D13**, §10). **The owner deferred off-node backups.** The provider choices below (B2 Amsterdam, AWS Mumbai second copy, locks, the 30-day window) were **not adopted**. §3 stays as the ready-made design for when backups land, targeted at the owner's second VPS or a provider chosen then. The no-object-store findings (§1, §2, §4) **were adopted**. Decided in [ADR-0028](../../adr/0028-object-storage-and-backups.md) (Accepted 2026-09-24).
 
 # T2: object storage and off-node backups (research + the ready-to-use backup design)
 
