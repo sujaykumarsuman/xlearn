@@ -273,8 +273,8 @@ func (s *Service) handleOnboardingStep(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"onboarding": toOnboardingJSON(ob)})
 	case "finish":
-		// Step 3 (Finish / Skip): stamp completed_at (idempotent). key_added stays false
-		// until the coach key store works (S11) — we never fake it here.
+		// Last step (Finish / Skip): stamp completed_at (idempotent). The SPA stores a typed
+		// coach key itself (PUT /coach/key) before this; identity doesn't track it.
 		ob, err := s.store.CompleteOnboarding(r.Context(), claims.Subject)
 		if err != nil {
 			s.mapStoreErr(w, err)
@@ -399,7 +399,6 @@ type accountJSON struct {
 type onboardingJSON struct {
 	PathChosen *string `json:"path_chosen"`
 	BudgetSet  bool    `json:"budget_set"`
-	KeyAdded   bool    `json:"key_added"`
 	Completed  bool    `json:"completed"`
 }
 
@@ -449,7 +448,6 @@ func toOnboardingJSON(o store.Onboarding) onboardingJSON {
 	return onboardingJSON{
 		PathChosen: path,
 		BudgetSet:  o.BudgetSet,
-		KeyAdded:   o.KeyAdded,
 		Completed:  !o.CompletedAt.IsZero(),
 	}
 }

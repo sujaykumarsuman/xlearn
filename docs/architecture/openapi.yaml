@@ -780,14 +780,33 @@ paths:
         "200":
           description: |
             An SSE stream (`text/event-stream`). Each `data:` frame carries
-            `{"delta":"…"}`; a terminal `event: done` carries `{"done":true}`; a
-            mid-stream failure is `event: error` with `{"error","message"}`.
+            `{"delta":"…"}`; a terminal `event: done` carries
+            `{"done":true,"truncated":bool}` (`truncated` when the provider cut the reply
+            off at its length limit — the reply then ends with a visible note); a
+            mid-stream failure is `event: error` with `{"error","message"}`, where
+            `error` is `provider_auth` (key rejected and disabled), `provider_limited`
+            (provider account out of credit or limited; key kept), or `provider_error`.
           content:
             text/event-stream:
               schema: { type: string }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
-        "409": { $ref: "#/components/responses/Conflict" }
+        "409":
+          description: |
+            No usable key: `no_key`, `key_disabled`, or `provider_auth` (the provider
+            rejected the key before any byte was streamed; the key is now disabled).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "429":
+          description: |
+            `provider_limited`: the provider account is out of credit or over a quota,
+            spend, or rate limit, or can't use the model/region. The key stays enabled;
+            top up and retry.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+              example: { error: { code: provider_limited, message: "your provider account is out of credit or limited — top up and retry" } }
         "502": { $ref: "#/components/responses/BadGateway" }
 
 components:
@@ -949,7 +968,6 @@ components:
       properties:
         path_chosen: { type: [string, "null"] }
         budget_set: { type: boolean }
-        key_added: { type: boolean }
         completed: { type: boolean }
     Enrollment:
       type: object

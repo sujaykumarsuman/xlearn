@@ -22,9 +22,12 @@ WHERE account_id = $1
 RETURNING *;
 
 -- name: CompleteOnboarding :one
--- Onboarding step 3 (Finish / Skip). Idempotent: an already-completed account keeps
+-- The last onboarding step (Finish / Skip). Idempotent: an already-completed account keeps
 -- its original completed_at (COALESCE) so re-submitting Finish never moves the timestamp.
--- key_added is NOT set here — it flips true only once the coach key store works (S11).
+-- The key_added column is unused: nothing ever set it, and whether a coach key is
+-- connected is the coach service's to answer (GET /coach/key). It is left in place so a
+-- rolling deploy's old pods (whose generated queries still name it) keep working; a later
+-- migration can drop it.
 UPDATE identity.onboarding
 SET completed_at = COALESCE(completed_at, now())
 WHERE account_id = $1

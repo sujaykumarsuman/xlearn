@@ -157,7 +157,9 @@ export interface CoachChatBody {
 }
 
 /** A coach chat failure the panel routes on: `code` is "no_key" / "key_disabled" /
- *  "provider_auth" (→ Settings) or a generic transport/provider error. */
+ *  "provider_auth" (→ Settings), "provider_limited" (the key is fine but the provider
+ *  account is out of credit or limited — the key stays enabled), or a generic
+ *  transport/provider error. `message` is the server's learner-facing copy when it sent one. */
 export class CoachChatError extends Error {
   readonly code: string;
   constructor(code: string, message: string) {
@@ -168,6 +170,10 @@ export class CoachChatError extends Error {
   /** True when the failure means the key must be (re)added in Settings. */
   get routesToSettings(): boolean {
     return this.code === "no_key" || this.code === "key_disabled" || this.code === "provider_auth";
+  }
+  /** True when the provider account is out of credit / over a limit (top up and retry). */
+  get isProviderLimited(): boolean {
+    return this.code === "provider_limited";
   }
 }
 
@@ -189,13 +195,15 @@ export async function streamCoachChat(body: CoachChatBody, onDelta: (delta: stri
 
   if (!res.ok || !res.body) {
     let code = "coach_error";
+    let message = `coach chat failed (${res.status})`;
     try {
-      const j = (await res.json()) as { error?: { code?: string } };
+      const j = (await res.json()) as { error?: { code?: string; message?: string } };
       if (j.error?.code) code = j.error.code;
+      if (j.error?.message) message = j.error.message;
     } catch {
-      // keep the default code
+      // keep the defaults
     }
-    throw new CoachChatError(code, `coach chat failed (${res.status})`);
+    throw new CoachChatError(code, message);
   }
 
   const reader = res.body.getReader();

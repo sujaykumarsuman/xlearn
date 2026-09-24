@@ -61,7 +61,7 @@ export function authedMe(
       reminders: {},
       created_at: "2026-09-20T00:00:00Z",
     },
-    onboarding: { path_chosen: pathChosen, budget_set: completed, key_added: false, completed },
+    onboarding: { path_chosen: pathChosen, budget_set: completed, completed },
     enrollments,
   };
 }

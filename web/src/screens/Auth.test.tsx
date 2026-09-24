@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 import { routes } from "../router";
@@ -9,7 +9,7 @@ import { authedMe, installFetchMock, restoreFetch } from "../test/fetchMock";
 function onboardingMe(budgetSet: boolean, completed: boolean) {
   return {
     account: authedMe("dsa").account,
-    onboarding: { path_chosen: "dsa", budget_set: budgetSet, key_added: false, completed },
+    onboarding: { path_chosen: "dsa", budget_set: budgetSet, completed },
   };
 }
 
@@ -108,7 +108,7 @@ describe("Auth screen", () => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe(null) };
       if (url.endsWith("/api/onboarding/step")) {
         stepPosted = init?.body ? JSON.parse(String(init.body)) : null;
-        return { status: 200, body: { onboarding: { path_chosen: "dsa", budget_set: false, key_added: false, completed: false } } };
+        return { status: 200, body: { onboarding: { path_chosen: "dsa", budget_set: false, completed: false } } };
       }
       return { status: 404 };
     });
@@ -149,7 +149,7 @@ describe("Auth screen", () => {
       if (url.endsWith("/api/me")) return { status: 200, body: onboardingMe(false, false) };
       if (url.endsWith("/api/onboarding/step")) {
         posted = init?.body ? JSON.parse(String(init.body)) : null;
-        return { status: 200, body: { onboarding: { path_chosen: "dsa", budget_set: true, key_added: false, completed: false } } };
+        return { status: 200, body: { onboarding: { path_chosen: "dsa", budget_set: true, completed: false } } };
       }
       return { status: 404 };
     });
@@ -173,13 +173,13 @@ describe("Auth screen", () => {
         // must reflect the saved value, so Continue re-posts it (not the 90/"3-4" default).
         const me = {
           account: { ...authedMe("dsa").account, study_budget: { weekday_minutes: 150, weekend_band: "5" } },
-          onboarding: { path_chosen: "dsa", budget_set: false, key_added: false, completed: false },
+          onboarding: { path_chosen: "dsa", budget_set: false, completed: false },
         };
         return { status: 200, body: me };
       }
       if (url.endsWith("/api/onboarding/step")) {
         posted = init?.body ? JSON.parse(String(init.body)) : null;
-        return { status: 200, body: { onboarding: { path_chosen: "dsa", budget_set: true, key_added: false, completed: false } } };
+        return { status: 200, body: { onboarding: { path_chosen: "dsa", budget_set: true, completed: false } } };
       }
       return { status: 404 };
     });
@@ -224,7 +224,7 @@ describe("Auth screen", () => {
       if (url.endsWith("/api/onboarding/step")) {
         posted = init?.body ? JSON.parse(String(init.body)) : null;
         finished = true;
-        return { status: 200, body: { onboarding: { path_chosen: "dsa", budget_set: true, key_added: false, completed: true } } };
+        return { status: 200, body: { onboarding: { path_chosen: "dsa", budget_set: true, completed: true } } };
       }
       return { status: 404 };
     });
@@ -246,7 +246,7 @@ describe("Auth screen", () => {
       if (url.endsWith("/api/onboarding/step")) {
         posted = init?.body ? JSON.parse(String(init.body)) : null;
         finished = true;
-        return { status: 200, body: { onboarding: { path_chosen: "dsa", budget_set: true, key_added: false, completed: true } } };
+        return { status: 200, body: { onboarding: { path_chosen: "dsa", budget_set: true, completed: true } } };
       }
       return { status: 404 };
     });
@@ -256,5 +256,80 @@ describe("Auth screen", () => {
     expect(await screen.findByRole("heading", { name: /power up your coach/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /skip for now/i })); // coach step
     await waitFor(() => expect(posted).toEqual({ step: "finish" }));
+  });
+
+  /** coachStepMock resumes at the username step (path + budget done) and records the
+   *  coach-key PUT + onboarding/step POST bodies in order. `putStatus` fails the PUT. */
+  function coachStepMock(putStatus = 200) {
+    const calls: Array<{ kind: "put" | "finish"; body: unknown }> = [];
+    let finished = false;
+    installFetchMock((url, init) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: onboardingMe(true, finished) };
+      if (url.endsWith("/api/coach/key") && init?.method === "PUT") {
+        calls.push({ kind: "put", body: JSON.parse(String(init.body)) });
+        if (putStatus !== 200) return { status: putStatus, body: { error: { code: "invalid_key", message: "key is too long" } } };
+        return { status: 200, body: { keys: [], connected: true, default_provider: "anthropic" } };
+      }
+      if (url.endsWith("/api/onboarding/step")) {
+        calls.push({ kind: "finish", body: JSON.parse(String(init?.body)) });
+        finished = true;
+        return { status: 200, body: { onboarding: { path_chosen: "dsa", budget_set: true, completed: true } } };
+      }
+      return { status: 404 };
+    });
+    return calls;
+  }
+
+  it("coach step offers only the supported providers (no Google)", async () => {
+    coachStepMock();
+    renderApp("/xlearn/auth");
+    fireEvent.click(await screen.findByRole("button", { name: /skip for now/i })); // username step
+    const group = await screen.findByRole("group", { name: /coach provider/i });
+    expect(within(group).getAllByRole("button").map((b) => b.textContent)).toEqual(["Anthropic", "OpenAI"]);
+  });
+
+  it("saves the typed key via PUT /coach/key before completing onboarding", async () => {
+    const calls = coachStepMock();
+    renderApp("/xlearn/auth");
+    fireEvent.click(await screen.findByRole("button", { name: /skip for now/i })); // username step
+    expect(await screen.findByRole("heading", { name: /power up your coach/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "OpenAI" }));
+    fireEvent.change(screen.getByLabelText("API key"), { target: { value: "  sk-openai-test-1234  " } });
+    fireEvent.click(screen.getByRole("button", { name: /finish & enter xlearn/i }));
+
+    await waitFor(() => expect(calls.map((c) => c.kind)).toEqual(["put", "finish"]));
+    // Same body shape Settings sends: provider + key + the provider's first model + its label.
+    expect(calls[0]!.body).toEqual({ provider: "openai", key: "sk-openai-test-1234", default_model: "gpt-5.6-sol", name: "GPT-5.6 Sol" });
+    expect(calls[1]!.body).toEqual({ step: "finish" });
+  });
+
+  it("a failed key save shows an error and does not finish; Skip still completes without the key", async () => {
+    const calls = coachStepMock(422);
+    renderApp("/xlearn/auth");
+    fireEvent.click(await screen.findByRole("button", { name: /skip for now/i })); // username step
+    expect(await screen.findByRole("heading", { name: /power up your coach/i })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("API key"), { target: { value: "sk-ant-bad" } });
+    fireEvent.click(screen.getByRole("button", { name: /finish & enter xlearn/i }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/couldn’t save your key \(key is too long\)/i);
+    expect(alert).toHaveTextContent(/skip for now/i);
+    // Onboarding is NOT marked finished and the learner stays on the coach step.
+    expect(calls.map((c) => c.kind)).toEqual(["put"]);
+    expect(screen.getByRole("heading", { name: /power up your coach/i })).toBeInTheDocument();
+
+    // Skip completes onboarding without re-sending the key.
+    fireEvent.click(screen.getByRole("button", { name: /skip for now/i }));
+    await waitFor(() => expect(calls.map((c) => c.kind)).toEqual(["put", "finish"]));
+  });
+
+  it("Finish with no key typed completes onboarding without calling PUT /coach/key", async () => {
+    const calls = coachStepMock();
+    renderApp("/xlearn/auth");
+    fireEvent.click(await screen.findByRole("button", { name: /skip for now/i })); // username step
+    fireEvent.click(await screen.findByRole("button", { name: /finish & enter xlearn/i }));
+    await waitFor(() => expect(calls.map((c) => c.kind)).toEqual(["finish"]));
   });
 });

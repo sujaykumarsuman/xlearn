@@ -21,6 +21,7 @@ import {
   type StudyBudget,
   type WeekendBand,
 } from "../lib/auth";
+import { COACH_MODELS, COACH_PROVIDERS, coachModelLabel, usePutCoachKey, type ProviderId } from "../lib/settings";
 
 /**
  * Auth is the standalone pre-auth screen (no app shell): a two-column layout with a
@@ -669,12 +670,50 @@ function UsernameStepHint({
 
 function StepCoach({ onBack, onFinish }: { onBack: () => void; onFinish: () => void }) {
   const complete = useCompleteOnboarding();
-  const [provider, setProvider] = useState<"anthropic" | "openai" | "google">("anthropic");
+  const putKey = usePutCoachKey();
+  const [provider, setProvider] = useState<ProviderId>("anthropic");
+  const [rawKey, setRawKey] = useState("");
+  // The provider whose key was stored here, so a retry after a failed Finish doesn't
+  // re-send it (the raw key is cleared from state once it is saved).
+  const [savedFor, setSavedFor] = useState<ProviderId | null>(null);
 
-  // Step 3 is optional: the key store lands with the coach (S11), so Finish/Skip simply
-  // completes onboarding here — we never fake key storage. The key form is a preview.
-  const finish = () => complete.mutate(undefined, { onSuccess: onFinish });
-  const providerPlaceholder = provider === "anthropic" ? "sk-ant-…" : provider === "openai" ? "sk-…" : "AIza…";
+  const key = rawKey.trim();
+  const busy = putKey.isPending || complete.isPending;
+  const meta = COACH_PROVIDERS.find((p) => p.id === provider)!;
+
+  const completeOnboarding = () => complete.mutate(undefined, { onSuccess: onFinish });
+
+  // Finish stores the typed key with the same PUT /coach/key Settings uses, and completes
+  // onboarding only once the key is saved. A failed save keeps the learner here with the
+  // error, to fix the key or skip. With no key typed, Finish just completes.
+  const finish = () => {
+    if (!key) {
+      completeOnboarding();
+      return;
+    }
+    const model = COACH_MODELS[provider][0]!.id;
+    putKey.mutate(
+      { provider, key, default_model: model, name: coachModelLabel(model) },
+      {
+        onSuccess: () => {
+          setRawKey("");
+          setSavedFor(provider);
+          completeOnboarding();
+        },
+      },
+    );
+  };
+
+  // Skip never stores the key, even if one was typed.
+  const skip = () => {
+    putKey.reset();
+    completeOnboarding();
+  };
+
+  const editKey = (next: string) => {
+    setRawKey(next);
+    if (putKey.isError) putKey.reset();
+  };
 
   return (
     <>
@@ -688,15 +727,19 @@ function StepCoach({ onBack, onFinish }: { onBack: () => void; onFinish: () => v
         <div className="ds-field">
           <span className="ds-field__label">Provider</span>
           <div className="ds-seg" role="group" aria-label="Coach provider">
-            {(["anthropic", "openai", "google"] as const).map((p) => (
+            {COACH_PROVIDERS.map((p) => (
               <button
-                key={p}
+                key={p.id}
                 type="button"
-                className={provider === p ? "ds-seg__btn ds-seg__btn--on" : "ds-seg__btn"}
-                aria-pressed={provider === p}
-                onClick={() => setProvider(p)}
+                className={provider === p.id ? "ds-seg__btn ds-seg__btn--on" : "ds-seg__btn"}
+                aria-pressed={provider === p.id}
+                disabled={busy}
+                onClick={() => {
+                  setProvider(p.id);
+                  if (putKey.isError) putKey.reset();
+                }}
               >
-                {p === "anthropic" ? "Anthropic" : p === "openai" ? "OpenAI" : "Google"}
+                {p.label}
               </button>
             ))}
           </div>
@@ -705,7 +748,20 @@ function StepCoach({ onBack, onFinish }: { onBack: () => void; onFinish: () => v
           <label className="ds-field__label" htmlFor="onb-key">
             API key
           </label>
-          <input id="onb-key" className="ds-input ds-input--mono" type="password" placeholder={providerPlaceholder} aria-label="API key" />
+          <input
+            id="onb-key"
+            className="ds-input ds-input--mono"
+            type="password"
+            placeholder={savedFor === provider ? `${meta.label} key saved` : meta.keyHint}
+            aria-label="API key"
+            aria-invalid={putKey.isError || undefined}
+            aria-describedby={putKey.isError ? "onb-key-error" : undefined}
+            autoComplete="off"
+            spellCheck={false}
+            value={rawKey}
+            disabled={busy}
+            onChange={(e) => editKey(e.target.value)}
+          />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11.5, color: "var(--ds-muted)" }}>
           <Icon name="lock" className="xl-ico--sm" style={{ color: "var(--ds-ok)" }} /> Stored encrypted with the coach — you can add it
@@ -713,30 +769,33 @@ function StepCoach({ onBack, onFinish }: { onBack: () => void; onFinish: () => v
         </div>
       </div>
 
+      {putKey.isError && (
+        <p id="onb-key-error" role="alert" style={{ color: "var(--ds-err)", fontSize: 12.5, marginTop: 12 }}>
+          Couldn’t save your key{putKey.error.message ? ` (${putKey.error.message})` : ""}. Check it and try again, or skip for now and
+          add it later in Settings.
+        </p>
+      )}
       {complete.isError && (
-        <p style={{ color: "var(--ds-err)", fontSize: 12.5, marginTop: 12 }}>Couldn’t finish setup. Please try again.</p>
+        <p role="alert" style={{ color: "var(--ds-err)", fontSize: 12.5, marginTop: 12 }}>
+          {savedFor ? "Your key is saved, but we couldn’t finish setup. Please try again." : "Couldn’t finish setup. Please try again."}
+        </p>
       )}
 
       <button
         type="button"
         className="ds-btn ds-btn--primary ds-btn--block ds-btn--lg"
         style={{ marginTop: 20 }}
-        disabled={complete.isPending}
+        disabled={busy}
         onClick={finish}
       >
-        <Icon name="spark" className="xl-ico--sm" /> {complete.isPending ? "Finishing…" : "Finish & enter xLearn"}
+        <Icon name="spark" className="xl-ico--sm" />{" "}
+        {putKey.isPending ? "Saving key…" : complete.isPending ? "Finishing…" : "Finish & enter xLearn"}
       </button>
       <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-        <button type="button" className="ds-btn ds-btn--ghost" onClick={onBack} disabled={complete.isPending}>
+        <button type="button" className="ds-btn ds-btn--ghost" onClick={onBack} disabled={busy}>
           Back
         </button>
-        <button
-          type="button"
-          className="ds-btn ds-btn--ghost"
-          style={{ flex: 1, justifyContent: "center" }}
-          disabled={complete.isPending}
-          onClick={finish}
-        >
+        <button type="button" className="ds-btn ds-btn--ghost" style={{ flex: 1, justifyContent: "center" }} disabled={busy} onClick={skip}>
           Skip for now
         </button>
       </div>

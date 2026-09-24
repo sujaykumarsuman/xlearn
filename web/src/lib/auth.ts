@@ -5,11 +5,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, ApiRequestError, apiFetch } from "./api";
 
-/** Onboarding state (the 3-step first-run flow). */
+/** Onboarding state (the first-run flow). Whether a coach key is connected is not an
+ *  onboarding flag — read it from GET /coach/key (`connected`), the coach service's own
+ *  source of truth. */
 export interface Onboarding {
   path_chosen: string | null;
   budget_set: boolean;
-  key_added: boolean;
   completed: boolean;
 }
 
@@ -204,8 +205,8 @@ export function useSetOnboardingBudget() {
   });
 }
 
-/** useCompleteOnboarding marks onboarding finished (step 3 · Finish / Skip). It never
- *  sets key_added — the coach key store lands in S11. */
+/** useCompleteOnboarding marks onboarding finished (the coach step · Finish / Skip). The
+ *  coach step stores a typed key itself (PUT /coach/key) before calling this. */
 export function useCompleteOnboarding() {
   const qc = useQueryClient();
   return useMutation({

@@ -189,9 +189,6 @@ func TestOnboardingFinishStepIdempotent(t *testing.T) {
 	if first.IsZero() {
 		t.Fatalf("completed_at not set")
 	}
-	if st.onboarding[acct.ID].KeyAdded {
-		t.Fatalf("key_added must stay false in S10")
-	}
 
 	// A second Finish must not move completed_at.
 	rec = httptest.NewRecorder()

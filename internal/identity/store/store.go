@@ -60,12 +60,14 @@ type Account struct {
 	CreatedAt   time.Time
 }
 
-// Onboarding is the 3-step first-run state for an account.
+// Onboarding is the first-run state for an account. Whether a coach key is connected is
+// not tracked here: the coach service owns that (GET /coach/key `connected`), and a copy
+// in identity would go stale the moment a key is removed in Settings. The unused
+// identity.onboarding.key_added column is left in place, see CompleteOnboarding's query.
 type Onboarding struct {
 	AccountID   string
 	PathChosen  string    // "" until step 1 is completed
-	BudgetSet   bool      // step 2 (deferred to S10)
-	KeyAdded    bool      // step 3 (deferred to S11)
+	BudgetSet   bool      // step 2
 	CompletedAt time.Time // zero until onboarding completes
 }
 
@@ -151,8 +153,8 @@ type Store interface {
 	// SetOnboardingBudget writes the study budget to the account and sets
 	// onboarding.budget_set in one transaction (onboarding step 2).
 	SetOnboardingBudget(ctx context.Context, accountID string, budgetJSON []byte) (Onboarding, error)
-	// CompleteOnboarding stamps onboarding.completed_at (idempotent) — onboarding
-	// step 3 (Finish / Skip). key_added is NOT set here (deferred to S11).
+	// CompleteOnboarding stamps onboarding.completed_at (idempotent): the last onboarding
+	// step (Finish / Skip).
 	CompleteOnboarding(ctx context.Context, accountID string) (Onboarding, error)
 	// StartEnrollment enrolls the account in a path (F002). Idempotent: a repeat start
 	// only re-activates the row and keeps the original started_at. ListEnrollments
@@ -638,7 +640,6 @@ func toOnboarding(o gen.IdentityOnboarding) Onboarding {
 		AccountID:   uuidString(o.AccountID),
 		PathChosen:  o.PathChosen.String,
 		BudgetSet:   o.BudgetSet,
-		KeyAdded:    o.KeyAdded,
 		CompletedAt: o.CompletedAt.Time,
 	}
 }
