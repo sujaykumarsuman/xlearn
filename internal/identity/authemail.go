@@ -12,8 +12,13 @@ import (
 // --- Email/password auth (ADR-0023) ---
 
 // handleSignup: POST /auth/signup — create an email/password account + session. No email
-// verification yet (deferred), so the account is usable immediately.
+// verification yet (deferred), so the account is usable immediately. With SIGNUP_MODE
+// closed it is a 403 before the body is even read, so it can't reveal registered emails.
 func (s *Service) handleSignup(w http.ResponseWriter, r *http.Request) {
+	if s.cfg.Auth.Signup != SignupOpen {
+		writeError(w, http.StatusForbidden, "signup_closed", "xLearn is invite-only right now")
+		return
+	}
 	var body struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`

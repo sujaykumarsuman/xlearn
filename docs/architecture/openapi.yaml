@@ -203,7 +203,7 @@ paths:
     post:
       tags: [account]
       operationId: signup
-      summary: Create an email/password account + session (ADR-0023). No email verification yet.
+      summary: Create an email/password account + session (ADR-0023). No email verification yet. 403 while SIGNUP_MODE is closed.
       security: []
       requestBody:
         required: true
@@ -213,6 +213,7 @@ paths:
       responses:
         "200": { description: Account created; session cookie set. }
         "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { description: "Sign-up is closed (`signup_closed`); checked before the body is read." }
         "409": { description: An account with this email already exists. }
         "422": { $ref: "#/components/responses/Unprocessable" }
         "503": { $ref: "#/components/responses/Unavailable" }
@@ -261,7 +262,7 @@ paths:
         - { name: state, in: query, schema: { type: string } }
         - { name: error, in: query, schema: { type: string } }
       responses:
-        "302": { description: Redirect into the SPA (sets xl_session on success). }
+        "302": { description: "Redirect into the SPA (sets xl_session on success). Failures land on /auth?error=<code>, e.g. `signup_closed` (no account, sign-up closed) or `account_exists_password` (the email belongs to a password account; not auto-linked)." }
         "503": { $ref: "#/components/responses/Unavailable" }
   /paths:
     get:

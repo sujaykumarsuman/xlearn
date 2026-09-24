@@ -79,7 +79,7 @@ func run() int {
 
 	errCh := make(chan error, 1)
 	go func() {
-		logger.Info("identity listening", "addr", cfg.Addr(), "version", buildVersion())
+		logger.Info("identity listening", "addr", cfg.Addr(), "version", buildVersion(), "signup_mode", cfg.Auth.Signup)
 		if serr := srv.ListenAndServe(); serr != nil && !errors.Is(serr, http.ErrServerClosed) {
 			errCh <- serr
 		}

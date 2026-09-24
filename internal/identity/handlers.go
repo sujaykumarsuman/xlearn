@@ -126,7 +126,13 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 		ProviderUserID: prof.ProviderUserID,
 		DisplayName:    prof.DisplayName,
 		Email:          prof.Email,
+		NoCreate:       s.cfg.Auth.Signup != SignupOpen,
 	})
+	if errors.Is(err, store.ErrSignupClosed) {
+		s.log.Info("oauth callback: no account and sign-up is closed", "provider", provider)
+		s.redirectToAuth(w, r, "signup_closed")
+		return
+	}
 	if errors.Is(err, store.ErrPasswordAccountExists) {
 		// The email belongs to a password account, which is never auto-linked (ADR-0023 §3,
 		// amended). The owner signs in with the password, then connects from Settings.

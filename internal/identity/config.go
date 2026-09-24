@@ -60,6 +60,25 @@ type AuthConfig struct {
 	// session for a fixed local account WITHOUT OAuth. Off unless DEV_AUTH is truthy;
 	// it must never be set in a prod image (F002 / ADR-0022).
 	DevAuth bool
+	// Signup gates creating NEW accounts (ADR-0023 §2, amended 2026-09-24): email sign-up
+	// and a first OAuth sign-in that matches no account. Existing accounts sign in as usual.
+	Signup SignupMode
+}
+
+// SignupMode is SIGNUP_MODE. Anything other than "open" (unset, a typo) resolves to
+// closed, so a missing env fails safe. v2 adds "invite".
+type SignupMode string
+
+const (
+	SignupOpen   SignupMode = "open"
+	SignupClosed SignupMode = "closed"
+)
+
+func parseSignupMode(v string) SignupMode {
+	if SignupMode(strings.ToLower(strings.TrimSpace(v))) == SignupOpen {
+		return SignupOpen
+	}
+	return SignupClosed
 }
 
 // OAuthClient is a provider's registered app credentials.
@@ -105,6 +124,7 @@ func LoadConfig() Config {
 			CookieSecure: envBool("COOKIE_SECURE", strings.HasPrefix(base, "https://")),
 			SessionTTL:   envDuration("SESSION_TTL", 30*24*time.Hour),
 			DevAuth:      envBool("DEV_AUTH", false),
+			Signup:       parseSignupMode(os.Getenv("SIGNUP_MODE")),
 		},
 	}
 }

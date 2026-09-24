@@ -314,6 +314,8 @@ function oauthErrorMessage(code: string): string {
       return "Please sign in first, then connect GitHub from Settings.";
     case "account_exists_password":
       return "An account with this email already uses a password. Sign in with your password, then connect GitHub from Settings.";
+    case "signup_closed":
+      return "xLearn is invite-only right now. This GitHub account isn’t connected to an xLearn account.";
     default:
       return "Something went wrong signing in. Please try again.";
   }
@@ -323,6 +325,8 @@ function emailAuthErrorMessage(err: ApiRequestError, mode: "signin" | "signup"):
   switch (err.code) {
     case "email_taken":
       return "That email is already registered — switch to Sign in.";
+    case "signup_closed":
+      return "xLearn is invite-only right now.";
     case "invalid_credentials":
       return "Incorrect email/username or password.";
     case "weak_password":

@@ -20,6 +20,9 @@ button on the sign-in screen. It appears because `identity` runs with `DEV_AUTH=
 (the endpoint 404s — and the button is hidden — in the prod images). It mints a session
 for a fixed local account and drops you on the Catalog home.
 
+Email sign-up works here because compose sets `SIGNUP_MODE=open`. Without it identity
+defaults to **closed** (prod: `403 signup_closed`, ADR-0023 §2).
+
 To exercise the real GitHub flow instead, register
 `http://localhost:8080/xlearn/api/auth/github/callback` as a callback on the OAuth app
 and use "Continue with GitHub" (the client id/secret come from the repo `.env`).

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
@@ -121,4 +122,41 @@ func TestUnlinkGuardsLastMethod(t *testing.T) {
 	if rec := doJSON(t, svc.handleUnlinkOAuth, http.MethodDelete, "/x", nil, claims, pv); rec.Code != http.StatusNoContent {
 		t.Fatalf("unlink status %d, want 204", rec.Code)
 	}
+}
+
+// With SIGNUP_MODE closed, sign-up is a 403 whether or not the email is registered (no email
+// oracle), while an existing account still signs in.
+func TestSignupClosed(t *testing.T) {
+	st := newFakeStore()
+	svc := newTestService(st, nil)
+	svc.cfg.Auth.Signup = SignupClosed
+	if _, err := st.CreateEmailAccount(context.Background(), "ada@example.com", mustHash(t, "hunter2hunter"), "ada"); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	for _, email := range []string{"new@example.com", "ada@example.com"} {
+		rec := doJSON(t, svc.handleSignup, http.MethodPost, "/auth/signup", map[string]string{"email": email, "password": "hunter2hunter"}, nil, nil)
+		if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), `"signup_closed"`) {
+			t.Fatalf("signup %s: status %d body %s, want 403 signup_closed", email, rec.Code, rec.Body.String())
+		}
+		if hasCookie(rec.Result().Cookies(), auth.SessionCookieName) {
+			t.Fatalf("signup %s set a session cookie while closed", email)
+		}
+	}
+	if len(st.accounts) != 1 {
+		t.Fatalf("closed signup created an account: %d accounts", len(st.accounts))
+	}
+
+	if rec := doJSON(t, svc.handleLogin, http.MethodPost, "/auth/login", map[string]string{"email": "ada@example.com", "password": "hunter2hunter"}, nil, nil); rec.Code != http.StatusOK || !hasCookie(rec.Result().Cookies(), auth.SessionCookieName) {
+		t.Fatalf("existing-account login while closed: status %d, want 200 + cookie", rec.Code)
+	}
+}
+
+func mustHash(t *testing.T, pw string) string {
+	t.Helper()
+	h, err := hashPassword(pw)
+	if err != nil {
+		t.Fatalf("hash: %v", err)
+	}
+	return h
 }
