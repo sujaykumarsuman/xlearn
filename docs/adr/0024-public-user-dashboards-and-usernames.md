@@ -3,7 +3,8 @@
 - **Status:** Accepted — the bare `/xlearn/<username>` URL shape is **superseded by
   [ADR-0025](0025-public-profiles-under-u-prefix.md)** (profiles now live at `/xlearn/u/<username>`), and
   so are the reserved-word rules (§2 and the 2026-09-23 update below): the list is now impersonation-only
-  and course slugs are not reserved.
+  and course slugs are not reserved. **v2 (Proposed):** [ADR-0032](0032-realtime-ai-mock-interviewer.md) shows the mock
+  count only (D31); [ADR-0033](0033-invite-only-admission-and-owner-admin.md) enforces `public-read` and shows enrolled ∩ visible courses only.
 - **Date:** 2026-09-23
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0006](0006-authn-authz.md) (session gating — this adds the first UNauthenticated

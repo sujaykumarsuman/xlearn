@@ -1,6 +1,6 @@
 # ADR-0009 — Deployment & GitOps
 
-- **Status:** Accepted
+- **Status:** Accepted **Refined by [ADR-0034](0034-v2-release-labelling-gating-and-rollback.md) (v2, Proposed):** bounded ImagePolicy ranges and the GA range flip, `runner-v*` and evalpack release streams, and rollback via kill switch → narrowed ImagePolicy → revert + patch tag → snapshot restore (pinning a tag in `infra` doesn't roll back under image automation).
 - **Date:** 2026-09-20
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0002](0002-monorepo-vs-multi-repo.md), [0004](0004-inter-service-comms-and-events.md), [0005](0005-data-ownership-and-migrations.md), [0006](0006-authn-authz.md), [0007](0007-ai-coach-byo-key-and-secrets.md)

@@ -1,6 +1,6 @@
 # ADR-0014 — NATS JetStream topology & the practice outbox relay
 
-- **Status:** Accepted
+- **Status:** Accepted **Amended by [ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) (v2, Proposed):** streams and consumers move to a single `topology.go` table with byte budgets, poison events go to a dead-letter hook instead of vanishing, and NATS gets nkey auth with per-service ACLs.
 - **Date:** 2026-09-21
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0004](0004-inter-service-comms-and-events.md), [0005](0005-data-ownership-and-migrations.md), [0009](0009-deployment-and-gitops.md), [events.md](../architecture/events.md)

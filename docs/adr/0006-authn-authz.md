@@ -1,6 +1,6 @@
 # ADR-0006 — AuthN/AuthZ
 
-- **Status:** Accepted
+- **Status:** Accepted. **Refined by [ADR-0033](0033-invite-only-admission-and-owner-admin.md) (v2, Proposed):** roles are enforced (`RequireRole`, `public-read`), and `account.role` (learner, tester, owner) lives in the DB, never in the JWT.
 - **Date:** 2026-09-20
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0003](0003-service-decomposition.md), [0007](0007-ai-coach-byo-key-and-secrets.md)
