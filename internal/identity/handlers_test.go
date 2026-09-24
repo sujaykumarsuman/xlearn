@@ -26,6 +26,7 @@ func testConfig() Config {
 			GitHub:        OAuthClient{ClientID: "gh-id", ClientSecret: "gh-secret"},
 			CookieSecure:  false,
 			SessionTTL:    time.Hour,
+			Signup:        SignupOpen,
 		},
 	}
 }
@@ -250,6 +251,64 @@ func TestCallbackReturningLinkedUserWithPassword(t *testing.T) {
 	if got := sessionAccount(t, st, cbRec); got != acct.ID {
 		t.Fatalf("signed in to %q, want the linked account %q", got, acct.ID)
 	}
+}
+
+// With SIGNUP_MODE closed, a GitHub sign-in that matches no account is refused without
+// creating one.
+func TestCallbackSignupClosedNewUser(t *testing.T) {
+	st := newFakeStore()
+	svc := newTestService(st, nil)
+	svc.cfg.Auth.Signup = SignupClosed
+	wireFakeProviders(svc, fakeOAuth(t).URL)
+
+	cbRec := oauthSignIn(t, svc)
+	if got := cbRec.Header().Get("Location"); got != "http://localhost:8080/xlearn/auth?error=signup_closed" {
+		t.Fatalf("callback redirect = %q, want error=signup_closed", got)
+	}
+	if hasCookie(cbRec.Result().Cookies(), auth.SessionCookieName) {
+		t.Fatal("closed signup must not set a session cookie")
+	}
+	if len(st.accounts) != 0 || len(st.outbox) != 0 || len(st.byProvider) != 0 {
+		t.Fatalf("closed signup created state: %d accounts, %d outbox rows, %d identities", len(st.accounts), len(st.outbox), len(st.byProvider))
+	}
+}
+
+// With SIGNUP_MODE closed, existing accounts still sign in with GitHub, both by an existing
+// link and by the (OAuth-only) email auto-link.
+func TestCallbackSignupClosedExistingUsers(t *testing.T) {
+	t.Run("linked identity", func(t *testing.T) {
+		st := newFakeStore()
+		svc := newTestService(st, nil)
+		wireFakeProviders(svc, fakeOAuth(t).URL)
+		first := oauthSignIn(t, svc) // created while open
+		svc.cfg.Auth.Signup = SignupClosed
+
+		again := oauthSignIn(t, svc)
+		if got := again.Header().Get("Location"); got != "http://localhost:8080/xlearn/auth" {
+			t.Fatalf("callback redirect = %q, want a plain sign-in", got)
+		}
+		if got, want := sessionAccount(t, st, again), sessionAccount(t, st, first); got == "" || got != want {
+			t.Fatalf("signed in to %q, want the existing account %q", got, want)
+		}
+		if len(st.accounts) != 1 {
+			t.Fatalf("got %d accounts, want 1", len(st.accounts))
+		}
+	})
+	t.Run("email auto-link into an OAuth-only account", func(t *testing.T) {
+		st := newFakeStore()
+		svc := newTestService(st, nil)
+		svc.cfg.Auth.Signup = SignupClosed
+		wireFakeProviders(svc, fakeOAuth(t).URL)
+		existing, _, err := st.FindOrCreateAccount(context.Background(), store.OAuthUpsert{Provider: "google", ProviderUserID: "g-1", DisplayName: "Ada", Email: "ada@example.com"})
+		if err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+
+		cbRec := oauthSignIn(t, svc)
+		if got := sessionAccount(t, st, cbRec); got != existing.ID {
+			t.Fatalf("signed in to %q, want the existing account %q (redirect %s)", got, existing.ID, cbRec.Header().Get("Location"))
+		}
+	})
 }
 
 func TestCallbackStateMismatch(t *testing.T) {

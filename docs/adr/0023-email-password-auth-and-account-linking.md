@@ -41,6 +41,20 @@ infrastructure yet, and it is explicitly out of scope for now.
 The email flows are **fetch-based** (JSON), so identity sets the session cookie on the response and the
 gateway passes `Set-Cookie` through — the browser still only ever talks to the gateway origin.
 
+> **Amended 2026-09-24: sign-up is closed by default (`SIGNUP_MODE`).** The owner closed v1 sign-up
+> (v2 planning, T7.2). Identity reads `SIGNUP_MODE` = `open | closed`. Any value other than `open`,
+> including unset, means **closed**, so a missing env fails safe; `invite` is reserved for v2. While
+> closed:
+>
+> - `POST /auth/signup` returns **`403 signup_closed`** before the body is read, so it can't reveal
+>   which emails are registered.
+> - An OAuth sign-in that matches no account redirects to `/auth?error=signup_closed`
+>   (`FindOrCreateAccount` with `NoCreate` returns `ErrSignupClosed` instead of creating).
+>
+> Existing accounts sign in as before: by password, by a linked provider, or by the email auto-link
+> in §3 (as amended below). `docker-compose` sets `SIGNUP_MODE=open` for local review. The local-only
+> dev login (`DEV_AUTH`, [ADR-0022](0022-path-enrollment-and-dev-login.md)) is not gated.
+
 ### 3. Collision = auto-link by verified email
 
 When an OAuth sign-in's email already belongs to an account (and that identity isn't linked elsewhere),

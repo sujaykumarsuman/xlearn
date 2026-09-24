@@ -43,6 +43,9 @@ var (
 	// owns the (unverified) email, so the identity is neither auto-linked nor used to create a
 	// duplicate: the owner must sign in with the password and connect the provider from Settings.
 	ErrPasswordAccountExists = errors.New("identity: email belongs to a password account")
+	// ErrSignupClosed is returned by FindOrCreateAccount when nothing matched and the caller
+	// set OAuthUpsert.NoCreate (SIGNUP_MODE=closed).
+	ErrSignupClosed = errors.New("identity: no account and sign-up is closed")
 )
 
 // Account is an xLearn user (the parts the HTTP layer needs this sprint).
@@ -107,6 +110,9 @@ type OAuthUpsert struct {
 	ProviderUserID string
 	DisplayName    string
 	Email          string // "" when unavailable
+	// NoCreate finds or links an existing account but never creates one (SIGNUP_MODE=closed):
+	// FindOrCreateAccount returns ErrSignupClosed instead.
+	NoCreate bool
 }
 
 // AccountUpdate is a partial update to an account (PATCH /me, S10). A nil field
@@ -127,7 +133,8 @@ type Store interface {
 	// or, on first sign-in, creates account+oauth_identity+onboarding and writes the
 	// account_created outbox row in one transaction. created reports first sign-in.
 	// A first sign-in whose email matches an OAuth-only account links into it; one whose
-	// email matches a password account fails with ErrPasswordAccountExists.
+	// email matches a password account fails with ErrPasswordAccountExists. With
+	// in.NoCreate, a sign-in that matches nothing fails with ErrSignupClosed.
 	FindOrCreateAccount(ctx context.Context, in OAuthUpsert) (acct Account, created bool, err error)
 	GetAccount(ctx context.Context, id string) (Account, error)
 	// GetAccountByEmail looks up an account case-insensitively (email sign-in). The
@@ -224,6 +231,9 @@ func (s *PgStore) FindOrCreateAccount(ctx context.Context, in OAuthUpsert) (Acco
 		} else if !errors.Is(err, ErrNotFound) {
 			return Account{}, false, err
 		}
+	}
+	if in.NoCreate {
+		return Account{}, false, ErrSignupClosed
 	}
 
 	tx, err := s.pool.Begin(ctx)

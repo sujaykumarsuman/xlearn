@@ -43,3 +43,25 @@ func TestDSNEncodesReservedCharacters(t *testing.T) {
 		}
 	}
 }
+
+// SIGNUP_MODE fails safe: only an explicit "open" opens sign-up.
+func TestSignupModeDefaultsClosed(t *testing.T) {
+	for in, want := range map[string]SignupMode{
+		"":        SignupClosed,
+		"closed":  SignupClosed,
+		"open":    SignupOpen,
+		" OPEN ":  SignupOpen,
+		"invite":  SignupClosed, // v2; not yet understood → closed
+		"opened":  SignupClosed,
+		"true":    SignupClosed,
+		"disable": SignupClosed,
+	} {
+		if got := parseSignupMode(in); got != want {
+			t.Errorf("parseSignupMode(%q) = %q, want %q", in, got, want)
+		}
+	}
+	t.Setenv("SIGNUP_MODE", "")
+	if got := LoadConfig().Auth.Signup; got != SignupClosed {
+		t.Fatalf("unset SIGNUP_MODE resolved to %q, want closed", got)
+	}
+}

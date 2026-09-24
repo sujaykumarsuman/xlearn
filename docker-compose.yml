@@ -60,6 +60,8 @@ services:
       COOKIE_SECURE: "false"
       # Local-only dev login (F002 / ADR-0022). NEVER set in a prod image.
       DEV_AUTH: "1"
+      # Sign-up is closed unless this says "open" (ADR-0023 §2, amended); keep it open locally.
+      SIGNUP_MODE: open
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
     depends_on:

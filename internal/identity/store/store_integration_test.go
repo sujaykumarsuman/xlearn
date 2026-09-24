@@ -261,6 +261,26 @@ func TestStoreAutoLinkByEmail(t *testing.T) {
 		}
 	})
 
+	t.Run("NoCreate refuses a new sign-in but still links", func(t *testing.T) {
+		email := "closed-" + newTestID() + "@example.com"
+		in := store.OAuthUpsert{Provider: "github", ProviderUserID: "gh-" + newTestID(), DisplayName: "New", Email: email, NoCreate: true}
+		if _, _, err := st.FindOrCreateAccount(ctx, in); !errors.Is(err, store.ErrSignupClosed) {
+			t.Fatalf("FindOrCreateAccount err = %v, want ErrSignupClosed", err)
+		}
+		if _, err := st.GetAccountByEmail(ctx, email); !errors.Is(err, store.ErrNotFound) {
+			t.Fatalf("closed sign-up created an account (err %v)", err)
+		}
+		// An OAuth-only account with that email is an existing user: linking still works.
+		existing, _, err := st.FindOrCreateAccount(ctx, store.OAuthUpsert{Provider: "google", ProviderUserID: "g-" + newTestID(), DisplayName: "New", Email: email})
+		if err != nil {
+			t.Fatalf("seed OAuth account: %v", err)
+		}
+		got, created, err := st.FindOrCreateAccount(ctx, in)
+		if err != nil || created || got.ID != existing.ID {
+			t.Fatalf("closed auto-link: id=%s created=%v err=%v (want %s)", got.ID, created, err, existing.ID)
+		}
+	})
+
 	t.Run("returning linked identity on a password account", func(t *testing.T) {
 		email := "linked-" + newTestID() + "@example.com"
 		acct, err := st.CreateEmailAccount(ctx, email, "$2a$10$owner-hash", "linked")

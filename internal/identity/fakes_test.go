@@ -59,6 +59,9 @@ func (f *fakeStore) FindOrCreateAccount(_ context.Context, in store.OAuthUpsert)
 			return f.accounts[id], false, nil
 		}
 	}
+	if in.NoCreate {
+		return store.Account{}, false, store.ErrSignupClosed
+	}
 	f.seq++
 	id := fmt.Sprintf("acct-%d", f.seq)
 	acct := store.Account{ID: id, DisplayName: in.DisplayName, Email: in.Email, Timezone: "UTC", CreatedAt: time.Now()}

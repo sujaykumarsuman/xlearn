@@ -102,6 +102,23 @@ describe("Auth screen", () => {
     expect(await screen.findByText(/already registered/i)).toBeInTheDocument();
   });
 
+  it("says sign-up is invite-only when signup is closed (email + GitHub)", async () => {
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 401, body: { error: { code: "unauthenticated" } } };
+      if (url.includes("/api/auth/signup")) return { status: 403, body: { error: { code: "signup_closed" } } };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/auth?error=signup_closed");
+
+    expect(await screen.findByText(/this github account isn’t connected/i)).toHaveTextContent(/invite-only right now/i);
+    fireEvent.click(screen.getByRole("button", { name: /^sign up$/i }));
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "new@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "hunter2hunter" } });
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    expect(await screen.findByText(/^xLearn is invite-only right now\.$/i)).toBeInTheDocument();
+  });
+
   it("explains a refused GitHub sign-in onto a password account", async () => {
     installFetchMock((url) => (url.endsWith("/api/me") ? { status: 401, body: { error: { code: "unauthenticated" } } } : { status: 404 }));
     renderApp("/xlearn/auth?error=account_exists_password");
