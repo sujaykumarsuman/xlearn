@@ -47,9 +47,13 @@ func (f *fakeStore) FindOrCreateAccount(_ context.Context, in store.OAuthUpsert)
 	if id, ok := f.byProvider[key]; ok {
 		return f.accounts[id], false, nil
 	}
-	// Auto-link by verified email (mirrors the real store).
+	// Auto-link by verified email into an OAuth-only account; refuse a password account
+	// (mirrors the real store).
 	if in.Email != "" {
 		if id, ok := f.emailIndex[strings.ToLower(in.Email)]; ok {
+			if f.accounts[id].PasswordHash != "" {
+				return store.Account{}, false, store.ErrPasswordAccountExists
+			}
 			f.byProvider[key] = id
 			f.providers[id] = append(f.providers[id], in.Provider)
 			return f.accounts[id], false, nil

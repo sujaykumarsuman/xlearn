@@ -102,6 +102,14 @@ describe("Auth screen", () => {
     expect(await screen.findByText(/already registered/i)).toBeInTheDocument();
   });
 
+  it("explains a refused GitHub sign-in onto a password account", async () => {
+    installFetchMock((url) => (url.endsWith("/api/me") ? { status: 401, body: { error: { code: "unauthenticated" } } } : { status: 404 }));
+    renderApp("/xlearn/auth?error=account_exists_password");
+
+    const alert = await screen.findByText(/already uses a password/i);
+    expect(alert).toHaveTextContent(/sign in with your password, then connect github from settings/i);
+  });
+
   it("shows onboarding step 1 and persists the chosen path on Continue", async () => {
     let stepPosted: unknown = null;
     installFetchMock((url, init) => {

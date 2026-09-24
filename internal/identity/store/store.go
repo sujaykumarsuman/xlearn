@@ -38,6 +38,11 @@ var (
 	ErrUsernameTaken = errors.New("identity: username already taken")
 	// ErrConflict is returned when linking a provider identity that already exists.
 	ErrConflict = errors.New("identity: conflict")
+	// ErrPasswordAccountExists is returned by FindOrCreateAccount when a first OAuth sign-in's
+	// email belongs to an account that has a password. That password proves nothing about who
+	// owns the (unverified) email, so the identity is neither auto-linked nor used to create a
+	// duplicate: the owner must sign in with the password and connect the provider from Settings.
+	ErrPasswordAccountExists = errors.New("identity: email belongs to a password account")
 )
 
 // Account is an xLearn user (the parts the HTTP layer needs this sprint).
@@ -121,6 +126,8 @@ type Store interface {
 	// FindOrCreateAccount matches an existing account by (provider, providerUserID)
 	// or, on first sign-in, creates account+oauth_identity+onboarding and writes the
 	// account_created outbox row in one transaction. created reports first sign-in.
+	// A first sign-in whose email matches an OAuth-only account links into it; one whose
+	// email matches a password account fails with ErrPasswordAccountExists.
 	FindOrCreateAccount(ctx context.Context, in OAuthUpsert) (acct Account, created bool, err error)
 	GetAccount(ctx context.Context, id string) (Account, error)
 	// GetAccountByEmail looks up an account case-insensitively (email sign-in). The
@@ -193,11 +200,18 @@ func (s *PgStore) FindOrCreateAccount(ctx context.Context, in OAuthUpsert) (Acco
 		return Account{}, false, err
 	}
 
-	// Auto-link by verified provider email (ADR-0023): if this provider's email already
-	// belongs to an account, attach the new identity to it instead of creating a duplicate
-	// — provider emails are verified, so this safely merges GitHub↔email sign-ups.
+	// Auto-link by verified provider email (ADR-0023 §3, amended 2026-09-24): if this
+	// provider's email already belongs to an OAuth-only account, attach the new identity to
+	// it instead of creating a duplicate: both emails came from a provider that verified
+	// them. A password account is refused. Email sign-up doesn't verify the address, so
+	// whoever registered it may not own it, and linking would sign the real owner into an
+	// account its creator can still open with the password (pre-account hijacking). No
+	// duplicate is created either: email is unique.
 	if in.Email != "" {
 		if acct, err := s.GetAccountByEmail(ctx, in.Email); err == nil {
+			if acct.PasswordHash != "" {
+				return Account{}, false, ErrPasswordAccountExists
+			}
 			if lerr := s.LinkOAuth(ctx, acct.ID, in.Provider, in.ProviderUserID); lerr != nil {
 				if errors.Is(lerr, ErrConflict) {
 					// Raced with a concurrent link of the same identity — re-find the winner.

@@ -49,6 +49,20 @@ Provider emails are verified by the provider, so this safely merges an email sig
 with GitHub" for the same person. Explicit **Connect GitHub** in Settings remains for linking when the
 emails differ.
 
+> **Amended 2026-09-24: auto-link only into OAuth-only accounts.** The reasoning above checked that the
+> *incoming* provider email was verified, but not the *existing* account's email. Email sign-up doesn't
+> verify the address. So an attacker could sign up as `victim@…` with their own password, and the
+> victim's first "Continue with GitHub" would sign them into the attacker's account, which the attacker
+> can still open. This is pre-account hijacking
+> ([USENIX Security 2022](https://arxiv.org/abs/2205.10174)).
+>
+> `FindOrCreateAccount` now auto-links only when the matched account has **no password**. Such an
+> account is OAuth-only, so its email also came from a provider. When the account has a password, it
+> links nothing, creates no duplicate, and returns `ErrPasswordAccountExists`. The callback then
+> redirects to `/auth?error=account_exists_password`, and the SPA tells the user to sign in with their
+> password and connect GitHub from Settings. Unchanged: a returning identity (matched before any email
+> check), Settings link mode (an authenticated session), and links made before this fix.
+
 ## Consequences
 
 - One account can now hold both a password and OAuth identities; the sign-in screen has a Sign in / Sign

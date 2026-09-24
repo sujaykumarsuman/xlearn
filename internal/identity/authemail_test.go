@@ -122,22 +122,3 @@ func TestUnlinkGuardsLastMethod(t *testing.T) {
 		t.Fatalf("unlink status %d, want 204", rec.Code)
 	}
 }
-
-// TestAutoLinkByEmail covers the collision path: an email account, then a GitHub sign-in with
-// the same (verified) email attaches to the existing account instead of creating a duplicate.
-func TestAutoLinkByEmail(t *testing.T) {
-	st := newFakeStore()
-	svc := newTestService(st, nil)
-	if rec := doJSON(t, svc.handleSignup, http.MethodPost, "/auth/signup", map[string]string{"email": "ada@example.com", "password": "hunter2hunter"}, nil, nil); rec.Code != http.StatusOK {
-		t.Fatalf("signup status %d", rec.Code)
-	}
-	before, _ := st.GetAccountByEmail(context.Background(), "ada@example.com")
-
-	acct, created, err := st.FindOrCreateAccount(context.Background(), store.OAuthUpsert{Provider: "github", ProviderUserID: "99", DisplayName: "Ada", Email: "ada@example.com"})
-	if err != nil || created || acct.ID != before.ID {
-		t.Fatalf("auto-link: id=%s created=%v err=%v (want same id %s, created=false)", acct.ID, created, err, before.ID)
-	}
-	if ps, _ := st.ListOAuthProviders(context.Background(), acct.ID); len(ps) != 1 || ps[0] != "github" {
-		t.Fatalf("linked providers = %v, want [github]", ps)
-	}
-}

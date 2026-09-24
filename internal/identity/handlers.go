@@ -127,6 +127,13 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 		DisplayName:    prof.DisplayName,
 		Email:          prof.Email,
 	})
+	if errors.Is(err, store.ErrPasswordAccountExists) {
+		// The email belongs to a password account, which is never auto-linked (ADR-0023 §3,
+		// amended). The owner signs in with the password, then connects from Settings.
+		s.log.Warn("oauth callback: email belongs to a password account; not linking", "provider", provider)
+		s.redirectToAuth(w, r, "account_exists_password")
+		return
+	}
 	if err != nil {
 		s.log.Error("oauth callback: find-or-create account failed", "provider", provider, "err", err)
 		s.redirectToAuth(w, r, "account")
