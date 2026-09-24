@@ -91,9 +91,19 @@ No infra change and no migration.
 
 ## Status
 
-✅ **Done — in local review.** Green: `go vet`, `go test -race ./...`, `sqlc diff`, web typecheck /
-lint / 103 tests. Running on the local docker-compose stack (`DEV_AUTH=1`) for the owner's review;
-land-and-sync only on an explicit go-ahead.
+🚀 **Shipped (`v1.5.1`)**. Reviewed on the local docker-compose stack (`DEV_AUTH=1`) against a fake
+provider, then shipped on the owner's go-ahead. Release path: merged (xlearn#49, `fff530e`) → `v1.5.1`
+tag → deploy built all seven `1.5.1` images → Flux deployed.
+
+**Verified live:**
+- every service logs `v1.5.1`;
+- `/api/v1/healthz` returns 200;
+- `/api/v1/me`, `/api/v1/coach/key` and `POST /api/v1/coach/chat` are session-gated (401);
+- the prod SPA bundle carries the new onboarding and `provider_limited` copy, and the Google key
+  placeholder is gone.
+
+**Green throughout:** `go vet`, `go test -race ./...`, `sqlc diff`, web typecheck / lint / 103 tests /
+build, and CI (go, web, e2e).
 
 ## Notes
 
