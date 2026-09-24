@@ -312,6 +312,8 @@ function oauthErrorMessage(code: string): string {
       return "That sign-in link expired. Please try again.";
     case "link_auth":
       return "Please sign in first, then connect GitHub from Settings.";
+    case "account_exists_password":
+      return "An account with this email already uses a password. Sign in with your password, then connect GitHub from Settings.";
     default:
       return "Something went wrong signing in. Please try again.";
   }

@@ -2,7 +2,9 @@ package store_test
 
 import (
 	"context"
+	"errors"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -199,4 +201,80 @@ func TestStoreIntegration(t *testing.T) {
 			t.Fatalf("outbox row %s still unsent after MarkOutboxSent", mine.EventID)
 		}
 	}
+}
+
+// TestStoreAutoLinkByEmail covers ADR-0023 §3 as amended 2026-09-24: a first OAuth sign-in
+// links by email into an OAuth-only account, but never into a password account (pre-account
+// hijacking), and an identity already linked to a password account still resolves to it.
+func TestStoreAutoLinkByEmail(t *testing.T) {
+	dsn := os.Getenv("XLEARN_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("set XLEARN_TEST_DATABASE_URL to run the identity store integration test")
+	}
+	ctx := context.Background()
+	if err := store.Migrate(ctx, dsn, testLogger()); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("pool: %v", err)
+	}
+	defer pool.Close()
+	st := store.New(pool)
+
+	t.Run("links into an OAuth-only account", func(t *testing.T) {
+		email := "oauth-" + newTestID() + "@example.com"
+		first, created, err := st.FindOrCreateAccount(ctx, store.OAuthUpsert{Provider: "google", ProviderUserID: "g-" + newTestID(), DisplayName: "Ada", Email: email})
+		if err != nil || !created {
+			t.Fatalf("seed OAuth account: created=%v err=%v", created, err)
+		}
+		// Case differs from the stored email: the match is case-insensitive.
+		got, created, err := st.FindOrCreateAccount(ctx, store.OAuthUpsert{Provider: "github", ProviderUserID: "gh-" + newTestID(), DisplayName: "Ada", Email: strings.ToUpper(email)})
+		if err != nil || created || got.ID != first.ID {
+			t.Fatalf("auto-link: id=%s created=%v err=%v (want %s, created=false)", got.ID, created, err, first.ID)
+		}
+		if ps, _ := st.ListOAuthProviders(ctx, first.ID); len(ps) != 2 {
+			t.Fatalf("linked providers = %v, want google + github", ps)
+		}
+	})
+
+	t.Run("refuses a password account", func(t *testing.T) {
+		email := "pw-" + newTestID() + "@example.com"
+		squatted, err := st.CreateEmailAccount(ctx, email, "$2a$10$attacker-chosen-hash", "pw")
+		if err != nil {
+			t.Fatalf("CreateEmailAccount: %v", err)
+		}
+		in := store.OAuthUpsert{Provider: "github", ProviderUserID: "gh-" + newTestID(), DisplayName: "Victim", Email: email}
+		if _, _, err := st.FindOrCreateAccount(ctx, in); !errors.Is(err, store.ErrPasswordAccountExists) {
+			t.Fatalf("FindOrCreateAccount err = %v, want ErrPasswordAccountExists", err)
+		}
+		if ps, _ := st.ListOAuthProviders(ctx, squatted.ID); len(ps) != 0 {
+			t.Fatalf("GitHub was linked into the password account: %v", ps)
+		}
+		// Nothing was stored for the identity: a retry is refused the same way rather than
+		// resolving to some account.
+		if _, _, err := st.FindOrCreateAccount(ctx, in); !errors.Is(err, store.ErrPasswordAccountExists) {
+			t.Fatalf("retry err = %v, want ErrPasswordAccountExists", err)
+		}
+		if acct, err := st.GetAccountByEmail(ctx, email); err != nil || acct.ID != squatted.ID {
+			t.Fatalf("email now resolves to %s (err %v), want the original %s", acct.ID, err, squatted.ID)
+		}
+	})
+
+	t.Run("returning linked identity on a password account", func(t *testing.T) {
+		email := "linked-" + newTestID() + "@example.com"
+		acct, err := st.CreateEmailAccount(ctx, email, "$2a$10$owner-hash", "linked")
+		if err != nil {
+			t.Fatalf("CreateEmailAccount: %v", err)
+		}
+		in := store.OAuthUpsert{Provider: "github", ProviderUserID: "gh-" + newTestID(), DisplayName: "Owner", Email: email}
+		// Connected from Settings (link mode), then a later "Continue with GitHub".
+		if err := st.LinkOAuth(ctx, acct.ID, in.Provider, in.ProviderUserID); err != nil {
+			t.Fatalf("LinkOAuth: %v", err)
+		}
+		got, created, err := st.FindOrCreateAccount(ctx, in)
+		if err != nil || created || got.ID != acct.ID {
+			t.Fatalf("returning sign-in: id=%s created=%v err=%v (want %s, created=false)", got.ID, created, err, acct.ID)
+		}
+	})
 }

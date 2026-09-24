@@ -111,49 +111,144 @@ func TestHandleStartUnknownAndUnconfigured(t *testing.T) {
 	}
 }
 
+// oauthSignIn drives a full GitHub start → callback against the fake provider (whose user
+// is id 4242, ada@example.com) and returns the callback response.
+func oauthSignIn(t *testing.T, svc *Service) *httptest.ResponseRecorder {
+	t.Helper()
+	startRec := httptest.NewRecorder()
+	startReq := httptest.NewRequest(http.MethodPost, "/auth/github/start", nil)
+	startReq.SetPathValue("provider", "github")
+	svc.handleStart(startRec, startReq)
+	loc, _ := url.Parse(startRec.Header().Get("Location"))
+	state := loc.Query().Get("state")
+	txCookie := findCookie(startRec.Result().Cookies(), oauthTxCookieName)
+	if txCookie == nil || state == "" {
+		t.Fatalf("start did not produce tx cookie/state")
+	}
+
+	// callback with matching state + a code, carrying the tx cookie
+	cbRec := httptest.NewRecorder()
+	cbReq := httptest.NewRequest(http.MethodGet, "/auth/github/callback?code=abc&state="+state, nil)
+	cbReq.SetPathValue("provider", "github")
+	cbReq.AddCookie(txCookie)
+	svc.handleCallback(cbRec, cbReq)
+	if cbRec.Code != http.StatusFound {
+		t.Fatalf("callback status %d, want 302; body=%s", cbRec.Code, cbRec.Body.String())
+	}
+	return cbRec
+}
+
+// sessionAccount returns the account the callback's session cookie signs in to ("" if none).
+func sessionAccount(t *testing.T, st *fakeStore, rec *httptest.ResponseRecorder) string {
+	t.Helper()
+	c := findCookie(rec.Result().Cookies(), auth.SessionCookieName)
+	if c == nil {
+		return ""
+	}
+	sess, err := st.GetValidSession(context.Background(), c.Value)
+	if err != nil {
+		t.Fatalf("session cookie has no valid session: %v", err)
+	}
+	return sess.AccountID
+}
+
 func TestOAuthRoundTrip(t *testing.T) {
-	for _, provider := range []string{"github"} {
-		t.Run(provider, func(t *testing.T) {
-			st := newFakeStore()
-			svc := newTestService(st, nil)
-			oauth := fakeOAuth(t)
-			wireFakeProviders(svc, oauth.URL)
+	st := newFakeStore()
+	svc := newTestService(st, nil)
+	wireFakeProviders(svc, fakeOAuth(t).URL)
 
-			// start → capture tx cookie + state
-			startRec := httptest.NewRecorder()
-			startReq := httptest.NewRequest(http.MethodPost, "/auth/"+provider+"/start", nil)
-			startReq.SetPathValue("provider", provider)
-			svc.handleStart(startRec, startReq)
-			loc, _ := url.Parse(startRec.Header().Get("Location"))
-			state := loc.Query().Get("state")
-			txCookie := findCookie(startRec.Result().Cookies(), oauthTxCookieName)
-			if txCookie == nil || state == "" {
-				t.Fatalf("start did not produce tx cookie/state")
-			}
+	cbRec := oauthSignIn(t, svc)
+	if got := cbRec.Header().Get("Location"); got != "http://localhost:8080/xlearn/auth" {
+		t.Fatalf("callback redirect = %q", got)
+	}
+	if !hasCookie(cbRec.Result().Cookies(), auth.SessionCookieName) {
+		t.Fatalf("callback did not set session cookie")
+	}
+	if len(st.accounts) != 1 {
+		t.Fatalf("expected 1 account created, got %d", len(st.accounts))
+	}
+	if len(st.outbox) != 1 || st.outbox[0].Subject != "xlearn.identity.account_created" {
+		t.Fatalf("expected account_created outbox row, got %+v", st.outbox)
+	}
+}
 
-			// callback with matching state + a code, carrying the tx cookie
-			cbRec := httptest.NewRecorder()
-			cbReq := httptest.NewRequest(http.MethodGet, "/auth/"+provider+"/callback?code=abc&state="+state, nil)
-			cbReq.SetPathValue("provider", provider)
-			cbReq.AddCookie(txCookie)
-			svc.handleCallback(cbRec, cbReq)
+// A first GitHub sign-in whose email matches an OAuth-only account links into it: both emails
+// were verified by a provider (ADR-0023 §3).
+func TestCallbackAutoLinksOAuthOnlyAccount(t *testing.T) {
+	st := newFakeStore()
+	svc := newTestService(st, nil)
+	wireFakeProviders(svc, fakeOAuth(t).URL)
+	existing, _, err := st.FindOrCreateAccount(context.Background(), store.OAuthUpsert{Provider: "google", ProviderUserID: "g-1", DisplayName: "Ada", Email: "Ada@Example.com"})
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 
-			if cbRec.Code != http.StatusFound {
-				t.Fatalf("callback status %d, want 302; body=%s", cbRec.Code, cbRec.Body.String())
-			}
-			if got := cbRec.Header().Get("Location"); got != "http://localhost:8080/xlearn/auth" {
-				t.Fatalf("callback redirect = %q", got)
-			}
-			if !hasCookie(cbRec.Result().Cookies(), auth.SessionCookieName) {
-				t.Fatalf("callback did not set session cookie")
-			}
-			if len(st.accounts) != 1 {
-				t.Fatalf("expected 1 account created, got %d", len(st.accounts))
-			}
-			if len(st.outbox) != 1 || st.outbox[0].Subject != "xlearn.identity.account_created" {
-				t.Fatalf("expected account_created outbox row, got %+v", st.outbox)
-			}
-		})
+	cbRec := oauthSignIn(t, svc)
+	if got := cbRec.Header().Get("Location"); got != "http://localhost:8080/xlearn/auth" {
+		t.Fatalf("callback redirect = %q, want a plain sign-in", got)
+	}
+	if got := sessionAccount(t, st, cbRec); got != existing.ID {
+		t.Fatalf("signed in to %q, want the existing account %q", got, existing.ID)
+	}
+	if len(st.accounts) != 1 || len(st.outbox) != 1 {
+		t.Fatalf("auto-link created a duplicate: %d accounts, %d outbox rows", len(st.accounts), len(st.outbox))
+	}
+	if ps, _ := st.ListOAuthProviders(context.Background(), existing.ID); len(ps) != 2 {
+		t.Fatalf("linked providers = %v, want [google github]", ps)
+	}
+}
+
+// Pre-account hijacking: an attacker signs up with the victim's email + their own password; the
+// victim's later "Continue with GitHub" must NOT sign in to (or link into) that account, and
+// must not create a second account for the same email.
+func TestCallbackRefusesPasswordAccount(t *testing.T) {
+	st := newFakeStore()
+	svc := newTestService(st, nil)
+	wireFakeProviders(svc, fakeOAuth(t).URL)
+	if rec := doJSON(t, svc.handleSignup, http.MethodPost, "/auth/signup", map[string]string{"email": "ada@example.com", "password": "attacker-pass"}, nil, nil); rec.Code != http.StatusOK {
+		t.Fatalf("signup status %d", rec.Code)
+	}
+	squatted, _ := st.GetAccountByEmail(context.Background(), "ada@example.com")
+	outboxBefore := len(st.outbox)
+
+	cbRec := oauthSignIn(t, svc)
+	if got := cbRec.Header().Get("Location"); got != "http://localhost:8080/xlearn/auth?error=account_exists_password" {
+		t.Fatalf("callback redirect = %q, want error=account_exists_password", got)
+	}
+	if hasCookie(cbRec.Result().Cookies(), auth.SessionCookieName) {
+		t.Fatal("refused link must not set a session cookie")
+	}
+	if ps, _ := st.ListOAuthProviders(context.Background(), squatted.ID); len(ps) != 0 {
+		t.Fatalf("GitHub was linked into the password account: %v", ps)
+	}
+	if _, ok := st.byProvider["github|4242"]; ok {
+		t.Fatal("GitHub identity was stored despite the refusal")
+	}
+	if len(st.accounts) != 1 || len(st.outbox) != outboxBefore {
+		t.Fatalf("refusal created an account: %d accounts, %d new outbox rows", len(st.accounts), len(st.outbox)-outboxBefore)
+	}
+}
+
+// A password account that connected GitHub from Settings keeps signing in with GitHub: the
+// identity match wins before any email check.
+func TestCallbackReturningLinkedUserWithPassword(t *testing.T) {
+	st := newFakeStore()
+	svc := newTestService(st, nil)
+	wireFakeProviders(svc, fakeOAuth(t).URL)
+	if rec := doJSON(t, svc.handleSignup, http.MethodPost, "/auth/signup", map[string]string{"email": "ada@example.com", "password": "hunter2hunter"}, nil, nil); rec.Code != http.StatusOK {
+		t.Fatalf("signup status %d", rec.Code)
+	}
+	acct, _ := st.GetAccountByEmail(context.Background(), "ada@example.com")
+	if err := st.LinkOAuth(context.Background(), acct.ID, "github", "4242"); err != nil {
+		t.Fatalf("link: %v", err)
+	}
+
+	cbRec := oauthSignIn(t, svc)
+	if got := cbRec.Header().Get("Location"); got != "http://localhost:8080/xlearn/auth" {
+		t.Fatalf("callback redirect = %q, want a plain sign-in", got)
+	}
+	if got := sessionAccount(t, st, cbRec); got != acct.ID {
+		t.Fatalf("signed in to %q, want the linked account %q", got, acct.ID)
 	}
 }
 
