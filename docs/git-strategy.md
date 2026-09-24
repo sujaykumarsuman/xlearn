@@ -32,10 +32,11 @@ Two modes exist on the platform; xLearn adopts them in sequence.
 | Phase | Mode | Image tag | ImagePolicy | Trigger |
 |-------|------|-----------|-------------|---------|
 | **v1 (pre-1.0)** | **Build-semver auto-deploy** (like `projects-hub`/`landscape`) | `0.<ci-run>.x` | `>=0.1.0` | **push/merge to `main`** |
-| **1.0+ ← current** | **Release-semver tags** (like `airlift`) | `vX.Y.Z` → `X.Y.Z` | `>=1.0.0` | **git tag `vX.Y.Z`** |
+| **1.0+ ← current** | **Release-semver tags** (like `airlift`) | `vX.Y.Z` → `X.Y.Z` | `>=1.0.0 <2.0.0` | **git tag `vX.Y.Z`** |
 
 **Status: xLearn is in the 1.0+ phase as of `v1.0.0` (S12, M7).** `deploy.yml` triggers on a release tag,
-and the infra `ImagePolicy` ranges are `>=1.0.0` ([ADR-0021](adr/0021-release-tagging-and-api-versioning.md)).
+and the infra `ImagePolicy` ranges are `>=1.0.0 <2.0.0`, bounded to the live major
+([ADR-0021](adr/0021-release-tagging-and-api-versioning.md); [major-line guard](#major-line-guard-release-line)).
 The tag↔range flip is coordinated: land the repo changes → tag `vX.Y.Z` (build the images) → **then** flip
 the infra range, or auto-deploy stalls with no matching image.
 
@@ -46,14 +47,38 @@ the infra range, or auto-deploy stalls with no matching image.
   Tags are annotated; GitHub release notes are generated. `infra` image-automation switches its range to
   `>=1.0.0`. This ADR-0009 switch is a deliberate milestone, recorded in `docs/vN/status.md`.
 
+### Major-line guard (`.release-line`)
+
+xLearn stays on **1.x until the v2 GA** (D32). Flux always deploys the highest version in range, so
+a stray major tag would ship the whole fleet, and no older-major tag could deploy after it. For
+example, parallel sessions share tags, so one could push a `v2.0.0`. Two guards prevent this:
+
+- **`.release-line`** (repo root) holds the live major, currently `1`. The first `deploy.yml` job
+  fails the run **before any image is built** in two cases:
+  - a stable tag's major differs from `.release-line`;
+  - the tag isn't `vX.Y.Z[-prerelease]`.
+
+  Prereleases (`vX.Y.Z-rc.N`) skip the major check and still build. No `ImagePolicy` range selects a
+  prerelease, so they never auto-deploy.
+- **Bounded range:** every infra `xlearn-*` `ImagePolicy` is `>=1.0.0 <2.0.0`. A tag runs the
+  `deploy.yml` of the commit it points at, so this is the backstop for tags on commits that predate the
+  guard.
+
+**GA procedure (1.x → 2.0):**
+
+1. Set `.release-line` to `2` (PR to `main`).
+2. Merge the infra range `>=1.0.0 <3.0.0` **before** tagging `v2.0.0`.
+3. Optionally tag `v2.0.0-rc.N` first to build candidate images. They won't auto-deploy.
+4. Tag `v2.0.0`.
+
 ### Release train
 
 ```
 branch (feat/…) ──PR──▶ main ──CI(ci.yml)──▶ green   (no deploy — main is build-only from 1.0)
                                    │
-                     git tag vX.Y.Z ──deploy.yml──▶ build all xlearn-<svc> images @ X.Y.Z ▶ GHCR
+                     git tag vX.Y.Z ──deploy.yml──▶ .release-line guard ▶ build all xlearn-<svc> images @ X.Y.Z ▶ GHCR
                                    │
-                    Flux image-automation (range >=1.0.0) bumps infra/apps/xlearn-<svc>.yaml ▶ commit
+                    Flux image-automation (range >=1.0.0 <2.0.0) bumps infra/apps/xlearn-<svc>.yaml ▶ commit
                                    │
                          Flux helm-controller upgrades HelmRelease ▶ prod
 ```

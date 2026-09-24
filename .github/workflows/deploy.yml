@@ -3,7 +3,7 @@ name: deploy
 # Publish service images to GHCR on a RELEASE TAG (1.0+). A `git tag vX.Y.Z` builds all
 # seven xlearn-<svc> images tagged X.Y.Z — the reusable build-push.yml strips the leading
 # `v` (VERSION carries the raw tag) — and Flux image-automation (ImagePolicy range
-# >=1.0.0) picks them up and deploys them to the k3s cluster (sujaykumarsuman/infra).
+# >=1.0.0 <2.0.0) picks them up and deploys them to the k3s cluster (sujaykumarsuman/infra).
 #
 # This replaces the pre-1.0 build-semver auto-deploy from `main`: at 1.0 the deploy
 # trigger moved from "push to main" to "push a release tag" (ADR-0009 / ADR-0021,
@@ -15,7 +15,48 @@ on:
     tags: ["v*"]
 
 jobs:
+  # Major-line guard (D32): refuse to build when a stable tag's major isn't the live line
+  # in .release-line. Flux takes the highest version in range, so a stray v2.0.0 would
+  # redeploy the fleet and strand 1.x. Every build job `needs:` this, so a bad tag fails
+  # before any image is pushed. Prereleases (vX.Y.Z-rc.N) skip the major check: no
+  # ImagePolicy range selects a prerelease, so they build but never auto-deploy.
+  # Moving to a new major: docs/git-strategy.md ("Major-line guard").
+  release-line:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .release-line
+          sparse-checkout-cone-mode: false
+      - name: Tag major must match .release-line
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          line=""
+          if [[ -f .release-line ]]; then line="$(tr -d '[:space:]' < .release-line)"; fi
+          if [[ ! "$line" =~ ^[0-9]+$ ]]; then
+            echo "::error::.release-line must hold the live major version (e.g. 1); got '${line}'"
+            exit 1
+          fi
+          re='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$'
+          if [[ ! "$TAG" =~ $re ]]; then
+            echo "::error::'${TAG}' is not a release tag (vX.Y.Z or vX.Y.Z-<prerelease>)"
+            exit 1
+          fi
+          major="${BASH_REMATCH[1]}"
+          if [[ -n "${BASH_REMATCH[4]}" ]]; then
+            echo "::notice::${TAG} is a prerelease: it builds, but no ImagePolicy selects it, so it won't auto-deploy"
+          elif [[ "$major" != "$line" ]]; then
+            echo "::error::${TAG} is major ${major} but .release-line is ${line}; refusing to build. See docs/git-strategy.md (Major-line guard)."
+            exit 1
+          else
+            echo "${TAG} is on release line ${line}"
+          fi
+
   gateway:
+    needs: release-line
     # The reusable workflow pushes to GHCR, so the calling job must grant packages: write
     # (this repo's default workflow token is read-only). Scoped per job.
     permissions:
@@ -31,6 +72,7 @@ jobs:
         VERSION=${{ github.ref_name }}
 
   identity:
+    needs: release-line
     permissions:
       contents: read
       packages: write
@@ -42,6 +84,7 @@ jobs:
         VERSION=${{ github.ref_name }}
 
   curriculum:
+    needs: release-line
     permissions:
       contents: read
       packages: write
@@ -53,6 +96,7 @@ jobs:
         VERSION=${{ github.ref_name }}
 
   practice:
+    needs: release-line
     permissions:
       contents: read
       packages: write
@@ -64,6 +108,7 @@ jobs:
         VERSION=${{ github.ref_name }}
 
   review:
+    needs: release-line
     permissions:
       contents: read
       packages: write
@@ -75,6 +120,7 @@ jobs:
         VERSION=${{ github.ref_name }}
 
   assessment:
+    needs: release-line
     permissions:
       contents: read
       packages: write
@@ -86,6 +132,7 @@ jobs:
         VERSION=${{ github.ref_name }}
 
   coach:
+    needs: release-line
     permissions:
       contents: read
       packages: write
