@@ -1,6 +1,6 @@
 # ADR-0030 — Runner technology (sandbox) & host/cluster hardening
 
-- **Status:** Proposed. The mechanism spike (P0–P3) is **pending** and is a build-plan gate before M3. **§5 amended by [ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) (T7, 2026-09-24):** NATS nkeys roll out server-first with fine ACLs in the same step, and the kubelet reservation joins the October host window (§7).
+- **Status:** Proposed. The mechanism spike (P0–P3) is **pending** and is a build-plan gate before M3. **Kept Proposed at the v2 build-plan sign-off (2026-09-24, BP2):** it is accepted at the **sandbox-spike GO** (spike week Mon 2026-10-12 → Fri 2026-10-16: sprints [spk-01](../v2/sprints/sprint-spk-01.md), P0–P2, and [spk-02](../v2/sprints/sprint-spk-02.md), P3 plus the image-volume spike), as task 1 of sprint [m3-03](../v2/sprints/sprint-m3-03.md), before M3. **§5 amended by [ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) (T7, 2026-09-24; ADR-0035 Accepted 2026-09-24):** NATS nkeys roll out server-first with fine ACLs in the same step, and the kubelet reservation joins the October host window (§7).
 - **Date:** 2026-09-24
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0029](0029-judge-contract-and-learning-signal.md) (the runner contract this satisfies),

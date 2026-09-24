@@ -1,6 +1,6 @@
 # ADR-0026 — Per-course extensibility: course manifests, capability registries, one learning-signal waist
 
-- **Status:** Proposed
+- **Status:** Accepted (2026-09-24, v2 build-plan sign-off)
 - **Date:** 2026-09-24
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0003](0003-service-decomposition.md), [0005](0005-data-ownership-and-migrations.md),

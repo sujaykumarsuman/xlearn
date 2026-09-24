@@ -1,6 +1,6 @@
 # ADR-0021 — Release tagging, API v1, and the 1.0 hardening cut
 
-- **Status:** Accepted. **Refined by [ADR-0034](0034-v2-release-labelling-gating-and-rollback.md) (v2, Proposed):** bounded ImagePolicy ranges (`<2.0.0` until GA), a `.release-line` CI guard, `-rc` prereleases and the GA range flip; the API stays `/api/v1`.
+- **Status:** Accepted. **Refined by [ADR-0034](0034-v2-release-labelling-gating-and-rollback.md) (v2, Accepted 2026-09-24; see [Amended 2026-09-24 by ADR-0034](#amended-2026-09-24-by-adr-0034)):** bounded ImagePolicy ranges (`<2.0.0` until GA), a `.release-line` CI guard, `-rc` prereleases and the GA range flip; the API stays `/api/v1`.
 - **Date:** 2026-09-21
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0009](0009-deployment-and-gitops.md) (deploy/GitOps — this refines its versioning section), [0004](0004-inter-service-comms-and-events.md), [0005](0005-data-ownership-and-migrations.md), [0006](0006-authn-authz.md), [0018](0018-progress-projection-grain-and-rebuild.md)
@@ -31,6 +31,31 @@ record. This ADR captures the deliberate calls.
   and pushes all seven images as `1.0.0`; (c) **only then** flip the infra ranges to `>=1.0.0` and merge.
   Flipping the range before a `1.0.0` image exists would leave every policy matching nothing (deploy
   stalls at `0.1.27`).
+
+#### Amended 2026-09-24 by ADR-0034
+
+[ADR-0034](0034-v2-release-labelling-gating-and-rollback.md) §1, accepted at the v2 build-plan
+sign-off, refines §1. It is not superseded, and the text above stays as the v1 record.
+[`../git-strategy.md`](../git-strategy.md) holds the operational version.
+
+- **Bounded ranges.** Every fleet `xlearn-*` ImagePolicy is `>=1.0.0 <2.0.0` (infra#29, 2026-09-24)
+  until the v2.0 GA widens it to `>=1.0.0 <3.0.0`. A `.release-line` file (`1` until the GA PR sets
+  `2`) and a first `deploy.yml` job refuse any stable tag whose major differs, before any image is
+  built (xlearn#53). The check reads the file at the tagged commit.
+- **"Tag, then flip" becomes a table** (ADR-0034 §1.4). Ordinary releases never touch a range:
+  - **a new policy or a raised floor** (this section's 1.0 flip; a new service such as judge): tag
+    first, then merge;
+  - **a superset widening** (the GA; a runner or evalpack major): run the pre-flip check, merge, then
+    tag;
+  - **a narrowing**: only as an R-b rollback.
+- **`-rc` prereleases.** `vX.Y.Z-rc.N` tags build images that never auto-deploy, because Flux's
+  semver ranges skip prereleases.
+- **Labels are GA flips.** v2 milestones ship dark as `1.x` minors. `v2.0.0` flips the v2 defaults for
+  the owner; `v2.1.0` is the interviewer GA. From `v2.0.0` on, the minor moves only at a GA flip.
+- **Every fleet service still rebuilds on a tag.** That is seven today, and judge becomes the 8th
+  `deploy.yml` job at M3-1. The runner (`runner-v*`) and the eval pack have their own tag streams.
+- **The API stays `/api/v1`** for all of 2.x, additive only (§2 unchanged). DSA alias routes stay for
+  at least one release after the SPA stops calling them. `/api/v2` comes only with an external client.
 
 ### 2. API versioning: `/xlearn/api/v1` as an alias
 

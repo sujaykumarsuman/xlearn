@@ -1,6 +1,6 @@
 # ADR-0009 — Deployment & GitOps
 
-- **Status:** Accepted **Refined by [ADR-0034](0034-v2-release-labelling-gating-and-rollback.md) (v2, Proposed):** bounded ImagePolicy ranges and the GA range flip, `runner-v*` and evalpack release streams, and rollback via kill switch → narrowed ImagePolicy → revert + patch tag → snapshot restore (pinning a tag in `infra` doesn't roll back under image automation).
+- **Status:** Accepted. **Refined by [ADR-0034](0034-v2-release-labelling-gating-and-rollback.md) (v2, Accepted 2026-09-24; see [Amended 2026-09-24 by ADR-0034](#amended-2026-09-24-by-adr-0034)):** bounded ImagePolicy ranges and the GA range flip, `runner-v*` and evalpack release streams, and rollback via kill switch → narrowed ImagePolicy → revert + patch tag → snapshot restore (pinning a tag in `infra` doesn't roll back under image automation).
 - **Date:** 2026-09-20
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0002](0002-monorepo-vs-multi-repo.md), [0004](0004-inter-service-comms-and-events.md), [0005](0005-data-ownership-and-migrations.md), [0006](0006-authn-authz.md), [0007](0007-ai-coach-byo-key-and-secrets.md)
@@ -85,6 +85,46 @@ infra/
 - **Metrics/tracing:** no Prometheus/OTel stack exists on the platform yet → **out of scope for v1**;
   recorded as a known gap. Add an OTel collector + metrics later if the node grows (would be a new ADR
   + infra addition).
+
+### Amended 2026-09-24 by ADR-0034
+
+[ADR-0034](0034-v2-release-labelling-gating-and-rollback.md) §1, §4 and §5, accepted at the v2
+build-plan sign-off, refine **Versioning** and **Environments & promotion** above. The text above stays
+as the v1 record; [`../git-strategy.md`](../git-strategy.md) is the operational version.
+
+- **Versioning (the fleet).** Release tags `vX.Y.Z` (ADR-0021) build every fleet image. That is
+  8 images once `xlearn-judge` joins as the 8th `deploy.yml` job (M3-1).
+  - Every fleet ImagePolicy is **bounded to the live major**: `>=1.0.0 <2.0.0` until the v2.0 GA
+    (infra#29), then `>=1.0.0 <3.0.0`.
+  - A `.release-line` check in `deploy.yml` refuses to build a stable tag whose major differs
+    (xlearn#53).
+  - `-rc.N` prereleases build but never deploy.
+- **Two more release streams**, each with its own range `>=1.0.0 <2.0.0`, where a major is a
+  contract break:
+  - **`runner-v*`** tags, built by a separate `runner-release.yml`. The runner has its own Flux
+    Kustomization after `sandbox-guards` and a 2nd ImageUpdateAutomation (`update.path: ./runner`).
+  - **Evalpack `v1.x`** tags in the private `xlearn-evalpack` repo. Its marker sits on judge's
+    image-volume `reference:`.
+- **Range changes have one fixed order each** (ADR-0034 §1.4):
+  - a new policy or a raised floor: tag first, then merge (image before policy);
+  - a superset widening: pre-flip check, merge, then tag;
+  - a narrowing is only ever an R-b rollback.
+- **Rollback, fastest first** (ADR-0034 §4). **Pinning a tag in `infra/apps/…` doesn't roll back:**
+  image automation rewrites the marked line within about a minute. The ladder is:
+  - **R-a:** the env kill switch;
+  - **R-b:** narrow the ImagePolicy, never below the rollback floor;
+  - **R-c:** revert plus a patch tag (the default);
+  - **R-d:** the Hostinger snapshot, restored only by the §4.2 procedure (pin git back first; re-run
+    later erases).
+- **Environments & promotion.** **No `xlearn-staging` in v2** (ADR-0034 §5): it would break the
+  memory-sum rule and couldn't host the runner. The substitutes are:
+  - compose at prod parity;
+  - a laptop k3d rehearsal;
+  - `-rc` images;
+  - cohort dark launch on prod (T-2 env and the T-3 `account.role` cohort).
+
+  Revisit when a second node exists, or after the v3 opening once there are more than about 10 active
+  learners and a contract migration touches their data.
 
 ## Consequences
 

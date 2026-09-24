@@ -6,7 +6,7 @@
 
 # T1: content and data model (authored content vs per-user data, course-pluggable)
 
-> Builds on ADR-0026 and the T0 frame, and on ADRs 0005, 0012, 0018, 0024 and 0025. Decided in [ADR-0027](../../adr/0027-content-evalpack-and-user-data-model.md) (Proposed).
+> Builds on ADR-0026 and the T0 frame, and on ADRs 0005, 0012, 0018, 0024 and 0025. Decided in [ADR-0027](../../adr/0027-content-evalpack-and-user-data-model.md) (Accepted 2026-09-24).
 >
 > **(inferred)** marks reasoning that I did not read in a file or doc. This document replaces the T1 draft. §16 lists every change made in response to the two critiques. The critics' v1 file:line claims were re-checked in this session (see the appendix).
 

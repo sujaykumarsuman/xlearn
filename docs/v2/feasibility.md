@@ -1,16 +1,20 @@
 # xLearn v2 — research, feasibility & design
 
-> **Status:** all topics settled (T0–T7, 2026-09-24) · **next:** the build-plan session, using [rollout-plan.md](rollout-plan.md) · **Started:** 2026-09-23 · **Owner:** @sujaykumarsuman
+> **Status:** planning complete; build plan in [`docs/v2/build-plan.md`](build-plan.md) (all topics settled T0–T7, 2026-09-24; build-plan session 2026-09-24, D36–D39; order and gates from [rollout-plan.md](rollout-plan.md)) · **Started:** 2026-09-23 · **Owner:** @sujaykumarsuman
 > **Scope:** research + feasibility + design only — **no build, no deploy, no `../infra` change**.
-> This doc grows one section per settled topic; a later session turns it into the v2 build plan,
+> This doc grows one section per settled topic; the build-plan session (2026-09-24) turned it into the v2 build plan,
 > sprints and prompts (mirroring [`../v1/`](../v1/)). ADR drafts for load-bearing calls live in
-> [`../adr/`](../adr/) (**0026+**, since 0025 is the v1.5.0 profile-URL ADR; `Proposed` until signed off).
+> [`../adr/`](../adr/) (**0026+**, since 0025 is the v1.5.0 profile-URL ADR). **Signed off 2026-09-24 (D37):** 0026–0029 and 0033–0035 are Accepted; 0030, 0031 and 0032 stay Proposed until their spikes report.
 > Detailed per-topic research lives in [`research/`](research/). Appendices cite `scratchpad/…` files (models, critiques, source copies): those are the planning session's uncommitted working files and are not in the repo.
 
 ## Decisions log (newest first)
 
 | # | Date | Topic | Decision | ADR |
 |---|------|-------|----------|-----|
+| D39 | 2026-09-24 | Build plan | **Calendar (BP4; tentative, owner-booked).** **H0 reboot Fri 2026-09-25** (MI-0). **Spike week Mon 2026-10-12 → Fri 2026-10-16:** the sandbox mechanism spike P0–P3 plus the eval-pack image-volume spike on a throwaway multipass/k3s, plus the WIF spike (≤ ½ day) if it fits, else before M4. **October host window Sat 2026-10-24** (MI-11): the host sandbox block, the L23 kubelet args and pid limits, and the k3s/CNPG bumps, batched with MI-11a limit hygiene. **S6** any time the owner is present, before the M6a design freeze. **GA snapshot** at the `v2.0.0` tag. Owner-gated items are **calendar events, not sprints**, but a session may prepare an event (runbook, scripts, PRs) as a sprint. The spike go-ahead (D23) is still the owner's call at the event. | — |
+| D38 | 2026-09-24 | Build plan | **Artboards (BP3): agents draft all ~30 v2 boards, AB01–AB30**, including the 5 heroes ★ (AB04, AB07, AB16, AB19, AB30). The owner only reviews and approves. Boards are static HTML on `design-system/theme.css` under `design-system/screens/v2/`. They are preview-only and never shipped; v1's `.dc.html` boards are references. Each milestone's boards are drafted in a **design sprint** (`ds-<milestone>-NN`) and **frozen (owner-approved) before that milestone's first UI sprint**, per the [rollout-plan §9](rollout-plan.md#9-artboards-by-milestone) freeze table. A design sprint ends by opening a PR and **stopping for owner review**; nothing merges without explicit owner approval. This replaces rollout §9's hybrid production (the owner designing the heroes in Claude Design) and the 15–25 owner design hours in its §6 and §8; only review time is left. | — |
+| D37 | 2026-09-24 | Build plan | **ADR sign-off (BP2).** ADRs [0026](../adr/0026-per-course-extensibility-model.md), [0027](../adr/0027-content-evalpack-and-user-data-model.md), [0028](../adr/0028-object-storage-and-backups.md), [0029](../adr/0029-judge-contract-and-learning-signal.md), [0033](../adr/0033-invite-only-admission-and-owner-admin.md), [0034](../adr/0034-v2-release-labelling-gating-and-rollback.md) and [0035](../adr/0035-v2-operations-nats-auth-limits-capacity.md) → **Accepted (2026-09-24)**. Their amendments are folded into the ADRs they amend as dated "Amended 2026-09-24" sections: 0006, 0009, 0014, 0016, 0021, 0023 §2, 0024, 0027 §3/§6 and 0028 §4. **Three stay Proposed until their spikes report**, and each acceptance is a task in the sprint that consumes the result:<ul><li>[0030](../adr/0030-runner-technology-and-host-hardening.md) at the sandbox-spike GO, before M3;</li><li>[0031](../adr/0031-platform-ai-and-two-tier-keys.md) at the WIF spike, before M4;</li><li>[0032](../adr/0032-realtime-ai-mock-interviewer.md) at S6, before the M6a design freeze.</li></ul>ADR-0007's amendments by 0031 and 0032 stay Proposed with them. `docs/git-strategy.md` is rewritten for v2: rollback R-a → R-d, `-rc`, the runner and evalpack streams, range order, image before policy, ACL PR before a consumer. | [0026](../adr/0026-per-course-extensibility-model.md)–[0029](../adr/0029-judge-contract-and-learning-signal.md) · [0033](../adr/0033-invite-only-admission-and-owner-admin.md)–[0035](../adr/0035-v2-operations-nats-auth-limits-capacity.md) |
+| D36 | 2026-09-24 | Build plan | **Scaffold everything now (BP1).** Write full sprint plans plus self-contained prompts for every v2.0 sprint and every v2.1 sprint (M6a, M6b), plus M5 (a later 2.x minor). **Spikes** get plans and prompts too. M6c (v2.2) gets plan-outline cards only, with no prompt. Sprint ids are milestone-scoped (`mi-`, `m1-` … `m6b-`, `p-`, `l-`, `spk-`, `ds-<milestone>-`), in `docs/v2/sprints/sprint-<id>.md` and `docs/v2/prompts/prompt-<id>.md`. One sprint is one focused session. Every task names its repo (X, I, H, E, O); every sprint lists its entry gates as checkboxes and states its release action. | — |
 | D35 | 2026-09-24 | T7 | **v2 audience: owner-only use; real learners not before v3.** The invite flow and the whole learner gate **L** (admission, acceptance, privacy notice, 18+, region, erase, the `tester` role) **stay in v2 scope**, ship, and are exercised by the owner and testers. An invite round-trip is rehearsed on production with a tester, then production returns to `SIGNUP_MODE=closed`. Inviting real users ("the opening") is **the owner's choice, planned for v3**, not a technical limit of v2. **Opening gates** (for v3): MI-5b live; alerting revisited (D34); `SEAT_CAP` re-sized from ≥ 2 weeks of M4 data; privacy notice and erase live; `SIGNUP_MODE=invite`; open signup (D21) or `SEAT_CAP` > 40 (a T7 threshold) requires R2. **v2.0 GA = MI + M1–M4 + pilot + L, complete for the owner.** D6's content becomes the scope of the **v2.x line**, delivered in waves; `v2.0.0` doesn't wait for it. | [0033](../adr/0033-invite-only-admission-and-owner-admin.md) · [0034](../adr/0034-v2-release-labelling-gating-and-rollback.md) |
 | D34 | 2026-09-24 | T7 | **No alerting in v2.** No push channel, healthchecks.io, host-check timer, opscheck CronJobs, Flux Alerts, or metrics or logs stack. The owner monitors with **landscape and kubescope**, plus `host-verify --cluster` after host changes. **Accepted risk:** a failure (node down, dead-lettered events, an eval-pack exposure, PAT expiry, a spend anomaly) is seen only when the owner looks. **What remains (not alerts):** CI checks (the evalpack anonymous-GET probe, the NATS ACL golden file, the stream-budget and subject-registry tests), dead-letter rows in Postgres, in-app degradation badges, judge's spend caps, and the provider consoles' own limits. **Recommended:** extend `host-verify --cluster` (on demand) with cheap cluster reads. **Revisit before the first real invite**; the healthchecks.io design is kept as the ready option. Supersedes T1's opscheck + push channel, T5's push channel, T6's opscheck interview counters and ADR-0027's PAT-expiry alert. | [0035](../adr/0035-v2-operations-nats-auth-limits-capacity.md) |
 | D33 | 2026-09-24 | T7 | **Admission and admin.** **Close v1 signup now,** as a v1.5.x stopgap in two parts: GitHub stops auto-linking into any account that has a password (the pre-account-hijack fix; amends ADR-0023 §3; merged 2026-09-24 as xlearn#51), and `SIGNUP_MODE` (`closed` by default in production) is added (MI-2c). **Done:** both live in v1.5.2 (xlearn#51, #52; infra#30 sets `closed`); signup closed in production since 2026-09-24. v1.5.2 honours `open` without `DEV_AUTH`; that guard is M1b. **v2, owned by identity:** `SIGNUP_MODE ∈ {closed, invite, open}` (`open` = local/dev only); **owner-minted single-use invite links** (128-bit code stored as sha256, 7-day TTL with a 30-day max, carried in the URL fragment, redeemed inside the account-create transaction on both the email and GitHub paths, a uniform `invite_invalid`, the invite checked before the email); **`SEAT_CAP`** 15; an **acceptance step** (18+, privacy-notice version, region; M4's two unticked AI consents); `account.role ∈ {learner, tester, owner}` + `status` in the DB, **never in the JWT**; a CLI-minted **`tester`** role (outside `SEAT_CAP`, erasable on the web); an **`identity admin` CLI** via `kubectl exec`, every verb written to `admin_audit`; a `mailto:` "request an invite". **No web admin page and no waitlist form.** kubescope, landscape and the Longhorn UI move to `ops.sujaykumar.dev` (MI-5b) **before the first non-owner account**. | [0033](../adr/0033-invite-only-admission-and-owner-admin.md) |
@@ -52,14 +56,14 @@
 
 | Topic | Question | Status | ADR | Section |
 |-------|----------|--------|-----|---------|
-| T0 | Per-curriculum extensibility frame (seams: nav · content · solving ground · evaluator; what stays common) | ✅ settled 2026-09-24 | [0026](../adr/0026-per-course-extensibility-model.md) (Proposed) | [T0](#t0--guiding-frame) |
-| T1 | Content & data model (authored vs per-user; Postgres / JSONB / blobs; private content; authoring; dashboard deltas) | ✅ settled 2026-09-24 | [0027](../adr/0027-content-evalpack-and-user-data-model.md) (Proposed) | [T1](#t1--content--data-model) |
-| T2 | Object storage + off-node backups | ✅ settled 2026-09-24 (backups deferred) | [0028](../adr/0028-object-storage-and-backups.md) (Proposed) | [T2](#t2--object-storage--off-node-backups) |
-| T4 | Judge types & the common submission → evaluation → learning-signal contract | ✅ settled 2026-09-24 | [0029](../adr/0029-judge-contract-and-learning-signal.md) (Proposed) | [T4](#t4--judge-types--the-common-contract) |
-| T3 | Code-execution sandbox / online-judge engine (+ cluster hardening) | ✅ settled 2026-09-24 (spike pending) | [0030](../adr/0030-runner-technology-and-host-hardening.md) (Proposed) | [T3](#t3--code-execution-sandbox--cluster-hardening) |
-| T5 | Platform AI + two-tier keys | ✅ settled 2026-09-24 (WIF spike + egress gate before M4) | [0031](../adr/0031-platform-ai-and-two-tier-keys.md) (Proposed) | [T5](#t5--platform-ai--two-tier-keys) |
-| T6 | Realtime AI mock interviewer (voice + video) | ✅ settled 2026-09-24 (M6 / v2.1; spike S6 approved, pending) | [0032](../adr/0032-realtime-ai-mock-interviewer.md) (Proposed) | [T6](#t6--realtime-ai-mock-interviewer) |
-| T7 | Cross-cutting + infra-first rollout + v2 milestone map | ✅ settled 2026-09-24 (v2 owner-only; real learners from v3) | [0033](../adr/0033-invite-only-admission-and-owner-admin.md) · [0034](../adr/0034-v2-release-labelling-gating-and-rollback.md) · [0035](../adr/0035-v2-operations-nats-auth-limits-capacity.md) (Proposed) | [T7](#t7--cross-cutting-and-infra-first-rollout) |
+| T0 | Per-curriculum extensibility frame (seams: nav · content · solving ground · evaluator; what stays common) | 🔒 signed off 2026-09-24 (D37) | [0026](../adr/0026-per-course-extensibility-model.md) (Accepted) | [T0](#t0--guiding-frame) |
+| T1 | Content & data model (authored vs per-user; Postgres / JSONB / blobs; private content; authoring; dashboard deltas) | 🔒 signed off 2026-09-24 (D37) | [0027](../adr/0027-content-evalpack-and-user-data-model.md) (Accepted) | [T1](#t1--content--data-model) |
+| T2 | Object storage + off-node backups | 🔒 signed off 2026-09-24 (D37; backups deferred) | [0028](../adr/0028-object-storage-and-backups.md) (Accepted) | [T2](#t2--object-storage--off-node-backups) |
+| T4 | Judge types & the common submission → evaluation → learning-signal contract | 🔒 signed off 2026-09-24 (D37) | [0029](../adr/0029-judge-contract-and-learning-signal.md) (Accepted) | [T4](#t4--judge-types--the-common-contract) |
+| T3 | Code-execution sandbox / online-judge engine (+ cluster hardening) | ✅ settled 2026-09-24 (spike pending; the ADR is accepted at the sandbox-spike GO, before M3) | [0030](../adr/0030-runner-technology-and-host-hardening.md) (Proposed) | [T3](#t3--code-execution-sandbox--cluster-hardening) |
+| T5 | Platform AI + two-tier keys | ✅ settled 2026-09-24 (WIF spike + egress gate before M4; the ADR is accepted at the WIF spike) | [0031](../adr/0031-platform-ai-and-two-tier-keys.md) (Proposed) | [T5](#t5--platform-ai--two-tier-keys) |
+| T6 | Realtime AI mock interviewer (voice + video) | ✅ settled 2026-09-24 (M6 / v2.1; spike S6 approved, pending; the ADR is accepted at S6, before the M6a design freeze) | [0032](../adr/0032-realtime-ai-mock-interviewer.md) (Proposed) | [T6](#t6--realtime-ai-mock-interviewer) |
+| T7 | Cross-cutting + infra-first rollout + v2 milestone map | 🔒 signed off 2026-09-24 (D37; v2 owner-only; real learners from v3) | [0033](../adr/0033-invite-only-admission-and-owner-admin.md) · [0034](../adr/0034-v2-release-labelling-gating-and-rollback.md) · [0035](../adr/0035-v2-operations-nats-auth-limits-capacity.md) (Accepted) | [T7](#t7--cross-cutting-and-infra-first-rollout) |
 
 Legend: ⬜ not started · 🔄 in discussion · ✅ settled (ADR Proposed) · 🔒 signed off (ADR Accepted).
 
@@ -170,7 +174,7 @@ placement, single-node fit, GitOps/SOPS fit, cost, and the topic/ADR that decide
 
 ## T0 — Guiding frame
 
-> **Settled 2026-09-24** (D1–D4) · ADR: [0026](../adr/0026-per-course-extensibility-model.md) (Proposed) ·
+> **Settled 2026-09-24** (D1–D4) · ADR: [0026](../adr/0026-per-course-extensibility-model.md) (Accepted 2026-09-24, D37) ·
 > Full frame: [research/t0-extensibility-frame.md](research/t0-extensibility-frame.md).
 
 **Method.** Three independent candidate models were written: evolving v1 with minimal disruption, deriving the model from course diversity, and starting from architecture, ops and security. Each got two adversarial critiques: a six-course end-to-end walk, and a review of solo-dev cost, single-node ops, security and migration. Every candidate scored 6–7/10. The synthesis takes evolve-v1 as the base, grafts in the best ideas from the other two, and fixes about 9 blocker findings.
@@ -277,7 +281,7 @@ placement, single-node fit, GitOps/SOPS fit, cost, and the topic/ADR that decide
 
 ## T1 — Content & data model
 
-> **Settled 2026-09-24** (D5–D10) · ADR: [0027](../adr/0027-content-evalpack-and-user-data-model.md) (Proposed) ·
+> **Settled 2026-09-24** (D5–D10) · ADR: [0027](../adr/0027-content-evalpack-and-user-data-model.md) (Accepted 2026-09-24, D37) ·
 > Full model: [research/t1-content-data-model.md](research/t1-content-data-model.md).
 
 **Method.** Four parallel research slices were run:
@@ -393,7 +397,7 @@ They were synthesized into one draft, which then got two adversarial critiques: 
 
 ## T2 — Object storage + off-node backups
 
-> **Settled 2026-09-24** (D11–D13) · ADR: [0028](../adr/0028-object-storage-and-backups.md) (Proposed; amends 0027 §3, §6) ·
+> **Settled 2026-09-24** (D11–D13) · ADR: [0028](../adr/0028-object-storage-and-backups.md) (Accepted 2026-09-24, D37; amends 0027 §3, §6) ·
 > Research and the ready backup design: [research/t2-object-storage-backups.md](research/t2-object-storage-backups.md).
 
 **Method.** Four parallel research slices:
@@ -458,7 +462,7 @@ Mitigations carried into T7:
 
 ## T4 — Judge types & the common contract
 
-> **Settled 2026-09-24** (D14–D19) · ADR: [0029](../adr/0029-judge-contract-and-learning-signal.md) (Proposed) ·
+> **Settled 2026-09-24** (D14–D19) · ADR: [0029](../adr/0029-judge-contract-and-learning-signal.md) (Accepted 2026-09-24, D37) ·
 > Full design: [research/t4-judge-contract.md](research/t4-judge-contract.md). Its §13 overrides the body where they conflict.
 
 **Method.** Four parallel research slices: contract and lifecycle; archetypes and plug-ins; evidence → learning signal; learner flows. They were synthesized into one draft, which got two adversarial critiques: six-course loop correctness (6/10, 1 blocker) and integrity and ops (6/10, 2 blockers). All 3 blockers and 17 majors were fixed in the revision. The owner then reshaped five answers (D14–D18) and picked Excalidraw (D19).
@@ -750,7 +754,7 @@ They were synthesized into one draft, which got two adversarial critiques: escap
 ## T7 — Cross-cutting and infra-first rollout
 
 > **Settled 2026-09-24** (D32–D35) · ADRs: [0033](../adr/0033-invite-only-admission-and-owner-admin.md) (admission) ·
-> [0034](../adr/0034-v2-release-labelling-gating-and-rollback.md) (releases) · [0035](../adr/0035-v2-operations-nats-auth-limits-capacity.md) (operations), all Proposed ·
+> [0034](../adr/0034-v2-release-labelling-gating-and-rollback.md) (releases) · [0035](../adr/0035-v2-operations-nats-auth-limits-capacity.md) (operations), all Accepted 2026-09-24 (D37) ·
 > Full design: [research/t7-cross-cutting-and-rollout.md](research/t7-cross-cutting-and-rollout.md).
 > **Authoritative plan for the build-plan session: [rollout-plan.md](rollout-plan.md).**
 
@@ -854,4 +858,4 @@ Evidence came from code at `main`, `../infra`, read-only `ssh vps` (get/describe
 - Owner-gated items are calendar events, not sprints: the H0 reboot on 9/25 (copy the S0 log off `/tmp` first), the spike week, the October host window, the WIF spike, S6, the GA snapshot.
 - Separate tasks outside the build plan, **all done 2026-09-24:** the auto-link fix (MI-2b, xlearn#51) and the `SIGNUP_MODE` patch (MI-2c, xlearn#52 + infra#30), both live in v1.5.2; the release-line guard (MI-2a, xlearn#53 + infra#29). The `DEV_AUTH` guard on `open` stays for M1b.
 - Rewrite `docs/git-strategy.md`: rollback R-a → R-d, the `-rc` convention, the runner and evalpack streams, "image before HelmRelease or policy", "infra ACL PR before a new consumer" (`.release-line` and the GA steps already landed with xlearn#53).
-- Move ADRs 0026–0035 from Proposed to Accepted at sign-off.
+- Move ADRs 0026–0035 from Proposed to Accepted at sign-off. *(Done at the build-plan sign-off, 2026-09-24, D37/BP2: 0026–0029 and 0033–0035 Accepted; 0030, 0031 and 0032 stay Proposed until their spikes report.)*

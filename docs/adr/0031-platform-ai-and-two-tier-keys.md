@@ -1,6 +1,6 @@
 # ADR-0031 — Platform AI & two-tier keys
 
-- **Status:** Proposed. The WIF spike (≤ ½ day) and judge's egress NetworkPolicy gate M4. **Amended by [ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) and [ADR-0033](0033-invite-only-admission-and-owner-admin.md) (T7, 2026-09-24):** no push channel in v2 (D34), and the "before learners" items apply at the v3 opening (D35); see §8.
+- **Status:** Proposed. The WIF spike (≤ ½ day) and judge's egress NetworkPolicy gate M4. **Kept Proposed at the v2 build-plan sign-off (2026-09-24, BP2):** it is accepted after the **WIF spike** (sprint [spk-03](../v2/sprints/sprint-spk-03.md), in the spike week if it fits, else any time before M4), as task 1 of sprint [mi-12](../v2/sprints/sprint-mi-12.md), before M4. **Amended by [ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) and [ADR-0033](0033-invite-only-admission-and-owner-admin.md) (T7, 2026-09-24; both Accepted 2026-09-24):** no push channel in v2 (D34), and the "before learners" items apply at the v3 opening (D35); see §8.
 - **Date:** 2026-09-24
 - **Deciders:** @sujaykumarsuman
 - **Related:** narrows [0007](0007-ai-coach-byo-key-and-secrets.md) to BYO keys; builds on [0029](0029-judge-contract-and-learning-signal.md)

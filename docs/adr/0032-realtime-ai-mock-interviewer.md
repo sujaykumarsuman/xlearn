@@ -1,6 +1,6 @@
 # ADR-0032 — Realtime AI mock interviewer (M6 · v2.1)
 
-- **Status:** Proposed. **Spike S6 is approved and pending**; it needs the owner present and gates the M6a design freeze.
+- **Status:** Proposed. **Spike S6 is approved and pending**; it needs the owner present and gates the M6a design freeze. **Kept Proposed at the v2 build-plan sign-off (2026-09-24, BP2):** it is accepted with the **S6 result** (sprint [spk-04](../v2/sprints/sprint-spk-04.md)), as task 1 of design sprint [ds-m6a-01](../v2/sprints/sprint-ds-m6a-01.md), before the M6a design freeze. Its amendments to [ADR-0007](0007-ai-coach-byo-key-and-secrets.md) (§7) and [ADR-0024](0024-public-user-dashboards-and-usernames.md) (D31) are folded in then.
 - **Date:** 2026-09-24
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0031](0031-platform-ai-and-two-tier-keys.md) (BYO only, the `interview` key, derived credentials), [0029](0029-judge-contract-and-learning-signal.md) (mock evidence, `ScoreMock` once), [0027](0027-content-evalpack-and-user-data-model.md) (C4 data, erase), [0028](0028-object-storage-and-backups.md) (no object store), [0017](0017-mock-model-and-projection-consumer-scaffold.md), [0024](0024-public-user-dashboards-and-usernames.md) (public mock stats, amended here), [0007](0007-ai-coach-byo-key-and-secrets.md) (amended here).

@@ -1,6 +1,6 @@
 # ADR-0023 — Email/password sign-in + GitHub↔email account linking
 
-- **Status:** Accepted
+- **Status:** Accepted. **§2 and §3 amended 2026-09-24 by v1.5.2**: sign-up closed by default (xlearn#52) and auto-link only into OAuth-only accounts (xlearn#51); both are recorded in place below. **§2 further amended by [ADR-0033](0033-invite-only-admission-and-owner-admin.md) (v2, Accepted 2026-09-24):** the `invite` mode, the `DEV_AUTH` guard on `open`, and a login that is uniform in time.
 - **Date:** 2026-09-23
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0006](0006-authn-authz.md) (authn/authz — this adds a first-party credential path alongside OAuth), [0005](0005-data-ownership-and-migrations.md) (identity owns the schema change). Tracks the post-1.0 UI/UX feedback batch in [`docs/v1/feedbacks/`](../v1/feedbacks/) (F007).
@@ -54,6 +54,23 @@ gateway passes `Set-Cookie` through — the browser still only ever talks to the
 > Existing accounts sign in as before: by password, by a linked provider, or by the email auto-link
 > in §3 (as amended below). `docker-compose` sets `SIGNUP_MODE=open` for local review. The local-only
 > dev login (`DEV_AUTH`, [ADR-0022](0022-path-enrollment-and-dev-login.md)) is not gated.
+
+> **Amended 2026-09-24 by [ADR-0033](0033-invite-only-admission-and-owner-admin.md) §3, §5 and §14
+> (accepted at the v2 build-plan sign-off).**
+>
+> - **`SIGNUP_MODE ∈ {closed, invite, open}`.** In `invite` mode, built at L, `POST /auth/signup` and
+>   a new GitHub account both need a valid invite. It is redeemed inside the account-create transaction
+>   under the `identity.seats` lock, and it is checked **before** the email. Every bad invite gets the
+>   same `invite_invalid`; a new GitHub user with no invite gets `/auth?error=invite_required`.
+>   `closed` refuses both, as above.
+> - **`open` is local and dev only.** From M1b, identity honours `open` only when `DEV_AUTH` is also
+>   set. Otherwise it runs as `closed` and logs at ERROR. v1.5.2 honours `open` without `DEV_AUTH`.
+> - **Login is uniform in time as well as in status** (M1b). An unknown identifier runs a dummy bcrypt,
+>   and bcrypt concurrency is capped (≤ 2 in flight, then 429), so the uniform `401` no longer leaks
+>   through timing.
+> - In `invite` mode, signup is no email oracle for anyone without a valid invite, because the invite
+>   check comes before the email check. With a valid invite, a taken email rolls back the transaction,
+>   so the invite is not consumed.
 
 ### 3. Collision = auto-link by verified email
 

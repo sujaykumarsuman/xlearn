@@ -133,7 +133,7 @@ One PR carries the union of every topic's asks, all default-off:
 | M6c | Interviewer extras | M6b | — | 3+ | v2.2 |
 | **Opening (v3)** | Real learners by invite | **§11 checklist**; the owner's call | first real invitee admitted | — | **v3** |
 
-**Totals:** **v2.0 ≈ 41–52 sprints** (MI 6–8, M1 6–7, M2 4–5, M3 13–16, P 3–4, M4 6–8, L 3–4). That's about 2 weeks of sessions at v1's pace. **v2.1 = 9–12** (M6a 5–7 + M6b 4–5). M5 is 1 sprint; M6c is 3+ (v2.2).
+**Totals:** **v2.0 ≈ 41–52 sprints** (MI 6–8, M1 6–7, M2 4–5, M3 13–16, P 3–4, M4 6–8, L 3–4). That's about 2 weeks of sessions at v1's pace. **v2.1 = 9–12** (M6a 5–7 + M6b 4–5). M5 is 1 sprint; M6c is 3+ (v2.2). *The build plan decomposes these into finer one-session sprints plus design (`ds-*`) and spike (`spk-*`) sprints, so its counts run higher; [build-plan.md](build-plan.md) is authoritative for sprint counts.*
 
 ---
 
@@ -430,9 +430,7 @@ This table is copied from ADR-0034 §1.6 and must stay identical to it. Take the
 | Settings | AB18, AB21, AB22 |
 | Auth | AB19 |
 
-**Production (hybrid)**
-- The owner designs the 5 heroes (AB04, AB07, AB16, AB19, AB30) in the design tool used for v1 (Claude Design).
-- Agents draft the state and variant boards as static HTML on `theme.css` under `design-system/screens/v2/`, and the owner reviews them.
+**Production (D38, build-plan session):** agents draft **all** boards, the 5 heroes included, as static HTML on `theme.css` under `design-system/screens/v2/` in design sprints (`ds-*`); the owner reviews and approves. See [build-plan.md](build-plan.md).
 
 **Freeze rule.** A milestone's boards are frozen before its first UI sprint:
 
@@ -585,12 +583,12 @@ None of these gates v2.0 GA. All of them gate the first real invitee.
 |---|---|---|
 | **PRD Q5:** the pilot course | P entry | go-concurrency (SQL fallback) |
 | **PRD Q7:** per-problem time budgets | a future research session; not a gate | manifest default of 45 min, hint at 15 (D18) |
-| **Artboard production** | before M1b (AB01–AB03) | hybrid. Book the hero hours (15–25 h) into the ~10 h/week. |
+| **Artboard production** | before M1b (AB01–AB03) | ✅ decided (D38): agents draft all boards in `ds-*` sprints; the owner reviews. |
 | **Spike go-aheads:** P0–P3 + image volume (D23); WIF | mid-October; before M4 | one spike week, with WIF included if convenient |
 | **October host-window date** | when the spike is booked | late October, batched with MI-11a |
 | **S6 scheduling** (approved; owner present) | before the M6a design freeze | any time the owner is present; M6a starts after M3 |
 | **infra#28** | before MI-0 | ✅ merged 2026-09-24; local `../infra` `main` synced. |
 | **MI-2a / MI-2b / MI-2c** | now | ✅ all done 2026-09-24. MI-2b (xlearn#51) and MI-2c (xlearn#52, infra#30) are live in v1.5.2, so signup is closed in production; MI-2a is xlearn#53 + infra#29. The `DEV_AUTH` guard on `open` moves to M1b (§4) |
 | **MI-5b** (DNS, cert, bookmarks) | before the first `tester` (L-E) | weeks 2–4. Testers count as non-owner accounts (ADR-0033 §11). |
-| **ADR sign-off** (0026–0035) | the build-plan session | Proposed → Accepted |
+| **ADR sign-off** (0026–0035) | the build-plan session | ✅ (D37): 0026–0029 and 0033–0035 Accepted 2026-09-24; 0030, 0031 and 0032 stay Proposed until their spikes (accepted in m3-03, mi-12 and ds-m6a-01). |
 | **Alerting revisit** (D34) | before the first real invite (v3) | the kept healthchecks.io design |

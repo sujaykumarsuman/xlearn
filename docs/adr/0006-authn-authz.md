@@ -1,6 +1,6 @@
 # ADR-0006 — AuthN/AuthZ
 
-- **Status:** Accepted. **Refined by [ADR-0033](0033-invite-only-admission-and-owner-admin.md) (v2, Proposed):** roles are enforced (`RequireRole`, `public-read`), and `account.role` (learner, tester, owner) lives in the DB, never in the JWT.
+- **Status:** Accepted. **Refined by [ADR-0033](0033-invite-only-admission-and-owner-admin.md) (v2, Accepted 2026-09-24):** roles are enforced (`RequireRole`, `public-read`), and `account.role` (learner, tester, owner) lives in the DB, never in the JWT. See [Amended 2026-09-24 by ADR-0033](#amended-2026-09-24-by-adr-0033).
 - **Date:** 2026-09-20
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0003](0003-service-decomposition.md), [0007](0007-ai-coach-byo-key-and-secrets.md)
@@ -39,6 +39,28 @@ one node, solo-operated.
 - Service-to-service: the JWT `aud` + NetworkPolicy (only gateway may call most services; only
   `review`/`assessment` consume NATS) provide defence in depth. Broker auth via NATS credentials
   (SOPS secret) later; v1 relies on cluster-internal isolation.
+
+### Amended 2026-09-24 by ADR-0033
+
+[ADR-0033](0033-invite-only-admission-and-owner-admin.md) §12 and §14, accepted at the v2 build-plan
+sign-off, replace **Authorization** above where they conflict. The text above stays as the v1 record.
+
+- **Roles are enforced.** A shared `auth.RequireRole` guards every route: user routes need `learner`
+  (middleware at M1b). A **`public-read`** role is added for the public profile, and only assessment's
+  `GET /public/stats` accepts it (M2b).
+- **The account role is data, never a claim.** `account.role ∈ {learner, tester, owner}` and `status`
+  (`active`/`suspended`) live in identity's database (M1a). The gateway reads them through
+  session-validate. **No `owner` or `tester` role is ever put in a JWT.**
+- **Admin is a CLI, still with no admin UI.** The `identity admin` verbs run via `kubectl exec`, and
+  every verb is written to `admin_audit` (M1b; invites at L).
+- **Sessions** gain an account-status check and revoke-all (on suspend, password change and erase)
+  at M1b.
+- **The NetworkPolicy is the fence**, not defence in depth. MI-5a's `xlearn` ingress policy admits the
+  gateway only from Traefik, admits internal routes (`/sessions/*`, `/internal/*`) only from the
+  `xlearn` namespace, and denies the runner. It lands before M3. There are still no service tokens.
+- **Broker auth moves to NATS nkeys** with per-service ACLs, rolled out server-first
+  ([ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) §2; N1–N3 before M3). This replaces
+  "NATS credentials (SOPS secret) later".
 
 ## Consequences
 
