@@ -11,9 +11,12 @@ import (
 )
 
 type Querier interface {
-	// Onboarding step 3 (Finish / Skip). Idempotent: an already-completed account keeps
+	// The last onboarding step (Finish / Skip). Idempotent: an already-completed account keeps
 	// its original completed_at (COALESCE) so re-submitting Finish never moves the timestamp.
-	// key_added is NOT set here — it flips true only once the coach key store works (S11).
+	// The key_added column is unused: nothing ever set it, and whether a coach key is
+	// connected is the coach service's to answer (GET /coach/key). It is left in place so a
+	// rolling deploy's old pods (whose generated queries still name it) keep working; a later
+	// migration can drop it.
 	CompleteOnboarding(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error)
 	CreateAccount(ctx context.Context, arg CreateAccountParams) (IdentityAccount, error)
 	// Create an account from an email sign-up (ADR-0023): email is required + case-insensitively

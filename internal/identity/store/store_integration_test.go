@@ -80,7 +80,7 @@ func TestStoreIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetOnboarding: %v", err)
 	}
-	if ob.PathChosen != "" || ob.BudgetSet || ob.KeyAdded {
+	if ob.PathChosen != "" || ob.BudgetSet {
 		t.Fatalf("fresh onboarding should be empty: %+v", ob)
 	}
 
@@ -137,7 +137,7 @@ func TestStoreIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CompleteOnboarding: %v", err)
 	}
-	if obDone.CompletedAt.IsZero() || obDone.KeyAdded {
+	if obDone.CompletedAt.IsZero() {
 		t.Fatalf("completion state wrong: %+v", obDone)
 	}
 	obDone2, err := st.CompleteOnboarding(ctx, acct.ID)

@@ -95,6 +95,22 @@ describe("Coach panel", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
   });
 
+  it("shows the top-up message and keeps the coach on when the provider account is limited", async () => {
+    coachMock({
+      key: enabledKey,
+      chat: () => ({ status: 429, body: { error: { code: "provider_limited", message: "your provider account is out of credit or limited — top up and retry" } } }),
+    });
+    renderApp("/xlearn/dsa/dashboard");
+    fireEvent.click(await screen.findByRole("button", { name: /open ai coach/i }));
+    fireEvent.change(await screen.findByLabelText(/message coach/i), { target: { value: "hint please" } });
+    fireEvent.click(screen.getByRole("button", { name: /^send$/i }));
+
+    expect(await screen.findByText(/out of credit or limited — top up and retry/i)).toBeInTheDocument();
+    // No bounce to Settings: the key is fine, so the panel stays usable.
+    expect(screen.queryByRole("heading", { level: 1, name: "Settings" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/message coach/i)).toBeInTheDocument();
+  });
+
   it("reflects the current page in the context chip", async () => {
     coachMock({ key: enabledKey });
     renderApp("/xlearn/dsa/concept/sliding-window");

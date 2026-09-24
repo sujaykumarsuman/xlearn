@@ -244,8 +244,9 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 // handleChat: POST /chat — stream a coach reply over SSE. It persists the user message +
 // the assistant reply to the (account, context) thread, builds the server-side prompt
 // from the AUTHORITATIVE mode (X-Coach-Mode header), decrypts the key in memory only for
-// the provider call, and zeroes it after. A provider auth failure flips enabled=false so
-// the client routes back to Settings. Errors before the first byte are a clean 4xx/5xx;
+// the provider call, and zeroes it after. A rejected key flips enabled=false so the
+// client routes back to Settings; an out-of-credit or rate-limited provider account keeps
+// the key and tells the learner to top up. Errors before the first byte are a clean 4xx/5xx;
 // after streaming has begun they surface as an SSE `error` event.
 func (s *Service) handleChat(w http.ResponseWriter, r *http.Request) {
 	accountID := claimsFrom(r.Context()).Subject
@@ -351,32 +352,59 @@ func (s *Service) handleChat(w http.ResponseWriter, r *http.Request) {
 
 	sse := newSSEWriter(w)
 	var reply strings.Builder
-	streamErr := provider.Stream(callCtx, string(rawKey), req, func(delta string) error {
+	result, streamErr := provider.Stream(callCtx, string(rawKey), req, func(delta string) error {
 		reply.WriteString(delta)
 		return sse.event("", map[string]any{"delta": delta})
 	})
 	secrets.Zero(rawKey) // zero as soon as the provider call is done (before persistence)
 
-	s.finishChat(r, accountID, kc.Provider, threadID, &reply, sse, streamErr)
+	s.finishChat(r, accountID, kc.Provider, threadID, &reply, sse, result, streamErr)
 }
+
+// Learner-facing copy for the provider outcomes the coach explains in the panel.
+const (
+	msgProviderAuth    = "your provider key was rejected — re-add it in Settings"
+	msgProviderLimited = "your provider account is out of credit or limited — top up and retry"
+	// truncationNote is appended to a reply the provider cut off, both in the live stream
+	// and in the persisted thread, so a reload shows the same thing and the next turn's
+	// history tells the model its last answer was incomplete.
+	truncationNote = "⚠️ This reply was cut off at the length limit — ask me to continue."
+)
 
 // finishChat handles the terminal outcome of a chat stream: it persists the assistant
 // reply (best-effort, on a detached context so a client disconnect doesn't abort the
-// write), and emits the closing SSE event — or, when the provider rejected the key before
-// any byte was sent, a clean 4xx + an enabled=false flip.
-func (s *Service) finishChat(r *http.Request, accountID, provider, threadID string, reply *strings.Builder, sse *sseWriter, streamErr error) {
+// write), and emits the closing SSE event. Before any byte was sent it can still write a
+// clean 4xx: a rejected key (409, and the key is disabled) or an out-of-credit / limited
+// provider account (429, and the key stays enabled).
+func (s *Service) finishChat(r *http.Request, accountID, provider, threadID string, reply *strings.Builder, sse *sseWriter, result StreamResult, streamErr error) {
 	// A detached context so persistence survives a cancelled request (client gone).
 	bg, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Second)
 	defer cancel()
 
+	// persistReply saves whatever reply text there is, so the thread isn't left with a
+	// dangling user message after a partial stream.
+	persistReply := func() {
+		if reply.Len() == 0 {
+			return
+		}
+		if err := s.store.AppendMessage(bg, threadID, store.RoleAssistant, reply.String()); err != nil {
+			s.log.Warn("coach: persist assistant reply failed", "err", err)
+		}
+	}
+
 	switch {
 	case streamErr == nil:
-		if reply.Len() > 0 {
-			if err := s.store.AppendMessage(bg, threadID, store.RoleAssistant, reply.String()); err != nil {
-				s.log.Warn("coach: persist assistant reply failed", "err", err)
+		if result.Truncated {
+			s.log.Info("coach: reply truncated", "provider", provider, "stop_reason", result.StopReason)
+			note := truncationNote
+			if reply.Len() > 0 {
+				note = "\n\n" + note
 			}
+			reply.WriteString(note)
+			_ = sse.event("", map[string]any{"delta": note})
 		}
-		_ = sse.event("done", map[string]any{"done": true})
+		persistReply()
+		_ = sse.event("done", map[string]any{"done": true, "truncated": result.Truncated})
 
 	case errors.Is(streamErr, ErrProviderAuth):
 		// The user's key is bad: disable that provider so the client routes back to Settings.
@@ -384,20 +412,27 @@ func (s *Service) finishChat(r *http.Request, accountID, provider, threadID stri
 			s.log.Warn("coach: disable bad key failed", "err", err)
 		}
 		if sse.started {
-			_ = sse.event("error", map[string]any{"error": "provider_auth", "message": "your provider key was rejected — re-add it in Settings"})
+			_ = sse.event("error", map[string]any{"error": "provider_auth", "message": msgProviderAuth})
 		} else {
-			writeError(sse.w, http.StatusConflict, "provider_auth", "your provider key was rejected — re-add it in Settings")
+			writeError(sse.w, http.StatusConflict, "provider_auth", msgProviderAuth)
+		}
+
+	case errors.Is(streamErr, ErrProviderLimited):
+		// The key is fine; the provider account is out of credit or over a quota / spend /
+		// rate limit, or can't use this model or region. Keep the key ENABLED: disabling
+		// it would make the learner re-enter a working key after topping up.
+		s.log.Info("coach: provider account limited", "provider", provider, "err", streamErr)
+		persistReply()
+		if sse.started {
+			_ = sse.event("error", map[string]any{"error": "provider_limited", "message": msgProviderLimited})
+		} else {
+			writeError(sse.w, http.StatusTooManyRequests, "provider_limited", msgProviderLimited)
 		}
 
 	default:
-		// Other provider/transport error (or client disconnect). Persist any partial reply
-		// so the thread isn't left with a dangling user message.
+		// Other provider/transport error (or client disconnect).
 		s.log.Warn("coach: chat stream error", "err", streamErr)
-		if reply.Len() > 0 {
-			if err := s.store.AppendMessage(bg, threadID, store.RoleAssistant, reply.String()); err != nil {
-				s.log.Warn("coach: persist partial reply failed", "err", err)
-			}
-		}
+		persistReply()
 		if sse.started {
 			_ = sse.event("error", map[string]any{"error": "provider_error", "message": "the coach could not complete the reply"})
 		} else {

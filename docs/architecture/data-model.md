@@ -19,7 +19,7 @@ since FKs can't cross ownership.
 | `account` | `id`, `display_name`, `email`, `timezone`, `study_budget_json`, `reminders_json`, `created_at` | The `Account` entity (profile/budget/timezone/reminders). |
 | `oauth_identity` | `id`, `account_id`, `provider` (`github`/`google`), `provider_user_id`, `unique(provider,provider_user_id)` | Links an account to an OAuth provider; no passwords. |
 | `session` | `id` (opaque), `account_id`, `created_at`, `expires_at`, `revoked_at` | Server-side session behind the HttpOnly cookie. |
-| `onboarding` | `account_id`, `path_chosen`, `budget_set`, `key_added`, `completed_at` | Drives the 3-step first-run flow. |
+| `onboarding` | `account_id`, `path_chosen`, `budget_set`, `completed_at` (+ unused `key_added`, see note) | Drives the first-run flow. `key_added` was never set and is no longer read or returned: whether a coach key is connected is coach's `api_key_config` (GET /coach/key `connected`). The column stays until a later migration drops it. |
 
 ## schema `curriculum`
 

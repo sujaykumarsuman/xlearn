@@ -289,9 +289,11 @@ func TestSetDefaultUnknownProvider404(t *testing.T) {
 
 // sseResult is the parsed outcome of a chat SSE stream.
 type sseResult struct {
-	text    string
-	done    bool
-	errCode string
+	text      string
+	done      bool
+	truncated bool
+	errCode   string
+	errMsg    string
 }
 
 func readSSE(t *testing.T, resp *http.Response) sseResult {
@@ -305,9 +307,11 @@ func readSSE(t *testing.T, resp *http.Response) sseResult {
 		}
 		data := strings.TrimSpace(line[len("data:"):])
 		var frame struct {
-			Delta string `json:"delta"`
-			Done  bool   `json:"done"`
-			Error string `json:"error"`
+			Delta     string `json:"delta"`
+			Done      bool   `json:"done"`
+			Truncated bool   `json:"truncated"`
+			Error     string `json:"error"`
+			Message   string `json:"message"`
 		}
 		if err := json.Unmarshal([]byte(data), &frame); err != nil {
 			continue
@@ -315,9 +319,11 @@ func readSSE(t *testing.T, resp *http.Response) sseResult {
 		res.text += frame.Delta
 		if frame.Done {
 			res.done = true
+			res.truncated = frame.Truncated
 		}
 		if frame.Error != "" {
 			res.errCode = frame.Error
+			res.errMsg = frame.Message
 		}
 	}
 	return res
@@ -402,6 +408,110 @@ func TestChatProviderAuthFailureDisablesKey(t *testing.T) {
 	kc, _ := h.store.GetKey(context.Background(), h.account, "openai")
 	if kc.Enabled {
 		t.Fatal("provider-auth failure did not disable the key")
+	}
+}
+
+func (h *harness) storeAnthropicKey(t *testing.T, raw string) {
+	t.Helper()
+	h.do(t, http.MethodPut, "/keys", map[string]any{"provider": "anthropic", "key": raw, "default_model": "claude-sonnet-5"}, nil).Body.Close()
+}
+
+// TestChatProviderLimitedKeepsKeyEnabled: an out-of-credit / billing / spend- or
+// rate-limited provider account is NOT a bad key. The learner gets the friendly
+// provider_limited message and the key stays enabled.
+func TestChatProviderLimitedKeepsKeyEnabled(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		provider string
+		status   int
+		body     string
+	}{
+		{"openai insufficient_quota", "openai", 429, `{"error":{"message":"You exceeded your current quota","type":"insufficient_quota","code":"insufficient_quota"}}`},
+		{"openai rate limit", "openai", 429, `{"error":{"message":"Rate limit reached","type":"requests","code":"rate_limit_exceeded"}}`},
+		{"openai billing hard limit", "openai", 400, `{"error":{"message":"Billing hard limit has been reached","type":"invalid_request_error","code":"billing_hard_limit_reached"}}`},
+		{"openai region", "openai", 403, `{"error":{"message":"Country, region, or territory not supported","type":"request_forbidden","code":"unsupported_country_region_territory"}}`},
+		{"anthropic billing_error", "anthropic", 402, `{"type":"error","error":{"type":"billing_error","message":"There's an issue with your billing or payment information."}}`},
+		{"anthropic spend limit", "anthropic", 400, `{"type":"error","error":{"type":"invalid_request_error","message":"You have reached your specified API usage limits. You will regain access on 2026-10-01 at 00:00 UTC."}}`},
+		{"anthropic spend cap", "anthropic", 429, `{"type":"error","error":{"type":"rate_limit_error","message":"You have reached your API usage limits","details":{"error_code":"enforced_spend_limit_reached"}}}`},
+		{"anthropic permission", "anthropic", 403, `{"type":"error","error":{"type":"permission_error","message":"no access"}}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t)
+			if tc.provider == "anthropic" {
+				h.storeAnthropicKey(t, "sk-ant-good-key-1234")
+			} else {
+				h.storeOpenAIKey(t, "sk-openai-good-key-1234")
+			}
+			h.provHandler = func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			}
+			resp := h.do(t, http.MethodPost, "/chat", map[string]any{"context": "dashboard", "message": "hi"}, nil)
+			var env struct {
+				Error struct{ Code, Message string } `json:"error"`
+			}
+			status := resp.StatusCode
+			decode(t, resp, &env)
+			if status != http.StatusTooManyRequests || env.Error.Code != "provider_limited" {
+				t.Fatalf("status %d code %q, want 429 provider_limited", status, env.Error.Code)
+			}
+			if !strings.Contains(env.Error.Message, "out of credit or limited") {
+				t.Fatalf("message = %q, want the friendly top-up copy", env.Error.Message)
+			}
+			kc, _ := h.store.GetKey(context.Background(), h.account, tc.provider)
+			if !kc.Enabled {
+				t.Fatal("a limited provider account disabled the key")
+			}
+		})
+	}
+}
+
+// TestChatProviderLimitedMidStream: a quota error frame after some text surfaces as an
+// SSE provider_limited error, keeps the key, and persists the partial reply.
+func TestChatProviderLimitedMidStream(t *testing.T) {
+	h := newHarness(t)
+	h.storeOpenAIKey(t, "sk-openai-good-key-1234")
+	h.provHandler = func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`data: {"choices":[{"delta":{"content":"Partial"}}]}` + "\n\n"))
+		_, _ = w.Write([]byte(`data: {"error":{"message":"quota","type":"insufficient_quota","code":"insufficient_quota"}}` + "\n\n"))
+	}
+	res := readSSE(t, h.do(t, http.MethodPost, "/chat", map[string]any{"context": "dashboard", "message": "hi"}, nil))
+	if res.errCode != "provider_limited" || !strings.Contains(res.errMsg, "top up") || res.text != "Partial" {
+		t.Fatalf("sse = %+v, want provider_limited after 'Partial'", res)
+	}
+	if kc, _ := h.store.GetKey(context.Background(), h.account, "openai"); !kc.Enabled {
+		t.Fatal("a mid-stream quota error disabled the key")
+	}
+	msgs := h.store.messagesFor(h.account, "dashboard")
+	if len(msgs) != 2 || msgs[1].Content != "Partial" {
+		t.Fatalf("persisted = %+v, want the partial reply", msgs)
+	}
+}
+
+// TestChatTruncatedReplyIsMarked: a reply the provider cut off at max_tokens gets the
+// truncation note, live and persisted, and the done frame says truncated.
+func TestChatTruncatedReplyIsMarked(t *testing.T) {
+	h := newHarness(t)
+	h.storeAnthropicKey(t, "sk-ant-good-key-1234")
+	h.provHandler = func(w http.ResponseWriter, r *http.Request) { anthropicFrames(w, "max_tokens", true) }
+
+	res := readSSE(t, h.do(t, http.MethodPost, "/chat", map[string]any{"context": "dashboard", "message": "hi"}, nil))
+	want := "Hi there\n\n" + truncationNote
+	if res.text != want || !res.done || !res.truncated {
+		t.Fatalf("sse = %+v, want %q done+truncated", res, want)
+	}
+	msgs := h.store.messagesFor(h.account, "dashboard")
+	if len(msgs) != 2 || msgs[1].Content != want {
+		t.Fatalf("persisted = %+v, want the marked reply", msgs)
+	}
+
+	// A complete reply is not marked.
+	h.provHandler = func(w http.ResponseWriter, r *http.Request) { anthropicFrames(w, "end_turn", true) }
+	res = readSSE(t, h.do(t, http.MethodPost, "/chat", map[string]any{"context": "dashboard", "message": "again"}, nil))
+	if res.text != "Hi there" || res.truncated {
+		t.Fatalf("sse = %+v, want an unmarked complete reply", res)
 	}
 }
 

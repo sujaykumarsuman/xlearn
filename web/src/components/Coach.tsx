@@ -90,11 +90,17 @@ export function Coach() {
         qc.invalidateQueries({ queryKey: ["coach-key"] });
         navigate("/settings?tab=coach");
       } else {
+        // An out-of-credit / limited provider account keeps the key enabled; say what to do.
+        // Anything else is a transient failure.
+        const note =
+          err instanceof CoachChatError && err.isProviderLimited
+            ? "⚠️ Your provider account is out of credit or limited — top up and retry."
+            : "⚠️ The coach couldn’t reply just now. Please try again.";
         setMessages((prev) => {
           const next = prev.slice();
           const last = next[next.length - 1];
-          if (last && last.role === "assistant" && last.content === "") {
-            next[next.length - 1] = { ...last, content: "⚠️ The coach couldn’t reply just now. Please try again." };
+          if (last && last.role === "assistant") {
+            next[next.length - 1] = { ...last, content: last.content === "" ? note : `${last.content}\n\n${note}` };
           }
           return next;
         });

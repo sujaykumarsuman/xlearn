@@ -22,6 +22,7 @@ Legend: ⬜ planned · 🔄 in progress · ✅ done (in local review) · 🚀 sh
 
 | ID | Feedback | Status |
 |----|----------|--------|
+| [F010](F010-coach-key-onboarding-and-provider-errors.md) | **Coach bugs**: the onboarding key step now actually saves the key (`PUT /coach/key`, finish only on success, error + skip; Google removed; the dead `key_added` flag dropped); quota / billing / spend / rate-limit / model-permission errors **keep the key enabled** with a top-up message (only 401 / `invalid_api_key` / `authentication_error` disable it); replies capped at 4096 with explicit low effort, and cut-off replies are marked | ✅ done (in local review) |
 | [F001](F001-shell-and-nav-restructure.md) | Shell & nav restructure: no left nav on the home/Catalog, curriculum-scoped nav, curriculum selector → top bar (replacing search), drop Settings/Progress from the nav | 🚀 shipped (`v1.1.0`) |
 | [F002](F002-start-path-enrollment.md) | Stop DSA being pre-"Active": a per-user **Start path** action; once started show current day, streak, and today's scheduled item | 🚀 shipped (`v1.1.0`) |
 | [F003](F003-rename-dsa-path.md) | Rename **DSA Interview Mastery** → **Data Structures & Algorithms** | 🚀 shipped (`v1.1.0`) |
