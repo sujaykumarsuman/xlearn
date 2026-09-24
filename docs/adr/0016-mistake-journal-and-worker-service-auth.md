@@ -1,6 +1,6 @@
 # ADR-0016 — Mistake journal, weekly weak-area & the worker service-auth path
 
-- **Status:** Accepted
+- **Status:** Accepted. **Refined by [ADR-0033](0033-invite-only-admission-and-owner-admin.md) (v2, Proposed):** the unauthenticated internal endpoints are fenced by the `xlearn` ingress NetworkPolicy before M3; still no service tokens.
 - **Date:** 2026-09-21
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0003](0003-service-decomposition.md) (notifications lives in review for v1),

@@ -1,6 +1,6 @@
 # ADR-0007 — AI coach BYO-key & secret handling
 
-- **Status:** Accepted
+- **Status:** Accepted. **Narrowed by [ADR-0031](0031-platform-ai-and-two-tier-keys.md) (v2, Proposed)** to BYO keys only; platform AI is owned by judge. ADR-0031 §7 lists the P0/P1 fixes to this ADR. **Amended by [ADR-0032](0032-realtime-ai-mock-interviewer.md) (v2, Proposed):** realtime sessions use server-side SDP brokering (no credential in the browser), and the key is decrypted only while an interview segment is live.
 - **Date:** 2026-09-20
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0003](0003-service-decomposition.md), [0006](0006-authn-authz.md), [0009](0009-deployment-and-gitops.md)

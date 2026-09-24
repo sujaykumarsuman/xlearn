@@ -1,6 +1,6 @@
 # ADR-0021 — Release tagging, API v1, and the 1.0 hardening cut
 
-- **Status:** Accepted
+- **Status:** Accepted. **Refined by [ADR-0034](0034-v2-release-labelling-gating-and-rollback.md) (v2, Proposed):** bounded ImagePolicy ranges (`<2.0.0` until GA), a `.release-line` CI guard, `-rc` prereleases and the GA range flip; the API stays `/api/v1`.
 - **Date:** 2026-09-21
 - **Deciders:** @sujaykumarsuman
 - **Related:** [0009](0009-deployment-and-gitops.md) (deploy/GitOps — this refines its versioning section), [0004](0004-inter-service-comms-and-events.md), [0005](0005-data-ownership-and-migrations.md), [0006](0006-authn-authz.md), [0018](0018-progress-projection-grain-and-rebuild.md)
