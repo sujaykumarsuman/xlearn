@@ -22,7 +22,7 @@ Legend: ⬜ planned · 🔄 in progress · ✅ done (in local review) · 🚀 sh
 
 | ID | Feedback | Status |
 |----|----------|--------|
-| [F010](F010-coach-key-onboarding-and-provider-errors.md) | **Coach bugs**: the onboarding key step now actually saves the key (`PUT /coach/key`, finish only on success, error + skip; Google removed; the dead `key_added` flag dropped); quota / billing / spend / rate-limit / model-permission errors **keep the key enabled** with a top-up message (only 401 / `invalid_api_key` / `authentication_error` disable it); replies capped at 4096 with explicit low effort, and cut-off replies are marked | ✅ done (in local review) |
+| [F010](F010-coach-key-onboarding-and-provider-errors.md) | **Coach bugs**: the onboarding key step now actually saves the key (`PUT /coach/key`, finish only on success, error + skip; Google removed; the dead `key_added` flag dropped); quota / billing / spend / rate-limit / model-permission errors **keep the key enabled** with a top-up message (only 401 / `invalid_api_key` / `authentication_error` disable it); replies capped at 4096 with explicit low effort, and cut-off replies are marked | 🚀 shipped (`v1.5.1`) |
 | [F001](F001-shell-and-nav-restructure.md) | Shell & nav restructure: no left nav on the home/Catalog, curriculum-scoped nav, curriculum selector → top bar (replacing search), drop Settings/Progress from the nav | 🚀 shipped (`v1.1.0`) |
 | [F002](F002-start-path-enrollment.md) | Stop DSA being pre-"Active": a per-user **Start path** action; once started show current day, streak, and today's scheduled item | 🚀 shipped (`v1.1.0`) |
 | [F003](F003-rename-dsa-path.md) | Rename **DSA Interview Mastery** → **Data Structures & Algorithms** | 🚀 shipped (`v1.1.0`) |
@@ -32,6 +32,13 @@ Legend: ⬜ planned · 🔄 in progress · ✅ done (in local review) · 🚀 sh
 | [F007](F007-email-password-auth.md) | **Login flow**: a Sign in / Sign up pill + functional email/password auth; GitHub users set a password + email users connect GitHub in **Settings** (auto-link on matching verified email). No email verification yet. Review round added: full-width pill, **Settings section tabs** (replacing the scroll-spy rail), clearer OAuth wording | 🚀 shipped (`v1.3.0`) |
 | [F008](F008-shell-logo-and-live-badges.md) | **Shell polish**: the sidebar xLearn logo routes home (login when signed out); the Practice-loop **badge counts go live** (reviews due · open mistakes, hidden at 0) instead of hard-coded scaffold | 🚀 shipped (`v1.3.0`) |
 | [F009](F009-usernames-and-public-dashboards.md) | **Usernames + public dashboards**: per-course progress moves into the course nav; the avatar menu gains **Dashboard**; **usernames** (claim in Settings, sign in with email OR username); and a **public** LeetCode-style profile at `/xlearn/<username>` (moved to `/xlearn/u/<username>` by ADR-0025 in `v1.5.0`) — xLearn's first unauthenticated route (non-PII only). ADR-0024 | 🚀 shipped (`v1.4.0`; username→onboarding-step in `v1.4.1`; `/u/` profiles + impersonation-only reserved names in `v1.5.0`) |
+
+**Shipped as `v1.5.1`** (2026-09-24): reviewed on the local docker-compose stack, then shipped on the
+owner's go-ahead. Merged (xlearn#49) → `v1.5.1` tag → deploy built all seven `1.5.1` images → Flux deployed →
+verified live (all seven services report `v1.5.1`). **F010** fixes three coach/onboarding bugs:
+- **Onboarding key step.** It now actually saves the key.
+- **Quota errors.** Quota, billing, spend- and rate-limit errors keep the key enabled.
+- **Cut-off replies.** Replies that hit the length limit are marked.
 
 **Shipped as `v1.5.0`** (2026-09-24): merged (xlearn#43, #46, #47) → `v1.5.0` tag → deploy built all seven
 `1.5.0` images → Flux deployed → verified live (all seven services report `v1.5.0`). Two F009 follow-ups:
