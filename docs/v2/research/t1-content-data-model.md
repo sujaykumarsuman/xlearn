@@ -232,6 +232,7 @@ tests.lock                                  # case id → sha256 of materialized
   - (i) mount works;
   - (ii) a pod in another namespace **without** the pull secret cannot mount the cached image (KEP-2535 behaviour; confirm it covers image volumes).
 - **Fallback:** an initContainer that copies the pack into an emptyDir (needs an `initContainers` chart knob, off by default). `EVALPACK_DIR` hides the difference from judge's code.
+- *Result (spk-02, 2026-09-25):* **not run ⛔.** The session was interrupted before the image-volume pods. The kubelet defaults are recorded (`NeverVerifyPreloadedImages`; `KubeletEnsureSecretPulledImages` beta, on), and (i)–(iii) need a re-run. See [t3 §16.3](t3-sandbox.md#163-image-volume-spk-02--not-run-).
 
 ### 3.4 Versioning and pinning
 
