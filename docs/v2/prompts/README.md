@@ -1,5 +1,8 @@
 # v2 execution prompts
 
+> **Which prompt next?** See [execution-order.md](../execution-order.md): all 89 prompts clubbed into 19 workstreams, with the
+> run order week by week and what each prompt brings.
+
 **One prompt per sprint, one sprint per session.** Each `prompt-<id>.md` is a self-contained brief: paste it into
 a fresh coding session at the repo root and it executes that whole sprint. It lists the owner-only prerequisites
 to do **before launch**, names the docs to read first, the context, the **entry gates to verify first**, the

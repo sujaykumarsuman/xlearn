@@ -27,7 +27,8 @@ milestones ship as `1.x` minors until the `v2.0.0` GA. v1 maintenance and UI/UX 
 - `design-system/theme.css` — reusable design-system CSS (dark "landscape console" look, ported
   from `github.com/sujaykumarsuman/sujaykumar-design-system`). Reuse this for the real UI.
 - `docs/` — planning & architecture (layout below). Read `docs/v2/status.md` and
-  `docs/v2/build-plan.md` before starting build work (`docs/v1/` for v1 feedback work).
+  `docs/v2/build-plan.md` before starting build work (`docs/v1/` for v1 feedback work);
+  `docs/v2/execution-order.md` is the one-page view of which prompt runs when and what each brings.
 
 ## Tech stack
 

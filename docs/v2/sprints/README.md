@@ -1,5 +1,8 @@
 # v2 sprints
 
+> **Which prompt next?** See [execution-order.md](../execution-order.md): all 89 prompts clubbed into 19 workstreams, with the
+> run order week by week and what each prompt brings.
+
 Per-sprint **plans** for the v2 build. Each sprint is one flat file `sprint-<id>.md` and pairs with exactly one
 execution **prompt** in [`../prompts/`](../prompts/), `prompt-<id>.md`, designed to run **one prompt per sprint per
 session**. Sequencing, milestones, calendar and the artboard register live in [`../build-plan.md`](../build-plan.md);
