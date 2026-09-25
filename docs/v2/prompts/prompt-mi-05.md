@@ -108,7 +108,7 @@ Stop and report if any gate is unmet.
    - **Fail closed:** in `cmd/{practice,review,assessment,identity}/main.go`, an init error with `NATS_URL` set exits non-zero. Remove the `LogPublisher` and "consumer disabled" fallbacks for that case; keep them only when `NATS_URL` is unset.
    - **Measure the v1 envelope maximum:**
      - the payload structs;
-     - a read-only query on each prod outbox, which touches nothing (`ssh vps 'sudo k3s kubectl exec -n databases projects-pgstore-1 -c postgres -- psql -d xlearndb -Atc "select max(octet_length(payload_json::text)) from practice.outbox"'`), and the same for review, assessment and identity.
+     - a read-only query on each prod outbox, which touches nothing (`ssh sujaykumar-vps 'sudo k3s kubectl exec -n databases projects-pgstore-1 -c postgres -- psql -d xlearndb -Atc "select max(octet_length(payload_json::text)) from practice.outbox"'`), and the same for review, assessment and identity.
    - **Then add the cap:** `MaxEnvelopeBytes = 16 KiB` and `CheckEnvelope`. In `Relay.drain`, skip an oversize row: log ERROR once per id, leave it unsent, and continue the batch.
 
 7. **Pool pins [X]** (plan task 6):

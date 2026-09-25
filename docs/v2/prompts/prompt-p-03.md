@@ -39,7 +39,7 @@
 - [ ] **No evalpack tag has shipped gc items yet:** `git -C ../xlearn-evalpack tag --contains <the gc merge commit>`; for each such tag, its `packcheck` build summary (ids and counts only) lists no gc item as included. If one does, stop and report.
 - [ ] **AB14 F11 as frozen:** read F11 on the board on `main` (arena answers behind a D17 spoiler vs t4 §4.3 / ADR-0029 §2). The DS-P-01 merge froze it as drawn and its PR lists it under "Decisions to confirm"; a later follow-up design PR may have changed it. Record the resolution in the Decisions log. Not a wait (D40): the frozen board is the answer.
 - [ ] **P-02 merged** (manifest `preview`, gating tests, `COURSE_STATUS_OVERRIDE` in the status.md flag inventory, the multi-file workspace, AB02/AB05 full fidelity).
-- [ ] **P-01 done:** read-only `ssh vps 'k3s kubectl get deploy -n xlearn-runner -o wide'` shows `runner-v1.1.0`, and P-01's judge `gotest@1` mapping + lints are on `main`.
+- [ ] **P-01 done:** read-only `ssh sujaykumar-vps 'k3s kubectl get deploy -n xlearn-runner -o wide'` shows `runner-v1.1.0`, and P-01's judge `gotest@1` mapping + lints are on `main`.
 - [ ] **v1.14.0 live**, `JUDGE_BASE_URL` set on the gateway, judge features cohort-only.
 - [ ] **AB14/AB15 frozen** (the DS-P-01 PR merged, which is the freeze; status.md artboard rows "frozen (PR #, date)").
 - [ ] **PRD Q5 = go-concurrency** in status.md. **If SQL was chosen, stop and report**: P needs re-planning.
@@ -160,7 +160,7 @@
    The IUA bumps judge's `reference:`, and judge restarts.
 
 8. **[X] Prod verify.**
-   - Read-only: `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-judge -- judge admin status'` shows the gc items `ok`, **0 `spec_mismatch`** and the DSA count unchanged. `k3s kubectl top pod -n xlearn` shows judge under its limit. Anonymous `/xlearn/api/v1/public/stats` and the owner's public profile show no go-concurrency.
+   - Read-only: `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-judge -- judge admin status'` shows the gc items `ok`, **0 `spec_mismatch`** and the DSA count unchanged. `k3s kubectl top pod -n xlearn` shows judge under its limit. Anonymous `/xlearn/api/v1/public/stats` and the owner's public profile show no go-concurrency.
    - The graded run: as a cohort account, enroll, complete **one quiz item** and **one race item** (one failing submit first). Do it only through an already-signed-in browser session; you never sign in. Otherwise add the owner event `ev-pilot-run` (this checklist, after ship) to status.md and carry on: it gates nothing, and anything the owner finds becomes a follow-up PR.
 
 9. **[X] Record the P exit.** See *Update status*.

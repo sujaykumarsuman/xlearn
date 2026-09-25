@@ -108,16 +108,16 @@ These are raw manifests under `infrastructure/sandbox/`, from [t3 §8.2](../rese
 
 **First binding and pre-merge check.** The **first PR** ships both bindings at `validationActions: [Warn, Audit]`. Before merging:
 - **Don't run `kubectl kustomize`, and don't add a `kustomization.yaml`.** No infra directory except `clusters/vps/flux-system` has one: Flux generates it, and `kubectl kustomize` on a plain directory errors. Keep the house convention.
-- Server dry-run the new files only: `cat infrastructure/sandbox/*.yaml | ssh vps 'sudo k3s kubectl apply --dry-run=server -f -'`. That's validation only and persists nothing.
+- Server dry-run the new files only: `cat infrastructure/sandbox/*.yaml | ssh sujaykumar-vps 'sudo k3s kubectl apply --dry-run=server -f -'`. That's validation only and persists nothing.
   - The cluster-scoped objects (Namespace, VAPs, bindings, RuntimeClass, PriorityClass) must pass. The API server **compiles** every CEL expression on write, so a syntax or compile error fails here.
   - The namespaced objects (ResourceQuota, LimitRange, NetworkPolicies) get `namespaces "xlearn-runner" not found`, because a dry-run doesn't persist the Namespace. Schema-check them by piping them through `sed 's/namespace: xlearn-runner/namespace: default/'` into the same dry-run.
 - **After PR 1 reconciles**, read `status.typeChecking` on both VAPs (`k3s kubectl get validatingadmissionpolicy xlearn-runner-pod-shape -o jsonpath='{.status.typeChecking}'`, and the same for `xlearn-runner-no-exec`). Type-checking against the Pod schema happens only on the persisted object. Any `expressionWarnings` entry is a bug: fix it in a follow-up PR before the Deny flip.
 
 ### 2 · VAP proof corpus + script [I]
 
-Add `hack/sandbox-vap-test.sh`, run over `ssh vps`. It only calls `kubectl apply --dry-run=server` and one raw `create --raw` POST, so it persists nothing. Give it `--expect warn|deny`, and have it print a pass/fail table. It must be shellcheck clean and covered by `host-lint.sh`.
+Add `hack/sandbox-vap-test.sh`, run over `ssh sujaykumar-vps`. It only calls `kubectl apply --dry-run=server` and one raw `create --raw` POST, so it persists nothing. Give it `--expect warn|deny`, and have it print a pass/fail table. It must be shellcheck clean and covered by `host-lint.sh`.
 
-**The corpus travels inside the script**, following [mi-02](sprint-mi-02.md)'s embedded-TSV precedent. The script runs as `ssh vps 'bash -s …' < hack/sandbox-vap-test.sh`, so it never sees `hack/`, and copying files to the node is a host write this sprint avoids.
+**The corpus travels inside the script**, following [mi-02](sprint-mi-02.md)'s embedded-TSV precedent. The script runs as `ssh sujaykumar-vps 'bash -s …' < hack/sandbox-vap-test.sh`, so it never sees `hack/`, and copying files to the node is a host write this sprint avoids.
 - The reviewed sources are `hack/sandbox-vap-test/*.yaml`.
 - Each is embedded byte-identically as a heredoc between `# >>> sandbox-vap-test/<file>.yaml` and `# <<< sandbox-vap-test/<file>.yaml` markers.
 - The script pipes each heredoc into `k3s kubectl apply --dry-run=server -f -`. It writes no file on the node.
@@ -170,7 +170,7 @@ Record the exact strings from the first node run in the PR, and tighten the patt
 
 ### 3 · Prove on the node, Warn phase [H]
 
-After PR 1 merges, check `k3s kubectl get kustomizations -n flux-system`: `sandbox-guards` Ready and `apps` Ready and unchanged. Check both VAPs' `status.typeChecking` (task 1). Then run `ssh vps 'bash -s -- --expect warn' < hack/sandbox-vap-test.sh`:
+After PR 1 merges, check `k3s kubectl get kustomizations -n flux-system`: `sandbox-guards` Ready and `apps` Ready and unchanged. Check both VAPs' `status.typeChecking` (task 1). Then run `ssh sujaykumar-vps 'bash -s -- --expect warn' < hack/sandbox-vap-test.sh`:
 - every B case is admitted with a **VAP** warning naming its rule;
 - G1 is admitted with **no VAP warning**. It shows only the expected PSA baseline warnings from task 2 (`SYS_ADMIN`, and `procMount` unless relaxed);
 - C1 is admitted with no warning at all;
@@ -187,7 +187,7 @@ PR 2 changes both bindings to `validationActions: [Deny]` and nothing else.
 
 ### 5 · Prove on the node, Deny phase [H]
 
-Run `ssh vps 'bash -s -- --expect deny' < hack/sandbox-vap-test.sh`:
+Run `ssh sujaykumar-vps 'bash -s -- --expect deny' < hack/sandbox-vap-test.sh`:
 - **B1–B14 denied by the VAP**, with the denial naming `xlearn-runner-pod-shape`. At least 8 of them are the rollout's required shapes (privileged, hostPID, token automount, wrong image, Unconfined seccomp, extra caps, hostPath, exec). A B case denied by anything else is a FAIL;
 - X1 and X2 denied by `xlearn-runner-no-exec`, or recorded as above;
 - Q1 denied by the LimitRange;
@@ -204,8 +204,8 @@ If [spk-01](sprint-spk-01.md) already reported a diff against the t3 draft (whet
 - **Update the embedded copy too.** `host-verify.sh` never reads the `.tsv`: it runs via `bash -s` and carries the table between its `# >>> expected-netpol.tsv` / `# <<< expected-netpol.tsv` markers. Paste the same rows there, byte-identical.
 - Add a read-only presence check to `host-verify.sh --cluster` for the two VAP bindings (`get validatingadmissionpolicybinding`). A missing binding is a FAIL.
 - Run `hack/host-lint.sh` **clean before each PR**. It fails when an embedded copy differs from its file (the `.tsv` and this sprint's corpus), and it runs shellcheck and the read-only verb check.
-- Run `ssh vps 'bash -s -- --cluster' < hack/host-verify.sh`: it's green, and the NetworkPolicy and VAP checks pass.
-- **Negative check.** Prove the new rows are really checked: `ssh vps "bash -s -- --cluster --netpol-file <(printf 'xlearn-runner\tno-such-policy\tneg\n')" < hack/host-verify.sh` must **FAIL** `cluster.netpol`. The node's bash evaluates the `<(…)`, and mi-02's `--netpol-file` override reads it. Paste both runs into the PR.
+- Run `ssh sujaykumar-vps 'bash -s -- --cluster' < hack/host-verify.sh`: it's green, and the NetworkPolicy and VAP checks pass.
+- **Negative check.** Prove the new rows are really checked: `ssh sujaykumar-vps "bash -s -- --cluster --netpol-file <(printf 'xlearn-runner\tno-such-policy\tneg\n')" < hack/host-verify.sh` must **FAIL** `cluster.netpol`. The node's bash evaluates the `<(…)`, and mi-02's `--netpol-file` override reads it. Paste both runs into the PR.
 - `k3s kubectl get kustomizations -n flux-system -o wide`: `apps` is Ready, and nothing lists `sandbox-guards` in `dependsOn`.
 
 ### 7 · Record [X]

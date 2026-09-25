@@ -7,6 +7,13 @@
 > **Calendar:** event **`ev-s6`**: any day the owner is present, **before the M6a design freeze**. Recommended after M3 and within ~4 weeks before [ds-m6a-01](sprint-ds-m6a-01.md) (≈ Dec 2026 – Jan 2027), because the voice APIs were weeks old at planning time and the result ages. **Time box:** 1 working day, ≤ 8 h hands-on plus a 65-minute unattended soak. **Spend:** `xlearn-s6` has a $10 hard limit (enforced); the harness stops itself at $8, with per-leg checkpoints (GPT-Live legs ≤ $5.50, leaving ≥ $2.50 for mini and the browsers). `xlearn-s6-quota` starts at $1 and is raised in $1 steps to at most $3. Worst case across both projects: $11. t6 expects ≈ $6–7
 > **Execute with:** [`../prompts/prompt-spk-04.md`](../prompts/prompt-spk-04.md) — one prompt, one session.
 
+## D41 changes (read first; they override the text below where they conflict)
+
+> **D41 (owner, 2026-09-25): spikes first.** All four spikes run **before any build sprint**, so every design yes/no is answered before M1 starts: spk-01 and spk-02 on Fri 2026-09-25 (agent-only, after the MI-0 reboot), spk-03 and spk-04 on Sat 2026-09-26 (spk-03 after the owner's Console step; spk-04 with the owner present). For this sprint, overriding the text below:
+> - **Run on Sat 2026-09-26, with the owner present** (`ev-s6`). The "recommended after M3" timing is superseded; the owner accepted that results age.
+> - **A ≤ 1 h recheck runs before ds-m6a-01** (event `ev-s6-recheck`, non-blocking for everything before M6a): the same shells, the hard gates and M14 only, and a note if the winner or its price changed.
+> - **Sole-passer question, answered by the owner on 2026-09-25: yes.** If GPT-Live passes every hard gate and mini fails one, GPT-Live wins even when its M14 isn't a full point higher (a shell that fails a hard gate isn't viable).
+
 ## Status
 
 _Overall:_ ⬜ Not started
@@ -33,7 +40,7 @@ _Overall:_ ⬜ Not started
 - [ ] **The owner is present for the day** (a before-launch item, event `ev-s6`, ≤ 1 working day): he plays the candidate, rates naturalness and continuity, reads the usage page, raises the quota project's limit at task 1's steps and deletes the projects at the end. The projects and keys exist before launch (task 1).
 - [ ] **The owner's OpenAI organisation is usage Tier 1 or higher** (GPT-Live has no free tier) and has 2FA on (MI-1, event `ev-mi1`), both stated in the launch message. Record the tier; 2FA missing is noted, not a blocker.
 - [ ] **The owner's Mac:** Chrome stable (Edge optional), Firefox and Safari installed; Go ≥ 1.26 (the repo's `go.mod` line); a home network in India (record wired/Wi-Fi). Headphones are available but **not** used for M3.
-- [ ] **Nothing touches the VPS or the cluster.** No `ssh vps`, no `kubectl`: the laptop's kube context tunnels to production.
+- [ ] **Nothing touches the VPS or the cluster.** No `ssh sujaykumar-vps`, no `kubectl`: the laptop's kube context tunnels to production.
 - [ ] **Parallel sessions:** no open peer PR edits [`../research/t6-realtime-interviewer.md`](../research/t6-realtime-interviewer.md) or adds `docs/v2/research/t6-s6-fixtures/` (`gh pr list --state open`, `git worktree list`, ListAgents).
 
 ## Goal
@@ -329,7 +336,7 @@ touches production.
 
 ## Definition of Done
 
-Results recorded and the docs PR merged · no production change (no `ssh vps`, no `kubectl`) · statuses updated here and in
+Results recorded and the docs PR merged · no production change (no `ssh sujaykumar-vps`, no `kubectl`) · statuses updated here and in
 [`../status.md`](../status.md) · raw logs and the harness gone; projects and keys deleted by the owner, or recorded as his
 follow-up · the time box and the $8 self-stop respected; any unfinished row marked "not run (time box)" or "not run (spend)".
 

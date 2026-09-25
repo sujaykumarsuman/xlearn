@@ -97,19 +97,19 @@ Stop and report if any gate is unmet.
    - Extend `hack/host-lint.sh`: shellcheck `sandbox-*.sh`, check each embedded corpus heredoc equals its file, and allow only `apply --dry-run=server` and `create --raw` on the `exec`/`attach` subresource as write verbs in this script. Run it clean.
 
 4. **Pre-merge validation [H]:**
-   - `cat infrastructure/sandbox/*.yaml | ssh vps 'sudo k3s kubectl apply --dry-run=server -f -'`. This persists nothing.
+   - `cat infrastructure/sandbox/*.yaml | ssh sujaykumar-vps 'sudo k3s kubectl apply --dry-run=server -f -'`. This persists nothing.
      - The cluster-scoped objects (Namespace, VAPs, bindings, RuntimeClass, PriorityClass) must pass. The API server compiles every CEL expression on write, so fix any compile error.
      - The namespaced ones return `namespaces "xlearn-runner" not found`, because the dry-run didn't persist the Namespace. Schema-check them by piping them through `sed 's/namespace: xlearn-runner/namespace: default/'` into the same dry-run.
    - `helm lint charts/project -f <draft runner values>`, plus the G1 Pod's own server dry-run once PR 1 is live (step 6).
    - `hack/host-lint.sh` clean.
 
 5. **PR 1 [I]:** open it with the object table, the rule list and the validation output. Merge it once validated (there's no CI; you have standing merge authority).
-   - Wait for Flux: `ssh vps 'sudo k3s kubectl get kustomizations -n flux-system'` shows `sandbox-guards` Ready and `apps` Ready, with no restarts elsewhere.
+   - Wait for Flux: `ssh sujaykumar-vps 'sudo k3s kubectl get kustomizations -n flux-system'` shows `sandbox-guards` Ready and `apps` Ready, with no restarts elsewhere.
    - `get pods -n xlearn-runner` shows no resources.
    - Read `status.typeChecking` on both VAPs (`get validatingadmissionpolicy <name> -o jsonpath='{.status.typeChecking}'`). CEL type-checking against the Pod schema only shows on the persisted object. Any `expressionWarnings` entry gets a follow-up PR before step 7.
 
 6. **Prove, Warn phase [H]:**
-   - Run `ssh vps 'bash -s -- --expect warn' < hack/sandbox-vap-test.sh`. The corpus is embedded, so copy nothing to the node.
+   - Run `ssh sujaykumar-vps 'bash -s -- --expect warn' < hack/sandbox-vap-test.sh`. The corpus is embedded, so copy nothing to the node.
    - Expect:
      - every B case admitted with a **VAP** warning naming its rule;
      - **G1 with no VAP warning**. Its expected PSA baseline warnings are `SYS_ADMIN` in `capabilities.add`, and `procMount: Unmasked` unless the API server relaxes that check for `hostUsers: false`; record which;
@@ -132,9 +132,9 @@ Stop and report if any gate is unmet.
 
 9. **Verify [H]:**
    - `hack/host-lint.sh` is clean: the embedded `.tsv` and corpus equal their files.
-   - `ssh vps 'bash -s -- --cluster' < hack/host-verify.sh`: green, including the NetworkPolicy presence (the two new names) and the VAP-binding check.
-   - **Negative check:** `ssh vps "bash -s -- --cluster --netpol-file <(printf 'xlearn-runner\tno-such-policy\tneg\n')" < hack/host-verify.sh` must **FAIL** `cluster.netpol`, which proves the presence check isn't vacuous. Paste both runs into the PR.
-   - `ssh vps 'sudo k3s kubectl get kustomizations -n flux-system -o wide'`: `apps` is unaffected, and nothing lists `sandbox-guards` in `dependsOn`.
+   - `ssh sujaykumar-vps 'bash -s -- --cluster' < hack/host-verify.sh`: green, including the NetworkPolicy presence (the two new names) and the VAP-binding check.
+   - **Negative check:** `ssh sujaykumar-vps "bash -s -- --cluster --netpol-file <(printf 'xlearn-runner\tno-such-policy\tneg\n')" < hack/host-verify.sh` must **FAIL** `cluster.netpol`, which proves the presence check isn't vacuous. Paste both runs into the PR.
+   - `ssh sujaykumar-vps 'sudo k3s kubectl get kustomizations -n flux-system -o wide'`: `apps` is unaffected, and nothing lists `sandbox-guards` in `dependsOn`.
 
 10. **Record [X]:** a small xlearn docs PR for `docs/v2/status.md` and this sprint's file (see Update status).
 

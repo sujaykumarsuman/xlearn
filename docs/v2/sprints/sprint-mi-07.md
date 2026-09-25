@@ -184,7 +184,7 @@ does it after the first session and before re-launching the prompt. The first se
       name: xlearn-evalpack-pull
   ```
 
-- **Ship it in the re-run's infra PR, together with task 5's two Secrets,** so the Secret exists when the ImageRepository first reconciles. After the merge (read-only, `ssh vps`):
+- **Ship it in the re-run's infra PR, together with task 5's two Secrets,** so the Secret exists when the ImageRepository first reconciles. After the merge (read-only, `ssh sujaykumar-vps`):
   - `k3s kubectl get imagerepository xlearn-evalpack -n flux-system -o jsonpath='{.status.conditions[?(@.type=="Ready")].status} {.status.lastScanResult.tagCount} {.status.lastScanResult.latestTags}'` gives `True 1 [0.1.0]`;
   - both Secrets exist, with type `kubernetes.io/dockerconfigjson` (`-o jsonpath='{.type}'` only; never print `data`);
   - the `apps` Kustomization is Ready;

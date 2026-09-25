@@ -67,7 +67,7 @@ Owner action before launch, recorded as `ev-mi5b-dns` (with the bookmark update,
 
 The agent verifies propagation before task 2 merges, because Let's Encrypt resolves through public resolvers:
 - `dig +short ops.sujaykumar.dev A` equals `dig +short projects.sujaykumar.dev A`, checked against the local resolver, `@1.1.1.1` and `@8.8.8.8`;
-- the node sees the same (`ssh vps 'getent hosts ops.sujaykumar.dev'`).
+- the node sees the same (`ssh sujaykumar-vps 'getent hosts ops.sujaykumar.dev'`).
 
 If the record is missing (not just still propagating), don't wait: everything else depends on it (the HTTP-01
 challenge needs it, and PR 2 needs `ops-tls`). Set task 1 ⛔ in this file and status.md, naming the owner action,
@@ -80,7 +80,7 @@ and land that as the docs PR; a re-run starts at task 1.
 - **Why not add a SAN to `projects-tls`:** a failed `ops` challenge would then block the renewal of the certificate xLearn is served with. Separate certificates renew independently.
 - **Before merging.** infra has no CI, so paste the `yq` parse of both files and the `hack/host-lint.sh` output (a sanity run) into the PR body.
 - Verify, read-only:
-  - `ssh vps 'k3s kubectl -n kube-system get certificate ops-tls'` shows `Ready=True`;
+  - `ssh sujaykumar-vps 'k3s kubectl -n kube-system get certificate ops-tls'` shows `Ready=True`;
   - `openssl s_client -connect ops.sujaykumar.dev:443 -servername ops.sujaykumar.dev </dev/null | openssl x509 -noout -subject -ext subjectAltName -issuer -dates` shows `ops.sujaykumar.dev` and a Let's Encrypt issuer;
   - `projects.sujaykumar.dev` still serves `projects-tls`;
   - `infra-configs` is Ready.
@@ -105,7 +105,7 @@ Merge only after `ops-tls` is Ready. **landscape and the Longhorn UI must move i
   - `helm template kubescope ./charts/project -f <values extracted from apps/kubescope.yaml>` and the same for landscape, as a diff against `main`. The only differences are the `Host(...)` match and landscape's env.
   - `yq` parses every new and changed file.
   - `hack/host-lint.sh` stays clean. This sprint touches no host script, so this is a sanity run.
-- **After the merge:** `ssh vps 'bash -s -- --cluster' < hack/host-verify.sh` (read-only) shows no FAIL.
+- **After the merge:** `ssh sujaykumar-vps 'bash -s -- --cluster' < hack/host-verify.sh` (read-only) shows no FAIL.
 - **Chart 0.3.0 ([mi-01](sprint-mi-01.md)):** these are value changes, so they're orthogonal to `hack/chart-diff.sh`, which compares charts under identical values. If both PRs are open, whichever merges second rebases and re-runs `chart-diff.sh`.
 - **Rewrite the infra README's "Admin consoles" section** in the same PR:
   - the URL table on `ops.sujaykumar.dev`, with the airlift admin row;
@@ -160,7 +160,7 @@ PR 3 to be live. A follow-up session picks up at 4b (the prompt's step 5), then 
    - (e) rejects with a CORS `TypeError`, and the console names the missing `Access-Control-Allow-Origin` header, not a CSP directive.
    - **Inconclusive, not a pass:** `(blocked:csp)`, `(failed)`, or a network error with no status. Fix the probe page and re-run.
 4. **Evidence, read-only.**
-   - **kubescope** logs JSON: `ssh vps 'k3s kubectl -n kubescope logs deploy/kubescope --since=15m'`. Look for an `"msg":"http request"` line with `"status":403` on the `…/xl-probe-missing/restart` path (the body `cross_origin_rejected` isn't logged), and an `"msg":"exec websocket upgrade failed"` line whose error says `not authorized`.
+   - **kubescope** logs JSON: `ssh sujaykumar-vps 'k3s kubectl -n kubescope logs deploy/kubescope --since=15m'`. Look for an `"msg":"http request"` line with `"status":403` on the `…/xl-probe-missing/restart` path (the body `cross_origin_rejected` isn't logged), and an `"msg":"exec websocket upgrade failed"` line whose error says `not authorized`.
    - **Longhorn / landscape ForwardAuth:** landscape doesn't log `/api/forward-auth` (too chatty), so its logs show nothing. The evidence is the browser's 403 for (b) and (d), with the JSON body `{"error":"cross-origin request refused"}` where devtools shows the response.
 5. The login check, in the same signed-in browser: landscape, kubescope, Longhorn (through the landscape session) and airlift admin all work on `ops`. The owner updated the bookmarks before launch (`ev-mi5b-dns`); the old-URL redirects cover any that weren't.
 
@@ -176,7 +176,7 @@ Record the 4a and 4b tables (request, expected, observed) in PR 2's description.
   - Apply the same treatment to any other console that failed.
 - **The ranges** live only in the private infra repo. Never copy them into xlearn, which is a public repo, and never into `status.md`.
 - **If no stable ranges were given at launch:** set `KUBESCOPE_READ_ONLY=true`. That disables every kubescope mutation, `exec` included, because there's no exec-only switch. It stays set until the console is fixed upstream, and the README says so. Any other failed console with no such fallback is recorded ⛔ in status.md; don't wait for ranges.
-- **Break-glass if the owner's IP changes:** `ssh vps` plus `k3s kubectl` (read-only unless the owner acts), then a one-line PR to update the range.
+- **Break-glass if the owner's IP changes:** `ssh sujaykumar-vps` plus `k3s kubectl` (read-only unless the owner acts), then a one-line PR to update the range.
 
 ### 6 · Record [X]
 
@@ -209,7 +209,7 @@ In `docs/v2/status.md`:
 
 **Infra PR(s) only.**
 - PR 1 (certificate) → PR 2 (routes + README) → PR 3 only if task 4 fails, in that order. infra has no CI, so each PR body carries the pasted checks (the `helm template` diff where a chart value changes, the `yq` parse, and `hack/host-lint.sh`). Then merge it under the standing authority, and Flux applies it.
-- After PR 2, and after PR 3 if it's needed, run `ssh vps 'bash -s -- --cluster' < hack/host-verify.sh` (read-only). It must show no FAIL.
+- After PR 2, and after PR 3 if it's needed, run `ssh sujaykumar-vps 'bash -s -- --cluster' < hack/host-verify.sh` (read-only). It must show no FAIL.
 - No xlearn tag: nothing here ships in a tag. The status update rides an xlearn docs PR.
 - There's no snapshot, because this isn't a contract, erase or GA tag and it doesn't restart the host.
 
@@ -230,6 +230,6 @@ In `docs/v2/status.md`:
 - **Cookie tossing.** Script on `projects` can set a `Domain=sujaykumar.dev` cookie that `ops` receives. It can shadow a console cookie and sign the owner out, but it can't forge a session, because tokens are HMAC-signed. `__Host-` cookie names would close this; that belongs in the console repos.
 - **HTTP-01 needs propagated DNS.** If the challenge fails, `ops` shows a certificate error or a 404. `projects` is unaffected because its certificate is separate.
 - **Ordering hazard.** The M1b `identity admin` CLI can mint a `tester` before this sprint lands. `ev-first-tester` and [l-02](sprint-l-02.md) gate on MI-5b, so check `status.md` before minting.
-- **An allowlist with a dynamic home IP can lock the owner out.** Keep the break-glass path (`ssh vps`) and a one-line range PR.
+- **An allowlist with a dynamic home IP can lock the owner out.** Keep the break-glass path (`ssh sujaykumar-vps`) and a one-line range PR.
 - **A CSP on the probe page fakes a pass.** A page with `connect-src 'self'` (every xLearn page once [m1-04](sprint-m1-04.md) ships) blocks the 4b requests in the browser, so the WebSocket and CORS rows "pass" without reaching `ops`. Probe from a page that sends no CSP (the hub root), and count only real server 403s.
 - **landscape's app links regress (cosmetic).** `LANDSCAPE_PUBLIC_URL` on `ops` makes landscape's public-URL links for xlearn, airlift and the hub point at `ops.sujaykumar.dev/<app>`, which returns 404. The consoles and the monitoring views still work. It's recorded in the infra README, and the fix is the upstream landscape issue.

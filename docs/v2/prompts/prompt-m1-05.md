@@ -78,7 +78,7 @@ one additive coach route row. Everything ships in `v1.7.0` (m1-07's tag).
     `docs/architecture/api.md` + `openapi.yaml` (the drift test must stay green).
 12. **[X] Verify** — `gofmt`, `go vet`, `go test -race ./...`, `sqlc diff`, e2e (`go test -tags e2e -race ./internal/e2e/...`;
     golden = v1 except D31, 429s and the date-only `joinedAt` on `/api/u/{username}`), `npm --prefix web run` `typecheck`, `lint`, `test`, `build`; the read-only check
-    `ssh vps 'k3s kubectl -n kube-system get svc traefik -o jsonpath={.spec.externalTrafficPolicy}'` → `Local` (record in the PR).
+    `ssh sujaykumar-vps 'k3s kubectl -n kube-system get svc traefik -o jsonpath={.spec.externalTrafficPolicy}'` → `Local` (record in the PR).
 
 ## Constraints
 
@@ -91,7 +91,7 @@ one additive coach route row. Everything ships in `v1.7.0` (m1-07's tag).
   consumers-before-producers step. Suspend visibility relies on per-request resolution, not on an event.
 - **Serialized router:** touch only what the plan lists; m1-06 rebases on you. Don't touch `internal/coach/**` (m1-10).
 - **Frontend:** `theme.css` verbatim, dark theme; only the tile copy and error copy change (no new screen).
-- **GitOps:** no `kubectl apply`; the only cluster access is the read-only `ssh vps` check. **D34:** no alerting; a 429 is
+- **GitOps:** no `kubectl apply`; the only cluster access is the read-only `ssh sujaykumar-vps` check. **D34:** no alerting; a 429 is
   a typed response, not a signal anyone is paged on.
 - **Parallel sessions:** if you record an ADR (e.g. a limit value departing from ADR-0035), re-check peers' PRs and
   ADR numbers first.

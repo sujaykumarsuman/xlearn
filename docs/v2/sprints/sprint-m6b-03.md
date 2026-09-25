@@ -240,7 +240,7 @@ Record the split in the PR.
 
 These must ship in this patch, because [m6b-04](sprint-m6b-04.md) runs against it on prod.
 
-**a) `coach admin interviews media-audit <interview-id>`.** A read-only verb next to m6a-01's `coach admin interviews --live`, run the same sanctioned way: `ssh vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin interviews media-audit <id>'`. It prints JSON and exits non-zero unless the verdict is `clean`. It reports:
+**a) `coach admin interviews media-audit <interview-id>`.** A read-only verb next to m6a-01's `coach admin interviews --live`, run the same sanctioned way: `ssh sujaykumar-vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin interviews media-audit <id>'`. It prints JSON and exits non-zero unless the verdict is `clean`. It reports:
 - `binary_columns`: every `bytea` / `oid` column in schema `coach` outside an allowlist. The allowlist is the key envelope: `api_key_config.enc_key`, `enc_data_key`, and any keyring columns [m1-10](sprint-m1-10.md) added. It must be `[]`.
 - per interview table (`interview`, `interview_turn`, the segment log, checkpoints, the snapshot timeline, consent): the rows for this interview and the maximum `pg_column_size`;
 - `sdp_markers`: text values holding `a=candidate`, `a=fingerprint` or a line `v=0` → must be 0;
@@ -356,7 +356,7 @@ Release checklist ([ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and
 - **ACL PRs:** n/a (no stream or consumer).
 - **New service:** n/a. If S6 M7 failed, `coach-interview` reuses coach's image and its policy came in m6b-02; its exact pin moves in task 8's own infra PR after the tag. Until then, the "every policy's latest equals the tag" line excludes `xlearn-coach-interview`.
 - **Contract, erase or GA:** n/a, so no snapshot.
-- **No live interviews:** `ssh vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin interviews --live'` is empty.
+- **No live interviews:** `ssh sujaykumar-vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin interviews --live'` is empty.
 - **Major:** equals `.release-line` = `2`.
 - **Standing rule:** no new caller. gateway → coach, gateway → identity and coach → identity exist; coach → OpenAI 443 is mi-13's.
 - **Flags:** none new. Voice sits behind the interviewer's existing T-3 cohort gate.

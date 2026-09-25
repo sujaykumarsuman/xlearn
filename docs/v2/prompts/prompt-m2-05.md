@@ -60,7 +60,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
-- [ ] **v1.9.0 live**: read-only `ssh vps 'k3s kubectl get deploy -n xlearn -o wide'` shows ≥ 1.9.0, and healthz agrees.
+- [ ] **v1.9.0 live**: read-only `ssh sujaykumar-vps 'k3s kubectl get deploy -n xlearn -o wide'` shows ≥ 1.9.0, and healthz agrees.
 - [ ] **M2-03 and M2-04 merged** on `main`, with the `touchesEnabled` guard (default false) present in `internal/gateway/touch.go`.
 - [ ] **The subjects match.** `xlearn.practice.touch_concluded` is handled by review. The subject assessment handles for touch scoring is **`xlearn.review.touch_scored`**: review emits it, and review's `xlearn.review.>` ACL covers it. Check `topology.go`, the subject registry and `internal/assessment/consumers.go`. **If M2-02 used another name or owner, stop and report**; a mismatched producer is acked silently and lost.
 - [ ] **M2-02's contract is on `main`**: `internal/platform/events/testdata/touch_scored.v2.json` and the `events.md` "Flow 6 — touch scored → projections" section.
@@ -139,9 +139,9 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
    - Tag `v1.10.0` on the merge commit; GitHub release title **`v1.10.0 — v2 build · M2b/M2c`**; release notes list the behaviour changes (D2, the Touch screen, Today in minutes/agenda, profile v2 + visibility, the heatmap and streak from `proj_activity` on the public and authed views plus touch stats and provenance on Progress, the kill switch).
    - After the tag, by looking: healthz version, `get deploy` images, ImagePolicy latest = tag, HelmReleases Ready, a smoke test (login, dashboard, coach, a Revision touch, the authed Progress page, the public profile), and the review logs showing `revision_entry_rule=v2`.
 
-10. **[H] Post-tag prod steps** (the sanctioned `kubectl exec` admin path; log each use in status.md). **Run these yourself: launching approves them (D40).** Don't hand them off or wait. Only if `ssh vps` fails here, set plan task 8 ⛔ with these exact commands in the manual-path log, for whoever next has access to run in order.
-    1. `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-review -- review admin backfill-touch-scored --wait 2m'`, then again → `inserted 0`;
-    2. with no attempts, touches or mocks between the runs (the before-launch item): `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-assessment -- assessment admin replay-projections --confirm'` → D1, then again (it waits for the reap) → D2; **D1 must equal D2**. If they differ and the per-stream counts changed, a new event landed: run once more;
+10. **[H] Post-tag prod steps** (the sanctioned `kubectl exec` admin path; log each use in status.md). **Run these yourself: launching approves them (D40).** Don't hand them off or wait. Only if `ssh sujaykumar-vps` fails here, set plan task 8 ⛔ with these exact commands in the manual-path log, for whoever next has access to run in order.
+    1. `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-review -- review admin backfill-touch-scored --wait 2m'`, then again → `inserted 0`;
+    2. with no attempts, touches or mocks between the runs (the before-launch item): `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-assessment -- assessment admin replay-projections --confirm'` → D1, then again (it waits for the reap) → D2; **D1 must equal D2**. If they differ and the per-stream counts changed, a new event landed: run once more;
     3. reconcile per the runbook §C (Progress incl. heatmap, touch stats and provenance; Dashboard; the public profile vs the source services), and confirm `event_dead_letter` is empty.
 
 11. **[X] Record the M2 exit.** See *Update status*.
@@ -172,13 +172,13 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 
 ## Update status
 
-- In [`../sprints/sprint-m2-05.md`](../sprints/sprint-m2-05.md): set task rows ✅ (task 6: the PR # or n/a; task 8: ⛔ with the logged commands only if `ssh vps` failed), and set _Overall_ ✅.
+- In [`../sprints/sprint-m2-05.md`](../sprints/sprint-m2-05.md): set task rows ✅ (task 6: the PR # or n/a; task 8: ⛔ with the logged commands only if `ssh sujaykumar-vps` failed), and set _Overall_ ✅.
 - In [`../status.md`](../status.md):
   - **Sprint board** M2-05 ✅; **Milestones** M2 ✅ (v1.9.0 → v1.10.0; exit: replay equal, below-clean ladders, `public-read`-only);
   - **Tag → floor → snapshot**: v1.10.0 → 1.9.0 → none (not required);
   - **Flag inventory**: `REVISION_ENTRY_RULE` in the permanent kill-switch list (default `v2`; R-a = infra PR on `xlearn-review` env; owner M2; never removed); M2-04's T-1 gate `touchesEnabled` → **removed in v1.10.0**;
   - **Pending contracts**: drop `proj_heatmap`, the v1 `proj_outcome_mix` and `/progress/heatmap`, earliest at the first contract tag after v1.10.0 (it raises the floor to ≥ 1.10.0);
-  - the **manual-path log**: both admin-CLI runs on prod with counts, digests D1 = D2 and the reconcile result (or, if `ssh vps` failed, the logged commands and the ⛔);
+  - the **manual-path log**: both admin-CLI runs on prod with counts, digests D1 = D2 and the reconcile result (or, if `ssh sujaykumar-vps` failed, the logged commands and the ⛔);
   - **NATS rows**: the replay-durable ACL PR or n/a;
   - **Decisions log**: deterministic event ids; the `touch_scored.v2.self.json` fixture; the digest (semantic columns only) and the re-runnable durable (2 min threshold + reap wait); the replay lock as actually built (exclusive in the CLI, shared-try + nak in the live handler, the apply option that skips the probe; L-01's `EraseTx` shares it); D2 forward-only (no retro-anchoring of historic below-clean items); `revisable=true` for DSA until P-02.
 - L-01 is now unblocked: note it on the board.

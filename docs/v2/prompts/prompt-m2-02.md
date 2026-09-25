@@ -83,11 +83,11 @@ expand-only tag, so no snapshot is needed.
     **`v1.9.0 — v2 build · M2a/M2b consumers`** noting "producers off", floor 1.7.0 (unchanged), no snapshot (expand-only).
 12. **[H] Verify after the tag** (Task 8, by looking, D34): healthz version, images, ImagePolicies + HelmReleases, the
     smoke test, and **consumers bound and idle**, read-only:
-    - `ssh vps 'k3s kubectl get --raw "/api/v1/namespaces/messaging/pods/nats-0:8222/proxy/jsz?consumers=true"'` (the
+    - `ssh sujaykumar-vps 'k3s kubectl get --raw "/api/v1/namespaces/messaging/pods/nats-0:8222/proxy/jsz?consumers=true"'` (the
       API-server **pod** proxy host-verify uses for `/varz`/`/connz`): `review` on `XLEARN_PRACTICE` and `assessment` on
       `XLEARN_PRACTICE` + `XLEARN_REVIEW` present, each `num_pending` 0 and `num_ack_pending` 0;
     - no producer (`/jsz` has no per-subject counts):
-      `ssh vps 'k3s kubectl exec -n databases projects-pgstore-1 -c postgres -- psql -d xlearndb -Atc "select subject, count(*) from practice.outbox group by 1 union all select subject, count(*) from review.outbox group by 1"'`
+      `ssh sujaykumar-vps 'k3s kubectl exec -n databases projects-pgstore-1 -c postgres -- psql -d xlearndb -Atc "select subject, count(*) from practice.outbox group by 1 union all select subject, count(*) from review.outbox group by 1"'`
       lists neither `xlearn.practice.touch_concluded` nor `xlearn.review.touch_scored`.
 
 Release checklist ([ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#6-release-checklist) + the ADR-0035 §2 standing rule):

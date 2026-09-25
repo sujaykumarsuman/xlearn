@@ -107,7 +107,7 @@ Follow `docs/runbooks/voice-fake-media-e2e.md` ([m6b-03](sprint-m6b-03.md)). Fix
 - record the patch in status.md.
 
 **Pre-checks (agent):**
-- `ssh vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin interviews --live'` is empty;
+- `ssh sujaykumar-vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin interviews --live'` is empty;
 - healthz reports m6b-03's `v2.0.N` or later (or the notice patch);
 - `host-verify --cluster` is green;
 - the owner's key, project, hard limit, region and no-starts-today are before-launch items, attested by launching. Verify what the product shows once he signs in (task 2 step 1): the setup's `voice` block must show voice available. A `reason` there means an item is missing: handle it like a failed run (task 2), never a wait.
@@ -169,7 +169,7 @@ This runs against **production on m6b-03's dark patch**, in the owner's cohort a
 
 Run these right after the run, in the same session, and paste the verdicts (not the raw output) into the run record.
 
-**Database.** `ssh vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin interviews media-audit <id>'` must report `clean`:
+**Database.** `ssh sujaykumar-vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin interviews media-audit <id>'` must report `clean`:
 - no binary column outside the key envelope;
 - 0 SDP markers;
 - 0 base64 runs;
@@ -178,14 +178,14 @@ Run these right after the run, in the same session, and paste the verdicts (not 
 **Logs.** Run this, and the same for `deploy/xlearn-gateway` (and `deploy/xlearn-coach-interview` if M7 failed). Each count must be `0`:
 
 ```sh
-ssh vps 'sudo k3s kubectl logs -n xlearn deploy/xlearn-coach --since=90m' \
+ssh sujaykumar-vps 'sudo k3s kubectl logs -n xlearn deploy/xlearn-coach --since=90m' \
   | grep -cE 'a=candidate|a=fingerprint|(^|[^a-z])v=0|output_audio|input_audio|[A-Za-z0-9+/]{1024,}'
 ```
 
-**Volumes.** Coach's pod spec must have no `persistentVolumeClaim` and must have `readOnlyRootFilesystem: true`. For each `emptyDir`, run `ssh vps "sudo find /var/lib/kubelet/pods/<coach-pod-uid>/volumes/kubernetes.io~empty-dir -type f -newermt '<run start>' -printf '%s %p\n'"`. It must list nothing, or only files you can name as non-media. Get the pod uid with `k3s kubectl get pod -n xlearn -l app.kubernetes.io/instance=xlearn-coach -o jsonpath='{.items[*].metadata.uid}'`.
+**Volumes.** Coach's pod spec must have no `persistentVolumeClaim` and must have `readOnlyRootFilesystem: true`. For each `emptyDir`, run `ssh sujaykumar-vps "sudo find /var/lib/kubelet/pods/<coach-pod-uid>/volumes/kubernetes.io~empty-dir -type f -newermt '<run start>' -printf '%s %p\n'"`. It must list nothing, or only files you can name as non-media. Get the pod uid with `k3s kubectl get pod -n xlearn -l app.kubernetes.io/instance=xlearn-coach -o jsonpath='{.items[*].metadata.uid}'`.
 
 **Network:**
-- `ssh vps 'sudo ufw status'` allows TCP 22/80/443 only, so there's no UDP path.
+- `ssh sujaykumar-vps 'sudo ufw status'` allows TCP 22/80/443 only, so there's no UDP path.
 - Together with task 2's step 14, that shows **no RTP touched the node**.
 - Coach's only provider traffic is the outbound sideband WSS on 443. Its transient audio copies are dropped unparsed, which the consent discloses ([t6 §3](../research/t6-realtime-interviewer.md#3-architecture--media-path)).
 
@@ -256,7 +256,7 @@ Before the tag, right after the flip merge:
 - Run the release checklist below.
 - Right before the tag, **`coach admin interviews --live` must be empty**.
 - Confirm `git ls-remote --tags origin 'refs/tags/v2.1*'` is still empty, and that no `v2.0.x` tag points at or after the flip commit.
-- Confirm the ranges are already `<3.0.0` (`ssh vps 'sudo k3s kubectl get imagepolicy -n flux-system -o yaml' | grep range`). There is **no range change**: the "none" row of [ADR-0034 §1.4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#14-range-changes-and-the-ga-procedure).
+- Confirm the ranges are already `<3.0.0` (`ssh sujaykumar-vps 'sudo k3s kubectl get imagepolicy -n flux-system -o yaml' | grep range`). There is **no range change**: the "none" row of [ADR-0034 §1.4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#14-range-changes-and-the-ga-procedure).
 - `host-verify --cluster` is green and the host has settled.
 - **Snapshot (O, before launch; owner event `ev-snap-v2.1.0`).** `v2.1.0` is a GA flip, the labelled release ADR-0034 §1.1 reserves the minor for, and [ADR-0034 §4.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#43-snapshot-rule) and §6 say to take a Hostinger manual snapshot "right before any contract, erase or GA tag". So the owner took it in hPanel right before launching this prompt (a before-launch item, D40), after confirming there that the last weekly image is ≤ 7 days old. Launching attests it, and that attestation confirms the checklist's "the snapshot is taken" line. Record its time (the time he gave, else the launch time). It is kept for 1 day and is the R-d cover for the day, so the tag follows the same day; a re-run on a later day needs a fresh snapshot before its launch. If the owner said in the session that he waived it, record that as an **explicit owner decision** in status.md's decisions log. Don't reinterpret the rule.
 

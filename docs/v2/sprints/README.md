@@ -171,7 +171,7 @@ sprint file and status.md.
 
 **Before any work: the entry gates.** Every plan lists its entry gates as `[ ]` checkboxes (the prompt repeats them
 under "verify first"). Check each one against the live state (status.md, `gh pr list`, `git ls-remote --tags`,
-`ssh vps` read-only, the design freeze: `ds-…` merged), tick it `[x]` with the evidence (date, PR, command output).
+`ssh sujaykumar-vps` read-only, the design freeze: `ds-…` merged), tick it `[x]` with the evidence (date, PR, command output).
 **If a hard gate is unmet** (another sprint, merged code, a calendar date), **stop**: set the blocked task, or the
 whole sprint, to ⛔ with the gate named, and report. That's a gate failure, not a review. Never work around a gate.
 The M3 hard checklist and the GA checklist are gates like any other.
@@ -180,7 +180,7 @@ The M3 hard checklist and the GA checklist are gates like any other.
 1. Update that task's row in the sprint's **Status** table (⬜ → 🔄 when you pick it up; → ✅ when its acceptance
    criterion is met; → ⛔ if blocked, with a one-line reason). The **Repo** column is fixed by the plan:
    **X** xlearn · **I** `../infra` (a GitOps PR, never `kubectl apply`) · **H** host scripts (applied by hand over
-   `ssh vps`) · **E** the private `xlearn-evalpack` repo · **O** owner-only action.
+   `ssh sujaykumar-vps`) · **E** the private `xlearn-evalpack` repo · **O** owner-only action.
    An **O** row is a real owner-only action, marked "before launch" and listed in the prompt's
    `## Before you launch (owner)` block. The session checks its evidence and ticks it ✅, or marks it ⛔ and lands
    the tasks that don't depend on it. An O row that was only an approval or review no longer exists (D40): the

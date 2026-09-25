@@ -327,7 +327,7 @@ Sources: [ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and-rollback.
   **no account id, no content**. `--all` adds `paused`/`finished`/`proposed` with `resume_by`. `show <id>` prints header fields only.
   `abandon <id> --reason <text>` (break-glass for a stuck interview before a tag) runs the CAS transition. Every verb writes
   `coach.admin_audit` in the same transaction; output goes to the exec'd terminal.
-- Runbook `docs/runbooks/interviewer.md`: the call (`ssh vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin
+- Runbook `docs/runbooks/interviewer.md`: the call (`ssh sujaykumar-vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin
   interviews --live'`), the release-checklist use (**empty before every tag from the first patch that carries this sprint**), stuck
   interview handling, the sweeper's jobs, retention and erase.
 

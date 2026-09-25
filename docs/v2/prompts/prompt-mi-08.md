@@ -44,7 +44,7 @@ auto-mounted SA token on the seven xlearn pods (none of them talks to the Kubern
 
 - [ ] mi-01 merged: chart `0.3.0` in `../infra/charts/project/Chart.yaml` with the `automountServiceAccountToken` knob; `hack/chart-diff.sh` exists.
 - [ ] mi-02 merged: `host-verify.sh --cluster --with-runner` works, `hack/memory-budget.tsv` exists and is embedded in `host-verify.sh`.
-- [ ] ≥ 48 h of samples: `ssh vps 'head -1 /var/tmp/xlearn-top.tsv; tail -1 /var/tmp/xlearn-top.tsv'` spans ≥ 48 h (the sampler self-stops after 168 h, so it has normally finished) — **or** mi-02 recorded the sampler as declined (its Decisions-log line): then keep the provisional `top × 1.2` budgets and say so. If it ran but an unplanned reboot left < 48 h, restart it per mi-02 (a node write, pre-approved by launching this prompt, D40) and wait.
+- [ ] ≥ 48 h of samples: `ssh sujaykumar-vps 'head -1 /var/tmp/xlearn-top.tsv; tail -1 /var/tmp/xlearn-top.tsv'` spans ≥ 48 h (the sampler self-stops after 168 h, so it has normally finished) — **or** mi-02 recorded the sampler as declined (its Decisions-log line): then keep the provisional `top × 1.2` budgets and say so. If it ran but an unplanned reboot left < 48 h, restart it per mi-02 (a node write, pre-approved by launching this prompt, D40) and wait.
 - [ ] The last Hostinger weekly image is ≤ 7 days old (controller restarts): attested by the before-launch item above (the owner reads hPanel).
 - [ ] No xlearn tag rolling out and no peer PR on these files (`gh pr list` in both repos, `git worktree list`, ListAgents).
 
@@ -56,7 +56,7 @@ auto-mounted SA token on the seven xlearn pods (none of them talks to the Kubern
    `k3s kubectl top pods -A --containers` and use the current value wherever it exceeds the sampled p95. Keep the
    table for the PR bodies. Then clean up (a node write this prompt specifies: pre-approved by launching it, D40; run it yourself): stop the loop only if still alive,
    by its PID file, and delete all three files —
-   `ssh vps 'pid=$(cat /var/tmp/xlearn-top.pid 2>/dev/null); [ -n "$pid" ] && ps -p "$pid" -o args= | grep -q sample-top.sh && kill "$pid"; rm -f /var/tmp/xlearn-top.tsv /var/tmp/xlearn-top.pid /root/sample-top.sh'`.
+   `ssh sujaykumar-vps 'pid=$(cat /var/tmp/xlearn-top.pid 2>/dev/null); [ -n "$pid" ] && ps -p "$pid" -o args= | grep -q sample-top.sh && kill "$pid"; rm -f /var/tmp/xlearn-top.tsv /var/tmp/xlearn-top.pid /root/sample-top.sh'`.
    **Sampler declined in mi-02:** keep the provisional budget rows; size step 2's check and step 3's limits
    from the fresh `top` snapshot (as p50 and p95), marked provisional.
 2. **[I] Flux PR** (`chore/flux-limits-512mi` in `../infra`): add the `patches:` block from the plan to
@@ -84,10 +84,10 @@ auto-mounted SA token on the seven xlearn pods (none of them talks to the Kubern
    - After merge: Traefik rolled with no gap (smoke every site on the node); `helm-install-traefik` job OK;
      `get certificate -A` Ready; `host-verify --cluster` shows no unbudgeted container, no provisional budget
      (unless the sampler was declined) and no "unused budget" INFO; the node copy refreshed: run
-     `scp ../infra/hack/host-verify.sh vps:/root/` once yourself (pre-approved by launching this prompt, D40).
+     `scp ../infra/hack/host-verify.sh sujaykumar-vps:/root/` once yourself (pre-approved by launching this prompt, D40).
 4. **[I] PSA PR** (`chore/psa-labels`):
    - Server dry-run each label first and paste the output:
-     `ssh vps 'k3s kubectl label --dry-run=server --overwrite ns <ns> pod-security.kubernetes.io/enforce=<level> pod-security.kubernetes.io/enforce-version=v1.36'`.
+     `ssh sujaykumar-vps 'k3s kubectl label --dry-run=server --overwrite ns <ns> pod-security.kubernetes.io/enforce=<level> pod-security.kubernetes.io/enforce-version=v1.36'`.
      Any violation warning blocks that namespace's label: leave it out of the PR, record it as ⛔ in status.md
      with the output, and label the others.
    - Then set `enforce` (xlearn `baseline`, databases `restricted`, messaging `baseline`), `enforce-version:
@@ -101,7 +101,7 @@ auto-mounted SA token on the seven xlearn pods (none of them talks to the Kubern
    - login, dashboard and coach smoke OK;
    - `/connz` consumers re-bound;
    - outbox unsent 0.
-6. **[H] Verify.** `ssh vps 'bash -s -- --cluster --with-runner' < ../infra/hack/host-verify.sh`: green, no
+6. **[H] Verify.** `ssh sujaykumar-vps 'bash -s -- --cluster --with-runner' < ../infra/hack/host-verify.sh`: green, no
    "no limit and no budget entry" WARN, memory sum ≤ capacity − 0.5 GiB. Record Σ limits, Σ limitless budget,
    surge, host, total and margin. Add the hand projection for judge (256 Mi + surge) and coach P1 (128 Mi), and
    compare with ADR-0035 §5 (≈ 14.2 GiB, ≈ 0.9 GiB inside the rule).
@@ -128,8 +128,8 @@ auto-mounted SA token on the seven xlearn pods (none of them talks to the Kubern
 - **D34:** no alerting, timer, CronJob or Flux Alert. The sampler was throwaway: stop it if alive and delete its
   three files. `host-verify` is on-demand only.
 - **Host writes:** only the sampler cleanup (step 1), a sampler restart per mi-02 if < 48 h of samples exist
-  (entry gates), and mi-02's node-copy refresh (`scp ../infra/hack/host-verify.sh vps:/root/`). Each is
-  pre-approved by launching this prompt (D40): run them yourself. Every other `ssh vps` command is read-only.
+  (entry gates), and mi-02's node-copy refresh (`scp ../infra/hack/host-verify.sh sujaykumar-vps:/root/`). Each is
+  pre-approved by launching this prompt (D40): run them yourself. Every other `ssh sujaykumar-vps` command is read-only.
 - **Snapshots:** the weekly image date is the before-launch item, checked before the restart-inducing merges.
   The host window's own manual snapshot is a before-launch owner item of the window session (mi-09), not this
   sprint's.

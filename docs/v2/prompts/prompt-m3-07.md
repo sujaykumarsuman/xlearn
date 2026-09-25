@@ -48,7 +48,7 @@ is a read you perform.
    - Compose check at the candidate commit: start the stack **without judge** → identity is Ready and serving while its
      `XLEARN_JUDGE` ack consumer waits; then start judge → the durable binds. If identity blocks before
      `ListenAndServe`, **stop and fix first** (a merge-only X PR starting that consumer in the background).
-   - Memory sum: `ssh vps 'bash -s -- --cluster --nats-stage=n3' < ../infra/hack/host-verify.sh` green (N4 is mi-11's,
+   - Memory sum: `ssh sujaykumar-vps 'bash -s -- --cluster --nats-stage=n3' < ../infra/hack/host-verify.sh` green (N4 is mi-11's,
      after this sprint); add judge's 256 Mi limit + 256 Mi surge by hand; still ≤ capacity − 0.5 GiB. Record the numbers.
 2. **[E] evalpack `v1.0.0`** (plan task 2): with `../xlearn` checked out at the commit you'll tag `v1.13.0`, run
    `make packcheck` in `../xlearn-evalpack` (it builds packlint via `go -C ../xlearn run ./cmd/packlint`) and
@@ -99,7 +99,7 @@ is a read you perform.
 - **Order is the contract** ([ADR-0034 §1.4–§1.5](../../adr/0034-v2-release-labelling-gating-and-rollback.md#15-other-release-streams)):
   image before policy (pack and judge), ACL before the tag, HelmRelease after the tag. Never widen or touch another range.
 - **GitOps only:** every cluster change is a `../infra` PR; never `kubectl apply` (a `--dry-run=server` persists nothing
-  and is allowed); read-only `ssh vps` for verification; `judge admin` via `kubectl exec` is a sanctioned path (D33).
+  and is allowed); read-only `ssh sujaykumar-vps` for verification; `judge admin` via `kubectl exec` is a sanctioned path (D33).
   **Infra PRs stand alone** — never folded into the tag.
 - **Secrets:** nkey seed, DB password and runner bearer are generated offline and piped straight into `sops -e -i`; never
   echoed, logged, or committed in plaintext. Public nkeys are plaintext in `messaging` (no SOPS decryption there).

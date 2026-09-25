@@ -56,7 +56,8 @@ CLUBS = [
 ]
 
 WAVES = [
-    ("W1",  "Week 1", "Sep 25 – Oct 2"),
+    ("W0",  "Spike weekend (D41: spikes first)", "Sep 25 – 26"),
+    ("W1",  "Week 1", "Sep 28 – Oct 2"),
     ("W2",  "Week 2", "Oct 5 – 9"),
     ("W3",  "Week 3 · spike week", "Oct 12 – 16"),
     ("W4",  "Week 4", "Oct 17 – 23"),
@@ -87,9 +88,9 @@ SPRINTS = [
     (13, "mi-03",    "guard",  "W2", "NetworkPolicy fences: databases, messaging, xlearn ingress", "", "infra"),
     (14, "m3-02",    "packs",  "W2", "Eval-pack pipeline: validation gates, data image, fixture pack", "", "content"),
     (15, "mi-04",    "guard",  "W2", "Admin consoles move to ops.sujaykumar.dev", "", "infra"),
-    (16, "spk-01",   "runner", "W3", "Spike: sandbox mechanism P0–P2 (throwaway)", "", "spike"),
-    (17, "spk-02",   "runner", "W3", "Spike: amd64 replay + eval-pack image volume (throwaway)", "", "spike"),
-    (18, "spk-03",   "ai",     "W3", "Spike: WIF credential for platform AI (throwaway)", "", "spike"),
+    (16, "spk-01",   "runner", "W0", "Spike: sandbox mechanism P0–P2 (throwaway)", "", "spike"),
+    (17, "spk-02",   "runner", "W0", "Spike: amd64 replay + eval-pack image volume (throwaway)", "", "spike"),
+    (18, "spk-03",   "ai",     "W0", "Spike: WIF credential for platform AI (throwaway)", "", "spike"),
     (19, "mi-06",    "nats",   "W3", "NATS auth live: nkey users + ACLs, legacy closed (N1–N3)", "", "infra"),
     (20, "m1-03",    "spine",  "W3", "Course resolution end to end; DSA stays pixel-identical", "", "product"),
     (21, "m1-04",    "sec",    "W3", "Roles in DB, revocable sessions, admin CLI, CSP, DEV_AUTH guard", "", "product"),
@@ -142,7 +143,7 @@ SPRINTS = [
     (68, "l-04",     "gate",   "W9", "Web erase for non-owners + invite rehearsal on prod", "v1.17.0", "product"),
     (69, "ga-01",    "ga",     "W10", "GA PR: .release-line = 2, default flips, rc rehearsal", "", "product"),
     (70, "ga-02",    "ga",     "W10", "Widen ranges, snapshot, tag, verify", "v2.0.0", "product"),
-    (71, "spk-04",   "ivtext", "W11", "Spike S6: voice-shell bake-off (owner present)", "", "spike"),
+    (71, "spk-04",   "ivtext", "W0", "Spike S6: voice-shell bake-off (owner present)", "", "spike"),
     (72, "ds-m6a-01","design", "W11", "Accept ADR-0032 + boards AB13, AB24, AB25", "", "design"),
     (73, "ds-m6a-02","design", "W11", "Boards AB26 grace/pause, AB27 debrief, AB28 a11y", "", "design"),
     (74, "m6a-01",   "ivtext", "W11", "Interview core: state machine, failsafes, caps", "", "product"),

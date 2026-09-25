@@ -356,7 +356,7 @@ Release checklist
 
 **For this tag:** ACL PRs — n/a (no stream or consumer); new service — n/a (same coach image; `coach-interview`'s policy is pinned to this
 tag **after** it exists); contract/erase/GA — n/a (expand-only migrations), so no snapshot; **no live interviews** —
-`ssh vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin interviews --live'` empty; standing rule — PR A (the peers'
+`ssh sujaykumar-vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin interviews --live'` empty; standing rule — PR A (the peers'
 side: gateway egress, `databases` ingress) merged first, and `coach-interview`'s own chart-rendered policy is born with its release in PR B;
 flags — none (`COACH_ROLE` and `COACH_INTERVIEW_BASE_URL` are deploy-shape config, recorded in status.md's config notes, not the flag
 inventory). `v2.0.N` → floor unchanged → no snapshot. Rollback: revert PR B (routing back to coach), then R-c for code.

@@ -163,13 +163,13 @@ neither reads nor writes. Task 5 is that gate.
     with the attribution lines. Fix-then-merge on red.
 11. **[X] Tag `v1.7.0`** with the release checklist in the plan (verbatim): peers checked; next free minor; major =
     `.release-line`; no ACL PR needed (topology unchanged); no new caller or pod. Push the tag, create the GitHub
-    release **`v1.7.0 — v2 build · M1b`**. After Flux rolls: healthz reports the version; `ssh vps 'k3s kubectl get deploy -n xlearn -o wide'`
+    release **`v1.7.0 — v2 build · M1b`**. After Flux rolls: healthz reports the version; `ssh sujaykumar-vps 'k3s kubectl get deploy -n xlearn -o wide'`
     shows the new images; ImagePolicies' latest = the tag, HelmReleases Ready; smoke login, dashboard, coach
     (confirm shows on an open attempt; reply streams after confirming).
 12. **[H] `ev-owner-role`**, run by you (D40: the launch approves this production operation). Find the owner's account with
-    `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account list'` (production has exactly one
+    `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account list'` (production has exactly one
     account, the owner's, until L-E's first tester; keep the output in the terminal), then run
-    `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account set-role <owner> owner'`;
+    `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account set-role <owner> owner'`;
     confirm with `… identity admin account list --role owner` and log the CLI use in status.md. If the owner's account can't
     be told apart, don't guess: record task 7 ⛔ "owner account ambiguous" and carry on.
 
@@ -180,7 +180,7 @@ neither reads nor writes. Task 5 is that gate.
 - **Events:** `assist` is additive on an existing subject; envelope append-only; decoders forever. No new subject/stream/consumer in this tag (else an ACL PR merged before the tag, [ADR-0035 §2](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#2-nats-auth-nkey-users-fine-acls-server-first)); consumers before producers.
 - **Fail closed:** never forward a chat when the attempt state or the assist record is unknown.
 - **Frontend:** `theme.css` tokens/components verbatim, dark theme, AB01 is the spec; CSP-safe (no inline style/script).
-- **GitOps:** no `kubectl apply`; `ssh vps` is read-only except the sanctioned admin CLI via `kubectl exec` (this session runs `set-role` once, D40).
+- **GitOps:** no `kubectl apply`; `ssh sujaykumar-vps` is read-only except the sanctioned admin CLI via `kubectl exec` (this session runs `set-role` once, D40).
 - **D34:** no alert, timer, CronJob, push channel or Flux Alert — verification is by looking. **D12:** no backups/object store.
 - **Memory-sum rule:** no new always-on pod in this tag; if that changes, check `host-verify --cluster` and add a memory limit.
 - **Parallel sessions:** check peers' PRs, tags and worktrees (and ListAgents) before tagging and before claiming an ADR number; re-check right before pushing the tag.

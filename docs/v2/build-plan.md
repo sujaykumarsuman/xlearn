@@ -12,7 +12,7 @@ If this file and an ADR disagree, the ADR wins and this file gets fixed.
 
 - **Build line:** v2 · **Live release:** v1.5.2 (signup closed) · **Planned:** 2026-09-24 (build-plan session, owner decisions BP1–BP4) · **Amended:** 2026-09-25 by **D40** (every prompt lands and syncs; launching it is the owner's approval).
 - **What ships:** `v2.0.0` = owner-facing GA (MI + M1–M4 + P + L) · `v2.1.0` = interviewer GA (M6a + M6b) · M5 = a later 2.x minor · M6c = v2.2 (outline only).
-- **Where codes** (every task names one): **X** this repo · **I** `../infra` (GitOps PR, never `kubectl apply`) · **H** host scripts (`../infra/hack/`, applied by hand over `ssh vps`) · **E** the private `xlearn-evalpack` repo · **O** owner-only action (done **before launch**, listed in the prompt's `## Before you launch (owner)` block; D40).
+- **Where codes** (every task names one): **X** this repo · **I** `../infra` (GitOps PR, never `kubectl apply`) · **H** host scripts (`../infra/hack/`, applied by hand over `ssh sujaykumar-vps`) · **E** the private `xlearn-evalpack` repo · **O** owner-only action (done **before launch**, listed in the prompt's `## Before you launch (owner)` block; D40).
 
 ## Principles
 
@@ -413,6 +413,8 @@ graph LR
 ```
 
 ## Calendar events (BP4)
+
+> **D41 (2026-09-25): spikes first.** spk-01 and spk-02 run Fri 2026-09-25 (agent-only, after MI-0), spk-03 and spk-04 Sat 2026-09-26, all before any build sprint; spk-02 uses `skriptvalley-vps` and a private registry, so it no longer waits for mi-07. The Oct 12–16 spike week below is superseded; S6 adds a ≤ 1 h `ev-s6-recheck` before ds-m6a-01. See [execution-order.md](execution-order.md) (wave W0).
 
 Owner-only actions are **calendar events, not sprints** (tentative, owner-booked). **Since D40 nothing waits on the
 owner mid-session.** An owner-only action is done **before launch** of the sprint that needs it: that prompt's

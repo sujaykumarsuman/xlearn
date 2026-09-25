@@ -7,6 +7,14 @@
 > **Calendar:** Thu 2026-10-15 → Fri 2026-10-16 (spike week, event `ev-spike-week`). The calendar is the booking window, not the budget. **Hard stop, counted as effort:** this sprint's share of the 10 h P0–P3 core is 3 h (P3 2 h + report 1 h); the image-volume spike is about 1.5 h on top, outside the core
 > **Execute with:** [`../prompts/prompt-spk-02.md`](../prompts/prompt-spk-02.md) — one prompt, one session.
 
+## D41 changes (read first; they override the text below where they conflict)
+
+> **D41 (owner, 2026-09-25): spikes first.** All four spikes run **before any build sprint**, so every design yes/no is answered before M1 starts: spk-01 and spk-02 on Fri 2026-09-25 (agent-only, after the MI-0 reboot), spk-03 and spk-04 on Sat 2026-09-26 (spk-03 after the owner's Console step; spk-04 with the owner present). For this sprint, overriding the text below:
+> - **Environment A is the owner's `skriptvalley-vps`** (Hostinger KVM 1: 1 vCPU, 3.9 GB RAM, 45 GB free, amd64, Ubuntu 24.04, kernel 6.8.0-90, `vm.mmap_rnd_bits=32`, AppArmor userns restriction on — the same as production). The owner declared it free for any PoC and cleanup. It runs two throwaway landing containers on 80/443 (stop them if they get in the way). Install k3s `v1.36.4+k3s1` with `--disable traefik`. Launching approves its full-upgrade and reboot. **Teardown:** `k3s-uninstall.sh` and remove everything the spike added (no reimage needed); leave the landing containers as found. This is not the D12/D21 "backup VPS" concern, which is about hosting the production runner.
+> - **The MI-9 gate is dropped.** The image-volume questions (i)–(iii) are about kubelet/containerd behaviour, not GHCR, so run them against a **password-protected private registry inside environment A** (`registry:2` with htpasswd; k3s `registries.yaml`) holding a synthetic `FROM scratch` pack image. GHCR specifics (package private, anonymous GET 401/403) stay mi-07's CI probe.
+> - **The chart-0.3.0 gate is dropped.** Use raw manifests for (iii); mi-01 verifies the `initContainers` knob renders the same shape.
+> - Environment B (GitHub Actions) is not needed.
+
 ## Status
 
 _Overall:_ ⬜ Not started
@@ -58,7 +66,7 @@ This is MI-10 part 2 ([rollout §2](../rollout-plan.md#2-mi-infra-track)); with 
 - **The combined MI-10 verdict** and a "proposed ADR-0030 deltas" list for m3-03.
 
 **Out**
-- **Anything on production.** Only read-only `ssh vps` facts are allowed.
+- **Anything on production.** Only read-only `ssh sujaykumar-vps` facts are allowed.
 - **Committing any harness.** Code goes only into the throwaway scratch repo, and the owner deletes that repo.
 - **Timing conclusions.** GitHub Actions runs linux-azure; the second VPS is a different guest from production.
 - **Latency, CV, canary thresholds and calibration:** A8 on production ([mi-10](sprint-mi-10.md), [m3-15](sprint-m3-15.md)).

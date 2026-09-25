@@ -148,11 +148,11 @@ Run the **release checklist** (see *Release*) from `main` after this sprint's PR
 
 ### 7 · Post-tag verify on prod + coach memory read [H + X (+ I)]
 
-By looking (D34), read-only over `ssh vps`:
+By looking (D34), read-only over `ssh sujaykumar-vps`:
 - `/xlearn/api/v1/healthz` reports `2.0.N`; `k3s kubectl get deploy -n xlearn -o wide` shows the new images; every `xlearn-*` ImagePolicy's latest = the tag; HelmReleases Ready.
 - Smoke: login, the dashboard and coach (a chat streams); as the owner, `/dsa/mock` shows Mock-v2 and the setup reaches the pre-flight (don't start a paid interview here — the owner's post-ship dogfood does, task 8); a non-cohort account (a tester set to `learner`, or reasoning from the gate test if none exists) would see v1. An agent never enters credentials: use an already-signed-in owner browser session; without one, run the credential-free checks and record "owner login smoke pending" as a pending-smoke note in status.md.
 - **Coach memory:** `k3s kubectl top pod -n xlearn` for coach vs its limit (128 Mi until [mi-13](sprint-mi-13.md) sets 256 Mi). If the working set sits above **70 %** of the limit at idle or climbs past it during the owner's dogfood (task 8) — [t6 §3](../research/t6-realtime-interviewer.md#3-architecture--media-path)'s coach split-out trigger ("coach above 70% of its memory limit") — record the crossing as that trigger in the Decisions log beside the resize decision, and open an infra PR raising coach's limit **checked against the memory-sum rule** ([ADR-0035 §5](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#5-capacity-the-memory-sum-rule-triggers-and-ordered-responses); run `host-verify --cluster`), merged on its own — or pull mi-13's coach-sizing task forward. Record the numbers either way.
-- `ssh vps 'bash -s -- --cluster --expect-sandbox --nats-stage=<live stage recorded in status.md>' < ../infra/hack/host-verify.sh` green (read-only; the memory sum after the tag). The live stage is `n4`, or `n3` if [mi-11](sprint-mi-11.md) reverted N4 to the monthly window; `--expect-sandbox` because every run after the October host window passes it ([mi-09](sprint-mi-09.md)).
+- `ssh sujaykumar-vps 'bash -s -- --cluster --expect-sandbox --nats-stage=<live stage recorded in status.md>' < ../infra/hack/host-verify.sh` green (read-only; the memory sum after the tag). The live stage is `n4`, or `n3` if [mi-11](sprint-mi-11.md) reverted N4 to the monthly window; `--expect-sandbox` because every run after the October host window passes it ([mi-09](sprint-mi-09.md)).
 
 ### 8 · Owner dogfood: record the owner event [X]
 
@@ -198,7 +198,7 @@ For this tag:
 - **ACL line:** expected **n/a** — mock evaluations stay silent and M6a adds no stream or consumer. Confirm with `git diff <last tag>..HEAD -- internal/platform/events/topology.go`; if anything changed, its ACL PR merges first.
 - **New service image:** n/a (no new service; judge, coach, gateway, assessment are existing images).
 - **Contract / snapshot lines:** expected **n/a** — M6a migrations are expand-only. Confirm: `git diff <last tag>..HEAD -- '**/migrations/*.sql' | grep -n 'xlearn:contract'` is empty; if not, rehearse in compose, mark the floor, run `host-verify --cluster`, take the snapshot.
-- **No live interviews:** `ssh vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin interviews --live'` reports **`live=0`** (no interview lines; m6a-01's output ends with `live=N`) right before the tag (the owner's dogfood must not be running); log the exec in status.md.
+- **No live interviews:** `ssh sujaykumar-vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin interviews --live'` reports **`live=0`** (no interview lines; m6a-01's output ends with `live=N`) right before the tag (the owner's dogfood must not be running); log the exec in status.md.
 - **NetworkPolicy line:** m6a-01 task 7's recorded outcome (none expected: `pause_exposure` goes through the gateway; any callee PR it did open is merged); m6a-04 and this sprint add no caller.
 - **Flags:** none added.
 

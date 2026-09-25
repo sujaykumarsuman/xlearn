@@ -49,7 +49,7 @@ It carries:
 - **L23** ([ADR-0035 §4](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#4-limits-inventory)): kubelet `system-reserved` 1 GiB, `eviction-hard memory.available<500Mi`, and a pod pid limit. The kubelet then evicts the lowest-priority pod (the runner, once it exists) before the kernel OOM killer picks a victim;
 - **CNPG 18.4 → 18.6**, and **k3s v1.36.5 only if it is GA** (Track B bumps folded into the same restarts).
 
-This sprint changes nothing on the live host. `ssh vps` stays read-only. It delivers merged scripts, held
+This sprint changes nothing on the live host. `ssh sujaykumar-vps` stays read-only. It delivers merged scripts, held
 branches, a dry-run proof and a merged runbook.
 
 ## Scope
@@ -115,7 +115,7 @@ comments.
 - **Never restarts k3s.** When a file that k3s reads changed (the drop-in or the kubelet config, task 3),
   print `k3s restart required to apply: <files>`, the way the summary prints REBOOT REQUIRED. The restart is a
   runbook step.
-- **Embed each artefact as a heredoc**. `host-verify` must still run over `ssh vps 'bash -s' < hack/host-verify.sh`
+- **Embed each artefact as a heredoc**. `host-verify` must still run over `ssh sujaykumar-vps 'bash -s' < hack/host-verify.sh`
   with nothing copied. Task 4 puts each artefact's sha256 in the shared constants.
 
 | Piece | Path on the node | Takes effect | Today (read-only, 2026-09-24) |
@@ -190,7 +190,7 @@ Replace the `TODO(v2 T3)` section of `host-verify.sh`:
 
 ### 5 · Read-only pre-window baseline on the live node [H]
 
-Over `ssh vps`, reads only. Paste the results into the host-script PR. This is the "before" picture the
+Over `ssh sujaykumar-vps`, reads only. Paste the results into the host-script PR. This is the "before" picture the
 runbook compares against:
 - `k3s crictl info` runtimes; the rendered `config.toml`; `configz`; node capacity and allocatable;
   `/etc/subuid` and `/etc/subgid`; the task 2 sysctls.
@@ -284,7 +284,7 @@ and a stop condition:
 
 0. **Ready.** mi-08's MI-11a branches if not yet merged (open their PRs now and merge them in the window), and the held branches `chore/cnpg-18.6-host-window` and
    (if GA) `chore/k3s-v1.36.5-host-window`, rebased on `main` and still lint-green. Copy scripts from `main`:
-   `scp hack/host-bootstrap.sh hack/host-verify.sh vps:/root/`. This node write, like every host step below,
+   `scp hack/host-bootstrap.sh hack/host-verify.sh sujaykumar-vps:/root/`. This node write, like every host step below,
    is pre-approved by launching the window session (D40).
 1. **Pre-checks.** Record the weekly-image date the owner gave at launch (≤ 7 days old). `host-verify --cluster`
    gives the baseline: anything red now isn't the window's fault. No deploy or tag in flight

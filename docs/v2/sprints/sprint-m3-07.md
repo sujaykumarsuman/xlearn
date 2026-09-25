@@ -87,7 +87,7 @@ only from the gateway and practice — and **zero learner exposure**: the gatewa
   consumer in the background) — otherwise the `v1.13.0` identity rollout stalls until task 8 lands (the old pod keeps
   serving and `apps` goes not-Ready under `wait: true`).
 - **Memory sum** ([ADR-0035 §5](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#5-capacity-the-memory-sum-rule-triggers-and-ordered-responses)):
-  `ssh vps 'bash -s -- --cluster --nats-stage=n3' < ../infra/hack/host-verify.sh` green (N4 is [mi-11](sprint-mi-11.md)'s,
+  `ssh sujaykumar-vps 'bash -s -- --cluster --nats-stage=n3' < ../infra/hack/host-verify.sh` green (N4 is [mi-11](sprint-mi-11.md)'s,
   which runs after this sprint). Add judge's **256 Mi limit** and its **256 Mi rollout surge** by hand: the sum
   must stay ≤ capacity − 0.5 GiB (≈ 0.9 GiB of margin after MI-11a with the runner counted). Record the numbers.
 
@@ -155,7 +155,7 @@ a new stream or durable needs its ACL PR merged before the consuming service's t
 - Paste under `config.merge.authorization.users` (public key in plaintext — **no SOPS in `messaging`**). Do **not** bump
   the pod-template annotation: since N1 an authorization change is a **reload**, not a restart.
 - **NetworkPolicy standing rule:** confirm read-only that `messaging/nats-ingress` and `databases/projects-pgstore-ingress`
-  already list `xlearn-judge` (MI-5 forward-declared it): `ssh vps 'k3s kubectl get networkpolicy -n messaging -o yaml'`.
+  already list `xlearn-judge` (MI-5 forward-declared it): `ssh sujaykumar-vps 'k3s kubectl get networkpolicy -n messaging -o yaml'`.
   If not, add it in this PR.
 - **Verify after merge:** `/varz` `config_load_time` moved while `nats-0`'s start time did not; `/connz?auth=true`
   shows every existing connection on its own nkey and none on `legacy`; `host-verify --cluster --nats-stage=n3`
@@ -292,14 +292,14 @@ If [spk-02](sprint-spk-02.md) recorded the **fallback**, replace the image volum
   in `hack/host-verify.sh` (`host-lint.sh` checks the copies match).
 
 **Before merge:** `helm template` the release with these values and read the Deployment and NetworkPolicy; pipe both to
-`ssh vps 'k3s kubectl apply --dry-run=server -f -'` (persists nothing); selector proof —
+`ssh sujaykumar-vps 'k3s kubectl apply --dry-run=server -f -'` (persists nothing); selector proof —
 `k3s kubectl get pods -n xlearn -l 'app.kubernetes.io/instance in (xlearn-gateway,xlearn-practice)' -o name` lists both,
 and the egress targets match `projects-pgstore-1`, `nats-0` and (if [mi-10](sprint-mi-10.md) ran) the runner pod.
 **Merge →** Flux applies; judge migrates, verifies the pack against `/manifest.json`, and turns Ready.
 
 ### 9 · Verify [H]
 
-Read-only, over `ssh vps`:
+Read-only, over `ssh sujaykumar-vps`:
 - `k3s kubectl -n xlearn get deploy xlearn-judge` 1/1 Ready on `1.13.0`; ≤ 1 restart; `apps` Kustomization Ready.
 - `k3s kubectl exec -n xlearn deploy/xlearn-judge -- judge admin status`: pack `1.0.0` + the digest, **N evaluable =
   the stamped items** (status `ok`), kill switch off, runner lane reachable (or "unreachable" if mi-10 hasn't run — expected).

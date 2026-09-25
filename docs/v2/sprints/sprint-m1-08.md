@@ -166,7 +166,7 @@ result and the migration logs into the PR body.
 ### 4 · `host-verify --cluster` [H]
 
 - With `../infra` on `main` (with mi-02's MI-8 checks), from the xlearn root (agent shells reset there):
-  `ssh vps 'bash -s -- --cluster --expect-sandbox --json --nats-stage=<live stage from status.md: n3, or n4 once mi-11 has run>' < ../infra/hack/host-verify.sh`.
+  `ssh sujaykumar-vps 'bash -s -- --cluster --expect-sandbox --json --nats-stage=<live stage from status.md: n3, or n4 once mi-11 has run>' < ../infra/hack/host-verify.sh`.
   `--expect-sandbox` applies because the window has run (mi-09: every run from the window on passes it); drop it
   only if the window was rebooked past this tag. It must show **no FAIL**: memory sum, Flux Ready, pods (no OOMKill, ≤ 3 restarts / 24 h), CNPG healthy, PVC / disk,
   NATS auth stage, NetworkPolicies present. Record the WARNs (e.g. TR-STEAL) in the PR; a WARN doesn't block.
@@ -189,7 +189,7 @@ status.md. No off-node `pg_dump` (D12).
 
 Run the release checklist (§Release). GitHub release title **`v1.8.0 — v2 build · M1c contract`**; notes list the
 dropped objects and "rollback floor 1.7.0 (hard); snapshot <id> taken <time>". After Flux rolls, beyond the checklist:
-`ssh vps 'k3s kubectl logs -n xlearn deploy/xlearn-<svc> --since=30m | grep "migration applied"'` for curriculum,
+`ssh sujaykumar-vps 'k3s kubectl logs -n xlearn deploy/xlearn-<svc> --since=30m | grep "migration applied"'` for curriculum,
 review, assessment, coach and practice; `k3s kubectl get pods -n xlearn` shows no crash-loop. In
 [`../status.md`](../status.md): **M1 ✅**; milestone M1c → tag `v1.8.0` → floor **1.7.0, hard** → snapshot (id, time,
 "preceded v1.8.0"); owner event `ev-snap-v1.8.0` ✅; the M2 entry gate is satisfied ([m2-01](sprint-m2-01.md)); the

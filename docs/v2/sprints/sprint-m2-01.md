@@ -97,7 +97,7 @@ duplicate). Expand-only per ADR-0034 §3 (nullable or constant-default columns, 
   wrote are healed on roll-forward. A test ends an attempt v1-style (only `ended_at` + outcome), restarts, and asserts the
   row is `concluded`.
 - **Unique outcome on live data.** Before merging, confirm no duplicate outcomes exist (read-only
-  `SELECT attempt_id, count(*) FROM practice.outcome GROUP BY 1 HAVING count(*) > 1` against prod via `ssh vps`,
+  `SELECT attempt_id, count(*) FROM practice.outcome GROUP BY 1 HAVING count(*) > 1` against prod via `ssh sujaykumar-vps`,
   run by the session). The migration must not delete rows; if duplicates exist, stop and report.
 - **Every v1 attempt query gains `AND purpose = 'course'`** (`GetOpenAttempt`, `GetLatestAttempt`, the state
   composition in `store.go`, `ListStates`), so a live touch can never be mistaken for the course attempt; a test proves

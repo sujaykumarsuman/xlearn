@@ -121,7 +121,7 @@ v3-raise procedures; source:
 | Workspace | `xlearn-platform-prod` (the Default workspace can't carry limits). Monthly **hard limit $15**; Console spend alerts at **50% and 80%**; the app cap **$12** lives in judge (m4-02). |
 | Rate limits | Low per-model RPM / OTPM on `claude-sonnet-5` and Opus 5.5 (start low, *inferred*: ~20 RPM, ~40k OTPM; m4-07 re-sizes after the acceptance run). |
 | Billing | Prepaid credits ≈ 1–2 × the ceiling ($15–30); **auto-reload OFF** (it has no monthly cap); credits expire after 1 year. |
-| WIF | Service account `xlearn-judge`, member of `xlearn-platform-prod` only. Issuer = the cluster `iss` (`https://kubernetes.default.svc.cluster.local`, read live: `ssh vps 'sudo k3s kubectl get --raw /.well-known/openid-configuration'`), `jwks.type: inline` = the output of `ssh vps 'sudo k3s kubectl get --raw /openid/v1/jwks'` (public keys). Rule: `subject_prefix: system:serviceaccount:xlearn:xlearn-judge` (no `*`), `audience: https://api.anthropic.com`, `oauth_scope: workspace:inference`, `token_lifetime_seconds: 3600`, one workspace, `check_jti` per spk-03. |
+| WIF | Service account `xlearn-judge`, member of `xlearn-platform-prod` only. Issuer = the cluster `iss` (`https://kubernetes.default.svc.cluster.local`, read live: `ssh sujaykumar-vps 'sudo k3s kubectl get --raw /.well-known/openid-configuration'`), `jwks.type: inline` = the output of `ssh sujaykumar-vps 'sudo k3s kubectl get --raw /openid/v1/jwks'` (public keys). Rule: `subject_prefix: system:serviceaccount:xlearn:xlearn-judge` (no `*`), `audience: https://api.anthropic.com`, `oauth_scope: workspace:inference`, `token_lifetime_seconds: 3600`, one workspace, `check_jti` per spk-03. |
 | Hand-over | The non-secret IDs the infra values need: org, workspace, service account, federation rule; the `LLM_KEY_LABEL` (`wif-xlearn-platform-prod`); the JWKS `kid`s pasted (→ `hack/expected-jwks-kids.txt` and its embedded copy in `host-verify.sh`, task 6). |
 | `xlearn-calib` | A separate workspace for the analyzer acceptance run (~$10–30, m4-07) and later calibration (~$20–60 per rubric): its own hard limit of **~$50/month during M4 bring-up** ([t5 §5](../research/t5-platform-ai.md#5-cost-model)) with its own Console alerts — separate from the $15 prod limit — and a personal key with a 7–30-day expiry for owner-machine runs, **never in the cluster**. |
 | Break-glass | Only on the spk-03 fallback or a WIF outage: a single-workspace service-account key, **90-day expiry**; the **owner** writes it into the SOPS file (`sops ../infra/apps/secrets/xlearn-judge-llm.enc.yaml`) — no agent handles it; expiry date into status.md (manual check); bump `xlearn.dev/llm-rev`. Never name it `ANTHROPIC_API_KEY`. |
@@ -206,17 +206,17 @@ One `../infra` PR; it needs the IDs from task 3's before-launch setup:
 
 A small `../infra` PR to `hack/host-verify.sh` (read-only, the MI-8 pattern, [ADR-0035 §3](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#3-no-alerting-in-v2-owner-d34) "cheap later additions"):
 - **The expected kids travel with the script** ([mi-02](sprint-mi-02.md)'s convention for its TSVs): the owner runs it piped
-  (`ssh vps 'bash -s -- --cluster' < hack/host-verify.sh`) or from `/root/host-verify.sh`, and neither has a file beside it.
+  (`ssh sujaykumar-vps 'bash -s -- --cluster' < hack/host-verify.sh`) or from `/root/host-verify.sh`, and neither has a file beside it.
   So add `hack/expected-jwks-kids.txt` (the kids pasted into the Console in task 3, one per line) **and** embed it in the
   script between `# >>> expected-jwks-kids.txt` / `# <<< expected-jwks-kids.txt` markers; `hack/host-lint.sh` fails when the
   embedded copy differs from the file (extend its existing embedded-TSV check).
 - `--cluster` compares the `kid` set of the live JWKS (mi-02's `kc_raw /openid/v1/jwks` + `jq`) with the embedded block →
   **PASS** on a match, **WARN** `WIF JWKS drift — re-paste per docs/v2/runbooks/platform-ai-provider.md` on a difference;
   INFO-skip **only when the embedded block is empty** (the fallback path).
-- Prove it fires: pipe a scratch copy with one embedded kid altered (`sed … hack/host-verify.sh | ssh vps 'bash -s -- --cluster'`)
+- Prove it fires: pipe a scratch copy with one embedded kid altered (`sed … hack/host-verify.sh | ssh sujaykumar-vps 'bash -s -- --cluster'`)
   → the WARN; nothing is written on the node. Paste both runs in the PR.
 - Keeps `hack/host-lint.sh`'s read-only grep and shellcheck green. After merge, refresh the node copy the sanctioned way
-  (`scp hack/host-verify.sh vps:/root/`, [mi-02](sprint-mi-02.md) task 7), so the owner's `ssh vps 'bash /root/host-verify.sh --cluster'` runs it.
+  (`scp hack/host-verify.sh sujaykumar-vps:/root/`, [mi-02](sprint-mi-02.md) task 7), so the owner's `ssh sujaykumar-vps 'bash /root/host-verify.sh --cluster'` runs it.
   That node write is specified here, so launching the prompt pre-approves it (D40). Not an alert, timer or CronJob (D34).
 
 ### 7 · Analyzer acceptance-set template [E]
@@ -245,7 +245,7 @@ repo** (the AGENT.md never-copy rule, [m3-01](sprint-m3-01.md)) — not into the
 
 ### 8 · Verify + record [H + X]
 
-- `ssh vps 'bash /root/host-verify.sh --cluster'` (after the task 6 refresh; before it, `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh`)
+- `ssh sujaykumar-vps 'bash /root/host-verify.sh --cluster'` (after the task 6 refresh; before it, `ssh sujaykumar-vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh`)
   green, with the kid check reporting **PASS** — not INFO-skip — on the WIF path (memory sum unchanged: no new pod).
 - judge Ready after both infra PRs; a cohort **judged submit** still grades end to end (JWKS, PG, NATS, runner intact);
   `k3s kubectl get pod -n xlearn -l app.kubernetes.io/instance=xlearn-judge -o jsonpath='{.items[0].spec.volumes[*].name}'`

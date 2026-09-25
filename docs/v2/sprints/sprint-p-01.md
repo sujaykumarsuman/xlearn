@@ -42,7 +42,7 @@ _Overall:_ ⬜ Not started
   any other value gets EPERM at the pod layer, whatever the image's exec allowlist says. Check it read-only: compare the
   heredoc in `../infra/hack/host-bootstrap.sh` with §16.2's text, and confirm the host file matches that heredoc
   (`host-verify --cluster --expect-sandbox`'s `sandbox.seccomp` sha256 = `hack/host-bom.txt`, or
-  `ssh vps 'sudo cat /var/lib/kubelet/seccomp/profiles/xlearn-runner.json'`). Skip this gate only if §16.2 says go-race
+  `ssh sujaykumar-vps 'sudo cat /var/lib/kubelet/seccomp/profiles/xlearn-runner.json'`). Skip this gate only if §16.2 says go-race
   needs no `personality` call.
 - [ ] **Parallel sessions:** no open peer PR touches `internal/runner/`, `deploy/runner.Dockerfile`, `.github/workflows/{runner-release,ci}.yml` or `internal/judge/grader/`; no peer `runner-v*` tag in flight (`git ls-remote --tags origin 'refs/tags/runner-v*'`, `gh pr list`, `git worktree list`, ListAgents)
 

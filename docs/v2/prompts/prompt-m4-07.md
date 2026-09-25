@@ -51,7 +51,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 
 - [ ] `../xlearn-evalpack/acceptance/`: ≥ 70 labelled examples (test ≥ 40 = 15 optimal / 15 suboptimal / 10 failing; dev ≥ 30), schema-valid; the test split's `configs_tried.log` is **empty**.
 - [ ] `ev-provider-runbook` ✅ in status.md (it set up the `xlearn-calib` workspace). The calib key itself is a before-launch item, checked in step 5, not a gate here. **You never see, type or print that key.**
-- [ ] mi-12 live: ADR-0031 Accepted; read-only `ssh vps 'k3s kubectl get networkpolicy -n xlearn xlearn-judge -o yaml'` shows TCP 443 + identity :8081; `xlearn-judge-llm` mounted; `LLM_PLATFORM_ENABLED=false`.
+- [ ] mi-12 live: ADR-0031 Accepted; read-only `ssh sujaykumar-vps 'k3s kubectl get networkpolicy -n xlearn xlearn-judge -o yaml'` shows TCP 443 + identity :8081; `xlearn-judge-llm` mounted; `LLM_PLATFORM_ENABLED=false`.
 - [ ] m4-01 … m4-06 merged (`git log origin/main`), and m4-01's compose `llm-smoke` output is in its PR. (Its pod smoke can't run before this sprint's tag; it's step 9's first post-tag step.) `git log v1.15.0..main` has nothing that must not ship.
 - [ ] m4-03's ACL PR merged in `../infra`.
 - [ ] `v1.15.0` live; no open peer PR edits `internal/judge`.
@@ -119,20 +119,20 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
    - the ACL golden rendered at the tag commit equals `messaging/release.yaml` (judge on `XLEARN_PRACTICE`, the `evaluation_analyzed` publish, review on `XLEARN_JUDGE`);
    - judge's NetworkPolicy (443 + identity :8081) and the existing dispute-path edges;
    - the `xlearn-judge-llm` secret and the projected token;
-   - `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` (the script header's documented invocation) green, including the JWKS kid check;
+   - `ssh sujaykumar-vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` (the script header's documented invocation) green, including the JWKS kid check;
    - no new pod.
 
    Open and merge an infra PR **only for a gap**, before the tag.
 9. **[X] Tag `v1.16.0`** with the plan's **release checklist**. Title **`v1.16.0 — v2 build · M4 platform AI`**; release notes per the plan (dark behind `LLM_PLATFORM_ENABLED=false`; the cohort flip follows; the D14/D26 promises). **Right before pushing the tag, re-check for peer and owner messages.**
 
-   **First post-tag step: m4-01's pod smoke** (its task 10). Run `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-judge -- judge admin llm-smoke'`. It must pass: WIF mode, Models 200, the workspace header matching when present, and `claude-sonnet-5` and `claude-opus-5-5` listed. It only calls `GET /v1/models`, so it **spends nothing and writes no ledger row**, only an admin-audit row. A failure **blocks step 11 (the flag PR), not the tag**: fix forward and re-run.
+   **First post-tag step: m4-01's pod smoke** (its task 10). Run `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-judge -- judge admin llm-smoke'`. It must pass: WIF mode, Models 200, the workspace header matching when present, and `claude-sonnet-5` and `claude-opus-5-5` listed. It only calls `GET /v1/models`, so it **spends nothing and writes no ledger row**, only an admin-audit row. A failure **blocks step 11 (the flag PR), not the tag**: fix forward and re-run.
 
    Then, by looking (reads that need a login — the smoke test, the owner's allowance and consents — use an already-signed-in browser session if you have one; otherwise run the credential-free checks and record "owner login smoke pending" as a pending-smoke note in status.md; never enter credentials):
    - healthz reports the version; `get deploy` shows the images; ImagePolicy latest = the tag; HelmReleases Ready;
    - the smoke test (login, dashboard, coach);
    - still dark: the owner's `GET /api/me/ai-allowance` reads `off`/`platform_disabled`, so no AI surface shows; a `learner` account (if any) gets 404 from the presence-gated routes. `/api/me/consents` answers for every account (not cohort-gated) with its section hidden;
    - judge's and review's new durables bound; no dead letters.
-10. **[X] Record the acceptance row on production.** `ssh vps 'k3s kubectl exec -i -n xlearn deploy/xlearn-judge -- judge admin calibration record --from -' < row.json`, using step 5's `row.json` (m4-03's `--calibration-out`), not the report. It's an admin-CLI write this prompt specifies, so you run it yourself: pre-approved by launching this prompt (D40). Check `judge admin calibration list` shows it, and log it in status.md.
+10. **[X] Record the acceptance row on production.** `ssh sujaykumar-vps 'k3s kubectl exec -i -n xlearn deploy/xlearn-judge -- judge admin calibration record --from -' < row.json`, using step 5's `row.json` (m4-03's `--calibration-out`), not the report. It's an admin-CLI write this prompt specifies, so you run it yourself: pre-approved by launching this prompt (D40). Check `judge admin calibration list` shows it, and log it in status.md.
 11. **[I] Enable for the cohort** (plan task 8). One `../infra` PR on `apps/xlearn-judge.yaml`:
     - the sized values, the analyzer route and threshold, and `LLM_PLATFORM_ENABLED: "true"` on its own line;
     - leave `LLM_ACCEPT_STD_RETENTION` **unset**;

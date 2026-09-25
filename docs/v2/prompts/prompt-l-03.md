@@ -46,7 +46,7 @@ Production stays `closed` with no invite, so everything here is **inert**. It me
 
 - [ ] `v1.12.0` live (`curl -s https://projects.sujaykumar.dev/xlearn/api/v1/healthz`); identity's erase transaction is on `main` (l-02).
 - [ ] `v1.7.0`'s pieces on `main`: `internal/identity/admin/`, `resolveSignupMode`, the `identity.seats` lock in `reactivate`/`set-role`, `internal/gateway/limit` with L2.
-- [ ] Production `SIGNUP_MODE=closed`. Check read-only in `../infra/apps/xlearn-identity.yaml` and with `ssh vps 'k3s kubectl -n xlearn get deploy xlearn-identity -o jsonpath="{.spec.template.spec.containers[0].env}"'`.
+- [ ] Production `SIGNUP_MODE=closed`. Check read-only in `../infra/apps/xlearn-identity.yaml` and with `ssh sujaykumar-vps 'k3s kubectl -n xlearn get deploy xlearn-identity -o jsonpath="{.spec.template.spec.containers[0].env}"'`.
 - [ ] No open peer PR touches `internal/identity/` or the gateway `apiRoutes` table (`gh pr list`, `git worktree list`, ListAgents). If an M3 gateway PR is open, rebase after it merges.
 
 ## Do this (in order)

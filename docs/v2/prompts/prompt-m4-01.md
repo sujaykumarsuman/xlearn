@@ -40,7 +40,7 @@ infra. Everything is dark and lazy until [m4-07](../sprints/sprint-m4-07.md) tag
 ## Entry gates — verify first (stop and report if any is unmet)
 
 - [ ] MI-14 done: [mi-12](../sprints/sprint-mi-12.md) ✅ in `docs/v2/status.md`; `docs/adr/0031-*` says **Accepted**; read-only
-      `ssh vps 'sudo k3s kubectl get pod -n xlearn -l app.kubernetes.io/instance=xlearn-judge -o jsonpath="{.items[0].spec.volumes[*].name}"'`
+      `ssh sujaykumar-vps 'sudo k3s kubectl get pod -n xlearn -l app.kubernetes.io/instance=xlearn-judge -o jsonpath="{.items[0].spec.volumes[*].name}"'`
       lists `anthropic-token`; `ev-provider-runbook` ✅.
 - [ ] The latest tag is ≥ `v1.15.0` and < `v1.16.0` (a `v1.15.x` patch is fine; `git ls-remote --tags origin | sort -V | tail`),
       `/xlearn/api/v1/healthz` reports it, and `v1.14.0` exists.
@@ -120,7 +120,7 @@ infra. Everything is dark and lazy until [m4-07](../sprints/sprint-m4-07.md) tag
   and enums only. Never set or read `ANTHROPIC_API_KEY`. Agents never read the SOPS secret's values.
 - **Dark and lazy:** with `LLM_PLATFORM_ENABLED=false` (the production value until m4-07) judge makes **zero** provider calls; the
   credential is fetched on first use only; `judge admin llm-smoke` spends nothing (`GET /v1/models` only).
-- **GitOps:** no `kubectl apply`, no infra PR (mi-12 already landed everything); read-only `ssh vps` for the gate checks only. **D34:**
+- **GitOps:** no `kubectl apply`, no infra PR (mi-12 already landed everything); read-only `ssh sujaykumar-vps` for the gate checks only. **D34:**
   no alert, push channel or opscheck — the smoke and the runbook are read on demand.
 - **Memory-sum rule ([ADR-0035 §5](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#5-capacity-the-memory-sum-rule-triggers-and-ordered-responses)):**
   no new pod or container; nothing here adds steady memory to judge (256 Mi limit) or coach (128 Mi).

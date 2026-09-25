@@ -42,7 +42,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 - [ ] AB07–AB12 frozen
 - [ ] The last Hostinger weekly image is ≤ 7 days old
 
-How to check (read-only): the status.md MI rows and Decisions log for the spike GO, MI-4…MI-13 and the pack count; `ssh vps 'bash -s -- --cluster --nats-stage=n3' < ../infra/hack/host-verify.sh` (or `--nats-stage=n4` once [mi-11](../sprints/sprint-mi-11.md) has run; read-only, as [mi-02](../sprints/sprint-mi-02.md) documents) for MI-8, the memory sum and TR-STEAL; `gh pr list --state merged` for the AB07–AB12 design PRs; the Hostinger weekly-image date from the owner's before-launch attestation (record it; never wait for it mid-run). Rollout step ids `MI-NN` are **not** sprint ids `mi-NN` — the plan's entry-gate key maps them.
+How to check (read-only): the status.md MI rows and Decisions log for the spike GO, MI-4…MI-13 and the pack count; `ssh sujaykumar-vps 'bash -s -- --cluster --nats-stage=n3' < ../infra/hack/host-verify.sh` (or `--nats-stage=n4` once [mi-11](../sprints/sprint-mi-11.md) has run; read-only, as [mi-02](../sprints/sprint-mi-02.md) documents) for MI-8, the memory sum and TR-STEAL; `gh pr list --state merged` for the AB07–AB12 design PRs; the Hostinger weekly-image date from the owner's before-launch attestation (record it; never wait for it mid-run). Rollout step ids `MI-NN` are **not** sprint ids `mi-NN` — the plan's entry-gate key maps them.
 
 **Sprint gates:**
 
@@ -102,7 +102,7 @@ How to check (read-only): the status.md MI rows and Decisions log for the spike 
 - **Frontend:** `theme.css` tokens and components verbatim (no Tailwind), dark theme, the frozen AB07 copy and layout; difficulty tokens Easy `--ds-ok`, Medium `--ds-warn`, Hard `--ds-err`; keyboard and screen-reader behaviour per AB07's notes.
 - **Bundle:** CodeMirror (and its language packs) only in the lazy chunk; no Monaco; pinned MIT dependencies.
 - **Service boundaries ([ADR-0005](../../adr/0005-data-ownership-and-migrations.md)):** the only backend changes are the gateway asset 404 and, if needed, one additive Today field; no schema change (so no goose/sqlc work unless you touch a query — then `sqlc diff` must stay clean).
-- **GitOps:** never `kubectl apply`; `ssh vps` read-only for the checklist. **No alerting (D34).** No new pod (memory sum unchanged).
+- **GitOps:** never `kubectl apply`; `ssh sujaykumar-vps` read-only for the checklist. **No alerting (D34).** No new pod (memory sum unchanged).
 - **Parallel sessions:** check peers' PRs, tags and worktrees (and ListAgents) before merging and before claiming an ADR number.
 - This sprint **does not tag**.
 

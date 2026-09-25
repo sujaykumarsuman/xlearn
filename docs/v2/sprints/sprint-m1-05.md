@@ -108,7 +108,7 @@ Sources: [ADR-0035 §4](../../adr/0035-v2-operations-nats-auth-limits-capacity.m
   the worst cold load.
 - **`X-Real-Ip` trust test** (`internal/gateway/limit/clientip_test.go`): the key is `X-Real-Ip`; adding
   `X-Forwarded-For`, `Forwarded` or `True-Client-Ip` never changes it; missing header → `RemoteAddr` host (IPv4 and IPv6).
-  Plus a read-only live check recorded in the PR: `ssh vps 'k3s kubectl -n kube-system get svc traefik -o jsonpath={.spec.externalTrafficPolicy}'` = `Local`.
+  Plus a read-only live check recorded in the PR: `ssh sujaykumar-vps 'k3s kubectl -n kube-system get svc traefik -o jsonpath={.spec.externalTrafficPolicy}'` = `Local`.
 
 ### 2 · L6 typed 413 [X]
 

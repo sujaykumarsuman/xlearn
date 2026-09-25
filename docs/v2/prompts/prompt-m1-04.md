@@ -65,7 +65,7 @@ m1-03 is merged, m1-05 waits on this PR.
 8. **[X] Cohort `preview`** (plan task 7): identity enrollment allows `preview` for DB role owner/tester; the gateway passes
    `inCohort(info)` to `courseVisible`; tests with m1-03's `preview` fixture.
 9. **[X] Runbook** (plan task 8): `docs/runbooks/identity-admin.md` — every verb via
-   `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin …'`, `ev-owner-role`, `ev-first-tester`
+   `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin …'`, `ev-owner-role`, `ev-first-tester`
    (only after MI-5b is live), stranger triage, "log each use in `docs/v2/status.md`".
 10. **[X] Verify:** `gofmt`, `go vet`, `go test -race ./...`, `sqlc diff`, web typecheck/lint/test/build, `-tags e2e`;
     `docker compose up --build`, then click through **every** screen (sign-in, onboarding, Catalog, Roadmap, Today, Week,

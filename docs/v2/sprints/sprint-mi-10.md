@@ -82,7 +82,7 @@ After this sprint, M3's hard checklist can tick MI-12, and judge has a runner to
 
 - Confirm every entry gate.
   - `flux get kustomizations sandbox-guards` is Ready.
-  - `ssh vps 'bash -s -- --expect-sandbox --cluster --with-runner' < hack/host-verify.sh` is **green**.
+  - `ssh sujaykumar-vps 'bash -s -- --expect-sandbox --cluster --with-runner' < hack/host-verify.sh` is **green**.
     The memory sum with the runner's 3 GiB of limits counted must be ≤ capacity − 0.5 GiB
     (≈ 0.9 GiB inside the rule after MI-11a).
 - **A pending spike VAP diff first.** If status.md hands mi-10 a spike diff that arrived after mi-14 merged
@@ -90,7 +90,7 @@ After this sprint, M3's hard checklist can tick MI-12, and judge has a runner to
   mi-14 anticipated this.
 - **Render check before anything merges.** Re-run mi-14's `hack/sandbox-vap-test.sh` with its **G1**
   positive control rebuilt from **the real task 4 values**: `helm template charts/project -f <values>`, the
-  pod template wrapped as a `Pod` in `xlearn-runner`, then a server-side dry run over `ssh vps`. It must be
+  pod template wrapped as a `Pod` in `xlearn-runner`, then a server-side dry run over `ssh sujaykumar-vps`. It must be
   **admitted with no warning**, and B1–B14 must still be denied. A server dry run persists nothing.
   Three points need special attention:
   - The image renders as `ghcr.io/sujaykumarsuman/xlearn-runner@sha256:<digest>`. Chart 0.3.0's
@@ -207,7 +207,7 @@ only this Kustomization.
   - through task 5's port-forward, `GET /v1/profiles` (bearer) reports `mode: prod` and `image_digest` equal
     to m3-15's recorded digest, not `unknown`.
 - **The real exec/attach proof** (mi-14 X1/X2, handed here because it needs a running runner pod):
-  `ssh vps 'k3s kubectl -n xlearn-runner exec deploy/xlearn-runner -- true'` must be **denied by the VAP**
+  `ssh sujaykumar-vps 'k3s kubectl -n xlearn-runner exec deploy/xlearn-runner -- true'` must be **denied by the VAP**
   ("exec/attach into xlearn-runner is denied; delete the pod instead"). Do the same for `attach`. Nothing
   runs, because the request is refused at admission. Record the message.
 

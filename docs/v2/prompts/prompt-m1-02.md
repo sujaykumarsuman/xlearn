@@ -101,7 +101,7 @@ contract-header lint, and cuts `v1.6.0`. Production has 1 account and 19 events;
 - **Envelope is append-only; decoders stay forever** ([ADR-0034](../../adr/0034-v2-release-labelling-gating-and-rollback.md) §3).
   **Consumers before producers:** no producer emits v2 in this tag.
 - **Outbox/inbox:** domain row + outbox row in one transaction; consumers dedupe on `event_id`.
-- **GitOps only:** the infra change is a PR in `../infra`; never `kubectl apply`. Read-only `ssh vps` is fine for verification.
+- **GitOps only:** the infra change is a PR in `../infra`; never `kubectl apply`. Read-only `ssh sujaykumar-vps` is fine for verification.
 - **D34:** no alerting, no Flux Alert, no opscheck — failures are logs + dead-letter rows read on demand.
 - **Memory-sum rule** ([ADR-0035](../../adr/0035-v2-operations-nats-auth-limits-capacity.md) §5): no new pod; identity keeps its limit.
 - **NetworkPolicy standing rule:** identity is a new NATS caller in this tag → its policy is checked/changed in its own infra PR before the tag.

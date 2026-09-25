@@ -63,7 +63,7 @@ means a `v2.0.x` patch tag first (image before HelmRelease). Everything stays da
 - [ ] [m6b-01](../sprints/sprint-m6b-01.md) is merged (`internal/coach/interview/voice/` on `main`).
 - [ ] t6 §16 gives M7 (pass/fail), M3b (push-to-talk native/emulated), M5 (duration / `expired`), `usage_ratio` at 60 min, reseed TTFA, the
       cached-token ratio and the M9 usage-event shape. **M7 decides task 7** — write it down before starting.
-- [ ] `ssh vps 'sudo k3s kubectl get deploy -n xlearn xlearn-coach -o jsonpath="{.spec.strategy}{.spec.template.spec.terminationGracePeriodSeconds}"'`
+- [ ] `ssh sujaykumar-vps 'sudo k3s kubectl get deploy -n xlearn xlearn-coach -o jsonpath="{.spec.strategy}{.spec.template.spec.terminationGracePeriodSeconds}"'`
       shows rollingUpdate 1/0 and 60 (read-only); status.md holds mi-13's memory-sum margin.
 - [ ] You have read m6a-01's UTC day rule, idle rule, client lease, sweeper lock and SIGTERM checkpoint, and m6a-04's stream notifier.
 - [ ] Parallel sessions: `gh pr list` (xlearn and `../infra`), `git ls-remote --tags origin`, `git worktree list`, ListAgents — no open PR adds a
@@ -168,7 +168,7 @@ means a `v2.0.x` patch tag first (image before HelmRelease). Everything stays da
   config notes, not the flag inventory).
 - **Release discipline (M7-failed only):** PR A before the tag, PR B after it (image before HelmRelease/policy); the tag is a **patch**; **no live
   interviews** before the tag and before PR B; never move or re-push a tag; parallel-sessions check before tagging.
-- **GitOps:** infra changes only via PRs reconciled by Flux; never `kubectl apply`/`scale`/`rollout` by hand; `ssh vps` for reads, `host-verify.sh`
+- **GitOps:** infra changes only via PRs reconciled by Flux; never `kubectl apply`/`scale`/`rollout` by hand; `ssh sujaykumar-vps` for reads, `host-verify.sh`
   and the `coach admin` CLI only; the `coach-interview` ImagePolicy is pinned to an existing tag and moved only by PR.
 - **Memory-sum rule ([ADR-0035 §5](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#5-capacity-the-memory-sum-rule-triggers-and-ordered-responses)):**
   every container keeps a memory limit; the `coach-interview` sum is checked before PR B merges.

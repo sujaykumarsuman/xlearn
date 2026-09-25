@@ -69,7 +69,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
   - the pod CIDR is under `10.42.0.0/16` and the service CIDR is `10.43.0.0/16`;
   - xlearn login roles have `connectionLimit: -1`.
 - Owner time: before launch only (the Renovate app, the weekly image date; see above). You run the erase smoke
-  yourself (steps 1–3): the `identity admin` CLI through `ssh vps 'k3s kubectl exec …'` is pre-approved by
+  yourself (steps 1–3): the `identity admin` CLI through `ssh sujaykumar-vps 'k3s kubectl exec …'` is pre-approved by
   launching this prompt (D40).
 - Each step below is tagged with the plan task it ticks in the plan's Status table.
 

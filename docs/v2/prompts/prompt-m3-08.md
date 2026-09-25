@@ -106,7 +106,7 @@ builds the gateway side in parallel; [m3-10](../sprints/sprint-m3-10.md) consume
 - **Timers apply to `submitted_at`** (INV-6); queue latency never penalises the learner.
 - **Envelope append-only; decoders forever**; consumers before producers (judge stays dark until `v1.14.0` + `JUDGE_BASE_URL`).
 - **ACL PR before the tag** (ADR-0035 §2): merge it in this sprint; it's its own infra PR, never folded into a tag.
-- **GitOps:** never `kubectl apply`; read-only `ssh vps` for verification.
+- **GitOps:** never `kubectl apply`; read-only `ssh sujaykumar-vps` for verification.
 - **D34:** no alert, no ping, no opscheck — WARN/ERROR logs and Postgres rows read on demand.
 - **Memory-sum rule:** no new pod; practice's limits unchanged (note its RSS after the change in status.md if it moves).
 - **Parallel sessions:** check peers' PRs, tags and worktrees before numbering the migration; coordinate the internal

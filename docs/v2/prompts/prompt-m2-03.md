@@ -37,7 +37,7 @@
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
-- [ ] **v1.9.0 live**: `ssh vps 'k3s kubectl get deploy -n xlearn -o wide'` shows `1.9.0` (or later) images, and `/xlearn/api/v1/healthz` reports it. The projection v2 tables exist on `main`.
+- [ ] **v1.9.0 live**: `ssh sujaykumar-vps 'k3s kubectl get deploy -n xlearn -o wide'` shows `1.9.0` (or later) images, and `/xlearn/api/v1/healthz` reports it. The projection v2 tables exist on `main`.
 - [ ] **AB06 and AB22 frozen**: the DS-M2-01 PR is merged (the merge is the freeze, D40; `gh pr list --state merged --search "AB06"`), and the board files exist under `design-system/screens/v2/`.
 - [ ] **The M1b public floor is on `main`**: `visible_courses[]` in the resolver, the P10 allowlist test, the negative-404 cache, and no positive status cache.
 - [ ] **`auth.RequireRole` exists**, and `account.profile_visibility` / `path_enrollment.public_visible` exist in identity's schema.
@@ -127,7 +127,7 @@
   - the `public-read` token is `aud=assessment` only.
 - **Frontend:** `theme.css` tokens and components verbatim (no Tailwind), the dark theme, and a match to the frozen boards.
 - **No new always-on pod, env var, NATS subject or in-cluster caller**, so there's no NetworkPolicy or ACL PR and the memory sum is unchanged. If you find you need one, stop: it's a plan change.
-- **GitOps:** never `kubectl apply`. Read-only `ssh vps` only for the entry-gate checks.
+- **GitOps:** never `kubectl apply`. Read-only `ssh sujaykumar-vps` only for the entry-gate checks.
 - **No alerting of any kind (D34).**
 - **Parallel sessions:** check peers' PRs, tags and worktrees (and ListAgents) before merging, and before claiming an ADR number if one turns out to be needed.
 - This sprint **does not tag**. v1.10.0 is cut by M2-05.

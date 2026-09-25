@@ -167,7 +167,7 @@ Sources: [ADR-0033](../../adr/0033-invite-only-admission-and-owner-admin.md) §1
 ### 8 · Runbook [X]
 
 `docs/runbooks/identity-admin.md` (next to the v1 `projection-rebuild.md`):
-- The call: `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin <verb> …'` — one example per verb, the
+- The call: `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin <verb> …'` — one example per verb, the
   output shape, exit codes, and that each use is logged in `docs/v2/status.md` (a sanctioned manual path, [rollout §2.2](../rollout-plan.md)).
 - **`ev-owner-role`** (after `v1.7.0`, once): `identity admin account set-role <owner-email> owner`, then `account list --role owner`.
 - **`ev-first-tester`** — only after **MI-5b is live** ([mi-04](sprint-mi-04.md); ADR-0033 §11): `account create --role tester --email …`,

@@ -179,7 +179,7 @@ Nothing is visible on production after this sprint. In v2 the flip reaches the o
 ### 1 · Entry read [H]
 
 Re-read the GA checklist's first line and the M3 checklist on the live system. **Stop if anything is red.**
-- **Host and cluster.** Run `ssh vps 'bash /root/host-verify.sh --cluster --with-runner --nats-stage=n4'` ([mi-02](sprint-mi-02.md); the node copy refreshed per its README). It must show no FAIL:
+- **Host and cluster.** Run `ssh sujaykumar-vps 'bash /root/host-verify.sh --cluster --with-runner --nats-stage=n4'` ([mi-02](sprint-mi-02.md); the node copy refreshed per its README). It must show no FAIL:
   - the memory sum with the runner's 3 GiB counted;
   - Flux Ready;
   - no OOMKills;
@@ -202,8 +202,8 @@ Rule: [ADR-0033 §2](../../adr/0033-invite-only-admission-and-owner-admin.md#2-c
 1. **Read (the agent runs it; read-only, but it writes `admin_audit`):**
 
    ```sh
-   ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account list --role learner --status active'
-   ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin seats'
+   ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account list --role learner --status active'
+   ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin seats'
    ```
 
    Keep the output **in the session's terminal only**. It carries emails and usernames. **Never** paste it into a file, a PR, a commit or status.md, because the repo is public.
@@ -212,7 +212,7 @@ Rule: [ADR-0033 §2](../../adr/0033-invite-only-admission-and-owner-admin.md#2-c
    - **Erase.** Irreversible, and there are no backups (D12). **The owner runs it himself, before launch** (optional):
 
      ```sh
-     ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account erase <account-id> --confirm <account-id>'
+     ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account erase <account-id> --confirm <account-id>'
      ```
 
      `--confirm` must repeat the same account ([l-02](sprint-l-02.md) task 3: non-interactive `kubectl exec` has no prompt, so the verb refuses without it). It needs every ack `topology.go` expects (practice, review, assessment, coach, judge); confirm with `… identity admin erasures --open` → empty.
@@ -349,7 +349,7 @@ Bash with `curl` and `jq` only. No new toolchain: `crane` isn't installed and is
    - List `https://ghcr.io/v2/sujaykumarsuman/xlearn-<svc>/tags/list?n=1000`, following `Link` pagination.
    - **FAIL** on any tag that Flux's semver (Masterminds, lenient) would read as a stable `major.*`: `^v?2(\.[0-9]+){0,2}(\+[0-9A-Za-z.-]+)?$`. So `2`, `2.0`, `v2.0.0` and `2.0.0+x` all count; `2.0.0-rc.1`, `sha-…`, `latest` and `0.1.N` don't.
 4. **No contract:** `hack/lint-migrations.sh --no-contract-since <last stable (major−1).x tag>`.
-5. **`--cluster`** (optional, read-only). It prints `name`, `.spec.policy.semver.range` and `.status.latestRef.tag` for every `xlearn-*` ImagePolicy, through `ssh vps 'k3s kubectl get imagepolicy -n flux-system -o json'`. ga-02 reads it before and after the widening.
+5. **`--cluster`** (optional, read-only). It prints `name`, `.spec.policy.semver.range` and `.status.latestRef.tag` for every `xlearn-*` ImagePolicy, through `ssh sujaykumar-vps 'k3s kubectl get imagepolicy -n flux-system -o json'`. ga-02 reads it before and after the widening.
 
 Behaviour:
 - Exit 0 only when every check passes.
@@ -438,7 +438,7 @@ ADR-0034 §1.4 step 2; the [git-strategy](../../git-strategy.md) `-rc` conventio
    - the **no-contract step runs and passes** (it's the first real run);
    - 8 images `2.0.0-rc.1` are pushed.
 4. **Prove it never deploys** (read-only):
-   - `ssh vps 'k3s kubectl get imagepolicy -n flux-system'` shows the fleet `latest` still at `<last-1.x>`;
+   - `ssh sujaykumar-vps 'k3s kubectl get imagepolicy -n flux-system'` shows the fleet `latest` still at `<last-1.x>`;
    - `git -C ../infra log origin/main --oneline -5` shows no `chore(images)` commit for `xlearn-*`.
 5. **Record the rc'd commit SHA.** ga-02 tags `v2.0.0` on it, or on a later `main` whose diff from it touches only `docs/`, `*.md` or `design-system/`. Those paths are in `.dockerignore`, and `.github/` is **not** exempt, because the tag runs the workflow at the tagged commit.
 

@@ -7,7 +7,7 @@
 
 Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
 
-- [ ] **Optional — strangers you don't want suspended.** The session suspends every remaining `active` learner (reversible). If you'd rather **erase** one, do it yourself first (irreversible, D12): `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account erase <id> --confirm <id>'`, then `… identity admin erasures --open` → empty. If one is a **real tester**, name it in your launch message (the session runs `account set-role <id> tester`). The launch message isn't committed; the record keeps counts only.
+- [ ] **Optional — strangers you don't want suspended.** The session suspends every remaining `active` learner (reversible). If you'd rather **erase** one, do it yourself first (irreversible, D12): `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account erase <id> --confirm <id>'`, then `… identity admin erasures --open` → empty. If one is a **real tester**, name it in your launch message (the session runs `account set-role <id> tester`). The launch message isn't committed; the record keeps counts only.
 - [ ] **In your launch message:** the date of the last Hostinger weekly image (hPanel). ga-02 needs it again on GA day.
 
 ## Read first
@@ -75,7 +75,7 @@ Both go in the GA PR, so `v2.0.0` can later be tagged on the exact commit you re
 
 - [ ] **MI complete for GA** (every MI step ✅ except MI-16) and **M1–M4 + P + L ✅** in status.md, with exits recorded.
 - [ ] **The M3 checklist is still green.** Plan task 1:
-  - `ssh vps 'bash /root/host-verify.sh --cluster --with-runner --nats-stage=n4'` has no FAIL;
+  - `ssh sujaykumar-vps 'bash /root/host-verify.sh --cluster --with-runner --nats-stage=n4'` has no FAIL;
   - 14 packs stamped; AB07–AB12 frozen; TR-STEAL quiet;
   - the weekly-image date is in the launch message.
 - [ ] **L exit recorded,** and `curl -s https://projects.sujaykumar.dev/xlearn/api/v1/auth/config` → `{"signup":"closed"}`.
@@ -108,7 +108,7 @@ Both go in the GA PR, so `v2.0.0` can later be tagged on the exact commit you re
 1. **[H] Entry read** (plan task 1). Record "GA entry: M3 checklist re-read green <date>" in the decisions log draft.
 2. **[H] Strangers** (plan task 2, `ev-strangers`):
    - Run the read-only lists:
-     - `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account list --role learner --status active'`;
+     - `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account list --role learner --status active'`;
      - `… identity admin seats`.
    - Keep them **in the terminal only**. They are PII, and the repo is public: never put them in a file, PR or status.md.
    - Triage (D40: the launch approves the reversible default; the owner did any erase himself before launch):
@@ -155,7 +155,7 @@ Both go in the GA PR, so `v2.0.0` can later be tagged on the exact commit you re
    - the fleet parsed from `deploy.yml` and **asserted as exactly 8**;
    - GHCR anonymous tag listing with pagination, and the lenient stable-2.x regex `^v?2(\.[0-9]+){0,2}(\+[0-9A-Za-z.-]+)?$`;
    - no-contract;
-   - `--cluster` (read-only `ssh vps` ImagePolicy range/latest table).
+   - `--cluster` (read-only `ssh sujaykumar-vps` ImagePolicy range/latest table).
 
    Overrides for the offline self-test in `hack/testdata/preflip/`, run in `ci.yml`.
 8. **[X] Release notes + drift check** (plan task 7):

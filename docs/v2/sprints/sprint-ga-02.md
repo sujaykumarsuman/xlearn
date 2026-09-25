@@ -77,10 +77,10 @@ _Overall:_ ⬜ Not started
   - `v2.0.0-rc.N` is published as a prerelease, and its four-phase compose rehearsal is green (R-b included);
   - the **rc'd commit SHA** is recorded in status.md;
   - `hack/ga-preflip-check.sh` and its self-test are green on `main`.
-- [ ] **Still no active learner** (things may have changed since ga-01): `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account list --role learner --status active'` → empty. Show the output in the terminal only.
+- [ ] **Still no active learner** (things may have changed since ga-01): `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account list --role learner --status active'` → empty. Show the output in the terminal only.
 - [ ] **Production healthy and settled:**
   - no host change, reboot, k3s/CNPG bump or restart-inducing infra PR in the last 24 h (status.md, `git -C ../infra log --since=24.hours origin/main`);
-  - no failing Flux object (`ssh vps 'k3s kubectl get kustomizations,helmreleases -A'` all Ready).
+  - no failing Flux object (`ssh sujaykumar-vps 'k3s kubectl get kustomizations,helmreleases -A'` all Ready).
 - [ ] **Before launch (owner), attested by the launch (D40):**
   - the last Hostinger weekly image is ≤ 7 days old, and the manual snapshot is taken on the settled host (task 5); the launch message gives the snapshot's time or id and the weekly-image date;
   - he has set his go-concurrency public visibility (AB22) as he wants it. After the tag, the pilot's rows are public when visible ([ga-01](sprint-ga-01.md) release notes).
@@ -181,10 +181,10 @@ In `../infra`, from an up-to-date `main`, branch `chore/xlearn-fleet-ranges-v2-g
 - **PR body:** "Superset widening: merge first, then tag. Nothing moves, because the highest stable fleet image is still `<last-1.x>`. Pre-flip check green at <time>."
 - **Merge** (squash). `../infra` has no CI: the before/after table and the pre-flip output in the PR body are its checks. No `kubectl apply`: Flux reconciles `apps`.
 - **Verify that nothing moved** (read-only):
-  - `ssh vps 'k3s kubectl get kustomization apps -n flux-system -o jsonpath={.status.lastAppliedRevision}'` shows the merge SHA;
+  - `ssh sujaykumar-vps 'k3s kubectl get kustomization apps -n flux-system -o jsonpath={.status.lastAppliedRevision}'` shows the merge SHA;
   - `hack/ga-preflip-check.sh --major 2 --cluster` shows the 8 fleet ranges `>=1.0.0 <3.0.0` with `latestRef.tag` still `<last-1.x>`, and runner and evalpack unchanged;
   - `git -C ../infra fetch && git -C ../infra log origin/main --oneline -3` shows no `chore(images)` commit touching `apps/xlearn-*.yaml`;
-  - `ssh vps 'k3s kubectl get pods -n xlearn'` shows no new restarts or ages.
+  - `ssh sujaykumar-vps 'k3s kubectl get pods -n xlearn'` shows no new restarts or ages.
 
   If anything moved, **stop**: a stray exists that the check missed. Narrow back (revert the PR, R-b), then investigate.
 
@@ -192,7 +192,7 @@ From here until task 6, keep the sitting short and the freeze held.
 
 ### 4 · `host-verify --cluster` [H] (step 5, first half)
 
-`ssh vps 'bash /root/host-verify.sh --cluster --with-runner --nats-stage=n4'` ([mi-02](sprint-mi-02.md); [ADR-0035 §3](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#3-no-alerting-in-v2-owner-d34)) must show **no FAIL**:
+`ssh sujaykumar-vps 'bash /root/host-verify.sh --cluster --with-runner --nats-stage=n4'` ([mi-02](sprint-mi-02.md); [ADR-0035 §3](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#3-no-alerting-in-v2-owner-d34)) must show **no FAIL**:
 - the memory sum with the runner's 3 GiB counted ≤ capacity − 0.5 GiB ([ADR-0035 §5](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#5-capacity-the-memory-sum-rule-triggers-and-ordered-responses)). GA adds no pod and no container, so the sum is unchanged;
 - Flux Ready;
 - no OOMKills and ≤ 3 restarts in 24 h; CNPG healthy;
@@ -238,12 +238,12 @@ Then Flux picks it up. The ImageRepositories scan (1 m), the 8 fleet policies re
 
 **ADR-0034 §6, after the tag (by looking, D34):**
 - `curl -s https://projects.sujaykumar.dev/xlearn/api/v1/healthz` → `"version":"v2.0.0"`.
-- `ssh vps 'k3s kubectl get deploy -n xlearn -o custom-columns=NAME:.metadata.name,IMAGE:.spec.template.spec.containers[0].image,READY:.status.readyReplicas'` → **8** deployments on `:2.0.0`, all ready.
-- `ssh vps 'k3s kubectl get imagepolicy -n flux-system'`:
+- `ssh sujaykumar-vps 'k3s kubectl get deploy -n xlearn -o custom-columns=NAME:.metadata.name,IMAGE:.spec.template.spec.containers[0].image,READY:.status.readyReplicas'` → **8** deployments on `:2.0.0`, all ready.
+- `ssh sujaykumar-vps 'k3s kubectl get imagepolicy -n flux-system'`:
   - the 8 fleet policies show `2.0.0`;
   - **`xlearn-runner` and `xlearn-evalpack` are unchanged** (their own versions);
   - the runner's namespace `xlearn-runner` shows no restart.
-- `ssh vps 'k3s kubectl get helmreleases -A'`: every `xlearn-*` is Ready.
+- `ssh sujaykumar-vps 'k3s kubectl get helmreleases -A'`: every `xlearn-*` is Ready.
 - **Smoke:** login, the dashboard, coach.
 
 **GA smoke:**
@@ -262,7 +262,7 @@ Then Flux picks it up. The ImageRepositories scan (1 m), the 8 fleet policies re
   2. The tester sees Run/Submit on a packed item and go-concurrency in the catalog.
   3. `… set-role <that account> tester` within the sitting.
   4. Record it: counts and roles only, no identity.
-- **Host after the rollout:** `ssh vps 'bash /root/host-verify.sh --cluster --with-runner --nats-stage=n4'` is green. The memory sum is unchanged, with no restarts beyond the rollout.
+- **Host after the rollout:** `ssh sujaykumar-vps 'bash /root/host-verify.sh --cluster --with-runner --nats-stage=n4'` is green. The memory sum is unchanged, with no restarts beyond the rollout.
 
 If anything fails, go to Rollback. **R-b is the GA rollback.**
 
@@ -274,7 +274,7 @@ Otherwise, **after task 7 is fully green** (never before or with the tag):
 - In `../infra`, from an up-to-date `main`, branch `chore/xlearn-drop-removed-flag-env`. Remove exactly the recorded `env` entries from the named `apps/xlearn-<svc>.yaml` HelmReleases. **Don't touch** the image tag lines (the IUA owns them), the kill switches (`JUDGE_BASE_URL`, `LLM_PLATFORM_ENABLED`, the grading override, `REVISION_ENTRY_RULE`, `SIGNUP_MODE`) or `COURSE_STATUS_OVERRIDE` if ga-01 kept it.
 - Commit `chore(xlearn): drop env for flags removed in v2.0.0`, with the attribution lines. PR body: the flag names, "removed in GA PR #N, shipped in `v2.0.0`", and "a values change restarts the named services".
 - Squash-merge (`../infra` has no CI: the PR body's flag list is its check). No `kubectl apply`: Flux reconciles `apps`.
-- Verify by looking: `ssh vps 'k3s kubectl get helmreleases -A'` all Ready; healthz still `"version":"v2.0.0"`; the restarted pods Ready on `:2.0.0`.
+- Verify by looking: `ssh sujaykumar-vps 'k3s kubectl get helmreleases -A'` all Ready; healthz still `"version":"v2.0.0"`; the restarted pods Ready on `:2.0.0`.
 
 It is its own PR, never folded into the tag or the widening.
 

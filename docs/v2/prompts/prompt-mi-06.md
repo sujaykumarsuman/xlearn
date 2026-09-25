@@ -46,8 +46,8 @@ join through their own ACL PRs ([m3-07](../sprints/sprint-m3-07.md), [l-01](../s
 - [ ] **Before N1:** mi-05 merged — the golden file and `make nats-acl-render` exist on `main`.
 - [ ] **Before N1:** mi-02 merged — `host-verify.sh --cluster --nats-stage=…` and its `PIN_NATS_STAGE=open` constant exist in `../infra/hack/`.
 - [ ] **Before N1:** the last Hostinger weekly image date is recorded (a before-launch item) and ≤ 7 days old (N1 restarts NATS). If it isn't recorded, don't wait: set N1 and the stages after it ⛔ in status.md, naming the owner item, and land the rest (the runbook and status docs PR).
-- [ ] **Before N2:** `v1.6.0` live on all seven `xlearn-*` Deployments (`ssh vps 'k3s kubectl -n xlearn get deploy -o wide'`) and the NATS-auth integration test green at that tag.
-- [ ] **Before identity's N2:** `v1.6.0` on `xlearn-identity`, and either no `messaging` NetworkPolicy yet or MI-5's policy lists `xlearn-identity` as a 4222 caller (`ssh vps 'k3s kubectl -n messaging get networkpolicy -o yaml'`).
+- [ ] **Before N2:** `v1.6.0` live on all seven `xlearn-*` Deployments (`ssh sujaykumar-vps 'k3s kubectl -n xlearn get deploy -o wide'`) and the NATS-auth integration test green at that tag.
+- [ ] **Before identity's N2:** `v1.6.0` on `xlearn-identity`, and either no `messaging` NetworkPolicy yet or MI-5's policy lists `xlearn-identity` as a 4222 caller (`ssh sujaykumar-vps 'k3s kubectl -n messaging get networkpolicy -o yaml'`).
 - [ ] **Before N3:** the MI-5 PR (mi-03's first) merged; all four N2 PRs verified; zero `legacy` connections.
 - [ ] Parallel sessions: no peer PR is editing `infrastructure/messaging/release.yaml` or the four `apps/xlearn-*.yaml` (`gh pr list --state open` in both repos, `git worktree list`, ListAgents).
 
@@ -79,9 +79,9 @@ N1 may proceed while the N2 or N3 gates are still open; stop at the first stage 
    ADR-0035; **and** bump `PIN_NATS_STAGE` in `hack/host-verify.sh` from `open` to `n1`, then run
    `hack/host-lint.sh`. Put the public-key table, the rehearsal output and the host-lint output in the PR body.
    Record the live `/connz` connection count (7 on 2026-09-24: practice, review, assessment). Merge → watch
-   `rollout status sts/nats` → verify: a **plain** `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh`
+   `rollout status sts/nats` → verify: a **plain** `ssh sujaykumar-vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh`
    (no `--nats-stage` override) green, then the mi-02 node-copy refresh: run
-   `scp ../infra/hack/host-verify.sh vps:/root/` once (pre-approved by launching this prompt, D40);
+   `scp ../infra/hack/host-verify.sh sujaykumar-vps:/root/` once (pre-approved by launching this prompt, D40);
    `/connz?auth=true` all `legacy` with the recorded count restored; `/jsz?consumers=true` pending
    → 0; each outbox's unsent → 0 (psql via `kubectl exec` on `projects-pgstore-1`, read-only); no
    permission ERRORs in `xlearn-*` logs. Anything off → revert + a second annotation bump.
@@ -120,7 +120,7 @@ N1 may proceed while the N2 or N3 gates are still open; stop at the first stage 
 - **GitOps only.** Every cluster change is a `../infra` PR reconciled by Flux; never `kubectl apply`, `edit`,
   `patch` or `delete` by hand. Reads (`get`, `get --raw` proxy, `logs`, a read-only `psql` via `exec`) are
   fine. The break-glass path is the only manual NATS path, and this sprint uses it read-only. The only host
-  write is mi-02's node-copy refresh (`scp ../infra/hack/host-verify.sh vps:/root/`) after the N1 and N3
+  write is mi-02's node-copy refresh (`scp ../infra/hack/host-verify.sh sujaykumar-vps:/root/`) after the N1 and N3
   merges, which launching this prompt pre-approves (D40).
 - **Server before clients:** N1 before any seed; each N2 verified before the next; N3 only at zero `legacy`.
   **Infra PRs stand alone** — never folded into a tag. No SOPS decryption in `messaging`: public keys are

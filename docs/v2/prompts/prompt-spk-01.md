@@ -3,6 +3,10 @@
 > **One self-contained prompt = one sprint = one session.** Paste it into a fresh coding session at the xlearn repo root.
 > **Plan:** [`../sprints/sprint-spk-01.md`](../sprints/sprint-spk-01.md) · **Milestone:** MI (rollout step MI-10, part 1) · **Prereqs:** MI-0; soft: [mi-14](../sprints/sprint-mi-14.md). Launching this prompt is the D23 go-ahead (`ev-spike-goahead`, D40)
 
+## D41 changes (read first; they override the text below where they conflict)
+
+> **D41 (owner, 2026-09-25): spikes first.** All four spikes run **before any build sprint**, so every design yes/no is answered before M1 starts: spk-01 and spk-02 on Fri 2026-09-25 (agent-only, after the MI-0 reboot), spk-03 and spk-04 on Sat 2026-09-26 (spk-03 after the owner's Console step; spk-04 with the owner present). For this sprint: the calendar line below (Oct 12–14) is superseded; everything else stands. mi-14 hasn't run, so use the soft-gate fallback (write the draft guard objects yourself and report the diff back to mi-14).
+
 ## Read first
 
 - [`../sprints/sprint-spk-01.md`](../sprints/sprint-spk-01.md): the plan. It holds the P1 checklist and P2 pass tables this prompt measures against, the in-pod channel, and the results spec.
@@ -39,7 +43,7 @@ The M3 hard checklist needs "Spike P0–P3 **GO**" ([rollout §5](../rollout-pla
 ## Entry gates — verify first (stop and report if any is unmet)
 
 - [ ] The go-ahead for P0–P3 and the image-volume spike (D23) is this launch (D40). Record `ev-spike-goahead` ✅ in `docs/v2/status.md` with the results; don't ask for another one.
-- [ ] `ssh vps uname -r` (read-only) shows `6.8.0-142` or later, which means MI-0 is done.
+- [ ] `ssh sujaykumar-vps uname -r` (read-only) shows `6.8.0-142` or later, which means MI-0 is done.
 - [ ] `multipass version` is ≥ 1.16, and the Mac has ≥ 8 GiB of RAM and 30 GB of disk free. There's no existing `xl-spike` VM, or it's one you may reuse and it's clean.
 - [ ] Soft: find mi-14's manifests (`git -C ../infra log -- infrastructure/sandbox`, or `gh pr list -R sujaykumarsuman/infra`). If they're absent, use the t3 §8.2 draft and plan to report the diff.
 - [ ] Soft: find mi-14's VAP corpus, `../infra/hack/sandbox-vap-test/` and `hack/sandbox-vap-test.sh`, on `main` or its PR branch. If it's absent, write G1, the 7 dry-run B-shapes (B1–B7, plus B8–B14 if time allows), Q1 and C1 yourself in `~/xl-spike/manifests/`, following [mi-14](../sprints/sprint-mi-14.md) task 2's definitions, and report them back to mi-14.
@@ -68,7 +72,7 @@ The M3 hard checklist needs "Spike P0–P3 **GO**" ([rollout §5](../rollout-pla
    - **Restart k3s** with a test pod running, and record whether it survives.
    - **Assert:** `crictl info` lists `judge`; the rendered `config.toml` runc section still says `SystemdCgroup = true`; the runc versions are the same.
    - **Apply the guards** inside the VM: mi-14's `infrastructure/sandbox/*.yaml`, or else the t3 §8.2 draft. The bindings go in at `validationActions: [Deny]`; if mi-14's flip hasn't merged, change the VM copy only.
-   - **Prove the VAP** with mi-14's corpus `../infra/hack/sandbox-vap-test/*.yaml` (or your own from `~/xl-spike/manifests/`), running its `--expect deny` checks against the **VM** (`multipass exec xl-spike -- sudo k3s kubectl apply --dry-run=server -f -`). Never run it over `ssh vps`: that targets production.
+   - **Prove the VAP** with mi-14's corpus `../infra/hack/sandbox-vap-test/*.yaml` (or your own from `~/xl-spike/manifests/`), running its `--expect deny` checks against the **VM** (`multipass exec xl-spike -- sudo k3s kubectl apply --dry-run=server -f -`). Never run it over `ssh sujaykumar-vps`: that targets production.
      - G1 must be admitted.
      - B1–B14 must be denied. The **required 8** match mi-14's list: privileged (B1), hostPID (B2), token automount (B3), wrong image (B4), Unconfined seccomp (B5), extra caps (B6) and hostPath (B7) as dry-runs, plus **exec**, proven by the real X1/X2 CONNECT.
      - Q1 must be denied.
@@ -139,7 +143,7 @@ The M3 hard checklist needs "Spike P0–P3 **GO**" ([rollout §5](../rollout-pla
   - They live in `~/xl-spike/` and the VM only, and spk-02 deletes both at the end of the week.
   - The only commit is the results docs PR.
 - **Production is off-limits.**
-  - Read-only `ssh vps` facts only (`uname -r`, `sysctl`). No infra PR, no GitOps change, no `kubectl` on the laptop.
+  - Read-only `ssh sujaykumar-vps` facts only (`uname -r`, `sysctl`). No infra PR, no GitOps change, no `kubectl` on the laptop.
   - Inside the VM, `kubectl apply` is fine: it's a throwaway cluster. The GitOps rule is about production.
 - **Hard stop.** 10 h of core effort for P0–P3, counted as effort, not elapsed days. This session's core share is 7 h, and P1b's 0.75 h is outside the core. At the stop, record the unfinished rows as "not run (time box)". Unknown never counts as GO.
 - **Never relax the VAP to get exec** into the positive pod. Use CRI exec or a baked command. A loosened VAP invalidates the X1/X2 proof.

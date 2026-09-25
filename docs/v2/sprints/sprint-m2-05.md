@@ -2,7 +2,7 @@
 
 > **Milestone:** M2 — attempt engine and projections (M2a/M2b producers + M2c; **milestone exit**)   ·   **Track:** product
 > **Prereqs:** [m2-02](sprint-m2-02.md) (v1.9.0: consumers bound), [m2-03](sprint-m2-03.md), [m2-04](sprint-m2-04.md)   ·   **Unblocks:** [l-01](sprint-l-01.md)
-> **Release action:** **tag v1.10.0** (indicative: take the next free minor; floor 1.9.0), plus an infra ACL PR **only if** this sprint adds or renames a durable (expected n/a: M2-02 declared and ACL'd `assessment-replay`)   ·   **Calendar:** early November (no owner action needed: launching approves task 8's two admin-CLI runs, and the session runs them itself over `ssh vps`, D40).
+> **Release action:** **tag v1.10.0** (indicative: take the next free minor; floor 1.9.0), plus an infra ACL PR **only if** this sprint adds or renames a durable (expected n/a: M2-02 declared and ACL'd `assessment-replay`)   ·   **Calendar:** early November (no owner action needed: launching approves task 8's two admin-CLI runs, and the session runs them itself over `ssh sujaykumar-vps`, D40).
 > **Execute with:** [`../prompts/prompt-m2-05.md`](../prompts/prompt-m2-05.md) — one prompt, one session.
 
 ## Status
@@ -23,7 +23,7 @@ _Overall:_ ⬜ Not started
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + any
-> milestone). Task 8 is never handed off or waited on (D40). Only if `ssh vps` fails at that point, set it ⛔ "needs `ssh vps`:
+> milestone). Task 8 is never handed off or waited on (D40). Only if `ssh sujaykumar-vps` fails at that point, set it ⛔ "needs `ssh sujaykumar-vps`:
 > admin-CLI run" with the exact commands in the status.md manual-path log, for whoever next has access to run in order.
 > Full rules: [status protocol](README.md#status-protocol-way-of-working).
 
@@ -202,10 +202,10 @@ M2-02 kept the v1 readers in v1.9.0 and handed this switch to this sprint: the s
 
 ### 8 · Post-tag prod steps [H]
 
-These run over the **sanctioned admin-CLI path** (`kubectl exec`, [rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)), the only prod writes outside GitOps. **Each use is logged in status.md.** Launching the prompt approves these runs (D40), so the session runs them itself; it doesn't hand them off or wait. Only if `ssh vps` fails here: set the task ⛔ with the exact commands below in the manual-path log, for whoever next has access to run in order.
+These run over the **sanctioned admin-CLI path** (`kubectl exec`, [rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)), the only prod writes outside GitOps. **Each use is logged in status.md.** Launching the prompt approves these runs (D40), so the session runs them itself; it doesn't hand them off or wait. Only if `ssh sujaykumar-vps` fails here: set the task ⛔ with the exact commands below in the manual-path log, for whoever next has access to run in order.
 1. Verify v1.10.0 live (the checklist's after-tag items). The review logs show `revision_entry_rule=v2`.
-2. `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-review -- review admin backfill-touch-scored --wait 2m'` → record the counts. Run it again → `inserted 0`.
-3. With no attempts, touches or mocks between the two runs (the owner stays off xLearn: a before-launch item in the prompt): `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-assessment -- assessment admin replay-projections --confirm'` → digest D1. Run it again (the CLI waits for the previous durable's reap) → D2, and **D1 must equal D2** ("replay equal" on prod). If they differ, compare the per-stream counts: a changed count means a new event landed, so run once more.
+2. `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-review -- review admin backfill-touch-scored --wait 2m'` → record the counts. Run it again → `inserted 0`.
+3. With no attempts, touches or mocks between the two runs (the owner stays off xLearn: a before-launch item in the prompt): `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-assessment -- assessment admin replay-projections --confirm'` → digest D1. Run it again (the CLI waits for the previous durable's reap) → D2, and **D1 must equal D2** ("replay equal" on prod). If they differ, compare the per-stream counts: a changed count means a new event landed, so run once more.
 4. **Reconcile** per [the runbook §C](../../runbooks/projection-rebuild.md): Progress (heatmap, touch stats, provenance), Dashboard and the public profile against the source services. Confirm `event_dead_letter` is empty.
 5. Record the runs, counts, digests and reconcile result in status.md.
 

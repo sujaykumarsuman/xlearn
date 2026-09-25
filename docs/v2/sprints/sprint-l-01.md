@@ -80,7 +80,7 @@ this tag every consumer is bound and idle.
 ### 1 · N3 ≥ 24 h re-check (MI-7) [H]
 
 Sources: [ADR-0035 §2](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#2-nats-auth-nkey-users-fine-acls-server-first) (N3: "no `legacy` connection right after the reload and again ≥ 24 h later").
-- Before touching coach's key: `ssh vps 'bash -s -- --cluster --nats-stage=n3' < ../infra/hack/host-verify.sh` at least 24 h after the recorded N3 time.
+- Before touching coach's key: `ssh sujaykumar-vps 'bash -s -- --cluster --nats-stage=n3' < ../infra/hack/host-verify.sh` at least 24 h after the recorded N3 time.
   It must show **no `legacy` connection** and every other check green.
 - Record the run (date, result) in status.md's NATS rows: "N3 ≥ 24 h re-check ✅ <date>". [m3-07](sprint-m3-07.md) and [mi-11](sprint-mi-11.md) gate on this record.
 - A `legacy` connection means some client still connects anonymously: stop, find it (`/connz?auth=true`), and fix it through its own infra PR before continuing.
@@ -329,7 +329,7 @@ user-visible change. **Floor after this tag: unchanged (1.9.0)** — expand-only
 
 ### 9 · Post-tag verify on prod + record [H + X]
 
-By looking (D34), read-only over `ssh vps`:
+By looking (D34), read-only over `ssh sujaykumar-vps`:
 - `healthz` reports 1.11.0; `k3s kubectl get deploy -n xlearn -o wide` shows the new images; ImagePolicies' latest = the tag; HelmReleases Ready.
 - JetStream (via `host-verify --cluster` or the API-server proxy to `:8222`): `XLEARN_COACH` exists; `XLEARN_IDENTITY` shows the 4
   `*-erase` durables; each service stream shows `identity-erase-acks`; pending 0.

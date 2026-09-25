@@ -65,7 +65,7 @@ Findings (2026):
 - **Hostinger's weekly images stay enabled** as the only safety net. The Hostinger login gets 2FA and is treated as top-tier sensitive, because the images hold `sops-age` and every Secret.
 - `opscheck` watches disk and volume usage. Postgres and NATS PVCs are resized at 60%.
 
-> **Amended 2026-09-24 by [ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) §3 and §6 (accepted at the v2 build-plan sign-off; D34, no alerting in v2).** v2 has no `opscheck`. **`host-verify --cluster`** (the MI-8 extension, run on demand over `ssh vps`) reports PVC and node-disk usage instead. It runs after every host change and in the release checklist before any contract, erase or GA tag. It flags a Postgres or NATS PVC at ≥ 60% and node disk at ≥ 70%. **The 60% resize trigger is unchanged.** Nothing alerts; the owner reads it.
+> **Amended 2026-09-24 by [ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) §3 and §6 (accepted at the v2 build-plan sign-off; D34, no alerting in v2).** v2 has no `opscheck`. **`host-verify --cluster`** (the MI-8 extension, run on demand over `ssh sujaykumar-vps`) reports PVC and node-disk usage instead. It runs after every host change and in the release checklist before any contract, erase or GA tag. It flags a Postgres or NATS PVC at ≥ 60% and node disk at ≥ 70%. **The 60% resize trigger is unchanged.** Nothing alerts; the owner reads it.
 
 ## Consequences
 

@@ -3,6 +3,14 @@
 > **One self-contained prompt = one sprint = one session.** Paste it into a fresh coding session at the xlearn repo root.
 > **Plan:** [`../sprints/sprint-spk-02.md`](../sprints/sprint-spk-02.md) · **Milestone:** MI (rollout step MI-10, part 2) · **Prereqs:** [spk-01](../sprints/sprint-spk-01.md), [mi-07](../sprints/sprint-mi-07.md)
 
+## D41 changes (read first; they override the text below where they conflict)
+
+> **D41 (owner, 2026-09-25): spikes first.** All four spikes run **before any build sprint**, so every design yes/no is answered before M1 starts: spk-01 and spk-02 on Fri 2026-09-25 (agent-only, after the MI-0 reboot), spk-03 and spk-04 on Sat 2026-09-26 (spk-03 after the owner's Console step; spk-04 with the owner present). For this sprint, overriding the text below:
+> - **Environment A is the owner's `skriptvalley-vps`** (Hostinger KVM 1: 1 vCPU, 3.9 GB RAM, 45 GB free, amd64, Ubuntu 24.04, kernel 6.8.0-90, `vm.mmap_rnd_bits=32`, AppArmor userns restriction on — the same as production). The owner declared it free for any PoC and cleanup. It runs two throwaway landing containers on 80/443 (stop them if they get in the way). Install k3s `v1.36.4+k3s1` with `--disable traefik`. Launching approves its full-upgrade and reboot. **Teardown:** `k3s-uninstall.sh` and remove everything the spike added (no reimage needed); leave the landing containers as found. This is not the D12/D21 "backup VPS" concern, which is about hosting the production runner.
+> - **The MI-9 gate is dropped.** The image-volume questions (i)–(iii) are about kubelet/containerd behaviour, not GHCR, so run them against a **password-protected private registry inside environment A** (`registry:2` with htpasswd; k3s `registries.yaml`) holding a synthetic `FROM scratch` pack image. GHCR specifics (package private, anonymous GET 401/403) stay mi-07's CI probe.
+> - **The chart-0.3.0 gate is dropped.** Use raw manifests for (iii); mi-01 verifies the `initContainers` knob renders the same shape.
+> - Environment B (GitHub Actions) is not needed.
+
 ## Before you launch (owner)
 
 Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
@@ -140,7 +148,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
   - No harness, reference, manifest or log is committed to xlearn, infra or evalpack.
   - The scratch repo holds throwaway code only, and the owner deletes it.
   - The only commit is the results docs PR.
-- **Production is off-limits.** Read-only `ssh vps` facts only. No infra PR, no GitOps change, no evalpack tag, and **no `kubectl` on the laptop** (its context tunnels to production). Inside the VM or scratch environment, `kubectl apply` is fine: it's throwaway.
+- **Production is off-limits.** Read-only `ssh sujaykumar-vps` facts only. No infra PR, no GitOps change, no evalpack tag, and **no `kubectl` on the laptop** (its context tunnels to production). Inside the VM or scratch environment, `kubectl apply` is fine: it's throwaway.
 - **Secrets and private content.**
   - The pull secret (the PAT) exists only inside a throwaway k3s: the `xl-spike` VM, or environment A's k3s. It's piped there from SOPS, never echoed, never written to disk outside that k3s, and never put in the scratch repo, a GitHub Actions secret or any CI runner. It goes when the VM is deleted or A is reimaged.
   - Never copy `xlearn-evalpack` content into the scratch repo, the references or the results. Record only structure and sizes.

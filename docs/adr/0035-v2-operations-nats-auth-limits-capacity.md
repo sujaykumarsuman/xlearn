@@ -80,7 +80,7 @@ These ship **dark as N0 in the next M1 tag that is ready** (MI-6). A new subject
 
 **Other identities.**
 - **ops** (all of `$JS.API.>`, purge included) serves the re-seal runbook (ADR-0027 §6) and stream surgery. Its seed stays **offline** with the age-key copies.
-  - **Break-glass** is the only sanctioned manual NATS path: `ssh vps` with `k3s kubectl port-forward` to the `nats` Service, then the `nats` CLI with the offline seed on the owner's machine. Record each use in `docs/v2/status.md`.
+  - **Break-glass** is the only sanctioned manual NATS path: `ssh sujaykumar-vps` with `k3s kubectl port-forward` to the `nats` Service, then the `nats` CLI with the offline seed on the owner's machine. Record each use in `docs/v2/status.md`.
 - **No monitoring identity.** `:8222` admits no pod. `host-verify --cluster` reads `/varz`, `/jsz` and `/connz` through the API-server proxy, which is node-local (node traffic bypasses NetworkPolicy, t3 §8.4).
 
 **Verification before any seed is mounted.** The golden file only proves the render is stable. A **compose integration test** runs NATS 2.14 with the rendered block and, per service:
@@ -149,7 +149,7 @@ Selection uses `app.kubernetes.io/instance`. Any caller not in this table update
 
 This is bounded because v2 is owner-only use with testers (D35). Nobody else depends on the platform until the opening.
 
-**MI-8: the `host-verify --cluster` extension** (H, in `I/hack/host-verify.sh`, run over `ssh vps`). It adds cheap, read-only checks to the existing script, run on demand and in the release checklist before contract, erase or GA tags ([0034](0034-v2-release-labelling-gating-and-rollback.md)):
+**MI-8: the `host-verify --cluster` extension** (H, in `I/hack/host-verify.sh`, run over `ssh sujaykumar-vps`). It adds cheap, read-only checks to the existing script, run on demand and in the release checklist before contract, erase or GA tags ([0034](0034-v2-release-labelling-gating-and-rollback.md)):
 
 | Check | Reads | Flags when |
 |---|---|---|

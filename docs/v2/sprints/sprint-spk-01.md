@@ -7,6 +7,10 @@
 > **Calendar:** Mon 2026-10-12 → Wed 2026-10-14 (spike week, event `ev-spike-week`). The calendar is the booking window, not the budget. **Hard stop, counted as effort:** 10 h core for P0–P3 together ([t3 §9](../research/t3-sandbox.md#9-the-smallest-spike-local-and-throwaway-needs-the-owners-go-ahead)). This sprint's core share is 7 h (P0 1.5 + P1 3 + P2 2.5), plus P1b's 0.75 h, which sits outside the core
 > **Execute with:** [`../prompts/prompt-spk-01.md`](../prompts/prompt-spk-01.md) — one prompt, one session.
 
+## D41 changes (read first; they override the text below where they conflict)
+
+> **D41 (owner, 2026-09-25): spikes first.** All four spikes run **before any build sprint**, so every design yes/no is answered before M1 starts: spk-01 and spk-02 on Fri 2026-09-25 (agent-only, after the MI-0 reboot), spk-03 and spk-04 on Sat 2026-09-26 (spk-03 after the owner's Console step; spk-04 with the owner present). For this sprint: the calendar line below (Oct 12–14) is superseded; everything else stands. mi-14 hasn't run, so use the soft-gate fallback (write the draft guard objects yourself and report the diff back to mi-14).
+
 ## Status
 
 _Overall:_ ⬜ Not started
@@ -26,7 +30,7 @@ _Overall:_ ⬜ Not started
 ## Entry gates
 
 - [ ] **The go-ahead for P0–P3 and the image-volume spike (D23) is this launch** (D40). Record `ev-spike-goahead` ✅ in `docs/v2/status.md` with the results.
-- [ ] **MI-0 is done.** Production runs kernel `6.8.0-142` (`ssh vps uname -r`, read-only). The VM mirrors that noble kernel line.
+- [ ] **MI-0 is done.** Production runs kernel `6.8.0-142` (`ssh sujaykumar-vps uname -r`, read-only). The VM mirrors that noble kernel line.
 - [ ] **multipass ≥ 1.16** is on the owner's M3 Max with 8 GiB of RAM and 30 GB of disk free for the VM. At planning time, 1.16.3 was installed on a 36 GiB machine.
 - [ ] **Soft:** the MI-4 manifests from [mi-14](sprint-mi-14.md) are merged in `../infra/infrastructure/sandbox/` or open on its PR branch. If they aren't ready, apply the [t3 §8.2](../research/t3-sandbox.md#82-guard-objects-infrastructuresandbox) draft and report the diff back to mi-14.
 - [ ] **Soft:** mi-14's VAP corpus (`../infra/hack/sandbox-vap-test/`) and `hack/sandbox-vap-test.sh` exist on `main` or its PR branch. If they're absent, write G1, the required B-shapes, Q1 and C1 yourself in `~/xl-spike/manifests/`, following [mi-14](sprint-mi-14.md) task 2's definitions, and report them back to mi-14.
@@ -57,7 +61,7 @@ This is MI-10 part 1 ([rollout §2](../rollout-plan.md#2-mi-infra-track)). Its a
 - **The WIF spike:** [spk-03](sprint-spk-03.md).
 - **Latency, CV, canary thresholds, the `GOCACHE` mechanism, the cross-account marker suite and gVisor:** A8 on production ([m3-15](sprint-m3-15.md) acceptance suite, [mi-10](sprint-mi-10.md)).
 - **Timing conclusions of any kind.** arm64 under HVF doesn't carry over to the EPYC guest.
-- **Anything on the VPS or the production cluster.** Only read-only `ssh vps` facts are allowed.
+- **Anything on the VPS or the production cluster.** Only read-only `ssh sujaykumar-vps` facts are allowed.
 - **Accepting ADR-0030** ([m3-03](sprint-m3-03.md)), **writing `host-bootstrap.sh`** ([mi-09](sprint-mi-09.md)), and **committing any harness, manifest or VM artefact**.
 
 ## Tasks
@@ -102,7 +106,7 @@ This is MI-10 part 1 ([rollout §2](../rollout-plan.md#2-mi-infra-track)). Its a
   - from `../infra/infrastructure/sandbox/` (`main` or mi-14's PR branch), or else the t3 §8.2 draft;
   - Namespace `xlearn-runner`, the two VAPs + bindings (pod shape; no exec/attach), RuntimeClass `xlearn-judge` → `judge`, PriorityClass −1000, Quota, LimitRange, and the `default-deny-all` / `judge-to-runner` NetworkPolicies;
   - the bindings go in at **`validationActions: [Deny]`**. mi-14 ships `[Warn, Audit]` first and flips to `[Deny]` in its second PR. If only the first PR has merged, change the VM copy only.
-- **VAP proof.** Reuse mi-14's corpus, `../infra/hack/sandbox-vap-test/*.yaml`, and its `sandbox-vap-test.sh --expect deny` logic, pointed at the VM's API server (`multipass exec … k3s kubectl apply --dry-run=server`). Don't run it over `ssh vps`: that targets production. If mi-14's corpus is absent, use the cases you wrote in `~/xl-spike/manifests/` (entry gates).
+- **VAP proof.** Reuse mi-14's corpus, `../infra/hack/sandbox-vap-test/*.yaml`, and its `sandbox-vap-test.sh --expect deny` logic, pointed at the VM's API server (`multipass exec … k3s kubectl apply --dry-run=server`). Don't run it over `ssh sujaykumar-vps`: that targets production. If mi-14's corpus is absent, use the cases you wrote in `~/xl-spike/manifests/` (entry gates).
   - **G1** must be admitted.
   - **B1–B14** must all be denied. The **required 8** match mi-14's list: privileged (B1), hostPID (B2), token automount (B3), wrong image (B4), Unconfined seccomp (B5), extra caps (B6) and hostPath (B7) as dry-runs, plus **exec**, proven by the real X1/X2 CONNECT below.
   - **Q1** must be denied.
@@ -211,7 +215,7 @@ This is MI-10 part 1 ([rollout §2](../rollout-plan.md#2-mi-infra-track)). Its a
 ## Definition of Done
 
 - The results are recorded and the docs PR is merged.
-- No production change was made: read-only `ssh vps` facts only.
+- No production change was made: read-only `ssh sujaykumar-vps` facts only.
 - Statuses are updated in this file and in [`../status.md`](../status.md).
 - The VM and work directory are handed over per task 5.
 - The hard stop was respected. If it was hit, every unfinished row is marked "not run (time box)".

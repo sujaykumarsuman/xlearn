@@ -7,6 +7,8 @@
 
 **How to read it**
 
+- **D41: the four spikes run first** (W0, Sep 25–26), before prompt 1, so every design yes/no is answered before
+  the build starts; their order numbers are unchanged.
 - **Run prompts in numbered order.** Inside a week, prompts in different **lanes** (infra · product · design ·
   content/spike) can run as parallel sessions (up to about three), as long as their entry gates pass. Check
   peers' open PRs first; parallel prompts in the same service collide on migrations.
@@ -88,16 +90,16 @@ gantt
     tickInterval 2week
     section Owner calendar
     H0 :milestone, ev0, 2026-09-25, 0d
-    spikes :crit, ev1, 2026-10-12, 5d
+    spikes :crit, ev1, 2026-09-25, 2d
     window :milestone, ev2, 2026-10-24, 0d
     section Cluster guardrails and fences
-    4 :t1, 2026-09-25, 2026-10-10
+    4 :t1, 2026-09-28, 2026-10-10
     1 :t2, 2026-10-17, 2026-10-24
     1 :t3, 2026-11-09, 2026-11-21
     section NATS auth and event plumbing
     2 :t4, 2026-10-05, 2026-10-17
     section Curriculum spine (multi-course)
-    4 :t5, 2026-09-25, 2026-10-17
+    4 :t5, 2026-09-28, 2026-10-17
     1 :t6, 2026-10-24, 2026-11-02
     section Security floor
     3 :t7, 2026-10-12, 2026-10-17
@@ -108,33 +110,35 @@ gantt
     section Public profile v2
     1 :t10, 2026-10-24, 2026-11-02
     section Eval packs and authoring tooling
-    3 :t11, 2026-09-25, 2026-10-10
+    3 :t11, 2026-09-28, 2026-10-10
     section Sandbox and runner
-    8 :t12, 2026-10-05, 2026-11-09
+    2 :t12, 2026-09-25, 2026-09-27
+    1 :t13, 2026-10-05, 2026-10-10
+    5 :t14, 2026-10-17, 2026-11-09
     section Judge service
-    7 :t13, 2026-11-02, 2026-11-21
+    7 :t15, 2026-11-02, 2026-11-21
     section Judge UI
-    3 :t14, 2026-11-21, 2026-12-01
+    3 :t16, 2026-11-21, 2026-12-01
     section Pilot course - go-concurrency
-    3 :t15, 2026-12-01, 2026-12-24
+    3 :t17, 2026-12-01, 2026-12-24
     section Platform AI
-    1 :t16, 2026-10-12, 2026-10-17
-    8 :t17, 2026-12-01, 2026-12-24
+    1 :t18, 2026-09-25, 2026-09-27
+    8 :t19, 2026-12-01, 2026-12-24
     section Learner gate (built now, opened in v3)
-    3 :t18, 2026-11-02, 2026-11-21
-    2 :t19, 2026-12-01, 2026-12-24
+    3 :t20, 2026-11-02, 2026-11-21
+    2 :t21, 2026-12-01, 2026-12-24
     section v2.0 GA
-    2 :t20, 2026-12-28, 2027-01-16
+    2 :t22, 2026-12-28, 2027-01-16
     section Design boards
-    3 :t21, 2026-09-25, 2026-10-03
-    2 :t22, 2026-10-17, 2026-11-02
-    2 :t23, 2026-11-09, 2026-11-21
+    3 :t23, 2026-09-28, 2026-10-03
+    2 :t24, 2026-10-17, 2026-11-02
+    2 :t25, 2026-11-09, 2026-11-21
     section Key tags
-    v1.6.0 :milestone, t24, 2026-10-09, 0d
-    v1.10.0 :milestone, t25, 2026-11-08, 0d
-    v1.14.0 :milestone, t26, 2026-11-30, 0d
-    v1.17.0 :milestone, t27, 2026-12-23, 0d
-    v2.0.0 :milestone, t28, 2027-01-15, 0d
+    v1.6.0 :milestone, t26, 2026-10-09, 0d
+    v1.10.0 :milestone, t27, 2026-11-08, 0d
+    v1.14.0 :milestone, t28, 2026-11-30, 0d
+    v1.17.0 :milestone, t29, 2026-12-23, 0d
+    v2.0.0 :milestone, t30, 2027-01-15, 0d
 ```
 
 ## 3. The release train
@@ -744,7 +748,18 @@ flowchart TB
 The numbered order to launch prompts. Lanes in the same week can run side by side; the 🚩 column is the tag a
 prompt cuts.
 
-### W1 · Week 1 (Sep 25 – Oct 2)
+### W0 · Spike weekend (D41: spikes first) (Sep 25 – 26)
+
+Lanes — **spike**: `spk-01`, `spk-02`, `spk-03`, `spk-04`
+
+| # | Prompt | Workstream | Brings | 🚩 |
+|---|---|---|---|---|
+| 16 | [`spk-01`](prompts/prompt-spk-01.md) | 🧪 Sandbox & runner | Spike: sandbox mechanism P0–P2 (throwaway) |  |
+| 17 | [`spk-02`](prompts/prompt-spk-02.md) | 🧪 Sandbox & runner | Spike: amd64 replay + eval-pack image volume (throwaway) |  |
+| 18 | [`spk-03`](prompts/prompt-spk-03.md) | ✨ Platform AI | Spike: WIF credential for platform AI (throwaway) |  |
+| 71 | [`spk-04`](prompts/prompt-spk-04.md) | 🎙️ Interviewer: text (M6a) | Spike S6: voice-shell bake-off (owner present) |  |
+
+### W1 · Week 1 (Sep 28 – Oct 2)
 
 Lanes — **infra**: `mi-01`, `mi-02`, `mi-07` · **design**: `ds-m1-01`, `ds-m2-01`, `ds-l-01` · **product**: `m1-01`
 
@@ -775,13 +790,10 @@ Lanes — **product**: `m1-09`, `mi-05`, `m1-02` · **content**: `m3-01`, `m3-02
 
 ### W3 · Week 3 · spike week (Oct 12 – 16)
 
-Lanes — **spike**: `spk-01`, `spk-02`, `spk-03` · **infra**: `mi-06` · **product**: `m1-03`, `m1-04`, `m1-10`, `m1-05`, `m1-06`
+Lanes — **infra**: `mi-06` · **product**: `m1-03`, `m1-04`, `m1-10`, `m1-05`, `m1-06`
 
 | # | Prompt | Workstream | Brings | 🚩 |
 |---|---|---|---|---|
-| 16 | [`spk-01`](prompts/prompt-spk-01.md) | 🧪 Sandbox & runner | Spike: sandbox mechanism P0–P2 (throwaway) |  |
-| 17 | [`spk-02`](prompts/prompt-spk-02.md) | 🧪 Sandbox & runner | Spike: amd64 replay + eval-pack image volume (throwaway) |  |
-| 18 | [`spk-03`](prompts/prompt-spk-03.md) | ✨ Platform AI | Spike: WIF credential for platform AI (throwaway) |  |
 | 19 | [`mi-06`](prompts/prompt-mi-06.md) | 📨 NATS auth & event plumbing | NATS auth live: nkey users + ACLs, legacy closed (N1–N3) |  |
 | 20 | [`m1-03`](prompts/prompt-m1-03.md) | 🧭 Curriculum spine (multi-course) | Course resolution end to end; DSA stays pixel-identical |  |
 | 21 | [`m1-04`](prompts/prompt-m1-04.md) | 🔐 Security floor | Roles in DB, revocable sessions, admin CLI, CSP, DEV_AUTH guard |  |
@@ -886,11 +898,10 @@ Lanes — **product**: `ga-01`, `ga-02`
 
 ### W11 · v2.1 (Q1 2027)
 
-Lanes — **spike**: `spk-04` · **design**: `ds-m6a-01`, `ds-m6a-02`, `ds-m6b-01` · **product**: `m6a-01`, `m6a-02`, `m6a-03`, `m6a-04`, `m6a-05`, `m6a-06`, `m6b-01`, `m6b-02`, `m6b-03`, `m6b-04` · **infra**: `mi-13`
+Lanes — **design**: `ds-m6a-01`, `ds-m6a-02`, `ds-m6b-01` · **product**: `m6a-01`, `m6a-02`, `m6a-03`, `m6a-04`, `m6a-05`, `m6a-06`, `m6b-01`, `m6b-02`, `m6b-03`, `m6b-04` · **infra**: `mi-13`
 
 | # | Prompt | Workstream | Brings | 🚩 |
 |---|---|---|---|---|
-| 71 | [`spk-04`](prompts/prompt-spk-04.md) | 🎙️ Interviewer: text (M6a) | Spike S6: voice-shell bake-off (owner present) |  |
 | 72 | [`ds-m6a-01`](prompts/prompt-ds-m6a-01.md) | 🎨 Design boards | Accept ADR-0032 + boards AB13, AB24, AB25 |  |
 | 73 | [`ds-m6a-02`](prompts/prompt-ds-m6a-02.md) | 🎨 Design boards | Boards AB26 grace/pause, AB27 debrief, AB28 a11y |  |
 | 74 | [`m6a-01`](prompts/prompt-m6a-01.md) | 🎙️ Interviewer: text (M6a) | Interview core: state machine, failsafes, caps |  |
