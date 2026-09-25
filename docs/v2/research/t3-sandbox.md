@@ -1213,12 +1213,19 @@ replay before mi-09 ships. Fresh-mount **path confinement to `/jail` is enforced
 
 **No timing conclusions (arm64 / HVF).**
 
-### 16.2 P3 amd64 replay (spk-02) — partial ⛔
+### 16.2 P3 amd64 replay (spk-02)
 
 Run 2026-09-25 on **environment A**, the owner's spare `skriptvalley-vps` (D41; launch = go-ahead, D40).
-**The session was interrupted after the jail-setup and probe rows.** Under D40 the partial results land here and
+**The first session was interrupted after the jail-setup and probe rows.** Under D40 the partial results land here and
 every row not run is ⛔. Everything else is thrown away: the harness, image, registry and k3s were removed at
 teardown, and nothing was committed. **No timing conclusions** (1-vCPU KVM guest, not the production guest).
+
+**Re-run (second session, 2026-09-25), in three blocks, each landed as its own results PR.** The same env A was set
+up again from its baseline: kernel `6.8.0-142`, `mmap_rnd_bits=32`, k3s `v1.36.4+k3s1 --disable traefik`, the
+`judge` drop-in, spk-01's host files, go1.26.8 (checksummed), the private registry, and the same generator (the
+four pod-profile variants hash identically to the first session's). Block 1 is the image volume (§16.3) plus the
+GOCACHE seed (below) ✅; block 2 (TSAN, PG, allowlists, KILL, architectures) and block 3 (AppArmor remount
+narrowing) follow.
 
 **Environment**
 
@@ -1278,45 +1285,117 @@ It must be replaced by remount rules scoped to the jail tree, plus the jail's ow
 `pivot_root`. Both remount probes join the must-deny set, and the jail setup has to be re-proven with the
 scoped rules. This is also the ro-bind-remount rule that §16.1 left open, so that item stays ⛔.
 
-**Rows not run (interrupted, ⛔).** None of these count as GO:
-- TSAN / go-race under `mmap_rnd_bits=32` and its ASLR policy;
-- postgres in the jail on amd64, and the SQL balloon;
-- the RET_LOG allowlists for `go`, `cpp`, `python` and `go-race` (through auditd), and the compile-jail sets;
-- the KILL re-run;
-- the x86_64-only pod-profile variant;
-- the scoped AppArmor remount rule;
-- the GOCACHE seed without an overlay.
+**Rows not run in the first session (⛔ until the re-run blocks land).** None of these count as GO:
+- TSAN / go-race under `mmap_rnd_bits=32` and its ASLR policy (block 2);
+- postgres in the jail on amd64, and the SQL balloon (block 2);
+- the RET_LOG allowlists for `go`, `cpp`, `python` and `go-race` (through auditd), and the compile-jail sets (block 2);
+- the KILL re-run (block 2);
+- the x86_64-only pod-profile variant (block 2);
+- the scoped AppArmor remount rule (block 3);
+- ~~the GOCACHE seed without an overlay~~ → done in block 1 (below).
 
 Prepared for the re-run, throwaway and outside every repo: 22 reference programs per language (Go, C++,
 Python; synthetic inputs). Their outputs were cross-checked natively against the Python references: Go 22/22,
 C++ 22/22.
 
-### 16.3 Image volume (spk-02) — not run ⛔
+**GOCACHE seed without an overlay (re-run block 1) ✅.** The in-pod overlay is out (EACCES under
+`hostUsers:false`, §16.1 and above), so the seed was delivered read-only instead. The seed is the runner image's
+`/opt/gocache`: a GOCACHE filled at image-build time by building every Go reference with the exec profile's flags
+(`CGO_ENABLED=0`, `-trimpath`, go1.26.8). It is **34 MiB in 439 files**. It was delivered two ways: baked into the
+runner image layer, and as a separate `FROM scratch` image mounted as a read-only **image volume** at
+`/opt/gocache-iv`. The image volume mounted fine in the `hostUsers:false` runner pod on the `judge` runtime. The jail
+bound the seed read-only at `/seed` and ran `go build -trimpath` of one reference (`15_topo`), with `TMPDIR` on the
+case tmpfs, once unchanged and once with a learner edit to `main.go` (its package is **not** in the seed). All 12
+builds succeeded. Numbers are from the second of two rounds (1-vCPU spare VPS: **relative only**; A8 re-measures on
+production):
+
+| Seed delivery (GOCACHE) | Build, unchanged | Build, learner-edited | Case tmpfs used | Case memory peak |
+|---|---|---|---|---|
+| cold: empty tmpfs GOCACHE | 12.7 s | 11.9 s | 30 MiB | 280–289 MiB |
+| image-layer seed, `cp -a` → tmpfs | 0.57 s | 0.44 s | 37 MiB | 71 MiB |
+| image-volume seed, `cp -a` → tmpfs | 0.39 s | 0.43 s | 37 MiB | 70–71 MiB |
+| image-volume seed, symlink farm (`cp -rs`) → tmpfs | 0.37 s | 0.36 s | < 1 MiB (439 symlinks) | 34–35 MiB |
+| **image-volume seed read-only in place** (`GOCACHE=/seed`) | **0.31 s** | **0.36 s** | 0 | 33–34 MiB |
+| read-only seed + `GOFLAGS=-trimpath` | 0.29 s | 0.33 s | 0 | 34–35 MiB |
+
+- **Recommendation (p-01, m3-04):** point `GOCACHE` at the read-only seed **in place** and keep `TMPDIR` on the case
+  tmpfs. The go command reads the dependencies' compiled packages from the read-only cache (the `-x` link step's
+  `packagefile` lines point into the seed) and silently ignores its failed cache writes for the learner's own
+  package. The compile drops from ~12 s to ~0.35 s with **no per-case copy** and about 250 MiB less peak memory
+  per case. `TMPDIR` must be writable: with it on the read-only root, the build fails with
+  `go: creating work dir: mkdir /tmp/go-build…: read-only file system`.
+- The seed only hits if it was built by the **same toolchain with the same flags** (`CGO_ENABLED`, `-trimpath`,
+  GOOS/GOARCH). A mismatch just means cache misses (cold speed), never a wrong build. Build it in the runner-image
+  pipeline, either baked into the image or as a sibling image volume. Both measured the same; the image volume lets
+  the seed update without rebuilding the runner.
+
+### 16.3 Image volume (spk-02)
+
+**Verdict (re-run block 1, 2026-09-25): image-volume GO.** (i) and (ii)/(ii-b) pass with the kubelet **defaults**,
+so no `AlwaysVerify` setting is needed. The (iii) fallback also works (variant A recommended). Two node-credential
+rules go to mi-09 (below). The first session was interrupted before any pod; the settings recorded then are
+unchanged.
 
 **Environment:** A's pinned k3s (as above). The private registry was `registry:2` + htpasswd over TLS with a
 throwaway CA. An anonymous `GET /v2/` returned **401**. k3s `registries.yaml` carried the endpoint CA only, **no
 credentials**, so credentials could come only from `imagePullSecrets`. The image was a synthetic `FROM scratch`
-pack: one layer per course plus `/manifest.json`, random bytes, 160 KiB, **linux/amd64 only**. It holds no
-evalpack content. The variant-A init image (the pack layers + a static copier `ENTRYPOINT`) was built and pushed.
+pack: one layer per course plus `/manifest.json` (3 layers), random bytes, 160 KiB (62 KB compressed),
+**linux/amd64 only**. It holds no evalpack content. The judge stand-in is `busybox:1.37.0`. The pull secret
+`xlearn-evalpack-pull` (a `dockerconfigjson` for the throwaway registry) was piped from a root-only file straight
+into `kubectl apply` and never printed. **The kubelet did every pull**: the pack was absent from k3s's containerd
+before (i), and nothing was pulled with `ctr` or imported.
 
 **Kubelet settings:**
 - `configz`: `imagePullCredentialsVerificationPolicy: NeverVerifyPreloadedImages`; `featureGates` not overridden;
 - kubelet metrics: `KubeletEnsureSecretPulledImages` **BETA, enabled (1)**; `ImageVolume` enabled (1).
 
-**(i), (ii), (ii-b), (iii): not run ⛔.** The session was interrupted before any image-volume pod was created.
-**Verdict: none.** This isn't a fallback and doesn't need an owner decision: the pre-decided chain (GO → GO
-with `AlwaysVerify` → fallback A, else B, else ORAS) still applies once the rows run.
+| # | Check | Result (exact events) | Pass |
+|---|---|---|---|
+| i | Pod `judge-i` in `xlearn` (PSA `enforce=baseline`), `imagePullSecrets: [xlearn-evalpack-pull]`, volume `image: {reference: …/xlearn-evalpack:0.1.0, pullPolicy: IfNotPresent}` mounted `readOnly` at `/evalpack`, `EVALPACK_DIR=/evalpack` | Admitted with no PSA warning; Running. `Pulling image "…/xlearn-evalpack:0.1.0"` → `Successfully pulled image … in 220ms … Image size: 62341 bytes`, then `Container image "…" already present on machine and can be accessed by the pod`. `/evalpack/manifest.json` readable (9 items; both course trees listed). `touch /evalpack/x` → `Read-only file system`. Mount: `overlay /evalpack overlay ro,relatime,…`. The kubelet's pull record (`/var/lib/kubelet/image_manager/pulled/`) maps the image to `kubernetesSecrets: [xlearn/xlearn-evalpack-pull]` | ✅ |
+| ii | Pod in `probe`, **no** pull secret, `pullPolicy: IfNotPresent` | **Refused.** The kubelet re-pulls without credentials instead of reusing the cached image: `Failed to pull image "…/xlearn-evalpack:0.1.0": failed to pull and unpack image …: failed to resolve reference …: pull access denied, repository does not exist or may require authorization: authorization failed: no basic auth credentials` → `ErrImagePull` / `ImagePullBackOff` | ✅ |
+| ii | The same, `pullPolicy: Never` | **Refused:** `ErrImageNeverPull`, `Container image "…/xlearn-evalpack:0.1.0" is not present with pull policy of Never` (it *is* on the node; for this pod the kubelet treats it as absent) | ✅ |
+| ii+ | Pod in the **same** namespace `xlearn`, without `imagePullSecrets` (extra row) | Refused, with the same `ErrImagePull` event as (ii) | ✅ |
+| ii-b | `systemctl restart k3s` (`judge-i` survived with `restartCount 0`), then (ii) and (ii+) again | Identical events: still refused. The pull records persist on disk across the restart | ✅ |
+| iii-A | **Variant A:** initContainer = the pack layers + a static copier `ENTRYPOINT`, built locally and pushed only to the throwaway registry. Pulled by the kubelet through `imagePullSecrets`; runs as uid 65534 with a read-only rootfs and all caps dropped; copies into an `emptyDir`. Judge mounts the `emptyDir` `readOnly` at `/evalpack` (raw manifests; D41) | init `copier: copied 2 paths into /evalpack`, exit 0. Judge reads the manifest (9 items), and `touch` gets `Read-only file system`. **No credential file inside the pod** | ✅ works |
+| iii-B | **Variant B:** a `crane:debug` initContainer runs `crane export …/xlearn-evalpack:0.1.0 - \| tar -x -C /evalpack`, with the pull secret mounted as `DOCKER_CONFIG` and the CA from a ConfigMap | init `crane-export-ok`; judge reads it read-only | ✅ works, but the **credential is mounted inside the pod** (in the init container) |
 
-### 16.4 MI-10 verdict and proposed ADR-0030 deltas (partial)
+**Findings for mi-09 (node-level credentials).**
+1. **Node-level registry credentials defeat (ii).** The first (ii) attempt ran while the image build's `docker login`
+   had left credentials in root's `~/.docker/config.json`. The kubelet reads that file as **node-wide** credentials.
+   The secret-less pods pulled successfully, and the kubelet rewrote the image's pull record to
+   `nodePodsAccessible: true`, after which every pod could mount the pack. That run was discarded: the image and its
+   record were removed with k3s stopped, and (i)/(ii) above were re-run clean. The effect was then reproduced on
+   purpose with containerd-level credentials (`auth:` for the registry in k3s `registries.yaml`): all three
+   secret-less pods Running, record `nodePodsAccessible: true`. **The record is sticky:** after removing the `auth:`
+   and restarting k3s, secret-less pods still started (until the image itself is removed).
+   **Rule:** the GHCR pack credential exists **only** as the `xlearn-evalpack-pull` imagePullSecret. Never put it in
+   k3s `registries.yaml` `auth:`, `/var/lib/kubelet/config.json`, or a root `~/.docker/config.json` on the node
+   (no `docker login` on the host). Add that to mi-09's host checks.
+2. **`NeverVerifyPreloadedImages` exempts images that have no pull record.** It's safe while the pack is only ever
+   pulled by the kubelet (never `k3s ctr` pull or import, no airgap tarball). If `/var/lib/kubelet/image_manager/`
+   were lost while the image stayed on the node, the pack would count as preloaded and be exempt from verification.
+   `AlwaysVerify` would close that, but it wasn't needed for GO and wasn't tested here: optional hardening for mi-09,
+   not a gate.
 
-**Spike P0–P2 GO (spk-01); P3 incomplete ⛔; image volume not run ⛔.** The M3 checklist line "Spike P0–P3 GO
-and the image-volume spike GO" stays **unticked** until the ⛔ rows of §16.2 and §16.3 are re-run.
+**Pack platforms.** The synthetic pack is `linux/amd64` only, which is all that production (amd64) needs. A
+multi-arch pack now matters only for local arm64 development (m3-02, optional).
+
+**Verdict:** (i) and (ii) pass → **image-volume GO** (kubelet defaults; no `AlwaysVerify`). The fallback isn't
+needed. If production ever differs, variant A works and is the recommended fallback (no credential inside judge's
+pod), ahead of variant B. ADR-0027's image-volume line stands.
+
+### 16.4 MI-10 verdict and proposed ADR-0030 deltas
+
+**Spike P0–P2 GO (spk-01); P3 incomplete ⛔ (re-run blocks 2–3 pending); image volume GO (re-run block 1,
+2026-09-25).** The M3 checklist line "Spike P0–P3 GO and the image-volume spike GO" stays **unticked** until the
+⛔ rows of §16.2 are re-run.
 
 What m3-03 can already fold into ADR-0030:
 - **Mechanism:** unchanged. go-sandbox `forkexec.Runner` with no user namespace, spawned via `CLONE_INTO_CGROUP`; the jail setup reproduces on amd64 kernel 6.8.0-142.
 - **Pod seccomp:** §16.1's recipe on amd64 (381 names; `pivot_root` added). The architectures stay open ⛔. So far the ia32 `int $0x80` entry point is open under the three-arch baseline and the x32 ABI returns ENOSYS; the x86_64-only variant still has to be run with the jail setup, the probes and the references.
 - **AppArmor:** replace the broad `remount,` rule with jail-scoped remount rules (§16.2 finding). This is required, not optional.
 - **ASLR policy:** open ⛔. Note that the RuntimeDefault-derived pod profile denies `personality(ADDR_NO_RANDOMIZE)`.
-- **GOCACHE:** not an in-pod overlay (EACCES on amd64 too); the mechanism stays an A8 item.
+- **GOCACHE:** not an in-pod overlay (EACCES on amd64 too). Use a **read-only seed in place** (`GOCACHE` = the seed, baked into the image or mounted as an image volume; `TMPDIR` on the case tmpfs), built with the exec profile's exact toolchain and flags: about 12 s → 0.35 s per compile on env A, with no per-case copy (§16.2). A8 re-measures the timing.
+- **Eval pack (not ADR-0030; for m3-07/mi-09):** image volume **GO** with the kubelet defaults (§16.3), so ADR-0027's image-volume line stands. The pack credential must stay pod-level only (never node-level).
 - **Where the allowlists live:** unchanged (pod seccomp → mi-09; per-profile exec allowlists → m3-04), but no amd64 allowlists exist yet ⛔.
 - **SETPCAP:** as §16.1.
