@@ -1179,7 +1179,8 @@ match"), even with an exact `options=(…)` rule. For the spike the toolchain bi
 sit on the container's **read-only** rootfs, so they stay read-only; `nosuid` is kept via the bind flag and
 `NoNewPrivs` neutralises setuid), and `remount` is allowed broadly (a remount cannot create a new mount).
 The exact ro-bind-remount rule (or making the binds ro another way) must be finalised in spk-02's amd64
-replay before mi-09 ships. Fresh-mount **path confinement to `/jail` is enforced** and proven: the
+replay before mi-09 ships. **Resolved in spk-02 re-run block 3 (§16.2):** read-only binds made without
+`MS_PRIVATE` match an exact, `ro`-only remount rule scoped to `/jail/**`, and the broad `remount,` is gone. Fresh-mount **path confinement to `/jail` is enforced** and proven: the
 `mount_tmpfs_outside` probe (a fresh tmpfs at `/mnt`) is denied EACCES.
 
 **VAP diff (against the t3 §8.2 draft; mi-14 had not run — corpus and guards written here)**
@@ -1225,7 +1226,7 @@ up again from its baseline: kernel `6.8.0-142`, `mmap_rnd_bits=32`, k3s `v1.36.4
 `judge` drop-in, spk-01's host files, go1.26.8 (checksummed), the private registry, and the same generator (the
 four pod-profile variants hash identically to the first session's). Block 1 is the image volume (§16.3) plus the
 GOCACHE seed (below) ✅. Block 2 (TSAN, PG, allowlists, KILL, architectures, below) ✅. Block 3 (AppArmor
-remount narrowing) follows.
+remount narrowing, below) ✅. Env A was then torn down to its baseline (status.md spike record).
 
 **Environment**
 
@@ -1284,7 +1285,9 @@ verbatim (see "Re-run block 2" below).
 **Consequence of the finding (mi-09, before the host window).** The broad `remount,` rule **must not ship.**
 It must be replaced by remount rules scoped to the jail tree, plus the jail's own read-only root remount after
 `pivot_root`. Both remount probes join the must-deny set, and the jail setup has to be re-proven with the
-scoped rules. This is also the ro-bind-remount rule that §16.1 left open, so that item stays ⛔.
+scoped rules. This is also the ro-bind-remount rule that §16.1 left open. **Resolved in re-run block 3 (below):**
+two `ro`-only remount rules replace `remount,`, and the read-write remounts of `/`, `/sys` and `/jail/**` are now refused
+with EACCES.
 
 **Rows not run in the first session (⛔ until the re-run blocks land).** None of these count as GO:
 - ~~TSAN / go-race under `mmap_rnd_bits=32` and its ASLR policy~~ → done in block 2 (below);
@@ -1292,7 +1295,7 @@ scoped rules. This is also the ro-bind-remount rule that §16.1 left open, so th
 - ~~the RET_LOG allowlists for `go`, `cpp`, `python` and `go-race` (through auditd), and the compile-jail sets~~ → done in block 2;
 - ~~the KILL re-run~~ → done in block 2;
 - ~~the x86_64-only pod-profile variant~~ → done in block 2;
-- the scoped AppArmor remount rule (block 3);
+- ~~the scoped AppArmor remount rule~~ → done in block 3 (below);
 - ~~the GOCACHE seed without an overlay~~ → done in block 1 (below).
 
 Prepared for the re-run, throwaway and outside every repo: 22 reference programs per language (Go, C++,
@@ -1480,6 +1483,117 @@ in the throwaway driver, and the supervisor binary's own `go-sandbox` init calli
 }
 ```
 
+**Re-run block 3 (2026-09-25): AppArmor remount narrowing ✅.** The broad `remount,` rule is replaced. The
+experiments ran on the final pod shape: the x86_64-only pod seccomp file above, plus the `xlearn-runner` profile
+reloaded with `apparmor_parser -r`. Each candidate was scored from the `apparmor="DENIED"` records in auditd's log.
+- **Discovery (no remount rule at all).** Every jail failed at `pivot_root`, with
+  `DENIED op=mount name=/ flags="ro, nosuid, remount, noatime, bind"`. That is go-sandbox's read-only remount of the
+  pivoted jail root, seen as `/` inside the jail's mount namespace. The read-only bind remounts showed up as:
+  - `name=/jail/jr-*/usr/ flags="ro, nosuid, remount, rbind, rprivate"` for go-sandbox's `WithBind(…, true)`;
+  - `flags="ro, nosuid, nodev, remount, rbind"` for a bind made as `MS_BIND|MS_REC|MS_NOSUID|MS_NODEV|MS_RDONLY`,
+    without `MS_PRIVATE`.
+- **The `rprivate` form can't be matched.** An exact `remount options=(ro, nosuid, rbind, rprivate) /jail/**` rule
+  is still denied. This is spk-01's "failed flags match", reproduced; AppArmor 4.0 can't match a remount that
+  carries a propagation flag.
+- **The form without `MS_PRIVATE` matches exactly.** It needs nothing else, because go-sandbox has already made the
+  jail's mount namespace root `rprivate` before any bind.
+- A non-recursive `MS_BIND` isn't covered by the existing bind rule (`flags="rw, bind"`), so it isn't used.
+
+**The two remount rules that replace `remount,`:**
+
+```
+  remount options=(ro, nosuid, noatime, bind) /,
+  remount options=(ro, nosuid, nodev, rbind) /jail/**,
+```
+
+Both require `ro`, so **no read-write remount is possible anywhere**. The first rule also lets the supervisor
+re-flag the container's own `/` read-only, which is harmless (it's already read-only); the kernel refuses even that
+with EPERM, because the rootfs mount's atime flags are locked in the pod's user namespace. **Supervisor-code rule
+(m3-04):** build every read-only bind as `mount.Mount{Flags: MS_BIND|MS_REC|MS_NOSUID|MS_NODEV|MS_RDONLY}`, never
+go-sandbox's `WithBind(…, true)`. A read-write bind of a writable source is writable from the jail: the `robind`
+check wrote into `/work/robind` through an rw bind.
+
+**Verification (final pod: x86_64-only pod seccomp + the final AppArmor profile; every jail bind read-only)**
+
+| Check | Result | Pass |
+|---|---|---|
+| jail setup: `CLONE_INTO_CGROUP` and `cgroup.procs` spawn paths, caps → 0 (a mount after the drop → EACCES), procfs `hidepid`, `go build`, `g++ -std=gnu++20 -O2 -static`, `python3`, SIGSYS row (`core_pattern` unchanged) | all OK | ✅ |
+| read-only binds (`MS_REC`, no `MS_PRIVATE`) of the read-only rootfs (`/usr`) and of a **writable** emptyDir source | both mount; `touch` inside → `Read-only file system` | ✅ |
+| go-sandbox `WithBind(…, true)` (`rprivate` remount) | `mount: permission denied` | ✅ expected (not used) |
+| references under KILL with read-only binds (`go` / `cpp` / `python`) | 22/22 / 22/22 / 22/22, 0 SIGSYS | ✅ |
+| go-race fixtures (KILL) · GOCACHE seed (image volume, read-only bind; 12 builds) · postgres + SQL balloon | 10/10 · 12/12 OK · `select 42`, MLE in the case cgroup, recovered | ✅ |
+| **remount `/` read-write** (supervisor) | **EACCES(13)**: `DENIED op=mount name=/ flags="rw, remount, bind"` | ✅ refused |
+| **remount `/sys` read-write** (supervisor) | **EACCES(13)**: `DENIED op=mount name=/sys/ flags="rw, remount, bind"` | ✅ refused |
+| remount a read-only tmpfs under `/jail` read-write (new must-deny) | **EACCES(13)**: `DENIED name=/jail/xl-roprobe/ flags="rw, nosuid, nodev, remount"` | ✅ refused |
+| spk-01's 17 must-deny probes | `unshare -U` EINVAL(22); `clone3(NEWUSER)` and `mount` outside `/jail` EACCES(13); the rest EPERM(1); `setns` blocked at `open(/proc/1/ns/user)` EACCES | ✅ 17/17 |
+| `move_mount` / `mount_setattr` | EPERM / EPERM | ✅ |
+| ia32 / x32 `getpid` (x86_64-only pod profile) | the thread gets SIGSYS (`KILL_THREAD`, audit `code=0x0`) | ✅ blocked |
+
+**The final AppArmor profile (mi-09 ships this file)** `/etc/apparmor.d/xlearn-runner` (abi 4.0, no `userns`
+rule; sha256 `1d70ccd07e453f1a169cdeeb3efb638cf6c3beb8d18fe0e14581ff8ecd295775`). Its only change from §16.1 is
+the remount block. The `mount fstype=overlay` rule is inert under `hostUsers:false` (EACCES either way), so mi-09
+may drop it.
+
+```
+abi <abi/4.0>,
+include <tunables/global>
+
+# xLearn runner pod profile (t3 §8.7), spk-02 amd64 env-A copy (starts as the spk-01 final).
+# NO userns rule: under abi 4.0 a confined task may not create a user namespace,
+# even holding CAP_SYS_ADMIN. Mounts are limited to the jail paths under /jail.
+profile xlearn-runner flags=(attach_disconnected,mediate_deleted) {
+  include <abstractions/base>
+
+  # exactly the runner's namespaced capabilities (pod drops ALL, adds these 5)
+  capability sys_admin,
+  capability setuid,
+  capability setgid,
+  capability setpcap,
+  capability kill,
+
+  network unix,
+  network inet stream,
+  network inet6 stream,
+  unix,
+
+  file,
+
+  signal (receive) peer=unconfined,
+  signal (receive) peer=runc,
+  signal (receive) peer=crun,
+  signal (send,receive) peer=xlearn-runner,
+
+  # jail construction, confined to /jail (an emptyDir): tmpfs/overlay/proc/bind/remount,
+  # under the jail tree only (mounts elsewhere are denied, see the /mnt probe).
+  # Fresh mounts are confined to /jail (an emptyDir); a fresh mount elsewhere is denied
+  # (the mount_tmpfs_outside probe proves this).
+  mount fstype=tmpfs -> /jail/**,
+  mount fstype=overlay -> /jail/**,
+  mount fstype=proc -> /jail/**,
+  mount options=(rw, rbind, nosuid, rprivate) -> /jail/**,
+  mount options=(rw, rprivate) -> /,
+  mount options=(rw, rslave) -> /,
+  # Remounts (spk-02 block 3): NO broad `remount,`. Only read-only re-flags, only where the jail needs them:
+  #  - the jail root after pivot_root (go-sandbox: MS_BIND|MS_REMOUNT|MS_RDONLY|MS_NOATIME|MS_NOSUID on "/"),
+  #  - read-only bind mounts under the jail tree, made as MS_BIND|MS_REC|MS_NOSUID|MS_NODEV|MS_RDONLY
+  #    (no MS_PRIVATE: the jail mount ns root is already rprivate; AppArmor cannot match a remount carrying it).
+  # A read-write remount anywhere (/, /sys, /jail/**) is denied.
+  remount options=(ro, nosuid, noatime, bind) /,
+  remount options=(ro, nosuid, nodev, rbind) /jail/**,
+  pivot_root,
+  umount,
+
+  deny ptrace,
+  deny mount fstype=sysfs,
+  deny mount fstype=cgroup,
+  deny mount fstype=cgroup2,
+  deny @{PROC}/sysrq-trigger rwklx,
+  deny @{PROC}/kcore rwklx,
+  deny /sys/firmware/** rwklx,
+  deny /sys/kernel/security/** rwklx,
+}
+```
+
 ### 16.3 Image volume (spk-02)
 
 **Verdict (re-run block 1, 2026-09-25): image-volume GO.** (i) and (ii)/(ii-b) pass with the kubelet **defaults**,
@@ -1537,17 +1651,21 @@ pod), ahead of variant B. ADR-0027's image-volume line stands.
 
 ### 16.4 MI-10 verdict and proposed ADR-0030 deltas
 
-**Spike P0–P2 GO (spk-01). P3 (re-run block 2, 2026-09-25): Q-C GO, meaning TSAN works with no ASLR policy, and
-the amd64 allowlists pass KILL with 0 unexpected SIGSYS. Image volume GO (re-run block 1, 2026-09-25).** The M3
-checklist line "Spike P0–P3 GO and the image-volume spike GO" stays **unticked** until block 3 lands the scoped
-AppArmor remount rule. That rule is §16.2's finding, and it is required before mi-09 ships.
+**Spike P0–P3 GO; image volume GO** (spk-01 + spk-02 re-run, 2026-09-25). This is the line the M3 checklist reads:
+- P0–P2: spk-01 (Q-A GO, Q-B GO).
+- P3 (Q-C GO): TSAN needs no ASLR policy, and the amd64 allowlists pass KILL with 0 unexpected SIGSYS.
+- The first session's AppArmor finding is closed: block 3's `ro`-only remount rules refuse the read-write remounts of
+  `/` and `/sys`.
+- Image volume GO with the kubelet defaults.
+- Nothing needs an owner decision.
 
-What m3-03 can already fold into ADR-0030:
+Proposed ADR-0030 deltas (m3-03 folds these in when it accepts the ADR; this section doesn't edit it):
 - **Mechanism:** unchanged. go-sandbox `forkexec.Runner` with no user namespace, spawned via `CLONE_INTO_CGROUP`; the jail setup reproduces on amd64 kernel 6.8.0-142.
 - **Pod seccomp:** §16.1's recipe on amd64 (381 names; `pivot_root` added), with **`architectures: [SCMP_ARCH_X86_64]` proposed** (x86_64-only). Nothing legitimate broke, and it closes the ia32 `int $0x80` entry point that the three-arch baseline leaves open (§16.2, block 2). The file is recorded verbatim in §16.2 (sha256 `730a7a55…418d`), and mi-09 ships it. If m3-03 prefers the baseline, the only change is the `architectures` line.
-- **AppArmor:** replace the broad `remount,` rule with jail-scoped remount rules (§16.2 finding). This is required, not optional.
+- **AppArmor:** the profile is recorded verbatim in §16.2 block 3 (sha256 `1d70ccd0…5775`), and mi-09 ships it. The broad `remount,` is replaced by `remount options=(ro, nosuid, noatime, bind) /,` (the jail root) and `remount options=(ro, nosuid, nodev, rbind) /jail/**,` (read-only binds), so no read-write remount is possible. Supervisor rule: read-only binds are `MS_BIND|MS_REC|MS_NOSUID|MS_NODEV|MS_RDONLY` without `MS_PRIVATE`, never go-sandbox's `WithBind(…, true)`.
 - **ASLR policy: none.** The Go 1.26 race runtime works in the jail under `mmap_rnd_bits=32` without calling `personality` (125/125 + 100/100 runs). The pod profile keeps RuntimeDefault's `personality` rule, so `ADDR_NO_RANDOMIZE` stays denied, and no exec profile allows `personality`. Never lower the host sysctl.
 - **GOCACHE:** not an in-pod overlay (EACCES on amd64 too). Use a **read-only seed in place** (`GOCACHE` = the seed, baked into the image or mounted as an image volume; `TMPDIR` on the case tmpfs), built with the exec profile's exact toolchain and flags: about 12 s → 0.35 s per compile on env A, with no per-case copy (§16.2). A8 re-measures the timing.
 - **Eval pack (not ADR-0030; for m3-07/mi-09):** image volume **GO** with the kubelet defaults (§16.3), so ADR-0027's image-volume line stands. The pack credential must stay pod-level only (never node-level).
 - **Where the allowlists live:** pod seccomp → mi-09 (the file above); per-profile exec allowlists → m3-04 (`go` 27, `cpp` 19, `python` 39, `go-race` 40; §16.2 block 2). They carry the fixed rules: non-x86_64/x32 → KILL, `clone3` → ENOSYS, `clone` with `CLONE_THREAD` only, `prctl` with `PR_SET_VMA` only.
 - **SETPCAP:** as §16.1.
+- **Host-file diffs vs t3 §8.7 (mi-09's host-window PR):** the `judge` drop-in verbatim (§16.1). The pod seccomp file with `pivot_root` added, x86_64-only (§16.2 block 2). The AppArmor profile with the two `ro`-only remount rules in place of `remount,` (§16.2 block 3). The subuid `kubelet:1073741824:7208960`, with `getsubids` from `uidmap`. A new host check: **no node-level registry credentials** (no `auth:` in k3s `registries.yaml`, no `/var/lib/kubelet/config.json`, no root `~/.docker/config.json`; §16.3). No kubelet `imagePullCredentialsVerificationPolicy` change is needed.
