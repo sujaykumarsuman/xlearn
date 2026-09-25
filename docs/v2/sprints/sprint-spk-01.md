@@ -13,15 +13,15 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done — **Q-A GO, Q-B GO**; mechanism: go-sandbox `forkexec.Runner` (no userns, `CLONE_INTO_CGROUP`); nsjail not needed (2026-09-25)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | P0 setup: VM, k3s, host files, guards, VAP proof (1.5 h) | H | ⬜ |
-| 2 | P1 viability: R1 positive and negative checks (3 h) | H | ⬜ |
-| 3 | P1b pilot check: go-race and postgres in the jail (0.75 h, doesn't gate M3) | H | ⬜ |
-| 4 | P2 INV-14 and cleanup corpus (2.5 h) | H | ⬜ |
-| 5 | Results table → `t3-sandbox.md` §16.1 and `status.md` (docs PR); hand the VM to spk-02 | X | ⬜ |
+| 1 | P0 setup: VM, k3s, host files, guards, VAP proof (1.5 h) | H | ✅ drop-in merges; VAP 24/24 dry-run + X1/X2/E1 CONNECT denied |
+| 2 | P1 viability: R1 positive and negative checks (3 h) | H | ✅ jail works both cgroup modes; 17/17 negative probes denied; ×50 recreate 50/50 |
+| 3 | P1b pilot check: go-race and postgres in the jail (0.75 h, doesn't gate M3) | H | ✅ RACE 20/20, DEADLOCK 20/20, postgres OK |
+| 4 | P2 INV-14 and cleanup corpus (2.5 h) | H | ✅ MLE 100/100, 0 container OOMs, baseline +2 MiB, nr_dying→0 in 6 s |
+| 5 | Results table → `t3-sandbox.md` §16.1 and `status.md` (docs PR); hand the VM to spk-02 | X | ✅ §16.1 written; VM stopped for spk-02 |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, and ⛔ if it's blocked (say why).
 > A NO-GO row is still ✅ once it's recorded with numbers; the verdict goes in the results. Update the _Overall_ line to match, and mirror the sprint's state into
