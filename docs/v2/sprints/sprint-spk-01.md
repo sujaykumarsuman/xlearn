@@ -1,9 +1,9 @@
 # Sprint spk-01 — Sandbox mechanism spike P0–P2 (multipass arm64, throwaway)
 
 > **Milestone:** MI — rollout step **MI-10**, part 1 (spike week) · **Track:** spike · **Kind:** spike
-> **Prereqs:** the owner's go-ahead (event `ev-spike-goahead`, D23) · MI-0 done (event `ev-mi0`) · soft: [mi-14](sprint-mi-14.md) (the MI-4 guard manifests)
+> **Prereqs:** MI-0 done (event `ev-mi0`) · soft: [mi-14](sprint-mi-14.md) (the MI-4 guard manifests). The owner's go-ahead (D23) is the launch of this prompt (D40); the session records `ev-spike-goahead`
 > **Unblocks:** [spk-02](sprint-spk-02.md) (P3 + image volume, on this VM and harness) · [spk-03](sprint-spk-03.md) (WIF, on this VM) · [mi-09](sprint-mi-09.md) (host files) · [m3-03](sprint-m3-03.md) (ADR-0030 acceptance) · the M3 checklist line "Spike P0–P3 **GO**" (together with spk-02)
-> **Release action:** no merge (spike, throwaway). The harness, VM and manifests are never committed; only the results are recorded, through a docs PR
+> **Release action:** no merge (spike, throwaway). The harness, VM and manifests are never committed; only the results docs PR lands, squash-merged on CI green with no owner stop (D40)
 > **Calendar:** Mon 2026-10-12 → Wed 2026-10-14 (spike week, event `ev-spike-week`). The calendar is the booking window, not the budget. **Hard stop, counted as effort:** 10 h core for P0–P3 together ([t3 §9](../research/t3-sandbox.md#9-the-smallest-spike-local-and-throwaway-needs-the-owners-go-ahead)). This sprint's core share is 7 h (P0 1.5 + P1 3 + P2 2.5), plus P1b's 0.75 h, which sits outside the core
 > **Execute with:** [`../prompts/prompt-spk-01.md`](../prompts/prompt-spk-01.md) — one prompt, one session.
 
@@ -25,7 +25,7 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] **The owner's go-ahead for P0–P3 and the image-volume spike** (D23) is recorded in `docs/v2/status.md` (event `ev-spike-goahead`, due by Fri 2026-10-09).
+- [ ] **The go-ahead for P0–P3 and the image-volume spike (D23) is this launch** (D40). Record `ev-spike-goahead` ✅ in `docs/v2/status.md` with the results.
 - [ ] **MI-0 is done.** Production runs kernel `6.8.0-142` (`ssh vps uname -r`, read-only). The VM mirrors that noble kernel line.
 - [ ] **multipass ≥ 1.16** is on the owner's M3 Max with 8 GiB of RAM and 30 GB of disk free for the VM. At planning time, 1.16.3 was installed on a 36 GiB machine.
 - [ ] **Soft:** the MI-4 manifests from [mi-14](sprint-mi-14.md) are merged in `../infra/infrastructure/sandbox/` or open on its PR branch. If they aren't ready, apply the [t3 §8.2](../research/t3-sandbox.md#82-guard-objects-infrastructuresandbox) draft and report the diff back to mi-14.
@@ -141,7 +141,7 @@ This is MI-10 part 1 ([rollout §2](../rollout-plan.md#2-mi-infra-track)). Its a
 
 **Fail path, inside the time box:**
 - forkexec fails → **nsjail `--disable_clone_newuser`** (R1-N), spawned into our case cgroup.
-- nsjail fails → record whether **R1-U** (the profile gains `userns,`) or **R1b** (`hostUsers:true`) would work. **Don't choose.** R1-U/R1b are the owner's call, and R1b is a D21 trigger to move to a dedicated runner VPS.
+- nsjail fails → the result is outside every pre-decided path. Record whether **R1-U** (the profile gains `userns,`) or **R1b** (`hostUsers:true`) would work, with a recommendation, but **don't choose**: R1-U/R1b are the owner's call, and R1b is a D21 trigger to move to a dedicated runner VPS. Mark the M3 checklist line ⛔ "needs owner decision" in `status.md` and still land the results PR (D40).
 - Any fallback changes the host files. Record the final ones.
 
 ### 3 · P1b pilot check (0.75 h, doesn't gate M3) [H]
@@ -182,7 +182,7 @@ This is MI-10 part 1 ([rollout §2](../rollout-plan.md#2-mi-infra-track)). Its a
   - **the in-pod channel used** (CRI exec or baked command);
   - **the per-phase results table:** step, measure, number, pass/fail, errno;
   - **Q-A and Q-B verdicts:** GO or NO-GO;
-  - **the jail mechanism chosen:** forkexec, R1-N, or R1-U/R1b pending the owner;
+  - **the jail mechanism chosen:** forkexec or R1-N; or, past R1-N, "needs owner decision" with the R1-U/R1b options and a recommendation;
   - **the open points answered:** whether `SETPCAP` is needed; `CLONE_INTO_CGROUP` vs `cgroup.procs` on 6.8; pod survival on a k3s restart; the subuid range used and the × 50 recreate result; which noble package ships `getsubids`;
   - **the final host files, verbatim:** the drop-in TOML (merged, or the `.tmpl` fallback), the AppArmor profile, and the arm64 pod seccomp profile as a sorted syscall list (or the diff from t3 §8.7). The arm64 pod profile is **not** the one mi-09 ships: spk-02 replays it on amd64;
   - **the VAP diff** against mi-14's manifests, if any, plus the E1 corpus addition (and the self-written corpus, if mi-14's was absent);
@@ -191,7 +191,8 @@ This is MI-10 part 1 ([rollout §2](../rollout-plan.md#2-mi-infra-track)). Its a
 - **`docs/v2/status.md`:**
   - the MI-10 row: part 1 result, GO or NO-GO;
   - the Sprint board row for spk-01;
-  - Decisions log lines: the mechanism chosen, and any fallback that needs an owner decision;
+  - `ev-spike-goahead` ✅ (the launch, D40);
+  - Decisions log lines: the mechanism chosen, and any fallback that needs an owner decision (marked ⛔ "needs owner decision");
   - hand-off notes to spk-02 (the VM and work directory), mi-09 (host files), mi-14 (VAP diff: comment on its PR, or open an infra issue if it has merged) and m3-03.
 - **The VM:** `multipass stop xl-spike`. **Don't delete it.** spk-02's image-volume check (Thu) and spk-03's WIF spike (Fri) reuse its k3s. The last spike of the week deletes it with `multipass delete --purge`.
 
@@ -205,7 +206,7 @@ This is MI-10 part 1 ([rollout §2](../rollout-plan.md#2-mi-infra-track)). Its a
 
 ## Release
 
-**No merge: a throwaway spike.** The harness, corpus, manifests and VM are never committed. The only merge is the **docs PR** carrying the results (t3 §16.1 and `status.md`); it doesn't ship in any tag. There's no infra PR, and nothing touches production.
+**No merge: a throwaway spike.** The harness, corpus, manifests and VM are never committed. The only merge is the **docs PR** carrying the results (t3 §16.1 and `status.md`), squash-merged on CI green with no owner stop (D40); it doesn't ship in any tag. A result outside the pre-decided paths still lands, with its options, a recommendation and ⛔ "needs owner decision" in `status.md`. There's no infra PR, and nothing touches production.
 
 ## Definition of Done
 
@@ -221,6 +222,6 @@ This is MI-10 part 1 ([rollout §2](../rollout-plan.md#2-mi-infra-track)). Its a
 - **The VAP blocks `kubectl exec` into the positive pod by design.** Use CRI exec or a baked command. Relaxing the VAP to get a shell would invalidate the X1/X2 proof.
 - **arm64 timings don't carry to the EPYC guest.** Draw no timing conclusions. Mechanism semantics (userns, cgroup delegation, AppArmor mediation, seccomp, procfs) don't depend on the architecture ([t3 §9](../research/t3-sandbox.md#9-the-smallest-spike-local-and-throwaway-needs-the-owners-go-ahead)).
 - **The laptop's kubectl context tunnels to production** (`127.0.0.1:6443`). Every `kubectl` goes through `multipass exec … k3s kubectl`, with `KUBECONFIG` unset on the laptop.
-- **A fallback past R1-N is an owner decision.** R1b is a D21 trigger (move to a dedicated runner VPS), so escalate it and don't pick it.
+- **A fallback past R1-N is an owner decision.** R1b is a D21 trigger (move to a dedicated runner VPS), so don't pick it: record the options with a recommendation, mark ⛔ "needs owner decision" and still land the results (D40).
 - **kubernetes #139916** (`hostUsers:false` sandbox failures) can make the ×50 recreate loop flaky. The bounded subuid range is the mitigation, so record every failure.
 - **The VM's AppArmor/kernel build differs from production's** (arm64 vs amd64 noble). spk-02 replays the syscall-sensitive parts on amd64.

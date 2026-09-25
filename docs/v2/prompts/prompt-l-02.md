@@ -3,15 +3,22 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-l-02.md`](../sprints/sprint-l-02.md)   ·   **Milestone:** L (L-E, producer half)   ·   **Prereqs:** [l-01](../sprints/sprint-l-01.md) (v1.11.0 live), [ds-l-01](../sprints/sprint-ds-l-01.md) (AB21 frozen), [mi-04](../sprints/sprint-mi-04.md) (MI-5b), [m1-04](../sprints/sprint-m1-04.md) (admin CLI, session fields)
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] **`ev-snap-v1.12.0`:** take a Hostinger manual snapshot in hPanel (one at a time, 1-day retention) right before you launch, and put its time or id in your launch message. The erase tag lands the same day.
+- [ ] Optional: a browser profile signed in to xLearn as you, that the session can drive, for the post-tag check that your Settings shows the owner-refused card (F7, no button). Without it, the tests cover that path.
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md): conventions and the land-and-sync rule. This sprint **tags an erase release**.
-- The plan: [`../sprints/sprint-l-02.md`](../sprints/sprint-l-02.md). Its transaction steps, the `DELETE /me` response table, task 6's held-merge order, the release checklist and the rollback are authoritative.
-- [`../status.md`](../status.md): l-01's record (v1.11.0, the consumers, coach's nkey), the MI-5b row, the tag → floor rows, the artboard rows and any "held" / "merged, untagged" lines from peers.
+- The plan: [`../sprints/sprint-l-02.md`](../sprints/sprint-l-02.md). Its transaction steps, the `DELETE /me` response table, task 6's merge-then-tag order, the release checklist and the rollback are authoritative.
+- [`../status.md`](../status.md): l-01's record (v1.11.0, the consumers, coach's nkey), the MI-5b row, the tag → floor rows, the artboard rows and any "merged, untagged" lines from peers.
 - **Erase design:** [t1 §6.6](../research/t1-content-data-model.md#66-erase-path-none-exists-today-no-delete-apime-in-bffgo) step 2; [ADR-0027 §6](../../adr/0027-content-evalpack-and-user-data-model.md#6-account-erase-v20) as amended by [ADR-0028 §3](../../adr/0028-object-storage-and-backups.md#3-amendments-to-adr-0027).
 - **Authz:** [ADR-0033 §7](../../adr/0033-invite-only-admission-and-owner-admin.md#7-roles-and-status-live-in-identitys-database-never-in-the-jwt) (owner never on the web; testers from L-E), [§8](../../adr/0033-invite-only-admission-and-owner-admin.md#8-the-owner-admin-cli-identity-admin-run-via-kubectl-exec) (`account erase` verb), [§9](../../adr/0033-invite-only-admission-and-owner-admin.md#9-erase-and-abuse-controls) (typed confirmation, session < 5 min, seat, username cooldown), [§11](../../adr/0033-invite-only-admission-and-owner-admin.md#11-admin-console-isolation-mi-5b) (MI-5b before the first tester), [§13](../../adr/0033-invite-only-admission-and-owner-admin.md#13-public-dashboard-authz-deltas) (erase → 404, 60-day hold); [ADR-0035 §4](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#4-limits-inventory) L8.
 - **Releases:** [ADR-0034 §4.2](../../adr/0034-v2-release-labelling-gating-and-rollback.md#42-r-d-is-a-procedure-not-a-button) (R-d; list erases since the snapshot), [§4.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#43-snapshot-rule) (snapshot before an erase tag), [§4.4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#44-reversibility-by-step) (L-E row), [§6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#6-release-checklist); [rollout §7](../rollout-plan.md#7-indicative-tag-timeline) (v1.12.0, floor 1.11.0), [§10](../rollout-plan.md#10-public-dashboard-tasks) (P11), [§2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag) (sanctioned `kubectl exec`).
-- **The frozen board:** `design-system/screens/v2/AB21-erase-account.html` and its screenshots under `design-system/screens/v2/shots/` (merged by [ds-l-01](../sprints/sprint-ds-l-01.md)); read the merged PR's "Decisions to confirm" and the owner's answers.
+- **The frozen board:** `design-system/screens/v2/AB21-erase-account.html` and its screenshots under `design-system/screens/v2/shots/` (merged by [ds-l-01](../sprints/sprint-ds-l-01.md)); read the merged PR's "Decisions to confirm" (the merge froze each item's stated default, D40) and any owner answer recorded since in status.md.
 - **Sibling plans:** [l-01](../sprints/sprint-l-01.md) (the contract, fixture, `ErasureAckServices()`, `erase_request`/`released_username`, `identity admin erasures`, the e2e), [m1-04](../sprints/sprint-m1-04.md) tasks 1 and 5 (session fields; the CLI and `admin_audit`), [m1-05](../sprints/sprint-m1-05.md) task 7 (P11: no positive status cache).
 - **Code:**
   - `internal/identity/{handlers.go,service.go,usernames.go,username.go,session.go}` (`currentSession`, `clearSessionCookie`), `internal/identity/store/`, `internal/identity/admin/`, `cmd/identity/main.go`;
@@ -30,8 +37,9 @@
   - `identity admin account erase` for the owner and suspended accounts;
   - the AB21 Settings UI.
 - There are **no backups** (D12): an erase is final, and a snapshot restore (R-d) would resurrect every erase after the snapshot. So this
-  is an **erase tag**: `host-verify --cluster` green and the owner's manual snapshot right before it (`ev-snap-v1.12.0`).
-- The **owner is never erasable on the web**. The first **tester** (`ev-first-tester`, CLI-minted only after MI-5b) runs the prod acceptance.
+  is an **erase tag**: `host-verify --cluster` green and the owner's manual snapshot, taken right before launch (`ev-snap-v1.12.0`, D40).
+- The **owner is never erasable on the web**. You mint the first **tester** yourself (`ev-first-tester`, CLI-minted only after MI-5b;
+  D40) and run the prod acceptance with it.
 - Floor after v1.12.0: **1.11.0**. Gate state: web erase testers only; owner refused (CLI only).
 
 ## Entry gates — verify first (stop and report if any is unmet)
@@ -39,8 +47,8 @@
 - [ ] **v1.11.0 live, consumers bound:** healthz ≥ 1.11.0; JetStream shows `practice-erase`, `review-erase`, `assessment-erase`, `coach-erase` on `XLEARN_IDENTITY` and `identity-erase-acks` on each service stream; coach on its nkey (l-01's status record).
 - [ ] **AB21 frozen:** ds-l-01's PR is merged on `main` (the board file exists).
 - [ ] **m1-04 live (v1.7.0):** `identity admin` exists; session-validate returns `role`, `status` and the session's `created_at`; the owner role is set.
-- [ ] **MI-5b live** (mi-04's status row) — required before any tester exists.
-- [ ] **First tester minted after MI-5b** (`ev-first-tester`) — required for step 12 only; code steps may start before it.
+- [ ] **MI-5b live** (mi-04's status row) — required before any tester exists (step 12 mints one).
+- [ ] **The launch message carries the `ev-snap-v1.12.0` snapshot's time or id** (the before-launch block).
 - [ ] **Parallel sessions:** `git ls-remote --tags origin`, `gh pr list`, `git worktree list`, ListAgents → the **next free minor** (use it instead of 1.12.0 everywhere if taken); no open peer PR edits `internal/identity/`, `internal/gateway/bff.go`, `docs/architecture/openapi.yaml` or `web/src/screens/Settings.tsx`.
 
 ## Do this (in order)
@@ -89,34 +97,37 @@
    the lost-writes window); pseudonymous stream copies (historic `account_created` carries `display_name`) and the on-request re-seal via
    NATS break-glass. Update `docs/architecture/services.md` (identity: erase producer; `DELETE /me`).
 
-9. **[X] PR, CI green — do not merge yet.** Conventional commits with the attribution lines; CI green (`go test ./...`, `sqlc diff`,
-   OpenAPI drift, web tests, `e2e`). **Hold the squash-merge until the snapshot exists** (step 11): `deploy.yml` builds only on `v*` tags,
-   so a merged-but-untagged erase producer on `main` would ship with whichever tag comes next (a parallel M3 sprint's, or a v1 patch)
-   with no `host-verify`, no snapshot and possibly out of version order.
+9. **[X] PR, CI green; merge it in step 11, right before the tag.** Conventional commits with the attribution lines; CI green (`go test ./...`, `sqlc diff`,
+   OpenAPI drift, web tests, `e2e`). **Keep the squash-merge for step 11** (after the rehearsal and `host-verify`), back to back with the
+   tag: `deploy.yml` builds only on `v*` tags, so a merged-but-untagged erase producer on `main` would ship with whichever tag comes next
+   (a parallel M3 sprint's, or a v1 patch) with no `host-verify`, no snapshot and possibly out of version order.
 
 10. **[X] Compose rehearsal at the PR head** (the exact commit you will merge): `docker compose up`;
     `identity admin account create --role tester --email t@example.test` (inside the identity container); sign in as the tester; create an
     attempt, a mistake, a scored mock and a coach thread; sign in again; erase from Settings; check row counts 0 in practice, review,
     assessment and coach, 4 acks and `closed_at`, the profile 404, the username unavailable. Paste the transcript into the PR.
 
-11. **[H + O] Snapshot, then merge and tag back to back.** `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` → green; the
-    host has settled. Ask the owner for **`ev-snap-v1.12.0`**: the manual Hostinger snapshot right now; record its id and time. **Then at
-    once:** re-check peers' tags and PRs; squash-merge the PR (still the rehearsed head — if `main` moved, rebase, re-run CI and the
-    rehearsal, and re-snapshot if the old one is no longer "right before"); run the plan's *Release* checklist; tag the merge commit;
-    GitHub release title **`v1.12.0 — v2 build · L-E erase`**, notes per the plan. After the tag, verify by looking: healthz, images,
-    ImagePolicy latest = tag, HelmReleases Ready, smoke login/dashboard/coach, and the owner's Settings shows the owner-refused card
-    (no button).
-    **If the owner isn't available:** do **not** merge. Leave the PR open and CI-green, record in status.md "l-02 PR #… green, **held for
-    `ev-snap-v1.12.0`** — erase producer; do not merge without the snapshot", hand the owner the exact steps (snapshot → merge → tag),
-    and stop with the sprint 🔄. This one held PR is the deliberate exception to "no open PRs at session end".
+11. **[H] `host-verify`, then merge and tag back to back.** `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` → green; the
+    host has settled. Record **`ev-snap-v1.12.0`** (taken by the owner before launch) from the launch message: its id and time. **Then
+    at once:** re-check peers' tags and PRs; squash-merge the PR (still the rehearsed head — if `main` moved, rebase, re-run CI and the
+    rehearsal); run the plan's *Release* checklist; tag the merge commit; GitHub release title **`v1.12.0 — v2 build · L-E erase`**,
+    notes per the plan. The tag lands the same day as the snapshot. After the tag, verify by looking: healthz, images, ImagePolicy
+    latest = tag, HelmReleases Ready, smoke login/dashboard/coach, and — in the owner's signed-in profile, if one is available — his
+    Settings shows the owner-refused card (no button).
 
-12. **[O + H] Prod acceptance with the tester** (the owner operates it in a private window): sign in → claim a username → create a little
-    data → sign in again → erase from Settings. Then, through the sanctioned admin CLI and read-only views only (no raw `psql` into other
-    services' schemas): `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin erasures --since <today>'`
+12. **[H] Prod acceptance with a throwaway tester** (`ev-first-tester`, D40). After checking MI-5b in status.md, mint it:
+    `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account create --role tester --email <an unused @example.test address>'`.
+    Keep the one-time password in the terminal only (never in a file, log, PR or status.md). Operate the tester yourself in a private
+    window or separate browser profile: sign in → claim a username → create a little data → sign in again → erase from Settings. Then,
+    through the sanctioned admin CLI and read-only views only (no raw `psql` into other services' schemas):
+    `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin erasures --since <today>'`
     → **closed with 4 acks** — each service writes its ack in the same transaction as its deletes, so 4 acks prove all four services
-    erased; `/xlearn/u/<username>` → 404; the username unavailable from the owner's session; no ERROR on the erase paths in the five
-    services' logs (`k3s kubectl logs -n xlearn deploy/xlearn-<svc> --since=30m`, read-only). **Never send `DELETE /api/me` from the
-    owner's account.** Log each admin-CLI `kubectl exec` in status.md.
+    erased; `/xlearn/u/<username>` → 404; the username unavailable (from the owner's signed-in profile if available); no ERROR on the
+    erase paths in the five services' logs (`k3s kubectl logs -n xlearn deploy/xlearn-<svc> --since=30m`, read-only). **Never send
+    `DELETE /api/me` from the owner's account.** Log each admin-CLI `kubectl exec` in status.md.
+    **If a tester step needs a human** (a tool or rule stops you, e.g. typing the password), don't wait: CLI-erase the tester
+    (`identity admin account erase <id> --confirm <id>`), record step 12 ⛔ "tester run needs a human" with these steps in
+    `status.md` → Open owner items, and land everything else.
 
 13. **[X] Record** — see *Update status*.
 
@@ -128,7 +139,7 @@
 - **Service boundaries ([ADR-0005](../../adr/0005-data-ownership-and-migrations.md)):** identity deletes only its own schema; the other services erase through their consumers.
 - **Outbox:** the erase and its event in one transaction; deterministic event id; `outbox.account_id = NULL` on the event row.
 - **goose + sqlc:** no migration is expected (l-01 created the tables); if one is needed it is expand-only with the next free version; `sqlc diff` clean. **Never run `Down` in prod.**
-- **Erase tag rules:** `host-verify --cluster` green, host settled, **snapshot taken** right before the squash-merge and the tag, which follow each other at once ([ADR-0034 §4.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#43-snapshot-rule)); the producer never sits on `main` untagged. No off-node `pg_dump`.
+- **Erase tag rules:** `host-verify --cluster` green, host settled, **snapshot taken** (by the owner, right before launch, D40); the squash-merge and the tag follow each other at once, the same day ([ADR-0034 §4.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#43-snapshot-rule)); the producer never sits on `main` untagged. No off-node `pg_dump`.
 - **GitOps:** never `kubectl apply`; the only prod writes outside GitOps are the sanctioned `kubectl exec` admin CLI runs, each logged in status.md; no raw `psql` into service schemas. Never move or re-push a tag.
 - **Frontend:** `theme.css` verbatim; match the frozen AB21 board; keep the dark theme.
 - **No new pod, no new caller** — the memory sum and NetworkPolicies are unchanged. **No alerting (D34):** stuck erases are read with `identity admin erasures --open`.
@@ -142,15 +153,16 @@
 - web: the AB21 erase section in Settings; the erased banner on the auth page; tests.
 - `internal/e2e/erase_test.go` on the real producer; the compose rehearsal transcript.
 - The "Erase" section in `docs/runbooks/identity-admin.md` (incl. R-d step 3).
-- Merge + tag **v1.12.0** back to back after `host-verify` and the snapshot; the tester acceptance run recorded.
+- Merge + tag **v1.12.0** back to back after `host-verify` (the snapshot was taken before launch); the tester acceptance run recorded (or ⛔ with its steps).
 
 ## Update status
 
 - [`../sprints/sprint-l-02.md`](../sprints/sprint-l-02.md): task rows ✅ as they land; _Overall_ ✅ after step 12.
-- [`../sprints/sprint-ds-l-01.md`](../sprints/sprint-ds-l-01.md): task 7 ✅ (freeze PR # and date), _Overall_ ✅.
+- [`../sprints/sprint-ds-l-01.md`](../sprints/sprint-ds-l-01.md): confirm its rows and _Overall_ read ✅ (its own merge closed it under D40); repair if missing.
 - [`../status.md`](../status.md):
-  - **Sprint board** l-02 ✅ (and ds-l-01 ✅); **Milestones** L: "L-E done (v1.11.0 → v1.12.0)" (L stays 🔄 until the L exit);
-  - **Artboards:** AB19, AB20, AB21 → "frozen (PR #, date)";
+  - **Sprint board** l-02 ✅ (confirm ds-l-01 ✅); **Milestones** L: "L-E done (v1.11.0 → v1.12.0)" (L stays 🔄 until the L exit);
+  - **Artboards:** confirm AB19, AB20, AB21 read "frozen (PR #, date)" (repair if missing);
+  - **Owner events:** `ev-snap-v1.12.0` ✅ (id/time); `ev-first-tester` ✅ (minted and erased by this session);
   - **Tag → floor → snapshot:** v1.12.0 → floor **1.11.0** → the `ev-snap-v1.12.0` snapshot id/time;
   - **Gate state:** web erase testers only; owner refused (CLI only);
   - **Erase log:** the tester's erase (request id, date, via web, 4 acks, closed at);
@@ -166,12 +178,14 @@
 - [ ] The owner is refused on the web (tests; no button on prod); learners, stale sessions and mismatches are refused with their codes.
 - [ ] The CLI erases a non-last owner or a suspended account, audited without PII.
 - [ ] The event is byte-equal to l-01's fixture; the e2e runs on the real producer; the compose rehearsal passed.
-- [ ] The PR stayed unmerged until the snapshot; `host-verify --cluster` green and **the snapshot id recorded** before the merge and tag (back to back); v1.12.0 live and verified; status.md updated.
+- [ ] `host-verify --cluster` green and **the owner's before-launch snapshot id recorded** before the merge; the merge and the tag back to back; v1.12.0 live and verified; status.md updated.
 
-**Ship at session end** per AGENT.md land-and-sync with **this sprint's release action: tag v1.12.0 — the erase tag, snapshot first**, in order:
-1. the xlearn PR → CI green (**held unmerged**) → compose rehearsal at the PR head;
-2. `host-verify --cluster` green → the owner's manual snapshot (`ev-snap-v1.12.0`) → squash-merge → tag, back to back → Flux deploys → verify live per the checklist (no owner → the PR stays open and held, recorded in status.md);
-3. the tester acceptance on prod (or handed to the owner with exact steps if no one can operate the tester now — the sprint stays 🔄 until it's done);
-4. `git checkout main && git pull`.
+## Ship (land-and-sync — owner approval pre-granted)
 
-Never leave merged work unpulled or untagged; never merge the producer or cut the tag without the snapshot (the held PR above is the only open PR allowed).
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/l-02-erase-producer`, then conventional commit(s) with the attribution lines, then push, then the PR. This repo only: no `../infra` PR.
+2. Once CI is green (fix, then merge, on failure) **and** the compose rehearsal (step 10) and `host-verify --cluster` (step 11) have passed, squash-merge. Never enable auto-merge.
+3. **Release action — tag `v1.12.0`, the erase tag** (the next free minor): walk the release checklist (ADR-0034 §6, in the plan; the erase line is `host-verify` green plus the owner's before-launch snapshot), push the tag on the merge commit **right after** the squash-merge, the same day as the snapshot, let Flux deploy, then verify live by looking (step 11) and run the tester acceptance (step 12). Never leave the producer merged but untagged.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way (the acceptance record needs the follow-up).
+5. Run `git checkout main && git pull`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

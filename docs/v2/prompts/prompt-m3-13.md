@@ -3,6 +3,12 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-m3-13.md`](../sprints/sprint-m3-13.md)   ·   **Milestone:** M3 (M3-2 close-out + M3 exit)   ·   **Prereqs:** [m3-12](../sprints/sprint-m3-12.md), [m3-10](../sprints/sprint-m3-10.md) (+ [m3-08](../sprints/sprint-m3-08.md), [m3-09](../sprints/sprint-m3-09.md), [m3-11](../sprints/sprint-m3-11.md); TL inputs from [m3-15](../sprints/sprint-m3-15.md), [mi-10](../sprints/sprint-mi-10.md))
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] Read the date of the last Hostinger weekly image in hPanel: it must be ≤ 7 days old (the M3 hard entry checklist, re-read here because this sprint turns judge on). Put the date in your launch message.
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — conventions, land-and-sync.
@@ -18,7 +24,7 @@
 
 ## Context
 
-M3 is the judge milestone. `v1.13.0` (m3-07) put judge on production **dark**; everything for **M3-2** (practice's judge consumer m3-08, the BFF m3-09, review/assessment on judge signals m3-10, the Workspace m3-11, the dock/Problems/Arena/badges m3-12) is merged and rides **`v1.14.0`**, which this sprint cuts. You add the last UI (AB12: provenance and judge-checked % on Week/Mistakes/Progress, and the touch dots that have been a placeholder since v1), prove the **M3 exit** in compose (cohort provenance, kill switch with nothing re-graded, denylist), write the outbox-republish runbook, finalize the pack time limits against the real runner, tag, and then **turn judge on for the owner and tester cohort** with the `JUDGE_BASE_URL` infra PR. The owner dogfoods for about an hour afterwards. v2 is owner-only use (D35); there is no alerting (D34): verification is by looking.
+M3 is the judge milestone. `v1.13.0` (m3-07) put judge on production **dark**; everything for **M3-2** (practice's judge consumer m3-08, the BFF m3-09, review/assessment on judge signals m3-10, the Workspace m3-11, the dock/Problems/Arena/badges m3-12) is merged and rides **`v1.14.0`**, which this sprint cuts. You add the last UI (AB12: provenance and judge-checked % on Week/Mistakes/Progress, and the touch dots that have been a placeholder since v1), prove the **M3 exit** in compose (cohort provenance, kill switch with nothing re-graded, denylist), write the outbox-republish runbook, finalize the pack time limits against the real runner, tag, and then **turn judge on for the owner and tester cohort** with the `JUDGE_BASE_URL` infra PR, and verify it live. The owner dogfoods for about an hour afterwards, as a post-ship owner event (`ev-m3-dogfood`) the session doesn't wait for. v2 is owner-only use (D35); there is no alerting (D34): verification is by looking.
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
@@ -34,7 +40,7 @@ M3 is the judge milestone. `v1.13.0` (m3-07) put judge on production **dark**; e
 - [ ] AB07–AB12 frozen
 - [ ] The last Hostinger weekly image is ≤ 7 days old
 
-(Rollout ids ≠ sprint ids — see the key in the plan. From `../infra`, run `ssh vps 'bash -s -- --cluster --with-runner --nats-stage=n3' < hack/host-verify.sh` (`--nats-stage=n4` once mi-11 ran); read the status.md MI rows and content-status rows for the rest.)
+(Rollout ids ≠ sprint ids — see the key in the plan. From `../infra`, run `ssh vps 'bash -s -- --cluster --with-runner --nats-stage=n3' < hack/host-verify.sh` (`--nats-stage=n4` once mi-11 ran); read the status.md MI rows and content-status rows for the rest. The weekly-image item is the owner's before-launch attestation: record its date, never wait for it mid-run.)
 
 **Sprint gates:**
 
@@ -54,7 +60,7 @@ M3 is the judge milestone. `v1.13.0` (m3-07) put judge on production **dark**; e
    - **Suggested** (`rule_weak`, a ghost chip; accepting is the existing `PATCH`, which flips it to You);
    - **xLearn AI** (`analyzer`, typed, "from M4").
 
-   Add the precedence tooltip, M3's "Suggested by the judge: … [Use suggestion]", M4's weak-area footnote, and M5 v1 parity. Show ≤ 3 concept chips → `/:course/concept/:slug`, primary first. AB12 M2's `xl-lock` "Concepts hidden while this problem's review is due" renders **only** from an additive server marker `conceptsWithheld: true`, which `internal/gateway/mistakes.go` sets when `withhold()` stripped a concept. The SPA never infers it. Test that sentinel concepts never leak; if the marker is rejected in review, render nothing and flag M2 to the owner. m3-10 already exposes `categorySource`, `categorySuggested`, `concepts` and `conceptsSource`; verify them, and add one only if it's missing.
+   Add the precedence tooltip, M3's "Suggested by the judge: … [Use suggestion]", M4's weak-area footnote, and M5 v1 parity. Show ≤ 3 concept chips → `/:course/concept/:slug`, primary first. AB12 M2's `xl-lock` "Concepts hidden while this problem's review is due" renders **only** from an additive server marker `conceptsWithheld: true`, which `internal/gateway/mistakes.go` sets when `withhold()` stripped a concept. The SPA never infers it. Test that sentinel concepts never leak. The marker lands with the PR (D40: no review stop); if the owner rejects it later, a follow-up PR drops it (render nothing) and flags M2 for a follow-up design PR. m3-10 already exposes `categorySource`, `categorySuggested`, `concepts` and `conceptsSource`; verify them, and add one only if it's missing.
 4. **[X] AB12 — Progress.** Provenance per AB12 P1 (judge · self · honour · AI · override; AI/override typed for M4) on the grade mix and phase completion, from m2-02's **`proj_outcome_mix_v2`** (extend m2-05's provenance chips if present).
    - A **Judge-checked %** tile from m3-10's **`judgeCheckedPct`** with AB12 P1's ⓘ copy; `null` → "—" (P3).
    - A **Judge stats** tile (P2, P8) from m3-10's **`judgeStats`** (counted submits, first-submit acceptance, languages; "Arena submits and Runs aren't counted here."), hidden before any judge-graded result.
@@ -81,9 +87,9 @@ M3 is the judge milestone. `v1.13.0` (m3-07) put judge on production **dark**; e
 9. **[X] Verify + PR** — `gofmt`, `go vet ./...`, `go test -race ./...`, `sqlc diff`, web typecheck/lint/test/build (`git checkout -- web/dist/.gitkeep`), `go test -tags e2e,runner ./internal/e2e/...` on compose with the `runner` profile (or CI's `judge-runner-e2e`). Commit(s) `feat(m3): AB12 deltas, M3 exit suite, judge outbox republish` (+ `fix(curriculum): final DSA time limits` if step 8 raised any) with the attribution lines → CI green (incl. `judge-runner-e2e`) → squash-merge.
 10. **[E] Finalize the pack** — once the xlearn PR has merged: an evalpack PR clears every `provisional` flag in `timing.json`, built `--validated-against` the merged public sha → tag **evalpack `v1.0.x`** → the ImagePolicy picks it up and judge restarts on the image-volume bump → wait for `judge admin status` to show every item evaluable. This must be done before step 13 (the flip).
 11. **[I] Pre-tag infra check** — ACL: the `authorization` block in `infrastructure/messaging/release.yaml` equals the golden rendered from `topology.go` at the tag commit (else merge the missing ACL PR). NetworkPolicy: `ssh vps 'k3s kubectl get networkpolicy -n xlearn -o yaml'` — judge ingress admits gateway and practice; if mi-11's `xlearn` egress is live, it allows gateway → judge :8087 and practice → judge :8087. Any gap = its own infra PR, merged before the tag. No new pod (memory sum unchanged).
-12. **[X] Tag `v1.14.0`** — run every release-checklist line in the plan (parallel-sessions check first; next free minor; major = `.release-line`; **re-check for peer/owner messages right before pushing**). Title `v1.14.0 — v2 build · M3-2 Run/Submit`; notes: dark until the `JUDGE_BASE_URL` PR, cohort-only after, plus the ADR-0029 behaviour-change list. After the tag, verify by looking: healthz version, `k3s kubectl get deploy -n xlearn` images, ImagePolicies' latest, HelmReleases Ready, smoke login/dashboard/coach; judge routes still 404; practice's durable bound on `XLEARN_JUDGE`; no new dead letters in review/assessment.
-13. **[I] `JUDGE_BASE_URL` infra PR** (own PR, after step 12): `apps/xlearn-gateway.yaml` `JUDGE_BASE_URL: http://xlearn-judge.xlearn.svc.cluster.local:8087` (+ `JWT_AUD_JUDGE: judge` if m3-09 reads it from env without a default); `apps/xlearn-practice.yaml` the same `JUDGE_BASE_URL` (confirm readers with `grep -rn JUDGE_BASE_URL internal/ cmd/`). Merge → pods restart → the owner gets `GET /api/judge/status` 200 and Run/Submit on a packed item; a non-cohort account (if any) still gets the self path. Rollback = revert (R-a).
-14. **[O] Owner dogfood** (~1 h): ask the owner to solve 3–5 pilot-pack items (Go, C++, Python; one WA → pass, one give-up, one hinted), one arena pass and one Mark studied, and to check Week/Mistakes/Progress and the badges; issues labelled `m3-dogfood`. A tester repeats one item only if one already exists (MI-5b). Then read `judge admin status` + telemetry (steal, quiet re-runs, queue waits) against TR-STEAL/TR-QUEUE.
+12. **[X] Tag `v1.14.0`** — run every release-checklist line in the plan (parallel-sessions check first; next free minor; major = `.release-line`; **re-check for peer/owner messages right before pushing**). Title `v1.14.0 — v2 build · M3-2 Run/Submit`; notes: dark until the `JUDGE_BASE_URL` PR, cohort-only after, plus the ADR-0029 behaviour-change list. After the tag, verify by looking: healthz version, `k3s kubectl get deploy -n xlearn` images, ImagePolicies' latest, HelmReleases Ready, smoke login/dashboard/coach (through an already-signed-in browser session if the session has one: never enter credentials; else the credential-free checks and an "owner login smoke pending" pending-smoke note in status.md); judge routes still 404; practice's durable bound on `XLEARN_JUDGE`; no new dead letters in review/assessment.
+13. **[I] `JUDGE_BASE_URL` infra PR** (own PR, after step 12): `apps/xlearn-gateway.yaml` `JUDGE_BASE_URL: http://xlearn-judge.xlearn.svc.cluster.local:8087` (+ `JWT_AUD_JUDGE: judge` if m3-09 reads it from env without a default); `apps/xlearn-practice.yaml` the same `JUDGE_BASE_URL` (confirm readers with `grep -rn JUDGE_BASE_URL internal/ cmd/`). Merge → pods restart → live verify: both Deployments carry the env and have rolled out (read-only `ssh vps`); for the owner, `GET /api/judge/status` 200 and Run/Submit on a packed item, checked through an already-signed-in browser session if the session has one (never enter credentials), else an "owner login smoke pending" pending-smoke note in status.md; a non-cohort account (if any) still gets the self path. Rollback = revert (R-a).
+14. **[X] Telemetry baseline + dogfood hand-off** — right after step 13's verify, read `judge admin status` + telemetry (steal, quiet re-runs, queue waits) against TR-STEAL/TR-QUEUE and record them. The owner dogfood (~1 h: 3–5 pilot-pack items in Go, C++ and Python — one WA → pass, one give-up, one hinted — plus one arena pass, one Mark studied, and a look at Week/Mistakes/Progress and the badges; issues labelled `m3-dogfood`; a tester repeats one item only if one already exists, MI-5b) is a **post-ship owner event** (`ev-m3-dogfood`, added to status.md in Update status): don't ask for it or wait for it (D40). Anything the owner finds becomes a follow-up PR (a blocker: a `v1.14.x` patch).
 
 ## Constraints
 
@@ -105,12 +111,12 @@ M3 is the judge milestone. `v1.13.0` (m3-07) put judge on production **dark**; e
 - `internal/e2e/m3_exit_test.go` (`-tags e2e,runner`, in CI's `judge-runner-e2e`: cohort, kill switch incl. the capped `self_grade_pending`, denylist + sentinel sweep); sentinels reused from the fixture (or planted in `packsrc` with `pack/` regenerated).
 - `judge admin outbox republish` (+ tests) and `docs/runbooks/judge-outbox-republish.md`.
 - TL re-gate: any raised `limits.time_ms` in public `item.json` files (in this PR → `v1.14.0`); the evalpack PR clearing the provisional flags → evalpack `v1.0.x`, before the flip.
-- Pre-tag infra PR(s) only if a gap was found; tag `v1.14.0`, verified; the `JUDGE_BASE_URL` infra PR; the dogfood record.
+- Pre-tag infra PR(s) only if a gap was found; tag `v1.14.0`, verified; the `JUDGE_BASE_URL` infra PR and its live verify; the telemetry baseline; `ev-m3-dogfood` in status.md.
 
 ## Update status
 
 - [`../sprints/sprint-m3-13.md`](../sprints/sprint-m3-13.md): each task 🔄 → ✅; _Overall_ ✅; record the exit-suite run (date, commit).
-- [`../status.md`](../status.md): Sprint board row (m3-13 ✅); **Milestones: M3 → ✅** with the exit evidence; **milestone → tag → floor → snapshot**: `M3-2 → v1.14.0 → 1.13.0 → n/a`; **flag inventory**: `JUDGE_BASE_URL` set on gateway + practice (permanent kill switch, PR #), the grading override (permanent kill switch, unset), the judge T-3 cohort gate (non-kill, owner M3, removal GA/ga-01); **content status**: TL final (runner-v1.0.0 × prod), any TLs raised in `v1.14.0`, evalpack version + digest; artboard row AB12 → implemented; the dogfood record and the TR-STEAL/TR-QUEUE reading; the runbook in the runbook list.
+- [`../status.md`](../status.md): Sprint board row (m3-13 ✅); **Milestones: M3 → ✅** with the exit evidence; **milestone → tag → floor → snapshot**: `M3-2 → v1.14.0 → 1.13.0 → n/a`; **flag inventory**: `JUDGE_BASE_URL` set on gateway + practice (permanent kill switch, PR #), the grading override (permanent kill switch, unset), the judge T-3 cohort gate (non-kill, owner M3, removal GA/ga-01); **content status**: TL final (runner-v1.0.0 × prod), any TLs raised in `v1.14.0`, evalpack version + digest; artboard row AB12 → implemented; the M3 checklist's weekly-image date (from the owner's before-launch attestation); the TR-STEAL/TR-QUEUE baseline (step 14); **owner events**: add `ev-m3-dogfood` (after the flip; post-ship, non-blocking; prepared by m3-13); any "owner login smoke pending" pending-smoke note; the runbook in the runbook list.
 - Decisions log: the ladder read endpoint, the additive `userState` keys, the `conceptsWithheld` marker, the republish verb (beyond the register's runbook-only scope; dry run by default), every raised TL (item, old → new), and any m3-08 L15 gap reported. No ADR expected (if one becomes necessary, check peers' ADR numbers first).
 
 ## Done when (acceptance)
@@ -120,6 +126,20 @@ M3 is the judge milestone. `v1.13.0` (m3-07) put judge on production **dark**; e
 - [ ] Every stamped item's TL re-gated before the xlearn PR; raised `limits.time_ms` shipped in `v1.14.0`; no provisional flag left (evalpack `v1.0.x`, validated against the merged public sha) before the flip.
 - [ ] Republish runbook merged; verb exercised in compose.
 - [ ] `v1.14.0` live and verified; `JUDGE_BASE_URL` PR merged after it; judge on for the cohort only.
-- [ ] Owner dogfood done, issues filed, telemetry recorded; M3 ✅ in status.md.
+- [ ] The live verify after the flip is recorded (the owner checks through a signed-in browser session, or "owner login smoke pending" in status.md); the telemetry baseline is recorded; `ev-m3-dogfood` is added as a post-ship owner event; M3 ✅ in status.md (on the exit suite and the live verify).
 
-Ship per AGENT.md land-and-sync with **this sprint's release action: tag `v1.14.0`**, then the **`JUDGE_BASE_URL` infra PR** (plus the evalpack `v1.0.x` from step 10, and any pre-tag infra PR only if needed) — then `git checkout main && git pull` in both repos.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: step 9's xlearn PR on `feat/m3-exit`; step 10's `xlearn-evalpack` PR; a pre-tag infra PR only for a gap step 11 finds; the `JUDGE_BASE_URL` infra PR after the tag (step 13). infra has no CI: paste the local checks into each infra PR body and merge on them.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — tag `v1.14.0`, then the `JUDGE_BASE_URL` infra PR:** in this order, each PR its own merge:
+   1. step 9's xlearn PR merged (any raised `limits.time_ms` rides it);
+   2. step 10: the evalpack PR, then tag **evalpack `v1.0.x`**; judge restarts on the image-volume bump; wait for every stamped item evaluable;
+   3. step 11: any pre-tag ACL / NetworkPolicy gap PR merged;
+   4. walk the release checklist (ADR-0034 §6; the plan's Release checklist and its "For this tag" notes; re-check for peer and owner messages right before pushing — a hold overrides), push the tag `v1.14.0` (the next free minor), let Flux deploy, then verify live by looking (step 12). Not a contract, erase or GA tag, so no snapshot;
+   5. step 13: the `JUDGE_BASE_URL` infra PR, merged once practice's durable is bound, then its live verify; step 14's telemetry baseline;
+   6. record `M3-2 → v1.14.0 → 1.13.0 → n/a` and the flag changes in status.md.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way (the tag, the flip and the live verify come after step 9's merge, so they land in a follow-up docs PR).
+5. Run `git checkout main && git pull` in every repo touched (xlearn, `../infra`, `../xlearn-evalpack`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

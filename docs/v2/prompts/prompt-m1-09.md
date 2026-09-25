@@ -51,7 +51,7 @@ items and one account.
 2. **[X] Snapshot (commit 1)** — add the `-update` helper test that seeds a fresh PG 18 schema with today's loader and
    writes `internal/curriculum/testdata/v1-seed-snapshot.json` (all seeded rows, uuids stripped, natural-key order). Commit it alone.
    The PR is squash-merged, so the commit order (snapshot → converter → Example-1s) is evidence **on the PR branch only**:
-   keep them as separate commits, never squash locally, and let the reviewer check them before the merge.
+   keep them as separate commits, never squash locally, and check them on the PR yourself before the merge (they stay visible on the PR afterwards).
 3. **[X] Migrations** — `internal/curriculum/store/migrations/00002_v2_expand.sql` (the plan's column table with backfills
    and the `DROP NOT NULL`s) and `00003_v2_expand_indexes.sql` (`-- +goose NO TRANSACTION`; three
    `CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS`). Keep every old column and the old uniques on `concept.slug` and
@@ -85,8 +85,9 @@ items and one account.
    snapshot fixture in the same commit. **Shape rule:** inputs differ in length, shape and value range from any well-known
    example — ≥ 6 elements; Two Sum with negative numbers and a negative or zero target; 3Sum with duplicates and more than
    one resulting triplet; never a short run of small positive integers. Leave both items' `review.statement` **unset**.
-   **[O]** In the PR body add "Owner review requested (`ev-m1-statements`) — unverified against source" quoting old → new,
-   and note that m1-02 must not tag `v1.6.0` until the owner confirms.
+   In the PR body add an "Example-1 rewrites — unverified against source" block quoting old → new, for the owner's later
+   look. The drafts land as written (D40; `ev-m1-statements` is automatic): neither this merge nor m1-02's `v1.6.0` tag
+   waits on a review, and any owner edit is a later content PR.
 9. **[X] Verify** — the plan's task 6: snapshot equal (two bodies aside), new-column table, re-seed cases (idempotent,
    one-item change, retire on removal incl. `ListWeeksWithCounts`, abort on re-parent and bad slug, **a 1.5.2-style
    writer (v1's `UpsertProblem`/`UpsertSection` SQL with v1's bodies) then the new seed → snapshot, new Example-1s
@@ -97,7 +98,7 @@ items and one account.
    responses (`/paths`, `/paths/dsa`, `/paths/dsa/problems`, `/paths/dsa/weeks/{n}`, `/problems/16`, `/concepts/hashing`,
    the bulk read — identical apart from the two example bodies).
 10. **[X] Update status** (below), then conventional commit(s) (e.g. `feat(curriculum): per-course layout, glob loader +
-    guards, v2 expand migration, content CI`) with the attribution lines; push; open the PR.
+    guards, v2 expand migration, content CI`) with the attribution lines; push; open the PR, and ship it (see Ship).
 
 ## Constraints
 
@@ -109,7 +110,8 @@ items and one account.
   advisory lock; commit sqlc output (`sqlc diff` in CI).
 - **One hash definition:** `content_hash` comes from `internal/course/canon`; never a second implementation.
 - **Rights (R-CT1):** original examples from the brief only, following the shape rule; LeetCode stays an outbound link;
-  never fetch it. The drafts stay "unverified against source" (`review.statement` unset) until the owner confirms.
+  never fetch it. The drafts land as written, marked "unverified against source" (`review.statement` unset) until any
+  later owner review sets the stamp (D40).
 - **Answer secrecy:** the filename denylist and allowlist exist so nothing private is ever embedded; never copy content
   from `../xlearn-evalpack` into this repo.
 - **Dependencies:** goldmark (and any JSON Schema validator) only in `cmd/contentlint` and tests.
@@ -130,11 +132,10 @@ items and one account.
 
 ## Update status
 
-- [`../sprints/sprint-m1-09.md`](../sprints/sprint-m1-09.md): each task 🔄 → ✅; _Overall_ ✅ once all are (task 5's
-  owner half may stay 🔄 until the owner confirms — note it).
+- [`../sprints/sprint-m1-09.md`](../sprints/sprint-m1-09.md): each task 🔄 → ✅; _Overall_ ✅ once all are.
 - [`../status.md`](../status.md): Sprint board row; **M1** milestone row; **content status** ("DSA converted to
-  `curriculum/courses/dsa/`; `ids.lock.json`: 14 items"); **owner events** `ev-m1-statements` (⬜ pending owner review, or ✅
-  once confirmed — it gates m1-02's `v1.6.0` tag); **Decisions log**: curriculum `00002` + `00003` taken (m3-01 takes the
+  `curriculum/courses/dsa/`; `ids.lock.json`: 14 items"; "Example-1 statements rewritten 2/2, landed as drafted"); **owner
+  events** `ev-m1-statements` ✅ automatic at the merge (D40; it gates nothing); **Decisions log**: curriculum `00002` + `00003` taken (m3-01 takes the
   next), the old `problem_section` unique **confirmed on [m1-08](../sprints/sprint-m1-08.md)'s M1c drop list** (or flagged
   there if missing), sections rewritten on every seed (no `content_hash` skip while `1.5.2` is an R-b target), fragments as
   `*.go.snip`, the converter's commit SHA, the open item "block new counted attempts on a retired item — no owner yet",
@@ -150,10 +151,15 @@ items and one account.
 - [ ] Re-parenting aborts the seed; retire/withdrawn and delete-missing behave as specified; re-seed is idempotent.
 - [ ] `sqlc diff` clean; the `1.5.2` curriculum image runs against the expanded schema, and rolling forward restores the
       snapshot (new Example-1s back).
-- [ ] Items `3` and `16` carry original Example-1s that follow the shape rule; `review.statement` unset; owner review
-      requested (`ev-m1-statements`, which gates the `v1.6.0` tag).
+- [ ] Items `3` and `16` carry original Example-1s that follow the shape rule; `review.statement` unset; the drafts land as
+      written (`ev-m1-statements` automatic, D40).
 
-Shipping: per AGENT.md land-and-sync with this sprint's release action — **merge only** (it ships in `v1.6.0`, which
-[m1-02](../sprints/sprint-m1-02.md) tags): branch → PR → CI green (fix-then-merge) → squash-merge → `git checkout main && git pull`.
-**Do not tag.** No infra PR. The owner's statement review does not block the merge, but it does block m1-02's `v1.6.0`
-tag; owner edits follow as a content PR before that tag.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/m1-curriculum-loader`, then the ordered conventional commits (snapshot → converter → Example-1s, then the rest) with the attribution lines, then push, then the PR. This repo only: no `../infra` PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. The Example-1 drafts merge as written; nothing waits on an owner review.
+3. **Release action — merge only:** nothing deploys (`main` is build-only). It ships in **`v1.6.0`**, which [m1-02](../sprints/sprint-m1-02.md) tags; that tag doesn't wait on a statement review. No tag here.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way (record the converter commit's SHA).
+5. Run `git checkout main && git pull`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

@@ -3,6 +3,13 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-mi-11.md`](../sprints/sprint-mi-11.md)   ·   **Milestone:** MI (rollout step MI-15, second half)   ·   **Prereqs:** [m3-07](../sprints/sprint-m3-07.md), [l-01](../sprints/sprint-l-01.md) (also [mi-03](../sprints/sprint-mi-03.md), [mi-06](../sprints/sprint-mi-06.md))
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] Install the Mend Renovate GitHub App on `sujaykumarsuman/xlearn` and `sujaykumarsuman/infra` only (selected repositories; ~5 min; plan task 6).
+- [ ] Read the date of the last Hostinger weekly image in hPanel: it is ≤ 7 days old (N4 may fall back to a NATS restart).
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md): repo conventions and the land-and-sync rule.
@@ -26,7 +33,7 @@
   - [mi-06](../sprints/sprint-mi-06.md), the N1–N3 config;
   - [mi-01](../sprints/sprint-mi-01.md), `networkPolicy.egress` semantics;
   - [mi-02](../sprints/sprint-mi-02.md), the `--nats-stage` flag and `expected-netpol.tsv` (plus its embedded copy in `host-verify.sh`);
-  - [mi-09](../sprints/sprint-mi-09.md), `--with-sandbox`/`--expect-sandbox` and the `pg_dumpall` question;
+  - [mi-09](../sprints/sprint-mi-09.md), `--with-sandbox`/`--expect-sandbox` and the `pg_dumpall` conflict it flags;
   - [mi-12](../sprints/sprint-mi-12.md), judge's 443 except-list (task 4); don't touch judge;
   - [mi-13](../sprints/sprint-mi-13.md), coach WSS;
   - [m3-08](../sprints/sprint-m3-08.md), [m3-09](../sprints/sprint-m3-09.md), [m3-13](../sprints/sprint-m3-13.md): the future judge callers;
@@ -61,7 +68,9 @@
     `cnpg.io/cluster: projects-pgstore`;
   - the pod CIDR is under `10.42.0.0/16` and the service CIDR is `10.43.0.0/16`;
   - xlearn login roles have `connectionLimit: -1`.
-- Owner time: ~5 min for the Renovate app (step 8) and ~10 min for the erase smoke (steps 2–3). Book it first.
+- Owner time: before launch only (the Renovate app, the weekly image date; see above). You run the erase smoke
+  yourself (steps 1–3): the `identity admin` CLI through `ssh vps 'k3s kubectl exec …'` is pre-approved by
+  launching this prompt (D40).
 - Each step below is tagged with the plan task it ticks in the plan's Status table.
 
 ## Entry gates — verify first (stop and report if any is unmet)
@@ -69,8 +78,7 @@
 - [ ] status.md records l-01's N3 ≥ 24 h re-check (no `legacy` connection).
 - [ ] `host-verify --cluster --nats-stage=n3`: `/connz?auth=true` shows every client on its own nkey, judge and coach included, and zero on `legacy`.
 - [ ] MI-5a ingress is live on every `xlearn-*` release, and chart 0.3.0's `networkPolicy.egress` is available.
-- [ ] The last Hostinger weekly image is ≤ 7 days old.
-- [ ] The owner is booked for the erase smoke and the Renovate app install.
+- [ ] The last Hostinger weekly image is ≤ 7 days old (the before-launch item; the owner reads hPanel).
 - [ ] Parallel sessions: no open peer PR touches `apps/xlearn-*.yaml`, `cluster.yaml` or `messaging/release.yaml` (`gh pr list -R sujaykumarsuman/infra`, `git worktree list`, ListAgents). mi-12 may be editing `apps/xlearn-judge.yaml`; you don't touch that file.
 
 ## Do this (in order)
@@ -90,8 +98,9 @@
    `0.0.0.0/0` except `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `100.64.0.0/10`, `169.254.0.0/16`
    and the node `/32`: the same except-list as mi-12's judge rule (its task 4).
 
-   **Erase smoke prep [O]:** before PR a merges, the owner mints two throwaway testers with the CLI
-   (`identity admin account create --role tester --email …`, as in ev-first-tester).
+   **Erase smoke prep:** before PR a merges, mint two throwaway testers with the CLI
+   (`identity admin account create --role tester --email …` through `kubectl exec`, as in ev-first-tester;
+   pre-approved, D40).
 
 2. **[I] Egress PR a** (plan task 2): curriculum, assessment, review, practice. Set `networkPolicy.egress` for DNS UDP+TCP
    53, PG 5432 and NATS 4222 where used, and the in-namespace targets from the matrix. In the same PR, bump a
@@ -103,8 +112,9 @@
      - review re-fetches JWKS, and an authed call through it works (the mistakes page);
      - **a touch start** (practice → review 8084): start a due touch if the owner has one; otherwise
        `POST …/touches/<random UUID>/start` must answer 404, never 503 `touches_unavailable`;
-     - **erase round trip #1 [O]**: the owner erases one throwaway tester with
-       `identity admin account erase <email> --confirm <email>`. Within a few minutes, a read-only
+     - **erase round trip #1**: erase one throwaway tester with
+       `identity admin account erase <email> --confirm <email>` (through `kubectl exec`; pre-approved, D40).
+       Within a few minutes, a read-only
        `identity admin erasures --since <today>` must show the request **closed with every expected ack**
        (5: practice, review, assessment, coach, judge), with no new `event_dead_letter` rows. A request still
        open means a consumer can't reach identity 8081.
@@ -119,7 +129,7 @@
      - a coach chat that streams;
      - identity's outbox drains to `XLEARN_IDENTITY`;
      - coach is on `/connz` with its nkey;
-     - **erase round trip #2 [O]** with the second throwaway tester, with the same pass rule as #1.
+     - **erase round trip #2** with the second throwaway tester, with the same pass rule as #1.
    - Log the `kubectl exec` uses and both erases in status.md.
    - Run `host-verify --cluster`.
 
@@ -158,10 +168,12 @@
 
    The validator must pass. Merge it.
 
-8. **[O] Owner installs the Renovate app** (plan task 6) on `xlearn` and `infra` only (~5 min). Wait for
+8. **[O, before launch] Renovate app** (plan task 6). Verify the before-launch item: the app is installed on
+   `xlearn` and `infra` only (if missing: the configs stay dormant; ⛔ in status.md, land the rest). Wait for
    Renovate to read the configs and open at least one PR. Confirm none merges, and that the infra run lists
-   the four charts (Longhorn, cert-manager, the CNPG operator, NATS). If the owner declines, record that and
-   leave the configs dormant.
+   the four charts (Longhorn, cert-manager, the CNPG operator, NATS). If Renovate opened its onboarding PR
+   before a repo's `renovate.json` landed, close it unmerged once the config is on `main`, unless Renovate
+   already has.
 
 9. **[I] N4** (plan task 7).
    - **Local rehearsal.** In a `nats:<version from /varz>` container, run with the live N3 config, connect a
@@ -179,7 +191,7 @@
     the plan's task 8:
     - the pre-checks: the weekly image; **a manual snapshot before every monthly reboot**, and the VNC
       console open (the infra README kernel runbook's step 1, kept); no off-node dump (the only part of that
-      step 1 skipped, pending the owner's answer);
+      step 1 skipped, per ADR-0034 §4.3);
     - the kernel steps (`host-bootstrap.sh --with-sandbox`), linking the infra README kernel runbook steps 3–5;
     - `host-verify --cluster --expect-sandbox --nats-stage=<live>`;
     - the monthly k3s patch via Renovate's pin PR and `--with-sandbox --with-k3s --replace-k3s`;
@@ -188,8 +200,9 @@
     - the on-demand reads (PAT expiry, TR-* lines, Renovate PRs);
     - a log line.
 
-    Record the owner's answer to mi-09's `pg_dumpall` question. If the owner confirms, drop the dump from the
-    infra README step 1 in a small infra PR, keeping the snapshot and VNC parts.
+    Resolve mi-09's `pg_dumpall` flag per ADR-0034 §4.3: drop the off-node dump from the infra README step 1
+    in a small infra PR, keeping the snapshot and VNC parts (pre-approved by launching this prompt, D40), and
+    record the decision in the Decisions log.
 
 11. **[H] Verify** (plan task 9). `host-verify --cluster --nats-stage=n4` (or `n3` if N4 was deferred) is
     green with the expected-policy list (`.tsv` and its embedded copy in sync, `host-lint.sh` green). The memory
@@ -215,8 +228,8 @@
 - **D34, no alerting:** no Flux Alert, CronJob, timer, push channel, healthchecks.io, or Renovate
   vulnerability alerting (`vulnerabilityAlerts.enabled: false` in both configs, OSV alerts off). `host-verify`
   stays on demand.
-- **Erases are final** (D12, no backups): the erase smoke uses only the two throwaway testers the owner
-  minted for it. Never erase the owner or any real account, and never send `DELETE /api/me` from the owner's
+- **Erases are final** (D12, no backups): the erase smoke uses only the two throwaway testers minted for it
+  in step 1. Never erase the owner or any real account, and never send `DELETE /api/me` from the owner's
   session.
 - **The memory-sum rule:** no new pod here. If anything adds one, check it against
   [ADR-0035 §5](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#5-capacity-the-memory-sum-rule-triggers-and-ordered-responses).
@@ -232,8 +245,8 @@
 
 ## Deliverables
 
-- infra PRs (merged in order): egress a, b and c; PG role limits; `renovate.json`; N4 (or N4 reverted, with
-  the monthly-window PR prepared); the README alignment if the owner confirmed it.
+- infra PRs (merged in order): egress a, b and c; PG role limits; `renovate.json`; the README alignment (the
+  off-node dump dropped per ADR-0034 §4.3); N4 (or N4 reverted, with the monthly-window PR prepared).
 - xlearn PR (merged, no tag): `renovate.json`, `docs/v2/runbooks/monthly-window.md`, the status rows and this
   sprint's Status table.
 - Evidence in the PR bodies: the caller matrix and its sources, the smoke results per batch (including both
@@ -253,7 +266,7 @@
   - `connectionLimit` 20 including the owner role;
   - Renovate's scope and `ignorePaths`;
   - the N4 reload outcome on 2.14.6;
-  - the owner's `pg_dumpall` answer.
+  - the off-node `pg_dumpall` dropped from the infra README per ADR-0034 §4.3 (mi-09's flag).
 - Add the erase log lines (the two throwaway-tester erases: request id, date, via `cli`, acks) and the `kubectl exec` uses.
 
 ## Done when (acceptance)
@@ -265,8 +278,13 @@
 - [ ] Every xlearn login role is at `connectionLimit: 20`, with no PG restart
 - [ ] `docs/v2/runbooks/monthly-window.md` merged
 - [ ] `host-verify --cluster` green with the updated expected-policy list
-- Ship at session end per AGENT.md land-and-sync, with this sprint's release action: **infra PR(s) only**.
-  - Merge the infra PRs in order (egress a → b → c, PG limits, Renovate, N4 last), putting the smoke and check output in each PR body (infra has no CI).
-  - Merge the xlearn PR (`renovate.json` + runbook + status); no tag.
-  - If N4 was reverted, push its restart change as a branch (e.g. `feat/nats-n4-restart`) with **no PR**, and record the branch name in status.md. The monthly window opens and merges it, so no PR is left hanging.
-  - Sync local `main` in both repos.
+
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: the `../infra` PRs first (steps 2–5, 7, 9 and step 10's README PR), then the xlearn PR (`renovate.json`, the runbook, status).
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. `../infra` has no CI: put the smoke and check output in each infra PR body and merge on it.
+3. **Release action — infra PR(s) only (+ the xlearn PR, merge only):** merge the infra PRs in the plan's order, each its own PR and never folded into a tag: egress a → b → c (smoke and `host-verify --cluster` between), the PG role limits, Renovate (infra), the README alignment, N4 last. Then merge the xlearn PR; `main` is build-only, so nothing ships. No tag. If N4's reload was refused and reverted, push the N4 + annotation-bump change as a branch with **no PR** (e.g. `feat/nats-n4-restart`) and record the branch name in status.md: the monthly window opens and merges it, so no PR is left hanging.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn and `../infra`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

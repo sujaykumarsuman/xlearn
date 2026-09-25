@@ -4,7 +4,7 @@
 > **Prereqs:** [m6a-02](sprint-m6a-02.md) (the brain, classifier, probe and `store:false` registry this review call reuses) · [m6a-01](sprint-m6a-01.md) (FSM `finished → proposed → scored`, retention)
 > **Unblocks:** [m6a-05](sprint-m6a-05.md) (the UI needs a scoreable interview and the Mock-v2 data) · [m6a-06](sprint-m6a-06.md) (AB27 debrief/proposal; its tag requires this sprint's twin gate to be green)
 > **Release action:** **merge only (ships dark in the next v2.0.x patch)** — normally [m6a-06](sprint-m6a-06.md)'s M6a patch. Expand-only migrations (assessment + coach); no contract, no infra change.
-> **Calendar:** Q1 2027. One **owner action**: an explicit go-ahead to spend ≤ $20 on the owner's own keys for the live twin-gate run (≈ 180 calls, expected ≈ $11–18; the harness stops at the approved amount), or the owner runs the one command.
+> **Calendar:** Q1 2027. One **owner action, before launch**: the owner's own provider keys for the catalog `interview_brain` models, set as env vars where the session runs, with at least $20 of spend headroom (task 3b). Launching the prompt approves the live twin-gate run on them (D40): ≤ $20, ≈ 180 calls, expected ≈ $11–18; the harness stops at `-budget-usd=20`.
 > **Execute with:** [`../prompts/prompt-m6a-03.md`](../prompts/prompt-m6a-03.md) — one prompt, one session.
 
 ## Status
@@ -16,7 +16,7 @@ _Overall:_ ⬜ Not started
 | 1 | assessment deltas (`status`, `format`, `time_multiplier`, `caveats`; snapshot rubric; aggregates `scored` only) + start orchestration + terminal mirror | X | ⬜ |
 | 2 | Proposal flow: review call → validated `mock_review@1` → explicit accept / edit / re-propose once / self → `ScoreMock` once | X | ⬜ |
 | 3a | Twin fairness gate: harness, synthetic twins, comparator, catalog gate rule, CI replay | X | ⬜ |
-| 3b | Twin gate live run per catalog `interview_brain` model (≤ $20, owner's keys, explicit go-ahead) | O | ⬜ |
+| 3b | Twin gate live run per catalog `interview_brain` model (≤ $20 on the owner's keys, provisioned before launch; pre-approved by launching the prompt, D40) | X | ⬜ |
 | 4 | Public route unchanged (D31 count only; `scored` only) + allowlist test extended | X | ⬜ |
 | 5 | Docs: data-model, api/openapi, ADR-0032 dated update (twin tolerance, `ai-byo` as built), ADR-0017 update line | X | ⬜ |
 
@@ -233,23 +233,25 @@ Sources: [t6 §6 Fairness gates](../research/t6-realtime-interviewer.md#6-assess
   "the gate hasn't run live, or the harness/CI replay is failing", per [t6 §6](../research/t6-realtime-interviewer.md#6-assessment)
   "Fairness gates" ("A model that fails gets `ai: self_only`"): a model that runs and fails is **demoted** (quotes only, never
   `ai-byo`), not a ship blocker. [m6a-06](sprint-m6a-06.md)'s entry gate reads the same way.
-- **Tolerance** (±1 band, median of 3, over 3 items × 4 transcripts per model — or 1 item if the live run was cut to fit a smaller
-  go-ahead) is recorded in the ADR-0032 dated update (the register's open risk).
+- **Tolerance** (±1 band, median of 3, over 3 items × 4 transcripts per model — or 1 item if the live run was cut to a smaller
+  budget) is recorded in the ADR-0032 dated update (the register's open risk).
 
-### 3b · Twin gate live run [O]
+### 3b · Twin gate live run [X]
 
-- **Needs the owner's explicit go-ahead** to spend ≤ **$20** on the owner's own keys. The count is models × (items × 4 transcripts) ×
-  3 samples = ≈ 5 catalog `interview_brain` models × (3 × 4 = 12 transcripts) × 3 = **≈ 180 calls**, at ≈ $0.06–0.10 each ≈
-  **$11–18**. No agent uses a key without it. Keys come from env vars on the owner's machine
-  (`go test -tags twinlive ./internal/coach/interview/review/twingate -run TestTwinGateLive -models=… -budget-usd=<approved>`), never
-  from coach's store.
-- **Budget stop:** the harness first prints a dry-run estimate (calls × catalog price × the fixtures' measured tokens) and asks for no
-  more than the approved amount; it runs model by model, prices each call with `llm.Cost`, and stops **before** a call that would cross
-  `-budget-usd`. A model it didn't finish stays un-gated (quotes only) and is listed as pending — the remainder runs later on a new
-  go-ahead. (If the owner would rather approve ≤ $6: `-items=1` runs 1 item × 4 transcripts × 3 samples × 5 models = 60 calls, and the
-  ADR-0032 tolerance note must say the live gate used one item.)
-- Commit the results under `twingate/testdata/results/` and set each model's `mock_review_gate`. If the go-ahead doesn't come in-session,
-  mark 3b ⛔ and carry "**twin gate run live, results committed**" as an entry gate of [m6a-06](sprint-m6a-06.md)'s tag.
+- **Pre-approved by launching the prompt (D40):** the session runs it itself, spending ≤ **$20** on the owner's own keys. The count is
+  models × (items × 4 transcripts) × 3 samples = ≈ 5 catalog `interview_brain` models × (3 × 4 = 12 transcripts) × 3 = **≈ 180
+  calls**, at ≈ $0.06–0.10 each ≈ **$11–18**. No agent uses a key outside this bounded run. **Before launch (owner):** the keys are set
+  as env vars where the session runs; the harness reads them from there
+  (`go test -tags twinlive ./internal/coach/interview/review/twingate -run TestTwinGateLive -models=… -budget-usd=20`), never from
+  coach's store.
+- **Budget stop:** the harness first prints a dry-run estimate (calls × catalog price × the fixtures' measured tokens), which must fit
+  the $20 bound; it runs model by model, prices each call with `llm.Cost`, and stops **before** a call that would cross
+  `-budget-usd`. A model it didn't finish stays un-gated (quotes only) and is listed as pending — the remainder runs later, in a session
+  whose prompt specifies it. (If the owner asks in-session for a smaller budget, ≤ $6: `-items=1` runs 1 item × 4 transcripts × 3
+  samples × 5 models = 60 calls, and the ADR-0032 tolerance note must say the live gate used one item.)
+- Commit the results under `twingate/testdata/results/` and set each model's `mock_review_gate`. If the owner's keys turn out to be
+  missing, don't wait: land everything else, mark 3b ⛔ "owner keys missing" in status.md, and carry "**twin gate run live, results
+  committed**" as an entry gate of [m6a-06](sprint-m6a-06.md)'s tag (a re-run of this step, once the keys are in place, picks it up).
 
 ### 4 · Public route [X]
 
@@ -280,7 +282,8 @@ Sources: [t6 §13 D31](../research/t6-realtime-interviewer.md#13-owner-decisions
 - [ ] The automatic review runs exactly once, with evidence, whichever of `finished` and the evidence post comes second (incl. a
       sweeper-driven finish reviewed on the next read).
 - [ ] **Twin gate green**: the harness and comparator pass in CI (the planted failure is caught); the live run is recorded for every
-      catalog `interview_brain` model at `mock-review@1` (or 3b is ⛔ and carried as an m6a-06 gate); failing/un-gated models propose no bands.
+      catalog `interview_brain` model at `mock-review@1` (or 3b is ⛔ because the owner's keys were missing, and carried as an m6a-06
+      gate); failing/un-gated models propose no bands.
 - [ ] `ai-byo` only when every condition holds (table-tested one condition at a time); no auto-accept; re-propose at most once.
 - [ ] Proposals use public descriptors only (pack-canary test); unverified quotes dropped; missing evidence → `null` (no clamp);
       injection and deny-lexicon → `review_flag`.
@@ -302,7 +305,7 @@ reader handles both.
 CI green (`go test -race ./...` incl. real-PG assessment and coach tests, the twin-gate CI replay, the `store:false` test with the new
 kinds, the public allowlist test, `sqlc diff`, the migration lint, the OpenAPI drift and route-enumeration tests) · e2e lane green (a
 cohort interview → finished → proposal → accept → one `ScoreMock`) · merged via PR (squash) · twin-gate live results committed (or 3b ⛔
-and carried to m6a-06) · statuses updated (this file + [`../status.md`](../status.md): Sprint board, M6a row "scoring merged (dark)",
+for missing owner keys and carried to m6a-06) · statuses updated (this file + [`../status.md`](../status.md): Sprint board, M6a row "scoring merged (dark)",
 pending contracts `mock_session.status live→open`, decisions log) · ADR updates written.
 
 ## Risks / watch-outs
@@ -314,8 +317,8 @@ pending contracts `mock_session.status live→open`, decisions log) · ADR updat
 - **Two services, one score** — coach freezes first, assessment scores once, coach marks last; every step idempotent; crash-window test.
 - **Lagging mirror** — harmless for aggregates (`scored` only); the UI must read coach's state for text/voice sessions.
 - **Evidence seam race with m6a-04** — whichever merges second adopts the first's route/storage and deletes stubs.
-- **Spending the owner's keys** — only with an explicit go-ahead, capped by `-budget-usd`; results contain bands and flags only
-  (synthetic transcripts).
+- **Spending the owner's keys** — only in task 3b's bounded run (pre-approved by launching the prompt, D40), capped by
+  `-budget-usd=20`; results contain bands and flags only (synthetic transcripts).
 - **Review before evidence** — never start the review on `finished` alone; the CAS on `review_started_at` plus "second of the two
   events" keeps it once and with evidence.
 - **Custom model ids** — allowed to interview (m6a-02) but never to propose bands (tested).

@@ -4,7 +4,7 @@
 > **Prereqs:** [m1-03](sprint-m1-03.md) · [m1-04](sprint-m1-04.md) · [m1-05](sprint-m1-05.md) · [m1-06](sprint-m1-06.md) · [m1-10](sprint-m1-10.md) · design [ds-m1-01](sprint-ds-m1-01.md) (AB01 frozen) · soft: [mi-04](sprint-mi-04.md) (MI-5b)
 > **Unblocks:** [m1-08](sprint-m1-08.md) (the M1c contract needs `v1.7.0` live, with no reader or writer of a dropped column)
 > **Release action:** **tag `v1.7.0`** (indicative: the next free minor at tag time, [ADR-0034](../../adr/0034-v2-release-labelling-gating-and-rollback.md) §1.6) — rollback floor after: **1.6.0** (v2 envelopes in the log)
-> **Calendar:** week 4 (2026-10-17 → 10-23) — tag before the Sat 2026-10-24 host window, never during it · owner event after the tag: `ev-owner-role` (~2 min)
+> **Calendar:** week 4 (2026-10-17 → 10-23) — tag before the Sat 2026-10-24 host window, never during it · right after the tag the session runs `ev-owner-role` itself (~2 min; D40, no owner time)
 > **Execute with:** [`../prompts/prompt-m1-07.md`](../prompts/prompt-m1-07.md) — one prompt, one session.
 
 ## Status
@@ -19,7 +19,7 @@ _Overall:_ ⬜ Not started
 | 4 | Coach UI states (AB01) + outcome-step cap line | X | ⬜ |
 | 5 | M1b exit + M1c readiness (golden = v1; no reader/writer of a drop-list column) | X | ⬜ |
 | 6 | Tag `v1.7.0` (release checklist) | X | ⬜ |
-| 7 | Owner role set once (`ev-owner-role`) | O | ⬜ |
+| 7 | Owner role set once (`ev-owner-role`), run by the session after the verify (D40) | H | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + M1 milestone + tag → floor row + flag inventory).
@@ -27,7 +27,7 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] **AB01 frozen** — [ds-m1-01](sprint-ds-m1-01.md)'s PR merged by the owner (the board lives at `design-system/screens/v2/AB01-*.html`); the artboard row in [`../status.md`](../status.md) reads "frozen (PR #, date)".
+- [ ] **AB01 frozen** — [ds-m1-01](sprint-ds-m1-01.md) merged (the merge is the freeze, D40; the board lives at `design-system/screens/v2/AB01-*.html`); the artboard row in [`../status.md`](../status.md) reads "frozen (PR #, date)".
 - [ ] **All of M1b merged on `main`:** [m1-03](sprint-m1-03.md) (course resolution, producers emit v2, writers stop writing the drop-list columns), [m1-04](sprint-m1-04.md) (roles, sessions, admin CLI, L7 guard, L3, CSP), [m1-05](sprint-m1-05.md) (limits, public floor), [m1-06](sprint-m1-06.md) (`withhold()`, Markdown renderer, revision v2), [m1-10](sprint-m1-10.md) (keys, catalog, AEAD, keyring, `store:false`, usage; `is_default` no longer written).
 - [ ] **`v1.6.0` live** ([m1-02](sprint-m1-02.md)) — the floor this tag records; every consumer decodes the v2 envelope.
 - [ ] **NATS topology unchanged** since `v1.6.0` (`topology.go` golden / subject-registry test shows no new stream, consumer or subject) — or, if [mi-06](sprint-mi-06.md) N1 is live and something changed, the re-rendered ACL PR is merged in `../infra` first.
@@ -299,12 +299,17 @@ In [`../status.md`](../status.md): milestone M1b → tag `v1.7.0` → floor **1.
 snapshot n/a; **start the flag inventory** with `SIGNUP_MODE` under *operating modes* (permanent, [ADR-0034 §2](../../adr/0034-v2-release-labelling-gating-and-rollback.md#2-feature-gating-three-tiers-no-flag-service));
 record that "the first path-aware release (the consumer floor for non-DSA events) is `v1.7.0`" (ADR-0034 §3).
 
-### 7 · Owner role set once (`ev-owner-role`) [O]
+### 7 · Owner role set once (`ev-owner-role`) [H]
 
-After `v1.7.0` is verified, the owner runs (runbook `docs/runbooks/identity-admin.md` from m1-04):
+After `v1.7.0` is verified, the session runs it itself (D40: launching this prompt approves this production operation;
+runbook `docs/runbooks/identity-admin.md` from m1-04):
 `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account set-role <owner> owner'`.
-The agent then confirms with `… identity admin account list --role owner` (read-only), checks `admin_audit` got the
-row, and logs the CLI use in `docs/v2/status.md` (sanctioned manual path, [rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)).
+`<owner>` is the owner's account: `… identity admin account list` shows it (production has exactly one account, the
+owner's, until the first tester in L-E). If the list shows more than one account and the owner's can't be told apart,
+don't guess: record task 7 ⛔ "owner account ambiguous" in status.md and carry on. Then confirm with
+`… identity admin account list --role owner` (read-only), check `admin_audit` got the row, and log the CLI use in
+`docs/v2/status.md` (sanctioned manual path, [rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)).
+Keep the list's output in the terminal only (it carries the email).
 
 ## Acceptance criteria
 
@@ -377,10 +382,10 @@ free ADR number with peers first).
   A provider error after the record still caps the attempt (t5 §9). A 429 after the record happens only in the
   probe → chat race: this sprint's accepted decision, logged as such (t5 §9 doesn't cover it).
 - **Session size.** This is the largest M1 session: four services (practice, assessment, gateway, coach), three
-  expand migrations, web states, the full M1b verification, a tag and an owner event. If it runs long, stop once
+  expand migrations, web states, the full M1b verification, a tag and the owner-role step. If it runs long, stop once
   the PR is squash-merged (merging ships dark; 1.x deploys only on a tag), and run tasks 5 (the compose walk and the
-  readiness record, re-run on `main`), 6 and 7 in a continuation session from prompt step 9. Never tag at the end of
-  a rushed run.
+  readiness record, re-run on `main`), 6 and 7 in a continuation session from prompt step 9. That's a time stop, not
+  an owner wait. Never tag at the end of a rushed run.
 - **Event compatibility:** `assist` must stay optional and additive; `v1.6.0` (the R-b floor) ignores unknown fields.
   Never rename or repurpose an existing payload field (envelope append-only, ADR-0034 §3).
 - **Hidden M1c trap:** if anything in `v1.7.0` still names a drop-list column or targets a v1 unique (a sqlc

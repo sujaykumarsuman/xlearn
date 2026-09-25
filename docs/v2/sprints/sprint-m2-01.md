@@ -30,13 +30,14 @@ _Overall:_ ⬜ Not started
 
 Rollout §3 M2 entry ("M1 shipped; AB04–AB06 and AB22 frozen"), expanded:
 - [ ] M1 shipped: **v1.8.0 live** (M1c contract done; golden = v1; floor 1.7.0 recorded in `docs/v2/status.md`)
-- [ ] AB04–AB06 and AB22 **frozen** (the [ds-m2-01](sprint-ds-m2-01.md) PR merged by the owner): `design-system/screens/v2/`
+- [ ] AB04–AB06 and AB22 **frozen** ([ds-m2-01](sprint-ds-m2-01.md) merged; the merge is the freeze, D40): `design-system/screens/v2/`
       `AB04-touch.html`, `AB05-catalog-agenda.html`, `AB06-public-profile-v2.html` and `AB22-visibility-toggles.html` on `main`
 - [ ] On `main` from M1: `internal/course` manifest with `revision.bands[*].{parts, criteria, mock_mode}` and the band timers ([m1-01](sprint-m1-01.md)); item schema with `revision.probes[]` + `solution_facts` ([m1-01](sprint-m1-01.md)); the DSA item layout + loader ([m1-09](sprint-m1-09.md)); `topology.go` + subject-registry test ([mi-05](sprint-mi-05.md)); v2 envelope decoders ([m1-02](sprint-m1-02.md)); practice `GET /attempts/open` ([m1-07](sprint-m1-07.md)); the migration lint with its `-- xlearn:relax <reason>` marker ([m1-02](sprint-m1-02.md)); the dead-letter sink `event_dead_letter` in review ([mi-05](sprint-mi-05.md))
 
-_Informational, not a gate:_ the owner's answer to ds-m2-01's **"Decisions to confirm" #1** (honor-key strictness in M2:
-(A) strict until m4-04's claim, or (B) v1-parity until the claim — see Task 3). If the PR review answered it, build that
-option; if not, build (A) and record the item as **open** in `docs/v2/status.md` (Update status below).
+_Informational, not a gate:_ ds-m2-01's **"Decisions to confirm" #1** (honor-key strictness in M2: (A) strict until
+m4-04's claim, or (B) v1-parity until the claim — see Task 3). The ds-m2-01 merge froze (A), its stated default (D40). If
+status.md records that the owner has since picked (B), build that; otherwise build (A) and keep the item **open** in
+`docs/v2/status.md` (Update status below) — nothing waits on it, and a switch later is a one-constant PR.
 
 ## Goal
 
@@ -97,7 +98,7 @@ duplicate). Expand-only per ADR-0034 §3 (nullable or constant-default columns, 
   row is `concluded`.
 - **Unique outcome on live data.** Before merging, confirm no duplicate outcomes exist (read-only
   `SELECT attempt_id, count(*) FROM practice.outcome GROUP BY 1 HAVING count(*) > 1` against prod via `ssh vps`,
-  or ask the owner to run it). The migration must not delete rows; if duplicates exist, stop and report.
+  run by the session). The migration must not delete rows; if duplicates exist, stop and report.
 - **Every v1 attempt query gains `AND purpose = 'course'`** (`GetOpenAttempt`, `GetLatestAttempt`, the state
   composition in `store.go`, `ListStates`), so a live touch can never be mistaken for the course attempt; a test proves
   the course state is unchanged by touches.
@@ -157,9 +158,9 @@ Pure functions, no I/O, keyed by probe type (the closed `key` grader registry of
   `honorProbeMet(keyMatch, withinLimit bool, policy)` decides a `public:*` criterion. **(A) strict** (default, T4 §6.6):
   met iff the key matches (and, for `pattern_named_fast`, within 120 s). **(B) v1-parity until the claim:** met iff
   locked in within its limit — the lock-in is v1's self-affirmation — with `source=attest`, `trust=honor`. Either way
-  `criteria[]` stores `key_match` so misses stay countable for alias growth and m4-04. The policy is a code constant set
-  from the owner's answer (no flag service, ADR-0034 §2) and is part of the stamped `policy_version`; m4-04 switches (B)
-  to strict + the claim.
+  `criteria[]` stores `key_match` so misses stay countable for alias growth and m4-04. The policy is a code constant —
+  (A), the default the ds-m2-01 merge froze, unless status.md records the owner's pick of (B) (no flag service,
+  ADR-0034 §2) — and is part of the stamped `policy_version`; m4-04 switches (B) to strict + the claim.
 - Table tests over every seeded item's pattern and facts, plus the variant corpus — including ids 7, 40 and 104's
   multi-variable / named-variable forms, `O(m*n)` vs `O(n*m)`, and `V+E` orderings.
 
@@ -291,7 +292,7 @@ Record the outcome (no-op or PR #) in the sprint status.
 - [ ] review processes a `touch_concluded` fixture **idempotently** (same `event_id`, and same `attempt_id` under a new `event_id`), advancing on pass and resetting to Day 1 from `anchor_at` on fail; the v1 self endpoint behaves exactly as before.
 - [ ] **No producer emits the new subject yet** (`TestNoTouchProducerYet` green; no BFF route to the touch endpoints).
 - [ ] v1 course flows unchanged (all v1 e2e green); `LogOutcome` double-submit → one outcome, one event.
-- [ ] Subject registry and ACL render green; the practice → review infra PR merged (or queued to merge before v1.9.0).
+- [ ] Subject registry and ACL render green; the practice → review infra PR merged in this session (harmless on v1.8.0).
 
 ## Release
 
@@ -303,9 +304,10 @@ reachable by a learner until [m2-04](sprint-m2-04.md) + [m2-05](sprint-m2-05.md)
 
 CI green (`go build`, `go vet`, `go test -race ./...`, web tests untouched, `sqlc diff`, the migration lint, the content
 job, the subject-registry and ACL golden tests) · e2e green · merged to `main` via PR (squash) · infra PR(s) merged ·
-statuses updated (this file + [`../status.md`](../status.md), including the AB04/AB05/AB06/AB22 rows → "frozen (PR #, date)"
-and ds-m2-01 task 8 ✅; the honor-probe policy as a Decisions-log line, or as an **open owner item** "strict honor keys
-until m4-04 — answer before m2-05 turns the producers on" if the owner hasn't answered) · the ADR written.
+statuses updated (this file + [`../status.md`](../status.md), confirming the AB04/AB05/AB06/AB22 rows read "frozen (PR #, date)"
+and ds-m2-01 reads ✅ — its own merge records them under D40; repair if missing; the honor-probe policy as a Decisions-log
+line, and, if the owner hasn't picked, an **open owner item** "strict honor keys (A) until m4-04; a switch to (B) is a
+one-constant PR" — nothing waits on it) · the ADR written.
 
 ## Risks / watch-outs
 
@@ -316,7 +318,8 @@ until m4-04 — answer before m2-05 turns the producers on" if the owner hasn't 
 - **Alias / big-O misses reset a ladder with no recourse until M4's claim.** T4 §12 rejected "strict key match with no
   claim" as worse than v1's self-affirm; under policy (A) M2 ships strict lock-ins from v1.10.0 while the claim is
   [m4-04](sprint-m4-04.md) (v1.16.0) — roughly six weeks on the owner's live ladder. That is why it is an explicit owner
-  decision (ds-m2-01 "Decisions to confirm" #1), recorded in status.md, and why (B) exists as a one-constant switch.
+  decision (ds-m2-01 "Decisions to confirm" #1; (A) is frozen by default and the owner may switch at any time), recorded
+  in status.md, and why (B) exists as a one-constant switch.
   Under (A), mitigate with generous aliases, the normaliser corpus and the accepted answer after a fail; either way
   `key_match` is stored so claim-worthy misses are countable for m4-04.
 - **Interim evaluator in practice** (vs T4 §12's "one evaluator, in judge") — keep all logic in `internal/course/keys`

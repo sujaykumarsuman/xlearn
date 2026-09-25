@@ -14,7 +14,7 @@
 >
 > An xlearn docs PR carries the architecture note and status. No xlearn tag.
 > **Calendar:** week 2 (Mon 2026-10-05 → Fri 2026-10-09). **MI-5 must merge before mi-06's N3** (week 3).
-> **Owner:** needed for about **2 minutes after each of the MI-5 restart merge and the MI-5a merge**, for the login smoke (an agent never enters credentials), and once before the first restart to read the Hostinger weekly image date. Book the session when the owner is around.
+> **Owner:** before launch only: read the Hostinger weekly image date in hPanel and record it in status.md (entry gate). The login smokes never wait for the owner: they run in an already-signed-in browser session if the session has one, and otherwise become an "owner login smoke pending" note in status.md (D40); an agent never enters credentials.
 > **Execute with:** [`../prompts/prompt-mi-03.md`](../prompts/prompt-mi-03.md). One prompt, one session.
 >
 > Sprint ids `mi-NN` are not rollout step ids `MI-N`. This sprint executes **MI-5** and **MI-5a**. MI-4 is [mi-14](sprint-mi-14.md) and MI-5b is [mi-04](sprint-mi-04.md).
@@ -27,21 +27,21 @@ _Overall:_ ⬜ Not started
 |---|------|------|--------|
 | 1 | Caller matrix from live config and live connections (both PRs) | H | ⬜ |
 | 2 | MI-5 PR: `databases` + `messaging` ingress (callers forward-declared) | I | ⬜ |
-| 3 | MI-5 smoke: selector proof, caller restart PR, CNPG/NATS/outbox checks; owner login smoke (~2 min) | H + I + O | ⬜ |
+| 3 | MI-5 smoke: selector proof, caller restart PR, CNPG/NATS/outbox checks; login smoke (signed-in session, else a pending-smoke note) | H + I | ⬜ |
 | 4 | MI-5a PR: xlearn ingress from the chart 0.3.0 knobs (Traefik + same-namespace JWKS) | I | ⬜ |
-| 5 | MI-5a smoke: JWKS through the fence from a fresh pod, internal calls; owner login smoke (~2 min) | H + O | ⬜ |
+| 5 | MI-5a smoke: JWKS through the fence from a fresh pod, internal calls; login smoke (signed-in session, else a pending-smoke note) | H | ⬜ |
 | 6 | Verify: `host-lint` clean, `host-verify --cluster` green with the 9 new policy names, negative check FAILs | H | ⬜ |
 | 7 | Record: status.md MI rows, architecture note, ADR-0033 row 7 clarification | X | ⬜ |
 
 > **Keep this current.** Set a task to 🔄 when you start it, to ✅ when its acceptance bullet passes, and to ⛔ if it's blocked (say why).
-> Update the _Overall_ line to match, and mirror the sprint's state into [`../status.md`](../status.md): the Sprint board row, the MI table rows **MI-5** and **MI-5a**, and the decisions log. Full rules: [status protocol](README.md#status-protocol-way-of-working).
+> Update the _Overall_ line to match, and mirror the sprint's state into [`../status.md`](../status.md): the Sprint board row, the MI table rows **MI-5** and **MI-5a**, the decisions log, and the pending-smoke notes if a login smoke is pending. Full rules: [status protocol](README.md#status-protocol-way-of-working).
 
 ## Entry gates
 
 - [ ] The MI-8 `host-verify --cluster` extension is merged ([mi-02](sprint-mi-02.md)), with the NetworkPolicy presence check, `hack/expected-netpol.tsv` and `--nats-stage=open`. Both PRs need it.
 - [ ] MI-3 chart 0.3.0 is merged ([mi-01](sprint-mi-01.md)), with multi-source ingress and a same-namespace source. **MI-5a only.** MI-5 is raw manifests and may go first if mi-01 slips, since it's the N3 precondition.
 - [ ] Local `../infra` `main` is synced. Peer check: no open PR touches `apps/xlearn-*.yaml`, `infrastructure/{database/cluster,messaging}/` or `hack/expected-netpol.tsv`. [mi-14](sprint-mi-14.md) also edits the `.tsv`, so rebase whichever lands second.
-- [ ] **[O]** The date of the last Hostinger weekly image is checked and recorded in status.md ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag): check it before any restart-inducing step). The owner reads hPanel. This sprint's two `podAnnotations` bumps each restart one stateless pod.
+- [ ] **[O, before launch]** The date of the last Hostinger weekly image is checked and recorded in status.md ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag): check it before any restart-inducing step). The owner reads hPanel before launch; the session verifies the date is recorded. This sprint's two `podAnnotations` bumps each restart one stateless pod. If the date is missing, don't wait: land MI-5 (task 2 restarts nothing) and the docs PR, and set the restart-inducing work (task 3's restart PR, tasks 4–5) ⛔ in status.md, naming the owner item.
 - [ ] No xlearn release is rolling out: every `xlearn-*` Deployment is available and no tag was pushed in the last 15 min. Otherwise a blocked caller gets confused with a rollout, and a fleet surge stacks on this sprint's restarts. The memory margin is about 0 before MI-11a (ADR-0035 §5).
 
 ## Goal
@@ -166,7 +166,7 @@ spec:
 
 **Merge.** This PR alone is the N3 precondition. Record its merge date: [mi-06](sprint-mi-06.md) gates on it.
 
-### 3 · MI-5 smoke [H + I + O]
+### 3 · MI-5 smoke [H + I]
 
 Existing TCP connections (pgx pools, NATS clients) can survive a new policy through conntrack, so a wrong selector may only show on the next reconnect. Prove it with a fresh pod and with read-only checks:
 
@@ -181,7 +181,7 @@ Existing TCP connections (pgx pools, NATS clients) can survive a new policy thro
    - **CNPG:** `get clusters.postgresql.cnpg.io -n databases` shows "Cluster in healthy state". The operator logs show no connection errors for 2 min.
    - **App:** `curl -sf https://projects.sujaykumar.dev/xlearn/api/healthz`, and `GET /xlearn/api/u/<owner-username>`. The public dashboard runs gateway → identity → PG, and gateway → assessment and curriculum → PG, and needs no credentials.
      - **Find the username once, read-only:** `ssh vps 'sudo k3s kubectl exec -n databases projects-pgstore-1 -c postgres -- psql -d xlearndb -Atc "select username from identity.account where username is not null order by created_at limit 3"'`. Prod had one account on 2026-09-24, the owner's. Once m1-02's `role` column is live, filter on `role = 'owner'` instead (mind the shell quoting). Record the username in status.md so later sessions skip the lookup.
-   - **Owner smoke [O]:** login, dashboard and coach. Login needs credentials, which an agent never enters. Use the owner's already-signed-in browser session if this session has one; otherwise ask the owner for the 2-minute check and wait for the answer.
+   - **Login smoke:** login, dashboard and coach. Login needs credentials, which an agent never enters. Use the owner's already-signed-in browser session if this session has one; otherwise the credential-free checks above stand, record "owner login smoke pending (MI-5)" as a pending-smoke note in status.md, and carry on (D40).
 3. **Revert** is `git revert` of the MI-5 PR, which fails open: Flux prunes the policies within about 1 min. Revert on any caller error.
 
 ### 4 · MI-5a PR: xlearn ingress [I]
@@ -225,7 +225,7 @@ identity :8081, curriculum :8082, practice :8083, review :8084, assessment :8085
 - `--dry-run=server` the rendered policies;
 - run the selector proof: `get pods -n xlearn -l app.kubernetes.io/name=project` lists all 7 xlearn pods.
 
-### 5 · MI-5a smoke: the JWKS path [H + O]
+### 5 · MI-5a smoke: the JWKS path [H]
 
 `JWKSVerifier` (`internal/platform/auth/jwks.go`) caches keys for 1 h and **tolerates a failed refresh while it holds stale keys**. Running pods would therefore look fine for up to an hour, and only a **fresh** pod proves the fence admits JWKS.
 
@@ -233,7 +233,7 @@ identity :8081, curriculum :8082, practice :8083, review :8084, assessment :8085
    - The gateway mints an assessment JWT, and the fresh assessment pod must fetch JWKS from `xlearn-gateway:8080` **through the new policy** to verify it.
    - Pass: the response includes the assessment-backed sections, and the assessment logs show **no** JWKS or 401 errors.
 2. **review → identity and review → curriculum** (ADR-0016 workers): after the next sweep tick, the review logs show no identity/curriculum timeouts. After about 1 h, the hourly JWKS refetches in every service log no refresh failures.
-3. **Owner smoke [O]:** login (Traefik → gateway → identity), dashboard, mistakes (review with a JWT), coach, and the SPA loads. As in task 3, the owner does the login (or you use an already-signed-in session); an agent never enters credentials.
+3. **Login smoke:** login (Traefik → gateway → identity), dashboard, mistakes (review with a JWT), coach, and the SPA loads. As in task 3: use an already-signed-in browser session if this session has one; otherwise check that the SPA loads, add MI-5a to the "owner login smoke pending" note, and carry on. An agent never enters credentials.
 4. **Landscape:** its xlearn cards still show healthy. If landscape probes xlearn pods in-cluster, that shows up here: record it and add it as a source in a follow-up, or accept it.
 5. **On any 401 or timeout, revert** the MI-5a PR (fail-open).
 
@@ -245,7 +245,7 @@ identity :8081, curriculum :8082, practice :8083, review :8084, assessment :8085
   - pods show no OOMKills and no restarts beyond the two annotation bumps;
   - the NATS stage read works.
 - **Negative check:** `ssh vps "bash -s -- --cluster --nats-stage=open --netpol-file <(printf 'databases\tno-such-policy\tneg\n')" < hack/host-verify.sh` must **FAIL** `cluster.netpol`. The node's bash evaluates the `<(…)`, and mi-02's `--netpol-file` override reads it. That proves the presence check isn't vacuous. Paste both runs into the MI-5a PR.
-- **[O]** Repeat the owner smoke once more (login, dashboard, coach).
+- Repeat the login smoke once more (login, dashboard, coach) the same way: in a signed-in session, else it stays on the pending-smoke note.
 - **The next fleet rollout is the full proof:** the next xlearn tag, likely v1.6.0, restarts every caller under both fences. That tag's release checklist already runs `host-verify` and the smoke. Note that in status.md.
 
 ### 7 · Record [X]
@@ -260,6 +260,7 @@ In an xlearn docs PR:
     - the restart-PR proof method;
     - any caller found live that wasn't in config;
     - the Hostinger weekly image date read before the first restart, and the owner's username for the public-dashboard smoke.
+  - **Pending-smoke notes:** "owner login smoke pending (MI-5, MI-5a)" if no signed-in session was available.
 - **`docs/architecture/services.md`:** a "Network fences (v2)" subsection with the caller matrix. It should say:
   - **MI-5a is the internal-HTTP fence**: ADR-0006 and ADR-0016 as amended by ADR-0033 §12 row 7 / §14, still with no service tokens;
   - the gateway also serves **in-namespace JWKS**;
@@ -273,7 +274,7 @@ In an xlearn docs PR:
 - [ ] `host-verify`'s NATS stage read still works (node-local API-server proxy to 8222).
 - [ ] MI-5a live: 7 `xlearn/xlearn-*` policies render as specified: the gateway admits exactly the Traefik and same-namespace peers on :8080, each internal service exactly the same-namespace peer, with no other peers and no `part-of`. The diff shows only NetworkPolicy additions plus the one annotation.
 - [ ] A restarted service re-fetches JWKS through MI-5a and serves an authed call: fresh assessment serves the public dashboard with its sections and no 401s.
-- [ ] No caller is blocked: login, dashboard, mistakes, coach, the review workers, and the SPA through Traefik all work.
+- [ ] No caller is blocked: the public dashboard, the review workers and the SPA through Traefik all work; login, the signed-in dashboard, mistakes and coach work in a signed-in session, or "owner login smoke pending" is recorded as a pending-smoke note.
 - [ ] `host-lint.sh` is clean (the embedded `expected-netpol.tsv` carries the 9 new three-column rows), `host-verify --cluster` is green with NetworkPolicy presence covering them, and the `--netpol-file` negative check FAILs.
 - [ ] The caller matrix is in both PR descriptions and `docs/architecture/services.md`. status.md has the MI-5 and MI-5a rows with dates.
 
@@ -291,7 +292,7 @@ No step restarts CNPG or NATS. Each PR restarts at most one stateless xlearn pod
 ## Definition of Done
 
 - All three infra PRs are merged and reconciled by Flux, with no hand `kubectl apply`.
-- Both smokes pass on a fresh pod, and `host-verify --cluster` is green.
+- Both smokes pass on a fresh pod (their login parts in a signed-in session, or recorded as a pending-smoke note), and `host-verify --cluster` is green.
 - The architecture note and ADR-0033 clarification are merged in xlearn.
 - The status is updated (this file and [`../status.md`](../status.md)), and both repos' `main` is synced.
 

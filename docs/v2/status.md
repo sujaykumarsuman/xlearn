@@ -15,14 +15,17 @@ top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 - **Deploy mode:** release-semver tags. The v2 build ships as **1.x minors** until `v2.0.0` (D32, ADR-0034):
   `.release-line = 1`; every `xlearn-*` ImagePolicy is `>=1.0.0 <2.0.0`. Runner and evalpack are separate streams.
 - **Audience:** owner only (D35). Testers exercise the non-owner paths; real learners arrive at v3.
-- **Last updated:** 2026-09-24 (v2 build-plan session: build plan, status, sprint + prompt scaffolds, ADR sign-off).
+- **Sprint merge rule (D40, 2026-09-25):** launching a sprint prompt is the owner's approval for every change it
+  makes; every prompt ends with land-and-sync, and nothing waits on the owner mid-session ([decisions log](#decisions-log)).
+- **Last updated:** 2026-09-25 (D40: the sprint merge directive applied to the plan, status and indexes; before
+  that, 2026-09-24: the v2 build-plan session with the build plan, status, sprint + prompt scaffolds and ADR sign-off).
 
 ## Snapshot
 
 | Area | State |
 |------|-------|
 | v2 PRD | ✅ [drafted](../prd/xlearn-v2-prd.md) |
-| Feasibility (D0–D39; D36–D39 = BP1–BP4) + research T0–T7 | ✅ [feasibility](feasibility.md), [research/](research/) |
+| Feasibility (D0–D40; D36–D39 = BP1–BP4; D40 = the sprint merge directive) + research T0–T7 | ✅ [feasibility](feasibility.md), [research/](research/) |
 | Rollout plan (the source) | ✅ [rollout-plan.md](rollout-plan.md) |
 | ADRs 0026, 0027, 0028, 0029, 0033, 0034, 0035 | ✅ **Accepted 2026-09-24** (BP2; amendments folded into the ADRs they amend) |
 | ADRs 0030, 0031, 0032 | Proposed until their spikes report (see [ADRs](#adrs)) |
@@ -50,12 +53,12 @@ top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 | # | Sprint | Focus | MS | Track | Release | State |
 |---|--------|-------|----|-------|---------|-------|
 | 1 | [mi-01](sprints/sprint-mi-01.md) | Prune guards + chart 0.3.0 knob union (MI-2, MI-3) | MI | infra | infra PRs only (MI-2 first, then MI-3) | ⬜ Not started |
-| 2 | [ds-m1-01](sprints/sprint-ds-m1-01.md) | Design M1: coach states, course nav, revision v2 (AB01–AB03) | M1 | design | PR, stop for owner review (design) | ⬜ Not started |
+| 2 | [ds-m1-01](sprints/sprint-ds-m1-01.md) | Design M1: coach states, course nav, revision v2 (AB01–AB03) | M1 | design | land-and-sync; the merge is the design freeze | ⬜ Not started |
 | 3 | [mi-02](sprints/sprint-mi-02.md) | host-verify --cluster extension (MI-8) | MI | infra | infra PR only (host script) | ⬜ Not started |
 | 4 | [m1-01](sprints/sprint-m1-01.md) | Curriculum spine part 1: compose parity, course manifest + golden, item schema freeze (M1a) | M1 | product | merge only (ships in v1.6.0) | ⬜ Not started |
 | 5 | [mi-07](sprints/sprint-mi-07.md) | Evalpack plumbing (MI-9) | MI | infra | infra PRs only (+ evalpack repo; `v0.1.0` image, no `>=1.0.0`) | ⬜ Not started |
-| 6 | [ds-m2-01](sprints/sprint-ds-m2-01.md) | Design M2: Touch ★, catalog/agenda, public profile v2, visibility (AB04 ★, AB05, AB06, AB22) | M2 | design | PR, stop for owner review (design) | ⬜ Not started |
-| 7 | [ds-l-01](sprints/sprint-ds-l-01.md) | Design L: invite acceptance ★, privacy notice, erase account (AB19 ★, AB20, AB21) | L | design | PR, stop for owner review (design) | ⬜ Not started |
+| 6 | [ds-m2-01](sprints/sprint-ds-m2-01.md) | Design M2: Touch ★, catalog/agenda, public profile v2, visibility (AB04 ★, AB05, AB06, AB22) | M2 | design | land-and-sync; the merge is the design freeze | ⬜ Not started |
+| 7 | [ds-l-01](sprints/sprint-ds-l-01.md) | Design L: invite acceptance ★, privacy notice, erase account (AB19 ★, AB20, AB21) | L | design | land-and-sync; the merge is the design freeze | ⬜ Not started |
 | 8 | [m1-09](sprints/sprint-m1-09.md) | Curriculum spine part 2: converter, loader + guards, curriculum expand migration, content CI (M1a) | M1 | product | merge only (ships in v1.6.0) | ⬜ Not started |
 | 9 | [m3-01](sprints/sprint-m3-01.md) | Authoring tooling T25/T26: canonical hashes, contract_hash, packlint, pre-push fingerprint hook | M3 | content | merge only (dev tools; rides the next tag) | ⬜ Not started |
 | 10 | [mi-05](sprints/sprint-mi-05.md) | N0: NATS topology, dead letters, identity on NATS, client options, pool pins (MI-6) | MI | product | merge only (ships dark in v1.6.0) | ⬜ Not started |
@@ -76,14 +79,14 @@ top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 | 25 | [mi-08](sprints/sprint-mi-08.md) | Limit hygiene (MI-11a) + Track B slice 1: PSA labels, SA tokens off (MI-15 part) | MI | infra | infra PRs only (by the 10-24 window) | ⬜ Not started |
 | 26 | [mi-09](sprints/sprint-mi-09.md) | October host-window prep: sandbox block, L23 kubelet args, pid limits, bumps (MI-11) | MI | infra | infra PRs only (scripts applied in the window) | ⬜ Not started |
 | 27 | [m1-07](sprints/sprint-m1-07.md) | Coach D27 assist capture, mode gate, L18 caps + AB01 → v1.7.0 | M1 | product | **tag v1.7.0** | ⬜ Not started |
-| 28 | [ds-m3-01](sprints/sprint-ds-m3-01.md) | Design M3 part 1: Workspace-Code ★, results dock, degradation badges (AB07 ★, AB08, AB11) | M3 | design | PR, stop for owner review (design) | ⬜ Not started |
+| 28 | [ds-m3-01](sprints/sprint-ds-m3-01.md) | Design M3 part 1: Workspace-Code ★, results dock, degradation badges (AB07 ★, AB08, AB11) | M3 | design | land-and-sync; the merge is the design freeze | ⬜ Not started |
 | 29 | [m1-08](sprints/sprint-m1-08.md) | M1c contract → v1.8.0 | M1 | product | **tag v1.8.0** (contract; snapshot first) | ⬜ Not started |
 | 30 | [m3-03](sprints/sprint-m3-03.md) | Runner core: supervisor, jail, cgroups, API | M3 | product | merge only (ships in runner-v1.0.0) | ⬜ Not started |
 | 31 | [m3-04](sprints/sprint-m3-04.md) | Runner profiles Go/C++/Python + harness codecs + amd64 allowlists | M3 | product | merge only (ships in runner-v1.0.0) | ⬜ Not started |
 | 32 | [m3-15](sprints/sprint-m3-15.md) | Runner release: reproducible image, runner-release.yml, acceptance suite, TL baselines → runner-v1.0.0 | M3 | product | **runner-v1.0.0** | ⬜ Not started |
 | 33 | [m2-01](sprints/sprint-m2-01.md) | M2a touch-attempt engine + `touch_concluded` consumer | M2 | product | merge only (ships in v1.9.0) + own infra PR | ⬜ Not started |
 | 34 | [m2-02](sprints/sprint-m2-02.md) | M2b consumers + projections v2 → v1.9.0 | M2 | product | **tag v1.9.0** (+ ACL PR before) | ⬜ Not started |
-| 35 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | Design M3 part 2: Problems, Arena, Week/Mistakes/Progress deltas (AB09, AB10, AB12) | M3 | design | PR, stop for owner review (design) | ⬜ Not started |
+| 35 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | Design M3 part 2: Problems, Arena, Week/Mistakes/Progress deltas (AB09, AB10, AB12) | M3 | design | land-and-sync; the merge is the design freeze | ⬜ Not started |
 | 36 | [m2-03](sprints/sprint-m2-03.md) | `public-read`, `/public/stats`, visibility toggles, profile v2 (P3, P5, P6, P7, P9; AB06, AB22) | M2 | product | merge only (ships in v1.10.0) | ⬜ Not started |
 | 37 | [m2-04](sprints/sprint-m2-04.md) | Touch UI (AB04★) + catalog/agenda + Today in minutes (D4) (AB05) | M2 | product | merge only (ships in v1.10.0) | ⬜ Not started |
 | 38 | [m2-05](sprints/sprint-m2-05.md) | Producers on + `touch_scored` backfill + reader switch + replay + D2 (M2c) → v1.10.0 | M2 | product | **tag v1.10.0** | ⬜ Not started |
@@ -93,13 +96,13 @@ top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 | 42 | [m3-05](sprints/sprint-m3-05.md) | judge service: skeleton, schema, evalpack loader, erase consumer (M3-1) | M3 | product | merge only (ships dark in v1.13.0) | ⬜ Not started |
 | 43 | [m3-06](sprints/sprint-m3-06.md) | judge queue, runner lane, graders, contexts, internal context endpoints | M3 | product | merge only (ships dark in v1.13.0) | ⬜ Not started |
 | 44 | [m3-14](sprints/sprint-m3-14.md) | judge admission (L9–L15, L6), learner API + DTO allowlist, drafts, arena history/progress, telemetry, judge admin | M3 | product | merge only (ships dark in v1.13.0) | ⬜ Not started |
-| 45 | [ds-p-01](sprints/sprint-ds-p-01.md) | Design P: Workspace-Quiz, go-concurrency multi-file + race, AB02/AB05 full fidelity (AB14, AB15) | P | design | PR, stop for owner review (design) | ⬜ Not started |
+| 45 | [ds-p-01](sprints/sprint-ds-p-01.md) | Design P: Workspace-Quiz, go-concurrency multi-file + race, AB02/AB05 full fidelity (AB14, AB15) | P | design | land-and-sync; the merge is the design freeze | ⬜ Not started |
 | 46 | [m3-07](sprints/sprint-m3-07.md) | M3-1 on prod: evalpack v1.0.0, judge ACL, tag v1.13.0, judge HelmRelease (MI-13) | M3 | product | **evalpack v1.0.0 + tag v1.13.0** (ACL PR before, HelmRelease after) | ⬜ Not started |
 | 47 | [l-03](sprints/sprint-l-03.md) | L-A admission backend (inert while closed): invites, seats, redeem, public checks, `SIGNUP_MODE=invite`, erase clears invite notes | L | product | merge only (ships dark, inert, in the next tag) | ⬜ Not started |
 | 48 | [m3-08](sprints/sprint-m3-08.md) | practice: judge consumer, reconciler, D15/D16/D18 grading strategy | M3 | product | merge only (ships in v1.14.0) + ACL PR | ⬜ Not started |
 | 49 | [m3-09](sprints/sprint-m3-09.md) | gateway judge BFF, DTO allow/deny lists, typed 413, L16, degradation status | M3 | product | merge only (ships in v1.14.0) | ⬜ Not started |
 | 50 | [m3-10](sprints/sprint-m3-10.md) | review + assessment on judge signals (mistake pre-fill, P7 checked, P8) | M3 | product | merge only (ships in v1.14.0) | ⬜ Not started |
-| 51 | [ds-m4-01](sprints/sprint-ds-m4-01.md) | Design M4: AI suggestion/dispute ★, pointer notes, allowance + consents (AB16 ★, AB17, AB18) | M4 | design | PR, stop for owner review (design) | ⬜ Not started |
+| 51 | [ds-m4-01](sprints/sprint-ds-m4-01.md) | Design M4: AI suggestion/dispute ★, pointer notes, allowance + consents (AB16 ★, AB17, AB18) | M4 | design | land-and-sync; the merge is the design freeze | ⬜ Not started |
 | 52 | [mi-11](sprints/sprint-mi-11.md) | Track B finish: xlearn egress, PG connection limits, Renovate, N4 (MI-15) | MI | infra | infra PRs only (+ xlearn PR, no tag) | ⬜ Not started |
 | 53 | [m3-11](sprints/sprint-m3-11.md) | Workspace-Code UI (AB07★) + CodeMirror lazy load | M3 | product | merge only (ships in v1.14.0) | ⬜ Not started |
 | 54 | [m3-12](sprints/sprint-m3-12.md) | Results dock, Problems, Arena, degradation badges (AB08–AB11) | M3 | product | merge only (ships in v1.14.0) | ⬜ Not started |
@@ -117,18 +120,18 @@ top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 | 66 | [m4-07](sprints/sprint-m4-07.md) | Canary log test, caps sizing, ledger check → v1.16.0 (+ LLM_PLATFORM_ENABLED for the cohort) | M4 | product | **tag v1.16.0** (+ `LLM_PLATFORM_ENABLED` PR) | ⬜ Not started |
 | 67 | [l-05](sprints/sprint-l-05.md) | L-A/L-C front door: auth-page invite state, acceptance step★, privacy notice, AI consents (AB19★, AB20) | L | product | merge only (ships in v1.17.0) | ⬜ Not started |
 | 68 | [l-04](sprints/sprint-l-04.md) | Web erase for every non-owner → v1.17.0 (L-A/L-C) + L-exit rehearsal prep | L | product | **tag v1.17.0** (erase-class; + rehearsal PRs) | ⬜ Not started |
-| 69 | [ga-01](sprints/sprint-ga-01.md) | GA PR: .release-line = 2, T-1 default flips, rc rehearsal | GA | product | merge only, owner-approved GA PR (+ optional `v2.0.0-rc.N`) | ⬜ Not started |
+| 69 | [ga-01](sprints/sprint-ga-01.md) | GA PR: .release-line = 2, T-1 default flips, rc rehearsal | GA | product | merge only: the GA PR merges on CI green (+ optional `v2.0.0-rc.N`) | ⬜ Not started |
 | 70 | [ga-02](sprints/sprint-ga-02.md) | Cut v2.0.0: pre-flip check, widen ranges, snapshot, tag, verify | GA | product | **tag v2.0.0** (widen first; GA snapshot) | ⬜ Not started |
 | 71 | [spk-04](sprints/sprint-spk-04.md) | S6 voice-shell bake-off (owner present, throwaway) | M6a | spike | no merge (spike, throwaway); results docs PR | ⬜ Not started |
-| 72 | [ds-m6a-01](sprints/sprint-ds-m6a-01.md) | Design M6a part 1 + ADR-0032 → Accepted: Mock-v2, setup/consent/pre-flight, live HUD text (AB13, AB24, AB25) | M6a | design | ADR-0032 docs PR (merged) + PR, stop for owner review (design) | ⬜ Not started |
-| 73 | [ds-m6a-02](sprints/sprint-ds-m6a-02.md) | Design M6a part 2: grace/paused/resume, debrief + proposal, accessibility (AB26, AB27, AB28) | M6a | design | PR, stop for owner review (design) | ⬜ Not started |
+| 72 | [ds-m6a-01](sprints/sprint-ds-m6a-01.md) | Design M6a part 1 + ADR-0032 → Accepted: Mock-v2, setup/consent/pre-flight, live HUD text (AB13, AB24, AB25) | M6a | design | ADR-0032 docs PR, then land-and-sync; the merge is the design freeze | ⬜ Not started |
+| 73 | [ds-m6a-02](sprints/sprint-ds-m6a-02.md) | Design M6a part 2: grace/paused/resume, debrief + proposal, accessibility (AB26, AB27, AB28) | M6a | design | land-and-sync; the merge is the design freeze | ⬜ Not started |
 | 74 | [m6a-01](sprints/sprint-m6a-01.md) | Interview core: schema, state machine, failsafes, caps (L19) | M6a | product | merge only (ships dark in a v2.0.x patch) | ⬜ Not started |
 | 75 | [m6a-02](sprints/sprint-m6a-02.md) | Text brain: loop, classifier, give_hint, resume brief, store:false, replay tests | M6a | product | merge only (ships dark in a v2.0.x patch) | ⬜ Not started |
 | 76 | [m6a-03](sprints/sprint-m6a-03.md) | Assessment deltas + proposal/accept + ScoreMock once + twin fairness gate | M6a | product | merge only (ships dark in a v2.0.x patch) | ⬜ Not started |
 | 77 | [m6a-04](sprints/sprint-m6a-04.md) | judge mock budgeting + CodeMirror interview mode + bounded SSE | M6a | product | merge only (ships dark in a v2.0.x patch) | ⬜ Not started |
 | 78 | [m6a-05](sprints/sprint-m6a-05.md) | M6a UI part 1: Mock-v2 (AB13), setup/consent/pre-flight/$ cap (AB24), live HUD text (AB25) | M6a | product | merge only (ships dark in a v2.0.x patch) | ⬜ Not started |
 | 79 | [m6a-06](sprints/sprint-m6a-06.md) | M6a UI part 2: grace/paused/resume (AB26), debrief/proposal (AB27), accessibility (AB28) → v2.0.x patch | M6a | product | **tag v2.0.x patch** (M6a dark, cohort) | ⬜ Not started |
-| 80 | [ds-m6b-01](sprints/sprint-ds-m6b-01.md) | Design M6b: voice pre-flight/notices, voice live HUD ★ (AB29, AB30 ★) | M6b | design | PR, stop for owner review (design) | ⬜ Not started |
+| 80 | [ds-m6b-01](sprints/sprint-ds-m6b-01.md) | Design M6b: voice pre-flight/notices, voice live HUD ★ (AB29, AB30 ★) | M6b | design | land-and-sync; the merge is the design freeze | ⬜ Not started |
 | 81 | [mi-13](sprints/sprint-mi-13.md) | M6b gates: Permissions-Policy, camera/mic deny, coach sizing, SDP route, WSS egress (MI-16) → v2.0.x patch | MI | infra | **tag v2.0.x patch** (MI-16) + infra PRs first | ⬜ Not started |
 | 82 | [m6b-01](sprints/sprint-m6b-01.md) | VoiceShell adapter + SDP broker + sideband | M6b | product | merge only (ships dark in m6b-03's patch) | ⬜ Not started |
 | 83 | [m6b-02](sprints/sprint-m6b-02.md) | Voice robustness: lease, re-attach, drain, cost + $ cap, PTT, rollover (+ coach-interview if M7 failed) | M6b | product | merge only (ships dark in m6b-03's patch) | ⬜ Not started |
@@ -139,8 +142,9 @@ top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 | 88 | [m6c-02](sprints/sprint-m6c-02.md) | Outline: multi-speaker fairness check → AI-proposed voice Communication; history-calibrated estimates | M6c | product | outline only (v2.2) | ⬜ outline (v2.2; no prompt until expanded) |
 | 89 | [m6c-03](sprints/sprint-m6c-03.md) | Outline: Safari leg, voice-lite on demand, weekly canary; AB31 canvas outline (SD course, v2.2+) | M6c | product | outline only (v2.2) | ⬜ outline (v2.2; no prompt until expanded) |
 
-Legend: ✅ done · 🔄 in progress (design: "PR #N open, awaiting owner review") · ⬜ planned / not started · ⛔ blocked
-(note why). Update per the [status protocol](sprints/README.md#status-protocol-way-of-working).
+Legend: ✅ done · 🔄 in progress · ⬜ planned / not started · ⛔ blocked (note why: an unmet entry gate, a missing
+owner prerequisite, or "needs owner decision" after a spike). Nothing waits on the owner mid-session (D40). Update per the
+[status protocol](sprints/README.md#status-protocol-way-of-working).
 
 ## Milestones
 
@@ -224,7 +228,8 @@ blocks the M3 UI sprint ([m3-11](sprints/sprint-m3-11.md)).
 
 *Key:* MI-4 = mi-14 · MI-5/5a = mi-03 · MI-7 (N3) = mi-06 (+ l-01 re-check) · MI-8 = mi-02 · MI-9 = mi-07 (+ m3-07) ·
 MI-10 = spk-01 + spk-02 · MI-11 = mi-09 + the host window · MI-11a = mi-08 · MI-12 = mi-10 · MI-13 = m3-07 ·
-T25/T26 = m3-01 · 14 packs = `ev-packs-14` · `account.role` = m1-02 · AB07–AB12 = ds-m3-01 + ds-m3-02.
+T25/T26 = m3-01 · 14 packs = `ev-packs-14` · `account.role` = m1-02 · AB07–AB12 = ds-m3-01 + ds-m3-02 merged (the
+merge is the freeze, D40).
 
 ## Releases
 
@@ -275,7 +280,7 @@ R-d step 2 reads this table.
 
 | Item | Now | Changes | Order |
 |------|-----|---------|-------|
-| `.release-line` | `1` (xlearn#53) | `2` in the GA PR ([ga-01](sprints/sprint-ga-01.md)), owner-approved | a reviewed PR; `main` is then on the 2 line (1.x hotfixes branch from the last 1.x tag) |
+| `.release-line` | `1` (xlearn#53) | `2` in the GA PR ([ga-01](sprints/sprint-ga-01.md)), merged on CI green (D40) | the GA PR, self-reviewed like any PR; `main` is then on the 2 line (1.x hotfixes branch from the last 1.x tag) |
 | 7 fleet `xlearn-*` ImagePolicies | `>=1.0.0 <2.0.0` (infra#29) | `>=1.0.0 <3.0.0` at GA ([ga-02](sprints/sprint-ga-02.md)) | pre-flip check → **merge first, then tag** |
 | `xlearn-judge` policy | — | born `>=1.0.0 <2.0.0` ([m3-07](sprints/sprint-m3-07.md)); widened with the fleet at GA | **tag first, then merge** (image before policy) |
 | `xlearn-runner` policy | — | born `>=1.0.0 <2.0.0` ([mi-10](sprints/sprint-mi-10.md)); separate stream, not widened at GA | image before policy |
@@ -312,7 +317,7 @@ separately. Rows marked *planned* are added live by the owning sprint.
 | `touchesEnabled` (touch-start guard) | T-1 build-time | gateway (BFF touch routes) | M2 ([m2-04](sprints/sprint-m2-04.md)) | M2 ([m2-05](sprints/sprint-m2-05.md)) | planned |
 | judge cohort gate (`judgeCohortOnly`) | T-3 cohort (code default) | gateway (judge BFF) | M3 ([m3-09](sprints/sprint-m3-09.md)) | GA ([ga-01](sprints/sprint-ga-01.md)) | planned |
 | platform-AI cohort gate (`platformAICohortOnly`) | T-3 cohort (code default) | judge | M4 ([m4-02](sprints/sprint-m4-02.md)) | GA ([ga-01](sprints/sprint-ga-01.md)) | planned |
-| `COURSE_STATUS_OVERRIDE` | T-2 | every `xlearn-*` | P ([p-02](sprints/sprint-p-02.md)) | GA ([ga-01](sprints/sprint-ga-01.md)): remove, or promote to an operating mode (owner's call) | planned |
+| `COURSE_STATUS_OVERRIDE` | T-2 | every `xlearn-*` | P ([p-02](sprints/sprint-p-02.md)) | GA ([ga-01](sprints/sprint-ga-01.md)): remove, or promote to an operating mode (decided in ga-01's session, D40) | planned |
 | interviewer cohort gate (`interviewAudience = "cohort"`) | T-1 code default (T-3 audience) | coach (`/api/interviews/*`) | M6a ([m6a-01](sprints/sprint-m6a-01.md)) | v2.1.0 ([m6b-04](sprints/sprint-m6b-04.md)) | planned |
 | M6c extras audience default(s) | T-1 | coach, web | M6c | M6c | outline (v2.2); budget against the ≤ 6 limit |
 
@@ -348,7 +353,7 @@ Owner content track (~10 h/week) starts at the item-schema freeze (`ev-schema-fr
 |------|--------|-----|---------|----------------|-------|
 | Item schema v1 frozen | frozen ≈ 2026-10-05 | not frozen | — | [m1-01](sprints/sprint-m1-01.md) · `ev-schema-freeze` | ⬜ |
 | DSA converted to `curriculum/courses/dsa/` + `ids.lock.json` | 14 items | v1 layout (`curriculum/dsa/`, 14 items) | — | [m1-09](sprints/sprint-m1-09.md) | ⬜ |
-| Example-1 statements rewritten | 2 | 0 / 2 | ~1 | `ev-m1-statements` | ⬜ |
+| Example-1 statements rewritten | 2 | 0 / 2 | — (agent-drafted; lands as drafted, D40) | [m1-09](sprints/sprint-m1-09.md) · `ev-m1-statements` (automatic) | ⬜ |
 | T25/T26 tooling (pre-push fingerprint hook, packlint, `contract_hash`) | live | — | — | [m3-01](sprints/sprint-m3-01.md) | ⬜ |
 | Evalpack pipeline (private CI gates, validator, image) | live | — | — | [m3-02](sprints/sprint-m3-02.md) | ⬜ |
 | **Pilot packs stamped** (Go, C++, Python references) | 14 | **0 / 14** | 28–41 | `ev-packs-14` | ⬜ |
@@ -373,43 +378,46 @@ Owner content track (~10 h/week) starts at the item-schema freeze (`ev-schema-fr
 
 ## Artboards
 
-Static HTML under `design-system/screens/v2/` (preview-only). States: ⬜ not drafted → 🔄 drafted (PR #N open,
-awaiting owner review) → ✅ **frozen (PR #N, date)** → consumed by `<sprint>`. **Design PRs don't edit this table**;
-the first consuming build sprint records the freeze ([status protocol](sprints/README.md#design-sprints-the-owner-review-gate)).
+Static HTML under `design-system/screens/v2/` (preview-only). States: ⬜ not drafted → 🔄 drafting (the `ds-*`
+session is running) → ✅ **frozen (PR #N, date)** → consumed by `<sprint>`. **The `ds-*` merge is the freeze
+(D40):** the design sprint records it here itself, in its own PR or a follow-up docs PR merged the same way, and a
+consuming UI sprint only verifies it (repairing a missing row if needed). The owner may review a board after it
+merges; a change to a frozen board is a follow-up design PR
+([status protocol](sprints/README.md#design-sprints-the-owner-review-gate)).
 Register: [build-plan → Artboard register](build-plan.md#artboard-register).
 
-| Board | Drafted in | Freeze event | Frozen before | State |
-|-------|------------|--------------|---------------|-------|
-| AB01 | [ds-m1-01](sprints/sprint-ds-m1-01.md) | `ev-freeze-ds-m1-01` | M1b | ⬜ not drafted |
-| AB02 | [ds-m1-01](sprints/sprint-ds-m1-01.md), [ds-p-01](sprints/sprint-ds-p-01.md) | `ev-freeze-ds-m1-01`, `ev-freeze-ds-p-01` | M1b (ds-p-01 full fidelity: P) | ⬜ not drafted |
-| AB03 | [ds-m1-01](sprints/sprint-ds-m1-01.md) | `ev-freeze-ds-m1-01` | M1b | ⬜ not drafted |
-| AB04★ | [ds-m2-01](sprints/sprint-ds-m2-01.md) | `ev-freeze-ds-m2-01` | M2a | ⬜ not drafted |
-| AB05 | [ds-m2-01](sprints/sprint-ds-m2-01.md), [ds-p-01](sprints/sprint-ds-p-01.md) | `ev-freeze-ds-m2-01`, `ev-freeze-ds-p-01` | M2a (ds-p-01 full fidelity: P) | ⬜ not drafted |
-| AB06 | [ds-m2-01](sprints/sprint-ds-m2-01.md) | `ev-freeze-ds-m2-01` | M2a | ⬜ not drafted |
-| AB07★ | [ds-m3-01](sprints/sprint-ds-m3-01.md) | `ev-freeze-ds-m3-01` | the M3 UI sprint | ⬜ not drafted |
-| AB08 | [ds-m3-01](sprints/sprint-ds-m3-01.md) | `ev-freeze-ds-m3-01` | the M3 UI sprint | ⬜ not drafted |
-| AB09 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | `ev-freeze-ds-m3-02` | the M3 UI sprint | ⬜ not drafted |
-| AB10 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | `ev-freeze-ds-m3-02` | the M3 UI sprint | ⬜ not drafted |
-| AB11 | [ds-m3-01](sprints/sprint-ds-m3-01.md) | `ev-freeze-ds-m3-01` | the M3 UI sprint | ⬜ not drafted |
-| AB12 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | `ev-freeze-ds-m3-02` | the M3 UI sprint | ⬜ not drafted |
-| AB13 | [ds-m6a-01](sprints/sprint-ds-m6a-01.md) | `ev-freeze-ds-m6a-01` | M6a | ⬜ not drafted |
-| AB14 | [ds-p-01](sprints/sprint-ds-p-01.md) | `ev-freeze-ds-p-01` | P | ⬜ not drafted |
-| AB15 | [ds-p-01](sprints/sprint-ds-p-01.md) | `ev-freeze-ds-p-01` | P | ⬜ not drafted |
-| AB16★ | [ds-m4-01](sprints/sprint-ds-m4-01.md) | `ev-freeze-ds-m4-01` | the M4 UI sprint | ⬜ not drafted |
-| AB17 | [ds-m4-01](sprints/sprint-ds-m4-01.md) | `ev-freeze-ds-m4-01` | the M4 UI sprint | ⬜ not drafted |
-| AB18 | [ds-m4-01](sprints/sprint-ds-m4-01.md) | `ev-freeze-ds-m4-01` | the M4 UI sprint | ⬜ not drafted |
-| AB19★ | [ds-l-01](sprints/sprint-ds-l-01.md) | `ev-freeze-ds-l-01` | L-A | ⬜ not drafted |
-| AB20 | [ds-l-01](sprints/sprint-ds-l-01.md) | `ev-freeze-ds-l-01` | L-A | ⬜ not drafted |
-| AB21 | [ds-l-01](sprints/sprint-ds-l-01.md) | `ev-freeze-ds-l-01` | **L-E** | ⬜ not drafted |
-| AB22 | [ds-m2-01](sprints/sprint-ds-m2-01.md) | `ev-freeze-ds-m2-01` | M2a | ⬜ not drafted |
+| Board | Drafted in | Freeze (automatic at the merge) | Frozen before | State |
+|-------|------------|---------------------------------|---------------|-------|
+| AB01 | [ds-m1-01](sprints/sprint-ds-m1-01.md) | `ds-m1-01` merged | M1b | ⬜ not drafted |
+| AB02 | [ds-m1-01](sprints/sprint-ds-m1-01.md), [ds-p-01](sprints/sprint-ds-p-01.md) | `ds-m1-01` merged; `ds-p-01` merged (full fidelity) | M1b (ds-p-01 full fidelity: P) | ⬜ not drafted |
+| AB03 | [ds-m1-01](sprints/sprint-ds-m1-01.md) | `ds-m1-01` merged | M1b | ⬜ not drafted |
+| AB04★ | [ds-m2-01](sprints/sprint-ds-m2-01.md) | `ds-m2-01` merged | M2a | ⬜ not drafted |
+| AB05 | [ds-m2-01](sprints/sprint-ds-m2-01.md), [ds-p-01](sprints/sprint-ds-p-01.md) | `ds-m2-01` merged; `ds-p-01` merged (full fidelity) | M2a (ds-p-01 full fidelity: P) | ⬜ not drafted |
+| AB06 | [ds-m2-01](sprints/sprint-ds-m2-01.md) | `ds-m2-01` merged | M2a | ⬜ not drafted |
+| AB07★ | [ds-m3-01](sprints/sprint-ds-m3-01.md) | `ds-m3-01` merged | the M3 UI sprint | ⬜ not drafted |
+| AB08 | [ds-m3-01](sprints/sprint-ds-m3-01.md) | `ds-m3-01` merged | the M3 UI sprint | ⬜ not drafted |
+| AB09 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | `ds-m3-02` merged | the M3 UI sprint | ⬜ not drafted |
+| AB10 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | `ds-m3-02` merged | the M3 UI sprint | ⬜ not drafted |
+| AB11 | [ds-m3-01](sprints/sprint-ds-m3-01.md) | `ds-m3-01` merged | the M3 UI sprint | ⬜ not drafted |
+| AB12 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | `ds-m3-02` merged | the M3 UI sprint | ⬜ not drafted |
+| AB13 | [ds-m6a-01](sprints/sprint-ds-m6a-01.md) | `ds-m6a-01` merged | M6a | ⬜ not drafted |
+| AB14 | [ds-p-01](sprints/sprint-ds-p-01.md) | `ds-p-01` merged | P | ⬜ not drafted |
+| AB15 | [ds-p-01](sprints/sprint-ds-p-01.md) | `ds-p-01` merged | P | ⬜ not drafted |
+| AB16★ | [ds-m4-01](sprints/sprint-ds-m4-01.md) | `ds-m4-01` merged | the M4 UI sprint | ⬜ not drafted |
+| AB17 | [ds-m4-01](sprints/sprint-ds-m4-01.md) | `ds-m4-01` merged | the M4 UI sprint | ⬜ not drafted |
+| AB18 | [ds-m4-01](sprints/sprint-ds-m4-01.md) | `ds-m4-01` merged | the M4 UI sprint | ⬜ not drafted |
+| AB19★ | [ds-l-01](sprints/sprint-ds-l-01.md) | `ds-l-01` merged | L-A | ⬜ not drafted |
+| AB20 | [ds-l-01](sprints/sprint-ds-l-01.md) | `ds-l-01` merged | L-A | ⬜ not drafted |
+| AB21 | [ds-l-01](sprints/sprint-ds-l-01.md) | `ds-l-01` merged | **L-E** | ⬜ not drafted |
+| AB22 | [ds-m2-01](sprints/sprint-ds-m2-01.md) | `ds-m2-01` merged | M2a | ⬜ not drafted |
 | ~~AB23~~ | — | — | — | dropped (D33) |
-| AB24 | [ds-m6a-01](sprints/sprint-ds-m6a-01.md) | `ev-freeze-ds-m6a-01` | M6a | ⬜ not drafted |
-| AB25 | [ds-m6a-01](sprints/sprint-ds-m6a-01.md) | `ev-freeze-ds-m6a-01` | M6a | ⬜ not drafted |
-| AB26 | [ds-m6a-02](sprints/sprint-ds-m6a-02.md) | `ev-freeze-ds-m6a-02` | M6a | ⬜ not drafted |
-| AB27 | [ds-m6a-02](sprints/sprint-ds-m6a-02.md) | `ev-freeze-ds-m6a-02` | M6a | ⬜ not drafted |
-| AB28 | [ds-m6a-02](sprints/sprint-ds-m6a-02.md) | `ev-freeze-ds-m6a-02` | M6a | ⬜ not drafted |
-| AB29 | [ds-m6b-01](sprints/sprint-ds-m6b-01.md) | `ev-freeze-ds-m6b-01` | M6b | ⬜ not drafted |
-| AB30★ | [ds-m6b-01](sprints/sprint-ds-m6b-01.md) | `ev-freeze-ds-m6b-01` | M6b | ⬜ not drafted |
+| AB24 | [ds-m6a-01](sprints/sprint-ds-m6a-01.md) | `ds-m6a-01` merged | M6a | ⬜ not drafted |
+| AB25 | [ds-m6a-01](sprints/sprint-ds-m6a-01.md) | `ds-m6a-01` merged | M6a | ⬜ not drafted |
+| AB26 | [ds-m6a-02](sprints/sprint-ds-m6a-02.md) | `ds-m6a-02` merged | M6a | ⬜ not drafted |
+| AB27 | [ds-m6a-02](sprints/sprint-ds-m6a-02.md) | `ds-m6a-02` merged | M6a | ⬜ not drafted |
+| AB28 | [ds-m6a-02](sprints/sprint-ds-m6a-02.md) | `ds-m6a-02` merged | M6a | ⬜ not drafted |
+| AB29 | [ds-m6b-01](sprints/sprint-ds-m6b-01.md) | `ds-m6b-01` merged | M6b | ⬜ not drafted |
+| AB30★ | [ds-m6b-01](sprints/sprint-ds-m6b-01.md) | `ds-m6b-01` merged | M6b | ⬜ not drafted |
 | AB31 | [m6c-03](sprints/sprint-m6c-03.md) (outline) | — | v2.2 | ⬜ outline only |
 
 ## ADRs
@@ -431,52 +439,65 @@ New ADRs written during the build take the next free number after checking peers
 
 ## Owner calendar events
 
-Owner-gated items are **calendar events, not sprints** (BP4, tentative and owner-booked). A sprint may prepare an
-event; the owner performs it. Tick the state here (✅ + date) when it happens.
+Owner-only actions are **calendar events, not sprints** (BP4, tentative and owner-booked). **Since D40 nothing
+waits on the owner mid-session.** An owner-only action is done **before launch** of the sprint that needs it: that
+prompt's `## Before you launch (owner)` block lists it, and launching attests it's done. A sprint may prepare one
+(runbook, scripts). If a prerequisite turns out missing, the session lands what doesn't depend on it and marks the
+gap ⛔ here. Events that only froze boards or awaited a sign-off are **automatic** (second table). Tick the state here
+(✅ + date) when it happens.
 
 | Event | When | What | Prepared by | State |
 |-------|------|------|-------------|-------|
-| `ev-mi0` | Fri 2026-09-25 | MI-0 H0 reboot into kernel 6.8.0-142 | none (prepared by infra#28, done 2026-09-24; recorded in [mi-02](sprints/sprint-mi-02.md)) | ⬜ |
-| `ev-mi1` | week 1 (by 2026-10-02) | MI-1 owner hygiene | none | ⬜ |
-| `ev-schema-freeze` | ≈ 2026-10-05 | Item schema frozen → content authoring unblocked | [m1-01](sprints/sprint-m1-01.md) | ⬜ |
-| `ev-m1-statements` | week 2 | Rewrite 2 copied Example-1 statements (~1 h) | [m1-09](sprints/sprint-m1-09.md) | ⬜ |
-| `ev-mi5b-dns` | at the start of mi-04 (weeks 2–4, before the first tester) | DNS record + bookmarks for ops.sujaykumar.dev (MI-5b) | [mi-04](sprints/sprint-mi-04.md) | ⬜ |
-| `ev-owner-role` | after v1.7.0 | Owner role set once | [m1-04](sprints/sprint-m1-04.md) | ⬜ |
-| `ev-snap-v1.8.0` | right before the v1.8.0 tag | Manual Hostinger snapshot (contract tag) | [m1-08](sprints/sprint-m1-08.md) | ⬜ |
-| `ev-machine-user` | week 1–2 (by Fri 2026-10-09) | Evalpack machine user + PAT (MI-9) | [mi-07](sprints/sprint-mi-07.md) | ⬜ |
-| `ev-spike-goahead` | by Fri 2026-10-09 (booked together with ev-spike-week and ev-host-window) | Spike go-ahead (D23; WIF optional) | none (owner decision; [spk-01](sprints/sprint-spk-01.md) and [spk-03](sprints/sprint-spk-03.md) gate on it) | ⬜ |
+| `ev-mi0` | Fri 2026-09-25 · before launch of spk-01 | MI-0 H0 reboot into kernel 6.8.0-142 | none (prepared by infra#28, done 2026-09-24; recorded in [mi-02](sprints/sprint-mi-02.md)) | ⬜ |
+| `ev-mi1` | week 1 (by 2026-10-02) · at the latest before launch of mi-12 (provider accounts) | MI-1 owner hygiene | none | ⬜ |
+| `ev-mi5b-dns` | weeks 2–4 · before launch of mi-04 (so before the first tester) | DNS record for ops.sujaykumar.dev at the registrar (MI-5b); console bookmarks once mi-04 lands | [mi-04](sprints/sprint-mi-04.md) | ⬜ |
+| `ev-owner-role` | right after the v1.7.0 tag (an `identity admin` step m1-07's prompt can run, D40); at the latest before launch of l-02 | Owner role set once | [m1-04](sprints/sprint-m1-04.md) (runbook) | ⬜ |
+| `ev-snap-v1.8.0` | before launch of m1-08 | Manual Hostinger snapshot in hPanel, 1-day retention (contract tag) | [m1-08](sprints/sprint-m1-08.md) | ⬜ |
+| `ev-machine-user` | week 1–2 (by Fri 2026-10-09) · before launch of mi-07 | Evalpack machine user + PAT (MI-9) | [mi-07](sprints/sprint-mi-07.md) | ⬜ |
+| `ev-spike-goahead` | by Fri 2026-10-09 (booked together with ev-spike-week and ev-host-window) · before launch of spk-02 | Spike go-ahead (D23): **automatic since D40**, since launching [spk-01](sprints/sprint-spk-01.md) is the go-ahead for P0–P3 + image volume and launching [spk-03](sprints/sprint-spk-03.md) is the WIF yes. Owner-only part: the **second-VPS answer** for [spk-02](sprints/sprint-spk-02.md) (A: an empty amd64 VPS with SSH access and reimage approval; else B: the private GitHub Actions scratch repo) | none (owner) | ⬜ |
 | `ev-spike-week` | Mon 2026-10-12 → Fri 2026-10-16 | Spike week: P0–P3 + image volume (+ WIF if it fits) | [spk-01](sprints/sprint-spk-01.md) | ⬜ |
-| `ev-host-window` | Sat 2026-10-24 | October host window (MI-11, batched with MI-11a) | [mi-09](sprints/sprint-mi-09.md) | ⬜ |
-| `ev-first-tester` | after MI-5b is live (≈ L-E) | First CLI-minted tester | [m1-04](sprints/sprint-m1-04.md) | ⬜ |
-| `ev-snap-v1.12.0` | right before the v1.12.0 tag | Manual Hostinger snapshot (erase tag) | [l-02](sprints/sprint-l-02.md) | ⬜ |
-| `ev-packs-14` | ≈ 2026-10-05 → mid-November | Author and stamp the 14 pilot packs (Go, C++, Python refs; 28–41 owner h) | [m3-02](sprints/sprint-m3-02.md) | ⬜ |
-| `ev-notice-text` | December (before l-05 merges) | Privacy notice text approved | [l-05](sprints/sprint-l-05.md) | ⬜ |
-| `ev-q5` | November, ds-p-01 task 1 (before AB15 is drafted) | PRD Q5 confirmed (go-concurrency; SQL fallback) | [ds-p-01](sprints/sprint-ds-p-01.md) | ⬜ |
-| `ev-pilot-content` | December | Pilot course content (~10 items, 10–20 owner h) | [p-02](sprints/sprint-p-02.md) | ⬜ |
-| `ev-provider-runbook` | December, before M4 | Anthropic Console setup (MI-14) | [mi-12](sprints/sprint-mi-12.md) | ⬜ |
-| `ev-acceptance-set` | December, before m4-01 (rollout §3 M4 entry) | Analyzer acceptance set (≥ 70 labelled: ≥ 40 test + 30 dev; 5–10 owner h) | [mi-12](sprints/sprint-mi-12.md) | ⬜ |
-| `ev-m4-day1` | the day `LLM_PLATFORM_ENABLED=true` merges | M4 data window starts (≥ 2 weeks → `SEAT_CAP` re-size; an opening gate, not GA) | [m4-07](sprints/sprint-m4-07.md) | ⬜ |
-| `ev-snap-v1.17.0` | right before the v1.17.0 tag | Manual Hostinger snapshot (erase-class tag: web erase for every non-owner) | [l-04](sprints/sprint-l-04.md) | ⬜ |
-| `ev-l-rehearsal` | December (L exit) | Tester invite round-trip on production (`invite` → `closed`) | [l-04](sprints/sprint-l-04.md) | ⬜ |
-| `ev-strangers` | before the GA PR | No active `learner` account | [ga-01](sprints/sprint-ga-01.md) | ⬜ |
-| `ev-ga` | GA day (≈ Dec 2026 – Jan 2027) | GA snapshot, range PR, then the v2.0.0 tag | [ga-02](sprints/sprint-ga-02.md) | ⬜ |
-| `ev-s6` | any day the owner is present, before the M6a design freeze | S6 voice-shell bake-off (≤ 1 day, $10 hard limit) | [spk-04](sprints/sprint-spk-04.md) | ⬜ |
-| `ev-snap-v2.1.0` | right before the v2.1.0 tag (≈ Q1 2027, owner present) | Manual Hostinger snapshot (interviewer GA tag) | [m6b-04](sprints/sprint-m6b-04.md) | ⬜ |
-| `ev-pat-expiry` | recurring (date in status.md) | Evalpack PAT expiry manual check (D34) | [mi-07](sprints/sprint-mi-07.md) | ⬜ |
+| `ev-host-window` | Sat 2026-10-24 · before launch of mi-10 | October host window (MI-11, batched with MI-11a): **a session runs [mi-09](sprints/sprint-mi-09.md)'s runbook as its prompt** (D40). Before launch: the owner's hPanel snapshot, hPanel/VNC reachable, and the weekly-image date | [mi-09](sprints/sprint-mi-09.md) | ⬜ |
+| `ev-first-tester` | in l-02's session, after MI-5b is live (≈ L-E) | First `tester` account: **minted by l-02's session** with `identity admin account create --role tester` (pre-approved, D40), after MI-5b is live; if a human sign-in turns out to be needed, the session records ⛔ | [l-02](sprints/sprint-l-02.md) | ⬜ |
+| `ev-snap-v1.12.0` | before launch of l-02 | Manual Hostinger snapshot in hPanel, 1-day retention (erase tag) | [l-02](sprints/sprint-l-02.md) | ⬜ |
+| `ev-packs-14` | ≈ 2026-10-05 → mid-November · ≥ 1 before launch of m3-07, all 14 before launch of m3-11 | Author and stamp the 14 pilot packs (Go, C++, Python refs; 28–41 owner h) | [m3-02](sprints/sprint-m3-02.md) | ⬜ |
+| `ev-q5` | November · before launch of ds-p-01 (so before AB15 is drafted) | PRD Q5 confirmed (go-concurrency; SQL fallback) | [ds-p-01](sprints/sprint-ds-p-01.md) | ⬜ |
+| `ev-pilot-content` | December · before launch of p-03 | Pilot course content (~10 items, 10–20 owner h) | [p-02](sprints/sprint-p-02.md) | ⬜ |
+| `ev-provider-runbook` | December · before launch of mi-12 (workspace and limits); the WIF registration from mi-12's runbook before launch of m4-01 | Anthropic Console setup (MI-14): workspace, $15 limit, alerts, auto-reload off; then the service account, issuer and rule | [mi-12](sprints/sprint-mi-12.md) | ⬜ |
+| `ev-acceptance-set` | December · before launch of m4-01 (rollout §3 M4 entry) | Analyzer acceptance set (≥ 70 labelled: ≥ 40 test + 30 dev; 5–10 owner h) | [mi-12](sprints/sprint-mi-12.md) | ⬜ |
+| `ev-snap-v1.17.0` | before launch of l-04 | Manual Hostinger snapshot in hPanel, 1-day retention (erase-class tag: web erase for every non-owner) | [l-04](sprints/sprint-l-04.md) | ⬜ |
+| `ev-l-rehearsal` | December (L exit), after the v1.17.0 tag | Tester invite round-trip on production (`invite` → `closed`): **run by l-04's session** (D40). Before launch: a second GitHub account for the GitHub-path redeem; ⛔ if a step needs a human sign-in | [l-04](sprints/sprint-l-04.md) | ⬜ |
+| `ev-strangers` | before the GA PR, in ga-01's session | No active `learner` account | [ga-01](sprints/sprint-ga-01.md) | ⬜ |
+| `ev-ga` | GA day (≈ Dec 2026 – Jan 2027) · before launch of ga-02 | GA snapshot in hPanel; ga-02 then merges the range PR and tags v2.0.0 | [ga-02](sprints/sprint-ga-02.md) | ⬜ |
+| `ev-s6` | any day the owner is present · before launch of ds-m6a-01 | S6 voice-shell bake-off (≤ 1 day, $10 hard limit): the owner creates spk-04's two throwaway OpenAI projects and keys before launching it, and stays present for the day | [spk-04](sprints/sprint-spk-04.md) | ⬜ |
+| `ev-snap-v2.1.0` | before launch of m6b-04 (≈ Q1 2027, owner present) | Manual Hostinger snapshot in hPanel, 1-day retention (interviewer GA tag) | [m6b-04](sprints/sprint-m6b-04.md) | ⬜ |
+| `ev-pat-expiry` | recurring (date in status.md) | Evalpack PAT expiry manual check (D34); a rotation needs a new PAT (owner) | [mi-07](sprints/sprint-mi-07.md) | ⬜ |
 | `ev-monthly-window` | monthly (D22) | Monthly reboot window | [mi-11](sprints/sprint-mi-11.md) | ⬜ |
 | `ev-d6-waves` | after GA (v2.0.x) | D6 content waves | [m3-02](sprints/sprint-m3-02.md) | ⬜ |
-| `ev-dsa-packs-all` | ≈ H2 2027 | Every live DSA item packed (M5 entry; +230–340 h) | [m3-02](sprints/sprint-m3-02.md) | ⬜ |
-| `ev-v3-opening` | v3 (not in v2) | The opening (rollout §11 gates) | none (v3 planning) | ⬜ |
-| `ev-freeze-ds-m1-01` | after ds-m1-01 PR opens | Design freeze: AB01, AB02, AB03 | [ds-m1-01](sprints/sprint-ds-m1-01.md) | ⬜ |
-| `ev-freeze-ds-m2-01` | after ds-m2-01 PR opens | Design freeze: AB04, AB05, AB06, AB22 | [ds-m2-01](sprints/sprint-ds-m2-01.md) | ⬜ |
-| `ev-freeze-ds-l-01` | after ds-l-01 PR opens | Design freeze: AB19, AB20, AB21 | [ds-l-01](sprints/sprint-ds-l-01.md) | ⬜ |
-| `ev-freeze-ds-m3-01` | after ds-m3-01 PR opens | Design freeze: AB07, AB08, AB11 | [ds-m3-01](sprints/sprint-ds-m3-01.md) | ⬜ |
-| `ev-freeze-ds-m3-02` | after ds-m3-02 PR opens | Design freeze: AB09, AB10, AB12 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | ⬜ |
-| `ev-freeze-ds-p-01` | after ds-p-01 PR opens | Design freeze: AB14, AB15, AB02, AB05 | [ds-p-01](sprints/sprint-ds-p-01.md) | ⬜ |
-| `ev-freeze-ds-m4-01` | after ds-m4-01 PR opens | Design freeze: AB16, AB17, AB18 | [ds-m4-01](sprints/sprint-ds-m4-01.md) | ⬜ |
-| `ev-freeze-ds-m6a-01` | after ds-m6a-01 PR opens | Design freeze: AB13, AB24, AB25 | [ds-m6a-01](sprints/sprint-ds-m6a-01.md) | ⬜ |
-| `ev-freeze-ds-m6a-02` | after ds-m6a-02 PR opens | Design freeze: AB26, AB27, AB28 | [ds-m6a-02](sprints/sprint-ds-m6a-02.md) | ⬜ |
-| `ev-freeze-ds-m6b-01` | after ds-m6b-01 PR opens | Design freeze: AB29, AB30 | [ds-m6b-01](sprints/sprint-ds-m6b-01.md) | ⬜ |
+| `ev-dsa-packs-all` | ≈ H2 2027 · before launch of m5-01 | Every live DSA item packed (M5 entry; +230–340 h) | [m3-02](sprints/sprint-m3-02.md) | ⬜ |
+| `ev-v3-opening` | v3 (not in v2) | The opening ([rollout §11](rollout-plan.md#11-opening-gates-v3) gates, including the owner's privacy-notice review) | none (v3 planning) | ⬜ |
+
+**Post-ship owner follow-ups (non-blocking, D40).** Things only the owner can do after a sprint ships. None of them gates a tag, a milestone or another sprint; findings become follow-up PRs.
+
+| Event | When | What | Recorded by | State |
+|-------|------|------|-------------|-------|
+| `ev-nats-ops-first-use` | after mi-06 (N3) | First use of the offline ops seed (break-glass tunnel), logged in the NATS break-glass log | [mi-06](sprints/sprint-mi-06.md) | ⬜ |
+| `ev-hook-install` | after m3-01 merges | Install the pre-push fingerprint hook in each authoring clone (`make install-hooks`) | [m3-01](sprints/sprint-m3-01.md) | ⬜ |
+| `ev-m3-dogfood` | after `v1.14.0` | Dogfood the judge on real DSA items | [m3-13](sprints/sprint-m3-13.md) | ⬜ |
+| `ev-gc-key-reconfirm` | after p-03 | Re-confirm the pilot's key stamps; a correction is a follow-up pack PR | [p-03](sprints/sprint-p-03.md) | ⬜ |
+| `ev-pilot-run` | after `v1.15.0` | Run one graded pilot item end to end | [p-03](sprints/sprint-p-03.md) | ⬜ |
+| `ev-m4-followup` | after `v1.16.0` | Tick the AI consents; read the Console rate limits and the ±5% ledger checks; optional dogfood and exhaustion drill | [m4-07](sprints/sprint-m4-07.md) | ⬜ |
+| `ev-m6a-dogfood` | after the M6a `v2.0.x` patch | Run a full text mock interview | [m6a-06](sprints/sprint-m6a-06.md) | ⬜ |
+
+**Automatic events: no owner action (D40).** They are kept so that references still resolve. Per-board freezes are
+recorded in [Artboards](#artboards).
+
+| Event | When | What | Recorded by | State |
+|-------|------|------|-------------|-------|
+| `ev-schema-freeze` | ≈ 2026-10-05, at m1-01's merge | Item schema frozen → content authoring unblocked (`ev-packs-14` can start) | [m1-01](sprints/sprint-m1-01.md) | ⬜ |
+| `ev-m1-statements` | week 2, at m1-09's merge | The 2 copied Example-1 statements, rewritten by the agent, land as drafted and no longer gate m1-02's `v1.6.0` tag (D40). The owner may revise them later with a content PR | [m1-09](sprints/sprint-m1-09.md) | ⬜ |
+| `ev-notice-text` | no v2 event: moved to the [v3 opening gates](rollout-plan.md#11-opening-gates-v3) (D40) | The privacy-notice text lands with l-05 as drafted; the owner reviews it before the first real invite, and a revision is a content PR | [l-05](sprints/sprint-l-05.md) | moved to v3 |
+| `ev-m4-day1` | the day `LLM_PLATFORM_ENABLED=true` merges | M4 data window starts (≥ 2 weeks → `SEAT_CAP` re-size; an opening gate, not GA) | [m4-07](sprints/sprint-m4-07.md) | ⬜ |
+| `ev-freeze-ds-m1-01` · `ev-freeze-ds-m2-01` · `ev-freeze-ds-l-01` · `ev-freeze-ds-m3-01` · `ev-freeze-ds-m3-02` · `ev-freeze-ds-p-01` · `ev-freeze-ds-m4-01` · `ev-freeze-ds-m6a-01` · `ev-freeze-ds-m6a-02` · `ev-freeze-ds-m6b-01` | at each `ds-*` merge | Design freeze: the board PR merging on CI green **is** the freeze (D40). The owner may review afterwards, and a change is a follow-up design PR | each `ds-*` sprint | automatic (per board in [Artboards](#artboards)) |
 
 ## Evalpack PAT expiry (manual, D34)
 
@@ -561,12 +582,13 @@ From [rollout §13](rollout-plan.md#13-open-owner-items), updated with this sess
 
 | Item | Needed by | Default / decision | State |
 |------|-----------|--------------------|-------|
-| PRD Q5: the pilot course | P entry | go-concurrency (SQL fallback) · asked in [ds-p-01](sprints/sprint-ds-p-01.md) task 1 (`ev-q5`) | ⬜ open |
+| PRD Q5: the pilot course | P entry | go-concurrency (SQL fallback) · confirmed before launch of [ds-p-01](sprints/sprint-ds-p-01.md) (`ev-q5`, in its `## Before you launch (owner)` block) | ⬜ open |
 | PRD Q7: per-problem time budgets | a future research session; not a gate | manifest default 45 min, hint at 15 (D18) | open (not gating) |
-| Artboard production | before M1b | **BP3: agents draft all ~30 boards incl. the heroes; the owner reviews and approves** | ✅ decided 2026-09-24 |
-| Spike go-aheads (P0–P3 + image volume; WIF) | by Fri 2026-10-09 | one spike week, WIF included if it fits (`ev-spike-goahead`) | ⬜ week booked (BP4), go-ahead pending |
+| Artboard production | before M1b | **BP3: agents draft all ~30 boards incl. the heroes.** Since **D40** each board PR lands on CI green and the merge is the freeze; the owner may review afterwards | ✅ decided 2026-09-24 (review gate replaced by D40, 2026-09-25) |
+| Spike go-aheads (P0–P3 + image volume; WIF) | by Fri 2026-10-09 | one spike week, WIF included if it fits. **D40:** launching spk-01 (spk-03 for WIF) is the go-ahead; the second-VPS answer is due before launch of spk-02 (`ev-spike-goahead`) | ⬜ week booked (BP4); second-VPS answer pending |
 | October host-window date | when the spike is booked | **Sat 2026-10-24**, batched with MI-11a (BP4, tentative) | ✅ booked (tentative) |
-| S6 scheduling | before the M6a design freeze | any day the owner is present (`ev-s6`) | ⬜ date open |
+| S6 scheduling | before the M6a design freeze (before launch of ds-m6a-01) | any day the owner is present: launch spk-04 then (`ev-s6`) | ⬜ date open |
+| Privacy-notice text review | the v3 opening ([rollout §11](rollout-plan.md#11-opening-gates-v3)) | **moved from l-05 by D40:** l-05 lands the agent-drafted notice; the owner reviews it before the first real invite, and a revision is a content PR | ⬜ v3 |
 | infra#28 | before MI-0 | merged 2026-09-24 | ✅ |
 | MI-2a / MI-2b / MI-2c | now | done 2026-09-24 (v1.5.2; infra#29/#30; xlearn#51–#53) | ✅ |
 | MI-5b (DNS, cert, bookmarks) | before the first `tester` (L-E) | weeks 2–4 ([mi-04](sprints/sprint-mi-04.md), `ev-mi5b-dns`) | ⬜ |
@@ -579,11 +601,12 @@ Notable calls not (yet) worth a full ADR, newest first. Promote to an ADR if the
 
 | Date | Decision | Notes |
 |------|----------|-------|
+| 2026-09-25 | **D40: sprint merge directive (owner).** The owner's words: "I want each prompt to finish with changes land-and-sync and consider my approval for all changes for the given prompt. Do not stop for my review." **Launching a v2 sprint prompt is the owner's approval for every change it makes:** merges and tags (contract, erase and GA ones included), infra PRs, design-board freezes, ADR acceptances, owner content the agent drafts (the privacy-notice text, statement rewrites), and the production operations the prompt specifies (e.g. `identity admin …` over `kubectl exec`, host-window steps on their date). No session stops for review. | **What changed:** every prompt ends with `## Ship (land-and-sync — owner approval pre-granted)`. Design PRs merge on CI green and **the merge is the freeze**: board gates read "`ds-…` merged", and the `ev-freeze-ds-*` events are automatic. The GA PR merges on CI green. Launching a spike is its go-ahead (D23); a result outside every pre-decided path still lands, with the gate ⛔ "needs owner decision". Owner-only actions (hPanel snapshots, provider consoles, accounts, PATs and keys, DNS, S6 presence, pack authoring) move to each prompt's `## Before you launch (owner)` block; if one is missing, the session lands what doesn't depend on it and marks ⛔. Owner content lands as drafted, and the privacy-notice review moves to the v3 opening gates ([rollout §11](rollout-plan.md#11-opening-gates-v3)). **Supersedes** D38's (BP3) review gate and AGENT.md's former "v2 exceptions". **Unchanged:** hard entry gates, D34, D35, the release checklist, and the owner's in-session "hold / don't ship". [feasibility D40](feasibility.md#decisions-log-newest-first) · [AGENT.md](../../AGENT.md) |
 | 2026-09-24 | **BP1: scaffold everything now.** Full sprint plans + self-contained prompts for every v2.0 sprint, every v2.1 sprint (M6a, M6b), M5 and the spikes; M6c (v2.2) gets plan-outline cards only. | 89 sprints: 86 plan + prompt pairs, 3 M6c outline cards. [build-plan](build-plan.md) · [sprints](sprints/README.md) · [prompts](prompts/README.md). |
 | 2026-09-24 | **BP2: ADR sign-off.** 0026, 0027, 0028, 0029, 0033, 0034, 0035 → **Accepted**, with their amendments folded into the ADRs they amend. **0030, 0031, 0032 stay Proposed** until their spikes report. | Acceptance is a task in the consuming sprint: 0030 in [m3-03](sprints/sprint-m3-03.md) task 1 (sandbox spike GO, before M3); 0031 in [mi-12](sprints/sprint-mi-12.md) (WIF spike, before M4); 0032 in [ds-m6a-01](sprints/sprint-ds-m6a-01.md) task 1 (S6, before the M6a design freeze). |
 | 2026-09-24 | **The October host window runs on the spike GO while ADR-0030 is still Proposed (intentional).** [mi-09](sprints/sprint-mi-09.md) turns the [spk-01](sprints/sprint-spk-01.md) + [spk-02](sprints/sprint-spk-02.md) GO (t3 §16) into the host sandbox block, L23 kubelet args and pid limits that `ev-host-window` (Sat 2026-10-24) applies to production; ADR-0030 is accepted after that, in [m3-03](sprints/sprint-m3-03.md) task 1 (late October, before M3). | The spike GO and t3 §16 are the window's authority, and mi-09's PR records any divergence from t3 §8.7. m3-03 task 1 then accepts ADR-0030 with the same spike numbers (folding ADR-0035 §6 into §5), so the ADR catches up with what the window applied. Runner code never waits on the window (BP2). |
-| 2026-09-24 | **BP3: agents draft all v2 artboards** (AB01–AB30, the 5 heroes ★ included) as static HTML on `theme.css` under `design-system/screens/v2/`; the owner only reviews. | Replaces rollout §9's hybrid production. 10 design sprints (`ds-*`); each ends at an open PR and **stops**; the owner's approval + merge is the freeze, required before the milestone's first UI sprint. AB23 dropped (D33); AB31 outline (v2.2). |
-| 2026-09-24 | **BP4: calendar (tentative, owner-booked).** H0 reboot Fri 2026-09-25 (MI-0); spike week Mon 2026-10-12 → Fri 2026-10-16 (P0–P3 + image-volume spike on a throwaway multipass/k3s; WIF ≤ ½ day if it fits, else before M4); October host window **Sat 2026-10-24** (MI-11 + L23 + pid limits + k3s/CNPG bumps, batched with MI-11a); S6 any time the owner is present, before the M6a design freeze; GA snapshot at the `v2.0.0` tag. | Owner-gated items are calendar events, not sprints; a sprint may prepare one (runbook, scripts, PRs). Full list: [Owner calendar events](#owner-calendar-events). |
+| 2026-09-24 | **BP3: agents draft all v2 artboards** (AB01–AB30, the 5 heroes ★ included) as static HTML on `theme.css` under `design-system/screens/v2/`; the owner only reviews. | Replaces rollout §9's hybrid production. 10 design sprints (`ds-*`); AB23 dropped (D33); AB31 outline (v2.2). The freeze is required before the milestone's first UI sprint. **Review gate replaced by D40 (2026-09-25):** each `ds-*` PR merges on CI green and the merge is the freeze. |
+| 2026-09-24 | **BP4: calendar (tentative, owner-booked).** H0 reboot Fri 2026-09-25 (MI-0); spike week Mon 2026-10-12 → Fri 2026-10-16 (P0–P3 + image-volume spike on a throwaway multipass/k3s; WIF ≤ ½ day if it fits, else before M4); October host window **Sat 2026-10-24** (MI-11 + L23 + pid limits + k3s/CNPG bumps, batched with MI-11a); S6 any time the owner is present, before the M6a design freeze; GA snapshot at the `v2.0.0` tag. | Owner-gated items are calendar events, not sprints; a sprint may prepare one (runbook, scripts, PRs). Full list: [Owner calendar events](#owner-calendar-events). **D40 (2026-09-25):** owner-only actions are done before launch of the sprint that needs it; review-only events are automatic. |
 | 2026-09-24 | **Sprint ids are milestone-scoped** (`mi-`, `m1-`, `m2-`, `m3-`, `p-`, `m4-`, `l-`, `ga-`, `m5-`, `m6a-`, `m6b-`, `m6c-` outline, `spk-` spikes, `ds-<milestone>-` design). | `mi-NN` sprint ids are **not** rollout steps `MI-NN`; the [MI track](#mi-track-rollout-2) maps them. |
 | 2026-09-24 | **Sizes vs the rollout ranges.** v2.0 = 60 build/release sprints (vs 41–52) + 7 design + 3 spikes; v2.1 = 11 (inside 9–12) + 3 design + 1 spike. | Over-range: MI 13 (single-PR slices, MI-4 on its own so a VAP stall never blocks N3), M1 10 (m1-01 and m1-07 split into m1-09, m1-10), L 5 (the L-A/L-C front door [l-05](sprints/sprint-l-05.md) held to v1.17.0), GA 2 (GA PR + cut). Engineering is not the long pole (rollout §6). |
 | 2026-09-24 | **Carried constraints (never contradicted by any sprint).** v2 is owner-only (D35): invite flow + gate L built and rehearsed with a tester, real learners at v3. 1.x minors during the build; `v2.0.0` = owner-facing GA; `v2.1.0` = interviewer; M5 later 2.x (D32). No alerting anywhere (D34): MI-8 = the `host-verify --cluster` extension only. No backups or object store (D11, D12). | Stopgaps MI-2a/2b/2c already done (v1.5.2). Live release v1.5.2. |

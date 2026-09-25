@@ -29,7 +29,7 @@ _Overall:_ ⬜ Not started
 ## Entry gates
 
 - [ ] `v1.6.0` live — every consumer accepts the v2 envelope ([m1-02](sprint-m1-02.md); check `/xlearn/api/v1/healthz` and the ImagePolicies)
-- [ ] AB01–AB03 frozen — [ds-m1-01](sprint-ds-m1-01.md)'s PR merged by (or on the explicit approval of) the owner
+- [ ] AB01–AB03 frozen — [ds-m1-01](sprint-ds-m1-01.md) merged (the merge is the freeze, D40)
 - [ ] No open peer PR edits `internal/gateway/bff.go`'s route table or `web/src/router.tsx` (the M1b gateway edits are serialized; `gh pr list`, ListAgents)
 
 ## Goal
@@ -236,7 +236,8 @@ merge is green and behaviour-identical for DSA.
 
 CI green (incl. `sqlc diff`, OpenAPI drift, literal and dropped-column gates) · merged to `main` · parity screenshots in
 the PR · acceptance criteria met · statuses updated (this file + [`../status.md`](../status.md): board row, artboards
-AB01–AB03 → **frozen (ds-m1-01 PR #, date)**, decisions log).
+AB01–AB03 confirmed **frozen (ds-m1-01 PR #, date)** — ds-m1-01's merge records them under D40; repair if missing —
+decisions log).
 
 ## Risks / watch-outs
 

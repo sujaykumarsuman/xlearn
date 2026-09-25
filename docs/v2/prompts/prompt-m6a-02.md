@@ -83,15 +83,15 @@ bounded SSE ([m6a-04](../sprints/sprint-m6a-04.md), possibly in flight in parall
    `llm.Req.NoStore == true` at the adapter boundary (this is what covers Anthropic keys), plus the fake OpenAI server asserting
    `"store": false` in each body; the coverage meta-test (both providers) and the no-unregistered-call-site test.
 8. **[X] Replay suite** (task 5): `internal/coach/interview/replay/` with the plan's scenarios, golden with `-update`, fake clock and
-   fake provider; the `-record` mode (env key, scrub before write) documented but **not run** without the owner's go-ahead; the fixture
-   scrub test. Replay a 45-minute interview in compose and record coach's peak RSS in the PR.
+   fake provider; the `-record` mode (env key, scrub before write) documented but **not run** in this sprint (the owner runs it, or a
+   later prompt that specifies the run and its $ budget); the fixture scrub test. Replay a 45-minute interview in compose and record coach's peak RSS in the PR.
 9. **[X] Docs** (task 6): `docs/architecture/{api,services}.md`, `openapi.yaml`, `docs/runbooks/interviewer.md` (live replay recipe,
    classifier table), ADR-0032 dated update (hint release rule, no code-triggered calls in text, custom-id cap pricing, BYO `Complete`).
 10. **[X] Verify:** `gofmt -l`, `go vet ./...`, `go test -race ./...` (real PG via `XLEARN_TEST_DATABASE_URL`),
     `go test -tags e2e -race ./internal/e2e/...`, `sqlc diff`, web `typecheck`/`lint`/`test`/`build` (then
     `git checkout -- web/dist/.gitkeep`); a compose run: cohort account → create → consent → start → turns → pause → brief → resume →
     finish (fake provider).
-11. **[X] Merge** per land-and-sync (PR, CI green, squash). No tag.
+11. **[X] Ship:** see **Ship** below. No tag.
 
 ## Constraints
 
@@ -102,7 +102,8 @@ bounded SSE ([m6a-04](../sprints/sprint-m6a-04.md), possibly in flight in parall
 - **Model output is data, never a control channel.** No tool calls, no control tokens; hints, transitions and spend are server code.
 - **No AI call on the learner's key without their action**, except inside an interview they started (turns, cues, debrief); the brief and
   probes on resume run only on a click.
-- **Fixtures are scrubbed before commit** (the repo is public); no agent uses a real key without the owner's explicit go-ahead.
+- **Fixtures are scrubbed before commit** (the repo is public); no agent uses a real provider key in this sprint (a live run needs a
+  prompt that specifies it and its $ budget, D40).
 - **goose + sqlc** if a query or column is added (next free coach version); `sqlc diff` clean.
 - **Outbox/NATS:** none added (no ACL PR). **GitOps:** no infra change; never `kubectl apply`. **D34:** no alerting.
 - **Memory-sum rule:** no new pod; coach limits unchanged (record RSS). **Frontend:** none.
@@ -135,6 +136,12 @@ bounded SSE ([m6a-04](../sprints/sprint-m6a-04.md), possibly in flight in parall
 - [ ] Key held only while a segment is open; canary log test green.
 - [ ] A cohort account completes a full text interview through the API in compose; coach RSS recorded.
 
-**Shipping:** per AGENT.md land-and-sync with **this sprint's release action — merge only (ships dark in the next v2.0.x
-patch)**: branch → conventional commits (`feat(coach): …`) with the attribution lines → push → PR → CI green → squash-merge →
-`git checkout main && git pull`. **No tag** — [m6a-06](../sprints/sprint-m6a-06.md) tags the M6a patch.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: xlearn only, on `feat/m6a-02-text-brain` with `feat(coach): …` commits; there is no infra change.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships dark in the next `v2.0.x` patch):** Nothing deploys; it ships dark in the next `v2.0.x` patch, normally the M6a patch cut by [m6a-06](../sprints/sprint-m6a-06.md). Don't tag.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

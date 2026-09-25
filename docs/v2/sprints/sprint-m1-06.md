@@ -25,7 +25,7 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] AB03 frozen: [ds-m1-01](sprint-ds-m1-01.md)'s PR merged by the owner. This sprint builds frames **F1–F4, F6
+- [ ] AB03 frozen: [ds-m1-01](sprint-ds-m1-01.md) merged (the merge is the freeze, D40). This sprint builds frames **F1–F4, F6
       and F9**; F5, F7 and F8 are deferred by name (task 4).
 - [ ] [m1-05](sprint-m1-05.md) merged (gateway router serialized m1-03 → m1-04 → m1-05 → m1-06; `httpx.ReadBody` in place)
 - [ ] [m1-03](sprint-m1-03.md) merged (course-scoped routes and DSA aliases; `useCourse()` → `{slug, view, status}` with the

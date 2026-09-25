@@ -3,8 +3,8 @@
 > **Milestone:** M6a — text interviewer plus failsafes (the boards M6a builds against) · **Track:** design · **Order:** 72
 > **Prereqs:** [spk-04](sprint-spk-04.md) (the S6 result in t6 §16 and the fixtures) · [ds-m1-01](sprint-ds-m1-01.md) merged (board index, `board.css`)
 > **Unblocks:** [ds-m6a-02](sprint-ds-m6a-02.md) (AB26–AB28 reuse this sprint's HUD, meter and evidence vocabulary) · [m6a-01](sprint-m6a-01.md) (entry gate "AB13, AB24–AB28 frozen", together with ds-m6a-02) · consumed by [m6a-05](sprint-m6a-05.md) (builds AB13, AB24, AB25) · [mi-13](sprint-mi-13.md) (entry gate "ADR-0032 Accepted") · referenced by [ds-m6b-01](sprint-ds-m6b-01.md) (AB29/AB30★ extend AB24/AB25)
-> **Release action:** task 1 (ADR-0032 → Accepted) ships as **its own docs PR, merged per land-and-sync** (the owner pre-authorised the acceptance in BP2). The boards: **PR, stop for owner review (design)** — the agent never merges them; the owner's merge (or explicit approval in chat) **is the freeze**
-> **Calendar:** Q1 2027 (after GA and after [spk-04](sprint-spk-04.md)) · owner event **`ev-freeze-ds-m6a-01`** (review + merge) before [m6a-01](sprint-m6a-01.md) starts
+> **Release action:** **ADR-0032 docs PR, then land-and-sync; the merge is the design freeze** — task 1's ADR PR merges on CI green in-session (the acceptance needs no owner sign-off: BP2 + D40), then the board PR merges on CI green; no tag, nothing deploys (launching the prompt is the owner's approval, [D40](../feasibility.md#decisions-log-newest-first); the owner may review after the merge, and any change to a frozen board is a follow-up design PR)
+> **Calendar:** Q1 2027 (after GA and after [spk-04](sprint-spk-04.md)) · no owner event: the freeze happens at this sprint's board merge (`ev-freeze-ds-m6a-01` is automatic and needs no tick; the Artboards rows record the freeze), before [m6a-01](sprint-m6a-01.md) starts
 > **Execute with:** [`../prompts/prompt-ds-m6a-01.md`](../prompts/prompt-ds-m6a-01.md) — one prompt, one session.
 
 ## Status
@@ -18,17 +18,18 @@ _Overall:_ ⬜ Not started
 | 3 | AB13 A9 Mock-v2 (server-picked setup, multi-item, evidence \| sliders) | X | ⬜ |
 | 4 | AB24 setup + consent + pre-flight + $ cap | X | ⬜ |
 | 5 | AB25 live HUD (text) | X | ⬜ |
-| 6 | Self-review against the brief + screenshots (1440 px, 390 px) | X | ⬜ |
-| 7 | Open the design PR and STOP | X | ⬜ |
-| 8 | Freeze: owner reviews, approves and merges (`ev-freeze-ds-m6a-01`) | O | ⬜ |
+| 6 | Self-review checklist (run before merging) + screenshots (1440 px, 390 px) | X | ⬜ |
+| 7 | Open the design PR (screenshots, frame lists, the ticked self-review checklist, "Decisions to confirm") | X | ⬜ |
+| 8 | Freeze: squash-merge on CI green (the merge is the freeze) → status → sync `main` | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
-> Update the _Overall_ line accordingly. **Two PRs, two rules.** Task 1's ADR PR merges in-session and **does** update
-> [`../status.md`](../status.md) (ADR row, Decisions log, this sprint's board row 🔄) and sets task 1 ✅ here. **Design exception:**
-> the board PR does **not** edit `status.md` (it may stay open for days); it sets tasks 2–6 ✅, task 7 🔄 ("PR #N open — awaiting
-> owner review") and _Overall_ 🔄. The first consuming build sprint, [m6a-01](sprint-m6a-01.md) (its entry gate is this freeze), sets
-> tasks 7–8 and _Overall_ ✅, writes "frozen (PR #, date)" into the status.md Artboards rows for AB13, AB24 and AB25 and ticks
-> `ev-freeze-ds-m6a-01`. Full rules: [status protocol](README.md#status-protocol-way-of-working).
+> Update the _Overall_ line accordingly. **Two PRs, both merged on CI green ([D40](../feasibility.md#decisions-log-newest-first)).**
+> Task 1's ADR PR merges first and updates [`../status.md`](../status.md) (ADR row, Decisions log, this sprint's board row 🔄)
+> and sets task 1 ✅ here. The board PR records the rest: once its number is known, a last commit sets tasks 2–8 and _Overall_ ✅
+> here (task 8: "frozen: merged in PR #N, <date>") and, in status.md, this sprint's Sprint-board row ✅, the Artboards rows AB13,
+> AB24 and AB25 → ✅ "frozen (merged, PR #N, <date>)", and the Snapshot's artboard count (`ev-freeze-ds-m6a-01` is automatic: no
+> tick). If the merge slips to another day or fails after that commit, correct the rows in a follow-up docs PR merged the same
+> way. Full rules: [status protocol](README.md#status-protocol-way-of-working).
 
 ## Entry gates
 
@@ -47,8 +48,10 @@ First, accept [ADR-0032](../../adr/0032-realtime-ai-mock-interviewer.md) with th
 S6, before the M6a design freeze"), so everything downstream cites an Accepted decision. Then draft the first half of the M6a
 boards — **AB13** A9 Mock-v2, **AB24** interview setup + consent + pre-flight + $ cap and **AB25** the live text HUD — as static,
 preview-only HTML on [`theme.css`](../../../design-system/theme.css) under `design-system/screens/v2/`, with every frame, every
-state and final copy, so [m6a-05](sprint-m6a-05.md) builds against owner-approved designs. BP3: agents draft every board; the
-owner only reviews.
+state and final copy, so [m6a-05](sprint-m6a-05.md) builds against frozen designs. BP3: agents draft every board. Per
+[D40](../feasibility.md#decisions-log-newest-first) launching this prompt is the owner's approval for both PRs: the ADR acceptance
+needs no owner sign-off, the board PR merges on CI green and the merge is the freeze; the owner may review afterwards, and any
+change to a frozen board is a follow-up design PR.
 
 The boards encode decisions that are easy to get subtly wrong on screen: **D29** (the AI follows the answer widgets as
 structured state, never the learner), **D27** (item selection skips live items; no start refusal; coach locked while live),
@@ -64,7 +67,8 @@ allowance (AB18).
 - ADR-0032 → **Accepted**, folding the S6 result into it and its amendments into ADR-0007 and ADR-0024 (task 1, own docs PR).
 - `AB13-mock-v2.html`, `AB24-mock-setup-preflight.html`, `AB25-live-hud-text.html` under `design-system/screens/v2/` (the
   ds-m1-01 index names), every frame in tasks 3–5, each with a behaviour-notes aside citing its decision.
-- PNG screenshots of each board at 1440 px and 390 px under `design-system/screens/v2/shots/`, and the design PR, stopped for review.
+- PNG screenshots of each board at 1440 px and 390 px under `design-system/screens/v2/shots/`, and the design PR, merged on CI
+  green (the freeze), plus this sprint's rows in `docs/v2/status.md` (Status note).
 
 **Out**
 - Any `web/` code → [m6a-05](sprint-m6a-05.md). Backend states behind the frames → [m6a-01](sprint-m6a-01.md) (FSM, clock, caps,
@@ -74,7 +78,7 @@ allowance (AB18).
 - Voice pre-flight, browser and EU notices, the voice HUD → AB29, AB30★ in [ds-m6b-01](sprint-ds-m6b-01.md). Voice appears here
   only as a labelled "from M6b" variant.
 - Editing `index.html` or `board.css` → [ds-m1-01](sprint-ds-m1-01.md) (written once). Redrawing AB01, AB06, AB07 or AB08 — reference them.
-- Shipping boards (preview-only, never imported by `web/`) and owner design hours beyond review (BP3).
+- Shipping boards (preview-only, never imported by `web/`) and owner design hours (BP3; any owner review happens after the merge).
 
 ## Tasks
 
@@ -98,10 +102,11 @@ added by spk-04), [t6 §11](../research/t6-realtime-interviewer.md#11-what-t6-co
 - **`docs/adr/README.md`** index row and the [feasibility](../feasibility.md#t6--realtime-ai-mock-interviewer) topic-map row and T6 header → Accepted.
 - **`docs/v2/status.md`:** the ADR row (0032 Accepted, date, PR), a Decisions log line ("ADR-0032 accepted: shell X, deploy shape Y,
   browsers Z"), this sprint's Sprint-board row 🔄. This sprint file: task 1 ✅, _Overall_ 🔄.
-- Commit `docs(adr): accept ADR-0032 with the S6 result`; PR; **merge once CI is green** (land-and-sync; BP2 is the owner's
-  pre-authorisation); `git checkout main && git pull`.
-- **Stop rule:** if the S6 note is escalated or outside the D28 rules, don't accept. Leave ADR-0032 Proposed, add a Decisions log
-  line saying why, and stop and report to the owner; the boards wait.
+- Commit `docs(adr): accept ADR-0032 with the S6 result`; PR; **merge once CI is green** (land-and-sync; BP2 + D40: launching
+  this prompt is the owner's approval, so the acceptance needs no owner sign-off); `git checkout main && git pull`.
+- **Stop rule (a gate failure, not a review):** if the S6 note is escalated or outside the D28 rules, don't accept. Leave
+  ADR-0032 Proposed; land a small docs PR (merged on CI green) with a Decisions-log line saying why and this sprint's Sprint-board
+  row ⛔ "needs owner decision: S6 outside the D28 rules"; then stop and report. The boards aren't drafted.
 
 ### 2 · Board scaffolding [X]
 
@@ -125,7 +130,7 @@ Static HTML boards under `design-system/screens/v2/`, one file per board, named 
   [t6 §7](../research/t6-realtime-interviewer.md#7-privacy-consent-retention--accessibility) S1/S4): no pattern chip on a mock item
   while it's live; no hidden test inputs, only aggregate evidence; no hint text before `give_hint` releases it; no reference solution;
   no private rubric anchors (public descriptors only); **no score anywhere live**, and no mock score on any public surface (D31).
-- **Touch only this sprint's three board files and their screenshots.**
+- **Touch only this sprint's three board files and their screenshots** (plus this sprint's own rows in `docs/v2/status.md`).
 
 ### 3 · AB13 A9 Mock-v2 [X]
 
@@ -230,8 +235,12 @@ disability, nationality or salary; never comments on appearance, voice, accent o
 in the aside; the transcript is a `role="log"` region; phase changes are announced politely and the grace warning (AB26)
 assertively; reduced motion shows replies whole instead of streaming.
 
-### 6 · Self-review against the brief + screenshots [X]
+### 6 · Self-review checklist (run before merging) + screenshots [X]
 
+The session's own gate before the merge (D40: nothing waits on the owner); its ticked result goes in the PR body. Fix what
+fails, then re-check.
+- **`theme.css` check:** linked (then `board.css`), never copied or overridden; tokens only, no new colours; difficulty
+  Easy=`--ds-ok`, Medium=`--ds-warn`, Hard=`--ds-err`; the index's file names.
 - Walk every frame against its cited decision and the [rollout §9](../rollout-plan.md#9-artboards-by-milestone) M6a row
   ("AB13 A9 Mock-v2 · AB24 setup + consent + pre-flight + $ cap · AB25 live HUD (text)").
 - **Decision checks:** D29 (the AI follows the widgets, not the learner; no screenshots), D27 (skip live items, no refusal; coach
@@ -248,12 +257,14 @@ assertively; reduced motion shows replies whole instead of streaming.
   viewport, and the Browser pane can't write files. Use a full-page capture: `npx playwright screenshot --full-page`, or a
   tall headless window sized to the board's `scrollHeight` (the prompt has the commands).
 
-### 7 · Open the design PR and STOP [X]
+### 7 · Open the design PR [X]
 
 Branch `design/ds-m6a-01`; conventional commit `docs(design): AB13 AB24 AB25 — M6a boards, part 1` ending with the attribution lines.
 Open a PR titled `docs(design): AB13 AB24 AB25 — M6a boards (part 1)` with each board's frame list, the screenshots embedded
 (`https://github.com/sujaykumarsuman/xlearn/blob/design/ds-m6a-01/design-system/screens/v2/shots/<file>?raw=true`), a link to the
-merged ADR PR, and **"Decisions to confirm"**, at least:
+merged ADR PR, the ticked self-review checklist (task 6) and **"Decisions to confirm"**. The list doesn't block the merge: each
+item states the default the merge freezes (the boards as drawn), and the owner may revisit any item after the merge through a
+follow-up design PR. At least:
 - the *proposed* error codes (`interview_in_progress`, `interview_daily_limit`, `cost_cap_required`, `no_eligible_items`) for m6a-01;
 - **Hold in text mode** = the interviewer stays quiet, clock running (t6 defines "hold" for voice);
 - the voice card **absent** (not greyed) in M6a;
@@ -264,15 +275,15 @@ merged ADR PR, and **"Decisions to confirm"**, at least:
 - AB01 F13's per-feature default "Interview: <model> (needs a realtime-capable model)" is superseded by
   [t6 §11](../research/t6-realtime-interviewer.md#11-what-t6-constrains-downstream) (T5 §9 row: "the 'must be realtime-capable' rule is
   dropped"; text needs `interview_brain`, voice needs `voice_shell`). AB24 F2's key row doesn't carry the old rule. The AB01 string
-  is flagged for its owner, not copied;
+  is listed for a follow-up design PR on AB01 (a frozen board changes only that way), not copied;
 - the Anthropic-key differences in AB24 F9 (Text only, no negative-balance line, the Anthropic billing link and tip).
 
-**Do not merge.** Stop for owner review (event `ev-freeze-ds-m6a-01`). Requested changes go on the same branch.
+### 8 · Freeze: merge on CI green [X]
 
-### 8 · Freeze [O]
-
-The owner reviews the boards and approves in chat or merges the PR. **Merging is the freeze.** An agent may merge only on the
-owner's explicit approval in chat. [m6a-01](sprint-m6a-01.md) can't start until this freeze and ds-m6a-02's have landed.
+Once the PR number is known, push the status commit (the Status note). When CI is green (fix, then merge, on failure),
+squash-merge: **the merge is the freeze** (D40). Never enable auto-merge. Then sync `main` (`git checkout main && git pull`).
+[m6a-01](sprint-m6a-01.md) can't start until this freeze and ds-m6a-02's have landed. The owner may review after the merge;
+any change is a follow-up design PR.
 
 ## Acceptance criteria
 
@@ -280,21 +291,24 @@ owner's explicit approval in chat. [m6a-01](sprint-m6a-01.md) can't start until 
 - [ ] Every frame listed for AB13 (F1–F12), AB24 (F1–F10) and AB25 (F1–F15) is present with final copy, its state, its decision refs and a behaviour-notes aside.
 - [ ] No board leaks withheld data, shows a score live or publicly, or implies the AI perceives the learner; interview costs appear in dollars only as BYO estimates.
 - [ ] Boards open with no JS runtime; `theme.css` is linked, not copied or overridden; only this sprint's three board files and their screenshots are added.
-- [ ] PR open with 1440 px and 390 px screenshots and "Decisions to confirm"; **not merged by the agent**.
+- [ ] The self-review checklist passed and is ticked in the PR body, with "Decisions to confirm" (each item's frozen default stated).
+- [ ] Board PR **merged on CI green** (the freeze) with 1440 px and 390 px screenshots; this file and `docs/v2/status.md` record ds-m6a-01 ✅ and AB13, AB24, AB25 "frozen (merged)".
 
 ## Release
 
-Two outputs. **The ADR PR** (ADR-0032, ADR-0007, ADR-0024, the ADR index, feasibility and `status.md`) merges in-session per
-land-and-sync; it ships in no tag. **The board PR: stop for owner review (design).** Nothing deploys: boards are preview-only
-files under `design-system/screens/v2/`, never imported by `web/`. The owner's merge is the freeze (`ev-freeze-ds-m6a-01`); with
-ds-m6a-02's it gates [m6a-01](sprint-m6a-01.md), and [m6a-05](sprint-m6a-05.md) implements it. No tag, no infra PR.
+**ADR-0032 docs PR, then land-and-sync; the merge is the design freeze** — two PRs, both merged on CI green; no tag. Launching the prompt is the owner's
+approval ([D40](../feasibility.md#decisions-log-newest-first)), so nothing waits on the owner. **The ADR PR** (ADR-0032, ADR-0007,
+ADR-0024, the ADR index, feasibility and `status.md`) merges first, in-session — the acceptance needs no owner sign-off (BP2 +
+D40) — and ships in no tag. **The board PR** merges next; nothing deploys: boards are preview-only files under
+`design-system/screens/v2/`, never imported by `web/`. Its merge is the freeze; with ds-m6a-02's it gates
+[m6a-01](sprint-m6a-01.md), and [m6a-05](sprint-m6a-05.md) implements it. The owner may review after the merge; any change to a
+frozen board is a follow-up design PR. No infra PR.
 
 ## Definition of Done
 
-ADR PR merged (or the stop rule recorded) · board PR open with AB13, AB24, AB25 and screenshots · every acceptance box ticked ·
-this sprint's Status table updated (task 1 ✅ via the ADR PR; tasks 2–6 ✅ and task 7 🔄 in the board PR) · no `web/`, `internal/`,
-`index.html`, `board.css` change, and no `status.md` change in the board PR · the agent stops at the open board PR. (Done-done —
-✅ Overall — is set by [m6a-01](sprint-m6a-01.md) once the owner has merged.)
+ADR PR merged (or the stop rule recorded and landed) · board PR merged on CI green (the freeze) with AB13, AB24, AB25 and
+screenshots · every acceptance box ticked · this file's Status all ✅ (task 1 via the ADR PR; tasks 2–8 in the board PR) and this
+sprint's `docs/v2/status.md` rows updated · no `web/`, `internal/`, `index.html` or `board.css` change · local `main` synced.
 
 ## Risks / watch-outs
 
@@ -305,3 +319,4 @@ this sprint's Status table updated (task 1 ✅ via the ADR PR; tasks 2–6 ✅ a
 - **Dollar confusion with AB18.** BYO interview costs are dollars on the learner's own key; platform-AI allowance stays percentages. Keep the two apart in copy.
 - **Promising alerts or auto-saves.** D34: nobody is notified; T6: no mock score is ever saved without the learner's click.
 - **Codes invented here drifting from m6a-01.** Mark them *proposed* in the aside and the PR; m6a-01 fixes the final strings and m6a-05 builds to those.
+- **Parallel status edits:** other sessions may update `docs/v2/status.md` when they land; rebase on `origin/main` before each status commit, touch only this sprint's rows and keep theirs.

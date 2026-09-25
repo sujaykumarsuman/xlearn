@@ -51,7 +51,7 @@ path**. Everything ships in **v1.16.0** (m4-07 tags).
 - [ ] m4-02's `ai_rubric` grader is registered on the llm lane and covered by its fixture-item tests, and `llm_calibration`
       rows gate configurations (read `internal/judge/grader` and `internal/judge/ai`; run its unit tests). The end-to-end
       proof is this sprint's own e2e (step 10), not a gate.
-- [ ] AB16★ frozen: `design-system/screens/v2/AB16-ai-suggestion-dispute.html` is on `main`.
+- [ ] AB16★ frozen: ds-m4-01 merged (the merge is the freeze), so `design-system/screens/v2/AB16-ai-suggestion-dispute.html` is on `main`.
 - [ ] Parallel sessions: `gh pr list`, `git worktree list` and ListAgents show no peer editing practice or judge migrations
       or the gateway route table right now.
 
@@ -114,7 +114,7 @@ path**. Everything ships in **v1.16.0** (m4-07 tags).
     `XLEARN_TEST_DATABASE_URL`), `go test -tags e2e -race ./internal/e2e/...`, `sqlc diff`, the migration lint, the
     subject-registry test, the openapi drift test, web tests (unchanged). For a manual look, run the compose stack with a
     scratchpad `-f` override pointing judge at a fake provider and exercise the routes with a dev-login token (ADR-0022).
-13. **[X] Ship** per AGENT.md land-and-sync with this sprint's release action (below).
+13. **[X] Ship:** see **Ship** below.
 
 ## Constraints
 
@@ -178,6 +178,12 @@ path**. Everything ships in **v1.16.0** (m4-07 tags).
 - [ ] `gradesWaiting` in `GET /api/dashboard`; the M4 poll/touch-view fields in camelCase; routes in `openapi.yaml`.
 - [ ] Replay goldens equal for the new resolutions; e2e green.
 
-**Shipping:** per AGENT.md land-and-sync with **this sprint's release action — merge only (ships in v1.16.0)**: branch →
-conventional commits with the attribution lines → push → PR → CI green → squash-merge; **no infra PR, do not tag**
-(m4-07 cuts v1.16.0); then `git checkout main && git pull`.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: xlearn only, on `feat/m4-04-provisional`.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships in `v1.16.0`):** Nothing deploys; it ships in `v1.16.0` (cut by [m4-07](../sprints/sprint-m4-07.md)). Don't tag. No infra PR.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

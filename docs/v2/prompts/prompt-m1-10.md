@@ -3,6 +3,12 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-m1-10.md`](../sprints/sprint-m1-10.md)   ·   **Milestone:** M1 (M1b slice, ships in `v1.7.0`)   ·   **Prereqs:** [m1-02](../sprints/sprint-m1-02.md) (`v1.6.0` live), [m1-03](../sprints/sprint-m1-03.md), [ds-m1-01](../sprints/sprint-ds-m1-01.md) (AB01 frozen)
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] Optional: for the `gpt-6-sol` smoke call (step 4), export your OpenAI key in the shell you launch this session from (`read -s OPENAI_KEY_SMOKE; export OPENAI_KEY_SMOKE`). The session never prints or stores it. Without it, the session keeps `gpt-5.6-sol` as the OpenAI default and logs why (the plan's fallback).
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions, stack, land-and-sync.
@@ -37,7 +43,7 @@ L18 and cuts `v1.7.0`.
       `internal/coach/store/migrations/` on `main` has m1-02's `key_default` migration (PK `(account_id, feature)`,
       `ON DELETE CASCADE`, `is_default` nullable)
 - [ ] [m1-03](../sprints/sprint-m1-03.md) merged (`git log origin/main --oneline | grep -i m1-03` or its PR merged)
-- [ ] AB01 frozen: [ds-m1-01](../sprints/sprint-ds-m1-01.md)'s PR merged by the owner (the board file exists on `main`)
+- [ ] AB01 frozen: [ds-m1-01](../sprints/sprint-ds-m1-01.md) merged (the merge is the freeze, D40; the board file exists on `main`)
 - [ ] Parallel sessions: `gh pr list --state open`, `git worktree list`, ListAgents — no peer PR or worktree touches
       `internal/coach/**`, `internal/platform/secrets/**`, `cmd/coach/**` or adds a coach migration
 
@@ -58,7 +64,8 @@ L18 and cuts `v1.7.0`.
    voice_shell}, price per MTok in micros, `as_of`, recommended, `covered_model`) with the v1 models still served plus
    `claude-opus-5-5`, `gpt-6-sol`, `gpt-6-luna`, `gpt-6-astra`. Copy prices from the providers' pricing pages today and
    set `as_of` to today — never invent a number. Default `claude-sonnet-5`; make `gpt-6-sol` the OpenAI default only if
-   a smoke call succeeds (else keep `gpt-5.6-sol` and log it for the decisions log). Provider registry map in `coach`.
+   a smoke call on the owner's key (`OPENAI_KEY_SMOKE`, set before launch; never echoed) succeeds — without the key or on a
+   failure, keep `gpt-5.6-sol` and log it for the decisions log. Provider registry map in `coach`.
    The handlers validate against `s.providers[p]`. `store` cannot import `coach` (a cycle), so keep
    `store.ValidProvider` only as a static mirror of the DB CHECK, plus a test that the registry, the mirror and the
    CHECK agree. Custom-id regex `^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$` → `custom:true`; else 422
@@ -198,7 +205,12 @@ L18 and cuts `v1.7.0`.
 - [ ] Gateway transit test green (the key PUT is forwarded, never logged or echoed).
 - [ ] CI green incl. `sqlc diff`.
 
-Ship at session end per AGENT.md land-and-sync with **this sprint's release action — merge only**: conventional
-commits (`feat(coach): …`) with the attribution lines, push, open the PR, wait for CI green (fix-then-merge on failure),
-squash-merge, then `git checkout main && git pull`. **Do not tag** — this work ships in `v1.7.0`, which
-[m1-07](../sprints/sprint-m1-07.md) cuts; Flux deploys nothing until then, so there is no live verification in this session.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/m1-10-coach-keys`, then conventional commit(s) (`feat(coach): …`) with the attribution lines, then push, then the PR. This repo only: no `../infra` PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. The AB01 deltas are listed in the PR and the decisions log; a board update is a later design PR, not a wait.
+3. **Release action — merge only:** nothing deploys (`main` is build-only), so there is no live verification in this session. It ships in **`v1.7.0`**, which [m1-07](../sprints/sprint-m1-07.md) cuts. No tag here.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

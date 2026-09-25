@@ -3,8 +3,8 @@
 > **Milestone:** M6b — voice, one shell (the boards M6b builds against) · **Track:** design (parallel; order 80)
 > **Prereqs (gates):** [ds-m6a-01](sprint-ds-m6a-01.md) (AB24 setup + consent + pre-flight + $ cap and AB25 live HUD text frozen; ADR-0032 → Accepted) · [ds-m6a-02](sprint-ds-m6a-02.md) (AB26–AB28 frozen: the grace/paused/resume and accessibility vocabulary AB29/AB30 extend) · [spk-04](sprint-spk-04.md) (S6: the winning shell, the browser gate list, M7) · references, not gates: [ds-m3-01](sprint-ds-m3-01.md) (AB07 editor + Run, AB08 results dock), [ds-l-01](sprint-ds-l-01.md) (AB19 region), [ds-m1-01](sprint-ds-m1-01.md) (board index, `board.css`)
 > **Unblocks:** [m6b-01](sprint-m6b-01.md) (M6b entry gate "AB29–AB30 frozen", [rollout §3](../rollout-plan.md#3-milestone-map)) · consumed by [m6b-03](sprint-m6b-03.md) (builds every frame here); error codes and copy reused by [m6b-01](sprint-m6b-01.md) (broker preconditions) and [m6b-02](sprint-m6b-02.md) (caps, cap wrap, idle, grace)
-> **Release action:** **PR, stop for owner review (design).** The agent never merges; the owner's merge (or explicit approval in chat) **is the freeze**.
-> **Calendar:** Q1 2027, after the S6 results and the M6a freeze · owner event **`ev-freeze-ds-m6b-01`** (review + merge) before [m6b-01](sprint-m6b-01.md) starts
+> **Release action:** **land-and-sync; the merge is the design freeze** — the board PR squash-merges on CI green; no tag, nothing deploys (launching the prompt is the owner's approval, [D40](../feasibility.md#decisions-log-newest-first); the owner may review after the merge, and any change to a frozen board is a follow-up design PR)
+> **Calendar:** Q1 2027, after the S6 results and the M6a freeze · no owner event: the freeze happens at this sprint's merge (`ev-freeze-ds-m6b-01` is automatic and needs no tick; the Artboards rows record the freeze), before [m6b-01](sprint-m6b-01.md) starts
 > **Execute with:** [`../prompts/prompt-ds-m6b-01.md`](../prompts/prompt-ds-m6b-01.md) — one prompt, one session.
 
 ## Status
@@ -16,15 +16,17 @@ _Overall:_ ⬜ Not started
 | 1 | Board scaffolding (own files only; never `index.html` or `board.css`) | X | ⬜ |
 | 2 | AB29 voice pre-flight + browser/EU notices + voice consent | X | ⬜ |
 | 3 | AB30 ★ voice live HUD (hero) | X | ⬜ |
-| 4 | Self-review against the brief + screenshots (1440 px, 390 px) | X | ⬜ |
-| 5 | Open the design PR and STOP | X | ⬜ |
-| 6 | Freeze: owner reviews, approves and merges (`ev-freeze-ds-m6b-01`) | O | ⬜ |
+| 4 | Self-review checklist (run before merging) + screenshots (1440 px, 390 px) | X | ⬜ |
+| 5 | Open the design PR (screenshots, frame lists, the ticked self-review checklist, "Decisions to confirm") | X | ⬜ |
+| 6 | Freeze: squash-merge on CI green (the merge is the freeze) → status → sync `main` | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
-> Update the _Overall_ line accordingly. **Design exception:** this sprint's PR does **not** edit [`../status.md`](../status.md)
-> (the PR may stay open for days). The PR sets tasks 1–4 ✅, task 5 🔄 ("PR #N open — awaiting owner review") and _Overall_ 🔄;
-> the first consuming build sprint ([m6b-01](sprint-m6b-01.md), whose entry gate is this freeze) sets tasks 5–6 and _Overall_ ✅,
-> writes "frozen (PR #, date)" into the status.md Artboards rows for AB29–AB30 and ticks `ev-freeze-ds-m6b-01`.
+> Update the _Overall_ line accordingly. **Land and sync ([D40](../feasibility.md#decisions-log-newest-first)):** the board PR
+> merges on CI green and the merge is the freeze, so this sprint records its own close-out. Once the PR number is known, a last
+> commit on the PR branch sets tasks 1–6 and _Overall_ ✅ here (task 6: "frozen: merged in PR #N, <date>") and, in
+> [`../status.md`](../status.md), this sprint's Sprint-board row ✅, the Artboards rows AB29 and AB30 → ✅ "frozen (merged, PR #N,
+> <date>)", and the Snapshot's artboard count (`ev-freeze-ds-m6b-01` is automatic: no tick). If the merge
+> slips to another day or fails after that commit, correct the rows in a follow-up docs PR merged the same way.
 > Full rules: [status protocol](README.md#status-protocol-way-of-working).
 
 ## Entry gates
@@ -34,7 +36,7 @@ _Overall:_ ⬜ Not started
       push-to-talk and Patient native or emulated (M3b), captions path (GPT-Live `oai-events` data channel vs the sideband over SSE),
       measured cost per 45/60 minutes (M9) and the pre-flight voice-check latency
 - [ ] **ADR-0032 Accepted** with the S6 result folded in ([ds-m6a-01](sprint-ds-m6a-01.md) task 1)
-- [ ] **AB24–AB28 frozen on `main`** ([ds-m6a-01](sprint-ds-m6a-01.md), [ds-m6a-02](sprint-ds-m6a-02.md) merged by the owner), so AB29 extends
+- [ ] **AB24–AB28 frozen on `main`** ([ds-m6a-01](sprint-ds-m6a-01.md), [ds-m6a-02](sprint-ds-m6a-02.md) merged), so AB29 extends
       AB24's setup/consent/pre-flight and AB30 extends AB25's HUD and AB26's grace/paused/resume rather than redrawing them
 - [ ] **Parallel sessions:** no open peer PR adds or edits `design-system/screens/v2/AB29-*` or `AB30-*`
       (`gh pr list --state open`, `git worktree list`, ListAgents)
@@ -49,9 +51,11 @@ board-local `<style>` for chrome.
 Draft the two M6b boards — **AB29** (voice pre-flight: mode choice, voice consent, mic check, the real voice check, the voice
 estimate and $ cap, and every "no voice here" notice) and the **AB30 ★ voice live HUD** hero — as static, preview-only HTML on
 [`theme.css`](../../../design-system/theme.css) under `design-system/screens/v2/`, with every frame, every state and **final copy**,
-so [m6b-03](sprint-m6b-03.md) builds owner-approved screens and [m6b-01](sprint-m6b-01.md) can open M6b. Per **BP3** (owner decision
-2026-09-24) the agent drafts every board, the AB30 hero included; the owner only reviews and approves. The rollout's "owner designs
-the heroes in Claude Design" ([rollout §9](../rollout-plan.md#9-artboards-by-milestone)) is superseded by BP3.
+so [m6b-03](sprint-m6b-03.md) builds against frozen boards and [m6b-01](sprint-m6b-01.md) can open M6b. Per **BP3** (owner decision
+2026-09-24) the agent drafts every board, the AB30 hero included; per [D40](../feasibility.md#decisions-log-newest-first) the board
+PR merges on CI green and the merge is the freeze — the owner may review afterwards, and any change to a frozen board is a
+follow-up design PR. The rollout's "owner designs the heroes in Claude Design" ([rollout §9](../rollout-plan.md#9-artboards-by-milestone))
+is superseded by BP3.
 
 The boards encode decisions that are easy to get subtly wrong on screen: **D29** (the AI "shares the session like another
 interviewer": it follows the on-screen answer widgets as structured state, **no video goes to the AI**, the camera is an optional
@@ -70,7 +74,7 @@ accent, voice, face or appearance; evaluative speech is brain-authored and the i
   timers (× the time multiplier where t6 says they scale), gates and a11y notes; a `< 1024 px` intent per frame and a 390 px
   section per board.
 - PNG screenshots of each board at 1440 px and 390 px under `design-system/screens/v2/shots/` and in the PR body.
-- The design PR, stopped for owner review.
+- The design PR, merged on CI green (the freeze), and this sprint's rows in `docs/v2/status.md` (Status note).
 
 **Out**
 - Any `web/` code → [m6b-03](sprint-m6b-03.md) (both boards). The states behind the frames → [m6b-01](sprint-m6b-01.md) (SDP broker,
@@ -84,7 +88,7 @@ accent, voice, face or appearance; evaluative speech is brain-authored and the i
   reference those boards by frame id.
 - M6c extras (photo "show your work", read-aloud, local recording download, Safari if it failed S6, voice-lite) →
   [m6c-01](sprint-m6c-01.md), [m6c-03](sprint-m6c-03.md) (outline).
-- Shipping boards (preview-only, never imported by `web/`) and owner design hours beyond review (BP3).
+- Shipping boards (preview-only, never imported by `web/`) and owner design hours (BP3; any owner review happens after the merge).
 
 ## Tasks
 
@@ -112,7 +116,8 @@ Static HTML boards under `design-system/screens/v2/`, one file per board, named 
   [t6 §7](../research/t6-realtime-interviewer.md#7-privacy-consent-retention--accessibility) S1/S4): no pattern chip, reference
   solution, hint ladder, hidden test inputs or expected outputs, rubric anchors or exemplars anywhere on the HUD; only released
   hints (`give_hint`) and the learner-visible Run DTO (passed/total, failure class).
-- **Touch only this sprint's own board files** (and their screenshots). `index.html` already has a row and link for AB29–AB30.
+- **Touch only this sprint's own board files** (and their screenshots, plus this sprint's own rows in `docs/v2/status.md`).
+  `index.html` already has a row and link for AB29–AB30.
 
 ### 2 · AB29 voice pre-flight + notices [X]
 
@@ -201,8 +206,12 @@ emotion; shortcuts (Ctrl + Space talk, Ctrl + Shift + U mute, Ctrl + Shift + E e
 Chrome/Edge defaults — verify both lists; `prefers-reduced-motion` stops the level and speaking animations; End asks for confirmation
 with **[Keep going]** as the default button.
 
-### 4 · Self-review against the brief + screenshots [X]
+### 4 · Self-review checklist (run before merging) + screenshots [X]
 
+The session's own gate before the merge (D40: nothing waits on the owner); its ticked result goes in the PR body. Fix what
+fails, then re-check.
+- **`theme.css` check:** linked (then `board.css` if on `main`), never copied or overridden; `--ds-*` tokens only, no new
+  colours; difficulty Easy=`--ds-ok`, Medium=`--ds-warn`, Hard=`--ds-err`; indicators icon + text; the index's file names.
 - Walk every frame against its cited decision and the [rollout §9](../rollout-plan.md#9-artboards-by-milestone) M6b row ("AB29 voice
   pre-flight, browser and EU notices · AB30★ voice live HUD") and the register brief (AB30: rail, captions, mic/camera state with
   optional self-view, editor + Run, Hold/Talk and push-to-talk, "hold voice while I code", countdown grace, cost vs $ cap).
@@ -218,12 +227,14 @@ with **[Keep going]** as the default button.
 - Screenshot every board full-page at **1440 px** and **390 px** into `design-system/screens/v2/shots/AB29@1440.png`,
   `AB29@390.png`, `AB30@1440.png`, `AB30@390.png` (each ≲ 500 KB).
 
-### 5 · Open the design PR and STOP [X]
+### 5 · Open the design PR [X]
 
 Branch `design/ds-m6b-01`; conventional commit `docs(design): AB29 AB30 — M6b voice boards` ending with the attribution lines. Open
 a PR titled `docs(design): AB29 AB30 ★ — M6b voice boards` with each board's frame list, the screenshots embedded
-(`https://github.com/sujaykumarsuman/xlearn/blob/design/ds-m6b-01/design-system/screens/v2/shots/<file>?raw=true`) and a
-**"Decisions to confirm"** list, at least:
+(`https://github.com/sujaykumarsuman/xlearn/blob/design/ds-m6b-01/design-system/screens/v2/shots/<file>?raw=true`), the ticked
+self-review checklist (task 4) and a **"Decisions to confirm"** list. The list doesn't block the merge: each item states the
+default the merge freezes (the boards as drawn), and the owner may revisit any item after the merge through a follow-up design
+PR. At least:
 - **Live spend on the HUD.** [t6 §8](../research/t6-realtime-interviewer.md#8-cost-on-byo-keys) hides the live meter during the
   interview (shown in grace, pause, resume and the report); the register brief asks for "cost meter vs $ cap". The board follows
   t6: no meter live, an 85% wrap banner, spend in the grace modal. Alternative: an opt-in "Show spend" disclosure, off by default.
@@ -232,7 +243,7 @@ a PR titled `docs(design): AB29 AB30 ★ — M6b voice boards` with each board's
 - **Push-to-talk switchable mid-call** (F4), not only at setup.
 - **Voice on narrow screens** — the boards draw a 390 px layout; whether voice should be offered on phones at all.
 - **Region wording** (F8) — it names the account's region, an attestation; where "Confirm your region" (the no-region variant) leads —
-  the acceptance step or Settings — is the owner's call.
+  the acceptance step or Settings: draw one (the conservative reading), state it here, and the owner may revisit it after the merge.
 - **Self-edit placement** (AB30 F17) — M6a's boards left voice transcript self-edit to M6b; drawn here as the step between the call and
   AB27's proposal review.
 - **Mic loss timing** (AB30 F7) — t6 §4 says the clock stops 10 s after the mic is lost; the build interrupts (and stops the clock) at 30 s
@@ -244,13 +255,12 @@ a PR titled `docs(design): AB29 AB30 ★ — M6b voice boards` with each board's
 - **Daily voice limit mid-interview** (AB30 F19) — the interview pauses (counting toward the 3 pauses and the 24 h resume window) rather
   than ending; resuming in text stays available.
 
-**Do not merge.** Stop for owner review (owner event `ev-freeze-ds-m6b-01`). Requested changes are made on the same branch.
+### 6 · Freeze: merge on CI green [X]
 
-### 6 · Freeze [O]
-
-The owner reviews the boards and approves in chat or merges the PR. **Merging is the freeze.** An agent may merge only on the
-owner's explicit approval in chat. [m6b-01](sprint-m6b-01.md) cannot start until it lands (its entry gate), and
-[m6b-03](sprint-m6b-03.md) builds against exactly these files.
+Once the PR number is known, push the status commit (the Status note). When CI is green (fix, then merge, on failure),
+squash-merge: **the merge is the freeze** (D40). Never enable auto-merge. Then sync `main` (`git checkout main && git pull`).
+[m6b-01](sprint-m6b-01.md) cannot start until it lands (its entry gate), and [m6b-03](sprint-m6b-03.md) builds against exactly
+these files. The owner may review after the merge; any change is a follow-up design PR.
 
 ## Acceptance criteria
 
@@ -260,19 +270,21 @@ owner's explicit approval in chat. [m6b-01](sprint-m6b-01.md) cannot start until
       text mode one click away; the consent frame discloses audio passing through xLearn's server in memory only.
 - [ ] Boards open with no JS runtime; `theme.css` is linked, not copied or overridden; only this sprint's two board files and their
       screenshots are added (no `index.html`/`board.css` edit).
-- [ ] PR open with 1440 px and 390 px screenshots of each board and a "Decisions to confirm" list; **not merged by the agent**.
+- [ ] The self-review checklist passed and is ticked in the PR body, with the "Decisions to confirm" list (each item's frozen default stated).
+- [ ] PR **merged on CI green** (the freeze) with 1440 px and 390 px screenshots of each board; this file and `docs/v2/status.md` record ds-m6b-01 ✅ and AB29, AB30 "frozen (merged)".
 
 ## Release
 
-**PR, stop for owner review (design).** Nothing deploys: boards are preview-only files under `design-system/screens/v2/`, never
-imported by `web/`. The owner's merge is the freeze (`ev-freeze-ds-m6b-01`); it gates [m6b-01](sprint-m6b-01.md) (M6b entry) and is
-what [m6b-03](sprint-m6b-03.md) implements. No tag, no infra PR, no `status.md` edit in this PR.
+**Land-and-sync; the merge is the design freeze** — the board PR squash-merges on CI green; no tag. Nothing deploys: boards are preview-only files
+under `design-system/screens/v2/`, never imported by `web/`. Launching the prompt is the owner's approval
+([D40](../feasibility.md#decisions-log-newest-first)), so nothing waits on the owner; the owner may review after the merge, and
+any change to a frozen board is a follow-up design PR. The merge is the freeze that gates [m6b-01](sprint-m6b-01.md) (M6b entry)
+and is what [m6b-03](sprint-m6b-03.md) implements. No infra PR; the only `status.md` edits are this sprint's rows.
 
 ## Definition of Done
 
-PR open with AB29–AB30 and screenshots · every acceptance box ticked · this sprint's Status table updated in the PR (tasks 1–4 ✅,
-task 5 🔄 awaiting review) · no `web/`, `internal/`, `index.html`, `board.css` or `docs/v2/status.md` change · the agent stops at the
-open PR. (Done-done — ✅ Overall — is set by [m6b-01](sprint-m6b-01.md) once the owner has merged.)
+PR merged on CI green (the freeze) with AB29–AB30 and screenshots · every acceptance box ticked · this file's Status all ✅ and
+`docs/v2/status.md` updated (Sprint-board row ✅; Artboards AB29, AB30 "frozen (merged, PR #N, <date>)") · no `web/`, `internal/`, `index.html` or `board.css` change · local `main` synced.
 
 ## Risks / watch-outs
 
@@ -287,3 +299,5 @@ open PR. (Done-done — ✅ Overall — is set by [m6b-01](sprint-m6b-01.md) onc
 - **Countdown drift.** Grace, idle and phase timers are server deadlines; a board implying a client timer invites the bug m6b-03 lists.
 - **Copy drift from AB24/AB26.** The voice consent and grace frames extend M6a's boards; if a string differs, it is flagged, not
   silently changed.
+- **Parallel status edits:** other sessions may update `docs/v2/status.md` when they land; rebase on `origin/main` before the
+  status commit, touch only this sprint's rows and keep theirs.

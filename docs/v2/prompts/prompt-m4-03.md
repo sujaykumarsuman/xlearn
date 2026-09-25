@@ -3,6 +3,12 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-m4-03.md`](../sprints/sprint-m4-03.md)   ·   **Milestone:** M4 (platform AI)   ·   **Prereqs:** [m4-02](../sprints/sprint-m4-02.md) (judge ai) · [m3-10](../sprints/sprint-m3-10.md) (review on judge signals)
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] Optional here (only step 15's dev-split run needs it; [m4-07](../sprints/sprint-m4-07.md) needs it anyway): a fresh `xlearn-calib` personal key (7–30-day expiry, from the Anthropic Console) exported as `LLM_CALIB_API_KEY` in the shell that launches this session — never pasted into the session.
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — conventions, service boundaries, land-and-sync.
@@ -52,8 +58,8 @@ calls the model on prod yet: the flag is off, no AI consent row exists until m4-
       the consent kinds + gate, the acceptance-row catalog gate and `judge admin calibration record`; `httptest` fake providers
       in tests (m4-01's convention); identity `/internal/accounts/{id}` returns `role`, `tier`, `status`, `consents`
       (`gh pr list --state merged --search "m4-02"`; read the code).
-- [ ] AB17 frozen and AB16 on `main` (`design-system/screens/v2/AB17-pointer-notes.html`, `AB16-ai-suggestion-dispute.html`);
-      note whether the owner kept AB17 F3 (optional revisit) — if cut, skip `optional_revisit` and its routes.
+- [ ] AB17 frozen and AB16 on `main`: ds-m4-01 merged, and the merge is the freeze (`design-system/screens/v2/AB17-pointer-notes.html`,
+      `AB16-ai-suggestion-dispute.html`); note whether the merged AB17 keeps F3 (optional revisit) — if not, skip `optional_revisit` and its routes.
 - [ ] review `mistake_entry.{category_source, category_suggested, concepts, concepts_source, last_refreshed_by_attempt_id}`
       exist (m3-10; `internal/review/store/migrations/`), and v1.14.0 is live (`curl -s https://projects.sujaykumar.dev/xlearn/api/v1/healthz`).
 - [ ] `problem_solved` v2 and `touch_concluded` carry `attempt_id` (+ `revision_item_id`, `touch_passed`, `evaluation_ids[]`
@@ -130,10 +136,13 @@ calls the model on prod yet: the flag is off, no AI consent row exists until m4-
 14. **[I] Infra ACL PR** (task 9) in `../infra`: paste the re-rendered judge and review blocks into
     `infrastructure/messaging/release.yaml`; state "no NetworkPolicy change: no new in-cluster HTTP caller"; merge before
     v1.16.0 (a reload, not a restart). After it reconciles, read-only check the NATS pod logs for config-reload errors.
-15. **[O] Dev-split tuning** (task 10, optional here): hand the owner the exact `make judge-eval … SPLIT=dev
-    PROVIDER=anthropic` command for his machine with the `xlearn-calib` key; record his results (effort, `max_tokens`, τ) in
-    status.md. If he defers, leave task 10 ⬜ with the note "runs at m4-07 start".
-16. **[X] Ship** per AGENT.md land-and-sync with this sprint's release action (below).
+15. **[X] Dev-split tuning** (task 10, optional here): verify the before-launch key is set without printing it
+    (`[ -n "$LLM_CALIB_API_KEY" ] && echo set || echo missing`). If set, run
+    `make judge-eval SET=../xlearn-evalpack/acceptance SPLIT=dev PROVIDER=anthropic SWEEP=effort:low-nothink,low,medium`
+    yourself (pre-approved by launching this prompt, D40; billed to `xlearn-calib` within the ≈ $10–30 acceptance budget;
+    dev runs never write `configs_tried.log`) and record the results (effort, `max_tokens`, τ) in status.md. If missing,
+    set task 10 ⛔ "no calib key in the session env: runs at m4-07 start" in status.md and carry on.
+16. **[X] Ship:** see **Ship** below.
 
 ## Constraints
 
@@ -149,7 +158,8 @@ calls the model on prod yet: the flag is off, no AI consent row exists until m4-
   (T-2); the infra ACL PR merges **before** v1.16.0. The durables are `DeliverNew`.
 - **Money and privacy:** no LLM call outside `Reserve`; no pack material in `Analyze` (compile-time); no `tools`; no prose
   in events, logs, errors or the harness output; pointer notes never on public routes; `LLM_CALIB_API_KEY` stays on the
-  owner's machine — never read, echoed or stored by the agent; never set `ANTHROPIC_API_KEY`.
+  owner's machine, exported by the owner before launch — never read, echoed or stored by the agent (only the harness reads
+  it from the environment); never set `ANTHROPIC_API_KEY`.
 - **Consent is fail-closed:** no consent row ⇒ no analysis. Never default a consent to granted.
 - **GitOps:** infra changes only through `../infra` PRs, each its own task, never folded into a tag; never `kubectl apply`.
 - **D34:** no alerting, digests, pings, Flux Alerts or opscheck; `judge admin analyses` is the on-demand read.
@@ -176,8 +186,8 @@ calls the model on prod yet: the flag is off, no AI consent row exists until m4-
 
 ## Update status
 
-- [`../sprints/sprint-m4-03.md`](../sprints/sprint-m4-03.md): each task 🔄 → ✅ (⛔ with a reason); _Overall_ ✅ when all
-  X/I tasks are ✅ (task 10 may stay ⬜ with its note).
+- [`../sprints/sprint-m4-03.md`](../sprints/sprint-m4-03.md): each task 🔄 → ✅ (⛔ with a reason); _Overall_ ✅ when tasks
+  1–9 are ✅ (task 10 is optional: ✅ if run, else ⛔ with its note; it never blocks _Overall_).
 - [`../status.md`](../status.md): the Sprint board row; the **M4** milestone row stays 🔄 (analyzer merged, ships dark in
   v1.16.0); the infra PR list (ACL PR #); the **flag inventory** unchanged (`LLM_PLATFORM_ENABLED` = false, kill switch);
   the content/acceptance-set row (template → harness ready; dev-split result if run); a **Decisions log** line each for:
@@ -195,9 +205,14 @@ calls the model on prod yet: the flag is off, no AI consent row exists until m4-
 - [ ] Analyze requests carry **no pack material** and no tools; no call without a passed acceptance row; validator caps hold; no prose in events or logs.
 - [ ] Notes and analyses are withheld under `withhold()` and absent from public routes; an optional revisit never enters the ladder, R-SR5 or the Today budget; erase removes the new rows.
 - [ ] `cmd/judge-eval` runs **end to end on the synthetic set** with every metric in the plan and writes a calibration row; a repeated test-split config is refused.
-- [ ] Registry, stream-budget, ACL golden and NATS-auth integration tests green; the infra ACL PR merged (or approved to merge before v1.16.0).
+- [ ] Registry, stream-budget, ACL golden and NATS-auth integration tests green; the infra ACL PR merged (before v1.16.0).
 
-**Shipping:** per AGENT.md land-and-sync with **this sprint's release action — merge only (ships dark in v1.16.0)**: branch →
-conventional commits with the attribution lines → push → PR → CI green → squash-merge; merge the ACL PR in `../infra` the
-same way (before v1.16.0); **do not tag** (m4-07 cuts v1.16.0) and do not flip `LLM_PLATFORM_ENABLED`; then
-`git checkout main && git pull` in every repo touched.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: the xlearn PR on `feat/m4-03-analyzer` and the `../infra` ACL PR (infra has no CI: paste the local checks, e.g. `make nats-acl-test` and the golden render, into its PR body and merge on them).
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships dark in `v1.16.0`) + the ACL PR:** Nothing deploys; it ships in `v1.16.0` (cut by [m4-07](../sprints/sprint-m4-07.md)). Don't tag, and don't flip `LLM_PLATFORM_ENABLED`. The `../infra` ACL PR (task 9) is merged on its own, before `v1.16.0` (a config reload, not a restart); after it reconciles, read-only check the NATS pod logs for config-reload errors.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn, `../infra`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

@@ -52,9 +52,10 @@ endpoints until m2-04. There is no judge yet, so the DSA re-solve criterion is s
 - [ ] AB04–AB06 and AB22 **frozen**: the ds-m2-01 PR is merged (`gh pr list --state merged --search "AB04"`) and `design-system/screens/v2/AB04-touch.html`, `AB05-catalog-agenda.html`, `AB06-public-profile-v2.html` and `AB22-visibility-toggles.html` are on `main` (`git ls-tree origin/main design-system/screens/v2/`).
 - [ ] On `main`: `internal/course` with `revision.bands[*]` (criteria, `mock_mode`, band timer); item schema with `revision.probes[]` + `solution_facts`; the m1-09 DSA item layout (`curriculum/courses/dsa/items/<id>/…`); `internal/platform/events/topology.go` + the subject-registry test; v2 envelope decoders; practice `GET /attempts/open`; `hack/lint-migrations.sh` with m1-02's `-- xlearn:relax <reason>` marker; review's `event_dead_letter` sink (mi-05).
 
-Then read (information, not a gate) the owner's answer to the ds-m2-01 PR's **"Decisions to confirm" #1** — honor-key
-strictness until M4's claim: (A) strict or (B) v1-parity (plan Task 3). Build the answered option; if unanswered, build
-(A) and record it as an open owner item in `docs/v2/status.md`.
+Then read (information, not a gate) the ds-m2-01 PR's **"Decisions to confirm" #1** — honor-key strictness until M4's
+claim: (A) strict or (B) v1-parity (plan Task 3). The ds-m2-01 merge froze (A), its stated default (D40). If status.md
+records that the owner has since picked (B), build that; otherwise build (A) and keep it as an open owner item in
+`docs/v2/status.md`. Don't ask and don't wait.
 - [ ] Parallel sessions: `gh pr list`, `git worktree list` and ListAgents show no peer editing practice/review migrations right now (goose versions are sequential per service).
 
 ## Do this (in order)
@@ -75,8 +76,8 @@ strictness until M4's claim: (A) strict or (B) v1-parity (plan Task 3). Build th
    (ids 7, 40, 104; plan Task 2) and list every fact in the PR; write `curriculum/courses/dsa/keys/patterns.json`; extend
    the content CI (both probes present, every pattern aliased, every fact parses under the normaliser).
 4. **[X] `internal/course/keys`** (Task 3): text alias matcher, big-O normaliser (any identifier is an atom; commutative
-   products/sums; no variable renaming), `key_source` resolution, honor flag, and `honorProbeMet()` with the owner's
-   policy (A or B) as a code constant stamped into `policy_version`; `key_match` kept in `criteria[]`; table tests over
+   products/sums; no variable renaming), `key_source` resolution, honor flag, and `honorProbeMet()` with the policy
+   ((A) as frozen, or (B) if status.md records the owner's pick) as a code constant stamped into `policy_version`; `key_match` kept in `criteria[]`; table tests over
    every seeded item plus the variant corpus (ids 7, 40, 104 included).
 5. **[X] review side first** (Task 6) — so the practice client has something to call: the `touch_result` migration,
    the reanchor queries (`ReanchorTouch` with an anchor, new `ReanchorPendingTouches`), `applyTouchOutcomeTx` extracted
@@ -104,10 +105,10 @@ strictness until M4's claim: (A) strict or (B) v1-parity (plan Task 3). Build th
 11. **[I] Infra PR — practice → review caller** (Task 8) in `../infra`: `REVIEW_BASE_URL` on `apps/xlearn-practice.yaml`;
     confirm from `apps/xlearn-review.yaml` that MI-5a already admits the `xlearn` namespace to review's internal routes
     (state it in the PR); add practice → review :8084 egress only if the mi-11 egress matrix has merged. Its own PR,
-    merged before v1.9.0.
+    merged in this session (harmless on v1.8.0), so it's in before v1.9.0.
 12. **[I] ACL render check** (Task 9): `make nats-acl-render`, diff against the golden. Expected no change; if it changes,
-    open the infra ACL PR (re-rendered block), to merge before v1.9.0.
-13. **[X] Ship** per AGENT.md land-and-sync with this sprint's release action (below).
+    open the infra ACL PR (re-rendered block) and merge it in this session, before v1.9.0.
+13. **[X] Ship** (see Ship, below).
 
 ## Constraints
 
@@ -147,12 +148,13 @@ strictness until M4's claim: (A) strict or (B) v1-parity (plan Task 3). Build th
 ## Update status
 
 - [`../sprints/sprint-m2-01.md`](../sprints/sprint-m2-01.md): each task 🔄 → ✅ (⛔ with a reason); _Overall_ ✅ when all are.
-- [`../status.md`](../status.md): the Sprint board row; the **M2** milestone row → 🔄 (M2a merged, ships in v1.9.0); the
-  **artboard rows AB04, AB05, AB06, AB22 → "frozen (PR #N, date)"** (this is the first build sprint consuming them) and
-  [ds-m2-01](../sprints/sprint-ds-m2-01.md) task 8 + _Overall_ → ✅; the infra PR numbers; a **Decisions log** line each
-  for: interim practice-side key evaluation, the M2 attestation, touch `graded_by`/`trust` derivation, the honor-probe
-  policy (A or B per the owner's answer — or, if unanswered, an **open owner item** "strict honor keys until m4-04 —
-  answer before m2-05 turns the producers on"), the `timer.kind` widening under `xlearn:relax`, the rollback-safe
+- [`../status.md`](../status.md): the Sprint board row; the **M2** milestone row → 🔄 (M2a merged, ships in v1.9.0);
+  **confirm the artboard rows AB04, AB05, AB06, AB22 read "frozen (PR #N, date)"** and
+  [ds-m2-01](../sprints/sprint-ds-m2-01.md) reads ✅ (its own merge records them under D40; repair if missing; this is the
+  first build sprint consuming them); the infra PR numbers; a **Decisions log** line each for: interim practice-side key
+  evaluation, the M2 attestation, touch `graded_by`/`trust` derivation, the honor-probe policy ((A) as frozen, or (B) if
+  the owner picked it — plus, if he hasn't, an **open owner item** "strict honor keys (A) until m4-04; a switch to (B) is
+  a one-constant PR", which nothing waits on), the `timer.kind` widening under `xlearn:relax`, the rollback-safe
   course-attempt heal, the practice → review internal read, and the ADR number.
 - Content status table: DSA probes + solution facts present for the seeded items (count).
 
@@ -163,9 +165,14 @@ strictness until M4's claim: (A) strict or (B) v1-parity (plan Task 3). Build th
 - [ ] review processes a `touch_concluded` fixture **idempotently** (same `event_id`; same `attempt_id` under a new `event_id`), advancing on pass and resetting to Day 1 from `anchor_at` on fail; the v1 self endpoint behaves exactly as before.
 - [ ] **No producer emits the new subject yet** (`TestNoTouchProducerYet` green; no BFF route).
 - [ ] v1 course flows unchanged (every v1 e2e green); `LogOutcome` double-submit → one outcome, one event.
-- [ ] Subject registry and ACL golden green; the practice → review infra PR merged (or approved to merge before v1.9.0).
+- [ ] Subject registry and ACL golden green; the practice → review infra PR merged in this session.
 
-**Shipping:** per AGENT.md land-and-sync with **this sprint's release action — merge only (ships in v1.9.0)**: branch →
-conventional commits with the attribution lines → push → PR → CI green → squash-merge; merge the infra PR(s) in
-`../infra` the same way; **do not tag** (m2-02 cuts v1.9.0) and nothing deploys yet; then `git checkout main && git pull`
-in every repo touched.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commits with the attribution lines, then push, then a PR in every repo touched: the xlearn PR and the `../infra` practice → review caller PR (step 11), plus an ACL PR only if the render changed (step 12). Infra PRs are their own PRs, never folded into a tag.
+2. Once CI is green (fix, then merge, on failure), squash-merge each. Never enable auto-merge. `../infra` has no CI: the env diff and the NetworkPolicy/ACL evidence in each PR body are its checks.
+3. **Release action — merge only:** nothing deploys (`main` is build-only). It ships in **`v1.9.0`**, which [m2-02](../sprints/sprint-m2-02.md) cuts with every M2a/M2b consumer and the producers idle; the infra PRs are already merged by then. No tag here.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in xlearn and `../infra`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

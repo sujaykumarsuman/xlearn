@@ -3,6 +3,12 @@
 > **One self-contained prompt = one sprint = one session.** Paste it into a fresh coding session at the xlearn repo root. The cluster work happens in the sibling `../infra` repo, through GitOps PRs.
 > **Plan:** [`../sprints/sprint-mi-03.md`](../sprints/sprint-mi-03.md)   ·   **Milestone:** MI (rollout steps MI-5 and MI-5a, ADR-0030 A4)   ·   **Prereqs:** [mi-01](../sprints/sprint-mi-01.md) (MI-5a only), [mi-02](../sprints/sprint-mi-02.md)
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] Read the date of the last Hostinger weekly image in hPanel and record it in `status.md` (or give it in the launch message). Rollout §2.2 requires it before any restart-inducing step, and this sprint's two `podAnnotations` bumps each restart a pod.
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md): the land-and-sync directive and the `../infra` conventions (never `kubectl apply` by hand).
@@ -47,7 +53,7 @@ Live facts (read-only, 2026-09-24):
 
 The infra repo has **no CI**. Validate with `helm template` diffs, `hack/host-lint.sh`, and `--dry-run=server` on the node, which persists nothing. Don't use `kubectl kustomize`: infra directories have no `kustomization.yaml` (Flux generates one; don't add one), and `infrastructure/database/cluster/` holds SOPS-encrypted files.
 
-**Owner time:** about 2 minutes after the MI-5 restart merge and again after the MI-5a merge, for the login smoke (an agent never enters credentials), plus reading the Hostinger weekly image date before the first restart. Tell the owner up front.
+**Owner time:** none mid-run. The weekly image date is a before-launch item. The login smokes use an already-signed-in browser session if you have one; otherwise record "owner login smoke pending" as a pending-smoke note in status.md and carry on (an agent never enters credentials).
 
 ## Entry gates: verify first
 
@@ -56,7 +62,7 @@ Stop and report if any gate is unmet.
 - [ ] The MI-8 extension is merged ([mi-02](../sprints/sprint-mi-02.md)): `../infra/hack/expected-netpol.tsv` exists, and `host-verify.sh --cluster` checks NetworkPolicy presence and supports `--nats-stage=open`.
 - [ ] *(For MI-5a only)* Chart 0.3.0 is merged ([mi-01](../sprints/sprint-mi-01.md)), with multi-source ingress and a same-namespace source in `charts/project/values.yaml`. If it isn't, **do MI-5 alone**, record mi-03 as 🔄 (MI-5a waiting on mi-01), and stop.
 - [ ] `cd ../infra && git checkout main && git pull`. Peer check in both repos: `gh pr list --state open`, `git worktree list`, ListAgents. No open PR touches `apps/xlearn-*.yaml`, `infrastructure/{database/cluster,messaging}/` or `hack/expected-netpol.tsv` (mi-14 edits the `.tsv` too).
-- [ ] **[O]** The last Hostinger weekly image date is checked (the owner reads hPanel) and recorded in status.md. [Rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag) requires it before any restart-inducing step, and this sprint's two `podAnnotations` bumps each restart a pod.
+- [ ] The last Hostinger weekly image date is recorded in status.md (the owner reads hPanel before launch; see above). [Rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag) requires it before any restart-inducing step, and this sprint's two `podAnnotations` bumps each restart a pod. **If it's missing, don't wait:** land MI-5 (step 2 restarts nothing) and the docs PR, and set the restart-inducing work (step 3's restart PR, steps 4–5) ⛔ in status.md, naming the owner item; a re-run picks up at step 3.
 - [ ] No xlearn release is mid-rollout (`ssh vps 'sudo k3s kubectl get deploy -n xlearn'`: all available). No `v*` tag was pushed in the last 15 min (`git ls-remote --tags origin`).
 
 ## Do this (in order)
@@ -82,7 +88,7 @@ Stop and report if any gate is unmet.
    - Open the PR with the matrix and the proofs, then merge it. **Record the merge date** (mi-06's N3 gate).
    - Wait until `get networkpolicy -n databases,messaging` shows both policies.
 
-3. **MI-5 restart PR and smoke [I + H + O]** (plan task 3):
+3. **MI-5 restart PR and smoke [I + H]** (plan task 3):
    - Merge a separate one-line `../infra` PR that bumps `podAnnotations` on `apps/xlearn-review.yaml` (`sujaykumar.dev/restarted-for: mi-5`).
    - When the new review pod is Ready, check (read-only):
      - `/connz`: 7 connections, review's new;
@@ -91,7 +97,7 @@ Stop and report if any gate is unmet.
      - CNPG Cluster healthy, and the operator logs are clean for 2 min;
      - `ssh vps 'bash -s -- --cluster --nats-stage=open' < ../infra/hack/host-verify.sh` still reads NATS, which proves the node-local proxy path;
      - `curl -sf https://projects.sujaykumar.dev/xlearn/api/healthz` and `GET /xlearn/api/u/<owner-username>` return 200 with data. Find the username once, read-only: `ssh vps 'sudo k3s kubectl exec -n databases projects-pgstore-1 -c postgres -- psql -d xlearndb -Atc "select username from identity.account where username is not null order by created_at limit 3"'` (prod had one account on 2026-09-24, the owner's; filter on `role = 'owner'` once m1-02's column is live). Record it in status.md;
-     - **[O]** the owner smoke (login, dashboard, coach). Login needs credentials, which you never enter: use an already-signed-in browser session if you have one, else ask the owner and wait.
+     - the login smoke (login, dashboard, coach). Login needs credentials, which you never enter: use an already-signed-in browser session if you have one; otherwise record "owner login smoke pending (MI-5)" as a pending-smoke note in status.md and carry on (D40).
    - **Any error: `git revert` the MI-5 PR** (fail-open) and stop.
 
 4. **MI-5a PR [I]** (plan task 4):
@@ -108,10 +114,10 @@ Stop and report if any gate is unmet.
      - `get pods -n xlearn -l app.kubernetes.io/name=project` lists all 7 pods.
    - Open the PR with the matrix and the diffs, then merge it.
 
-5. **MI-5a smoke: the JWKS path [H + O]** (plan task 5):
+5. **MI-5a smoke: the JWKS path [H]** (plan task 5):
    - When the fresh `xlearn-assessment` pod is Ready, request `GET https://projects.sujaykumar.dev/xlearn/api/u/<owner-username>` after the 15 s cache. The assessment-backed sections must be present, and `k3s kubectl logs -n xlearn deploy/xlearn-assessment` must show **no** JWKS or 401 errors.
    - After a sweep tick, the review logs show no identity or curriculum timeouts.
-   - **[O]** The owner smoke: login, dashboard, mistakes, coach, and the SPA loads (the owner logs in, or you use an already-signed-in session).
+   - The login smoke: login, dashboard, mistakes, coach, and the SPA loads, in an already-signed-in session if you have one; otherwise check that the SPA loads, add MI-5a to the "owner login smoke pending" note, and carry on.
    - Landscape's xlearn cards are still healthy.
    - After about 1 h, no service logs a JWKS refresh failure.
    - **Any 401 or timeout: `git revert` the MI-5a PR.**
@@ -158,6 +164,7 @@ Stop and report if any gate is unmet.
     - any live caller that wasn't in config;
     - the next fleet rollout is the full re-proof;
     - the Hostinger weekly image date read before the first restart, and the owner's username for the smoke.
+  - **Pending-smoke notes:** "owner login smoke pending (MI-5, MI-5a)" if no signed-in session was available (the owner runs it).
 - **ADRs:** none new. At most the dated ADR-0033 row 7 clarification.
 
 ## Done when (acceptance)
@@ -167,12 +174,16 @@ Stop and report if any gate is unmet.
 - [ ] `host-verify`'s NATS stage read still works after MI-5.
 - [ ] MI-5a's 7 policies render as specified (exact peers, no extras, no `part-of`), and the diff shows only policy additions plus the one annotation.
 - [ ] A restarted service (assessment) re-fetches JWKS through MI-5a and serves an authed call: the public dashboard returns its assessment sections with no 401s.
-- [ ] No caller is blocked: login, dashboard, mistakes, coach, the review workers, and the SPA via Traefik.
+- [ ] No caller is blocked: the public dashboard, the review workers and the SPA via Traefik work; login, the signed-in dashboard, mistakes and coach pass in a signed-in session, or "owner login smoke pending" is recorded.
 - [ ] `host-lint.sh` is clean, `host-verify --cluster` is green with the 9 new three-column rows present, and the `--netpol-file` negative check FAILs.
 - [ ] The matrix is recorded in the PRs and `docs/architecture/services.md`, and status.md has the MI-5 and MI-5a rows with dates.
 
-**Ship at session end** per AGENT.md land-and-sync, with this sprint's release action, **infra PR(s) only**:
-1. Merge the three `../infra` PRs in order (MI-5 → restart → MI-5a), with conventional commits (`feat(netpol): …`) and the required attribution lines. There's no CI in infra: merge each once validated and smoked.
-2. Let Flux reconcile, and verify live as above.
-3. Open the xlearn docs PR and merge it on CI green.
-4. Run `git checkout main && git pull` in **both** repos. There's no tag.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: three `../infra` PRs (`feat(netpol): …`), then `docs/mi-03-fences` in xlearn.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. infra has no CI: paste the validation and smoke output into each PR body and merge each once validated and smoked.
+3. **Release action — infra PR(s) only:** Merge the infra PRs in the plan's order (each its own PR, never folded into a tag): MI-5 → the MI-5 restart → MI-5a, letting Flux reconcile and verifying live after each (steps 2–5); then the xlearn docs/status PR. No tag. Run `host-verify --cluster` after the restart-inducing PRs (step 6).
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn and `../infra`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

@@ -3,8 +3,8 @@
 > **Milestone:** L — learner gate (**L-A** front door + **L-C** consents) · **Track:** product · **Order:** 67
 > **Prereqs:** [l-03](sprint-l-03.md) (merged: invites, `account_consent`, `/api/auth/config`, `/api/invites/check`) · [m4-07](sprint-m4-07.md) (`v1.16.0` live, so M4's consent kinds exist and this doesn't ride an M4 tag) · [ds-l-01](sprint-ds-l-01.md) (AB19★ + AB20 frozen) · via `v1.16.0`: [m4-02](sprint-m4-02.md) (the kind constants in `internal/platform/consent`, identity's internal account read, judge's `POST /internal/accounts/{id}/refresh`), [m4-05](sprint-m4-05.md) (the append-only `SetConsents` write path and the gateway's judge-refresh call) and [m4-06](sprint-m4-06.md) (Settings consent toggles, AB18, the exported consent strings)
 > **Unblocks:** [l-04](sprint-l-04.md) (tags `v1.17.0` and prepares the L-exit rehearsal)
-> **Release action:** **merge only. It ships in `v1.17.0`**, tagged by [l-04](sprint-l-04.md), and never in an M3 or M4 tag ([ADR-0034 §1.6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#16-indicative-tag-timeline)). Merging deploys nothing, because `main` is build-only.
-> **Calendar:** December, after `v1.16.0`. Owner event **`ev-notice-text`** (~30 min): approve the drafted notice in this sprint's PR before it merges.
+> **Release action:** **merge only. It ships in `v1.17.0`**, tagged by [l-04](sprint-l-04.md), and never in an M3 or M4 tag ([ADR-0034 §1.6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#16-indicative-tag-timeline)). Merging deploys nothing, because `main` is build-only. The PR merges on CI green, with the drafted notice as written (D40).
+> **Calendar:** December, after `v1.16.0`. No owner time: the notice text lands as the agent drafts it (D40), and the owner's review of it (`ev-notice-text`) moves to the v3 opening gates ([rollout §11](../rollout-plan.md#11-opening-gates-v3)).
 > **Execute with:** [`../prompts/prompt-l-05.md`](../prompts/prompt-l-05.md). One prompt, one session.
 
 ## Status
@@ -20,22 +20,22 @@ _Overall:_ ⬜ Not started
 | 5 | Privacy notice page `/privacy` (AB20), version parity, course-slug guard check | X | ⬜ |
 | 6 | L-C: the two unticked AI consents at acceptance through m4-05's `SetConsents`; judge honours them | X | ⬜ |
 | 7 | Existing fixtures default to accepted; end-to-end tests and compose smoke | X | ⬜ |
-| 8 | Notice text approved (`ev-notice-text`) | O | ⬜ |
+| 8 | Notice text lands as drafted (D40); the owner's review (`ev-notice-text`) moves to the v3 opening gates | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
-> Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row, the L milestone, owner events). The AB19/AB20 artboard rows were set to frozen by [l-02](sprint-l-02.md); only confirm them.
+> Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row, the L milestone, owner events). The AB19/AB20 artboard rows were set to frozen at ds-l-01's merge (D40) and confirmed by [l-02](sprint-l-02.md); only confirm them.
 > Full rules: [status protocol](README.md#status-protocol-way-of-working).
 
 ## Entry gates
 
-- [ ] **AB19★ and AB20 are frozen:** [ds-l-01](sprint-ds-l-01.md)'s PR has been merged by the owner. The boards are at `design-system/screens/v2/AB19-invite-acceptance.html` and `AB20-privacy-notice.html`. The one ds-l-01 merge froze AB19, AB20 and AB21 together, and [l-02](sprint-l-02.md) (task 9), the first consuming build sprint, already set all three rows in [`../status.md`](../status.md) to "frozen (PR #, date)". **Confirm** the AB19/AB20 rows read frozen; don't rewrite them.
+- [ ] **AB19★ and AB20 are frozen:** [ds-l-01](sprint-ds-l-01.md) is merged (the merge is the freeze, D40). The boards are at `design-system/screens/v2/AB19-invite-acceptance.html` and `AB20-privacy-notice.html`. The one ds-l-01 merge froze AB19, AB20 and AB21 together; ds-l-01 recorded all three rows in [`../status.md`](../status.md) as "frozen (PR #, date)", and [l-02](sprint-l-02.md) (task 9) confirmed them. **Confirm** the AB19/AB20 rows read frozen; don't rewrite them.
 - [ ] **[l-03](sprint-l-03.md) is merged on `main`.** That provides invite redeem on both paths, `account_consent`, `GET /api/auth/config`, `POST /api/invites/check` and `SIGNUP_MODE=invite`.
 - [ ] **`v1.16.0` is live** ([m4-07](sprint-m4-07.md)). On `main`:
   - m4-02's `internal/platform/consent` (`AIReviewGraded`, `AIReviewPassing`, `AIBehavioral`; `consent.Version`), identity's `/internal/accounts/{id}` returning live rows as `consents: {kind: {version, granted_at}}`, and judge's 5-minute account cache with `POST /internal/accounts/{id}/refresh`;
   - m4-05's store function **`SetConsents`** (append-only history, withdrawing `ai_review_graded` also withdraws `ai_review_passing`, 422 `requires_ai_review_graded`), `PATCH /api/me/consents`, and the gateway's judge-refresh call after each consent change;
   - m4-06's Settings toggles and its exported consent strings.
 - [ ] **No peer tag is planned between this merge and [l-04](sprint-l-04.md)'s `v1.17.0`.** Check with `git ls-remote --tags origin`, `gh pr list` and ListAgents. A patch tag in between would carry the acceptance step early.
-- [ ] **Merge gate (not an entry gate): the notice text is approved** (`ev-notice-text`). Task 5 drafts it in this PR, and the PR waits for the owner's explicit approval before it merges.
+- [ ] **The notice text lands as drafted** (D40). Task 5 drafts it in this PR, and the PR merges on CI green; the owner's review of the notice is a v3 opening gate ([rollout §11](../rollout-plan.md#11-opening-gates-v3)), not a merge gate here. He can revise it later with a content PR (a substantive change bumps the notice version).
 
 ## Goal
 
@@ -73,7 +73,7 @@ Sources: [ADR-0033 §5](../../adr/0033-invite-only-admission-and-owner-admin.md#
 - `web/src/lib/invite.ts`:
   - `captureInviteFromHash()` runs once on `/auth` mount. It matches `location.hash` against `^#invite=([A-Za-z0-9_-]{22})$` and stores the code in `sessionStorage["xl_invite"]`, wrapped in try/catch with an in-memory fallback when storage is blocked. It **always** calls `history.replaceState(null, "", location.pathname + location.search)` when the hash starts with `#invite=`, valid or not, so no code lingers in the address bar or history.
   - `readInvite()`, and `clearInvite()` after a successful sign-up or redeem, or on `invite_invalid`.
-- `web/src/lib/contact.ts`: `INVITE_REQUEST_MAILTO` is the owner's public contact address, confirmed by the owner in the `ev-notice-text` review. It is a build-time constant, so no infra or env change is needed. The notice reuses it.
+- `web/src/lib/contact.ts`: `INVITE_REQUEST_MAILTO` is the owner's public contact address: the one in the owner's launch message (the prompt's before-launch block), else the public address he already uses on this repo's commits, recorded in the PR and the decisions log for his v3 notice review (D40). It is a build-time constant, so no infra or env change is needed. The notice reuses it.
 - `SignIn` by mode, following AB19's frames:
 
 | Mode | No stashed code | With a stashed code |
@@ -151,7 +151,7 @@ Board: `design-system/screens/v2/AB19-invite-acceptance.html`, acceptance frames
     - "xLearn AI reviews my graded work — grade suggestions and feedback on work you submit.";
     - "…and also reviews my passing solutions for improvement notes."
 
-    The second is disabled until the first is ticked, and unticking the first unticks the second (ADR-0031 §4; m4-05's graded ⇒ passing rule). Reuse m4-06's exported consent strings where AB19's text matches. **Defaults:** for an account with no live grant (every invitee, and anyone who never used Settings) both are **unticked**, as F9 draws. For an account that already granted them in Settings during M4 (the owner, testers), the boxes show those **live grants**, and unticking one is a withdrawal through `SetConsents`. The boxes must show what is stored; showing an unticked box over a live grant would misstate the consent. This differs from F9/F11's "both unticked" only for accounts with existing grants, so it is a **flagged deviation**: record it in the decisions log and call it out in the PR for the owner's review;
+    The second is disabled until the first is ticked, and unticking the first unticks the second (ADR-0031 §4; m4-05's graded ⇒ passing rule). Reuse m4-06's exported consent strings where AB19's text matches. **Defaults:** for an account with no live grant (every invitee, and anyone who never used Settings) both are **unticked**, as F9 draws. For an account that already granted them in Settings during M4 (the owner, testers), the boxes show those **live grants**, and unticking one is a withdrawal through `SetConsents`. The boxes must show what is stored; showing an unticked box over a live grant would misstate the consent. This differs from F9/F11's "both unticked" only for accounts with existing grants, so it is a **flagged deviation**: record it in the decisions log and call it out in the PR (the owner may revisit it after the merge; nothing waits on it, D40);
   - primary **[Continue]**, secondary **[Sign out]** (AB19).
 - **F10 validation:** submit with a required box unticked → the inline errors "Please confirm you're 18 or older." / "Please accept the privacy notice to continue."; focus moves to the first invalid item; **[Continue]** stays enabled. Server 422s (`notice_required`, `age_required`, `invalid_region`, `requires_ai_review_graded`) map to the same inline slots.
 - **F12 re-acceptance** (`mode: "renotice"`): F12's banner "We've updated the privacy notice (version N, effective <date>). Please review what changed and accept to keep using xLearn." with **[What changed]** → `/privacy#what-changed` (AB20-F2), and **only the notice checkbox**. No 18+, region or consent controls, and nothing is pre-ticked. The payload is `{step: "accept", notice_version, agree_notice: true}`.
@@ -168,7 +168,7 @@ Board: `design-system/screens/v2/AB19-invite-acceptance.html`, acceptance frames
   - the AuthedShell redirect;
   - a 403 from any API → back to `/auth`.
 
-### 5 · Privacy notice (AB20) [X] · text approval [O]
+### 5 · Privacy notice (AB20) [X]
 
 Sources: [ADR-0033 §6](../../adr/0033-invite-only-admission-and-owner-admin.md#6-the-acceptance-step-onboarding-step-0-l-a) (contents; a new SPA segment joins the course-slug guard), [ADR-0031 §4](../../adr/0031-platform-ai-and-two-tier-keys.md#4-retention-and-privacy-owner-d24), [feasibility](../feasibility.md#decisions-log-newest-first) D12 (no backups; ~7-day loss window), [rollout §8](../rollout-plan.md#8-what-ships-where-content-hours-the-d6-reading) (DPDP ~2027-05-13); board `design-system/screens/v2/AB20-privacy-notice.html`.
 - **Route:** `{ path: "/privacy", element: <Privacy /> }` goes in `web/src/router.tsx` **outside** `AuthedShell` (public, like `/auth` and `/u/:username`). A test shows it outranks m1-03's `/:course`.
@@ -191,7 +191,7 @@ Sources: [ADR-0033 §6](../../adr/0033-invite-only-admission-and-owner-admin.md#
   - **terms** (AB20-F3): invite-only, one account per person, invites single-use and not to be shared, the owner may suspend accounts, provided as is, course content MIT-licensed;
   - rights and contact; the version and effective date.
 - **Version rule:** a substantive text change bumps **both** constants, and everyone re-accepts. A typo fix doesn't (decisions log).
-- **[O] `ev-notice-text`:** the owner reads the rendered page in the PR (screenshots at 1440 px and 390 px) and approves the text and the contact address. **The PR does not merge before that approval.**
+- **The text lands as drafted** (D40): the PR carries the rendered page (screenshots at 1440 px and 390 px) and the contact address, and merges on CI green. The owner's review of the notice (`ev-notice-text`) moves to the **v3 opening gates** ([rollout §11](../rollout-plan.md#11-opening-gates-v3)); any revision he wants later is a content PR.
 
 ### 6 · L-C: consents at acceptance; judge honours them [X]
 
@@ -230,7 +230,7 @@ Sources: [ADR-0031 §4](../../adr/0031-platform-ai-and-two-tier-keys.md#4-retent
 - [ ] **The notice page is reachable** logged out at `/xlearn/privacy`. The `privacy` slug is reserved in both guards, and the version parity test is green.
 - [ ] **Auth page:** no Sign up while `closed`; the invite-only notice and `mailto:`; `#invite=` is stashed and removed from the URL; AB19's error states render.
 - [ ] Matches AB19★ and AB20 at 1440 px and 390 px; no CSP violation in the compose smoke.
-- [ ] **Notice text approved by the owner (`ev-notice-text`)** before the merge.
+- [ ] **The notice text landed as drafted** (D40); its owner review (`ev-notice-text`) is recorded as a v3 opening gate.
 - [ ] `sqlc diff` clean; CI green; merged to `main` (not tagged).
 
 ## Release
@@ -242,12 +242,12 @@ Sources: [ADR-0031 §4](../../adr/0031-platform-ai-and-two-tier-keys.md#4-retent
 
 ## Definition of Done
 
-CI green (including `sqlc diff` and the OpenAPI drift test for `/me`'s `acceptance` block and the new error codes) · PR squash-merged after `ev-notice-text` · screens match AB19★ and AB20 · acceptance criteria met · statuses updated (this file, plus [`../status.md`](../status.md): the board row "merged, ships in v1.17.0"; **confirm** the AB19/AB20 artboard rows read "frozen" (set by [l-02](sprint-l-02.md)); owner event `ev-notice-text` ✅ with the date; the L milestone "front door merged") · decisions log:
+CI green (including `sqlc diff` and the OpenAPI drift test for `/me`'s `acceptance` block and the new error codes) · PR squash-merged on CI green (D40) · screens match AB19★ and AB20 · acceptance criteria met · statuses updated (this file, plus [`../status.md`](../status.md): the board row "merged, ships in v1.17.0"; **confirm** the AB19/AB20 artboard rows read "frozen" (set at ds-l-01's merge); owner event `ev-notice-text` → "moved to the v3 opening gates (rollout §11, D40)"; the L milestone "front door merged") · decisions log:
 - the exempt set, with `DELETE /api/me` as an API-level safeguard only (no SPA erase path while acceptance is required; decliners ask the owner for a CLI erase; a web entry point is a board delta flagged for v3);
 - the AI consents at acceptance go through m4-05's `SetConsents`, and the gateway refreshes judge after `accept`;
-- **flagged deviation from AB19-F9/F11:** accounts with live Settings grants see them ticked, and an untick is a withdrawal (for the owner's confirmation in the PR);
+- **flagged deviation from AB19-F9/F11:** accounts with live Settings grants see them ticked, and an untick is a withdrawal (flagged in the PR; the owner may revisit it later, D40);
 - the notice-only re-acceptance per AB19-F12 (18+, region and consents keep their values);
-- the notice-version bump rule; the `mailto:` constant.
+- the notice-version bump rule; the `mailto:` constant (and where its address came from); the notice landing as drafted, with its owner review moved to the v3 opening gates (D40).
 
 ## Risks / watch-outs
 
@@ -256,6 +256,6 @@ CI green (including `sqlc diff` and the OpenAPI drift test for `/me`'s `acceptan
 - **Consent defaults must be unticked.** Showing an account's live grants is the flagged exception (decisions log); defaulting to ticked is never allowed, and re-acceptance shows no consent controls at all. It is tested.
 - **Two consent write paths would drift.** Never write AI consent rows outside `SetConsents`; a second implementation would miss the graded ⇒ passing withdrawal or the judge refresh.
 - **The notice must be true.** Every sentence is checked against the code and the ADRs, and anything that isn't built by the tag that ships it (`v1.17.0`) isn't claimed. The one claim that depends on [l-04](sprint-l-04.md) (web erase for learners) is reconfirmed by l-04 before the tag.
-- **Riding the wrong tag:** a peer patch tag between this merge and `v1.17.0` would ship the acceptance step early. Coordinate (entry gate 4), and merge only when [l-04](sprint-l-04.md) can follow at once.
+- **Riding the wrong tag:** a peer patch tag between this merge and `v1.17.0` would ship the acceptance step early. Coordinate with peers (entry gate 4), and merge only when [l-04](sprint-l-04.md) can follow at once.
 - **`sessionStorage` is blocked** in some private modes: fall back to memory for the page's lifetime (the code is lost on reload, and the owner re-sends the link).
 - **The invite code in URLs:** the fragment never reaches Traefik or the `Referer` header, and `replaceState` removes it from history. Never copy it into a query string, a log or an analytics call.

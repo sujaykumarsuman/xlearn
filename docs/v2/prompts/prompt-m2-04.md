@@ -42,7 +42,7 @@
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
-- [ ] **AB04 and AB05 frozen**: the DS-M2-01 PR is merged by the owner, and the board files exist.
+- [ ] **AB04 and AB05 frozen**: the DS-M2-01 PR is merged (the merge is the freeze, D40), and the board files exist.
 - [ ] **v1.9.0 live**: healthz and `k3s kubectl get deploy -n xlearn` over read-only `ssh vps`.
 - [ ] **M2-03 merged** on `main` (the gateway and web serialization).
 - [ ] **M2-01's touch endpoints are on `main`** ([M2-01 task 4](../sprints/sprint-m2-01.md#4--touch-endpoints--practice--review-read-x)):
@@ -165,4 +165,12 @@
 - [ ] No touch response leaks the pattern, concepts or correctness before conclusion.
 - [ ] CI green (Go, sqlc, web, openapi drift, route enumeration, the in-process e2e).
 
-**Ship at session end** per AGENT.md land-and-sync with **this sprint's release action: merge only (ships in v1.10.0)**. That means branch `feat/m2-04-touch-ui-today-minutes`, conventional commits with the attribution lines, a PR, CI green, and a squash-merge, then `git checkout main && git pull`. **Do not tag and do not change the `touchesEnabled` default**; [m2-05](../sprints/sprint-m2-05.md) tags and deletes the guard. There's no infra PR.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/m2-04-touch-ui-today-minutes`, then conventional commits with the attribution lines, then push, then the PR. This repo only: no `../infra` PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only:** nothing deploys (`main` is build-only). It ships in **`v1.10.0`**, which [m2-05](../sprints/sprint-m2-05.md) tags after deleting the guard next to the producer. **Do not tag and do not change the `touchesEnabled` default.**
+4. Update status: the sprint file and `docs/v2/status.md` (with the `touchesEnabled` flag-inventory row), in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

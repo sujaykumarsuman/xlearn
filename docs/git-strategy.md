@@ -28,8 +28,17 @@ labels, gating and rollback for the v2 build are decided in
 - Conventional history feeds the generated release notes.
 - Don't commit or push **mid-task**; the **end-of-session ship is a standing directive** and is its own
   authorization (see [AGENT.md](../AGENT.md) "land and sync") — no separate ask needed. Follow this
-  commit format and the attribution the session specifies. A sprint's own **release action** still
-  applies: a design sprint opens its PR and stops for owner review, and a spike merges nothing.
+  commit format and the attribution the session specifies.
+- **v2 sprints (D40): every sprint lands and syncs.** Launching a sprint prompt pre-approves every change
+  it makes: merges, tags (contract, erase and GA included), infra PRs, board freezes, ADR acceptances and
+  the production steps it specifies. Nothing stops for owner review. The sprint's **release action** only
+  shapes the ending, which is always the prompt's `## Ship (land-and-sync — owner approval pre-granted)`:
+  - a **tag** sprint tags and verifies live;
+  - a **merge-only** sprint deploys nothing and names the tag that ships it;
+  - a **design** sprint's merge is the board freeze;
+  - a **spike** commits no code and lands only its results docs.
+
+  The owner's in-session "hold / don't ship" still overrides.
 
 ## Versioning & release train
 
@@ -294,7 +303,8 @@ settled.
 
 **Snapshot rule.** Take a Hostinger manual snapshot right before any **contract, erase or GA** tag.
 There is one at a time, and it is kept for 1 day. The GA also needs the last weekly image to be
-≤ 7 days old. There is no off-node `pg_dump` (D12).
+≤ 7 days old. There is no off-node `pg_dump` (D12). The snapshot is an owner-only hPanel step, so in v2
+it sits in the tag prompt's `## Before you launch (owner)` block and is taken right before launch (D40).
 
 **Never:**
 - edit the tag line (the IUA rewrites it);

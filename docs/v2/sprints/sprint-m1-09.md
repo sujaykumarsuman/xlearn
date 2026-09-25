@@ -4,7 +4,7 @@
 > **Prereqs:** [m1-01](sprint-m1-01.md) (`internal/course`, DSA manifest, frozen item schema)
 > **Unblocks:** [m1-02](sprint-m1-02.md) (cuts `v1.6.0` with this inside) · [m3-01](sprint-m3-01.md) (runs next, order 9, and is hard-gated on this merge: it extends the resolved item type, `canon.ContentHash`, `cmd/contentlint` and the `content` CI job, and takes curriculum `00004` after this sprint's `00002`/`00003`)
 > **Release action:** **merge only** (ships in `v1.6.0`, cut by [m1-02](sprint-m1-02.md))
-> **Calendar:** week 2 (2026-10-05 → 10-09), before m1-02 · owner event `ev-m1-statements` (~1 h: review the two rewritten Example-1 statements; must be ✅ before m1-02 tags `v1.6.0`)
+> **Calendar:** week 2 (2026-10-05 → 10-09), before m1-02 · `ev-m1-statements` is automatic: the two rewritten Example-1 statements land as the agent drafts them (D40), and nothing gates on an owner review (he may revise them later with a content PR)
 > **Execute with:** [`../prompts/prompt-m1-09.md`](../prompts/prompt-m1-09.md) — one prompt, one session.
 
 ## Status
@@ -17,7 +17,7 @@ _Overall:_ ⬜ Not started
 | 2 | Glob loader + guards (id `:execrows`, retire/withdrawn, course-slug guard) | X | ⬜ |
 | 3 | curriculum expand migrations (`00002`, `00003`) + seed semantics + sqlc | X | ⬜ |
 | 4 | Public `content` CI job (`cmd/contentlint`) | X | ⬜ |
-| 5 | Replace the two copied Example-1s — agent draft (X) + owner review `ev-m1-statements` (O) | X · O | ⬜ |
+| 5 | Replace the two copied Example-1s — agent draft, landing as drafted (`ev-m1-statements` automatic, D40) | X | ⬜ |
 | 6 | Verify (row snapshot, re-seed cases, R-b smoke on `1.5.2`, e2e, no API change) | X | ⬜ |
 | 7 | Record | X | ⬜ |
 
@@ -88,7 +88,8 @@ natural keys. Committing it **before** the converter proves the fixture predates
 
 > **Commit order is PR-branch evidence.** AGENT.md squash-merges every PR, so these separate commits (snapshot →
 > converter + output → Example-1s) exist only on the PR branch (GitHub keeps them under the PR's Commits tab and
-> `refs/pull/<N>/head`), not on `main`. The reviewer checks the ordered commits **on the PR before the squash**, and the
+> `refs/pull/<N>/head`), not on `main`. The session checks the ordered commits **on the PR before the squash** (anyone can
+> re-check them later on the PR), and the
 > PR body plus the Decisions log record the SHA of the commit that contains the converter's final source.
 
 **b. Convert.** `hack/convert-v1-seed/main.go` runs once; its output is committed and the converter is deleted in the
@@ -123,7 +124,7 @@ saved as `.go` fails with "expected package", and "fixing" it would break the by
 (task 4) rejects any `curriculum/**/*.go` that does not parse as a whole file. The loader derives `language` from the
 extension before `.snip` (`go`). Each item gets `provenance`
 (`origin: original` after task 5, `inspired_by` from its LeetCode link, `authored_by` from git history — the v1 seed was
-written in build session S03, so `ai-assisted`; the owner confirms at `ev-m1-statements`).
+written in build session S03, so `ai-assisted`; the owner may correct it later with a content PR).
 
 **c. Delete the old loader** (`internal/curriculum/seed.go`'s fixed file list at `:18-24`) and the `curriculum/dsa/*.json`
 files in the same PR.
@@ -222,7 +223,7 @@ M1c drop-list item and say so in the PR body.
 
 `make contentlint` runs 1–5 locally.
 
-### 5 · Replace the two copied Example-1s [X · O]
+### 5 · Replace the two copied Example-1s [X]
 
 v1 copies LeetCode's Example 1 for **item `3`** Two Sum (`curriculum/dsa/problems.json:88`) and **item `16`** 3Sum (`:249`)
 ([t1 §8](../research/t1-content-data-model.md#8-content-rights-stance), [ADR-0027 §8](../../adr/0027-content-evalpack-and-user-data-model.md#8-authoring-and-rights), PRD R-CT1).
@@ -232,14 +233,14 @@ v1 copies LeetCode's Example 1 for **item `3`** Two Sum (`curriculum/dsa/problem
   the new inputs must differ in **length, shape and value range** from any well-known published example — at least 6
   elements; for Two Sum include negative numbers and a negative or zero target; for 3Sum include duplicates and more than
   one resulting triplet; no input that is a short run of small positive integers.
-- **Flag as unverified until reviewed:** leave both items' `review.statement` stamp **unset**, and label the PR block
-  "unverified against source — owner review required". The owner's confirmation sets the stamp (a one-line follow-up).
+- **Flag as unverified against source:** leave both items' `review.statement` stamp **unset** (nothing gates on it), and
+  label the PR block "unverified against source". If the owner later reviews them, his content PR sets the stamp.
 - Land it as its own commit after the converter; that commit also updates exactly those two `problem_section` bodies in the
   snapshot fixture, so the fixture diff shows the only intended content change.
-- **[O]** Owner review (~1 h, `ev-m1-statements`): the PR carries an "Owner review requested" block quoting old → new. The
-  **merge** does not wait on it (the drafts replace text that is certainly copied, and the shape rule keeps them far from
-  the published examples), but the **`v1.6.0` tag does**: [m1-02](sprint-m1-02.md) must not tag while `ev-m1-statements`
-  is ⬜. Owner edits land as a follow-up content PR before that tag.
+- **The drafts land as written** (D40; `ev-m1-statements` is automatic): the PR carries an old → new block for the owner's
+  later look, but neither the merge nor [m1-02](sprint-m1-02.md)'s `v1.6.0` tag waits on a review (the drafts replace text
+  that is certainly copied, and the shape rule keeps them far from the published examples). Any owner edit is a
+  follow-up content PR, whenever he wants.
 
 ### 6 · Verify [X]
 
@@ -265,8 +266,8 @@ v1 copies LeetCode's Example 1 for **item `3`** Two Sum (`curriculum/dsa/problem
 ### 7 · Record [X]
 
 [`../status.md`](../status.md): the Sprint board row; M1 🔄; content status ("DSA converted to `curriculum/courses/dsa/`;
-`ids.lock.json` — 14 items"); owner event `ev-m1-statements` (⬜ until the owner confirms — it gates m1-02's `v1.6.0`
-tag); Decisions log: curriculum `00002`+`00003` taken (m3-01 takes the next), the old `problem_section` unique confirmed
+`ids.lock.json` — 14 items"; "Example-1 statements rewritten 2/2, landed as drafted"); `ev-m1-statements` ✅ automatic
+at the merge (D40; it gates nothing); Decisions log: curriculum `00002`+`00003` taken (m3-01 takes the next), the old `problem_section` unique confirmed
 on (or added to) the M1c drop list, sections rewritten on every seed (no `content_hash` skip while `1.5.2` is a valid R-b
 target), code fragments as `*.go.snip`, the converter's commit SHA, the open item "block new counted attempts on a
 retired item — no owner yet", the deferred content gates (→ m3-01/M3), `canon.ContentHash` ownership, the contentlint
@@ -282,8 +283,8 @@ dependencies (goldmark).
 - [ ] Re-parenting aborts the seed; retire/withdrawn and delete-missing behave as specified; re-seed is idempotent.
 - [ ] `sqlc diff` clean; the `1.5.2` curriculum image runs against the expanded schema (R-b smoke), and rolling forward
       afterwards restores the snapshot exactly (the new Example-1s back, not 1.5.2's text).
-- [ ] Items `3` and `16` carry original Example-1s that follow the shape rule; `review.statement` stays unset and the owner
-      review is requested (`ev-m1-statements`, which gates the `v1.6.0` tag, not this merge).
+- [ ] Items `3` and `16` carry original Example-1s that follow the shape rule; `review.statement` stays unset, and the
+      drafts land as written (`ev-m1-statements` automatic, D40; nothing waits on an owner review).
 
 ## Release
 

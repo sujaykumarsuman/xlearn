@@ -3,6 +3,14 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-m1-08.md`](../sprints/sprint-m1-08.md) · **Milestone:** M1 (M1c contract — closes M1) · **Prereqs:** [m1-07](../sprints/sprint-m1-07.md) (`v1.7.0` live), [mi-02](../sprints/sprint-mi-02.md) (MI-8 `host-verify --cluster`)
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] The October host window (Sat 2026-10-24) has settled: ≥ 24 h since its last k3s / PG restart, with a green `host-verify --cluster` after it (status.md). Otherwise don't launch yet.
+- [ ] The last Hostinger weekly image is ≤ 7 days old (hPanel).
+- [ ] **`ev-snap-v1.8.0`:** take a Hostinger manual snapshot in hPanel (one at a time, 1-day retention; it replaces the window's pre-change snapshot) right before you launch, and put its name/time and the weekly image's date in your launch message. The contract tag lands the same day.
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — conventions, land-and-sync, status updates.
@@ -33,7 +41,7 @@ A contract is the one M1 step that can't be undone below its floor. After `v1.8.
 hard**, and only a Hostinger snapshot (R-d, ~1 day) can go lower. So this sprint:
 - proves in compose that the `v1.7.0` images still run on the contracted schema;
 - runs `host-verify --cluster` on a settled host;
-- asks the owner for a snapshot right before the tag.
+- relies on the owner's manual snapshot, taken right before launch (D40), and tags the same day.
 
 It also closes M1: golden = v1, every v1 e2e green, events replay.
 
@@ -43,14 +51,14 @@ It also closes M1: golden = v1, every v1 e2e green, events replay.
 tags, the R-b target and the floor record.
 
 Calendar: week 5, **after** the Sat 2026-10-24 host window has settled (≥ 24 h, `host-verify` green). Target
-Mon 10-26 → Wed 10-28. The owner's part is ~5 minutes (`ev-snap-v1.8.0`).
+Mon 10-26 → Wed 10-28. The owner's part is ~5 minutes before launch (`ev-snap-v1.8.0`).
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
 - [ ] `v1.7.0` live and verified (m1-07 ✅; `curl -s https://projects.sujaykumar.dev/xlearn/api/v1/healthz`), and m1-07's M1c-readiness record says `v1.7.0` neither reads nor writes any drop-list column (re-proved in step 3).
 - [ ] mi-02 merged: `../infra/hack/host-verify.sh` has the MI-8 `--cluster` checks (`git -C ../infra log --oneline -5 -- hack/host-verify.sh`).
 - [ ] Host settled: the Oct 24 window (mi-09) is done and ≥ 24 h old with a green `host-verify --cluster` after it (status.md) — or it is rebooked to ≥ 2 days after this tag.
-- [ ] The owner can take the snapshot in this session (ask now; agree a time).
+- [ ] The launch message carries the `ev-snap-v1.8.0` snapshot's name/time and the weekly image's date (≤ 7 d); the snapshot was taken before launch (D40).
 - [ ] Parallel sessions: `gh pr list --state open`, `git ls-remote --tags origin`, `git worktree list`, ListAgents — no peer adds a migration to these five services, and no peer plans to tag from `main` during the merge → snapshot → tag window (tell them).
 
 ## Do this (in order)
@@ -114,16 +122,17 @@ Mon 10-26 → Wed 10-28. The owner's part is ~5 minutes (`ev-snap-v1.8.0`).
 8. **[X] Verify + PR.** `gofmt -l`, `go vet ./...`, `go test -race ./...`, `sqlc diff`, the migration lint,
    web tests (unchanged). Open the PR (e.g. `feat(db): M1c contract — drop v1 columns and CHECKs (m1-08)`, with
    the attribution lines) with the drop table, the assertion output for `v1.7.0` and HEAD, the rehearsal phase
-   table and logs, and the replay result. CI green. **Do not merge yet.**
+   table and logs, and the replay result. CI green. **Merge it in step 10**, after `host-verify`, right before the tag.
 9. **[H] `host-verify --cluster` (task 4).** With `../infra` on an up-to-date `main`, from the xlearn root (agent
    shells reset there, and xlearn has no `hack/host-verify.sh`):
    `ssh vps 'bash -s -- --cluster --expect-sandbox --json --nats-stage=<live stage from status.md: n3, or n4 after mi-11>' < ../infra/hack/host-verify.sh`
    → no FAIL (a `legacy` NATS connection is a FAIL at n3); note WARNs; confirm ≥ 24 h since the window's last
    restart. Drop `--expect-sandbox` only if the window was rebooked past this tag. Read-only only.
-10. **[X] Merge, then [O] snapshot (task 5).** Re-check peers (the entry-gate commands). Squash-merge the PR (1.x deploys only
-    on a tag). Ask the owner to take the manual Hostinger snapshot now and to read the last weekly image date
-    (≤ 7 d). Record the snapshot name/time and the weekly date.
-11. **[X] Tag `v1.8.0` (task 6)** within the hour, with the plan's release checklist (verbatim; the contract lines
+10. **[X] Merge (the [O] snapshot, task 5, was taken before launch).** Record the snapshot name/time and the weekly date
+    from the launch message. Re-check peers (the entry-gate commands). Squash-merge the PR (1.x deploys only on a tag) and
+    go straight to the tag. If the tag can't land the same day as the snapshot, don't merge: record ⛔ "snapshot lapsed;
+    re-take it and relaunch".
+11. **[X] Tag `v1.8.0` (task 6)** right after the merge, with the plan's release checklist (verbatim; the contract lines
     are tasks 3–5). Re-check peers and `.release-line` just before `git push origin v1.8.0`; create the GitHub release
     **`v1.8.0 — v2 build · M1c contract`** (notes: the dropped objects; floor 1.7.0 hard; snapshot id). After Flux:
     healthz reports the version; `ssh vps 'k3s kubectl get deploy,pods -n xlearn -o wide'` shows the new images and no
@@ -140,7 +149,7 @@ Mon 10-26 → Wed 10-28. The owner's part is ~5 minutes (`ev-snap-v1.8.0`).
 - **goose + sqlc:** next free version per service at rebase; commit `sqlc generate` output; `sqlc diff` clean; the migration lint green.
 - **No scope creep:** no feature, no `SET NOT NULL` beyond the list, no event or API rename (`total_35` / `total35` stay in payload decoders and `/api/mocks/*`).
 - **Events:** nothing changes on NATS — no subject, stream or consumer (no ACL PR); envelope append-only, decoders forever.
-- **GitOps:** no `kubectl apply`; `ssh vps` is read-only (`get`, `logs`, `host-verify`); the snapshot is the owner's hPanel action.
+- **GitOps:** no `kubectl apply`; `ssh vps` is read-only (`get`, `logs`, `host-verify`); the snapshot is the owner's hPanel action, taken before launch.
 - **D34 / D12:** no alert, timer, CronJob or push channel; no off-node `pg_dump`, no backups beyond the manual snapshot.
 - **Memory-sum rule:** no new pod; unchanged.
 - **Parallel sessions:** check peers' PRs, tags and worktrees (and ListAgents) before merging the contract, before the snapshot and again right before pushing the tag; don't claim an ADR number without checking.
@@ -157,7 +166,7 @@ Mon 10-26 → Wed 10-28. The owner's part is ~5 minutes (`ev-snap-v1.8.0`).
 ## Update status
 
 - Set each task in [`../sprints/sprint-m1-08.md`](../sprints/sprint-m1-08.md) 🔄 / ✅ / ⛔; _Overall_ ✅ at the end.
-- [`../status.md`](../status.md): Sprint board row; **Milestones: M1 ✅** (M1a `v1.6.0` → M1b `v1.7.0` → M1c `v1.8.0`); **milestone → tag → rollback floor → snapshot**: `v1.8.0` → **1.7.0 (hard)** → snapshot `<name>` taken `<time>`, "preceded v1.8.0"; the `host-verify --cluster` run (date, WARNs); no flag changes; the accepted-risk register untouched (D12, D34).
+- [`../status.md`](../status.md): Sprint board row; **Milestones: M1 ✅** (M1a `v1.6.0` → M1b `v1.7.0` → M1c `v1.8.0`); **milestone → tag → rollback floor → snapshot**: `v1.8.0` → **1.7.0 (hard)** → snapshot `<name>` taken `<time>`, "preceded v1.8.0"; owner event `ev-snap-v1.8.0` ✅ (taken before launch); the `host-verify --cluster` run (date, WARNs); no flag changes; the accepted-risk register untouched (D12, D34).
 - **Decisions log:** any drop-list item moved to a later contract and its deadline ("before p-02" for the weak-area unique, "before M3 seeds a second language" for the `problem_section` unique), the constraint names found, the rehearsal result. An ADR only if something genuinely new was decided (check the next free number with peers first).
 
 ## Done when
@@ -167,6 +176,15 @@ Mon 10-26 → Wed 10-28. The owner's part is ~5 minutes (`ev-snap-v1.8.0`).
 - [ ] Every contract file carries `-- xlearn:contract floor=<the M1b tag>`; lint, `sqlc diff`, CI green.
 - [ ] Each dropped CHECK is replaced by Go validation with a 422 handler test; the re-homed CHECK is validated (also on the backfilled rows).
 - [ ] `hack/lint-dropped-columns.sh --ref v1.7.0` and the HEAD run are clean (incl. the three v1 conflict targets); each conditional unique dropped or logged with its deadline.
-- [ ] `host-verify --cluster` green on a settled host; weekly image ≤ 7 d; manual snapshot taken right before the tag and recorded.
+- [ ] `host-verify --cluster` green on a settled host; weekly image ≤ 7 d; the owner's before-launch snapshot recorded, the same day as the tag.
 - [ ] `v1.8.0` verified; floor 1.7.0 (hard) and the snapshot in status.md; M1 ✅.
-- Ship per AGENT.md land-and-sync with this sprint's release action: **tag `v1.8.0` (contract; snapshot first)**. The sequence is PR → CI green → (host-verify) → squash-merge → owner snapshot → tag → Flux → verify live → `git checkout main && git pull` (via the peer worktree holding `main` if needed). If the owner says "hold", stop before the merge. A merged but untagged contract is exposed to any peer's tag.
+
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/m1-08-m1c-contract`, then conventional commit(s) with the attribution lines, then push, then the PR. This repo only: no `../infra` PR.
+2. Once CI is green (fix, then merge, on failure) **and** `host-verify --cluster` (step 9) is green, squash-merge. Never enable auto-merge. A merged but untagged contract is exposed to any peer's tag, so the tag follows at once. (An owner "hold" given in the session still overrides: stop before the merge.)
+3. **Release action — tag `v1.8.0`, a contract tag** (the next free minor): walk the release checklist (ADR-0034 §6, in the plan; the contract lines are the rehearsal, `host-verify` and the owner's before-launch snapshot), push the tag right after the merge, the same day as the snapshot, let Flux deploy, then verify live by looking (step 11). Floor after: 1.7.0, hard.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way (the tag → floor → snapshot record needs the follow-up).
+5. Run `git checkout main && git pull`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

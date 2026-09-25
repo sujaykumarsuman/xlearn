@@ -38,7 +38,7 @@
 ## Entry gates — verify first (stop and report if any is unmet)
 
 - [ ] **v1.9.0 live**: `ssh vps 'k3s kubectl get deploy -n xlearn -o wide'` shows `1.9.0` (or later) images, and `/xlearn/api/v1/healthz` reports it. The projection v2 tables exist on `main`.
-- [ ] **AB06 and AB22 frozen**: the DS-M2-01 PR is merged by the owner (`gh pr list --state merged --search "AB06"`), and the board files exist under `design-system/screens/v2/`.
+- [ ] **AB06 and AB22 frozen**: the DS-M2-01 PR is merged (the merge is the freeze, D40; `gh pr list --state merged --search "AB06"`), and the board files exist under `design-system/screens/v2/`.
 - [ ] **The M1b public floor is on `main`**: `visible_courses[]` in the resolver, the P10 allowlist test, the negative-404 cache, and no positive status cache.
 - [ ] **`auth.RequireRole` exists**, and `account.profile_visibility` / `path_enrollment.public_visible` exist in identity's schema.
 - [ ] **Parallel sessions**: `gh pr list`, `git worktree list` and ListAgents. Check that no peer is editing `internal/gateway/public.go`, `cache.go` or `Settings.tsx`, and that no open PR touches identity migrations. If one does, take the next free goose version at rebase.
@@ -160,4 +160,12 @@
 - [ ] UserDashboard matches AB06 and Settings matches AB22.
 - [ ] CI green (`go test ./...`, `sqlc diff`, web tests, openapi drift, route enumeration, allowlist).
 
-**Ship at session end** per AGENT.md land-and-sync with **this sprint's release action: merge only (ships in v1.10.0)**. That means branch `feat/m2-03-public-read-visibility`, conventional commits with the attribution lines, a PR, CI green, and a squash-merge, then `git checkout main && git pull`. **Do not tag.** v1.10.0 is cut by [m2-05](../sprints/sprint-m2-05.md) after M2-04 merges. There's no infra PR.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/m2-03-public-read-visibility`, then conventional commits with the attribution lines, then push, then the PR. This repo only: no `../infra` PR (no new caller, env var or ACL).
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only:** nothing deploys (`main` is build-only). It ships in **`v1.10.0`**, which [m2-05](../sprints/sprint-m2-05.md) tags after M2-04 merges. **Do not tag.**
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

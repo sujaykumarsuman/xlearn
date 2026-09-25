@@ -30,7 +30,7 @@ _Overall:_ ⬜ Not started
       (PK `(account_id, feature)`, `feature ∈ {coach, interview}`, `key_id … ON DELETE CASCADE`), is backfilled from
       `is_default` and dual-written; `api_key_config.is_default` is nullable; readers prefer `key_default`
 - [ ] [m1-03](sprint-m1-03.md) merged (coach `path_slug` writes and the `<course>:` `page_context` prefix land first; rebase on them)
-- [ ] AB01 frozen: [ds-m1-01](sprint-ds-m1-01.md) merged by the owner. This sprint's frames are **F11–F15**: F11 model
+- [ ] AB01 frozen: [ds-m1-01](sprint-ds-m1-01.md) merged (the merge is the freeze, D40). This sprint's frames are **F11–F15**: F11 model
       access error, F12 catalog switcher, F13 Settings keys (per-feature defaults, "This month on your keys"), F14
       onboarding step, F15 no-usable-key empty state. F1–F10 belong to [m1-07](sprint-m1-07.md).
 - [ ] **File ownership** (so this runs beside m1-04 … m1-06): this sprint owns `internal/coach/**`,
@@ -127,7 +127,8 @@ Sources: [t5 §9](../research/t5-platform-ai.md#9-coach-and-byo-changes-in-v2) (
   covered_model` (Covered Models are allowed on BYO, labelled "your provider keeps these chats 30 days"). Entries:
   the v1 list still served by the providers plus **`claude-opus-5-5`, `gpt-6-sol`, `gpt-6-luna`, `gpt-6-astra`**;
   defaults `claude-sonnet-5` (Anthropic) and `gpt-6-sol` (OpenAI, **only after a smoke call succeeds on the owner's
-  key**, else keep `gpt-5.6-sol` and log the decision). Prices are copied from the providers' pricing pages on the day,
+  key**, which he exports as `OPENAI_KEY_SMOKE` before launch (an optional before-launch item); without the key or on a
+  failed call, keep `gpt-5.6-sol` and log the decision). Prices are copied from the providers' pricing pages on the day,
   with `as_of` set to that date — never guessed. `voice_shell` entries are provisional until S6 ([spk-04](sprint-spk-04.md);
   ADR-0032 stays Proposed).
 - **Validation:** a known id → accepted; an unknown id matching `^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$` → accepted as
@@ -267,8 +268,8 @@ sprint's frames are **F11–F15**), [rollout §9](../rollout-plan.md#9-artboards
   `interview_brain` models **plus** the "Custom model id…" row, which is shown "cost unknown"
   (task 1). The "This month on your keys" line comes from `usage_month`, and `has_unknown_cost` adds a
   "custom models not estimated" note. `theme.css` tokens and components verbatim; match F11–F15 at 1440 px and 390 px.
-- **Deliberate board deltas.** The plan wins on these; list each in the PR and in the decisions log. They should
-  reach the board before ds-m1-01's freeze.
+- **Deliberate board deltas.** The plan wins on these; list each in the PR and in the decisions log. ds-m1-01's merge
+  already froze the board (D40), so bringing the board in line is a follow-up design PR, not a wait.
   1. F13's interview parenthetical becomes `interview_brain` ("needs an interview-capable model"), not
      "realtime-capable". t6 §11 dropped the realtime rule.
   2. The unset interview default reads "Not set", if the board shows no unset state.
@@ -351,7 +352,7 @@ two steps once the floor is ≥ 1.7.0, which holds after `v1.8.0`. It is **not**
 1. **[l-01](sprint-l-01.md) → `v1.11.0`** (it already touches coach for the erase consumer): stop **reading and
    writing** the legacy pair. `DROP NOT NULL` on it as an expand; queries stop selecting it; chat and re-wrap use the AD
    pair only. **Precondition:** the re-wrap log shows `pending=0 skipped=0`, so any skipped key is re-pasted by the
-   owner first. Every image from `v1.7.0` on already reads a row with a NULL legacy pair through its AD pair (task 3),
+   owner first (a before-launch item for the sprint that does this step, D40). Every image from `v1.7.0` on already reads a row with a NULL legacy pair through its AD pair (task 3),
    so R-b inside the floor stays safe.
 2. **[l-02](sprint-l-02.md) → `v1.12.0`** (already snapshot-first): drop `enc_key`, `enc_data_key` and
    `ad_src_digest` with `-- xlearn:contract floor=v1.11.0`. This matches the tag timeline's "floor after 1.11.0". From

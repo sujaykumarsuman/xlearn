@@ -1,7 +1,14 @@
 # Prompt — Sprint ga-01 · GA PR: .release-line = 2, T-1 default flips, rc rehearsal
 
-> **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root. The session may pause at the owner's review of the GA PR (step 9) and resume in a later sitting.
+> **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-ga-01.md`](../sprints/sprint-ga-01.md)   ·   **Milestone:** GA (part 1 of 2)   ·   **Prereqs:** [l-04](../sprints/sprint-l-04.md) (L exit), [p-03](../sprints/sprint-p-03.md), [m4-07](../sprints/sprint-m4-07.md), [m3-13](../sprints/sprint-m3-13.md), [mi-11](../sprints/sprint-mi-11.md)
+
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] **Optional — strangers you don't want suspended.** The session suspends every remaining `active` learner (reversible). If you'd rather **erase** one, do it yourself first (irreversible, D12): `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account erase <id> --confirm <id>'`, then `… identity admin erasures --open` → empty. If one is a **real tester**, name it in your launch message (the session runs `account set-role <id> tester`). The launch message isn't committed; the record keeps counts only.
+- [ ] **In your launch message:** the date of the last Hostinger weekly image (hPanel). ga-02 needs it again on GA day.
 
 ## Read first
 
@@ -55,7 +62,7 @@ Judge and platform AI run on production **for the owner and tester cohort only**
 **v2.0 GA** (`v2.0.0`, D32/D35) flips the defaults for every account: judge and platform AI on, the pilot `active`. In v2 "every account" means the owner and testers. Signup stays closed, and the opening is v3.
 
 ADR-0034 §1.4 makes GA a **two-repo sequence**. This sprint does steps 1–2:
-- the **GA PR** (`.release-line = 2` + the T-1 flips + the release notes). It is reviewed and approved by the owner, and merging it deploys nothing;
+- the **GA PR** (`.release-line = 2` + the T-1 flips + the release notes). It merges on CI green: launching this prompt is the owner's approval of the major bump (D40), and merging it deploys nothing;
 - a **`v2.0.0-rc.1`** rehearsed in compose.
 
 It also clears the **strangers** (no `active` learner) and lands the two guards that [ga-02](../sprints/sprint-ga-02.md) runs:
@@ -70,7 +77,7 @@ Both go in the GA PR, so `v2.0.0` can later be tagged on the exact commit you re
 - [ ] **The M3 checklist is still green.** Plan task 1:
   - `ssh vps 'bash /root/host-verify.sh --cluster --with-runner --nats-stage=n4'` has no FAIL;
   - 14 packs stamped; AB07–AB12 frozen; TR-STEAL quiet;
-  - the owner has the weekly-image date.
+  - the weekly-image date is in the launch message.
 - [ ] **L exit recorded,** and `curl -s https://projects.sujaykumar.dev/xlearn/api/v1/auth/config` → `{"signup":"closed"}`.
 - [ ] **The T-2 switches are live:**
   - `JUDGE_BASE_URL` is set on `../infra/apps/xlearn-{gateway,practice}.yaml`;
@@ -95,20 +102,19 @@ Both go in the GA PR, so `v2.0.0` can later be tagged on the exact commit you re
   - no peer plans a tag.
 
   Check with `gh pr list --state open`, `git ls-remote --tags origin`, `git worktree list` and ListAgents.
-- [ ] **The owner is reachable** for the strangers triage (~15 min) and the GA PR review.
 
 ## Do this (in order)
 
 1. **[H] Entry read** (plan task 1). Record "GA entry: M3 checklist re-read green <date>" in the decisions log draft.
-2. **[O] Strangers** (plan task 2, `ev-strangers`):
+2. **[H] Strangers** (plan task 2, `ev-strangers`):
    - Run the read-only lists:
      - `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account list --role learner --status active'`;
      - `… identity admin seats`.
-   - Show them to the owner **in the terminal only**. They are PII, and the repo is public: never put them in a file, PR or status.md.
-   - The owner decides per account:
-     - **suspend** (default, reversible): you may run `account suspend <id>` only on his explicit per-account instruction;
-     - **erase**: the owner runs it himself (irreversible, D12): `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account erase <id> --confirm <id>'`. `--confirm` must repeat the account (l-02's verb; `kubectl exec` has no prompt). Then check `… identity admin erasures --open` → empty;
-     - **re-role** a real tester: `account set-role <id> tester`.
+   - Keep them **in the terminal only**. They are PII, and the repo is public: never put them in a file, PR or status.md.
+   - Triage (D40: the launch approves the reversible default; the owner did any erase himself before launch):
+     - **re-role** each real tester the launch message names: `account set-role <id> tester`;
+     - **suspend** every account still listed: `account suspend <id>` (reversible; the data stays);
+     - never **erase** here: it's irreversible (D12), so it stays the owner's, before launch. If `erasures --open` isn't empty after his erases, record it and carry on.
    - Verify: the list is **empty**; `seats` shows 0/15 and 0 outstanding invites.
    - Log each CLI use, with counts only.
 3. **[X] Branch** `feat/ga-v2-default-flip` from an up-to-date `main`.
@@ -135,7 +141,7 @@ Both go in the GA PR, so `v2.0.0` can later be tagged on the exact commit you re
    - **No migration.**
 5. **[X] Flag inventory** (plan task 4):
    - Remove every GA-removal flag: code, config, tests, docs.
-   - Prepare the `COURSE_STATUS_OVERRIDE` question for the owner. **Keep (recommended):** a dated amendment line in ADR-0034 §2's permanent list, and status.md moves it to the operating modes. **Or remove:** the parser, its tests and its row.
+   - Decide `COURSE_STATUS_OVERRIDE` by p-02's recommendation (D40), unless status.md already records the owner's call: **keep** — a dated amendment line in ADR-0034 §2's permanent list, and status.md moves it to the operating modes. (The alternative, **remove**, deletes the parser, its tests and its row.) Record the decision in the PR and the Decisions log; the owner may reverse it later with a follow-up PR.
    - Kill switches untouched.
 6. **[X] No-contract assertion** (plan task 5):
    - `hack/lint-migrations.sh --no-contract-since <ref>`: fail on an added contract file (marker or unrelaxed statement), and on any edited old migration. Self-tests via `hack/testdata/migrations/no-contract-since.sh`, run in `ci.yml` and `make lint`.
@@ -157,14 +163,14 @@ Both go in the GA PR, so `v2.0.0` can later be tagged on the exact commit you re
    - Fix drift in `docs/git-strategy.md`: the 8 fleet policies vs the runner/evalpack streams; the pre-flip script; the no-contract step; the hotfix-from-`<last-1.x>` rule; `.release-line` "2 from the GA PR".
    - Grep for stale `<2.0.0` mentions.
    - Add a dated note under ADR-0034 §1.4: "every `xlearn-*`" = the 8 fleet policies (if still needed), and the pre-flip check's anonymous `curl` against the GHCR API stands in for step 3's `crane ls` (`crane` isn't installed).
-9. **[X→O] Open the PR:**
+9. **[X] Open the PR and merge it on CI green:**
    - title `feat!: v2.0 GA default flip — .release-line 2, judge + platform AI for every account, go-concurrency active`;
    - the attribution lines;
    - compose sanity from source: a learner sees Run/Submit and gc.
 
    Get **CI green**: gofmt, vet, `go test -race`, **`sqlc diff`**, the migration and pre-flip self-tests, OpenAPI drift, `e2e` (with `ga_flip_test.go`), `judge-runner-e2e` (the flipped `m3_exit_test.go`), `web`, `content`.
 
-   **Then STOP and ask the owner to review and approve.** Standing merge authority does not cover this PR. On approval:
+   **Then, with no separate approval** (D40: the launch is the owner's approval of the major bump; he may review after the merge):
    - re-run step 2's read (still empty);
    - squash-merge;
    - tell the peers: "`main` is on release line 2 from <sha>; no tags from `main` until ga-02 reports `v2.0.0` verified; a 1.x hotfix branches from `<last-1.x>`".
@@ -192,8 +198,8 @@ Both go in the GA PR, so `v2.0.0` can later be tagged on the exact commit you re
     - `go test -tags e2e ./internal/e2e/...`;
     - **`hack/ga-preflip-check.sh --cluster` must PASS with the rc tags present.**
 
-    On a failure: fix PR (owner approval if it touches the flips) → `-rc.2` → phases 1–3 again. Record the final rc's SHA.
-12. **[X] Record** (plan task 11), through a **docs-only** PR. It may merge after the rc, because `docs/` is `.dockerignore`d. Then `git checkout main && git pull`.
+    On a failure: fix PR (merged on CI green) → `-rc.2` → phases 1–3 again. Record the final rc's SHA.
+12. **[X] Record** (plan task 11), through a **docs-only** PR. It may merge after the rc, because `docs/` is `.dockerignore`d. Then Ship (below).
 
 ## Constraints
 
@@ -221,7 +227,7 @@ Both go in the GA PR, so `v2.0.0` can later be tagged on the exact commit you re
 ## Deliverables
 
 - The strangers triaged on production; `ev-strangers` recorded with counts.
-- The GA PR, merged with the owner's approval:
+- The GA PR, merged on CI green (D40):
   - `.release-line = 2`;
   - the judge and AI cohort gates removed; go-concurrency `active`;
   - the GA-removal flags gone, and `COURSE_STATUS_OVERRIDE` decided;
@@ -235,7 +241,7 @@ Both go in the GA PR, so `v2.0.0` can later be tagged on the exact commit you re
 
 ## Update status
 
-- **The plan's Status table** ([`../sprints/sprint-ga-01.md`](../sprints/sprint-ga-01.md)): 🔄 → ✅ per task. While the PR waits for the owner, _Overall_ is 🔄 "awaiting owner review"; ✅ after task 11.
+- **The plan's Status table** ([`../sprints/sprint-ga-01.md`](../sprints/sprint-ga-01.md)): 🔄 → ✅ per task; _Overall_ ✅ after task 11.
 - **[`../status.md`](../status.md):**
   - the Sprint board row;
   - **Milestones: GA 🔄** (GA PR #, `v2.0.0-rc.N` = <sha>);
@@ -254,11 +260,11 @@ Both go in the GA PR, so `v2.0.0` can later be tagged on the exact commit you re
 ## Done when (acceptance)
 
 - [ ] No `active` `learner` account; `seats` 0/15 and 0 outstanding invites (recorded, counts only).
-- [ ] The GA PR is merged **with the owner's explicit approval**:
+- [ ] The GA PR is merged **on CI green** (D40; no separate approval):
   - `.release-line = 2`;
   - no role gate on judge or platform AI (kill switches and consents intact);
   - go-concurrency `active`;
-  - the GA-removal flags gone;
+  - the GA-removal flags gone, and the `COURSE_STATUS_OVERRIDE` decision recorded;
   - the release notes carry the behaviour-change list.
 - [ ] The no-contract lint mode and the `deploy.yml` first-of-major step are in place with self-tests. The rc's run showed the step green.
 - [ ] `hack/ga-preflip-check.sh` is on `main`, its self-test is green, and it PASSES on the live state with the rc tags present.
@@ -266,4 +272,12 @@ Both go in the GA PR, so `v2.0.0` can later be tagged on the exact commit you re
 - [ ] The compose rehearsal is green on all four phases, **including R-b to `<last-1.x>`** and the kill-switch drills.
 - [ ] git-strategy, the `deploy.yml` header and `api.md` match the GA procedure.
 
-Ship per AGENT.md land-and-sync with **this sprint's release action: merge only**. The GA PR merges **only after the owner's explicit approval**; merging deploys nothing. Add the **`v2.0.0-rc.N` prerelease tag** (it builds and never deploys; **required here**, although GA checklist item 2 calls the rehearsal optional, because ga-02 tags the rc'd commit) and a docs-only status PR. **No `../infra` change and no `v2.0.0` tag** (those are [ga-02](../sprints/sprint-ga-02.md)). After merging, run `git checkout main && git pull` in `xlearn`, or `git -C <peer worktree> merge --ff-only origin/main` if a clean peer worktree holds `main`.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/ga-v2-default-flip`, then conventional commit(s) with the attribution lines, then push, then the GA PR (step 9). This repo only: this sprint never touches `../infra`.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. There is no separate approval for the GA PR: ADR-0034 §1.3's reviewed major bump is this deliberate PR, approved by the launch. An owner "hold" in the session still overrides.
+3. **Release action — merge only, plus the `v2.0.0-rc.N` prerelease:** merging deploys nothing (`main` is build-only). Tag `v2.0.0-rc.1` (step 10; **required here**, although GA checklist item 2 calls the rehearsal optional, because ga-02 tags the rc'd commit), prove it builds and never deploys, and rehearse it (step 11). **No `v2.0.0` and no `../infra` change**: the content ships in `v2.0.0`, which [ga-02](../sprints/sprint-ga-02.md) tags on the rc'd commit.
+4. Update status: the sprint file and `docs/v2/status.md` (step 12), in a docs-only PR merged the same way (it may follow the rc, because `docs/` is `.dockerignore`d).
+5. Run `git checkout main && git pull` in xlearn. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

@@ -354,6 +354,8 @@ By looking (D34), read-only over `ssh vps`:
 
 **Tag `v1.11.0`** (indicative: the next free minor, major = `.release-line` = 1). **Consumers first:** the producer ships in
 [l-02](sprint-l-02.md)'s v1.12.0 ([rollout §7](../rollout-plan.md#7-indicative-tag-timeline), [ADR-0034 §1.6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#16-indicative-tag-timeline)).
+**Infra PRs first:** the ACL re-render and coach's seed/env PRs (task 7) merge before the xlearn squash-merge, each its own
+PR and never folded into the tag; then the squash-merge and the tag, back to back.
 
 Release checklist ([ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#6-release-checklist) + the ADR-0035 §2 standing rule):
 - [ ] Before the tag: peers' tags and PRs are checked (parallel sessions; `git ls-remote --tags origin`, `gh pr list`, `git worktree list`, ListAgents)

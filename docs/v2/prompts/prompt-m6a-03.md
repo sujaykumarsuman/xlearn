@@ -3,6 +3,12 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-m6a-03.md`](../sprints/sprint-m6a-03.md)   ·   **Milestone:** M6a (text interviewer; ships dark in a v2.0.x patch)   ·   **Prereqs:** [m6a-02](../sprints/sprint-m6a-02.md) (and [m6a-01](../sprints/sprint-m6a-01.md))
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] Your own provider keys for the catalog `interview_brain` models are set as env vars where this session runs, with at least $20 of spend headroom. Only step 8 (the live twin-gate run, ≤ $20, which launching this prompt approves) needs them; without them 3b goes ⛔ and m6a-06's tag waits for a re-run of that step.
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — conventions and the land-and-sync directive.
@@ -90,12 +96,13 @@ edits, re-proposes once or scores it themselves; the gateway then calls **`Score
    `mock_review_gate` field and the "un-gated → quotes only" rule with its prompt-bump test; live flags `-models`, `-items`,
    `-budget-usd` with a dry-run estimate, a per-call `llm.Cost` tally and a stop before the crossing call (unit-tested). A model that
    runs and fails is demoted to `self_only`; "red" (the register's ship blocker) means "not run live or the harness failing" (t6 §6).
-8. **[O] Twin gate live** (task 3b): **ask the owner** for an explicit go-ahead to spend ≤ $20 on their own keys — ≈ 5 models × 12
-   transcripts (3 items × 4) × 3 samples ≈ 180 calls ≈ $11–18; show the harness's dry-run estimate (env vars on their machine; never
-   coach's store). With it: run `go test -tags twinlive … -run TestTwinGateLive -budget-usd=<approved>`, commit the results (bands and
-   flags only), set each model's gate; a model the budget stop left unfinished stays un-gated and is listed as pending. If the owner
-   approves only ≤ $6, run `-items=1` (60 calls) and say so in the ADR-0032 tolerance note. Without a go-ahead: mark 3b ⛔ and record
-   "twin gate run live" as an entry gate for [m6a-06](../sprints/sprint-m6a-06.md)'s tag.
+8. **[X] Twin gate live** (task 3b), pre-approved by launching this prompt (D40): ≤ $20 on the owner's own keys — ≈ 5 models × 12
+   transcripts (3 items × 4) × 3 samples ≈ 180 calls ≈ $11–18. First verify the before-launch keys are in the environment (never read
+   from coach's store); if they're missing, don't wait: mark 3b ⛔ "owner keys missing" in status.md, record "twin gate run live" as an
+   entry gate for [m6a-06](../sprints/sprint-m6a-06.md)'s tag, and land the rest. Otherwise print the harness's dry-run estimate (it
+   must fit $20), run `go test -tags twinlive … -run TestTwinGateLive -budget-usd=20`, commit the results (bands and flags only), and
+   set each model's gate; a model the budget stop left unfinished stays un-gated and is listed as pending. If the owner asks in-session
+   for a smaller budget (≤ $6), run `-items=1` (60 calls) and say so in the ADR-0032 tolerance note.
 9. **[X] Public** (task 4): `header.mocks` counts `scored` only (test); extend `public_test.go`'s allowlist with the new fields; authed trend
    and mock views gain `format`, `scored_by`, `caveats` for the learner's own sessions.
 10. **[X] Docs** (task 5): `docs/architecture/{data-model,api,events}.md`, `openapi.yaml`; ADR-0032 dated update (tolerance and the
@@ -103,7 +110,7 @@ edits, re-proposes once or scores it themselves; the gateway then calls **`Score
 11. **[X] Verify:** `gofmt -l`, `go vet ./...`, `go test -race ./...` (real PG via `XLEARN_TEST_DATABASE_URL`),
     `go test -tags e2e -race ./internal/e2e/...` (add the leg: cohort interview → finished → proposal → accept → exactly one `ScoreMock`
     and one `mock_completed`), `sqlc diff`, the migration lint, web `typecheck`/`lint`/`test`/`build` (then `git checkout -- web/dist/.gitkeep`).
-12. **[X] Merge** per land-and-sync (PR, CI green, squash). No tag.
+12. **[X] Ship:** see **Ship** below. No tag.
 
 ## Constraints
 
@@ -114,8 +121,8 @@ edits, re-proposes once or scores it themselves; the gateway then calls **`Score
   transcripts or quotes.
 - **No auto-accept**; no AI call on the learner's key for an `incomplete` interview without a click.
 - **goose + sqlc:** expand only (keep `live`; its contract is a later release, recorded as pending); `sqlc diff` clean.
-- **Owner keys:** only with an explicit go-ahead, capped by `-budget-usd` at the approved amount; results carry bands and flags only
-  (synthetic transcripts).
+- **Owner keys:** only in step 8's live run (pre-approved by launching this prompt, D40), capped by `-budget-usd=20`; results carry
+  bands and flags only (synthetic transcripts).
 - **Outbox/NATS:** `mock_completed` unchanged; no new subject (no ACL PR). **GitOps:** no infra change. **D34:** no alerting, no reminder job.
 - **Memory-sum rule:** no new pod. **Frontend:** none beyond types (UI is m6a-05/06).
 - **Parallel sessions:** check peers' PRs/worktrees before claiming migration or ADR numbers.
@@ -130,7 +137,7 @@ edits, re-proposes once or scores it themselves; the gateway then calls **`Score
 
 ## Update status
 
-- [`../sprints/sprint-m6a-03.md`](../sprints/sprint-m6a-03.md): tasks 🔄 → ✅ (3b ⛔ with the reason if no go-ahead); _Overall_ ✅ when merged.
+- [`../sprints/sprint-m6a-03.md`](../sprints/sprint-m6a-03.md): tasks 🔄 → ✅ (3b ⛔ "owner keys missing" only if the before-launch keys weren't there); _Overall_ ✅ when merged.
 - [`../status.md`](../status.md): Sprint board row; **M6a** milestone "scoring merged (dark)"; **pending contracts**: `mock_session.status`
   `live → open`; the twin-gate results per model (or "live run pending — m6a-06 gate"); **Decisions log**: tolerance, the gate rule, the
   `ai-byo` conditions, the lazy mirror, the automatic review.
@@ -147,7 +154,12 @@ edits, re-proposes once or scores it themselves; the gateway then calls **`Score
 - [ ] Every aggregate counts only `scored`; `/mocks/live` classic only; the public allowlist covers the new fields.
 - [ ] Start idempotent via `client_ref`; abandon mirrored at once, `incomplete` lazily.
 
-**Shipping:** per AGENT.md land-and-sync with **this sprint's release action — merge only (ships dark in the next v2.0.x
-patch)**: branch → conventional commits (`feat(assessment): …`, `feat(coach): …`) with the attribution lines → push → PR → CI green →
-squash-merge → `git checkout main && git pull`. **No tag** — [m6a-06](../sprints/sprint-m6a-06.md) tags the M6a patch after the twin gate
-is green.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: xlearn only, on `feat/m6a-03-mock-scoring` with `feat(assessment): …` and `feat(coach): …` commits (step 8's twin-gate results included); there is no infra change.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships dark in the next `v2.0.x` patch):** Nothing deploys; it ships dark in the next `v2.0.x` patch, normally the M6a patch cut by [m6a-06](../sprints/sprint-m6a-06.md) once the twin gate is green. Don't tag.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

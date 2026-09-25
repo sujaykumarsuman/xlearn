@@ -33,7 +33,7 @@ _Overall:_ ⬜ Not started
       identity's `/internal/accounts/{id}` returning `consents` as `{kind: {version, granted_at}}` for live rows; judge's
       5-minute account cache with **`POST /internal/accounts/{id}/refresh`**; the gate inside `Reserve` (consent per purpose);
       `AllowanceFor(account)`; judge-owned `ai_disabled` (`llm_account_limit`)
-- [ ] AB18 frozen ([ds-m4-01](sprint-ds-m4-01.md)): `design-system/screens/v2/AB18-ai-allowance-consents.html` — its states
+- [ ] AB18 frozen: [ds-m4-01](sprint-ds-m4-01.md) merged (the merge is the freeze): `design-system/screens/v2/AB18-ai-allowance-consents.html` — its states
       (F1–F6), the consent copy (F7–F8) and the two names (F9) define the payloads
 - [ ] Parallel sessions: no peer PR open on identity's store, `internal/gateway` route tables or `internal/judge/ai`
 
@@ -205,8 +205,9 @@ sprint proves it **through the real write path**:
 ## Release
 
 **Merge only — ships in v1.16.0**, tagged by [m4-07](sprint-m4-07.md). No infra PR and no new caller. On M4 day 1 (m4-07's
-flip) **the owner ticks the consents in Settings** (m4-06) before any platform AI runs on his account — consent is
-fail-closed for everyone, the owner included; testers do the same. l-05 later asks every account at the acceptance step.
+flip) **the owner ticks the consents in Settings** (m4-06) — a post-ship owner event that no session waits on; until then no
+platform AI runs on his account (consent is fail-closed for everyone, the owner included); testers do the same. l-05 later
+asks every account at the acceptance step.
 
 ## Definition of Done
 

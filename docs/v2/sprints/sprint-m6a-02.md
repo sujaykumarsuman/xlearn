@@ -4,7 +4,7 @@
 > **Prereqs:** [m6a-01](sprint-m6a-01.md) (the interview core) · [spk-04](sprint-spk-04.md) (S6: the scrubbed quota fixtures)
 > **Unblocks:** [m6a-03](sprint-m6a-03.md) (the review call and scoring reuse this brain, its classifier and its `store:false` test)
 > **Release action:** **merge only (ships dark in the next v2.0.x patch)** — normally [m6a-06](sprint-m6a-06.md)'s M6a patch. No infra change.
-> **Calendar:** Q1 2027. No owner involvement; the manual live replay (≈ $0.5) is documented, and runs only on the owner's explicit go-ahead.
+> **Calendar:** Q1 2027. No owner involvement; the manual live replay (≈ $0.5) is documented as a runbook recipe and isn't run in this sprint (the owner runs it, or a later prompt that specifies the run and its $ budget, D40).
 > **Execute with:** [`../prompts/prompt-m6a-02.md`](../prompts/prompt-m6a-02.md) — one prompt, one session.
 
 ## Status
@@ -213,10 +213,11 @@ Sources: [t6 §9 P0](../research/t6-realtime-interviewer.md#9-phased-plan) ("CI 
   `interrupt(rate)`; transient → 2 tries → `interrupt(provider)`; auth → `paused` + key disabled; `ErrModelAccess` at pre-flight;
   `transcript_full` → wrap-up; distress word → safety card; every S6 quota fixture through the classifier API.
 - Runs in `go test ./...` (no network). The **S6 fixtures** are read in place from `docs/v2/research/t6-s6-fixtures/` (one source;
-  spk-04 scrubbed them and the owner confirmed); synthetic fixtures for the text path live in `internal/coach/interview/replay/testdata/`.
+  spk-04 scrubbed them before they were committed); synthetic fixtures for the text path live in `internal/coach/interview/replay/testdata/`.
 - **Manual live replay** (documented, not run by the agent): a `-record` mode that runs the script against a real key from an env var
-  (≈ $0.5), then scrubs before anything is written; the recipe goes in `docs/runbooks/interviewer.md`. It runs only when the owner runs
-  it or gives an explicit go-ahead — no agent uses a key without it.
+  (≈ $0.5), then scrubs before anything is written; the recipe goes in `docs/runbooks/interviewer.md`. This sprint doesn't run it: the
+  owner runs it, or a later prompt that specifies the run and its $ budget does (launching that prompt approves it, D40); no agent uses
+  a provider key otherwise.
 - **Memory:** replay a 45-minute text interview in compose and record coach's peak RSS (`docker stats`) in the PR; it must sit well
   inside today's 128 Mi limit (flag anything > 96 Mi for [mi-13](sprint-mi-13.md)).
 

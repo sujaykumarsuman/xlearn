@@ -4,7 +4,7 @@
 > **Prereqs:** [m1-03](sprint-m1-03.md) (merged; gateway router serialized) · [m1-02](sprint-m1-02.md) (`v1.6.0` live: the M1a identity columns)
 > **Unblocks:** [m1-05](sprint-m1-05.md) · [m1-07](sprint-m1-07.md) · [l-02](sprint-l-02.md)
 > **Release action:** **merge only** (ships in `v1.7.0`, tagged by [m1-07](sprint-m1-07.md))
-> **Calendar:** weeks 2–3 (≈ 2026-10-12 → 10-16). **Prepares owner events:** `ev-owner-role` (after `v1.7.0`), `ev-first-tester` (after MI-5b is live)
+> **Calendar:** weeks 2–3 (≈ 2026-10-12 → 10-16). **Prepares (runbook):** `ev-owner-role`, which [m1-07](sprint-m1-07.md)'s session runs right after the `v1.7.0` verify, and `ev-first-tester`, which [l-02](sprint-l-02.md)'s session runs once MI-5b is live (both D40: no owner time)
 > **Execute with:** [`../prompts/prompt-m1-04.md`](../prompts/prompt-m1-04.md) — one prompt, one session.
 
 ## Status
@@ -191,8 +191,8 @@ Sources: [ADR-0033](../../adr/0033-invite-only-admission-and-owner-admin.md) §1
 
 **Merge only — ships in `v1.7.0`** ([m1-07](sprint-m1-07.md) tags it; floor after: 1.6.0). No infra change: `SIGNUP_MODE: closed`
 stays on the identity HelmRelease, and `SEAT_CAP` uses its code default (15) until L-A sets it explicitly.
-**Owner, after `v1.7.0` is live:** `ev-owner-role` — run `set-role <owner> owner` once (runbook); do it before [l-02](sprint-l-02.md)
-relies on the role to refuse web erase for the owner.
+**`ev-owner-role` runs in [m1-07](sprint-m1-07.md)'s session** right after the `v1.7.0` verify (D40: `set-role <owner> owner` once,
+per the runbook), before [l-02](sprint-l-02.md) relies on the role to refuse web erase for the owner.
 
 ## Definition of Done
 
@@ -205,8 +205,8 @@ flag inventory lists `SIGNUP_MODE` as an operating mode with the L7 guard) · no
 - **CSP breaks an inline style or script** in the SPA or a third-party chunk — run the full web suite plus a manual compose
   smoke of every screen with the console open; never add `'unsafe-inline'` to `script-src` (a `style-src` exception needs a decisions-log entry).
 - **Revoke-all on password change logs the owner out** — expected; the SPA explains it.
-- **Owner role not yet set:** until `ev-owner-role` runs, there is no owner — the guard allows the first promotion; schedule it
-  right after `v1.7.0`.
+- **Owner role not yet set:** until `ev-owner-role` runs, there is no owner — the guard allows the first promotion; m1-07's
+  session runs it right after `v1.7.0`.
 - **The session join runs on every API call** — it hits the account PK; measure p95 of `/sessions/validate` in compose before/after.
 - **Non-browser clients have no `Sec-Fetch-Site`** — allowed by design; the JSON check still applies.
 - **Minting a tester before MI-5b** would put a non-owner on the shared origin (ADR-0033 §11) — the CLI can't know; the runbook gates it.

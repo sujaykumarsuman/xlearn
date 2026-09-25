@@ -51,7 +51,7 @@ in text) so M6b needs no migration, and export small interfaces for every seam i
 
 - [ ] [spk-04](../sprints/sprint-spk-04.md) (S6) reported: t6 §16 and `docs/v2/research/t6-s6-fixtures/` are on `main`.
 - [ ] ADR-0032 status is **Accepted** (`docs/adr/0032-realtime-ai-mock-interviewer.md`).
-- [ ] AB13, AB24–AB28 frozen: the ds-m6a-01 and ds-m6a-02 PRs are **merged** and the files exist under `design-system/screens/v2/`.
+- [ ] AB13, AB24–AB28 frozen: ds-m6a-01 and ds-m6a-02 **merged** (the merge is the freeze) and the files exist under `design-system/screens/v2/`.
 - [ ] judge's `mock` context exists on `main` ([m3-06](../sprints/sprint-m3-06.md)).
 - [ ] `v2.0.0` (or a later v2.0.x) is live: `/xlearn/api/v1/healthz` version; `.release-line` = `2`.
 - [ ] Parallel sessions: `gh pr list`, `git worktree list`, ListAgents — no open peer PR adds a coach goose migration or edits
@@ -110,14 +110,14 @@ in text) so M6b needs no migration, and export small interfaces for every seam i
    `docs/runbooks/interviewer.md`.
 10. **[I] Policies** (task 7): read `../infra/apps/xlearn-*.yaml` and confirm coach calls nobody new; record "no NetworkPolicy/ACL change"
     with the evidence in the PR. Only if coach must call practice/judge `/internal/*`: open the `../infra` PR (coach egress + callee
-    ingress), GitOps only, and list it as a gate for [m6a-06](../sprints/sprint-m6a-06.md)'s tag.
+    ingress), GitOps only, merged on its own before [m6a-06](../sprints/sprint-m6a-06.md)'s tag (see **Ship** below).
 11. **[X] Docs** (task 8): `docs/architecture/{services,api,data-model}.md`; ADR-0032 dated "Update — <date> (m6a-01)" section
     (pause-limit rule, exposure for the whole interview, the named sets, the timed alphabet and the `preflight`/`connecting`/`resuming`
     exits, `end_without_feedback`, starts counted at `preflight_ok`, the beacon exemption).
 12. **[X] Verify:** `gofmt -l`, `go vet ./...`, `go test -race ./...` (real PG), `go test -tags e2e -race ./internal/e2e/...`, `sqlc diff`,
     the migration lint, web `typecheck`/`lint`/`test`/`build` (then `git checkout -- web/dist/.gitkeep`). In compose: as a cohort
     account, create → consent → start (503 until m6a-02) and drive the FSM through the store in a test; check `coach admin interviews --live`.
-13. **[X] Merge** per land-and-sync (PR, CI green, squash). No tag.
+13. **[X] Ship:** see **Ship** below. No tag.
 
 ## Constraints
 
@@ -143,7 +143,7 @@ in text) so M6b needs no migration, and export small interfaces for every seam i
 - Manifest fields, DSA values and the exported never-list + lint; regenerated golden.
 - Gateway `/api/interviews/*` (cohort-gated, aud=coach, placeholder pick), arena exposure push + backstop; OpenAPI entries; coach's local lock.
 - `coach admin interviews` + `coach.admin_audit`; `docs/runbooks/interviewer.md`.
-- Architecture docs; the ADR-0032 dated update; task 7 recorded (or the infra PR).
+- Architecture docs; the ADR-0032 dated update; task 7 recorded (or the merged infra PR).
 
 ## Update status
 
@@ -169,7 +169,12 @@ in text) so M6b needs no migration, and export small interfaces for every seam i
 - [ ] `coach admin interviews --live` lists the live set with no PII; audited.
 - [ ] Learners get 404 on `/api/interviews/*`; OpenAPI drift + route-enumeration green; task 7 recorded.
 
-**Shipping:** per AGENT.md land-and-sync with **this sprint's release action — merge only (ships dark in the next v2.0.x
-patch)**: branch → conventional commits (`feat(coach): …`) with the attribution lines → push → PR → CI green → squash-merge
-(plus task 7's `../infra` PR only if it was needed) → `git checkout main && git pull` in every repo touched. **No tag** —
-[m6a-06](../sprints/sprint-m6a-06.md) tags the M6a patch; any earlier v2.0.x patch carries this dark.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: `feat/m6a-01-interview-core` with `feat(coach): …` commits, plus task 7's `../infra` PR only if step 10 found it needed.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. infra has no CI: paste the local checks into the infra PR body and merge on them.
+3. **Release action — merge only (ships dark in the next `v2.0.x` patch):** Nothing deploys; it ships dark in the next `v2.0.x` patch, normally the M6a patch cut by [m6a-06](../sprints/sprint-m6a-06.md) (any earlier `v2.0.x` patch, e.g. a D6 content wave, carries it dark too). Don't tag. Task 7's `../infra` PR, if it was needed, is its own PR, merged on its own before that tag.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn, plus `../infra` if task 7 opened a PR). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

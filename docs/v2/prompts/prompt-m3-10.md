@@ -85,7 +85,7 @@
   - the **Sprint board** row for M3-10 (M3 stays 🔄);
   - the public-dashboard rows: **P7 (checked)** → done (ships in `v1.14.0`); **P8** → "authed data done (`v1.14.0`); public exposure pending owner item (ADR-0027 §7 vs AB06)" — **not** done;
   - **Decisions log** lines: how precedence is stored (`category` vs `category_suggested`), `judgeCheckedPct = null` before any judged conclusion, the P8 grain (course attempts with ≥ 1 counted submit, per language), "**departure from ADR-0027 §7**: judge stats stay authed-only in M3 because the frozen AB06 has no slot", and whether an ACL PR was needed;
-  - an **owner open item**: "ADR-0027 §7 puts judge stats (counted submits, first-submit acceptance, languages) on the public course card, but AB06 has no slot and M3 keeps them authed-only. Amend ADR-0027 §7, or revise AB06 and widen the P10 allowlist?" If the owner answers during the session, follow it and record the outcome.
+  - an **owner open item** (non-blocking, D40: land without waiting for an answer; the answer becomes a follow-up PR): "ADR-0027 §7 puts judge stats (counted submits, first-submit acceptance, languages) on the public course card, but AB06 has no slot and M3 keeps them authed-only. Amend ADR-0027 §7, or revise AB06 and widen the P10 allowlist?" An answer given in-session is followed like any owner instruction; record the outcome.
 - No ADR is expected (ADR-0029/0027/0018 cover it). If you depart from them, run the parallel-sessions check before numbering one.
 
 ## Done when (acceptance)
@@ -100,4 +100,12 @@
 - [ ] NATS golden unchanged, or its infra PR merged before `v1.14.0`.
 - [ ] CI green (`go test ./...`, `sqlc diff`, web tests, OpenAPI drift, route enumeration, e2e).
 
-**Ship at session end** per AGENT.md land-and-sync with **this sprint's release action: merge only (ships in `v1.14.0`)**. That means branch `feat/m3-10-judge-signals-review-assessment`, conventional commits with the attribution lines, a PR, CI green, and a squash-merge, then `git checkout main && git pull` (and in `../infra` too if you opened an ACL PR). **Do not tag**; [m3-13](../sprints/sprint-m3-13.md) cuts `v1.14.0`.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Branch `feat/m3-10-judge-signals-review-assessment`; plus the `../infra` ACL PR only if step 11's golden changed (infra has no CI: paste the `make nats-acl-render` output into its PR body and merge on it).
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships in `v1.14.0`):** Nothing deploys; it ships in `v1.14.0` (cut by [m3-13](../sprints/sprint-m3-13.md)). Don't tag. An ACL PR, if one was needed, is merged on its own, before the `v1.14.0` tag.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn, and `../infra` if you opened the ACL PR). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

@@ -52,7 +52,7 @@ and the pilot pack. At GA the manifest flips to `active` ([ga-01](../sprints/spr
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
-- [ ] AB14–AB15 (and AB02/AB05 full-fidelity) frozen — the ds-p-01 board PR is merged
+- [ ] AB14–AB15 (and AB02/AB05 full-fidelity) frozen — the ds-p-01 board PR is merged (the merge is the freeze)
 - [ ] PRD Q5 confirmed (ds-p-01) — go-concurrency
 - [ ] p-01 merged and `runner-v1.1.0` live dark (the `module` schema + judge `gotest@1` mapping on `main`)
 - [ ] The M1/M2 `preview` plumbing is on `main` (m1-03 `courseVisible`, m1-04 task 7, m1-05/m2-03 public hiding, m2-04 catalog/agenda)
@@ -112,7 +112,7 @@ and the pilot pack. At GA the manifest flips to `active` ([ga-01](../sprints/spr
 11. **[X] Verify:** `gofmt -l .` empty · `go vet ./...` · `go test -race ./...` · `sqlc diff` · migration lint · content CI ·
     `npm --prefix web run typecheck && npm --prefix web run lint && npm --prefix web test && npm --prefix web run build` ·
     openapi drift · route enumeration · e2e · `docker compose up --build` click-through as owner and as a learner.
-12. **[X] Record** (plan task 8) and ship (below).
+12. **[X] Record** (plan task 8), then ship: see **Ship** below.
 
 ## Constraints
 
@@ -151,8 +151,8 @@ and the pilot pack. At GA the manifest flips to `active` ([ga-01](../sprints/spr
 - [`../status.md`](../status.md): the **Sprint board** row; **Milestones** P 🔄; the **flag inventory** row for
   `COURSE_STATUS_OVERRIDE` (T-2 · owning P · default unset · every `xlearn-*` release · removal GA, with the recommendation
   to promote it to a permanent operating mode at ga-01); **content status** go-concurrency rows (10 scaffolded) and
-  `ev-pilot-content` ready; **Artboards** AB02/AB05 (full) → consumed by p-02; **Decisions log** (manifest values the
-  owner confirmed, the status-CHECK relaxation, override semantics, no mock, any `preview` leak fixed, the part registry
+  `ev-pilot-content` ready; **Artboards** AB02/AB05 (full) → consumed by p-02; **Decisions log** (manifest values as
+  drafted, revisable by the owner with a content PR, the status-CHECK relaxation, override semantics, no mock, any `preview` leak fixed, the part registry
   created here with the `code` widget wrapping m3-11's editor).
 - ADR only for a departure from ADR-0026/ADR-0034 (none expected). Check peers before numbering.
 
@@ -167,6 +167,12 @@ and the pilot pack. At GA the manifest flips to `active` ([ga-01](../sprints/spr
 - [ ] Catalog, agenda and nav match AB02-P*/AB05-P*; the multi-file workspace matches AB15 F1–F2
 - [ ] CI green (Go, sqlc, content, web, openapi drift, route enumeration, e2e)
 
-**Ship at session end** per AGENT.md land-and-sync with **this sprint's release action: merge only (ships in v1.15.0)** —
-branch `feat/p-02-go-concurrency-preview`, conventional commits with the attribution lines, a PR, CI green, squash-merge,
-then `git checkout main && git pull`. **Do not tag** ([p-03](../sprints/sprint-p-03.md) tags `v1.15.0`) and open no infra PR.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). (Branch `feat/p-02-go-concurrency-preview`; this repo only.)
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships in `v1.15.0`):** Nothing deploys; it ships in `v1.15.0` (cut by [p-03](../sprints/sprint-p-03.md)). Don't tag. No infra PR: `COURSE_STATUS_OVERRIDE` stays unset.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

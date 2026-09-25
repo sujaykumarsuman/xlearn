@@ -4,7 +4,7 @@
 > **Prereqs:** [m3-13](sprint-m3-13.md) (M3 shipped, `v1.14.0`) · [spk-02](sprint-spk-02.md) (P3 TSAN verdict) · [ds-p-01](sprint-ds-p-01.md) (PRD Q5 recorded; AB14–AB15 frozen)
 > **Unblocks:** [p-02](sprint-p-02.md) (multi-course + multi-file workspace on a runner that grades `gotest@1`) → [p-03](sprint-p-03.md) (`v1.15.0`)
 > **Release action:** **`runner-v1.1.0`** (the runner stream; the 2nd ImageUpdateAutomation deploys it dark, no infra PR). The judge / `internal/course` / curriculum changes merge to `main` and ship dark in **`v1.15.0`**, tagged by [p-03](sprint-p-03.md).
-> **Calendar:** December (after v1.14.0 and the ds-p-01 freeze). The owner is involved only in two cases: if ds-p-01's Q5 record PR is still open (it needs the owner's merge or go-ahead), or if the pod-level seccomp gate finds a gap (then an owner-booked host change lands before the tag).
+> **Calendar:** December (after v1.14.0 and the `ds-p-01` merge, which records Q5 and is the AB14–AB15 freeze). No owner time, unless the pod-level seccomp gate finds a gap: then this session lands everything that doesn't depend on the host change and records the tag ⛔ in status.md, the owner books a short host window, and a re-run of the prompt on that date applies the host change (pre-approved by launching it, D40) and tags.
 > **Execute with:** [`../prompts/prompt-p-01.md`](../prompts/prompt-p-01.md) — one prompt, one session.
 
 ## Status
@@ -13,7 +13,7 @@ _Overall:_ ⬜ Not started
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | `go-race@1.26` profile: image deltas, ASLR launcher, exec allowlist, pod-profile check, limits, profile health, slot memory budget | X (+ I · O only if the pod profile lacks the rule) | ⬜ |
+| 1 | `go-race@1.26` profile: image deltas, ASLR launcher, exec allowlist, pod-profile check, limits, profile health, slot memory budget | X (+ I, and O before a re-run, only if the pod profile lacks the rule) | ⬜ |
 | 2 | `gotest@1` harness: multi-file module, TestMain on fd 4, per-test exec, RACE / DEADLOCK / LEAK, goroutine dump | X | ⬜ |
 | 3 | Item schema + `contract_hash` for multi-file modules (additive) | X | ⬜ |
 | 4 | judge: map `gotest@1`, honor trust, signals, `Present()` denylist, evaluable vs runner profiles, lints | X | ⬜ |
@@ -30,10 +30,10 @@ _Overall:_ ⬜ Not started
 
 - [ ] M3 shipped (v1.14.0)
 - [ ] P3 TSAN result GO for go-race (spk-02)
-- [ ] PRD Q5 confirmed (ev-q5, answered in ds-p-01 before AB15 was drafted) and its record PR (`docs/ds-p-01-q5`) merged,
-  so PRD §7 Q5 reads resolved on `main`. ds-p-01 merges that PR only on the owner's explicit go-ahead. If it's still
-  open, ask the owner to merge it (or to approve your merging it), then start
-- [ ] AB14–AB15 frozen
+- [ ] PRD Q5 recorded (`ev-q5`, resolved in ds-p-01 before AB15 was drafted): ds-p-01's Q5 record PR (`docs/ds-p-01-q5`)
+  is merged, so PRD §7 Q5 reads resolved on `main`. ds-p-01 merges it on CI green (D40); if it isn't merged, ds-p-01
+  isn't done, which is a gate failure
+- [ ] AB14–AB15 frozen: ds-p-01's board PR is merged (the merge is the freeze)
 - [ ] `runner-v1.0.0` live dark ([mi-10](sprint-mi-10.md)) with `baseline@1` and the Go/C++/Python multipliers recorded; ADR-0030 **Accepted** ([m3-03](sprint-m3-03.md))
 - [ ] **The production pod-level seccomp profile permits the ASLR mechanism t3 §16.2 recorded.** The host file
   `/var/lib/kubelet/seccomp/profiles/xlearn-runner.json` ([mi-09](sprint-mi-09.md), the amd64 file recorded verbatim in
@@ -46,11 +46,13 @@ _Overall:_ ⬜ Not started
   needs no `personality` call.
 - [ ] **Parallel sessions:** no open peer PR touches `internal/runner/`, `deploy/runner.Dockerfile`, `.github/workflows/{runner-release,ci}.yml` or `internal/judge/grader/`; no peer `runner-v*` tag in flight (`git ls-remote --tags origin 'refs/tags/runner-v*'`, `gh pr list`, `git worktree list`, ListAgents)
 
-**Stop and report** if Q5 recorded **SQL** (p-01 is re-planned to a `sql-pg` profile before it starts), or if t3 §16.2
+**Stop and report** if Q5 recorded **SQL** (p-01 is re-planned to a `sql-pg` profile before it starts), if status.md
+marks p-01 ⛔ "needs owner decision" (ds-p-01 found the P3 result inconclusive for go-race), or if t3 §16.2
 says go-race failed even with a per-process `setarch -R` launcher (go-concurrency needs a redesign; Q5 goes back to the owner).
-If the **pod-level profile gate** fails, tasks 1–6 still merge (they ship dark). **Stop before the tag** (task 7): prepare
-the host change (task 1, "Pod-level profile"), report it, and ask the owner to book it. The tag waits until
-`host-verify` shows the new file.
+If the **pod-level profile gate** fails, tasks 1–6 still merge (they ship dark). **Don't tag in this session** (task 7):
+prepare the host change (task 1, "Pod-level profile"), land everything that doesn't depend on it, and record task 7 ⛔
+in status.md with the owner action named (book a host window). Nothing waits. A re-run of the prompt on the booked date
+applies the host change and picks up at task 7. The tag waits until `host-verify` shows the new file.
 
 ## Goal
 
@@ -82,12 +84,13 @@ classes with a goroutine dump reduced to learner-package frames. Teach judge to 
   in the evalpack CI → [p-03](sprint-p-03.md) (E).
 - Flipping the pilot to `active` → GA ([ga-01](sprint-ga-01.md)).
 - Any infra PR: the runner's ImagePolicy (`>=1.0.0 <2.0.0`), 2nd IUA, quota and policies already exist ([mi-10](sprint-mi-10.md)).
-  The one exception is conditional: task 1's pod-level seccomp heredoc PR, only if the entry gate finds the shipped host
-  file lacks the `personality` rule. The owner applies that one on the host.
+  The one exception is conditional: task 1's pod-level seccomp heredoc change, only if the entry gate finds the shipped host
+  file lacks the `personality` rule. It waits as a pushed branch; its runbook opens and merges the PR and applies it on
+  the host in an owner-booked window.
 
 ## Tasks
 
-### 1 · `go-race@1.26` profile [X; + I · O only if the pod profile lacks the rule]
+### 1 · `go-race@1.26` profile [X; + I, and O before a re-run, only if the pod profile lacks the rule]
 
 Sources: [t3 §6.1](../research/t3-sandbox.md#61-image-and-release), [t3 §6.2](../research/t3-sandbox.md#62-profile-table-limits-are-proposed-a8-tunes-them)
 (go-race column), [t3 §16.2](../research/t3-sandbox.md) (spk-02: TSAN verdict, ASLR policy, the go-race allowlist),
@@ -122,15 +125,20 @@ Sources: [t3 §6.1](../research/t3-sandbox.md#61-image-and-release), [t3 §6.2](
   the pod-level profile already allows. The pod layer ([mi-09](sprint-mi-09.md)'s host file, built from RuntimeDefault)
   must also allow `personality(ADDR_NO_RANDOMIZE)` (and the self-`execve`, if needed). That is the entry gate. If the
   shipped file lacks the rule:
-  - **[I]** open an infra PR that changes only that file's heredoc in `../infra/hack/host-bootstrap.sh` (add the
-    arg-filtered `personality` value §16.2 recorded, nothing else) and its sha256 in `hack/host-bom.txt` and the
-    `host-verify` constant. The PR description carries the §16.2 row and a before/after diff of the JSON. Hold it for the
-    owner's host change, as mi-09 held its window PRs. You never write to the host.
-  - **[X]** add a short runbook, `docs/v2/runbooks/host-seccomp-go-race.md`: merge the PR, run
+  - **[I]** push an infra branch (e.g. `chore/host-seccomp-go-race`) with **no PR**, as mi-09 does with its window
+    changes. It changes only that file's heredoc in `../infra/hack/host-bootstrap.sh` (add the arg-filtered
+    `personality` value §16.2 recorded, nothing else) and its sha256 in `hack/host-bom.txt` and the `host-verify`
+    constant. The commit message carries the §16.2 row and a before/after diff of the JSON, and the runbook's PR repeats
+    them. Merged before the host file changes, it would make every `host-verify --expect-sandbox` FAIL `sandbox.seccomp`,
+    so it merges in the window. The session that finds the gap never writes to the host.
+  - **[X]** add a short runbook, `docs/v2/runbooks/host-seccomp-go-race.md`: open and merge the PR from that branch, run
     `host-bootstrap.sh --with-sandbox` (compare-then-write; no k3s restart, since the file is read at pod create), then
     `host-verify --cluster --expect-sandbox`. The `runner-v1.1.0` Recreate in task 7 then loads the new file.
-  - **[O]** the owner books the host change (a short calendar event). Task 7's tag waits until `host-verify` reports the
-    new sha256. Record the gap and the booking in status.md's Decisions log.
+  - **[O, before the re-run]** the owner books the host change: a short calendar event, the date the re-run runs on.
+    Nothing waits in this session: record task 7 ⛔ in status.md
+    ("the tag waits for the go-race seccomp host change; owner to book a host window"), and the gap and the branch in the
+    Decisions log. A re-run of the prompt on the booked date runs the runbook (its host steps are pre-approved by
+    launching the prompt, D40) and picks up at task 7, whose tag waits until `host-verify` reports the new sha256.
 - **Profile health:** at runner start (and each front restart) run a **prebuilt race canary** test binary from the image
   (a known race → must report RACE; a clean test → must pass) through the launcher. If it fails, `GET /v1/profiles` omits
   `go-race@1.26` and logs at ERROR; the runner stays Ready for `go`/`cpp`/`python` (a profile problem never takes the
@@ -279,16 +287,18 @@ its `contract_hash` inputs; the separate race `GOCACHE` seed. Status Accepted (i
   hour, sar steal recorded, re-run if steal > 5 %) and publish it in the TL-baseline doc m3-15 started — p-03's pack sets
   per-test deadlines ≥ 10 × this baseline.
 - `host-verify --cluster --expect-sandbox`: memory sum unchanged, no OOMKills, node disk < 70 % after the larger image
-  pull, runner Ready. A DSA Submit through judge (owner) still grades.
+  pull, runner Ready. A DSA Submit through judge still grades (as a cohort account in an already-signed-in browser
+  session; the agent never signs in, so otherwise record "owner login smoke pending" in status.md's pending-smoke notes).
 
 ### 8 · Record [X]
 
 In [`../status.md`](../status.md): the **runner stream** row (`runner-v1.1.0` live dark, digest, date, go-race baseline,
-steal during calibration); the Sprint board row; milestone **P** 🔄; the **Artboards** rows AB14, AB15, AB02 (full) and
-AB05 (full) → "frozen (PR #, date)" and [ds-p-01](sprint-ds-p-01.md) task 8 + Overall ✅; owner event **`ev-q5`** ✅ with
-its date (already set if the Q5 record PR carried it; set it here otherwise); Decisions-log lines (ASLR mechanism, the
-pod-level `personality` check result and any host change, go-race cap, `module` schema, frame filter, ADR number). This
-sprint file's Status.
+steal during calibration); the Sprint board row; milestone **P** 🔄; if [ds-p-01](sprint-ds-p-01.md)'s session didn't
+already record them (skip any edit already done): the **Artboards** rows AB14, AB15, AB02 (full) and AB05 (full) →
+"frozen (PR #, date)", ds-p-01's _Overall_ ✅ and owner event **`ev-q5`** ✅ with its date; Decisions-log lines (ASLR
+mechanism, the pod-level `personality` check result and any host change, go-race cap, `module` schema, frame filter, ADR
+number); if the pod-level gate found a gap, task 7 ⛔ with the owner action (book a host window) and the infra branch
+named. This sprint file's Status.
 
 ## Acceptance criteria
 
@@ -335,10 +345,10 @@ Release checklist (ADR-0034 §6, copied; runner-stream reading below):
 | M6 live interviews | n/a (pre-M6) |
 | healthz / `get deploy -n xlearn` | read instead: `GET /v1/profiles` via the tunnel and `k3s kubectl get deploy -n xlearn-runner`; the `xlearn` fleet is unchanged |
 | ImagePolicy latest / Ready | `xlearn-runner` latest = 1.1.0; the `runner` Kustomization and HelmRelease Ready |
-| smoke test | login, dashboard, coach, plus one DSA Submit graded through judge |
+| smoke test | login, dashboard, coach, plus one DSA Submit graded through judge (in an already-signed-in browser session; otherwise "owner login smoke pending" in status.md) |
 | record | the runner stream row (tag → digest → baseline); no floor or snapshot (not a contract) |
 | NetworkPolicy rule | no new in-cluster caller (judge → runner already allowed) → no infra PR |
-| (runner-stream addition) host pod profile | the entry gate's `personality` check passed, or the owner's host change landed and `host-verify --cluster --expect-sandbox` shows the new `sandbox.seccomp` sha256 **before** the tag |
+| (runner-stream addition) host pod profile | the entry gate's `personality` check passed, or the host change landed (task 1's runbook, in the owner-booked window) and `host-verify --cluster --expect-sandbox` shows the new `sandbox.seccomp` sha256 **before** the tag |
 
 ## Definition of Done
 
@@ -352,7 +362,7 @@ go-race baseline published · ADR merged · statuses updated (this file + [`../s
 - **The pod-level seccomp profile blocks the ASLR call.** RuntimeDefault's arg filter on `personality` rejects
   `ADDR_NO_RANDOMIZE` unless spk-02 added it to the file mi-09 shipped. CI's in-image run has no pod profile, so it
   can't catch this. The entry gate and task 7's "canary fails after Recreate" rule are the controls. The fix is a host
-  change (an owner event), never a runner patch.
+  change in an owner-booked window (task 1's runbook), never a runner patch.
 - **Container OOM from two race builds.** 2 × 1.25 GiB plus the baseline is close to the 3 GiB limit; take the go-race
   concurrency cap rather than raising the pod's limits (a limit change is an infra PR and a memory-sum re-check).
 - **Leaking hidden tests through dumps or race reports.** Goroutines of hidden `_test.go` functions appear in both; the

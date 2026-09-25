@@ -2,7 +2,7 @@
 
 > **Milestone:** GA — v2.0 GA, the owner-facing default flip (**part 2 of 2**: [ADR-0034 §1.4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#14-range-changes-and-the-ga-procedure) steps 3–7, exactly in order) · **Track:** product · **Order:** 70
 > **Prereqs:** [ga-01](sprint-ga-01.md):
-> - the GA PR merged with the owner's approval (`.release-line = 2`, T-1 flips);
+> - the GA PR merged (on CI green, D40: `.release-line = 2`, T-1 flips);
 > - `v2.0.0-rc.N` rehearsed in compose, including R-b;
 > - no active learner;
 > - `hack/ga-preflip-check.sh` on `main`.
@@ -14,9 +14,11 @@
 >
 > **Release action:** **tag `v2.0.0`**, the owner-facing GA ([ADR-0034 §1.6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#16-indicative-tag-timeline): "GA (§1.4): the default flip for the owner; no learner opening". Gate state after: kill switches stay. Rollback floor: GA has no contract, and R-b to `<2.0.0` returns to the last 1.x). Two things come first:
 > - **one infra PR** in `../infra`: the superset widening of the 8 fleet ImagePolicies. It is **merged before the tag**, is its own task, and is never folded into the tag;
-> - the owner's **manual Hostinger snapshot** (`ev-ga`).
+> - the owner's **manual Hostinger snapshot** (`ev-ga`), taken **before launch** (D40).
 >
-> **Calendar:** **GA day** (≈ Dec 2026 – Jan 2027), one sitting with the owner present (~30 min: the weekly-image check, the snapshot, watching the verify). Hostinger keeps a manual snapshot about 1 day, so the snapshot (task 5) and the tag (task 6) happen in the **same sitting**.
+> The session runs the rest with no owner stop.
+>
+> **Calendar:** **GA day** (≈ Dec 2026 – Jan 2027). Owner time is before launch only (~10 min: the weekly-image check and the snapshot); nobody needs to watch the verify. Hostinger keeps a manual snapshot about 1 day, so the owner launches this prompt right after taking it, and the tag (task 6) lands **the same day**.
 > **Execute with:** [`../prompts/prompt-ga-02.md`](../prompts/prompt-ga-02.md). One prompt, one session.
 
 ## Status
@@ -29,7 +31,7 @@ _Overall:_ ⬜ Not started
 | 2 | Pre-flip check: `hack/ga-preflip-check.sh --major 2 --cluster` all PASS (step 3) | X | ⬜ |
 | 3 | Widen: infra PR, 8 fleet ImagePolicies → `>=1.0.0 <3.0.0` (runner and evalpack untouched), merged **before** the tag; nothing moves (step 4) | I | ⬜ |
 | 4 | `host-verify --cluster` green on a settled host (step 5, first half) | H | ⬜ |
-| 5 | Snapshot `ev-ga`: weekly image ≤ 7 d, then the manual snapshot (step 5) | O | ⬜ |
+| 5 | Snapshot `ev-ga`: weekly image ≤ 7 d, then the manual snapshot (step 5), taken by the owner before launch | O (before launch) | ⬜ |
 | 6 | Tag `v2.0.0` + GitHub release (step 6) | X | ⬜ |
 | 7 | Verify (ADR-0034 §6) + the GA smoke (step 7) | X | ⬜ |
 | 8 | Env clean-up (conditional): infra PR dropping env lines for flags ga-01 removed, after the verify | I | ⬜ |
@@ -71,7 +73,7 @@ _Overall:_ ⬜ Not started
 **Sprint gates:**
 
 - [ ] **[ga-01](sprint-ga-01.md) ✅:**
-  - the GA PR # is merged with the owner's approval, and `cat .release-line` on `origin/main` → `2`;
+  - the GA PR # is merged, and `cat .release-line` on `origin/main` → `2`;
   - `v2.0.0-rc.N` is published as a prerelease, and its four-phase compose rehearsal is green (R-b included);
   - the **rc'd commit SHA** is recorded in status.md;
   - `hack/ga-preflip-check.sh` and its self-test are green on `main`.
@@ -79,9 +81,9 @@ _Overall:_ ⬜ Not started
 - [ ] **Production healthy and settled:**
   - no host change, reboot, k3s/CNPG bump or restart-inducing infra PR in the last 24 h (status.md, `git -C ../infra log --since=24.hours origin/main`);
   - no failing Flux object (`ssh vps 'k3s kubectl get kustomizations,helmreleases -A'` all Ready).
-- [ ] **The owner is present for the whole sitting** and has:
-  - the hPanel login, to read the weekly-image date and take the snapshot;
-  - chosen his go-concurrency public visibility (AB22). After the tag, the pilot's rows are public when visible ([ga-01](sprint-ga-01.md) release notes).
+- [ ] **Before launch (owner), attested by the launch (D40):**
+  - the last Hostinger weekly image is ≤ 7 days old, and the manual snapshot is taken on the settled host (task 5); the launch message gives the snapshot's time or id and the weekly-image date;
+  - he has set his go-concurrency public visibility (AB22) as he wants it. After the tag, the pilot's rows are public when visible ([ga-01](sprint-ga-01.md) release notes).
 - [ ] **Parallel sessions, and the tag freeze:**
   - no peer tag or open PR claims `v2.0.0`, edits `../infra/apps/image-automation.yaml`, or plans a tag from `main` (`git ls-remote --tags origin`, `gh pr list --state open` in both repos, `git worktree list`, ListAgents);
   - **every peer has been told the freeze** (task 1): no tag and no merge to xlearn `main` or to `../infra/apps/image-automation.yaml` until this sprint reports `v2.0.0` verified.
@@ -92,7 +94,7 @@ _Overall:_ ⬜ Not started
 Cut **`v2.0.0`**, the **owner-facing v2.0 GA** ([D32](../feasibility.md#decisions-log-newest-first), [D35](../feasibility.md#decisions-log-newest-first); [rollout §4](../rollout-plan.md#v20-ga-the-owner-facing-default-flip)), by executing [ADR-0034 §1.4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#14-range-changes-and-the-ga-procedure) steps 3–7 **exactly in order**:
 1. **pre-flip check:** no stable 2.x exists anywhere;
 2. **superset widening:** merged first, and nothing moves;
-3. **`host-verify --cluster` + the manual snapshot;**
+3. **`host-verify --cluster` + the manual snapshot** (the owner's, taken before launch);
 4. **tag `v2.0.0`**, on the commit ga-01 rehearsed;
 5. **verify by looking** (D34) **and record.**
 
@@ -107,7 +109,7 @@ After it:
 - A tag freeze across peer sessions for the sitting.
 - Running `hack/ga-preflip-check.sh` (written and self-tested in [ga-01](sprint-ga-01.md) so that `main` doesn't move after the rc), including the `--cluster` reads before and after the widening.
 - **One `../infra` PR:** 8 fleet `range` lines in `apps/image-automation.yaml` → `>=1.0.0 <3.0.0`, plus its header comment.
-- `host-verify --cluster --with-runner --nats-stage=n4`; the owner's snapshot.
+- `host-verify --cluster --with-runner --nats-stage=n4`; recording the owner's before-launch snapshot.
 - The `v2.0.0` annotated tag and its GitHub release (body = ga-01's release notes).
 - The ADR-0034 §6 verify, the GA smoke, and the record.
 - **Conditional, after the verify:** one `../infra` PR dropping the HelmRelease env lines of flags ga-01 removed, if ga-01 recorded any (task 8). None is expected.
@@ -144,15 +146,15 @@ Run `hack/ga-preflip-check.sh --major 2 --cluster` at the tag commit. **Every li
 - **no contract** since `<last-1.x>`;
 - **`--cluster`:** the 8 fleet policies are `>=1.0.0 <2.0.0` with `latestRef.tag` = `<last-1.x>`. `xlearn-runner` and `xlearn-evalpack` are `>=1.0.0 <2.0.0` at their own latest. Paste this table into the widening PR.
 
-**If a stray exists**, the ADR gives two branches, and the owner chooses:
+**If a stray exists**, the ADR gives two branches. The session takes them in this order (D40: its call, approved by the launch):
 - **Delete it (preferred).**
   - The git tag: `git push origin :refs/tags/<tag>`.
   - The GHCR version: `gh api -X DELETE /users/sujaykumarsuman/packages/container/xlearn-<svc>/versions/<id>` for each affected package. That needs a token with `delete:packages`. The ids come from `gh api /users/sujaykumarsuman/packages/container/xlearn-<svc>/versions`.
 
-  Both deletions are **irreversible**: the owner runs them himself, or explicitly approves each one. Then re-run the check until it passes.
+  Both deletions are **irreversible**; launching this prompt approves them (D40). A stray git tag can always be deleted; if the token lacks `delete:packages`, the GHCR version can't be, so take the next branch. Then re-run the check until it passes.
 - **Cut GA above it** if it can't be deleted:
   1. tag a version higher than the stray (for example `v2.0.1` if `2.0.0` exists);
-  2. **tag before widening:** steps 4 and 6 swap. The order becomes check → `host-verify` → snapshot → tag → images exist → widen → verify, so the policy's first 2.x pick is the real GA.
+  2. **tag before widening:** steps 4 and 6 swap. The order becomes check → `host-verify` → tag → images exist → widen → verify (the snapshot was already taken, before launch), so the policy's first 2.x pick is the real GA.
   3. **Keep the no-contract guard.** Only a GHCR version can resist deletion; a stray **git** tag can always be deleted, so delete it anyway. `deploy.yml`'s no-contract step ([ga-01](sprint-ga-01.md) task 5) fires for a major's first stable release, meaning no other non-prerelease `v2.*` git tag exists, so it still runs for the chosen tag. Also run `hack/lint-migrations.sh --no-contract-since <last-1.x>` at the chosen tag commit (task 1) and paste the result into the record.
   4. Record the deviation in the decisions log. The release title still says "v2.0 GA".
 
@@ -177,7 +179,7 @@ In `../infra`, from an up-to-date `main`, branch `chore/xlearn-fleet-ranges-v2-g
   **Exactly 8 rows differ.** Paste in task 2's `--cluster` table too.
 - **Commit:** `chore(xlearn): widen fleet ImagePolicies to <3.0.0 for the v2.0 GA (ADR-0034 §1.4)`, with the attribution lines.
 - **PR body:** "Superset widening: merge first, then tag. Nothing moves, because the highest stable fleet image is still `<last-1.x>`. Pre-flip check green at <time>."
-- **Merge** (squash) with the owner present. No `kubectl apply`: Flux reconciles `apps`.
+- **Merge** (squash). `../infra` has no CI: the before/after table and the pre-flip output in the PR body are its checks. No `kubectl apply`: Flux reconciles `apps`.
 - **Verify that nothing moved** (read-only):
   - `ssh vps 'k3s kubectl get kustomization apps -n flux-system -o jsonpath={.status.lastAppliedRevision}'` shows the merge SHA;
   - `hack/ga-preflip-check.sh --major 2 --cluster` shows the 8 fleet ranges `>=1.0.0 <3.0.0` with `latestRef.tag` still `<last-1.x>`, and runner and evalpack unchanged;
@@ -201,12 +203,12 @@ From here until task 6, keep the sitting short and the freeze held.
 
 **Settled** means no host change and no restart-inducing change in the last 24 h (gate above). Paste the summary into the record.
 
-### 5 · Snapshot [O] (`ev-ga`; step 5)
+### 5 · Snapshot [O, before launch] (`ev-ga`; step 5)
 
-[ADR-0034 §4.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#43-snapshot-rule): a manual snapshot right before any GA tag, plus the weekly image ≤ 7 days.
-1. The owner reads the date of the **last Hostinger weekly image** in hPanel. If it is more than 7 days old, **stop**: wait for the next weekly image, or the owner decides and it's recorded.
-2. The owner takes the **manual snapshot**. It's one at a time, replaces any earlier manual one, and is auto-deleted after about 1 day. He tells the agent the time or id.
-3. The tag follows **in this sitting**. If it slips past the snapshot's life, take a new one.
+[ADR-0034 §4.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#43-snapshot-rule): a manual snapshot right before any GA tag, plus the weekly image ≤ 7 days. Under D40 the owner does both **before launching** this prompt, and the launch attests them:
+1. The owner reads the date of the **last Hostinger weekly image** in hPanel. If it is more than 7 days old, he waits for the next weekly image before launching.
+2. The owner takes the **manual snapshot** on a settled host (no host change, reboot or restart-inducing infra PR in the last 24 h). It's one at a time, replaces any earlier manual one, and is auto-deleted after about 1 day. The launch message carries its time or id and the weekly-image date; the session records them.
+3. The tag follows **the same day**. The widening (task 3) moves nothing, so the snapshot still holds the fleet at `<last-1.x>` and the pre-GA data. If the tag can't land inside the snapshot's life, don't tag on a lapsed snapshot: revert task 3's PR (the ranges go back to `<2.0.0`), end the freeze, and record ⛔ "snapshot lapsed; re-take it and relaunch" in `status.md`.
 
 R-d relevance: the snapshot holds the fleet at `<last-1.x>` and the pre-GA data. It stays useful for about 1 day.
 
@@ -245,7 +247,7 @@ Then Flux picks it up. The ImageRepositories scan (1 m), the 8 fleet policies re
 - **Smoke:** login, the dashboard, coach.
 
 **GA smoke:**
-- **Owner:**
+- **Owner** (in a browser profile signed in as the owner that the session can drive, a before-launch item; without it, record this leg ⛔ as an owner follow-up in `status.md`, lean on ga-01's compose proof, and carry on):
   - a packed DSA item → Run → Submit → `auto · checked`, with provenance on Week and Progress;
   - an AI suggestion on a newly concluded attempt (consents on), or the allowance meter reading;
   - go-concurrency in the catalog **without** the `preview` badge, and a gc item opens.
@@ -255,7 +257,7 @@ Then Flux picks it up. The ImageRepositories scan (1 m), the 8 fleet policies re
   - `… identity admin seats` → 0 active learners out of 15, **0 outstanding invites**;
   - `… account list --role learner --status active` → empty;
   - **no invite minted**.
-- **Optional, the owner's call.** This is the only way to see the flip as a non-cohort account on production:
+- **Optional, only if the owner's launch message asks for it** (and names a tester whose signed-in browser profile the session can drive). This is the only way to see the flip as a non-cohort account on production:
   1. `… identity admin account set-role <a tester> learner`. It briefly takes a seat and is audited.
   2. The tester sees Run/Submit on a packed item and go-concurrency in the catalog.
   3. `… set-role <that account> tester` within the sitting.
@@ -271,7 +273,7 @@ Only if ga-01's record (status.md flag inventory; [ga-01](sprint-ga-01.md) task 
 Otherwise, **after task 7 is fully green** (never before or with the tag):
 - In `../infra`, from an up-to-date `main`, branch `chore/xlearn-drop-removed-flag-env`. Remove exactly the recorded `env` entries from the named `apps/xlearn-<svc>.yaml` HelmReleases. **Don't touch** the image tag lines (the IUA owns them), the kill switches (`JUDGE_BASE_URL`, `LLM_PLATFORM_ENABLED`, the grading override, `REVISION_ENTRY_RULE`, `SIGNUP_MODE`) or `COURSE_STATUS_OVERRIDE` if ga-01 kept it.
 - Commit `chore(xlearn): drop env for flags removed in v2.0.0`, with the attribution lines. PR body: the flag names, "removed in GA PR #N, shipped in `v2.0.0`", and "a values change restarts the named services".
-- Squash-merge with the owner present. No `kubectl apply`: Flux reconciles `apps`.
+- Squash-merge (`../infra` has no CI: the PR body's flag list is its check). No `kubectl apply`: Flux reconciles `apps`.
 - Verify by looking: `ssh vps 'k3s kubectl get helmreleases -A'` all Ready; healthz still `"version":"v2.0.0"`; the restarted pods Ready on `:2.0.0`.
 
 It is its own PR, never folded into the tag or the widening.
@@ -297,7 +299,7 @@ Then:
 
 - [ ] The pre-flip check passed immediately before the widening: no stable `2.*` git tag, no stable 2.x GHCR tag on the 8 fleet packages, and no contract since `<last-1.x>`.
 - [ ] The widening PR changed **exactly 8** fleet ranges to `>=1.0.0 <3.0.0` and **merged before the tag**. Nothing moved (latest still `<last-1.x>`, no IUA commit, no restarts). Runner and evalpack are untouched.
-- [ ] `host-verify --cluster --with-runner --nats-stage=n4` was green on a settled host. The weekly image was ≤ 7 days old. The manual snapshot was taken right before the tag, and its time is recorded.
+- [ ] `host-verify --cluster --with-runner --nats-stage=n4` was green on a settled host. The weekly image was ≤ 7 days old. The manual snapshot was taken before launch (D40), the same day as the tag, and its time is recorded.
 - [ ] `v2.0.0` is tagged on the rehearsed commit (or a docs-only descendant), and `deploy.yml` was green, including the no-contract step.
 - [ ] Verified by looking:
   - healthz `v2.0.0`;
@@ -333,7 +335,7 @@ Release checklist ([ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and
 - **ACL PRs:** none. There is no new stream, consumer or subject.
 - **New service:** none. judge's image and policy have existed since `v1.13.0`.
 - **Contract:** none. The `deploy.yml` step (it fires for the major's first stable release, so also for a "cut above a stray" tag once the stray git tag is deleted) and the pre-flip check both assert it. The floor is unchanged.
-- **GA tag:** **yes.** `host-verify --cluster` green, the host settled, the snapshot taken (tasks 4–5).
+- **GA tag:** **yes.** `host-verify --cluster` green, the host settled, the snapshot taken (tasks 4–5; the snapshot by the owner before launch, D40).
 - **Range change:** a **superset widening**, merged **first**, then the tag (ADR-0034 §1.4 table).
 - **M6:** n/a. There are no interviews yet.
 - **New in-cluster callers:** none. The flip removes role checks and adds no call path. No NetworkPolicy PR is needed, and the memory sum is unchanged ([ADR-0035 §5](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#5-capacity-the-memory-sum-rule-triggers-and-ordered-responses)).
@@ -342,7 +344,7 @@ Release checklist ([ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and
 
 ## Rollback
 
-[ADR-0034 §4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#41-mechanisms-fastest-first), fastest first. Decide with the owner.
+[ADR-0034 §4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#41-mechanisms-fastest-first), fastest first. The session picks the fastest mechanism that fixes the failure (approved by the launch, D40) and records it; an owner "hold" in the session still overrides.
 - **R-a (1–2 min), per capability, one infra PR each:**
   - judge off for everyone: unset `JUDGE_BASE_URL` on the gateway **and** practice. That gives the self path, and nothing is re-graded;
   - platform AI off: `LLM_PLATFORM_ENABLED=false` on judge. That gives manual entry;
@@ -351,9 +353,9 @@ Release checklist ([ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and
   1. **tag `v2.0.1`** with the fix. It builds, and it can't deploy while the ranges are `<2.0.0`;
   2. **then re-widen** the 8 fleet policies to `>=1.0.0 <3.0.0`. Flux's first 2.x pick is `2.0.1`, the highest in range, and the widening merge is the deploy moment.
 
-  **Never re-widen first.** The bad `2.0.0` images are still in GHCR, so a widening before `v2.0.1` exists redeploys `2.0.0` at the merge: the stray hazard of [ADR-0034 §1.4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#14-range-changes-and-the-ga-procedure) step 3. The ADR's "superset widening: merge first, then tag" holds only while **no stable 2.x exists**; after GA it no longer does, and the pre-flip check would rightly fail here. Alternative: make R-b's range `>=1.0.0 <3.0.0, !=2.0.0` instead. It also returns `<last-1.x>`, and `v2.0.1` then deploys directly on its tag; dropping the exclusion afterwards is optional. Record whichever the owner picks in the decisions log.
+  **Never re-widen first.** The bad `2.0.0` images are still in GHCR, so a widening before `v2.0.1` exists redeploys `2.0.0` at the merge: the stray hazard of [ADR-0034 §1.4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#14-range-changes-and-the-ga-procedure) step 3. The ADR's "superset widening: merge first, then tag" holds only while **no stable 2.x exists**; after GA it no longer does, and the pre-flip check would rightly fail here. Alternative: make R-b's range `>=1.0.0 <3.0.0, !=2.0.0` instead. It also returns `<last-1.x>`, and `v2.0.1` then deploys directly on its tag; dropping the exclusion afterwards is optional. Take the plain narrowing by default, and record which one was used in the decisions log.
 - **R-c (6–8 min):** revert on `main` + `v2.0.1`. The ranges are already `<3.0.0`, so nothing else changes.
-- **R-d (the snapshot, within ~1 day only):** the [§4.2 procedure](../../adr/0034-v2-release-labelling-gating-and-rollback.md#42-r-d-is-a-procedure-not-a-button):
+- **R-d (the snapshot, within ~1 day only):** the [§4.2 procedure](../../adr/0034-v2-release-labelling-gating-and-rollback.md#42-r-d-is-a-procedure-not-a-button). The restore (step 4) is the owner's hPanel action, so the session does steps 1–3, records ⛔ "R-d restore needed (owner)" with steps 4–6 in `status.md`, and doesn't wait:
   1. pin git back first (R-b);
   2. confirm the `xlearn-*` tags equal the snapshot's (`<last-1.x>`);
   3. list the erases since the snapshot (`identity admin erasures --since <snapshot time>`; none expected at GA);
@@ -365,7 +367,7 @@ Release checklist ([ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and
 
 - Pre-flip green.
 - The widening PR merged before the tag, and nothing moved.
-- `host-verify` green; the snapshot taken and recorded.
+- `host-verify` green; the owner's before-launch snapshot recorded.
 - `v2.0.0` shipped by Flux (no hand `kubectl`) and verified by the checklist and the GA smoke.
 - `SIGNUP_MODE` still `closed`, with no invite.
 - Statuses updated: this file, and [`../status.md`](../status.md) (board, **GA ✅**, tag → floor → snapshot, ranges and release line, flags, `ev-ga`, the CLI-use log, decisions).
@@ -381,8 +383,8 @@ Release checklist ([ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and
 - **A lenient-semver stray** (`2`, `2.0`, `v2.0.0` as a GHCR tag). Flux parses it as stable 2.x. The script's regex covers these, so don't hand-roll a narrower check.
 - **A global `sed` on `<2.0.0`** would also widen `xlearn-runner` and `xlearn-evalpack`. A future runner-v2 or pack-v2 image would then deploy without its GA-in-miniature steps. Edit the 8 documents by name and check the 8-row diff.
 - **A peer tags during the window.** With `.release-line = 2` and the ranges widened, a peer's `v2.0.1` would build **and deploy**. Hold the freeze from task 1 until task 9's message.
-- **The snapshot expires in ~1 day.** Keep tasks 5 → 6 in one sitting. If the tag slips, re-take the snapshot.
+- **The snapshot expires in ~1 day.** The owner launches right after taking it, and the tag lands the same day. If the tag slips past it, narrow back and record ⛔ (task 5).
 - **The flip is invisible on production** (all accounts are in the cohort). Rely on ga-01's compose proof, and optionally the tester-as-learner check (task 7). Don't mint a learner or an invite for it.
 - **A re-pushed tag doesn't roll.** GHCR is overwritten, and Flux doesn't redeploy the same tag string. Never move `v2.0.0`; fix forward with `v2.0.1`.
-- **Public visibility of the pilot.** The owner's gc rows become public if visible. Confirm his choice before the tag.
+- **Public visibility of the pilot.** The owner's gc rows become public if visible. He sets his choice before launch.
 - **No alerting (D34).** A failed rollout is seen only by task 7's reads, so don't end the sitting before they're all green.

@@ -3,7 +3,7 @@
 > **Milestone:** MI — rollout step **MI-10**, part 2 (spike week) · **Track:** spike · **Kind:** spike
 > **Prereqs:** [spk-01](sprint-spk-01.md) (the VM, work directory, supervisor and host files) · [mi-07](sprint-mi-07.md) (MI-9: the `xlearn-evalpack:0.1.0` scaffold image, the PAT and the SOPS pull secret)
 > **Unblocks:** [mi-09](sprint-mi-09.md) (the amd64 pod seccomp profile and final host files) · [m3-03](sprint-m3-03.md) (ADR-0030 acceptance) · [m3-04](sprint-m3-04.md) (per-language amd64 allowlists) · [p-01](sprint-p-01.md) (go-race TSAN verdict) · [ds-p-01](sprint-ds-p-01.md) (its entry gate: the P3 result the owner weighs for PRD Q5) · [m3-07](sprint-m3-07.md) (the pack mount: image volume or fallback) · the M3 checklist line "Spike P0–P3 **GO** and the image-volume spike **GO**" ([rollout §5](../rollout-plan.md#5-m3-hard-entry-checklist))
-> **Release action:** no merge (spike, throwaway). The harness, scratch repo and VMs are never kept; the results are recorded through a docs PR
+> **Release action:** no merge (spike, throwaway). The harness, scratch repo and VMs are never kept; only the results docs PR lands, squash-merged on CI green with no owner stop (D40)
 > **Calendar:** Thu 2026-10-15 → Fri 2026-10-16 (spike week, event `ev-spike-week`). The calendar is the booking window, not the budget. **Hard stop, counted as effort:** this sprint's share of the 10 h P0–P3 core is 3 h (P3 2 h + report 1 h); the image-volume spike is about 1.5 h on top, outside the core
 > **Execute with:** [`../prompts/prompt-spk-02.md`](../prompts/prompt-spk-02.md) — one prompt, one session.
 
@@ -13,11 +13,11 @@ _Overall:_ ⬜ Not started
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | P3 amd64 environment: the second VPS, or a GitHub Actions scratch job | H + O | ⬜ |
+| 1 | P3 amd64 environment: the second VPS (SSH access given by the owner before launch), or a GitHub Actions scratch job | H (+ O before launch) | ⬜ |
 | 2 | P3 replay: the amd64 pod seccomp profile, TSAN under `mmap_rnd_bits=32`, amd64 allowlists (Go, C++, Python), KILL re-run (2 h) | H | ⬜ |
 | 3 | Image-volume spike (i) mount, (ii) cached-image credential check, (iii) initContainer fallback (≈ 1.5 h) | H | ⬜ |
 | 4 | Report → `t3-sandbox.md` §16.2–16.4, t1 §3.3 pointer, `status.md` (docs PR, 1 h) | X | ⬜ |
-| 5 | Teardown: VM, work directory, second VPS reimage or scratch repo deletion | H + O | ⬜ |
+| 5 | Teardown: VM, work directory, SSH alias; the second VPS reimage or scratch repo deletion recorded as an owner follow-up (not a wait) | H | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, and ⛔ if it's blocked (say why).
 > A NO-GO row is still ✅ once it's recorded with numbers. Update the _Overall_ line to match, and mirror the sprint's state into
@@ -30,9 +30,9 @@ _Overall:_ ⬜ Not started
   - `ghcr.io/sujaykumarsuman/xlearn-evalpack:0.1.0` exists and is private (the CI anonymous-GET probe returns 401/403);
   - `../infra/apps/secrets/xlearn-evalpack-pull.enc.yaml` is merged;
   - the PAT's expiry is in `status.md`.
-- [ ] **The owner has confirmed** (event `ev-spike-goahead`) whether a **second VPS** exists, is **amd64** and is **empty**, and has approved its reimage afterwards and given SSH access. **Otherwise** the owner has approved the GitHub Actions path: a private scratch repo created for the spike and deleted by the owner afterwards. That path serves **P3 only**; it never runs the image-volume check (task 3).
+- [ ] **The environment is settled before launch** (D40). Environment A, the owner's **second VPS**, is used only if the owner gave SSH access to it before launch (the prompt's before-launch block) because it exists, is **amd64** and is **empty**; launching approves its full-upgrade, reboot and later reimage. **Otherwise** the session uses the GitHub Actions path and creates the private scratch repo itself (approved by the launch). That path serves **P3 only**; it never runs the image-volume check (task 3).
 - [ ] **The image-volume check has a compliant environment.** Either the pack image includes **`linux/arm64`**, so the arm64 `xl-spike` VM can pull it, **or** environment A exists. mi-07 builds `0.1.0` with no platform list, which gives a single-arch amd64 image, so arm64 is only there if the build was made multi-arch (`platforms: linux/amd64,linux/arm64`; free for `FROM scratch` data).
-  - **Check without an authenticated registry request from the laptop:** `git -C ../xlearn-evalpack show v0.1.0:.github/workflows/build.yml | grep -n platforms`, plus the build run's log (`gh run view -R sujaykumarsuman/xlearn-evalpack <run-id> --log`). Or the owner runs `docker buildx imagetools inspect ghcr.io/sujaykumarsuman/xlearn-evalpack:0.1.0` with their own registry login.
+  - **Check without an authenticated registry request from the laptop:** `git -C ../xlearn-evalpack show v0.1.0:.github/workflows/build.yml | grep -n platforms`, plus the build run's log (`gh run view -R sujaykumarsuman/xlearn-evalpack <run-id> --log`). If both are inconclusive, treat the image as single-arch amd64 (the likely case).
   - **If neither holds,** P3 can still run, but task 3 is ⛔ and the image-volume line stays red. Report it: the fix is a multi-arch rebuild in the evalpack repo (mi-07's build job with the platform list, as a new `0.1.x` tag), then use that tag in place of `0.1.0`.
 - [ ] **Chart 0.3.0 is merged** ([mi-01](sprint-mi-01.md)), because it carries the `initContainers` knob for (iii). If it's still a PR, render from its branch and note that.
 
@@ -69,20 +69,20 @@ This is MI-10 part 2 ([rollout §2](../rollout-plan.md#2-mi-infra-track)); with 
 
 ## Tasks
 
-### 1 · P3 amd64 environment [H + O]
+### 1 · P3 amd64 environment [H (+ O before launch)]
 
 Pick, in this order ([t3 §9 Environment](../research/t3-sandbox.md#9-the-smallest-spike-local-and-throwaway-needs-the-owners-go-ahead)):
 
 - **A. The owner's second VPS** if it exists, is amd64 and is empty. It's closest to production: a generic noble kernel on a KVM guest.
-  - The owner gives SSH access.
+  - The owner gives SSH access before launch (an SSH alias named in the launch message).
   - Run `apt full-upgrade` and reboot onto the current noble kernel, mirroring H0: `core_pattern=core`, `suid_dumpable=0`, apport masked.
   - Add the sandbox sysctls and load spk-01's AppArmor profile.
   - Install go1.26.8 (checksummed), `g++`, `python3`, PGDG PG 18, `auditd` (for `ausearch`/`ausyscall`) and the `seccomp` package (for `scmp_sys_resolver`).
   - Record `uname -r`, `lscpu`, `apparmor_restrict_unprivileged_userns` and `vm.mmap_rnd_bits`. Set `mmap_rnd_bits` to **32** if it's lower, to mirror production.
   - **k3s is optional for P3.** The default is the no-k3s path: the supervisor runs as root in a delegated scope (`systemd-run --scope -p Delegate=yes`), under `aa-exec -p xlearn-runner`, with the **amd64 pod seccomp profile** (task 2) loaded on it by the spike launcher through libseccomp. If time allows, install the pinned k3s the way `host-bootstrap.sh` does and run the supervisor in spk-01's positive pod instead. That's the closest match to production, and it can host task 3 too. If the pack image is single-arch amd64 (entry gates), k3s on A is **required**, because task 3 then runs there.
-  - The owner **reimages it afterwards**, before it becomes the backup target. The runner never runs on the backup VPS (D21).
+  - The owner **reimages it afterwards**, before it becomes the backup target: an owner follow-up the session records, not a wait. The runner never runs on the backup VPS (D21).
 - **B. Otherwise, GitHub Actions** `ubuntu-24.04` (amd64).
-  - Use a **private** scratch repo, `sujaykumarsuman/xlearn-spike-scratch`, created by the owner or with the owner's recorded OK, holding only throwaway code.
+  - Use a **private** scratch repo, `sujaykumarsuman/xlearn-spike-scratch`, which the session creates (`gh repo create … --private`; approved by the launch, D40), holding only throwaway code.
   - Use a `workflow_dispatch` job. Its first steps **assert** `apparmor_restrict_unprivileged_userns=1` (set it if it isn't) and set `mmap_rnd_bits=32`.
   - Install go1.26.8, `g++`, `python3` and PGDG PG 18, load the AppArmor profile, and run the supervisor under `sudo systemd-run --scope -p Delegate=yes`.
   - Install `auditd` (for `ausearch`/`ausyscall`) and the `seccomp` package (for `scmp_sys_resolver`) too, as on A.
@@ -133,7 +133,7 @@ Pick, in this order ([t3 §9 Environment](../research/t3-sandbox.md#9-the-smalle
   - **The pack image includes `linux/arm64`:** start `xl-spike` and use its k3s (v1.36.4).
   - **Single-arch amd64:** the arm64 VM can't pull it ("no match for platform"). Run (i)–(iii) on **environment A** with the pinned k3s installed as `host-bootstrap.sh` does it, and flag to [m3-02](sprint-m3-02.md) that the pack should be published as a multi-arch index. It's `FROM scratch` data, so the extra platform is free.
   - **Never on GitHub Actions.** The pull secret never goes into a CI runner or the scratch repo. With neither the VM nor A available, task 3 is ⛔ (entry gates).
-- **The pull secret.** It gets into the throwaway k3s **without ever being printed or written to disk outside it**. The owner runs, or approves, `sops -d ../infra/apps/secrets/xlearn-evalpack-pull.enc.yaml | multipass exec xl-spike -- sudo k3s kubectl apply -f -` (on A: `| ssh <env-A> 'sudo k3s kubectl apply -f -'`), which creates it in namespace `xlearn`. The VM is deleted in task 5, and A is reimaged.
+- **The pull secret.** It gets into the throwaway k3s **without ever being printed or written to disk outside it**. The session runs (approved by the launch, D40) `sops -d ../infra/apps/secrets/xlearn-evalpack-pull.enc.yaml | multipass exec xl-spike -- sudo k3s kubectl apply -f -` (on A: `| ssh <env-A> 'sudo k3s kubectl apply -f -'`), which creates it in namespace `xlearn`. The VM is deleted in task 5, and A is reimaged.
 - **Record the kubelet settings** from `configz`: `featureGates.KubeletEnsureSecretPulledImages` (beta, on by default since 1.35) and `imagePullCredentialsVerificationPolicy` (default `NeverVerifyPreloadedImages`). **The image must be pulled by the kubelet with the secret, never with `ctr pull` or import.** A preloaded image is exempt from verification, which would make (ii) meaningless.
 
 | # | Check | Pass |
@@ -147,7 +147,7 @@ Pick, in this order ([t3 §9 Environment](../research/t3-sandbox.md#9-the-smalle
   - **(i) and (ii) pass:** image-volume **GO**.
   - **(ii) fails:** test once more with `imagePullCredentialsVerificationPolicy: AlwaysVerify`, set through the kubelet config. If that fixes it, hand the setting to [mi-09](sprint-mi-09.md) to join the L23 kubelet args in the host window, and record **GO with that setting**.
   - **(i) fails:** **fallback chosen**: variant A, else B, else ORAS as t1's last resort.
-- **How a fallback maps onto the M3 line.** The [rollout §5](../rollout-plan.md#5-m3-hard-entry-checklist) line reads "the image-volume spike **GO** (MI-10)". A fallback satisfies it **only with a recorded owner sign-off**, and `status.md` words it that way, for example "image-volume: fallback A, owner-accepted (date)". Without the sign-off the line stays red, and M3 is blocked.
+- **How a fallback maps onto the M3 line.** The [rollout §5](../rollout-plan.md#5-m3-hard-entry-checklist) line reads "the image-volume spike **GO** (MI-10)". A fallback from the **pre-decided chain** (variant A, else B, else ORAS; [t1 §3.3](../research/t1-content-data-model.md#33-private-eval-pack), ADR-0027) is the session's call under D40 and satisfies it; `status.md` words it that way, for example "image-volume: fallback A (pre-decided chain, D40, date)". If every variant fails, that's outside the pre-decided paths: record the options and a recommendation in §16.3, mark the line ⛔ "needs owner decision" in `status.md`, and still land the results PR.
 
 ### 4 · Report (1 h) [X] — docs PR `docs(v2): sandbox spike P3 + image-volume results (MI-10)`
 
@@ -164,26 +164,26 @@ Pick, in this order ([t3 §9 Environment](../research/t3-sandbox.md#9-the-smalle
     - the kubelet `configz` values;
     - the (i), (ii), (ii-b) and (iii) rows with their exact events;
     - the pack image's platforms;
-    - the verdict: GO, GO with `AlwaysVerify`, or the fallback variant (and, for a fallback, whether the owner has signed it off).
+    - the verdict: GO, GO with `AlwaysVerify`, the fallback variant (from the pre-decided chain, D40), or "needs owner decision" with the options and a recommendation if every variant failed.
   - **§16.4 MI-10 verdict and proposed ADR-0030 deltas:**
-    - **"Spike P0–P3 GO / NO-GO; image volume GO / fallback <variant>, owner-accepted (date) / pending owner"**, the line the M3 checklist reads;
+    - **"Spike P0–P3 GO / NO-GO; image volume GO / fallback <variant> (pre-decided chain, D40) / needs owner decision"**, the line the M3 checklist reads;
     - the chosen jail mechanism;
     - the bullet list of what m3-03 folds into ADR-0030 when accepting it: mechanism, SETPCAP, the spawn path, the ASLR policy, the allowlists' home, the host-file diffs, and **the pod profile's architectures** (x86_64-only if nothing broke, else the three-arch baseline, with the evidence);
     - if the fallback was chosen, "ADR-0027's image-volume line needs amending in m3-07".
 - **In [t1 §3.3](../research/t1-content-data-model.md#33-private-eval-pack),** add one line to the "Platform check" list: *Result (spk-02, date): … — see t3 §16.3.*
 - **Leave ADR-0030 and ADR-0027 untouched.** [m3-03](sprint-m3-03.md) and [m3-07](sprint-m3-07.md) own those changes.
 - **`docs/v2/status.md`:**
-  - the MI-10 row ✅ (or ⛔) with the verdict worded as the M3 checklist reads it: "Spike P0–P3 GO and image-volume GO", or "… image-volume: fallback A, owner-accepted (date)", or blocked with the reason. Tick the M3 checklist line in `status.md` (if it tracks it) **only** for a GO, or for a fallback with the owner's sign-off recorded;
+  - the MI-10 row ✅ (or ⛔) with the verdict worded as the M3 checklist reads it: "Spike P0–P3 GO and image-volume GO", or "… image-volume: fallback A (pre-decided chain, D40, date)", or ⛔ "needs owner decision" with the reason. Tick the M3 checklist line in `status.md` (if it tracks it) **only** for a GO or a fallback from the pre-decided chain;
   - the Sprint board row for spk-02;
-  - Decisions log lines: the ASLR policy; the allowlist home (pod seccomp → mi-09, per-case → m3-04); the pod profile's architectures (proposed ADR-0030 delta); image volume GO or the fallback (with the owner sign-off, if any); the kubelet policy if changed; any multi-arch pack request to m3-02 and mi-07;
+  - Decisions log lines: the ASLR policy; the allowlist home (pod seccomp → mi-09, per-case → m3-04); the pod profile's architectures (proposed ADR-0030 delta); image volume GO or the fallback (pre-decided chain, D40); the kubelet policy if changed; any multi-arch pack request to m3-02 and mi-07;
   - hand-off notes to m3-03, mi-09, m3-04, p-01, m3-07 and m3-02.
 
-### 5 · Teardown [H + O]
+### 5 · Teardown [H]
 
 - **`xl-spike`:** if [spk-03](sprint-spk-03.md) runs on it this week (Fri), hand it over and spk-03 deletes it. Otherwise run `multipass delete --purge xl-spike`.
 - **`~/xl-spike/`:** `rm -rf`, after the results PR has merged. Also delete any locally built pack variant images.
-- **Environment A:** the owner reimages the second VPS, and the agent removes the SSH alias it was given.
-- **Environment B:** the owner deletes `xlearn-spike-scratch`. Deleting a repo is permanent, so it's the owner's action.
+- **Environment A:** the agent removes the SSH alias it was given. Reimaging the second VPS is hPanel work, so it's an **owner follow-up**: record it in `status.md` → Open owner items; don't wait for it.
+- **Environment B:** deleting `xlearn-spike-scratch` is permanent, so it stays the owner's action: record it in `status.md` → Open owner items as an **owner follow-up**; don't wait for it.
 - Record in `status.md` what was deleted and when.
 
 ## Acceptance criteria
@@ -197,19 +197,19 @@ Pick, in this order ([t3 §9 Environment](../research/t3-sandbox.md#9-the-smalle
   - (i) mounts read-only;
   - (ii) and (ii-b) refuse a pod without the secret, or the `AlwaysVerify` setting is handed to mi-09;
   - (iii) the fallback variant is tested and recommended;
-  - the verdict is **image-volume GO or a named fallback**. A fallback counts for the M3 line only with a recorded owner sign-off; otherwise the line stays red.
+  - the verdict is **image-volume GO or a named fallback from the pre-decided chain** (D40); if every variant failed, ⛔ "needs owner decision" with the options and a recommendation.
 - [ ] The results are in t3 §16.2–16.4 and the t1 §3.3 pointer, the MI-10 verdict (worded as the M3 checklist reads it) is in `status.md`, and the hand-offs are noted.
-- [ ] **Teardown:** the second VPS is reimaged **or** the scratch repo is deleted (owner). The VM is deleted or handed to spk-03, and `~/xl-spike/` is gone.
+- [ ] **Teardown:** the VM is deleted or handed to spk-03, `~/xl-spike/` is gone and the SSH alias is removed. The owner follow-up (reimage the second VPS, **or** delete the scratch repo) is recorded in `status.md`.
 
 ## Release
 
-**No merge: a throwaway spike.** Nothing but results is kept. The only merge is the **docs PR** (t3 §16.2–16.4, the t1 §3.3 pointer and `status.md`), and it doesn't ship in any tag. There's no infra PR, no evalpack tag, and nothing touches production.
+**No merge: a throwaway spike.** Nothing but results is kept. The only merge is the **docs PR** (t3 §16.2–16.4, the t1 §3.3 pointer and `status.md`), squash-merged on CI green with no owner stop (D40), and it doesn't ship in any tag. A result outside the pre-decided paths still lands, marked ⛔ "needs owner decision". There's no infra PR, no evalpack tag, and nothing touches production.
 
 ## Definition of Done
 
 - The results are recorded and the docs PR is merged.
 - No production change was made.
-- The throwaway environments are torn down per task 5.
+- The throwaway environments are torn down per task 5 (the owner follow-up recorded).
 - Statuses are updated in this file and in [`../status.md`](../status.md).
 - The hard stop was respected. Unfinished rows are marked "not run (time box)", and unknown never counts as GO.
 

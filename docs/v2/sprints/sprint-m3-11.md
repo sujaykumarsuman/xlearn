@@ -4,7 +4,7 @@
 > **Prereqs:** [m3-09](sprint-m3-09.md) (judge BFF) · [ds-m3-01](sprint-ds-m3-01.md) + [ds-m3-02](sprint-ds-m3-02.md) (AB07–AB12 frozen) · [mi-10](sprint-mi-10.md) (runner dark on prod, MI-12)
 > **Unblocks:** [m3-12](sprint-m3-12.md) (results dock, Problems, Arena, badges on this shell and client) · later [m5-01](sprint-m5-01.md) (the AB07 evaluator-only variant) and [m6a-04](sprint-m6a-04.md) (CodeMirror interview mode)
 > **Release action:** **merge only** (ships in `v1.14.0`, tagged by [m3-13](sprint-m3-13.md)) · no infra PR · no new pod
-> **Artboards:** **AB07★** A1 Workspace-Code (`design-system/screens/v2/AB07-workspace-code.html`); AB04 F6 (judged touch re-solve, drawn by [ds-m2-01](sprint-ds-m2-01.md) as an "M3 preview — final in AB07/AB08", but AB07 has no touch frame, so it's built as drawn with AB08's dock lines); a few strings no frozen board draws are drafted here and listed for owner sign-off (task 2, "Copy not on a frozen board")
+> **Artboards:** **AB07★** A1 Workspace-Code (`design-system/screens/v2/AB07-workspace-code.html`); AB04 F6 (judged touch re-solve, drawn by [ds-m2-01](sprint-ds-m2-01.md) as an "M3 preview — final in AB07/AB08", but AB07 has no touch frame, so it's built as drawn with AB08's dock lines); a few strings no frozen board draws are drafted here and land as drafted (task 2, "Copy not on a frozen board"; D40: the owner may revise them later with a content PR)
 > **Calendar:** mid–late November (agent work; owner time only for the M3 checklist items already booked)
 > **Execute with:** [`../prompts/prompt-m3-11.md`](../prompts/prompt-m3-11.md) — one prompt, one session.
 
@@ -40,14 +40,16 @@ _Overall:_ ⬜ Not started
 - [ ] AB07–AB12 frozen
 - [ ] The last Hostinger weekly image is ≤ 7 days old
 
-*Key (not part of the verbatim list):* rollout step ids `MI-NN` are **not** sprint ids `mi-NN`. MI-4 = [mi-14](sprint-mi-14.md) · MI-5, MI-5a = [mi-03](sprint-mi-03.md) · MI-7 (N3) = [mi-06](sprint-mi-06.md) + the ≥ 24 h re-check in [l-01](sprint-l-01.md) · MI-8 = [mi-02](sprint-mi-02.md) · MI-9 = [mi-07](sprint-mi-07.md) + the evalpack ImagePolicy in [m3-07](sprint-m3-07.md) · MI-10 = [spk-01](sprint-spk-01.md) + [spk-02](sprint-spk-02.md) · MI-11 = [mi-09](sprint-mi-09.md) + the 2026-10-24 host window · MI-11a = [mi-08](sprint-mi-08.md) · MI-12 = [mi-10](sprint-mi-10.md) · MI-13 = [m3-07](sprint-m3-07.md) · T25/T26 = [m3-01](sprint-m3-01.md) · 14 packs = the owner's pack-stamping event (prepared by [m3-02](sprint-m3-02.md)) · `account.role` = [m1-02](sprint-m1-02.md) · AB07–AB12 = the [ds-m3-01](sprint-ds-m3-01.md) + [ds-m3-02](sprint-ds-m3-02.md) freezes.
+*Key (not part of the verbatim list):* rollout step ids `MI-NN` are **not** sprint ids `mi-NN`. MI-4 = [mi-14](sprint-mi-14.md) · MI-5, MI-5a = [mi-03](sprint-mi-03.md) · MI-7 (N3) = [mi-06](sprint-mi-06.md) + the ≥ 24 h re-check in [l-01](sprint-l-01.md) · MI-8 = [mi-02](sprint-mi-02.md) · MI-9 = [mi-07](sprint-mi-07.md) + the evalpack ImagePolicy in [m3-07](sprint-m3-07.md) · MI-10 = [spk-01](sprint-spk-01.md) + [spk-02](sprint-spk-02.md) · MI-11 = [mi-09](sprint-mi-09.md) + the 2026-10-24 host window · MI-11a = [mi-08](sprint-mi-08.md) · MI-12 = [mi-10](sprint-mi-10.md) · MI-13 = [m3-07](sprint-m3-07.md) · T25/T26 = [m3-01](sprint-m3-01.md) · 14 packs = the owner's pack-stamping event (prepared by [m3-02](sprint-m3-02.md)) · `account.role` = [m1-02](sprint-m1-02.md) · AB07–AB12 = [ds-m3-01](sprint-ds-m3-01.md) and [ds-m3-02](sprint-ds-m3-02.md) merged (the merge is the freeze, D40).
 
 *Key:* the MI-8 NATS item is read at the live stage — `host-verify --cluster --nats-stage=n3` (no `legacy` connection) until N4 lands, `--nats-stage=n4` (`auth_required: true`) once [mi-11](sprint-mi-11.md) has run. N4 is MI-15 hygiene (rollout: unblocks "hygiene"), not an M3 gate ([ADR-0035 §3](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#3-no-alerting-in-v2-owner-d34) NATS row).
+
+*Key:* the weekly-image date is read in hPanel by the owner **before launch** (the prompt's "Before you launch (owner)" list, D40); the session records the date from that attestation and never waits for it mid-run.
 
 **Sprint gates**
 
 - [ ] [m3-09](sprint-m3-09.md) merged: the judge BFF routes, the `judge` block on `GET /api/problems/{id}` (incl. `stageParams`, `languages`, `runAvailable`), the allowlisted DTOs (the composed view incl. `retryUsed` and `pendingReason`), the close route accepting Retry grading from `self_grade_pending`, typed 413/429, `quota`, `/api/judge/status`.
-- [ ] The AB07–AB12 boards are on `main` (the owner merged the DS-M3-01 and DS-M3-02 PRs): `design-system/screens/v2/AB07-workspace-code.html` … `AB12-week-mistakes-progress.html`.
+- [ ] [ds-m3-01](sprint-ds-m3-01.md) and [ds-m3-02](sprint-ds-m3-02.md) merged (the merge is the freeze): the AB07–AB12 boards are on `main`: `design-system/screens/v2/AB07-workspace-code.html` … `AB12-week-mistakes-progress.html`.
 - [ ] **Parallel sessions:** no open peer PR edits `web/src/router.tsx`, `web/src/screens/Problem.tsx`, `web/src/lib/api.ts`, `web/src/main.tsx`, `web/package.json` or `internal/gateway/gateway.go` (`gh pr list`, `git worktree list`, ListAgents). [m3-12](sprint-m3-12.md) follows this sprint on the same files; don't start it in parallel.
 
 ## Goal
@@ -112,7 +114,7 @@ Layout per [t4 §8](../research/t4-judge-contract.md#8-learner-flows-and-v2-artb
 
 - **Time's up:** the SPA never concludes. AB07 has no separate time's-up frame (only F10's "Time ran out while you were away" variant), so at 45:00 reuse the frozen AB04 F12 wording "Time's up · recording your result…" (AB08 F4's settling line for the dock), poll until practice's ticker has concluded the Miss (D15, [m3-08](sprint-m3-08.md)), then show F9's "Miss · time limit reached (45:00)".
 - **Ahead of schedule:** AB09 F3(b) already routes an ahead-of-schedule row to the **arena** ("Ahead · arena only"), so a 409 `ahead_of_schedule{scheduledWeek, currentWeek}` on Start is reachable only from a direct URL: show a one-line notice with a link to the item's arena (drafted copy, below).
-- **Copy not on a frozen board.** The AB07 spec ([ds-m3-01](sprint-ds-m3-01.md)) doesn't draw these. Draft each in AB07's voice, list them in a **"Copy not on a frozen board"** section of the PR body for the owner's sign-off, and add one Decisions-log line per string. They don't block the merge (nothing is visible on prod until [m3-13](sprint-m3-13.md) sets `JUDGE_BASE_URL`); the owner's edits land before the `v1.14.0` tag.
+- **Copy not on a frozen board.** The AB07 spec ([ds-m3-01](sprint-ds-m3-01.md)) doesn't draw these. Draft each in AB07's voice, list them in a **"Copy not on a frozen board"** section of the PR body, and add one Decisions-log line per string. They **land as drafted** (D40: launching the prompt approves them) and don't block the merge (nothing is visible on prod until [m3-13](sprint-m3-13.md) sets `JUDGE_BASE_URL`); the owner may revise any of them later with a content PR.
   - the `vite:preloadError` loop-guard notice ("A new version is available · Reload", task 3);
   - the 5-minute poll stop ("Still grading — we'll show the result on Today.", task 4);
   - the ahead-of-schedule notice on a Start 409 (AB09 F3(b) has only the row label);
@@ -196,7 +198,7 @@ Sources: [m2-04](sprint-m2-04.md) Out ("Judge-graded re-solve: M3-08, M3-11"; "U
 
 ## Definition of Done
 
-CI green · squash-merged to `main` (no tag) · the Workspace matches AB07 · acceptance criteria met · statuses updated (this file + [`../status.md`](../status.md): Sprint board row; M3 stays 🔄; the **Artboards** rows AB07–AB12 set to "frozen (PR #, date)" if the design sprints didn't, and AB07 → consumed by M3-11; a line recording the M3 hard entry checklist green with the `host-verify --cluster` summary and date) · Decisions-log lines for the CSP outcome, the preloadError loop guard, the asset-404 change and each drafted string not on a frozen board (pending owner sign-off).
+CI green · squash-merged to `main` (no tag) · the Workspace matches AB07 · acceptance criteria met · statuses updated (this file + [`../status.md`](../status.md): Sprint board row; M3 stays 🔄; the **Artboards** rows AB07–AB12 set to "frozen (merged, PR #N, date)" only if the ds-m3-01/ds-m3-02 sessions didn't already record them (skip any edit already done), and AB07 → consumed by M3-11; a line recording the M3 hard entry checklist green with the `host-verify --cluster` summary and date, the weekly-image date taken from the owner's before-launch attestation) · Decisions-log lines for the CSP outcome, the preloadError loop guard, the asset-404 change and each drafted string not on a frozen board (landed as drafted; the owner may revise later with a content PR).
 
 ## Risks / watch-outs
 

@@ -123,7 +123,12 @@ one additive coach route row. Everything ships in `v1.7.0` (m1-07's tag).
 - [ ] Suspended profile 404s at once.
 - [ ] L24 recorded; every v1 e2e green (golden = v1 except D31, 429s, date-only `joinedAt`); CI green.
 
-Ship at session end per AGENT.md land-and-sync with **this sprint's release action — merge only**: conventional
-commits (`feat(gateway): …`) with the attribution lines, push, open the PR, wait for CI green (fix-then-merge on failure),
-squash-merge, then `git checkout main && git pull`. **Do not tag** — this work ships in `v1.7.0`, which
-[m1-07](../sprints/sprint-m1-07.md) cuts; Flux deploys nothing until then, so there is no live verification in this session.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) (`feat(gateway): …`) with the attribution lines, then push, then the PR. This repo only: no `../infra` PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only:** nothing deploys (`main` is build-only), so there is no live verification in this session. It ships in **`v1.7.0`**, which [m1-07](../sprints/sprint-m1-07.md) cuts. No tag here.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

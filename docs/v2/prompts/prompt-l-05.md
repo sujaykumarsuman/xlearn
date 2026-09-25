@@ -3,6 +3,12 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-l-05.md`](../sprints/sprint-l-05.md)   ·   **Milestone:** L (L-A front door + L-C)   ·   **Prereqs:** [l-03](../sprints/sprint-l-03.md) (merged), [m4-07](../sprints/sprint-m4-07.md) (`v1.16.0` live), [ds-l-01](../sprints/sprint-ds-l-01.md) (AB19★ + AB20 frozen)
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] Optional: the public contact address for the invite-only `mailto:` link and the notice (`INVITE_REQUEST_MAILTO`), in your launch message. Without one, the session uses the public address already on this repo's commits and records the choice. The notice text lands as the session drafts it (D40); your review of it is a v3 opening gate ([rollout §11](../rollout-plan.md#11-opening-gates-v3)), and any later change is a content PR.
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md).
@@ -35,7 +41,7 @@ This sprint builds the **owner-visible half of L-A and L-C**:
 - the gateway's `403 acceptance_required`, and again on a notice-version change;
 - the **privacy notice** at `/xlearn/privacy`.
 
-It merges only. [l-04](../sprints/sprint-l-04.md) tags it as `v1.17.0` right after, so it never rides an M3 or M4 tag. The owner approves the notice text in this PR (`ev-notice-text`) before it merges.
+It merges only. [l-04](../sprints/sprint-l-04.md) tags it as `v1.17.0` right after, so it never rides an M3 or M4 tag. The notice text lands as you draft it (D40): the owner's review of it (`ev-notice-text`) moves to the v3 opening gates ([rollout §11](../rollout-plan.md#11-opening-gates-v3)).
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
@@ -43,7 +49,6 @@ It merges only. [l-04](../sprints/sprint-l-04.md) tags it as `v1.17.0` right aft
 - [ ] [l-03](../sprints/sprint-l-03.md) is merged: `/api/auth/config`, `/api/invites/check`, `invite` on signup and the GitHub start form, and `account_consent` are on `main`.
 - [ ] `v1.16.0` is live (`/xlearn/api/v1/healthz`). On `main`: m4-02's `internal/platform/consent` and judge's `POST /internal/accounts/{id}/refresh`; m4-05's `SetConsents` and the gateway's judge-refresh helper; m4-06's Settings toggles.
 - [ ] No peer tag is planned before l-04's `v1.17.0` (`git ls-remote --tags origin`, `gh pr list`, ListAgents).
-- [ ] The owner is reachable to review the notice text during this session. If not, finish everything else, open the PR, and **leave it unmerged** until `ev-notice-text`.
 
 ## Do this (in order)
 
@@ -59,10 +64,10 @@ It merges only. [l-04](../sprints/sprint-l-04.md) tags it as `v1.17.0` right aft
    - Apply it in the **one session-validate path both `authAccount` and `authSession` use** (make `authAccount` delegate if it still calls `validateSession` directly) → 403 `acceptance_required`.
    - After a 200 `accept`, `handleOnboardingStep` calls judge `POST /internal/accounts/{id}/refresh` when `JUDGE_BASE_URL` is set, reusing m4-05's helper: one retry, then an ERROR log (D34), and the 200 is returned anyway.
    - Tests: the route-walk over `apiRoutes()` (handlers on `authAccount` and `authSession`, coach SSE, a version bump); the refresh with a fake judge (called once on success, retried and logged on failure, not called otherwise or without `JUDGE_BASE_URL`).
-4. **[X] Auth page** (plan task 1): `useAuthConfig`, `useInviteCheck`, `lib/invite.ts` (capture, `replaceState`, storage fallback, clear), `lib/contact.ts` (`INVITE_REQUEST_MAILTO`), and the three modes per the plan's table. Hide Sign up while `closed`, add the hidden `invite` input on the GitHub form, the AB19 error copy, and the privacy link. New components go in `web/src/components/auth/`.
+4. **[X] Auth page** (plan task 1): `useAuthConfig`, `useInviteCheck`, `lib/invite.ts` (capture, `replaceState`, storage fallback, clear), `lib/contact.ts` (`INVITE_REQUEST_MAILTO`: the address from the launch message, else the public one on this repo's commits; record which), and the three modes per the plan's table. Hide Sign up while `closed`, add the hidden `invite` input on the GitHub form, the AB19 error copy, and the privacy link. New components go in `web/src/components/auth/`.
 5. **[X] Acceptance step** (plan task 4):
    - `Acceptance.tsx` per AB19 **F9–F14**, with AB19's copy verbatim: the required **"I'm 18 or older."** box; the required **"I've read the privacy notice (version 1, effective …) and agree to it."** box (the link opens `/privacy` in a new tab; sends `agree_notice: true`); the region select via `Intl.DisplayNames`; the "xLearn AI (optional)" fieldset with the two AI consents, the second disabled until the first and cleared when the first is unticked. Buttons: **[Continue]** / **[Sign out]**.
-   - Consent defaults: **unticked** with no live grant; an account with live Settings grants sees them ticked and an untick withdraws. This is a **flagged deviation** from F9/F11's "both unticked": log it and call it out in the PR for the owner.
+   - Consent defaults: **unticked** with no live grant; an account with live Settings grants sees them ticked and an untick withdraws. This is a **flagged deviation** from F9/F11's "both unticked": log it and call it out in the PR (the owner may revisit it after the merge; nothing waits on it, D40).
    - F10: inline errors on submit, focus on the first invalid item, [Continue] never disabled. F12 (`mode: "renotice"`): the "We've updated the privacy notice" banner with [What changed] → `/privacy#what-changed`, and **only** the notice box (no 18+, region or consent controls). F13 save-failed, F14 390 px.
    - Step 0 in `Onboarding`, before `firstUnfinishedStep`; already-onboarded accounts go straight into the app after it.
    - `AuthedShell` redirects on `acceptance.required`; `api.ts` gets `isAcceptanceRequired`; `queryClient.ts` gets a global `onError` → invalidate `me`.
@@ -77,7 +82,7 @@ It merges only. [l-04](../sprints/sprint-l-04.md) tags it as `v1.17.0` right aft
    - `gofmt -l`, `go vet ./...`, `go test -race ./...`, `go test -tags e2e ./internal/e2e/...` (including the plan's task 7 flow), `sqlc diff`, the OpenAPI drift test, and web typecheck/lint/test/build.
    - `docker compose up --build`: the auth page in `open`, `invite` (with and without a code; mint with `docker compose exec identity identity admin invite create --note test`) and `closed` (compose override); `/xlearn/privacy` logged out; the acceptance step for the dev account (then bump the notice version locally and check the F12 notice-only form); then every screen with the console open. Expect **zero CSP violations**, and no API call before acceptance outside the exempt four (network panel).
    - Screenshots at 1440 px and 390 px beside AB19 and AB20.
-10. **[X] PR** with conventional commits (`feat(web): …`, `feat(identity): …`, `feat(gateway): …`, `docs: …`) and the attribution lines, with screenshots, a rendered-notice link, and the two flagged items for the owner (the consent pre-fill deviation from AB19-F9/F11, and the learner-erase claim that l-04 makes true). **[O] `ev-notice-text`:** ask the owner to approve the notice text and the `mailto:` address in the PR. **Merge only after explicit approval** and CI green (squash). **No tag:** l-04 tags `v1.17.0`.
+10. **[X] PR** with conventional commits (`feat(web): …`, `feat(identity): …`, `feat(gateway): …`, `docs: …`) and the attribution lines, with screenshots, a rendered-notice link, the `mailto:` address used, and the two flagged items (the consent pre-fill deviation from AB19-F9/F11, and the learner-erase claim that l-04 makes true), logged for the owner's later look. The notice lands as drafted (D40): CI green → squash-merge (see Ship). **No tag:** l-04 tags `v1.17.0`.
 
 ## Constraints
 
@@ -90,7 +95,7 @@ It merges only. [l-04](../sprints/sprint-l-04.md) tags it as `v1.17.0` right aft
 - **GitOps:** no infra change, and never `kubectl apply`. Production `SIGNUP_MODE` stays `closed`.
 - **D34:** no alerting. Nothing here adds a log-based alert.
 - **Memory-sum rule:** no new pod or container, so it is unaffected.
-- **Release order:** merge only, riding `v1.17.0`. Check peers' tags and PRs, and don't merge if a peer tag would carry this before l-04. Check peers' ADR numbers before claiming one; none is expected.
+- **Release order:** merge only, riding `v1.17.0`. Check peers' tags and PRs, and merge only when no peer tag would carry this before l-04. Check peers' ADR numbers before claiming one; none is expected.
 
 ## Deliverables
 
@@ -102,11 +107,11 @@ It merges only. [l-04](../sprints/sprint-l-04.md) tags it as `v1.17.0` right aft
 
 ## Update status
 
-- The plan's Status table ([`../sprints/sprint-l-05.md`](../sprints/sprint-l-05.md)): tasks 🔄 → ✅ (task 8 ✅ when the owner approves); _Overall_ ✅.
+- The plan's Status table ([`../sprints/sprint-l-05.md`](../sprints/sprint-l-05.md)): tasks 🔄 → ✅ (task 8 ✅ at the merge: the notice lands as drafted, D40); _Overall_ ✅.
 - [`../status.md`](../status.md):
   - the Sprint board row: l-05 ✅ "merged, ships in v1.17.0";
-  - **confirm** the artboard rows AB19 and AB20 read "frozen" (l-02 set them; don't rewrite them);
-  - owner event `ev-notice-text` → ✅ with the date;
+  - **confirm** the artboard rows AB19 and AB20 read "frozen" (set at ds-l-01's merge; don't rewrite them);
+  - owner event `ev-notice-text` → "moved to the v3 opening gates (rollout §11, D40)"; no v2 approval;
   - the L milestone note "front door merged".
 - Decisions log:
   - the exempt set, with `DELETE /api/me` as an API-level safeguard only (no SPA erase path while acceptance is required; decliners ask the owner for a CLI erase; a web entry point is a board delta flagged for v3);
@@ -114,8 +119,9 @@ It merges only. [l-04](../sprints/sprint-l-04.md) tags it as `v1.17.0` right aft
   - **flagged deviation from AB19-F9/F11:** live Settings grants are shown ticked, and an untick is a withdrawal;
   - the notice-only re-acceptance per AB19-F12;
   - the notice-version bump rule (substantive change bumps; typo doesn't);
-  - `INVITE_REQUEST_MAILTO` as a build-time constant;
-  - no invite check in `closed`.
+  - `INVITE_REQUEST_MAILTO` as a build-time constant, and where its address came from;
+  - no invite check in `closed`;
+  - the notice landing as drafted, with its owner review moved to the v3 opening gates (D40).
 
 ## Done when (acceptance)
 
@@ -126,7 +132,15 @@ It merges only. [l-04](../sprints/sprint-l-04.md) tags it as `v1.17.0` right aft
 - [ ] The notice page is reachable logged out; `privacy` is reserved in both guards; the version parity test is green.
 - [ ] Auth page: no Sign up while `closed`; invite-only plus `mailto:`; the fragment is stashed and stripped; AB19's error states.
 - [ ] Screens match AB19★ and AB20; no CSP violation.
-- [ ] The owner approved the notice text (`ev-notice-text`).
+- [ ] The notice text landed as drafted (D40); its owner review (`ev-notice-text`) is recorded as a v3 opening gate.
 - [ ] CI green (`sqlc diff`); merged to `main`, untagged.
 
-Ship per AGENT.md land-and-sync with **this sprint's release action: merge only (ships in `v1.17.0`, tagged in [l-04](../sprints/sprint-l-04.md))**. That means PR, the owner's approval of the notice text (`ev-notice-text`), CI green, squash-merge, **no tag**, then `git checkout main && git pull`. If the owner hasn't approved yet, leave the PR open and report. Don't merge it.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/la-front-door`, then conventional commit(s) with the attribution lines, then push, then the PR. This repo only: no `../infra` PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge — with the drafted notice as written; there is no notice-approval stop. Never enable auto-merge.
+3. **Release action — merge only:** nothing deploys (`main` is build-only). It ships in **`v1.17.0`**, which [l-04](../sprints/sprint-l-04.md) tags right after; never in an M3 or M4 tag. No tag here.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

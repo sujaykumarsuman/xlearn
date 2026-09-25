@@ -19,7 +19,7 @@ M3-1 (`v1.13.0`, [m3-07](../sprints/sprint-m3-07.md)) put judge on production da
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
-- [ ] AB07–AB12 frozen: the ds-m3-01 and ds-m3-02 PRs are merged with the owner's approval (`git log origin/main -- design-system/screens/v2/`)
+- [ ] AB07–AB12 frozen: ds-m3-01 and ds-m3-02 merged (the merge is the freeze; `git log origin/main -- design-system/screens/v2/`)
 - [ ] [m3-11](../sprints/sprint-m3-11.md) merged: `Workspace.tsx` with its empty dock slot, lazy CodeMirror + `vite:preloadError` reload, `web/src/lib/judge.ts`
 - [ ] [m3-09](../sprints/sprint-m3-09.md) merged: submissions/Runs polling with ETag, drafts, arena history/diff, arena progress read + `…/arena/studied`, arena reveal, `GET /api/judge/status`, typed 413/429 with quota fields, presence by config
 - [ ] [m3-14](../sprints/sprint-m3-14.md) on `main`: learner DTO allowlist, arena history, `arena_progress` (`source auto|manual`)
@@ -58,7 +58,7 @@ M3-1 (`v1.13.0`, [m3-07](../sprints/sprint-m3-07.md)) put judge on production da
    Never make the test pass by not recording the reveal (D17).
 7. **[X] Verify** — `npm --prefix web run typecheck && npm --prefix web run lint && npm --prefix web run test && npm --prefix web run build` (then `git checkout -- web/dist/.gitkeep`); `go test -race ./...` (incl. `internal/packspec` fixture byte-equality); `go test -tags e2e,runner ./internal/e2e/...` against compose with the `runner` profile (Linux / multipass VM, or CI's `judge-runner-e2e`). Check the build report: the merge view is in the lazy chunk.
 8. **[X] Visual check + docs** — temp `web/vite.mock.config.ts` (never committed) to compare Problems, each dock state and the Arena with AB08–AB11 at 1440 px and 390 px; screenshots into the PR. Update `docs/architecture/api.md` (SPA routes → BFF routes; SPA routes are documented there only). **Verify** that m3-09's arena BFF routes are in m1-06's `apiRoutes()` route-enumeration table with policy `applied`. That test walks BFF routes, not SPA routes; add nothing to it (no BFF change here).
-9. **[X] PR** → conventional commit(s) `feat(web): results dock, problems markers, arena, judge badges (AB08–AB11)` with the attribution lines → CI green → squash-merge. **No tag.**
+9. **[X] Ship:** see **Ship** below.
 
 ## Constraints
 
@@ -82,7 +82,7 @@ M3-1 (`v1.13.0`, [m3-07](../sprints/sprint-m3-07.md)) put judge on production da
 ## Update status
 
 - [`../sprints/sprint-m3-12.md`](../sprints/sprint-m3-12.md): each task 🔄 → ✅; _Overall_ ✅.
-- [`../status.md`](../status.md): Sprint board row (m3-12 ✅); artboard rows AB08–AB11 → "implemented (m3-12, PR #)" (mark them "frozen (PR #, date)" first if m3-11 didn't); M3 stays 🔄; no tag/floor/flag change.
+- [`../status.md`](../status.md): Sprint board row (m3-12 ✅); artboard rows AB08–AB11 → "implemented (m3-12, PR #)" (first mark them "frozen (merged, PR #N, date)" only if the ds-m3-01/ds-m3-02 sessions or m3-11 didn't already; skip any edit already done); M3 stays 🔄; no tag/floor/flag change.
 - Decisions log: the arena route shape, `@codemirror/merge` for Diff, study-mode rule (no evaluator for the account → study mode), any DTO gap reported, the AB09 F7 / AB10 F9 judge-off departure (v1 fallback; flagged to the owner), any AB08 state left vitest-only. No ADR expected (check peers' ADR numbers first if one becomes necessary).
 
 ## Done when (acceptance)
@@ -95,4 +95,12 @@ M3-1 (`v1.13.0`, [m3-07](../sprints/sprint-m3-07.md)) put judge on production da
 - [ ] Badges follow `GET /api/judge/status` per AB11 (busy/breaker → "Grader busy", `off` → "Auto-grading off"); none on 404; no open judged attempt ever switches to the uncapped picker.
 - [ ] Screens match AB08–AB11 at 1440/390 px; web checks and CI green.
 
-Ship per AGENT.md land-and-sync with **this sprint's release action: merge only** (ships dark in `v1.14.0`, tagged by [m3-13](../sprints/sprint-m3-13.md)) — squash-merge once CI is green, no tag, then `git checkout main && git pull`.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Branch `feat/m3-results-arena` (step 1); commit(s) `feat(web): results dock, problems markers, arena, judge badges (AB08–AB11)`; this repo only (no infra PR); the PR carries the AB08–AB11 screenshots and the AB09 F7 / AB10 F9 departure flag.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships dark in `v1.14.0`):** Nothing deploys; it ships in `v1.14.0` (cut by [m3-13](../sprints/sprint-m3-13.md)). Don't tag.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

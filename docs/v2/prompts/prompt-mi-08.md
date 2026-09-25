@@ -3,6 +3,12 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-mi-08.md`](../sprints/sprint-mi-08.md) · **Milestone:** MI (MI-11a gates MI-12; first slice of MI-15) · **Prereqs:** [mi-01](../sprints/sprint-mi-01.md) (chart 0.3.0), [mi-02](../sprints/sprint-mi-02.md) (memory-sum check + sampler)
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] Read the date of the last Hostinger weekly image in hPanel: it is ≤ 7 days old (the Flux, Traefik, cert-manager and xlearn pod restarts in this sprint are restart-inducing steps, rollout §2.2).
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — conventions, GitOps, land-and-sync.
@@ -19,7 +25,7 @@
   - `../infra/infrastructure/configs/namespaces.yaml`, `../infra/infrastructure/database/cluster/namespace.yaml`, `../infra/infrastructure/messaging/namespace.yaml`;
   - `../infra/apps/xlearn-*.yaml`;
   - `../infra/hack/{host-verify.sh,memory-budget.tsv,host-lint.sh,chart-diff.sh}` — `memory-budget.tsv` is embedded byte-identically in `host-verify.sh` between `# >>> memory-budget.tsv` / `# <<< memory-budget.tsv` markers, and `host-lint.sh` fails when the copies differ.
-- [mi-02](../sprints/sprint-mi-02.md): the Tasks preamble (the embedding), task 1 (the TSV format) and task 8 (the sampler: `/root/sample-top.sh`, `/var/tmp/xlearn-top.{tsv,pid}`, `SAMPLE_HOURS` 168, the owner-declined fallback).
+- [mi-02](../sprints/sprint-mi-02.md): the Tasks preamble (the embedding), task 1 (the TSV format) and task 8 (the sampler: `/root/sample-top.sh`, `/var/tmp/xlearn-top.{tsv,pid}`, `SAMPLE_HOURS` 168, the declined fallback).
 
 ## Context
 
@@ -38,8 +44,8 @@ auto-mounted SA token on the seven xlearn pods (none of them talks to the Kubern
 
 - [ ] mi-01 merged: chart `0.3.0` in `../infra/charts/project/Chart.yaml` with the `automountServiceAccountToken` knob; `hack/chart-diff.sh` exists.
 - [ ] mi-02 merged: `host-verify.sh --cluster --with-runner` works, `hack/memory-budget.tsv` exists and is embedded in `host-verify.sh`.
-- [ ] ≥ 48 h of samples: `ssh vps 'head -1 /var/tmp/xlearn-top.tsv; tail -1 /var/tmp/xlearn-top.tsv'` spans ≥ 48 h (the sampler self-stops after 168 h, so it has normally finished) — **or** the owner declined the sampler in mi-02 (its Decisions-log line): then keep the provisional `top × 1.2` budgets and say so. If it was approved but an unplanned reboot left < 48 h, restart it per mi-02 and wait.
-- [ ] The owner confirms the last Hostinger weekly image is ≤ 7 days old (controller restarts).
+- [ ] ≥ 48 h of samples: `ssh vps 'head -1 /var/tmp/xlearn-top.tsv; tail -1 /var/tmp/xlearn-top.tsv'` spans ≥ 48 h (the sampler self-stops after 168 h, so it has normally finished) — **or** mi-02 recorded the sampler as declined (its Decisions-log line): then keep the provisional `top × 1.2` budgets and say so. If it ran but an unplanned reboot left < 48 h, restart it per mi-02 (a node write, pre-approved by launching this prompt, D40) and wait.
+- [ ] The last Hostinger weekly image is ≤ 7 days old (controller restarts): attested by the before-launch item above (the owner reads hPanel).
 - [ ] No xlearn tag rolling out and no peer PR on these files (`gh pr list` in both repos, `git worktree list`, ListAgents).
 
 ## Do this (in order)
@@ -48,7 +54,7 @@ auto-mounted SA token on the seven xlearn pods (none of them talks to the Kubern
    (namespace, owner prefix, container) for every limitless container, the six Flux controllers, Traefik,
    cert-manager ×3 and metrics-server, and record the sample window. The data is 2–3 weeks old: take one fresh
    `k3s kubectl top pods -A --containers` and use the current value wherever it exceeds the sampled p95. Keep the
-   table for the PR bodies. Then clean up (a node write: get the owner's OK first): stop the loop only if still alive,
+   table for the PR bodies. Then clean up (a node write this prompt specifies: pre-approved by launching it, D40; run it yourself): stop the loop only if still alive,
    by its PID file, and delete all three files —
    `ssh vps 'pid=$(cat /var/tmp/xlearn-top.pid 2>/dev/null); [ -n "$pid" ] && ps -p "$pid" -o args= | grep -q sample-top.sh && kill "$pid"; rm -f /var/tmp/xlearn-top.tsv /var/tmp/xlearn-top.pid /root/sample-top.sh'`.
    **Sampler declined in mi-02:** keep the provisional budget rows; size step 2's check and step 3's limits
@@ -77,13 +83,13 @@ auto-mounted SA token on the seven xlearn pods (none of them talks to the Kubern
      and CSI parts stay budget-only.
    - After merge: Traefik rolled with no gap (smoke every site on the node); `helm-install-traefik` job OK;
      `get certificate -A` Ready; `host-verify --cluster` shows no unbudgeted container, no provisional budget
-     (unless the sampler was declined) and no "unused budget" INFO; the node copy refreshed the mi-02 way (gated
-     [O]: the owner does it, or you run `scp ../infra/hack/host-verify.sh vps:/root/` once with the owner's
-     explicit OK; otherwise record "`/root/host-verify.sh` stale: owner to refresh").
+     (unless the sampler was declined) and no "unused budget" INFO; the node copy refreshed: run
+     `scp ../infra/hack/host-verify.sh vps:/root/` once yourself (pre-approved by launching this prompt, D40).
 4. **[I] PSA PR** (`chore/psa-labels`):
    - Server dry-run each label first and paste the output:
      `ssh vps 'k3s kubectl label --dry-run=server --overwrite ns <ns> pod-security.kubernetes.io/enforce=<level> pod-security.kubernetes.io/enforce-version=v1.36'`.
-     Any violation warning → stop and report that namespace.
+     Any violation warning blocks that namespace's label: leave it out of the PR, record it as ⛔ in status.md
+     with the output, and label the others.
    - Then set `enforce` (xlearn `baseline`, databases `restricted`, messaging `baseline`), `enforce-version:
      v1.36`, `warn`/`audit: restricted`, `warn-version`/`audit-version: latest` in the three Namespace
      manifests, keeping the MI-2 prune annotations.
@@ -102,9 +108,10 @@ auto-mounted SA token on the seven xlearn pods (none of them talks to the Kubern
 7. **[H] Timing.**
    - **Preferred:** merge the MI-11a PRs (steps 2–3) by **Thu 2026-10-22**, so the 24 h watch ends before the
      Sat 2026-10-24 window.
-   - **If the session runs later**, or the owner prefers the batch (BP4): leave those two PRs open, labelled
-     for the window, and tell the owner. [mi-09](../sprints/sprint-mi-09.md)'s runbook merges them and then
-     runs `--with-runner`.
+   - **If the session runs later** (the BP4 batch): push those two changes as **branches without PRs** (no PR is
+     left open across sessions, D40) and record the branch names in status.md. The window session runs
+     [mi-09](../sprints/sprint-mi-09.md)'s runbook on its date; it opens their PRs, merges them and then runs
+     `--with-runner`.
    - Steps 4–5 are not window-bound: merge them in this session.
 8. **[X] Record** on a `docs/…` branch in xlearn: `docs/v2/status.md` (below) and this sprint's Status table.
 
@@ -120,11 +127,12 @@ auto-mounted SA token on the seven xlearn pods (none of them talks to the Kubern
   instance-manager. Always set a request with a limit.
 - **D34:** no alerting, timer, CronJob or Flux Alert. The sampler was throwaway: stop it if alive and delete its
   three files. `host-verify` is on-demand only.
-- **Host writes:** only the sampler cleanup (step 1) and mi-02's node-copy refresh
-  (`scp ../infra/hack/host-verify.sh vps:/root/`), each only with the owner's explicit OK. Every other
-  `ssh vps` command is read-only.
-- **Snapshots:** check the weekly image before the restart-inducing merges. The host window's own snapshot is
-  mi-09's runbook, not this sprint's.
+- **Host writes:** only the sampler cleanup (step 1), a sampler restart per mi-02 if < 48 h of samples exist
+  (entry gates), and mi-02's node-copy refresh (`scp ../infra/hack/host-verify.sh vps:/root/`). Each is
+  pre-approved by launching this prompt (D40): run them yourself. Every other `ssh vps` command is read-only.
+- **Snapshots:** the weekly image date is the before-launch item, checked before the restart-inducing merges.
+  The host window's own manual snapshot is a before-launch owner item of the window session (mi-09), not this
+  sprint's.
 - **kubescope and landscape keep their SA tokens** (their RBAC console depends on it). The chart-diff output
   proves it.
 - **Parallel sessions:** check peers' PRs, tags and worktrees before each merge. Don't merge the Flux PR while
@@ -140,7 +148,7 @@ auto-mounted SA token on the seven xlearn pods (none of them talks to the Kubern
   - PSA labels on three Namespaces;
   - `automountServiceAccountToken: false` on 7 releases.
 - The p95 table and sample window in the PR bodies; the sampler stopped (if it was alive) and its three files
-  deleted; `/root/host-verify.sh` refreshed (owner-gated) or recorded as a pending owner item.
+  deleted; `/root/host-verify.sh` refreshed (your `scp`, pre-approved).
 - `host-verify --cluster --with-runner` numbers recorded; the xlearn docs PR (`status.md`, this sprint's statuses).
 
 ## Update status
@@ -169,12 +177,12 @@ auto-mounted SA token on the seven xlearn pods (none of them talks to the Kubern
 - [ ] 7 xlearn pods without an SA token; no change on the 4 non-xlearn releases.
 - [ ] 24 h after the Flux merge: no controller restart or OOMKill; Flux Ready.
 
-**Shipping:** release action = **infra PR(s) only**. Per AGENT.md land-and-sync:
-- merge each `../infra` PR after its verify step (no CI in `../infra`; standing merge authority), let Flux
-  reconcile, and verify live;
-- the two MI-11a PRs may instead stay open **only** as the owner-agreed BP4 batch for the 2026-10-24 window;
-  record that in `status.md` so mi-09's runbook merges them;
-- then branch → commit (with the attribution lines) → PR → merge the xlearn docs PR;
-- `git checkout main && git pull` in **both** repos (the peer-worktree route if `main` is held elsewhere).
+## Ship (land-and-sync — owner approval pre-granted)
 
-No tag.
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: `chore/flux-limits-512mi`, `chore/limit-hygiene`, `chore/psa-labels` and `chore/xlearn-no-sa-token` in `../infra`, then a `docs/…` branch in xlearn.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. `../infra` has no CI: paste each PR's local checks into its body and merge on them.
+3. **Release action — infra PR(s) only:** merge the infra PRs in the plan's order (Flux limits → Traefik + cert-manager + budget file → PSA labels → tokens off), each its own PR after its verify step and never folded into a tag; let Flux reconcile and verify live, then run step 6's `host-verify --cluster --with-runner`. The two MI-11a PRs (steps 2–3) merge by Thu 2026-10-22 (preferred). If the session runs later, they stay open, labelled for the window (BP4), and status.md records them: the window session merges them in mi-09's batched step on Sat 2026-10-24. They are the only PRs this session may leave open. Then merge the xlearn docs PR. No tag.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn and `../infra`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

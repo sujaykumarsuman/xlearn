@@ -271,5 +271,3 @@ CE cache recorded in the decisions log · judge routes and error codes documente
   evaluation); the switch only refuses new work.
 - **Telemetry is erase-scoped** because it carries `account_id`; forgetting a table in the erase list leaves personal
   data behind — the erase fixture enumerates every judge table with an `account_id` column.
-</content>
-</invoke>

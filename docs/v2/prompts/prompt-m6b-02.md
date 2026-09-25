@@ -3,6 +3,12 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-m6b-02.md`](../sprints/sprint-m6b-02.md)   ·   **Milestone:** M6b (voice, one shell)   ·   **Prereqs:** [m6b-01](../sprints/sprint-m6b-01.md)
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] *Optional, only for step 10's live restart check (≈ $0.20):* your own OpenAI key, entered by you in the local compose stack's Settings and set as the `interview` default (the agent never types a key). Without it, the check is skipped and recorded as "S6 M7 + fakes + compose run are the evidence", not ⛔.
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — conventions, service boundaries, GitOps, land-and-sync.
@@ -123,11 +129,14 @@ means a `v2.0.x` patch tag first (image before HelmRelease). Everything stays da
    same DB and the scratchpad fake provider (never committed): start a fake call, SIGTERM the holder, confirm the fake saw a second sideband
    before the first detached and no hang-up — paste the log excerpt into the PR ([m6b-04](../sprints/sprint-m6b-04.md) relies on it).
    `go test ./...`, `go vet`, lint, `sqlc diff`, OpenAPI drift.
-10. **[X] Optional live restart check** — **only with the owner's explicit go-ahead in chat** (≈ $0.20): the same compose setup on the owner's own
-    key (he enters it himself), a 3-minute Chrome fake-media call, SIGTERM the holder; confirm audio continues and captions resume. Otherwise
-    record "S6 M7 + fakes + compose run are the evidence".
-11. **[X] Docs + status**, then PR → CI green → squash-merge.
-12. **[I · X · I · X] Only if S6 M7 failed** (plan tasks 7b–7e; the role code is already merged with step 11) — otherwise stop after step 11:
+10. **[X] Optional live restart check** — pre-approved by launching this prompt (D40; ≈ $0.20), run only if the before-launch item is in place
+    (the owner's own key in the local compose Settings as the `interview` default; you never type a key): the same compose setup on that key,
+    a 3-minute Chrome fake-media call, SIGTERM the holder; confirm audio continues and captions resume. Otherwise record "S6 M7 + fakes +
+    compose run are the evidence".
+11. **[X] Docs + status**, then land the xlearn PR (**Ship** steps 1–2 below).
+12. **[I · X · I · X] Only if S6 M7 failed** (plan tasks 7b–7e; the role code is already merged with step 11) — otherwise skip to **Ship** below.
+    Signed-in smoke checks use an already-signed-in browser session if you have one (never enter credentials); otherwise record "owner login
+    smoke pending" as a pending-smoke note in status.md and carry on:
     - **I — PR A (peer-side NetworkPolicies only; plan 7b)**: `apps/xlearn-gateway.yaml` egress admits `xlearn-coach-interview` :8086; the
       MI-5 `databases/projects-pgstore-ingress` instance list gains `xlearn-coach-interview` on 5432; verify (no change) that identity :8081
       and the gateway JWKS :8080 admit same-namespace pods; no messaging change. `coach-interview`'s **own** policy can't go here — xlearn
@@ -168,7 +177,7 @@ means a `v2.0.x` patch tag first (image before HelmRelease). Everything stays da
   egress are chart-rendered with its release, so they ride PR B and exist before its pod does (identity and the gateway JWKS already admit
   same-namespace callers).
 - **D34:** no counters, alerts, opscheck or Flux `Alert`; `coach admin interviews --live` is the ops read.
-- **Keys:** never type or paste an API key; live checks need the owner to enter his own.
+- **Keys:** never type or paste an API key; the live restart check runs only on a key the owner entered himself before launch.
 - **Parallel sessions:** re-check peers' PRs, tags and worktrees before merging or tagging; claim an ADR number only after that check.
 
 ## Deliverables
@@ -212,9 +221,14 @@ means a `v2.0.x` patch tag first (image before HelmRelease). Everything stays da
       `interview` role; memory sum inside the rule; runbook + hand-off recorded
 - [ ] CI green; merged
 
-Ship at session end per AGENT.md land-and-sync with **this sprint's release action — merge only (ships dark in m6b-03's `v2.0.x` patch)**:
-branch → conventional commit(s) with the attribution lines → push → PR → CI green → squash-merge → no tag. **Only if S6 M7 failed:** then
-merge `../infra` PR A (peer-side NetworkPolicies) → run the release checklist and **tag `v2.0.N`** → let Flux deploy and verify → merge PR B
-(the `coach-interview` Deployment with its own NetworkPolicy, pinned ImagePolicy, routing) with no live interviews → verify live → the
-records PR. This conditional tag deviates from the register's "merge only" on purpose (image before HelmRelease; the plan's Release says
-why). Finally `git checkout main && git pull` in every repo touched.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Branches: `feat/m6b-02-voice-robustness` (M7 failed only: `feat/xlearn-coach-interview-policies` and `feat/xlearn-coach-interview` in `../infra`).
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. (`../infra` has no CI: paste the local checks, the render diff, `--dry-run=server` and `host-lint.sh`, into each infra PR body and merge on them.)
+3. **Release action — merge only (ships dark in m6b-03's `v2.0.x` patch); only if S6 M7 failed, infra PR A → tag `v2.0.N` → infra PR B:**
+   - **M7 passed:** nothing deploys; it ships in the `v2.0.x` patch cut by [m6b-03](../sprints/sprint-m6b-03.md) (or rides an earlier peer `v2.0.x` patch, still dark). Don't tag.
+   - **Only if S6 M7 failed**, follow step 12 above in order: merge `../infra` PR A (peer-side NetworkPolicies) on its own; walk the release checklist (ADR-0034 §6; the plan's Release section, including "from M6: no live interviews"), push the tag `v2.0.N` (the next free patch), let Flux deploy, then verify live by looking; merge PR B (the `coach-interview` Deployment with its own NetworkPolicy, pinned ImagePolicy and routing) with no live interviews and the memory sum checked, then verify live; finally the records docs PR. No snapshot (no contract, erase or GA). This conditional tag deviates from the register's "merge only" on purpose (image before HelmRelease; the plan's Release says why).
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn, and `../infra` if M7 failed). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

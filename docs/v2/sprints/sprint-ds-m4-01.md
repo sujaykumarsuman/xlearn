@@ -3,8 +3,8 @@
 > **Milestone:** M4 — platform AI (the boards M4 builds against) · **Track:** design (parallel; order 51)
 > **Prereqs:** none (no prerequisite beyond `depends_on`, which is empty) · references, not gates: [ds-m1-01](sprint-ds-m1-01.md) (board index, `board.css`, AB01), [ds-m2-01](sprint-ds-m2-01.md) (AB04 touch result, AB05 "grades waiting" slot), [ds-m3-01](sprint-ds-m3-01.md) (AB08 results dock, AB11 degradation badges), [ds-m3-02](sprint-ds-m3-02.md) (AB12 provenance chips), [ds-l-01](sprint-ds-l-01.md) (AB19 acceptance consents)
 > **Unblocks:** [m4-01](sprint-m4-01.md) (M4 entry gate: "AB16–AB18 frozen", [rollout §3](../rollout-plan.md#3-milestone-map)) · consumed by [m4-06](sprint-m4-06.md) (the M4 UI sprint builds every frame here); copy reused by [m4-04](sprint-m4-04.md) (error codes, states) and [m4-05](sprint-m4-05.md) (allowance shape, consent strings)
-> **Release action:** **PR, stop for owner review (design).** The agent never merges; the owner's merge (or explicit approval in chat) **is the freeze**.
-> **Calendar:** November 2026 (parallel with M3's UI sprints and P) · owner event **`ev-freeze-ds-m4-01`** (review + merge) before [m4-01](sprint-m4-01.md) starts (December)
+> **Release action:** **land-and-sync; the merge is the design freeze** — the board PR squash-merges on CI green; no tag, nothing deploys (launching the prompt is the owner's approval, [D40](../feasibility.md#decisions-log-newest-first); the owner may review after the merge, and any change to a frozen board is a follow-up design PR)
+> **Calendar:** November 2026 (parallel with M3's UI sprints and P) · no owner event: the freeze happens at this sprint's merge (`ev-freeze-ds-m4-01` is automatic and needs no tick; the Artboards rows record the freeze), before [m4-01](sprint-m4-01.md) starts (December)
 > **Execute with:** [`../prompts/prompt-ds-m4-01.md`](../prompts/prompt-ds-m4-01.md) — one prompt, one session.
 
 ## Status
@@ -17,15 +17,17 @@ _Overall:_ ⬜ Not started
 | 2 | AB16 ★ A3 AI suggestion / dispute (hero) | X | ⬜ |
 | 3 | AB17 pointer notes + "correct, with improvements" | X | ⬜ |
 | 4 | AB18 AI allowance meter + Settings AI consents | X | ⬜ |
-| 5 | Self-review against the brief + screenshots (1440 px, 390 px) | X | ⬜ |
-| 6 | Open the design PR and STOP | X | ⬜ |
-| 7 | Freeze: owner reviews, approves and merges (`ev-freeze-ds-m4-01`) | O | ⬜ |
+| 5 | Self-review checklist (run before merging) + screenshots (1440 px, 390 px) | X | ⬜ |
+| 6 | Open the design PR (screenshots, frame lists, the ticked self-review checklist, "Decisions to confirm") | X | ⬜ |
+| 7 | Freeze: squash-merge on CI green (the merge is the freeze) → status → sync `main` | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
-> Update the _Overall_ line accordingly. **Design exception:** this sprint's PR does **not** edit [`../status.md`](../status.md)
-> (the PR may stay open for days). The PR sets tasks 1–5 ✅, task 6 🔄 ("PR #N open — awaiting owner review") and _Overall_ 🔄;
-> the first consuming build sprint ([m4-01](sprint-m4-01.md), whose entry gate is this freeze) sets tasks 6–7 and _Overall_ ✅,
-> writes "frozen (PR #, date)" into the status.md Artboards rows for AB16–AB18 and ticks `ev-freeze-ds-m4-01`.
+> Update the _Overall_ line accordingly. **Land and sync ([D40](../feasibility.md#decisions-log-newest-first)):** the board PR
+> merges on CI green and the merge is the freeze, so this sprint records its own close-out. Once the PR number is known, a last
+> commit on the PR branch sets tasks 1–7 and _Overall_ ✅ here (task 7: "frozen: merged in PR #N, <date>") and, in
+> [`../status.md`](../status.md), this sprint's Sprint-board row ✅, the Artboards rows AB16, AB17 and AB18 → ✅ "frozen (merged,
+> PR #N, <date>)", and the Snapshot's artboard count (`ev-freeze-ds-m4-01` is automatic: no tick). If the
+> merge slips to another day or fails after that commit, correct the rows in a follow-up docs PR merged the same way.
 > Full rules: [status protocol](README.md#status-protocol-way-of-working).
 
 ## Entry gates
@@ -46,10 +48,11 @@ verbatim so M4 extends them rather than redrawing them; where they are not, draf
 Draft the three M4 boards — the **A3 AI suggestion / dispute hero (AB16 ★)**, **pointer notes + "correct, with
 improvements" (AB17)** and the **AI allowance meter + Settings AI consents (AB18)** — as static, preview-only HTML on
 [`theme.css`](../../../design-system/theme.css) under `design-system/screens/v2/`, with every frame, every state and final
-copy, so M4's build sprints ([m4-04](sprint-m4-04.md) … [m4-06](sprint-m4-06.md)) implement **owner-approved** designs and
+copy, so M4's build sprints ([m4-04](sprint-m4-04.md) … [m4-06](sprint-m4-06.md)) implement **frozen** designs and
 [m4-01](sprint-m4-01.md) can open M4. Per **BP3** (owner decision 2026-09-24) the agent drafts every board, heroes included;
-the owner only reviews and approves. The rollout's "owner designs the heroes in Claude Design"
-([rollout §9](../rollout-plan.md#9-artboards-by-milestone)) is superseded by BP3.
+per [D40](../feasibility.md#decisions-log-newest-first) the board PR merges on CI green and the merge is the freeze — the owner
+may review afterwards, and any change to a frozen board is a follow-up design PR. The rollout's "owner designs the heroes in
+Claude Design" ([rollout §9](../rollout-plan.md#9-artboards-by-milestone)) is superseded by BP3.
 
 The boards encode four decisions that are easy to get subtly wrong on screen: **D14** (AI results are suggestions: accept,
 edit within the deterministic ceilings, one blind re-grade, 24 h auto-accept, manual always available), **D26** (pass review
@@ -65,7 +68,7 @@ anywhere — degradation is an in-app badge the learner sees and the owner reads
 - A behaviour-notes aside per frame citing its decision (D-number / ADR § / research §), with exact error codes, timers,
   gates and a11y notes; a `< 1024 px` intent per frame and a 390 px narrow section per board.
 - PNG screenshots of each board at 1440 px and 390 px under `design-system/screens/v2/shots/` and in the PR body.
-- The design PR, stopped for owner review.
+- The design PR, merged on CI green (the freeze), and this sprint's rows in `docs/v2/status.md` (Status note).
 
 **Out**
 - Any `web/` code → [m4-06](sprint-m4-06.md) (all three boards). Backend states behind the frames → [m4-02](sprint-m4-02.md)
@@ -80,7 +83,7 @@ anywhere — degradation is an in-app badge the learner sees and the owner reads
 - Results-dock and degradation-badge vocabulary → AB08/AB11 in [ds-m3-01](sprint-ds-m3-01.md); provenance chips on
   Week/Mistakes/Progress → AB12 in [ds-m3-02](sprint-ds-m3-02.md). AB16/AB18 add only the `ai` variants.
 - Mock AI proposal (`ai-byo`, ScoreMock) → AB27 in [ds-m6a-02](sprint-ds-m6a-02.md) (v2.1).
-- Shipping boards (preview-only, never imported by `web/`) and owner design hours beyond review (BP3).
+- Shipping boards (preview-only, never imported by `web/`) and owner design hours (BP3; any owner review happens after the merge).
 
 ## Tasks
 
@@ -105,7 +108,8 @@ different names, use those).
   [t4 §6.4](../research/t4-judge-contract.md#64-concepts-to-revise)): no pattern chip, concepts or pointer notes while an item
   is live (open attempt, due or live touch); no hidden test inputs, expected outputs, rubric anchors, must-cover lists or
   exemplars; accepted probe answers appear **only after** the touch concluded.
-- **Touch only this sprint's own board files** (and their screenshots). `index.html` already has a row and link for AB16–AB18.
+- **Touch only this sprint's own board files** (and their screenshots, plus this sprint's own rows in `docs/v2/status.md`).
+  `index.html` already has a row and link for AB16–AB18.
 
 ### 2 · AB16 ★ A3 AI suggestion / dispute (hero) [X]
 
@@ -219,8 +223,12 @@ drives F1–F3, `global_paused` drives F5, the per-account disable drives F6; co
 with `aria-checked`; the acceptance step (AB19) and Settings use **identical** consent labels and the same retention sentence
 (helper lines, the behavioral toggle and the last-changed line are Settings-only).
 
-### 5 · Self-review against the brief + screenshots [X]
+### 5 · Self-review checklist (run before merging) + screenshots [X]
 
+The session's own gate before the merge (D40: nothing waits on the owner); its ticked result goes in the PR body. Fix what
+fails, then re-check.
+- **`theme.css` check:** linked (then `board.css` if on `main`), never copied or overridden; `--ds-*` tokens only, no new
+  colours; difficulty Easy=`--ds-ok`, Medium=`--ds-warn`, Hard=`--ds-err`; the index's file names.
 - Walk every frame against its cited decision and the [rollout §9](../rollout-plan.md#9-artboards-by-milestone) M4 row
   ("accept, edit, re-grade, compare, override, honor claim"; "pointer notes + 'correct, with improvements'"; "allowance meter +
   Settings AI consents").
@@ -235,12 +243,14 @@ with `aria-checked`; the acceptance step (AB19) and Settings use **identical** c
 - Screenshot every board full-page at **1440 px** and **390 px** into `design-system/screens/v2/shots/AB16@1440.png`,
   `AB16@390.png`, … (each ≲ 500 KB).
 
-### 6 · Open the design PR and STOP [X]
+### 6 · Open the design PR [X]
 
 Branch `design/ds-m4-01`; conventional commit `docs(design): AB16 AB17 AB18 — M4 platform-AI boards` ending with the attribution
 lines. Open a PR titled `docs(design): AB16 ★ AB17 AB18 — M4 boards` with each board's frame list, the screenshots embedded
-(`https://github.com/sujaykumarsuman/xlearn/blob/design/ds-m4-01/design-system/screens/v2/shots/<file>?raw=true`) and a
-**"Decisions to confirm"** list, at least:
+(`https://github.com/sujaykumarsuman/xlearn/blob/design/ds-m4-01/design-system/screens/v2/shots/<file>?raw=true`), the ticked
+self-review checklist (task 5) and a **"Decisions to confirm"** list. The list doesn't block the merge: each item states the
+default the merge freezes (the boards as drawn), and the owner may revisit any item after the merge through a follow-up design
+PR. At least:
 - **Edit before re-grade.** D14 lets the learner edit (bounded, self-set) straight from the card; [t4 §3.5](../research/t4-judge-contract.md#35-parked-q1-resolved-who-finalizes-a-non-authoritative-grade)
   item 3 had override only after the re-grade. The boards follow **D14** (owner decisions override the research body).
 - **Allowance in percent only.** ADR-0031 §5 says never dollars; [m4-05](sprint-m4-05.md)'s register wording ("remaining $")
@@ -248,13 +258,12 @@ lines. Open a PR titled `docs(design): AB16 ★ AB17 AB18 — M4 boards` with ea
 - **Daily reset** shown in the account timezone although caps reset at 00:00 UTC.
 - The `review_flag` copy (F10) and the per-account-disable copy (AB18 F6).
 
-**Do not merge.** Stop for owner review (owner event `ev-freeze-ds-m4-01`). Requested changes are made on the same branch.
+### 7 · Freeze: merge on CI green [X]
 
-### 7 · Freeze [O]
-
-The owner reviews the boards and approves in chat or merges the PR. **Merging is the freeze.** An agent may merge only on the
-owner's explicit approval in chat. [m4-01](sprint-m4-01.md) cannot start until it lands (its entry gate), and [m4-06](sprint-m4-06.md)
-builds against exactly these files.
+Once the PR number is known, push the status commit (the Status note). When CI is green (fix, then merge, on failure),
+squash-merge: **the merge is the freeze** (D40). Never enable auto-merge. Then sync `main` (`git checkout main && git pull`).
+[m4-01](sprint-m4-01.md) cannot start until it lands (its entry gate), and [m4-06](sprint-m4-06.md) builds against exactly
+these files. The owner may review after the merge; any change is a follow-up design PR.
 
 ## Acceptance criteria
 
@@ -264,29 +273,33 @@ builds against exactly these files.
       every AI state (F10–F12 of AB16; F3, F5, F6 of AB18).
 - [ ] Boards open with no JS runtime; `theme.css` is linked, not copied or overridden; only this sprint's three board files and
       their screenshots are added (no `index.html`/`board.css` edit).
-- [ ] PR open with 1440 px and 390 px screenshots of each board and a "Decisions to confirm" list; **not merged by the agent**.
+- [ ] The self-review checklist passed and is ticked in the PR body, with the "Decisions to confirm" list (each item's frozen default stated).
+- [ ] PR **merged on CI green** (the freeze) with 1440 px and 390 px screenshots of each board; this file and `docs/v2/status.md` record ds-m4-01 ✅ and AB16–AB18 "frozen (merged)".
 
 ## Release
 
-**PR, stop for owner review (design).** Nothing deploys: boards are preview-only files under `design-system/screens/v2/`, never
-imported by `web/`. The owner's merge is the freeze (`ev-freeze-ds-m4-01`); it gates [m4-01](sprint-m4-01.md) (M4 entry) and is
-what [m4-06](sprint-m4-06.md) implements. No tag, no infra PR, no `status.md` edit in this PR.
+**Land-and-sync; the merge is the design freeze** — the board PR squash-merges on CI green; no tag. Nothing deploys: boards are preview-only files
+under `design-system/screens/v2/`, never imported by `web/`. Launching the prompt is the owner's approval
+([D40](../feasibility.md#decisions-log-newest-first)), so nothing waits on the owner; the owner may review after the merge, and
+any change to a frozen board is a follow-up design PR. The merge is the freeze that gates [m4-01](sprint-m4-01.md) (M4 entry)
+and is what [m4-06](sprint-m4-06.md) implements. No infra PR; the only `status.md` edits are this sprint's rows.
 
 ## Definition of Done
 
-PR open with AB16–AB18 and screenshots · every acceptance box ticked · this sprint's Status table updated in the PR (tasks 1–5 ✅,
-task 6 🔄 awaiting review) · no `web/`, `internal/`, `index.html`, `board.css` or `docs/v2/status.md` change · the agent stops at
-the open PR. (Done-done — ✅ Overall — is set by [m4-01](sprint-m4-01.md) once the owner has merged.)
+PR merged on CI green (the freeze) with AB16–AB18 and screenshots · every acceptance box ticked · this file's Status all ✅ and
+`docs/v2/status.md` updated (Sprint-board row ✅; Artboards AB16–AB18 "frozen (merged, PR #N, <date>)") · no `web/`, `internal/`, `index.html` or `board.css` change · local `main` synced.
 
 ## Risks / watch-outs
 
 - **A board contradicting an Accepted decision** (D14/D15/D16/D17/D18/D26/D27/D31): cite the decision per frame; where two sources
   disagree (D14 vs t4 §3.5 on edit-before-re-grade), follow the owner decision and list it under "Decisions to confirm".
 - **Drawing v2.0 as if rubric items existed.** Only F2–F4 and F13–F15 of AB16 are live in v2.0 (F10–F12 need `Score`); label the rubric frames so
-  m4-06 does not build a rubric UI nobody can reach, and so the owner reviews the right frames first.
+  m4-06 does not build a rubric UI nobody can reach, and so a post-merge reader (m4-06, the owner) sees the live frames first.
 - **Dollar leakage.** The allowance must read as a percentage everywhere, including the paused and daily states; a "$" in a
   frame is a bug (ADR-0031 §5).
 - **Consent-string drift from AB19.** The acceptance step and Settings must say the same thing; if ds-l-01 is not frozen yet,
   use the ADR-0031 §4 / t5 §8 strings exactly and flag it.
 - **Countdown drift.** Every countdown is a server deadline; a board that implies a client timer invites the bug m4-06 lists.
 - **Promising alerts.** D34: no copy may imply that anyone was notified; degraded states say what still works.
+- **Parallel status edits:** other sessions may update `docs/v2/status.md` when they land; rebase on `origin/main` before the
+  status commit, touch only this sprint's rows and keep theirs.

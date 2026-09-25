@@ -1,14 +1,10 @@
 # Sprint ga-01 — GA PR: .release-line = 2, T-1 default flips, rc rehearsal
 
-> **Milestone:** GA — v2.0 GA, the owner-facing default flip (**part 1 of 2**: the reviewed GA PR, the strangers check and the `-rc` rehearsal; [ADR-0034 §1.4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#14-range-changes-and-the-ga-procedure) steps 1–2) · **Track:** product · **Order:** 69
+> **Milestone:** GA — v2.0 GA, the owner-facing default flip (**part 1 of 2**: the GA PR, the strangers check and the `-rc` rehearsal; [ADR-0034 §1.4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#14-range-changes-and-the-ga-procedure) steps 1–2) · **Track:** product · **Order:** 69
 > **Prereqs:** [l-04](sprint-l-04.md) (L exit: `ev-l-rehearsal` recorded, production back to `SIGNUP_MODE=closed`, `v1.17.0`) · [p-03](sprint-p-03.md) (P exit, `v1.15.0`, the pilot `preview`) · [m4-07](sprint-m4-07.md) (M4 exit, `v1.16.0`, `LLM_PLATFORM_ENABLED` on for the cohort) · [m3-13](sprint-m3-13.md) (M3 exit, `v1.14.0`, `JUDGE_BASE_URL` set) · [mi-11](sprint-mi-11.md) (Track B finish, N4)
 > **Unblocks:** [ga-02](sprint-ga-02.md) (pre-flip check, widening, snapshot, the `v2.0.0` tag)
-> **Release action:** **merge only.** The GA PR merges **only with the owner's explicit approval**: the major bump is a reviewed PR ([ADR-0034 §1.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#13-accidental-major-guard-shipped-2026-09-24-xlearn53-infra29)). Merging deploys nothing, because `main` is build-only. It comes **with a `v2.0.0-rc.1` prerelease tag** (§1.4 step 2): the eight fleet images build and **never deploy**, since Flux semver ranges skip prereleases. No infra PR, no range change and no `v2.0.0` here; those are [ga-02](sprint-ga-02.md).
-> **Calendar:** ≈ late December 2026 – January 2027, after `ev-l-rehearsal`. Owner time:
-> - the strangers triage (`ev-strangers`, ~15 min);
-> - the GA PR review (~30 min).
->
-> The session can split at the review: build and open the PR → the owner approves → merge, rc, rehearsal.
+> **Release action:** **merge only.** The GA PR **merges on CI green** (D40): launching this prompt is the owner's approval of the major bump that [ADR-0034 §1.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#13-accidental-major-guard-shipped-2026-09-24-xlearn53-infra29) makes a deliberate, reviewed PR, so there is no separate approval stop. Merging deploys nothing, because `main` is build-only. It comes **with a `v2.0.0-rc.1` prerelease tag** (§1.4 step 2): the eight fleet images build and **never deploy**, since Flux semver ranges skip prereleases. No infra PR, no range change and no `v2.0.0` here; those are [ga-02](sprint-ga-02.md).
+> **Calendar:** ≈ late December 2026 – January 2027, after `ev-l-rehearsal`. Owner time is before launch only and optional (~15 min): erasing or re-roling any stranger he doesn't want suspended, and noting the last weekly-image date. The session runs the rest (`ev-strangers`, the GA PR, the rc and the rehearsal) without a review stop.
 > **Execute with:** [`../prompts/prompt-ga-01.md`](../prompts/prompt-ga-01.md). One prompt, one session.
 
 ## Status
@@ -18,13 +14,13 @@ _Overall:_ ⬜ Not started
 | # | Task | Repo | Status |
 |---|------|------|--------|
 | 1 | Entry read: milestones ✅, the M3 checklist re-read, `host-verify --cluster` green | H | ⬜ |
-| 2 | Strangers: no `active` account with role `learner` (`ev-strangers`) | O | ⬜ |
+| 2 | Strangers: no `active` account with role `learner` (`ev-strangers`); the session suspends the rest (the owner's optional erase / re-role is before launch) | H | ⬜ |
 | 3 | GA PR · `.release-line` → `2` and the T-1 default flips (judge, platform AI, go-concurrency `active`) + the test matrices | X | ⬜ |
 | 4 | GA PR · flag inventory: remove the GA-removal flags; decide `COURSE_STATUS_OVERRIDE` | X | ⬜ |
 | 5 | GA PR · no-contract assertion: `hack/lint-migrations.sh --no-contract-since` + a `deploy.yml` step for a major's first stable release (and its rc's) | X | ⬜ |
 | 6 | GA PR · `hack/ga-preflip-check.sh` + self-test (run by ga-02) | X | ⬜ |
 | 7 | GA PR · release notes (behaviour-change list) + git-strategy / ADR-0034 drift check | X | ⬜ |
-| 8 | Owner review → merge the GA PR | O | ⬜ |
+| 8 | Merge the GA PR on CI green (D40; no separate approval) | X | ⬜ |
 | 9 | Tag `v2.0.0-rc.1` (prerelease: builds, never deploys) | X | ⬜ |
 | 10 | Compose rehearsal of the rc: forward, flip checks, R-b to the last 1.x, roll-forward; pre-flip dry run | X | ⬜ |
 | 11 | Record | X | ⬜ |
@@ -38,7 +34,6 @@ _Overall:_ ⬜ Not started
 > - the CLI-use log;
 > - the decisions log.
 >
-> While the GA PR waits for the owner, _Overall_ is 🔄 "awaiting owner review".
 > Full rules: [status protocol](README.md#status-protocol-way-of-working).
 
 ## Entry gates
@@ -142,21 +137,21 @@ At GA, N4 has run ([mi-11](sprint-mi-11.md)), so the MI-8 NATS item is read at `
 
 ## Goal
 
-Prepare the **owner-facing v2.0 GA** ([D32](../feasibility.md#decisions-log-newest-first), [D35](../feasibility.md#decisions-log-newest-first); [ADR-0034 §1.1](../../adr/0034-v2-release-labelling-gating-and-rollback.md#11-scheme), [§1.4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#14-range-changes-and-the-ga-procedure)) as **one reviewed xlearn PR**:
+Prepare the **owner-facing v2.0 GA** ([D32](../feasibility.md#decisions-log-newest-first), [D35](../feasibility.md#decisions-log-newest-first); [ADR-0034 §1.1](../../adr/0034-v2-release-labelling-gating-and-rollback.md#11-scheme), [§1.4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#14-range-changes-and-the-ga-procedure)) as **one deliberate xlearn PR**, merged on CI green (D40):
 - **`.release-line = 2`**;
 - the **T-1 default flips**. Judge features and platform AI are on for **every** account; until now only the owner and tester cohort (T-3) had them. go-concurrency goes from `preview` to **`active`**;
 - the flags whose removal milestone is GA are removed. The kill switches stay;
 - two mechanical guards that ga-02 relies on: the **no-contract assertion** and the **pre-flip check script**;
 - release notes that carry the **behaviour-change list**.
 
-Before it merges, the sprint makes sure **no stranger from v1's open signup is still an `active` learner** ([ADR-0033 §2](../../adr/0033-invite-only-admission-and-owner-admin.md#2-close-v1-signup-now-v15x-stopgap-shipped-in-v152)). After the owner approves and it merges, it tags **`v2.0.0-rc.1`**. The images build but never deploy. The sprint rehearses them in compose, **including the R-b rollback to the last 1.x**, so [ga-02](sprint-ga-02.md) can tag `v2.0.0` on exactly the rehearsed commit.
+Before it merges, the sprint makes sure **no stranger from v1's open signup is still an `active` learner** ([ADR-0033 §2](../../adr/0033-invite-only-admission-and-owner-admin.md#2-close-v1-signup-now-v15x-stopgap-shipped-in-v152)). After it merges on CI green (D40), it tags **`v2.0.0-rc.1`**. The images build but never deploy. The sprint rehearses them in compose, **including the R-b rollback to the last 1.x**, so [ga-02](sprint-ga-02.md) can tag `v2.0.0` on exactly the rehearsed commit.
 
 Nothing is visible on production after this sprint. In v2 the flip reaches the owner and testers only. `SIGNUP_MODE` stays `closed`, and the opening is v3 ([rollout §11](../rollout-plan.md#11-opening-gates-v3)).
 
 ## Scope
 
 **In**
-- The strangers triage on production (owner decisions; CLI via `kubectl exec`; counts only in the record).
+- The strangers triage on production (the session suspends every remaining active learner, the plan's reversible default, D40; the owner's optional erase or re-role happens before launch; CLI via `kubectl exec`; counts only in the record).
 - One xlearn GA PR (branch `feat/ga-v2-default-flip`):
   - `.release-line`;
   - the judge and platform-AI cohort gates removed from the code defaults;
@@ -167,7 +162,7 @@ Nothing is visible on production after this sprint. In v2 the flip reaches the o
   - `hack/ga-preflip-check.sh` + a self-test in `ci.yml`;
   - the docs drift fixes (`docs/git-strategy.md`, the `deploy.yml` header, `docs/architecture/api.md`, and a dated clarification in ADR-0034 if needed);
   - the release notes (the PR body).
-- The owner's review, then the merge.
+- The merge on CI green (D40: the launch is the owner's approval; he may review afterwards).
 - `v2.0.0-rc.1` (more rc's if the rehearsal finds a bug), its GitHub **prerelease**, and the four-phase compose rehearsal.
 
 **Out**
@@ -196,32 +191,32 @@ Re-read the GA checklist's first line and the M3 checklist on the live system. *
   - the 14 packs are stamped (content-status rows);
   - AB07–AB12 are frozen (artboard rows);
   - the MI, M1–M4, P and L rows are ✅.
-- **Owner:** the date of the last Hostinger weekly image. ga-02 needs it again on GA day.
+- **The date of the last Hostinger weekly image,** from the owner's launch message (a before-launch item). ga-02 needs it again on GA day.
 
 Record the read in the decisions log: "GA entry: M3 checklist re-read green on <date>".
 
-### 2 · Strangers [O] (`ev-strangers`)
+### 2 · Strangers [H] (`ev-strangers`)
 
 Rule: [ADR-0033 §2](../../adr/0033-invite-only-admission-and-owner-admin.md#2-close-v1-signup-now-v15x-stopgap-shipped-in-v152). Before the `v2.0.0` flip there is **no `active` account with role `learner`**. Accounts from v1's open signup (M1a stamped them `admitted_via='grandfathered'`) would otherwise get judge, platform AI and the pilot at GA. The CLI is [ADR-0033 §8](../../adr/0033-invite-only-admission-and-owner-admin.md#8-the-owner-admin-cli-identity-admin-run-via-kubectl-exec) ([m1-04](sprint-m1-04.md), with erase from [l-01](sprint-l-01.md)/[l-02](sprint-l-02.md)).
 
-1. **Read (the agent may run it; read-only, but it writes `admin_audit`):**
+1. **Read (the agent runs it; read-only, but it writes `admin_audit`):**
 
    ```sh
    ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account list --role learner --status active'
    ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin seats'
    ```
 
-   Show the output to the owner **in the session only**. It carries emails and usernames. **Never** paste it into a file, a PR, a commit or status.md, because the repo is public.
-2. **The owner decides per account:**
-   - **Suspend (default).** Reversible. The data stays. Sessions are revoked in the same transaction, the public profile returns the uniform 404 (P11), and the account can't sign in. The agent may run `identity admin account suspend <account-id>` **only on the owner's explicit per-account instruction**.
-   - **Erase.** Irreversible, and there are no backups (D12). **The owner runs it himself:**
+   Keep the output **in the session's terminal only**. It carries emails and usernames. **Never** paste it into a file, a PR, a commit or status.md, because the repo is public.
+2. **Triage** (D40: launching approves the reversible default; the irreversible erase stays the owner's, before launch):
+   - **Suspend (default).** Reversible. The data stays. Sessions are revoked in the same transaction, the public profile returns the uniform 404 (P11), and the account can't sign in. The session runs `identity admin account suspend <account-id>` for **every account still listed** after the owner's before-launch erases and the tester re-roles below.
+   - **Erase.** Irreversible, and there are no backups (D12). **The owner runs it himself, before launch** (optional):
 
      ```sh
      ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account erase <account-id> --confirm <account-id>'
      ```
 
      `--confirm` must repeat the same account ([l-02](sprint-l-02.md) task 3: non-interactive `kubectl exec` has no prompt, so the verb refuses without it). It needs every ack `topology.go` expects (practice, review, assessment, coach, judge); confirm with `… identity admin erasures --open` → empty.
-   - An account the owner recognises as a real tester: `account set-role <id> tester`. It leaves the seat count.
+   - An account the owner recognises as a real tester: `account set-role <id> tester`. It leaves the seat count. The owner names such accounts in his launch message (or re-roles them before launch), and the session runs the verb for each named account.
 3. **Verify:**
    - the `account list … --role learner --status active` read → **empty**;
    - `seats` → **0** active learners out of 15, **0** outstanding invites.
@@ -229,7 +224,7 @@ Rule: [ADR-0033 §2](../../adr/0033-invite-only-admission-and-owner-admin.md#2-c
    - "`ev-strangers` ✅ <date>: N suspended, M erased, K re-roled; 0 active learners; seats 0/15";
    - one CLI-use log line per verb.
 
-This is the gate the GA PR merge waits on (task 8). ga-02 re-reads it on GA day.
+The GA PR merges only once this read is empty (task 8): a production-state gate the session itself clears, not an owner wait. ga-02 re-reads it on GA day.
 
 ### 3 · GA PR: `.release-line` and the T-1 flips [X]
 
@@ -304,12 +299,12 @@ Before opening the PR, sanity-check from source: `docker compose up --build`, a 
 
 Per [ADR-0034 §2](../../adr/0034-v2-release-labelling-gating-and-rollback.md#2-feature-gating-three-tiers-no-flag-service): ≤ 6 live non-kill flags, each with an owning and a removal milestone. Kill switches and operating modes are permanent.
 - **Remove** every flag whose removal milestone in status.md is **GA**. That means the T-3 cohort gates the T-1 flip makes redundant (task 3 b–c), plus anything else the inventory lists for GA. Remove the code, its config parsing, its tests and its HelmRelease env docs. If a flag is set in `../infra` (none is expected: the cohort gates are code constants), its env line goes in a **separate infra PR merged after `v2.0.0`**. Record it (flag, service, HelmRelease file) in the status.md flag inventory; [ga-02](sprint-ga-02.md) task 8 removes it after the verify.
-- **`COURSE_STATUS_OVERRIDE`** ([p-02](sprint-p-02.md) task 3: removal milestone GA, "either removed … or promoted to a permanent operating mode"). p-02 recommended **keeping it**, because every future course launch needs "hide without a tag". Put the choice to the owner in the PR:
-  - **keep (recommended):**
+- **`COURSE_STATUS_OVERRIDE`** ([p-02](sprint-p-02.md) task 3: removal milestone GA, "either removed … or promoted to a permanent operating mode"). p-02 recommended **keeping it**, because every future course launch needs "hide without a tag". The session decides by that recommendation (D40), records the decision in the PR and the decisions log, and the owner may reverse it later with a follow-up PR:
+  - **keep (recommended; the default):**
     - a dated amendment line in ADR-0034 §2 adds it to the permanent "kill switches and operating modes" list. The Accepted ADR is amended in place with a dated note, as the build-plan session folded the T7 amendments;
     - status.md moves it out of the non-kill budget into the operating modes;
     - the `COURSE_STATUS_OVERRIDE=go-concurrency=preview` drill (task 10) stays in the rehearsal. It is the pilot's R-a ([ADR-0034 §4.4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#44-reversibility-by-step), P row);
-  - **remove:** delete the parser in `internal/course`, its tests and the inventory row.
+  - **remove** (the alternative, not taken unless the owner has already said so in status.md): delete the parser in `internal/course`, its tests and the inventory row.
 - **Kept, unchanged:** the grading override, `JUDGE_BASE_URL`, `LLM_PLATFORM_ENABLED`, `REVISION_ENTRY_RULE`, `SIGNUP_MODE`.
 - **status.md inventory after GA:** each removed flag reads "removed in GA PR #N, ships in `v2.0.0`". Count the remaining live non-kill flags (≤ 6).
 
@@ -358,7 +353,7 @@ Bash with `curl` and `jq` only. No new toolchain: `crane` isn't installed and is
 
 Behaviour:
 - Exit 0 only when every check passes.
-- On a FAIL it prints the ADR remedy: "delete the stray tag and image version (owner), or cut GA above it and tag **before** widening. See ga-02 task 2."
+- On a FAIL it prints the ADR remedy: "delete the stray tag and image version, or cut GA above it and tag **before** widening. See ga-02 task 2."
 - Overrides for the self-test: `--tags-file`, `--ghcr-dir`, `--deploy-yml`.
 - Self-test `hack/testdata/preflip/`:
   - a stray `v2.0.0` git tag → fail;
@@ -407,20 +402,20 @@ Also grep for stale mentions (`git grep -n -e '<2.0.0' -e '1.x until'`) outside 
 - the `deploy.yml` header (task 5);
 - `docs/git-strategy.md`.
 
-Add a **dated note** under ADR-0034 §1.4, which the owner approves in the PR. It carries up to two clarifications:
+Add a **dated note** under ADR-0034 §1.4, approved by the launch (D40) and landing with the GA PR. It carries up to two clarifications:
 - step 4's "every `xlearn-*`" means the 8 fleet policies (if the text still needs it);
 - step 3's "an anonymous `crane ls` works" is done by `hack/ga-preflip-check.sh` with anonymous `curl` against the GHCR registry API (token + `tags/list`), because `crane` isn't installed. It is the same check, lenient forms included. The infra comment in `apps/image-automation.yaml` changes in ga-02's widening PR, not here.
 
-### 8 · Owner review → merge [O]
+### 8 · Merge the GA PR on CI green [X]
 
 Open the PR:
 - title `feat!: v2.0 GA default flip — .release-line 2, judge + platform AI for every account, go-concurrency active`;
-- the body carries the release notes, the flag decisions, the sweep's justified `inCohort` hits and the `COURSE_STATUS_OVERRIDE` question;
+- the body carries the release notes, the flag decisions, the sweep's justified `inCohort` hits and the `COURSE_STATUS_OVERRIDE` decision;
 - the attribution lines.
 
 **CI green:** `go` (gofmt, vet, `go test -race`, **`sqlc diff`**, the migration lint + its new self-tests, the pre-flip self-test, the OpenAPI drift), `e2e` (including `ga_flip_test.go`), `judge-runner-e2e` (the flipped `m3_exit_test.go`, `-tags e2e,runner`), `web`, `content`.
 
-**Then stop and wait for the owner's explicit approval.** Standing merge authority does not cover this PR: the major bump is the reviewed step. When approved:
+**Then merge, with no separate approval (D40).** The major bump is still a deliberate, self-reviewed PR (ADR-0034 §1.3), and launching this prompt is the owner's approval of it; he may review after the merge. An owner "hold" in the session still overrides. Then:
 1. Confirm the task 2 gate (no active learner) is still true. Re-run the read.
 2. Squash-merge. Merging deploys nothing.
 3. Tell the peers: "`main` is on release line 2 from <sha>; no tags from `main` until ga-02 reports `v2.0.0` verified; a 1.x hotfix branches from `<last-1.x>`".
@@ -471,7 +466,7 @@ Also run:
   - `--cluster` shows 8 fleet ranges `>=1.0.0 <2.0.0` at `<last-1.x>`, and `xlearn-runner` / `xlearn-evalpack` at their own versions.
 
 **On a failure:**
-1. Fix PR (owner approval again if it touches the flips).
+1. Fix PR, merged on CI green (D40).
 2. `v2.0.0-rc.2`.
 3. Repeat phases 1–3.
 
@@ -498,11 +493,11 @@ Land it through a small **docs-only** PR. It may merge after the rc, because `do
 ## Acceptance criteria
 
 - [ ] `identity admin account list --role learner --status active` is **empty**, and `seats` shows 0/15 learners and 0 outstanding invites. It is recorded with counts only.
-- [ ] The GA PR is **merged with the owner's explicit approval**:
+- [ ] The GA PR is **merged on CI green** (D40; no separate approval):
   - `.release-line` = `2`;
   - judge and platform AI have no role gate in the code defaults (kill switches intact; consents intact);
   - go-concurrency is `active`;
-  - the GA-removal flags are gone, and `COURSE_STATUS_OVERRIDE` is kept or removed per the owner;
+  - the GA-removal flags are gone, and `COURSE_STATUS_OVERRIDE` is decided (kept, per the recommendation, unless status.md already records the owner's call) and recorded;
   - the release notes carry the behaviour-change list.
 - [ ] The `--no-contract-since` lint and the `deploy.yml` first-of-major step are in place with self-tests. `v2.0.0-rc.1`'s run shows the step green.
 - [ ] `hack/ga-preflip-check.sh` is on `main` with a green self-test, and it PASSES on the live state with the rc tags present.
@@ -514,7 +509,7 @@ Land it through a small **docs-only** PR. It may merge after the rc, because `do
 
 **Merge only**, plus the **`v2.0.0-rc.N` prerelease**. No image deploys, because Flux ranges skip prereleases. `main` is build-only.
 - **The rc is required here**, although GA checklist item 2 says "Optional rehearsal": [ga-02](sprint-ga-02.md) tags the rc'd commit, and task 10's R-b phase is the only proof that GA's rollback works.
-- The GA PR merges **after the owner's explicit approval** (ADR-0034 §1.3: "the major bump becomes a reviewed PR").
+- The GA PR merges **on CI green** (D40). ADR-0034 §1.3's "the major bump becomes a reviewed PR" is this deliberate PR; launching the prompt is the owner's approval, and there is no separate approval stop.
 - `v2.0.0` itself, the widening infra PR and the snapshot are [ga-02](sprint-ga-02.md). **This sprint never touches `../infra`.**
 - **Before the rc tag:** the parallel-sessions check (`git ls-remote --tags origin`, `gh pr list`, `git worktree list`, ListAgents). The rc is `v2.0.0-rc.N` with the next free N. It passes the `.release-line` guard as a prerelease, and the no-contract step as an rc of the major's first release.
 - **What ships the content of this PR:** `v2.0.0`, tagged in [ga-02](sprint-ga-02.md) on the rc'd commit.
@@ -523,7 +518,7 @@ Land it through a small **docs-only** PR. It may merge after the rc, because `do
 
 - CI green, including `sqlc diff`, the new self-tests and the flipped e2e.
 - The strangers are triaged (counts recorded).
-- The GA PR is merged with the owner's approval.
+- The GA PR is merged on CI green (D40).
 - `v2.0.0-rc.N` is built and never deployed.
 - The four-phase compose rehearsal is green, and the pre-flip check passes on the live state.
 - The rc'd SHA is recorded for ga-02.
@@ -538,6 +533,6 @@ Land it through a small **docs-only** PR. It may merge after the rc, because `do
 - **A leftover cohort check.** A role check hidden in practice or judge would leave learners on the self path after GA; one left in `platformAICohortOnly`, the dispute route or `/api/me/ai-allowance` would leave them without AI. The sweep (3e), the flipped m3-exit learner leg and `ga_flip_test.go` catch it.
 - **`LLM_PLATFORM_ENABLED`'s code default.** Flipping it to `true` in code would enable AI wherever the env is unset: committed compose, and tests without the `httptest` fake. Keep the default `false`. It's a presence-by-config kill switch, and production sets it.
 - **The pilot's public visibility.** `active` makes gc rows public for the owner if his visibility is on. The release notes tell him to choose (AB22).
-- **The strangers list is PII.** Keep it in the terminal only. Erase is irreversible (D12), so the owner runs it himself.
+- **The strangers list is PII.** Keep it in the terminal only. Erase is irreversible (D12), so the owner runs it himself, before launch; the session only suspends.
 - **Committing after the rc moves the tagged commit.** Only `docs/`, `*.md` and `design-system/` changes may follow the rc. Anything else, `.github/` included, needs `-rc.N+1`.
 - **The rehearsal's fake LLM provider** must never be committed, and never pointed at a real key.

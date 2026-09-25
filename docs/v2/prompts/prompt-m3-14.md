@@ -82,8 +82,7 @@ owner account (D35).
    denylist; erase fixture; a compose e2e through `POST /submissions` with an Idempotency-Key and a forced typed 429.
    Then `gofmt`, `go vet`, `go test -race ./...`, `npm --prefix web run test` (unchanged), `-tags e2e`, the migration lint,
    `sqlc diff`.
-9. **[X] PR** → conventional commit(s) `feat(judge): admission, learner API, arena progress, telemetry, admin CLI` with
-   the attribution lines → CI green → squash-merge. **No tag** (m3-07 tags `v1.13.0`).
+9. **[X] Ship:** see **Ship** below.
 
 ## Constraints
 
@@ -129,7 +128,12 @@ owner account (D35).
 - [ ] Allowlist/denylist and IDOR tests green; `judge admin` verbs work and write `admin_audit`; telemetry rows written.
 - [ ] Erase covers the new tables; `sqlc diff` clean; CI green.
 
-Ship per AGENT.md land-and-sync with **this sprint's release action: merge only (ships dark in `v1.13.0`, tagged by
-[m3-07](../sprints/sprint-m3-07.md))** — no tag and no infra PR here; then `git checkout main && git pull`.
-</content>
-</invoke>
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Branch `feat/m3-judge-admission` (step 1); commit(s) `feat(judge): admission, learner API, arena progress, telemetry, admin CLI`; this repo only (no infra PR).
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships dark in `v1.13.0`):** Nothing deploys; it ships in `v1.13.0` (cut by [m3-07](../sprints/sprint-m3-07.md)). Don't tag.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

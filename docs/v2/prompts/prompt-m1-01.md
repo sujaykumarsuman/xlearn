@@ -86,7 +86,7 @@ NATS 2.14), which mi-05's NATS-auth test needs. v2 is owner-only (D35); producti
    (then `git checkout -- web/dist/.gitkeep`), e2e on PG 18, compose click-through (login, Today, a problem, revision,
    mock, coach). Confirm no handler, query or route changed.
 8. **[X] Update status** (below), then commit (conventional, e.g. `feat(course): course manifest + golden, item schema v1
-   frozen, compose PG 18 / NATS 2.14`) with the attribution lines, push, open the PR.
+   frozen, compose PG 18 / NATS 2.14`) with the attribution lines, push, open the PR, and ship it (see Ship).
 
 ## Constraints
 
@@ -130,6 +130,12 @@ NATS 2.14), which mi-05's NATS-auth test needs. v2 is owner-only (D35); producti
 - [ ] No API behaviour change.
 - [ ] `docs/v2/status.md` records the freeze → `ev-schema-freeze`.
 
-Shipping: per AGENT.md land-and-sync with this sprint's release action — **merge only** (it ships dark in `v1.6.0`, which
-[m1-02](../sprints/sprint-m1-02.md) tags): branch → PR → CI green → squash-merge → `git checkout main && git pull`. **Do not tag.**
-No infra PR.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/m1-course-manifest-schema`, then conventional commit(s) with the attribution lines, then push, then the PR. This repo only: no `../infra` PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only:** nothing deploys (`main` is build-only; nothing reads the manifest at runtime yet). It ships dark in **`v1.6.0`**, which [m1-02](../sprints/sprint-m1-02.md) tags. No tag here.
+4. Update status: the sprint file and `docs/v2/status.md` (with `ev-schema-freeze` ✅), in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

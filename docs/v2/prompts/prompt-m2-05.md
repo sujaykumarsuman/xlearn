@@ -3,6 +3,12 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-m2-05.md`](../sprints/sprint-m2-05.md)   ·   **Milestone:** M2 (exit)   ·   **Prereqs:** [m2-02](../sprints/sprint-m2-02.md) (v1.9.0 live), [m2-03](../sprints/sprint-m2-03.md), [m2-04](../sprints/sprint-m2-04.md) merged
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] You'll stay off xLearn (no attempts, touches or mocks) while the session runs the post-tag prod replays (step 10), so D1 = D2 on the first pair. If an event lands between the runs anyway, the session runs once more; nothing waits on you.
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md): conventions and the land-and-sync rule. This sprint **tags**.
@@ -133,9 +139,9 @@
    - Tag `v1.10.0` on the merge commit; GitHub release title **`v1.10.0 — v2 build · M2b/M2c`**; release notes list the behaviour changes (D2, the Touch screen, Today in minutes/agenda, profile v2 + visibility, the heatmap and streak from `proj_activity` on the public and authed views plus touch stats and provenance on Progress, the kill switch).
    - After the tag, by looking: healthz version, `get deploy` images, ImagePolicy latest = tag, HelmReleases Ready, a smoke test (login, dashboard, coach, a Revision touch, the authed Progress page, the public profile), and the review logs showing `revision_entry_rule=v2`.
 
-10. **[H] Post-tag prod steps** (the sanctioned `kubectl exec` admin path; log each use in status.md). **If this session's VPS access is read-only, this is an owner action (O):** hand the owner these exact commands, set plan task 8 ⛔ "waiting on owner", log the hand-off, and record the owner's output when it returns.
+10. **[H] Post-tag prod steps** (the sanctioned `kubectl exec` admin path; log each use in status.md). **Run these yourself: launching approves them (D40).** Don't hand them off or wait. Only if `ssh vps` fails here, set plan task 8 ⛔ with these exact commands in the manual-path log, for whoever next has access to run in order.
     1. `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-review -- review admin backfill-touch-scored --wait 2m'`, then again → `inserted 0`;
-    2. with the owner idle between the runs: `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-assessment -- assessment admin replay-projections --confirm'` → D1, then again (it waits for the reap) → D2; **D1 must equal D2**. If they differ and the per-stream counts changed, a new event landed: run once more with the owner idle;
+    2. with no attempts, touches or mocks between the runs (the before-launch item): `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-assessment -- assessment admin replay-projections --confirm'` → D1, then again (it waits for the reap) → D2; **D1 must equal D2**. If they differ and the per-stream counts changed, a new event landed: run once more;
     3. reconcile per the runbook §C (Progress incl. heatmap, touch stats and provenance; Dashboard; the public profile vs the source services), and confirm `event_dead_letter` is empty.
 
 11. **[X] Record the M2 exit.** See *Update status*.
@@ -162,17 +168,17 @@
 - On M2-02's `replay-projections`: the replay lock (`ReplayLockKey`, `TryReplayLockShared`, live-handler nak), the digest, `assessment admin projection-digest`, and the re-runnable durable (2 min threshold + reap wait).
 - The review migration `anchor_rule`, `REVISION_ENTRY_RULE` config, D2 in `HandleProblemSolved`, and tests.
 - `hack/rehearse-m2-replay.sh` + its output in the PR; the extended in-process e2e; the updated runbook and `events.md`.
-- The `../infra` ACL PR (or a recorded n/a); the tag **v1.10.0** verified; prod backfill + replay run (or handed to the owner) and recorded.
+- The `../infra` ACL PR (or a recorded n/a); the tag **v1.10.0** verified; prod backfill + replay run by the session and recorded.
 
 ## Update status
 
-- In [`../sprints/sprint-m2-05.md`](../sprints/sprint-m2-05.md): set task rows ✅ (task 6: the PR # or n/a; task 8: ⛔ "waiting on owner" while handed off), and set _Overall_ ✅.
+- In [`../sprints/sprint-m2-05.md`](../sprints/sprint-m2-05.md): set task rows ✅ (task 6: the PR # or n/a; task 8: ⛔ with the logged commands only if `ssh vps` failed), and set _Overall_ ✅.
 - In [`../status.md`](../status.md):
   - **Sprint board** M2-05 ✅; **Milestones** M2 ✅ (v1.9.0 → v1.10.0; exit: replay equal, below-clean ladders, `public-read`-only);
   - **Tag → floor → snapshot**: v1.10.0 → 1.9.0 → none (not required);
   - **Flag inventory**: `REVISION_ENTRY_RULE` in the permanent kill-switch list (default `v2`; R-a = infra PR on `xlearn-review` env; owner M2; never removed); M2-04's T-1 gate `touchesEnabled` → **removed in v1.10.0**;
   - **Pending contracts**: drop `proj_heatmap`, the v1 `proj_outcome_mix` and `/progress/heatmap`, earliest at the first contract tag after v1.10.0 (it raises the floor to ≥ 1.10.0);
-  - the **manual-path log**: both admin-CLI runs on prod with counts, digests D1 = D2 and the reconcile result (or the owner hand-off and its outcome);
+  - the **manual-path log**: both admin-CLI runs on prod with counts, digests D1 = D2 and the reconcile result (or, if `ssh vps` failed, the logged commands and the ⛔);
   - **NATS rows**: the replay-durable ACL PR or n/a;
   - **Decisions log**: deterministic event ids; the `touch_scored.v2.self.json` fixture; the digest (semantic columns only) and the re-runnable durable (2 min threshold + reap wait); the replay lock as actually built (exclusive in the CLI, shared-try + nak in the live handler, the apply option that skips the probe; L-01's `EraseTx` shares it); D2 forward-only (no retro-anchoring of historic below-clean items); `revisable=true` for DSA until P-02.
 - L-01 is now unblocked: note it on the board.
@@ -187,10 +193,12 @@
 - [ ] The backfill is idempotent and ran before the replay on prod; a replay inside the reap window waits or fails without truncating.
 - [ ] The ACL PR is merged before the tag, or n/a recorded. v1.10.0 is live and verified per the checklist, and status.md is updated.
 
-**Ship at session end** per AGENT.md land-and-sync with **this sprint's release action: tag v1.10.0** (the next free minor). In order:
-1. the xlearn PR → CI green → squash-merge (and the `../infra` ACL PR first, if step 7 applies);
-2. tag → Flux deploys → verify live per the checklist;
-3. the post-tag backfill + replay on prod (or handed to the owner if VPS access is read-only);
-4. `git checkout main && git pull` in every repo touched.
+## Ship (land-and-sync — owner approval pre-granted)
 
-Never leave an open PR or merged work unpulled.
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/m2-05-producers-d2-replay`, then conventional commits with the attribution lines, then push, then the PR (step 8). A `../infra` ACL PR only if step 7 applies: its own PR, merged **before** the tag and never folded into it.
+2. Once CI is green (fix, then merge, on failure), squash-merge each. Never enable auto-merge. `../infra` has no CI: the rendered-block diff in the ACL PR's body, then `host-verify --cluster` after the reload (step 7), are its checks.
+3. **Release action — tag `v1.10.0`** (the next free minor): walk the release checklist (ADR-0034 §6, in the plan), push the tag, let Flux deploy, then verify live by looking (step 9). Then run the post-tag backfill and replay on prod yourself (step 10: D1 = D2, reconcile clean).
+4. Update status: the sprint file and `docs/v2/status.md` (the M2 exit, step 11), in the same PR or a follow-up docs PR merged the same way (the tag record and the admin-CLI log need the follow-up).
+5. Run `git checkout main && git pull` in every repo touched (xlearn, and `../infra` if step 7 ran). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

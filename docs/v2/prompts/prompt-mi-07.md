@@ -1,7 +1,22 @@
 # Prompt — Sprint mi-07 · Evalpack plumbing (MI-9)
 
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
-> **Plan:** [`../sprints/sprint-mi-07.md`](../sprints/sprint-mi-07.md)   ·   **Milestone:** MI (rollout step MI-9)   ·   **Prereqs:** none (owner event `ev-machine-user`); must land by Fri 2026-10-09
+> **Plan:** [`../sprints/sprint-mi-07.md`](../sprints/sprint-mi-07.md)   ·   **Milestone:** MI (rollout step MI-9)   ·   **Prereqs:** none (owner event `ev-machine-user`, before launch); must land by Fri 2026-10-09
+>
+> **Run twice.** The package grant and the helper run are owner steps, and they can only follow this prompt's own `v0.1.0` push. A session never waits on the owner (D40). So the **first launch** does steps 1–3, the helper PR (step 5a) and the record, and sets plan tasks 4–6 ⛔. The **re-run**, launched once the owner has done the re-run items below, does steps 4, 5b, 6 and the record.
+
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+**First launch** (`ev-machine-user`, about 20 minutes):
+- [ ] A GitHub **machine user** with 2FA on, and an email address you control.
+- [ ] A **classic** PAT on it with **only `read:packages`**, expiring in at most 1 year. At launch, give the session the machine-user **name** and the **expiry date**, never the PAT value.
+
+**Re-run** (after the first session has pushed `v0.1.0` and merged the helper):
+- [ ] In the `xlearn-evalpack` package settings, the package shows **Private** and is linked to `xlearn-evalpack`. Under "Manage access", the machine user has **Read**, and `xlearn-evalpack` keeps **Write** under "Manage Actions access" (the fallback is a read collaborator on the repo).
+- [ ] Locally: `docker login ghcr.io -u <machine-user> --password-stdin` (typed), then `docker pull ghcr.io/sujaykumarsuman/xlearn-evalpack:0.1.0` succeeds, then `docker logout ghcr.io`. An anonymous pull fails. Tell the session the result.
+- [ ] In `../infra` on an up-to-date `main`, run `hack/evalpack-pull-secret.sh`. It writes `apps/secrets/xlearn-evalpack-pull.enc.yaml` and `apps/secrets/xlearn-evalpack-pull-flux-system.enc.yaml`, encrypted; leave them uncommitted.
 
 ## Read first
 
@@ -42,16 +57,13 @@
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
-- [ ] None from the MI track: MI-9 depends on no other MI step. Ask the owner to do task 1 (machine user + PAT) now. It can run in parallel with task 2.
-- [ ] `gh repo view sujaykumarsuman/xlearn-evalpack` → not found, and no peer is creating it (ListAgents, `gh repo list sujaykumarsuman`). If it exists, stop: verify it's private, not a fork or template, and that its package isn't public, then report.
+- [ ] None from the MI track: MI-9 depends on no other MI step. The owner's machine user + PAT (task 1) is a before-launch item.
+- [ ] `gh repo view sujaykumarsuman/xlearn-evalpack` → not found, and no peer is creating it (ListAgents, `gh repo list sujaykumarsuman`). If it exists, stop: verify it's private, not a fork or template, and that its package isn't public, then report. **On the re-run** it exists from the first launch: run the same checks (`PRIVATE/false/false`, the probe green), then carry on.
 - [ ] No open peer PR in `../infra` touches `apps/image-automation.yaml`, `apps/secrets/`, `hack/host-lint.sh` or `README.md`. If [mi-01](../sprints/sprint-mi-01.md) or [mi-02](../sprints/sprint-mi-02.md) is open (both edit `host-lint.sh` in the same week), rebase onto it and keep **all** shellcheck additions and README sections.
 
 ## Do this (in order)
 
-1. **[O] Machine user + PAT.** Ask the owner to:
-   - create a GitHub machine user (2FA on);
-   - create a **classic** PAT with **only `read:packages`** and an expiry of at most 1 year;
-   - tell you the machine-user **name** and the **expiry date**.
+1. **[O, before launch] Machine user + PAT.** Check that the owner has given you the machine-user **name** and the PAT's **expiry date** (a before-launch item: a GitHub machine user with 2FA on and a **classic** PAT with **only `read:packages`**, expiring in at most 1 year). If they're missing, carry on with steps 2–3 and 5a, and set plan tasks 1 and 4–6 ⛔ in status.md.
 
    **Never ask for, or accept, the PAT value in chat.** Creating accounts is owner-only.
 
@@ -75,15 +87,16 @@
    - the privacy check's 401/403 (at the token step, or on the manifest and `tags/list`);
    - negative control 200.
 
-   Confirm with the owner that the package page shows **Private**, linked to `xlearn-evalpack`. Record the digest.
+   The probe's 401/403 is the privacy evidence here. Before the re-run, the owner checks in the package settings that the package shows **Private** and is linked to `xlearn-evalpack` (a re-run before-launch item). Record the digest.
 
-4. **[O] Package access + PAT pull.**
-   - Ask the owner to grant the machine user **Read** on the package ("Manage access"), keeping `xlearn-evalpack` at **Write** under "Manage Actions access". The fallback is a read collaborator on the repo.
-   - The owner verifies locally: `docker login ghcr.io -u <machine-user> --password-stdin` (typed), `docker pull ghcr.io/sujaykumarsuman/xlearn-evalpack:0.1.0`, `docker logout ghcr.io`. An anonymous pull must fail.
-   - Re-run `probe` with `workflow_dispatch` so the access change broke nothing.
+4. **[O, before the re-run] Package access + PAT pull** (plan task 4).
+   - **First launch:** skip it. Set plan task 4 ⛔ "owner: package grant + PAT pull, then re-run". The package only exists since step 3, so this can't be a before-launch item of this launch.
+   - **Re-run:** the owner has granted the machine user **Read** on the package ("Manage access"), keeping `xlearn-evalpack` at **Write** under "Manage Actions access" (the fallback is a read collaborator on the repo). They've verified locally with `docker login ghcr.io -u <machine-user> --password-stdin` (typed), `docker pull ghcr.io/sujaykumarsuman/xlearn-evalpack:0.1.0` and `docker logout ghcr.io`; an anonymous pull must fail. Record their result, then re-run `probe` with `workflow_dispatch` to show the access change broke nothing.
 
-5. **[I] Pull secrets + helper** (branch `feat/mi-9-evalpack-pull` in `../infra`):
-   - Write `hack/evalpack-pull-secret.sh`. It:
+5. **[I] Pull secrets + helper** (plan task 5):
+   - **5a, first launch** (branch `feat/mi-9-evalpack-pull-helper` in `../infra`): the helper, the README rotation section and the host-lint change, as their own PR, merged (it's inert: a script and docs). The owner runs the helper before the re-run.
+   - **5b, re-run:** the owner's helper run left the two encrypted files uncommitted in `../infra`. Check them (below) and commit them with step 6 on branch `feat/mi-9-evalpack-pull`.
+   - Write `hack/evalpack-pull-secret.sh` (5a). It:
      - reads the machine-user name and PAT with `read -rs`, never from argv, and uses `printf` builtins;
      - builds the `kubernetes.io/dockerconfigjson` Secret `xlearn-evalpack-pull` in memory;
      - encrypts it through `sops encrypt --filename-override <target> --input-type yaml --output-type yaml /dev/stdin` (check `sops encrypt --help`; local sops is 3.13);
@@ -91,9 +104,9 @@
      - never leaves plaintext on disk;
      - `unset`s the PAT.
    - Add it to host-lint's shellcheck set.
-   - **The owner runs it** in `../infra`.
-   - Check that `git diff` shows only `ENC[` values under `data`. Don't decrypt to the terminal.
-   - Add the rotation runbook to the infra README "Secrets":
+   - **The owner runs it** in `../infra`, between the two launches.
+   - On the re-run, check that `git diff` shows only `ENC[` values under `data`. Don't decrypt to the terminal.
+   - Add the rotation runbook to the infra README "Secrets" (5a):
      1. new PAT;
      2. re-run the helper;
      3. PR and merge;
@@ -101,7 +114,7 @@
      5. revoke the old PAT;
      6. update the status.md expiry row.
 
-6. **[I] ImageRepository, in the same PR:**
+6. **[I] ImageRepository (re-run), in the same PR as the two Secrets (5b):**
    - Add `xlearn-evalpack` (namespace `flux-system`, `image: ghcr.io/sujaykumarsuman/xlearn-evalpack`, `interval: 5m`, `secretRef: {name: xlearn-evalpack-pull}`) to `apps/image-automation.yaml`, and extend its header comment: the evalpack policy (`>=1.0.0 <2.0.0`) lands after `v1.0.0`, in m3-07. **Add no ImagePolicy.**
    - Open the PR with the checks in the body (infra has no CI), and merge it.
    - Verify read-only over `ssh vps`:
@@ -110,10 +123,10 @@
      - `k3s kubectl get kustomization apps -n flux-system` is Ready;
      - `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` shows no FAIL.
 
-7. **[X] Record** (branch `docs/mi-07-status` here):
+7. **[X] Record** (branch `docs/mi-07-status` here, after each launch):
    - the Status table in [`../sprints/sprint-mi-07.md`](../sprints/sprint-mi-07.md);
    - in [`../status.md`](../status.md):
-     - the **MI track** row MI-9 ✅, with repo date, CI run link, infra PR, and the note "ImagePolicy → m3-07 (image before policy)";
+     - the **MI track** row MI-9 ✅, with repo date, CI run link, infra PRs, and the note "ImagePolicy → m3-07 (image before policy)". After the first launch it's 🔄 instead, with plan tasks 4–6 ⛔ "owner: package grant + PAT pull + helper run, then re-run";
      - the **evalpack PAT expiry** row: the expiry and a rotate-by date 14 days earlier (manual check, D34, event `ev-pat-expiry`);
      - the **evalpack stream** row: `0.1.0` scaffold, its digest, "below every range; spk-02 input";
      - the **Sprint board** row.
@@ -134,13 +147,14 @@
 ## Deliverables
 
 - `sujaykumarsuman/xlearn-evalpack` (private): the skeleton, `hack/build.sh`, the `FROM scratch` Dockerfile, and `build.yml` (probe with negative control plus existence and privacy checks; build on `v*`). The `v0.1.0` tag and its private image (digest recorded).
-- infra PR:
-  - `apps/secrets/xlearn-evalpack-pull.enc.yaml` and `apps/secrets/xlearn-evalpack-pull-flux-system.enc.yaml`;
+- infra PR 1 (first launch):
   - `hack/evalpack-pull-secret.sh`;
-  - the `xlearn-evalpack` ImageRepository;
   - the README rotation section;
   - the host-lint shellcheck set.
-- xlearn docs PR: the status rows (MI-9, PAT expiry, evalpack stream) and this sprint's Status table.
+- infra PR 2 (re-run):
+  - `apps/secrets/xlearn-evalpack-pull.enc.yaml` and `apps/secrets/xlearn-evalpack-pull-flux-system.enc.yaml` (from the owner's helper run);
+  - the `xlearn-evalpack` ImageRepository.
+- xlearn docs PR after each launch: the status rows (MI-9, PAT expiry, evalpack stream) and this sprint's Status table.
 
 ## Update status
 
@@ -161,9 +175,18 @@
 - [ ] The ImageRepository `xlearn-evalpack` is Ready and scans the private package with `secretRef` (`0.1.0` listed). There's no ImagePolicy, and `apps` is Ready.
 - [ ] Both pull secrets are committed SOPS-encrypted only and exist in `xlearn` and `flux-system`.
 - [ ] `docs/v2/status.md` shows MI-9 ✅, the PAT expiry and rotate-by dates, and the evalpack stream row.
-- Ship at session end per AGENT.md land-and-sync, with this sprint's release action: **infra PR(s) only**, plus the evalpack scaffold.
-  - Merge the `../infra` PR yourself, with the checks in the body (infra has no CI).
-  - In `xlearn-evalpack`, push only `main` and the **`v0.1.0` tag**. No `>=1.0.0` tag.
-  - Merge the xlearn status docs PR.
-  - No xlearn tag.
-  - Sync local `main` in xlearn, `../infra` and `../xlearn-evalpack`.
+- The first launch is done when steps 1–3, 5a and 7 have landed and plan tasks 4–6 are ⛔ for the owner. The re-run ticks the rest.
+
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). (`xlearn-evalpack` starts empty: its scaffold is the initial commit on `main`, so there's no PR.)
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. (infra has no CI: paste the checks into each PR body and merge on them.)
+3. **Release action — infra PR(s) only, plus the evalpack scaffold:**
+   - In `xlearn-evalpack`, push only `main` and the **`v0.1.0` tag**. No `>=1.0.0` tag.
+   - **First launch:** merge infra PR 1 (the helper, the README rotation section, the host-lint change).
+   - **Re-run:** merge infra PR 2 (the two SOPS pull secrets with the ImageRepository, no ImagePolicy), then verify read-only (step 6).
+   - No xlearn tag.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way (after each launch).
+5. Run `git checkout main && git pull` in every repo touched (xlearn, `../infra`, `../xlearn-evalpack`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

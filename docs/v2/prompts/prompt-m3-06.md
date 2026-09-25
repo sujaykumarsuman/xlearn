@@ -121,7 +121,7 @@ this core with admission, idempotency semantics and the DTO allowlist, and m3-07
 12. **[X] Docs + ADR + hand-offs** (task 10): `docs/architecture/{events,services,data-model,api}.md`; ADR "judge evaluation
     core (M3)" after checking peers for the next free number; the m3-07 / m3-08 / m3-14 hand-offs in the PR description
     and the status.md decisions log — especially m3-07's **scratch `emptyDir`** and the runner env names.
-13. **[X] Ship** per AGENT.md land-and-sync with this sprint's release action (below).
+13. **[X] Ship:** see **Ship** below.
 
 ## Constraints
 
@@ -185,6 +185,12 @@ this core with admission, idempotency semantics and the DTO allowlist, and m3-07
 - [ ] The retry table and `throttled` path are tested; the sweeper re-queues expired leases and deletes old Run payloads and idle drafts.
 - [ ] No learner route in judge; registry and golden tests, `sqlc diff` and every v1 test and e2e are green.
 
-**Shipping:** per AGENT.md land-and-sync with **this sprint's release action — merge only (ships dark in v1.13.0)**:
-branch → conventional commits with the attribution lines → push → PR → CI green → squash-merge → `git checkout main && git pull`.
-**Do not tag** (m3-07 cuts v1.13.0 after m3-14) and open **no infra PR** (m3-07 carries the hand-offs); nothing deploys yet.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: xlearn only, on `feat/m3-06-judge-core`; no `../infra` PR (m3-07 carries the hand-offs).
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships dark in `v1.13.0`):** nothing deploys; it ships dark in `v1.13.0`, cut by [m3-07](../sprints/sprint-m3-07.md) once m3-14 has merged, and m3-07 carries this sprint's hand-offs (runner env and token, the scratch `emptyDir`, `RELAY_INTERVAL`) into the MI-13 HelmRelease. Don't tag.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

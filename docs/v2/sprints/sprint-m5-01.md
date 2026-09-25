@@ -4,8 +4,8 @@
 > **Prereqs:** [ga-02](sprint-ga-02.md) (`v2.0.0` live: judge on for every account, `.release-line = 2`, ranges `<3.0.0`) · on `main`: [m3-08](sprint-m3-08.md) (judged start, INV-9, `GRADING_OVERRIDE`, kill-switch sweep, `self_grade_pending`), [m3-09](sprint-m3-09.md) (the `judge` block, `/api/judge/status`), [m3-11](sprint-m3-11.md) + [m3-12](sprint-m3-12.md) (Workspace, badges), [m1-01](sprint-m1-01.md) (manifest `grading.self_report` + golden) · the frozen AB07 ([ds-m3-01](sprint-ds-m3-01.md)) · owner event `ev-dsa-packs-all` (every live DSA item packed) · for the ride path only: [m6b-03](sprint-m6b-03.md) tagged, [m6b-04](sprint-m6b-04.md) not yet
 > **Unblocks:** — (no later sprint depends on M5; the [m6c-01](sprint-m6c-01.md)…[m6c-03](sprint-m6c-03.md) outlines are independent of it)
 > **Release action:** per [ADR-0034 §1.1](../../adr/0034-v2-release-labelling-gating-and-rollback.md#11-scheme) ("it rides v2.1.0 if it's ready by then"): **merge untagged so it rides `v2.1.0`** if it's ready before [m6b-04](sprint-m6b-04.md) and every ride condition in Release holds; **otherwise tag the next free minor ≥ `v2.2.0`** (the expected path on the calendar: M5 ≈ H2 2027, `v2.1.0` ≈ Q1 2027). **Never cut `v2.1.0` for M5 alone.** No infra PR.
-> **Artboards:** AB07★ **evaluator-only variant**, derived from frozen AB07 F1/F11/F12 and AB11 F1–F4. No separate design sprint and no new board file: the variant screenshots in the PR are the owner review.
-> **Calendar:** ≈ H2 2027, after `ev-dsa-packs-all` (+230–340 owner h of packs, [rollout §8](../rollout-plan.md#8-what-ships-where-content-hours-the-d6-reading)) · owner time: review the variant (~15 min) and watch the tag verify (~15 min)
+> **Artboards:** AB07★ **evaluator-only variant**, derived from frozen AB07 F1/F11/F12 and AB11 F1–F4. No separate design sprint and no new board file: the variant screenshots committed with the PR are its reference, and the merge freezes the variant (D40: it lands as drafted; the owner may revise it later with a follow-up PR).
+> **Calendar:** ≈ H2 2027, after `ev-dsa-packs-all` (+230–340 owner h of packs, [rollout §8](../rollout-plan.md#8-what-ships-where-content-hours-the-d6-reading)) · no owner time in-session: the variant lands as drafted and the session verifies the tag (D40); the owner may review both afterwards
 > **Execute with:** [`../prompts/prompt-m5-01.md`](../prompts/prompt-m5-01.md) — one prompt, one session.
 
 ## Status
@@ -23,8 +23,7 @@ _Overall:_ ⬜ Not started
 | 7 | Tests + verify | X | ⬜ |
 | 8 | Docs + ADR (the evaluator-only lifecycle) | X | ⬜ |
 | 9 | PR with the variant screenshots | X | ⬜ |
-| 10 | Owner approves the AB07 evaluator-only variant (before merge) | O | ⬜ |
-| 11 | Release: ride `v2.1.0` if ready and the ride conditions hold, else tag ≥ `v2.2.0`; verify, record | X | ⬜ |
+| 10 | Release: ride `v2.1.0` if ready and the ride conditions hold, else tag ≥ `v2.2.0`; verify, record | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (the Sprint board row, the **M5**
@@ -161,7 +160,7 @@ Scope: `purpose=course` attempts on a course whose effective `outcome` is `evalu
 
 ### 5 · web: the AB07 evaluator-only variant [X]
 
-The variant comes from the **frozen** AB07 (`design-system/screens/v2/AB07-workspace-code.html`: F1 Cover, F11 `self_grade_pending`, F12 self-path) and AB11 (`AB11-degradation-badges.html`: F1–F4). The copy below is drafted here and confirmed by the owner in the PR (task 10). Use [`theme.css`](../../../design-system/theme.css) verbatim: `ds-badge--info`, `ds-card`, `ds-btn` and the `xl-*` classes.
+The variant comes from the **frozen** AB07 (`design-system/screens/v2/AB07-workspace-code.html`: F1 Cover, F11 `self_grade_pending`, F12 self-path) and AB11 (`AB11-degradation-badges.html`: F1–F4). The copy below is drafted here and lands as drafted (D40); the owner can revise it later with a content PR. Use [`theme.css`](../../../design-system/theme.css) verbatim: `ds-badge--info`, `ds-card`, `ds-btn` and the `xl-*` classes.
 
 **Screen selection** (m3-11's `ProblemRoute` table in `web/src/router.tsx`, server data only):
 
@@ -267,7 +266,7 @@ The variant comes from the **frozen** AB07 (`design-system/screens/v2/AB07-works
 - **Screenshots:** V1–V6 at **1440 px** and **390 px**, each beside the frozen AB07 F1/F12 crop it derives from.
   - Capture them with the temp vite mock config pattern (a throwaway config, never committed) or from compose.
   - Commit them as `design-system/screens/v2/shots/AB07-m5-V<n>@1440.png` / `@390.png` (≲ 500 KB each, ds-m1-01's convention). They become the reference for the variant.
-- **PR body:** the frame list, the copy table, the task-1 coverage output, the drill timings, and a **"Decisions to confirm"** list:
+- **PR body:** the frame list, the copy table, the task-1 coverage output, the drill timings, and a **"Decisions to confirm"** list (it doesn't block the merge: each item states the default that lands, and the owner may revisit any of them afterwards with a follow-up PR, D40):
   - `touch`/`mock` stay `allowed`;
   - `JUDGE_BASE_URL` unset also restores the picker (`no_judge`);
   - every former `self_grade_pending` trigger now **voids** the attempt rather than offering a capped pick, each through no fault of the learner: (a) a contract change mid-attempt with counted evaluations (`contract_changed`), (b) the third infra-released close (`released_limit`), (c) the grading budget exhausted (`budget_exhausted`); with the V5 cause line for each;
@@ -275,11 +274,7 @@ The variant comes from the **frozen** AB07 (`design-system/screens/v2/AB07-works
   - pre-flip self attempts are honoured;
   - the release path (ride `v2.1.0` vs own minor).
 
-### 10 · Owner approves the variant [O]
-
-The owner reviews the screenshots and copy in the PR and approves, or requests changes on the same branch. **This approval stands in for a design freeze** (BP3: the variant is derived from the frozen AB07, so there is no design sprint). **Don't merge without it.** If it doesn't arrive in-session, leave the PR open and stop. Merging and tagging resume in a later session from this same task list.
-
-### 11 · Release [X]
+### 10 · Release [X]
 
 See **Release** below. On the ride path: CI green → coverage + PAT checks → squash-merge **untagged** → record "rides `v2.1.0`" plus the hand-off for [m6b-04](sprint-m6b-04.md) (re-run both checks right before its tag). On the own-minor path: CI green → squash-merge → the pre-tag checklist → tag → verify → record.
 
@@ -296,7 +291,7 @@ See **Release** below. On the ride path: CI green → coverage + PAT checks → 
 - [ ] **An item with `spec_mismatch` blocks counted attempts with a badge.** It shows "Grading paused" and V2; the arena still works; nothing is recorded against the learner.
 - [ ] **The override restores the picker within minutes.** The compose drill passes: new starts pin `self` with the picker, open judged attempts → `self_grade_pending` within 30 s and never a Miss, unsetting it restores evaluator-only, and nothing is re-graded. The times are recorded, and the prod recipe is in the runbook.
 - [ ] The DSA manifest golden is updated with its citation; the validation rule is tested; `sqlc diff` is clean; CI is green.
-- [ ] The AB07 evaluator-only variant is **approved by the owner** in the PR, and its screenshots are committed under `design-system/screens/v2/shots/`.
+- [ ] The AB07 evaluator-only variant **lands as drafted** (no owner approval step, D40), and its screenshots are committed under `design-system/screens/v2/shots/`.
 - [ ] `hack/m5-coverage-check.sh` and the PAT > 14-day check are green on prod **right before the tag that makes the flip live**: this sprint's own tag, or, on the ride path, at merge time and again by [m6b-04](sprint-m6b-04.md) right before it tags `v2.1.0` (the hand-off is recorded).
 - [ ] **Released:** the own-minor tag is verified per the checklist, with `/api/judge/status?path=dsa` reporting `selfReport: evaluator_only` and a DSA problem opening the judged workspace with no picker. Or, on the ride path, the M5 checks are recorded for m6b-04's verify.
 
@@ -306,7 +301,7 @@ See **Release** below. On the ride path: CI green → coverage + PAT checks → 
 
 **Ride `v2.1.0` (only if every condition holds):**
 - `v2.1.0` isn't tagged yet, and [m6b-04](sprint-m6b-04.md) hasn't started its tag;
-- [m6b-03](sprint-m6b-03.md)'s `v2.0.x` patch **is already tagged**. **No `v2.0.x` patch may be cut from `main` between this merge and `v2.1.0`.** A content-wave patch cut after this merge would ship the T-1 flip as a patch, which breaks §1.1. The owner confirms this in the PR, and the Decisions log records it. (These extra conditions follow from §1.1's "the minor moves only at a GA flip"; they narrow the ride, they don't replace it);
+- [m6b-03](sprint-m6b-03.md)'s `v2.0.x` patch **is already tagged**. **No `v2.0.x` patch may be cut from `main` between this merge and `v2.1.0`.** A content-wave patch cut after this merge would ship the T-1 flip as a patch, which breaks §1.1. The session records this commitment in the Decisions log (D40: launching the prompt is the owner's approval), so later sessions see it before cutting a patch. (These extra conditions follow from §1.1's "the minor moves only at a GA flip"; they narrow the ride, they don't replace it);
 - the coverage check and the PAT > 14-day check are green at merge time.
 
 Then merge untagged. Record the M5 milestone row as "rides `v2.1.0`" in status.md, and add a Decisions-log hand-off for m6b-04: **right before tagging `v2.1.0`, re-run `hack/m5-coverage-check.sh` and the evalpack PAT > 14-day check; if either fails, hold M5 (a PR reverting the DSA manifest line and its golden row back to `allowed`; every other M5 branch keys off the effective policy, so the rest ships dark) and tag `v2.1.0` without it; otherwise list M5 in the release notes and run the M5 smoke below after its verify.** The flip only goes live at that tag, so a DSA item or contract change that lands without its pack, or a PAT drifting toward expiry, between this merge and `v2.1.0` must be caught there. Never cut `v2.1.0` for M5 alone.
@@ -342,7 +337,7 @@ For this tag:
 | **NetworkPolicy** | n/a: gateway → practice already exists, and `/internal/grading-policy` sits in MI-5a's `/internal/*` family |
 | **Memory sum** | no new pod, limits unchanged ([ADR-0035 §5](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#5-capacity-the-memory-sum-rule-triggers-and-ordered-responses)) |
 | **Pre-tag** | `hack/m5-coverage-check.sh` green; the evalpack PAT more than 14 days from expiry (on the ride path, m6b-04 re-runs both right before `v2.1.0`) |
-| **M5 smoke** (owner account) | a DSA problem opens the judged workspace with **no picker**; `/api/judge/status?path=dsa` reports `selfReport: evaluator_only` and `evaluable` = the live count; a give-up concludes as Miss; the Problems list shows no "Paused" chip |
+| **M5 smoke** (owner account) | a DSA problem opens the judged workspace with **no picker**; `/api/judge/status?path=dsa` reports `selfReport: evaluator_only` and `evaluable` = the live count; a give-up concludes as Miss; the Problems list shows no "Paused" chip. An agent never enters credentials: without an already-signed-in owner browser session, run the credential-free checks and record "owner login smoke pending" as a pending-smoke note in status.md |
 | **Record** | `M5 → v2.N.0 → floor unchanged → snapshot n/a` (`void_reason` is expand-only, so the rollback floor doesn't move; the same reading as [m6b-04](sprint-m6b-04.md)'s "floor unchanged"); T-1 (DSA `self_report.outcome = evaluator_only`); the grading-override row ("restores the DSA picker since M5") |
 
 **Rollback** ([ADR-0034 §4.1](../../adr/0034-v2-release-labelling-gating-and-rollback.md#41-mechanisms-fastest-first)):
@@ -354,10 +349,10 @@ For this tag:
 ## Definition of Done
 
 - CI is green (including `sqlc diff`, the migration lint, the golden and validation tests, and the e2e).
-- The owner approved the variant, and the PR is merged.
+- The PR is merged (the variant lands as drafted, D40).
 - It is merged to ride `v2.1.0` (with the ride conditions and the m6b-04 re-check hand-off recorded), or tagged and verified on its own minor, with no hand `kubectl`.
 - The acceptance criteria are met.
-- Statuses are updated: this file, plus [`../status.md`](../status.md) (the board row; the M5 Milestones row ✅ with its tag, or "rides `v2.1.0`"; milestone → tag → floor → snapshot; the flag inventory's grading-override note; the T-1 line; the content table's "DSA 100% packed · pack-first rule"; the Artboards AB07 row "M5 variant approved (PR #, date)").
+- Statuses are updated: this file, plus [`../status.md`](../status.md) (the board row; the M5 Milestones row ✅ with its tag, or "rides `v2.1.0`"; milestone → tag → floor → snapshot; the flag inventory's grading-override note; the T-1 line; the content table's "DSA 100% packed · pack-first rule"; the Artboards AB07 row "M5 variant merged (PR #, date)").
 - The ADR is merged, and `main` is synced.
 
 ## Risks / watch-outs
@@ -372,5 +367,5 @@ For this tag:
 - **Gateway/practice config skew.** With `JUDGE_BASE_URL` unset on the gateway but set on practice, the v1 page starts attempts without `judge: true`, and practice answers 503. Always flip the two together, or set the override. This is m3-13's hand-off, restated in the runbook.
 - **"No self path" read to include touches.** M5 flips `outcome` only, per [t0 §9](../research/t0-extensibility-frame.md#9-how-live-dsa-migrates) ("for outcomes"). The touch attestation survives only during mismatch windows or with the kill switch on. If the owner wants `touch` flipped too, it is a later patch, and it needs the R-SR5 coupling solved first: an un-doable due touch must not block new DSA work.
 - **Open self attempts at flip time** are honoured to conclusion. That's deliberate (no stranding), but the owner may prefer to finish them before the tag. Task 1's script lists them (informational).
-- **Voiding loses the elapsed time** of a mid-attempt contract change. The code is kept via the drafts copy, and no Miss is recorded. That is fairer than a capped self pick under an evaluator-only policy; the owner confirms it in the PR.
+- **Voiding loses the elapsed time** of a mid-attempt contract change. The code is kept via the drafts copy, and no Miss is recorded. That is fairer than a capped self pick under an evaluator-only policy; it is listed under "Decisions to confirm" in the PR and lands as drafted (D40).
 - **The 30 s gateway policy cache** lags the override by up to 30 s. That is within "minutes"; a gateway restart makes it instant.

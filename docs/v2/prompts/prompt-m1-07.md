@@ -49,7 +49,7 @@ neither reads nor writes. Task 5 is that gate.
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
-- [ ] AB01 frozen: ds-m1-01's PR merged by the owner (`ls design-system/screens/v2/AB01*`), status.md artboard row "frozen".
+- [ ] AB01 frozen: ds-m1-01 merged (the merge is the freeze, D40; `ls design-system/screens/v2/AB01*`), status.md artboard row "frozen".
 - [ ] m1-03, m1-04, m1-05, m1-06 and m1-10 merged on `main` (their sprint files ✅; `git log origin/main`).
 - [ ] `v1.6.0` live (`curl -s https://projects.sujaykumar.dev/xlearn/api/v1/healthz`).
 - [ ] NATS topology unchanged since `v1.6.0` (subject-registry / `topology.go` golden) — or, if mi-06 N1 is live and it changed, the ACL PR is merged in `../infra`.
@@ -159,16 +159,19 @@ neither reads nor writes. Task 5 is that gate.
    **Switch any that remain here**, with a test, so m1-08 can drop all three uniques; m1-02's `mock_session_scored_total_check`
    is present; category / dimension validation exists with 422 tests (add it if missing); no migration since
    `v1.6.0` carries `-- xlearn:contract`. Paste the results into the PR body.
-10. **[X] PR → CI green → squash-merge.** Conventional title, e.g. `feat(coach): D27 assist capture, mode gate, L18 caps (m1-07)`,
+10. **[X] PR → CI green → squash-merge** (see Ship). Conventional title, e.g. `feat(coach): D27 assist capture, mode gate, L18 caps (m1-07)`,
     with the attribution lines. Fix-then-merge on red.
 11. **[X] Tag `v1.7.0`** with the release checklist in the plan (verbatim): peers checked; next free minor; major =
     `.release-line`; no ACL PR needed (topology unchanged); no new caller or pod. Push the tag, create the GitHub
     release **`v1.7.0 — v2 build · M1b`**. After Flux rolls: healthz reports the version; `ssh vps 'k3s kubectl get deploy -n xlearn -o wide'`
     shows the new images; ImagePolicies' latest = the tag, HelmReleases Ready; smoke login, dashboard, coach
     (confirm shows on an open attempt; reply streams after confirming).
-12. **[O] `ev-owner-role`.** Ask the owner to run
+12. **[H] `ev-owner-role`**, run by you (D40: the launch approves this production operation). Find the owner's account with
+    `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account list'` (production has exactly one
+    account, the owner's, until L-E's first tester; keep the output in the terminal), then run
     `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account set-role <owner> owner'`;
-    confirm with `… identity admin account list --role owner` and log the CLI use in status.md.
+    confirm with `… identity admin account list --role owner` and log the CLI use in status.md. If the owner's account can't
+    be told apart, don't guess: record task 7 ⛔ "owner account ambiguous" and carry on.
 
 ## Constraints
 
@@ -177,7 +180,7 @@ neither reads nor writes. Task 5 is that gate.
 - **Events:** `assist` is additive on an existing subject; envelope append-only; decoders forever. No new subject/stream/consumer in this tag (else an ACL PR merged before the tag, [ADR-0035 §2](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#2-nats-auth-nkey-users-fine-acls-server-first)); consumers before producers.
 - **Fail closed:** never forward a chat when the attempt state or the assist record is unknown.
 - **Frontend:** `theme.css` tokens/components verbatim, dark theme, AB01 is the spec; CSP-safe (no inline style/script).
-- **GitOps:** no `kubectl apply`; `ssh vps` is read-only except the sanctioned admin CLI via `kubectl exec` (owner runs `set-role`).
+- **GitOps:** no `kubectl apply`; `ssh vps` is read-only except the sanctioned admin CLI via `kubectl exec` (this session runs `set-role` once, D40).
 - **D34:** no alert, timer, CronJob, push channel or Flux Alert — verification is by looking. **D12:** no backups/object store.
 - **Memory-sum rule:** no new always-on pod in this tag; if that changes, check `host-verify --cluster` and add a memory limit.
 - **Parallel sessions:** check peers' PRs, tags and worktrees (and ListAgents) before tagging and before claiming an ADR number; re-check right before pushing the tag.
@@ -209,7 +212,8 @@ neither reads nor writes. Task 5 is that gate.
 
   Record an ADR only for a genuinely new decision, after checking the next free number with peers.
 - **If the session runs long:** stop once the PR is squash-merged (it ships dark; 1.x deploys only on a tag), mark
-  tasks 5–7 ⬜ with a note, and finish from step 9 in a continuation session. Never tag at the end of a rushed run.
+  tasks 5–7 ⬜ with a note, and finish from step 9 in a continuation session that ends with the same Ship section. That's
+  a time stop, not an owner wait. Never tag at the end of a rushed run.
 
 ## Done when
 
@@ -221,4 +225,13 @@ neither reads nor writes. Task 5 is that gate.
 - [ ] M1b live: every visible change vs v1 is on the expected-change list (step 9); every v1 e2e green.
 - [ ] No reader or writer of an M1c-drop column in `v1.7.0`.
 - [ ] `v1.7.0` verified; floor 1.6.0 and the flag inventory recorded; owner role set.
-- Ship per AGENT.md land-and-sync with this sprint's release action: **tag `v1.7.0`** (PR → CI green → squash-merge → tag → Flux → verify live → `git checkout main && git pull`, via the peer worktree holding `main` if needed). No infra PR is expected; if entry gate 4 required one, it merges before the tag as its own PR.
+
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/m1-07-coach-d27-mode-gate`, then conventional commit(s) with the attribution lines, then push, then the PR. No `../infra` PR is expected; if entry gate 4 required an ACL PR, it goes first, as its own PR, merged before the tag.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — tag `v1.7.0`** (the next free minor): walk the release checklist (ADR-0034 §6, in the plan), push the tag, let Flux deploy, then verify live by looking (step 11), and set the owner's role (step 12, `ev-owner-role`).
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way (the tag record and the owner-role CLI log need the follow-up).
+5. Run `git checkout main && git pull`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

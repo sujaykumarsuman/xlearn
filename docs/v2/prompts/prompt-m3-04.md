@@ -94,7 +94,7 @@ and you prove it with reference and wrong solutions through the real jail. The t
     `_code/solution.<ext>` passes the samples through the jail via `internal/platform/checker`. Public data only; vacuous pass if no code item.
 12. **[X] Verify:** `gofmt`, `go vet ./...`, `go test -race ./...` (macOS and Linux), `sqlc diff` unchanged, `runner-it` green with
     all three languages. Don't mark a jail task ✅ from a macOS run.
-13. **[X] PR** → conventional commits (`feat(runner): …`, `feat(harness): …`) with the attribution lines → CI green → squash-merge.
+13. **[X] Ship:** see **Ship** below (conventional commits `feat(runner): …`, `feat(harness): …`).
 
 ## Constraints
 
@@ -143,5 +143,12 @@ and you prove it with reference and wrong solutions through the real jail. The t
 - [ ] Lint goldens pass; evasion fixtures are stopped by the jail.
 - [ ] `/v1/profiles` serves versions, `ProfileSHA`, baselines and provisional multipliers; CI green; docs and hand-offs recorded.
 
-Ship per AGENT.md land-and-sync with **this sprint's release action: merge only** (the profiles ship in `runner-v1.0.0`, cut in
-[m3-15](../sprints/sprint-m3-15.md)) — no tag, no infra PR; then `git checkout main && git pull`.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: xlearn only, on `feat/runner-profiles`.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships in `runner-v1.0.0`):** nothing deploys; the profiles ship in the `runner-v1.0.0` image, cut by [m3-15](../sprints/sprint-m3-15.md) (deployed dark by [mi-10](../sprints/sprint-mi-10.md)), and `internal/platform/harness` and `runnerapi/lint` are compiled into judge from `v1.13.0` ([m3-07](../sprints/sprint-m3-07.md)). Don't tag (no app tag, no `runner-v*` tag). No infra PR.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

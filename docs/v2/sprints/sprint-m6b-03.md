@@ -5,7 +5,7 @@
 > **Unblocks:** [m6b-04](sprint-m6b-04.md): the fake-media run needs this patch on prod, plus the media-audit verb, m6a-01's owner-only `qa_slice` reachable from the setup UI, and the runbook from task 6
 > **Release action:** **tag a `v2.0.x` patch** (M6b dark, cohort only): it carries m6b-01, m6b-02 and this sprint, and it is the next free patch ([ADR-0034 §1.1](../../adr/0034-v2-release-labelling-gating-and-rollback.md#11-scheme)). **Interviewer defaults unchanged.** No infra PR is expected. The one exception: if S6 M7 failed, m6b-02's `coach-interview` Deployment gets its own ImagePolicy bump after the tag, as **its own infra PR** (task 8), never folded into the tag.
 > **Artboards:** AB29 voice pre-flight, browser and EU notices (`design-system/screens/v2/AB29-*.html`) · **AB30★** voice live HUD (`design-system/screens/v2/AB30-*.html`) · the voice variant of M6a's AB26 grace modal, as AB30's behaviour notes draw it
-> **Calendar:** Q1 2027, after [m6b-02](sprint-m6b-02.md). Agent work, plus **5 minutes of the owner right after the tag** (task 7): he opens the voice pre-flight on prod up to the free mic check. The agent never signs in as anyone.
+> **Calendar:** Q1 2027, after [m6b-02](sprint-m6b-02.md). Agent work only (D40). The owner's 5-minute look at the voice pre-flight on prod, up to the free mic check, is a post-ship check (task 7): a pending-smoke note that the owner, or at the latest [m6b-04](sprint-m6b-04.md)'s owner-present run, closes. It never gates this sprint. The agent never signs in as anyone.
 > **Execute with:** [`../prompts/prompt-m6b-03.md`](../prompts/prompt-m6b-03.md) — one prompt, one session.
 
 ## Status
@@ -20,17 +20,17 @@ _Overall:_ ⬜ Not started
 | 4 | Optional local self-view (never sent) | X | ⬜ |
 | 5 | Tests, a compose walk of the AB29/AB30 frames, screenshots, bundle check | X | ⬜ |
 | 6 | Prepare m6b-04: `coach admin interviews media-audit`, m6a-01's `qa_slice` in the owner's setup UI, and the runbook `docs/runbooks/voice-fake-media-e2e.md` | X | ⬜ |
-| 7 | Tag the `v2.0.x` patch (M6b dark) and verify on prod, incl. the owner's 5-minute pre-flight look | X + H + O | ⬜ |
+| 7 | Tag the `v2.0.x` patch (M6b dark) and verify on prod (the owner's 5-minute pre-flight look follows as a pending-smoke note, not a gate) | X + H | ⬜ |
 | 8 | **Only if S6 M7 failed:** the `coach-interview` ImagePolicy bump (its own PR in `../infra`) | I | ⬜ |
 | 9 | Record | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
-> Update the _Overall_ line to match. Mirror the sprint's state into [`../status.md`](../status.md): the Sprint board row, the M6b milestone row, the milestone → tag → floor → snapshot row, and the artboard rows AB29–AB30.
+> Update the _Overall_ line to match. Mirror the sprint's state into [`../status.md`](../status.md): the Sprint board row, the M6b milestone row, the milestone → tag → floor → snapshot row, the artboard rows AB29–AB30, and the pending-smoke notes (the owner's pre-flight look, task 7).
 > Full rules: [status protocol](README.md#status-protocol-way-of-working).
 
 ## Entry gates
 
-- [ ] **AB29–AB30 frozen:** the owner merged [ds-m6b-01](sprint-ds-m6b-01.md)'s PR, so the boards are on `main` under `design-system/screens/v2/`. In status.md, rows AB29 and AB30 read "frozen (PR #, date)"; if [m6b-01](sprint-m6b-01.md) didn't set them, set them here.
+- [ ] **AB29–AB30 frozen:** [ds-m6b-01](sprint-ds-m6b-01.md) merged (the merge is the freeze, D40), so the boards are on `main` under `design-system/screens/v2/`. In status.md, rows AB29 and AB30 read "frozen (PR #, date)"; if neither ds-m6b-01's session nor [m6b-01](sprint-m6b-01.md) set them, set them here (idempotent: skip any edit already done).
 - [ ] **[m6b-02](sprint-m6b-02.md) merged, and [m6b-01](sprint-m6b-01.md) before it.** Read their PRs (and m6b-01's hand-off line in status.md) and write down what this UI consumes:
   - the interview DTO's `voice` block: `available`, `reason ∈ {region, no_voice_key, model_access, disabled}` (m6b-01) plus `capacity` and `daily_limit` (m6b-02), `shell`, `voice`, `data_channel`, `mode`, `minutes_left_today` and `estimate{typical_micros, plan_for_micros, keep_available_micros, per_multiplier}`;
   - m6a-01's client lease: `POST …/attach {client_id}` and `POST …/heartbeat {client_id, visible, last_input_at}` (≤ 1 / 10 s);
@@ -72,7 +72,8 @@ Then cut a **`v2.0.x` patch** that carries M6b **dark**: m6b-01 + m6b-02 + this 
   - `coach admin interviews media-audit <id>`;
   - m6a-01's owner-only `qa_slice` reachable from the owner's setup UI (a toggle, only if m6a-05/06 didn't add one);
   - the runbook `docs/runbooks/voice-fake-media-e2e.md`.
-- **The patch (X + H + O):** tag the `v2.0.x` patch and verify it on prod; the owner's 5-minute pre-flight look.
+- **Privacy notice (X, only if task 1 finds a gap):** its own PR (the `/xlearn/privacy` page and its notice version), merged on CI green before the tag, so it ships in this patch, ahead of m6b-04's flip. It lands as drafted (D40): the owner may revise it later with a content PR, and his review of the notice is a v3 opening gate.
+- **The patch (X + H):** tag the `v2.0.x` patch and verify it on prod. The owner's 5-minute pre-flight look is left as a pending-smoke note (task 7), not a gate.
 - **Only if S6 M7 failed (I):** the `coach-interview` ImagePolicy bump, its own PR.
 
 **Out**
@@ -84,7 +85,6 @@ Then cut a **`v2.0.x` patch** that carries M6b **dark**: m6b-01 + m6b-02 + this 
   - the multi-speaker fairness check and AI-proposed voice Communication;
   - history-calibrated estimates;
   - Safari, voice-lite and a weekly canary.
-- **Owner-approved, never merged by the agent:** the privacy-notice PR (the `/xlearn/privacy` page and its notice version). It is opened here only if task 1 finds a gap, and must be live before m6b-04's flip.
 - **Dropped by D34:** interview counters, alerts and opscheck.
 
 ## Tasks
@@ -140,7 +140,7 @@ If a DTO or route changes, update `openapi.yaml` + `api.md` and run the drift te
   - transcript and code processing by the learner's text API;
   - the backup-lag window.
 - If it does, record "covered (`privacy-notice@N`)".
-- If it doesn't, open an **owner-approval privacy-notice PR**. It is a code PR in l-05's shape: `web/src/content/privacy-notice.md` with its "What changed" block, `web/src/lib/notice.ts`'s `NOTICE_VERSION` and identity's `NoticeVersion` bumped together (the parity test). Title it for owner approval and **don't merge it**. The bump makes every account, the owner included, re-accept (AB19 F12, renotice). It goes live with the next patch tag after the owner merges it: this sprint's tag if he merges before it, otherwise a patch [m6b-04](sprint-m6b-04.md) tags (its task 1) before the fake-media run. Record the PR in status.md's open items. This sprint's tag doesn't wait for it.
+- If it doesn't, draft the update as its own **privacy-notice PR**. It is a code PR in l-05's shape: `web/src/content/privacy-notice.md` with its "What changed" block, `web/src/lib/notice.ts`'s `NOTICE_VERSION` and identity's `NoticeVersion` bumped together (the parity test). Merge it on CI green before the tag, so it goes live in this sprint's patch, ahead of [m6b-04](sprint-m6b-04.md)'s run and flip. It lands as drafted (D40): the owner may revise it later with a content PR, and his review of the notice is a v3 opening gate (rollout §11). The bump makes every account, the owner included, re-accept (AB19 F12, renotice). Record the PR and the new notice version in status.md.
 
 ### 2 · Browser voice client `web/src/lib/voice/` [X]
 
@@ -264,9 +264,9 @@ Use pgx directly for the catalog reads (`information_schema.columns`) if sqlc ca
 - **The cost reconciliation** against the provider's usage page.
 - **Cleanup:** delete the profile, the clips and the webrtc dump; never commit them.
 
-### 7 · Tag the `v2.0.x` patch (M6b dark) and verify on prod [X + H + O]
+### 7 · Tag the `v2.0.x` patch (M6b dark) and verify on prod [X + H]
 
-1. Merge the xlearn PR (tasks 1–6, CI green). If S6 M7 failed, m6b-02's `coach-interview` Deployment must already be live.
+1. Merge the xlearn PR (tasks 1–6, CI green), and task 1's privacy-notice PR if one was needed. If S6 M7 failed, m6b-02's `coach-interview` Deployment must already be live.
 2. Run the release checklist below, including **no live interviews**.
 3. Tag the **next free `v2.0.N`** (`git ls-remote --tags origin 'refs/tags/v2.0.*'`). The GitHub release title is `v2.0.N — v2.1 build · M6b dark (voice)`.
 
@@ -280,7 +280,7 @@ Checks on prod, by the agent, without the owner's session:
 - `host-verify --cluster` is green.
 - Every `xlearn-*` ImagePolicy's latest equals the tag, **except `xlearn-coach-interview`** (only if S6 M7 failed): it is pinned to an exact version (m6b-02) and lags until task 8's PR merges. Re-check it then.
 
-**The owner's look (O, required, about 5 minutes).** The register asks for proof on prod that a cohort account can open the voice pre-flight, and the agent never signs in. The owner opens Mock-v2 → Voice and goes through the free steps only: the gates, mode, consent, mic permission and the mic check. He stops before the estimate's Start, so no paid voice check runs and no start is used; he then abandons the `setup` interview F1 created (or m6a-01's sweeper abandons it after 1 h, which isn't a start). He also confirms that a text interview's setup looks unchanged. Record what he saw. If he isn't available right after the tag, leave task 7 🔄 with this one item open; [m6b-04](sprint-m6b-04.md)'s entry gate re-checks it.
+**The owner's look (post-ship, about 5 minutes; not a gate, D40).** The register asks for proof on prod that a cohort account can open the voice pre-flight, and the agent never signs in, so the session doesn't wait for it: task 7 is ✅ on the agent's checks above. Record the look as a **pending-smoke note** in status.md (for `v2.0.N`, run by the owner), together with the checklist's login smoke unless an already-signed-in browser session covered that. The owner opens Mock-v2 → Voice and goes through the free steps only: the gates, mode, consent, mic permission and the mic check. He stops before the estimate's Start, so no paid voice check runs and no start is used; he then abandons the `setup` interview F1 created (or m6a-01's sweeper abandons it after 1 h, which isn't a start). He also confirms that a text interview's setup looks unchanged. Whoever records what he saw marks the note done; at the latest, [m6b-04](sprint-m6b-04.md)'s owner-present run walks the same pre-flight and closes it.
 
 ### 8 · Only if S6 M7 failed: the `coach-interview` ImagePolicy bump [I]
 
@@ -294,8 +294,8 @@ If S6 recorded M7 pass, mark this ✅ "n/a — M7 passed". Otherwise, after the 
 - **milestone → tag → floor → snapshot:** `M6b dark → v2.0.N → floor unchanged` (m6b-01/02 migrations are expand-only; if either added a contract, stop, because that was never planned) `→ no snapshot` (a patch with no contract, erase or GA flip);
 - the artboard rows AB29/AB30 → "implemented (PR #)";
 - the **flag inventory:** the interviewer's T-3 cohort-gate row (`interviewAudience`; owner M6a/M6b; removal `v2.1.0`, [m6b-04](sprint-m6b-04.md)), noting that voice reuses it, and `qa_slice` listed as an owner-only QA tool (not a flag);
-- the privacy-notice outcome from task 1 ("covered", or the open PR);
-- the owner's pre-flight look (task 7) and, if M7 failed, the task 8 infra PR;
+- the privacy-notice outcome from task 1 ("covered", or the merged PR and its notice version);
+- the owner's pre-flight look as a pending-smoke note (task 7; the owner or m6b-04 closes it) and, if M7 failed, the task 8 infra PR;
 - the **decisions log:**
   - the data-channel choice, the captions path, and no client mirror;
   - the pre-flight order (F6 before F5, as the FSM requires);
@@ -318,7 +318,7 @@ If S6 recorded M7 pass, mark this ✅ "n/a — M7 passed". Otherwise, after the 
   - a null region gets "Confirm your region";
   - no OpenAI `voice_shell` key gets the key notice;
   - the L19 429s get their frames
-- [ ] Voice consent: the boxes start unticked, [Continue] (and so Start) stays disabled until every box is ticked, the version is stored with the interview's consent row, and resume shows the reaffirmation. The privacy notice is covered, or an owner-approval PR is open
+- [ ] Voice consent: the boxes start unticked, [Continue] (and so Start) stays disabled until every box is ticked, the version is stored with the interview's consent row, and resume shows the reaffirmation. The privacy notice is covered, or its update merged before the tag (as drafted, D40)
 - [ ] The voice client:
   - holds m6a-01's client lease (`attach` + heartbeat) and posts m6b-01's `{sdp, purpose, client_id}`;
   - makes exactly one SDP POST (no retry, except one after 503 `draining`) with a ≈ 22 s client budget, and confirms on `connected`;
@@ -330,7 +330,7 @@ If S6 recorded M7 pass, mark this ✅ "n/a — M7 passed". Otherwise, after the 
 - [ ] The HUD: captions log (`aria-live="off"`), ask/rephrase, mic and camera state, PTT and its mid-call toggle, Hold/Talk, the cap notices, every interrupted reason (including `mic`), the idle check, the distress card, "Live in another tab", the transcript check, and the AB30 shortcuts don't clash with the editor
 - [ ] Self-view is local only (tested)
 - [ ] `coach admin interviews media-audit` is merged with its tests; the owner can set m6a-01's `qa_slice` from the setup UI; the runbook is merged
-- [ ] **M6b dark patch live on prod (cohort only):** `v2.0.N` is tagged with the release checklist and verified; the owner opened the voice pre-flight up to the free mic check; the interviewer defaults are unchanged; nothing changed for anonymous visitors
+- [ ] **M6b dark patch live on prod (cohort only):** `v2.0.N` is tagged with the release checklist and verified; the owner's pre-flight look is recorded as a pending-smoke note (not a gate); the interviewer defaults are unchanged; nothing changed for anonymous visitors
 
 ## Release
 
@@ -370,7 +370,7 @@ Release checklist ([ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and
 
 - CI is green (web suite, Go, `sqlc diff`, OpenAPI drift).
 - The screens match the frozen AB29/AB30 (screenshots in the PR).
-- `v2.0.N` is tagged, deployed by Flux (no hand `kubectl`) and verified live, including the owner's pre-flight look.
+- `v2.0.N` is tagged, deployed by Flux (no hand `kubectl`) and verified live by the agent's checks; the owner's pre-flight look is a pending-smoke note, not a gate.
 - If S6 M7 failed, task 8's infra PR is merged and `xlearn-coach-interview` runs `v2.0.N`.
 - The acceptance criteria are met.
 - The media-audit verb, the `qa_slice` toggle and the runbook are live for [m6b-04](sprint-m6b-04.md).

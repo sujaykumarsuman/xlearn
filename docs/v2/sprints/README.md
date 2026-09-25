@@ -35,12 +35,13 @@ design-system/screens/v2/  the v2 artboards drafted by the ds-* sprints (preview
 | `m6a-` `m6b-` | interviewer (v2.1) | `m6b-04` = v2.1.0 |
 | `m6c-` | v2.2 **outline cards** (plan only, no prompt) | `m6c-03` |
 | `spk-` | throwaway spikes | `spk-01` = sandbox P0–P2 |
-| `ds-<milestone>-` | design sprints (draft the boards; owner review = freeze) | `ds-m3-01` = AB07★, AB08, AB11 |
+| `ds-<milestone>-` | design sprints (draft the boards; the merge is the freeze, D40) | `ds-m3-01` = AB07★, AB08, AB11 |
 
 **Plan shape.** A header (milestone · track · order; prereqs; unblocks; **release action**; calendar; the prompt
 link) → **Status** table with a **Repo** column → **Entry gates** as checkboxes → goal → scope in/out → tasks
 (`### n · title [Repo]`) → acceptance criteria → **Release** (tag sprints carry the ADR-0034 §6 checklist) → DoD →
-risks. Sprints that open M3 or cut GA carry the rollout §5 / §4 checklists **verbatim**.
+risks. Sprints that open M3 or cut GA carry the rollout §5 / §4 checklists **verbatim**. The header's **Release
+action** and the `## Release` section say the same thing (D40).
 
 ## Index
 
@@ -66,7 +67,7 @@ Grouped by milestone; **Order** is the global recommended execution order. Track
 | 52 | `mi-11` | Track B finish: xlearn egress, PG connection limits, Renovate, N4 (MI-15) | MI | infra | infra PRs only (+ xlearn PR, no tag) | [sprint-mi-11](sprint-mi-11.md) | [prompt-mi-11](../prompts/prompt-mi-11.md) |
 | 56 | `mi-12` | M4 gates: judge 443 egress, LLM secret, provider runbook (MI-14) + ADR-0031 → Accepted | MI | infra | infra PRs only (+ ADR-0031 docs PR) | [sprint-mi-12](sprint-mi-12.md) | [prompt-mi-12](../prompts/prompt-mi-12.md) |
 | 81 | `mi-13` | M6b gates: Permissions-Policy, camera/mic deny, coach sizing, SDP route, WSS egress (MI-16) → v2.0.x patch | MI | infra | **tag v2.0.x patch** (MI-16) + infra PRs first | [sprint-mi-13](sprint-mi-13.md) | [prompt-mi-13](../prompts/prompt-mi-13.md) |
-| 2 | `ds-m1-01` | Design M1: coach states, course nav, revision v2 (AB01–AB03) | M1 | design | PR, stop for owner review (design) | [sprint-ds-m1-01](sprint-ds-m1-01.md) | [prompt-ds-m1-01](../prompts/prompt-ds-m1-01.md) |
+| 2 | `ds-m1-01` | Design M1: coach states, course nav, revision v2 (AB01–AB03) | M1 | design | land-and-sync; the merge is the design freeze | [sprint-ds-m1-01](sprint-ds-m1-01.md) | [prompt-ds-m1-01](../prompts/prompt-ds-m1-01.md) |
 | 4 | `m1-01` | Curriculum spine part 1: compose parity, course manifest + golden, item schema freeze (M1a) | M1 | product | merge only (ships in v1.6.0) | [sprint-m1-01](sprint-m1-01.md) | [prompt-m1-01](../prompts/prompt-m1-01.md) |
 | 8 | `m1-09` | Curriculum spine part 2: converter, loader + guards, curriculum expand migration, content CI (M1a) | M1 | product | merge only (ships in v1.6.0) | [sprint-m1-09](sprint-m1-09.md) | [prompt-m1-09](../prompts/prompt-m1-09.md) |
 | 11 | `m1-02` | path_slug everywhere + v2 envelope consumers + identity M1a columns → v1.6.0 | M1 | product | **tag v1.6.0** (+ infra PR before) | [sprint-m1-02](sprint-m1-02.md) | [prompt-m1-02](../prompts/prompt-m1-02.md) |
@@ -77,13 +78,13 @@ Grouped by milestone; **Order** is the global recommended execution order. Track
 | 24 | `m1-06` | withhold() on every surface + Markdown renderer + revision v2 (AB03) | M1 | product | merge only (ships in v1.7.0) | [sprint-m1-06](sprint-m1-06.md) | [prompt-m1-06](../prompts/prompt-m1-06.md) |
 | 27 | `m1-07` | Coach D27 assist capture, mode gate, L18 caps + AB01 → v1.7.0 | M1 | product | **tag v1.7.0** | [sprint-m1-07](sprint-m1-07.md) | [prompt-m1-07](../prompts/prompt-m1-07.md) |
 | 29 | `m1-08` | M1c contract → v1.8.0 | M1 | product | **tag v1.8.0** (contract; snapshot first) | [sprint-m1-08](sprint-m1-08.md) | [prompt-m1-08](../prompts/prompt-m1-08.md) |
-| 6 | `ds-m2-01` | Design M2: Touch ★, catalog/agenda, public profile v2, visibility (AB04 ★, AB05, AB06, AB22) | M2 | design | PR, stop for owner review (design) | [sprint-ds-m2-01](sprint-ds-m2-01.md) | [prompt-ds-m2-01](../prompts/prompt-ds-m2-01.md) |
+| 6 | `ds-m2-01` | Design M2: Touch ★, catalog/agenda, public profile v2, visibility (AB04 ★, AB05, AB06, AB22) | M2 | design | land-and-sync; the merge is the design freeze | [sprint-ds-m2-01](sprint-ds-m2-01.md) | [prompt-ds-m2-01](../prompts/prompt-ds-m2-01.md) |
 | 33 | `m2-01` | M2a touch-attempt engine + `touch_concluded` consumer | M2 | product | merge only (ships in v1.9.0) + own infra PR | [sprint-m2-01](sprint-m2-01.md) | [prompt-m2-01](../prompts/prompt-m2-01.md) |
 | 34 | `m2-02` | M2b consumers + projections v2 → v1.9.0 | M2 | product | **tag v1.9.0** (+ ACL PR before) | [sprint-m2-02](sprint-m2-02.md) | [prompt-m2-02](../prompts/prompt-m2-02.md) |
 | 36 | `m2-03` | `public-read`, `/public/stats`, visibility toggles, profile v2 (P3, P5, P6, P7, P9; AB06, AB22) | M2 | product | merge only (ships in v1.10.0) | [sprint-m2-03](sprint-m2-03.md) | [prompt-m2-03](../prompts/prompt-m2-03.md) |
 | 37 | `m2-04` | Touch UI (AB04★) + catalog/agenda + Today in minutes (D4) (AB05) | M2 | product | merge only (ships in v1.10.0) | [sprint-m2-04](sprint-m2-04.md) | [prompt-m2-04](../prompts/prompt-m2-04.md) |
 | 38 | `m2-05` | Producers on + `touch_scored` backfill + reader switch + replay + D2 (M2c) → v1.10.0 | M2 | product | **tag v1.10.0** | [sprint-m2-05](sprint-m2-05.md) | [prompt-m2-05](../prompts/prompt-m2-05.md) |
-| 7 | `ds-l-01` | Design L: invite acceptance ★, privacy notice, erase account (AB19 ★, AB20, AB21) | L | design | PR, stop for owner review (design) | [sprint-ds-l-01](sprint-ds-l-01.md) | [prompt-ds-l-01](../prompts/prompt-ds-l-01.md) |
+| 7 | `ds-l-01` | Design L: invite acceptance ★, privacy notice, erase account (AB19 ★, AB20, AB21) | L | design | land-and-sync; the merge is the design freeze | [sprint-ds-l-01](sprint-ds-l-01.md) | [prompt-ds-l-01](../prompts/prompt-ds-l-01.md) |
 | 39 | `l-01` | L-E erase consumers (practice, review, assessment, coach) + identity ack path → v1.11.0 | L | product | **tag v1.11.0** (+ ACL/seed PRs before) | [sprint-l-01](sprint-l-01.md) | [prompt-l-01](../prompts/prompt-l-01.md) |
 | 40 | `l-02` | L-E erase producer + `DELETE /api/me` + UI (AB21) → v1.12.0 | L | product | **tag v1.12.0** (erase; snapshot first) | [sprint-l-02](sprint-l-02.md) | [prompt-l-02](../prompts/prompt-l-02.md) |
 | 47 | `l-03` | L-A admission backend (inert while closed): invites, seats, redeem, public checks, `SIGNUP_MODE=invite`, erase clears invite notes | L | product | merge only (ships dark, inert, in the next tag) | [sprint-l-03](sprint-l-03.md) | [prompt-l-03](../prompts/prompt-l-03.md) |
@@ -91,11 +92,11 @@ Grouped by milestone; **Order** is the global recommended execution order. Track
 | 68 | `l-04` | Web erase for every non-owner → v1.17.0 (L-A/L-C) + L-exit rehearsal prep | L | product | **tag v1.17.0** (erase-class; + rehearsal PRs) | [sprint-l-04](sprint-l-04.md) | [prompt-l-04](../prompts/prompt-l-04.md) |
 | 9 | `m3-01` | Authoring tooling T25/T26: canonical hashes, contract_hash, packlint, pre-push fingerprint hook | M3 | content | merge only (dev tools; rides the next tag) | [sprint-m3-01](sprint-m3-01.md) | [prompt-m3-01](../prompts/prompt-m3-01.md) |
 | 14 | `m3-02` | Evalpack pipeline: private CI gates, generic validator, image build (E) + compose fixture pack | M3 | content | merge only (evalpack `main`; optional `v0.2.0`) | [sprint-m3-02](sprint-m3-02.md) | [prompt-m3-02](../prompts/prompt-m3-02.md) |
-| 28 | `ds-m3-01` | Design M3 part 1: Workspace-Code ★, results dock, degradation badges (AB07 ★, AB08, AB11) | M3 | design | PR, stop for owner review (design) | [sprint-ds-m3-01](sprint-ds-m3-01.md) | [prompt-ds-m3-01](../prompts/prompt-ds-m3-01.md) |
+| 28 | `ds-m3-01` | Design M3 part 1: Workspace-Code ★, results dock, degradation badges (AB07 ★, AB08, AB11) | M3 | design | land-and-sync; the merge is the design freeze | [sprint-ds-m3-01](sprint-ds-m3-01.md) | [prompt-ds-m3-01](../prompts/prompt-ds-m3-01.md) |
 | 30 | `m3-03` | Runner core: supervisor, jail, cgroups, API | M3 | product | merge only (ships in runner-v1.0.0) | [sprint-m3-03](sprint-m3-03.md) | [prompt-m3-03](../prompts/prompt-m3-03.md) |
 | 31 | `m3-04` | Runner profiles Go/C++/Python + harness codecs + amd64 allowlists | M3 | product | merge only (ships in runner-v1.0.0) | [sprint-m3-04](sprint-m3-04.md) | [prompt-m3-04](../prompts/prompt-m3-04.md) |
 | 32 | `m3-15` | Runner release: reproducible image, runner-release.yml, acceptance suite, TL baselines → runner-v1.0.0 | M3 | product | **runner-v1.0.0** | [sprint-m3-15](sprint-m3-15.md) | [prompt-m3-15](../prompts/prompt-m3-15.md) |
-| 35 | `ds-m3-02` | Design M3 part 2: Problems, Arena, Week/Mistakes/Progress deltas (AB09, AB10, AB12) | M3 | design | PR, stop for owner review (design) | [sprint-ds-m3-02](sprint-ds-m3-02.md) | [prompt-ds-m3-02](../prompts/prompt-ds-m3-02.md) |
+| 35 | `ds-m3-02` | Design M3 part 2: Problems, Arena, Week/Mistakes/Progress deltas (AB09, AB10, AB12) | M3 | design | land-and-sync; the merge is the design freeze | [sprint-ds-m3-02](sprint-ds-m3-02.md) | [prompt-ds-m3-02](../prompts/prompt-ds-m3-02.md) |
 | 42 | `m3-05` | judge service: skeleton, schema, evalpack loader, erase consumer (M3-1) | M3 | product | merge only (ships dark in v1.13.0) | [sprint-m3-05](sprint-m3-05.md) | [prompt-m3-05](../prompts/prompt-m3-05.md) |
 | 43 | `m3-06` | judge queue, runner lane, graders, contexts, internal context endpoints | M3 | product | merge only (ships dark in v1.13.0) | [sprint-m3-06](sprint-m3-06.md) | [prompt-m3-06](../prompts/prompt-m3-06.md) |
 | 44 | `m3-14` | judge admission (L9–L15, L6), learner API + DTO allowlist, drafts, arena history/progress, telemetry, judge admin | M3 | product | merge only (ships dark in v1.13.0) | [sprint-m3-14](sprint-m3-14.md) | [prompt-m3-14](../prompts/prompt-m3-14.md) |
@@ -106,11 +107,11 @@ Grouped by milestone; **Order** is the global recommended execution order. Track
 | 53 | `m3-11` | Workspace-Code UI (AB07★) + CodeMirror lazy load | M3 | product | merge only (ships in v1.14.0) | [sprint-m3-11](sprint-m3-11.md) | [prompt-m3-11](../prompts/prompt-m3-11.md) |
 | 54 | `m3-12` | Results dock, Problems, Arena, degradation badges (AB08–AB11) | M3 | product | merge only (ships in v1.14.0) | [sprint-m3-12](sprint-m3-12.md) | [prompt-m3-12](../prompts/prompt-m3-12.md) |
 | 55 | `m3-13` | Week/Mistakes/Progress deltas (AB12) + M3 exit tests → v1.14.0 | M3 | product | **tag v1.14.0** (+ `JUDGE_BASE_URL` PR after) | [sprint-m3-13](sprint-m3-13.md) | [prompt-m3-13](../prompts/prompt-m3-13.md) |
-| 45 | `ds-p-01` | Design P: Workspace-Quiz, go-concurrency multi-file + race, AB02/AB05 full fidelity (AB14, AB15) | P | design | PR, stop for owner review (design) | [sprint-ds-p-01](sprint-ds-p-01.md) | [prompt-ds-p-01](../prompts/prompt-ds-p-01.md) |
+| 45 | `ds-p-01` | Design P: Workspace-Quiz, go-concurrency multi-file + race, AB02/AB05 full fidelity (AB14, AB15) | P | design | land-and-sync; the merge is the design freeze | [sprint-ds-p-01](sprint-ds-p-01.md) | [prompt-ds-p-01](../prompts/prompt-ds-p-01.md) |
 | 57 | `p-01` | go-race runner profile → runner-v1.1.0 | P | product | **runner-v1.1.0** (judge code rides v1.15.0) | [sprint-p-01](sprint-p-01.md) | [prompt-p-01](../prompts/prompt-p-01.md) |
 | 58 | `p-02` | Multi-course: go-concurrency manifest (preview), catalog, agenda, nav | P | product | merge only (ships in v1.15.0) | [sprint-p-02](sprint-p-02.md) | [prompt-p-02](../prompts/prompt-p-02.md) |
 | 59 | `p-03` | Quiz widget (AB14) + race verdict UI (AB15) → v1.15.0 | P | product | **tag v1.15.0** + **evalpack v1.N.0** | [sprint-p-03](sprint-p-03.md) | [prompt-p-03](../prompts/prompt-p-03.md) |
-| 51 | `ds-m4-01` | Design M4: AI suggestion/dispute ★, pointer notes, allowance + consents (AB16 ★, AB17, AB18) | M4 | design | PR, stop for owner review (design) | [sprint-ds-m4-01](sprint-ds-m4-01.md) | [prompt-ds-m4-01](../prompts/prompt-ds-m4-01.md) |
+| 51 | `ds-m4-01` | Design M4: AI suggestion/dispute ★, pointer notes, allowance + consents (AB16 ★, AB17, AB18) | M4 | design | land-and-sync; the merge is the design freeze | [sprint-ds-m4-01](sprint-ds-m4-01.md) | [prompt-ds-m4-01](../prompts/prompt-ds-m4-01.md) |
 | 60 | `m4-01` | platform/llm extraction + WIF auth + retention policy | M4 | product | merge only (ships in v1.16.0) | [sprint-m4-01](sprint-m4-01.md) | [prompt-m4-01](../prompts/prompt-m4-01.md) |
 | 61 | `m4-02` | judge ai: Scorer, ledger, llm lane, breaker, caps (L17) | M4 | product | merge only (ships in v1.16.0) | [sprint-m4-02](sprint-m4-02.md) | [prompt-m4-02](../prompts/prompt-m4-02.md) |
 | 62 | `m4-03` | Analyzer (D16/D26), pointer notes, `evaluation_analyzed` + acceptance-set harness | M4 | product | merge only (ships in v1.16.0) + ACL PR | [sprint-m4-03](sprint-m4-03.md) | [prompt-m4-03](../prompts/prompt-m4-03.md) |
@@ -118,18 +119,18 @@ Grouped by milestone; **Order** is the global recommended execution order. Track
 | 64 | `m4-05` | AI allowance + consents (`account_consent` AI kinds) | M4 | product | merge only (ships in v1.16.0) | [sprint-m4-05](sprint-m4-05.md) | [prompt-m4-05](../prompts/prompt-m4-05.md) |
 | 65 | `m4-06` | M4 UI: AI suggestion/dispute (AB16★), pointer notes (AB17), allowance + consents (AB18) | M4 | product | merge only (ships in v1.16.0) | [sprint-m4-06](sprint-m4-06.md) | [prompt-m4-06](../prompts/prompt-m4-06.md) |
 | 66 | `m4-07` | Canary log test, caps sizing, ledger check → v1.16.0 (+ LLM_PLATFORM_ENABLED for the cohort) | M4 | product | **tag v1.16.0** (+ `LLM_PLATFORM_ENABLED` PR) | [sprint-m4-07](sprint-m4-07.md) | [prompt-m4-07](../prompts/prompt-m4-07.md) |
-| 69 | `ga-01` | GA PR: .release-line = 2, T-1 default flips, rc rehearsal | GA | product | merge only, owner-approved GA PR (+ optional `v2.0.0-rc.N`) | [sprint-ga-01](sprint-ga-01.md) | [prompt-ga-01](../prompts/prompt-ga-01.md) |
+| 69 | `ga-01` | GA PR: .release-line = 2, T-1 default flips, rc rehearsal | GA | product | merge only: the GA PR merges on CI green (+ optional `v2.0.0-rc.N`) | [sprint-ga-01](sprint-ga-01.md) | [prompt-ga-01](../prompts/prompt-ga-01.md) |
 | 70 | `ga-02` | Cut v2.0.0: pre-flip check, widen ranges, snapshot, tag, verify | GA | product | **tag v2.0.0** (widen first; GA snapshot) | [sprint-ga-02](sprint-ga-02.md) | [prompt-ga-02](../prompts/prompt-ga-02.md) |
 | 71 | `spk-04` | S6 voice-shell bake-off (owner present, throwaway) | M6a | spike | no merge (spike, throwaway); results docs PR | [sprint-spk-04](sprint-spk-04.md) | [prompt-spk-04](../prompts/prompt-spk-04.md) |
-| 72 | `ds-m6a-01` | Design M6a part 1 + ADR-0032 → Accepted: Mock-v2, setup/consent/pre-flight, live HUD text (AB13, AB24, AB25) | M6a | design | ADR-0032 docs PR (merged) + PR, stop for owner review (design) | [sprint-ds-m6a-01](sprint-ds-m6a-01.md) | [prompt-ds-m6a-01](../prompts/prompt-ds-m6a-01.md) |
-| 73 | `ds-m6a-02` | Design M6a part 2: grace/paused/resume, debrief + proposal, accessibility (AB26, AB27, AB28) | M6a | design | PR, stop for owner review (design) | [sprint-ds-m6a-02](sprint-ds-m6a-02.md) | [prompt-ds-m6a-02](../prompts/prompt-ds-m6a-02.md) |
+| 72 | `ds-m6a-01` | Design M6a part 1 + ADR-0032 → Accepted: Mock-v2, setup/consent/pre-flight, live HUD text (AB13, AB24, AB25) | M6a | design | ADR-0032 docs PR, then land-and-sync; the merge is the design freeze | [sprint-ds-m6a-01](sprint-ds-m6a-01.md) | [prompt-ds-m6a-01](../prompts/prompt-ds-m6a-01.md) |
+| 73 | `ds-m6a-02` | Design M6a part 2: grace/paused/resume, debrief + proposal, accessibility (AB26, AB27, AB28) | M6a | design | land-and-sync; the merge is the design freeze | [sprint-ds-m6a-02](sprint-ds-m6a-02.md) | [prompt-ds-m6a-02](../prompts/prompt-ds-m6a-02.md) |
 | 74 | `m6a-01` | Interview core: schema, state machine, failsafes, caps (L19) | M6a | product | merge only (ships dark in a v2.0.x patch) | [sprint-m6a-01](sprint-m6a-01.md) | [prompt-m6a-01](../prompts/prompt-m6a-01.md) |
 | 75 | `m6a-02` | Text brain: loop, classifier, give_hint, resume brief, store:false, replay tests | M6a | product | merge only (ships dark in a v2.0.x patch) | [sprint-m6a-02](sprint-m6a-02.md) | [prompt-m6a-02](../prompts/prompt-m6a-02.md) |
 | 76 | `m6a-03` | Assessment deltas + proposal/accept + ScoreMock once + twin fairness gate | M6a | product | merge only (ships dark in a v2.0.x patch) | [sprint-m6a-03](sprint-m6a-03.md) | [prompt-m6a-03](../prompts/prompt-m6a-03.md) |
 | 77 | `m6a-04` | judge mock budgeting + CodeMirror interview mode + bounded SSE | M6a | product | merge only (ships dark in a v2.0.x patch) | [sprint-m6a-04](sprint-m6a-04.md) | [prompt-m6a-04](../prompts/prompt-m6a-04.md) |
 | 78 | `m6a-05` | M6a UI part 1: Mock-v2 (AB13), setup/consent/pre-flight/$ cap (AB24), live HUD text (AB25) | M6a | product | merge only (ships dark in a v2.0.x patch) | [sprint-m6a-05](sprint-m6a-05.md) | [prompt-m6a-05](../prompts/prompt-m6a-05.md) |
 | 79 | `m6a-06` | M6a UI part 2: grace/paused/resume (AB26), debrief/proposal (AB27), accessibility (AB28) → v2.0.x patch | M6a | product | **tag v2.0.x patch** (M6a dark, cohort) | [sprint-m6a-06](sprint-m6a-06.md) | [prompt-m6a-06](../prompts/prompt-m6a-06.md) |
-| 80 | `ds-m6b-01` | Design M6b: voice pre-flight/notices, voice live HUD ★ (AB29, AB30 ★) | M6b | design | PR, stop for owner review (design) | [sprint-ds-m6b-01](sprint-ds-m6b-01.md) | [prompt-ds-m6b-01](../prompts/prompt-ds-m6b-01.md) |
+| 80 | `ds-m6b-01` | Design M6b: voice pre-flight/notices, voice live HUD ★ (AB29, AB30 ★) | M6b | design | land-and-sync; the merge is the design freeze | [sprint-ds-m6b-01](sprint-ds-m6b-01.md) | [prompt-ds-m6b-01](../prompts/prompt-ds-m6b-01.md) |
 | 82 | `m6b-01` | VoiceShell adapter + SDP broker + sideband | M6b | product | merge only (ships dark in m6b-03's patch) | [sprint-m6b-01](sprint-m6b-01.md) | [prompt-m6b-01](../prompts/prompt-m6b-01.md) |
 | 83 | `m6b-02` | Voice robustness: lease, re-attach, drain, cost + $ cap, PTT, rollover (+ coach-interview if M7 failed) | M6b | product | merge only (ships dark in m6b-03's patch) | [sprint-m6b-02](sprint-m6b-02.md) | [prompt-m6b-02](../prompts/prompt-m6b-02.md) |
 | 84 | `m6b-03` | Voice UI: pre-flight/notices (AB29), live HUD★ (AB30), consent, EU gate, self-view → v2.0.x patch (M6b dark) | M6b | product | **tag v2.0.x patch** (M6b dark, cohort) | [sprint-m6b-03](sprint-m6b-03.md) | [prompt-m6b-03](../prompts/prompt-m6b-03.md) |
@@ -147,24 +148,40 @@ and the cross-sprint tracker ([`../status.md`](../status.md)). Statuses:
 | Icon | Meaning |
 |------|---------|
 | ⬜ | Not started (M6c: "⬜ outline") |
-| 🔄 | In progress (also: a design PR open and awaiting owner review; an owner task awaiting the owner) |
+| 🔄 | In progress (the sprint's session is running) |
 | ✅ | Done (its acceptance bullet passes) |
-| ⛔ | Blocked (note why: an unmet entry gate, a missing owner action, a failed spike) |
+| ⛔ | Blocked (note why: an unmet entry gate, a missing owner prerequisite, a failed spike, or "needs owner decision" when a spike result falls outside every pre-decided path) |
+
+**Launching a prompt is the owner's approval for every change it makes (D40).** That covers merges and tags
+(contract, erase and GA ones included), infra PRs, design-board freezes, ADR acceptances, owner content the agent
+drafts, and the production operations the prompt specifies. **No session stops for owner review or approval**; the
+owner's in-session "hold / don't ship" still overrides.
+
+**Before launch: the owner-only prerequisites.** Actions an agent can't or mustn't do (hPanel or a provider
+console, creating accounts, machine users, PATs or API keys, credentials or payment details, DNS at the registrar,
+a Hostinger manual snapshot, the VNC console, being present for S6, authoring pack content) sit in the prompt's
+**`## Before you launch (owner)`** checklist, and launching attests they're done. If one turns out missing (e.g. a
+secret isn't there), **don't wait**: land everything that doesn't depend on it and record the gap as ⛔ in the
+sprint file and status.md.
+
+**Re-runs instead of waits.** When an owner-only step can only follow the session's own work (e.g. granting a package that only exists after the session's first push), the prompt plans a **re-run** instead of a wait. The first launch lands everything else and marks the dependent tasks ⛔ with the owner action named. Relaunching the same prompt after the owner acts picks up at those tasks. This applies to mi-07 (always two launches), and to mi-04, mi-12, m3-07, m3-15, p-01, m4-07 and m6b-04 when their owner step turns out missing.
 
 **Before any work: the entry gates.** Every plan lists its entry gates as `[ ]` checkboxes (the prompt repeats them
 under "verify first"). Check each one against the live state (status.md, `gh pr list`, `git ls-remote --tags`,
-`ssh vps` read-only, the design freeze), tick it `[x]` with the evidence (date, PR, command output). **If a gate is
-unmet, stop:** set the blocked task, or the whole sprint, to ⛔ with the gate named, and report. Never work around a
-gate. The M3 hard checklist and the GA checklist are gates like any other.
+`ssh vps` read-only, the design freeze: `ds-…` merged), tick it `[x]` with the evidence (date, PR, command output).
+**If a hard gate is unmet** (another sprint, merged code, a calendar date), **stop**: set the blocked task, or the
+whole sprint, to ⛔ with the gate named, and report. That's a gate failure, not a review. Never work around a gate.
+The M3 hard checklist and the GA checklist are gates like any other.
 
 **When a task changes state:**
 1. Update that task's row in the sprint's **Status** table (⬜ → 🔄 when you pick it up; → ✅ when its acceptance
    criterion is met; → ⛔ if blocked, with a one-line reason). The **Repo** column is fixed by the plan:
    **X** xlearn · **I** `../infra` (a GitOps PR, never `kubectl apply`) · **H** host scripts (applied by hand over
-   `ssh vps`) · **E** the private `xlearn-evalpack` repo · **O** owner action.
-   An **O** task is prepared by the agent (runbook, draft PR, exact commands), then set 🔄 "awaiting owner"; carry on
-   with the tasks that don't depend on it. Owner-gated milestones are **calendar events** (`ev-*` in status.md), not
-   sprint work.
+   `ssh vps`) · **E** the private `xlearn-evalpack` repo · **O** owner-only action.
+   An **O** row is a real owner-only action, marked "before launch" and listed in the prompt's
+   `## Before you launch (owner)` block. The session checks its evidence and ticks it ✅, or marks it ⛔ and lands
+   the tasks that don't depend on it. An O row that was only an approval or review no longer exists (D40): the
+   launch is the approval. Owner-only milestones are **calendar events** (`ev-*` in status.md), not sprint work.
 2. Update the sprint's **_Overall_** line (🔄 once any task is in progress; ✅ when all tasks are ✅).
 3. Mirror it in [`../status.md`](../status.md): the **Sprint board** row, the **Milestones** row if the sprint
    carries a milestone, and **every other table the plan names** in its Status note — typically the **MI track**
@@ -175,10 +192,12 @@ gate. The M3 hard checklist and the GA checklist are gates like any other.
    free number after checking peers, if it hardens).
 
 `build-plan.md` is the *static* plan (it doesn't track live status); the sprint files + `status.md` are the single
-source of progress truth. Executing a `prompt-<id>.md` includes these updates: every prompt ends with an **Update
-status** step, and the status edits ride the sprint's own PR (or a small docs PR for infra-only sprints).
+source of progress truth. Executing a `prompt-<id>.md` includes these updates: every prompt has an **Update
+status** step, and its final `## Ship` section lands them in the sprint's own PR, or in a follow-up docs PR merged
+the same way (e.g. for infra-only sprints).
 
-**Release action (every plan states exactly one; the sprint isn't ✅ until it's done):**
+**Release action (every plan states exactly one; the sprint isn't ✅ until it's done).** The prompt's final
+`## Ship (land-and-sync — owner approval pre-granted)` section carries it out (D40):
 
 | Release action | What "done" means |
 |----------------|-------------------|
@@ -186,8 +205,9 @@ status** step, and the status edits ride the sprint's own PR (or a small docs PR
 | tag `vX.Y.0` / a `v2.0.x` patch | the **ADR-0034 §6 release checklist** (copied into the plan) + the ADR-0035 §2 NetworkPolicy standing rule: peers' tags and PRs checked; the **next free** version, major = `.release-line`; ACL PRs merged first; image before policy; contract/erase/GA → `host-verify --cluster` green + snapshot; tag; **verify live by looking**; record milestone → tag → floor → snapshot and flag changes |
 | `runner-vX.Y.Z` / evalpack `vX.Y.Z` | the stream's own workflow and tag; record it under **release streams** (digest, `validated_against`) |
 | infra PR(s) only | each infra PR is its **own task**, merged on its own, **never folded into a tag**; `host-verify --cluster` after anything restart-inducing |
-| no merge (spike, throwaway) | nothing from the spike is committed; only a results **docs PR** merges; teardown recorded in the spike record |
-| PR, stop for owner review (design) | see below |
+| no merge (spike, throwaway) | nothing from the spike is committed; only a results **docs PR** merges; teardown recorded in the spike record. Launching the prompt is the go-ahead (D23), and the GO/NO-GO is decided in-session against the documented criteria |
+| land-and-sync; the merge is the design freeze (design) | the board PR squash-merged on CI green; **that merge is the freeze**. See below |
+| merge only: the GA PR merges on CI green ([ga-01](sprint-ga-01.md)) | like any merge-only sprint: squash-merged on CI green, with no separate approval (D40); nothing deploys until [ga-02](sprint-ga-02.md) tags `v2.0.0` |
 | outline only | M6c: nothing merges; the card is expanded at v2.2 planning |
 
 **Tags are indicative.** Take the next free version at tag time; peers and v1 fixes may interleave. **Never move or
@@ -195,32 +215,53 @@ re-push a tag.** Before tagging, read status.md's pending-smoke notes and run th
 
 ### Design sprints: the owner-review gate
 
+_The heading keeps its old name so existing links still resolve. Since D40 there is no review gate: **the merge is
+the freeze**._
+
 - A design sprint (`ds-*`) drafts its boards as static HTML on `design-system/theme.css` under
-  `design-system/screens/v2/`, self-reviews them against the brief with screenshots, **opens one PR and STOPS**.
-- **The agent never merges a design PR.** The owner's approval and merge (or an agent merge only on the owner's
-  explicit approval in chat) **is the freeze** (`ev-freeze-ds-*` in status.md). Requested changes go on the same
-  branch.
-- **The design PR does not edit `status.md`** (it may stay open for days). In the PR the sprint file shows the
-  drafting tasks ✅ and the PR task 🔄 "PR #N open, awaiting owner review".
-- **Close-out after the owner's merge** is made by the **first consuming build sprint**, as four idempotent edits
-  (skip any already done): the design sprint file's last task ✅ and _Overall_ ✅; its Sprint board row ✅; the
-  boards' **Artboards** rows → "frozen (PR #N, date)"; the `ev-freeze-ds-*` owner event ✅.
-- **A UI sprint whose boards aren't frozen is ⛔** (its entry gate). Boards contradicting an Accepted decision
-  follow the decision and list the conflict under "Decisions to confirm" in the PR.
-- Exception: [ds-m6a-01](sprint-ds-m6a-01.md) task 1 (ADR-0032 → Accepted) is its own docs PR, merged in-session
-  under the BP2 pre-authorisation; it does update status.md.
+  `design-system/screens/v2/`, self-reviews them against the brief with screenshots, opens one PR and **lands it
+  like any other sprint**: squash-merge on CI green. **That merge is the freeze** (D40). No PR is held open or left
+  as a draft, and nothing waits on the owner.
+- **The design sprint records its own freeze**, in the same PR or a follow-up docs PR merged the same way: its
+  Status tasks ✅ and _Overall_ ✅, its Sprint board row ✅, and the boards' **Artboards** rows → "frozen (PR #N,
+  date)". The `ev-freeze-ds-*` events are automatic and need no tick.
+- **The owner may look at the boards afterwards.** A change to a frozen board is a follow-up design PR, merged the
+  same way; a UI sprint that already consumed the board picks the change up in its own PR.
+- **A UI sprint whose `ds-…` isn't merged is ⛔** (its entry gate reads "`ds-…` merged"). The consuming sprint only
+  verifies the gate, and restores any missing close-out row idempotently.
+- Boards that contradict an Accepted decision follow the decision. The PR body lists the conflict, and the
+  Decisions log records it, so the owner can revisit it after the merge.
+- [ds-m6a-01](sprint-ds-m6a-01.md) task 1 (ADR-0032 → Accepted) lands first, as its own docs PR (BP2, D40), and
+  updates status.md.
 
 ### Spikes, outline cards, session end
 
-- **Spikes (`spk-*`)** run on throwaway infrastructure (multipass/k3s VMs, scratch workspaces). Results land in the
-  research appendix + the [spike record](../status.md#spike-record) via one docs PR; the ADR a spike gates is
-  accepted by the **consuming** sprint (BP2).
+- **Spikes (`spk-*`)** run on throwaway infrastructure (multipass/k3s VMs, scratch workspaces). **Launching the
+  prompt is the go-ahead** (D23, D40). The session decides GO/NO-GO against the documented criteria and the
+  pre-decided fallbacks (e.g. the nsjail Plan B). If a result falls outside every pre-decided path, record the
+  options and a recommendation in the results doc, mark the dependent gate ⛔ "needs owner decision" in status.md,
+  and **still land the results PR**. Results land in the research appendix + the
+  [spike record](../status.md#spike-record) via one docs PR; the ADR a spike gates is accepted by the **consuming**
+  sprint (BP2).
 - **Outline cards (`m6c-*`)** stay "⬜ outline" until v2.2 planning replaces each with a full plan and a prompt.
-- **Session end: land and sync** ([AGENT.md](../../../AGENT.md)): branch → conventional commit(s) with the
-  attribution lines → PR in every repo touched → CI green → squash-merge → Flux deploys (for a tag) → verify live →
-  `git checkout main && git pull` everywhere. **Exceptions:** design PRs (stop for review); the **GA PR**
-  ([ga-01](sprint-ga-01.md)) merges only with the owner's explicit approval; spikes merge only their docs PR; an
-  owner "hold" overrides.
+- **Session end: land and sync** ([AGENT.md](../../../AGENT.md)). Every prompt's last section is titled
+  `## Ship (land-and-sync — owner approval pre-granted)` and opens with this line:
+
+  > Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+  Then come the numbered steps, with the sprint's release action filled in:
+  1. Branch → conventional commit(s) with the attribution lines → push → a PR in every repo touched (`../infra`
+     PRs first where the order requires it; infra PRs are never folded into a tag).
+  2. CI green (fix, then merge, on failure) → squash-merge. Never enable auto-merge.
+  3. The release action. **Tag:** walk the ADR-0034 §6 checklist, push the tag, let Flux deploy, verify live by
+     looking. **Merge only:** nothing deploys; name the tag that ships it. **Spike:** throwaway code, never
+     committed; only the results docs PR lands. **Design:** the merge is the freeze.
+  4. Status: the sprint file and `status.md`, in the same PR or a follow-up docs PR merged the same way.
+  5. `git checkout main && git pull` in every repo touched. If a clean peer worktree holds `main`, use
+     `git -C <worktree> merge --ff-only origin/main`, then `git switch --detach main`.
+
+  **There are no exceptions and no review stops**, and that includes the GA PR ([ga-01](sprint-ga-01.md)). The
+  owner's in-session "hold / don't ship" still overrides.
 
 ## Adding/adjusting a sprint
 
@@ -231,5 +272,7 @@ re-push a tag.** Before tagging, read status.md's pending-smoke notes and run th
   (Sprint board), this index and [`../prompts/README.md`](../prompts/README.md).
 - A new flag, owner event, board or hand-off gets its status.md row in the same PR. Keep the flag inventory at
   **≤ 6 live non-kill flags**.
+- A new owner-only prerequisite goes in the prompt's `## Before you launch (owner)` block and in the plan's Status
+  table as an **O** row marked "before launch", never as a mid-session wait (D40).
 - Plans are pre-scaffolded for all of v2; refine a sprint's detail as it approaches if the code has drifted from
   the plan. Where a plan and an ADR disagree, the ADR wins; fix the plan in the sprint's PR.

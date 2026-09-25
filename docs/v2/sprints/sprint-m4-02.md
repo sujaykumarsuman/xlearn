@@ -262,8 +262,9 @@ Sources: [ADR-0033 §12](../../adr/0033-invite-only-admission-and-owner-admin.md
   ([ADR-0005](../../adr/0005-data-ownership-and-migrations.md)), and ADR-0033 §8 already puts `ai-disable` in `judge admin`. Record it as
   an **amendment, not a clarification**: a dated "**Amended by m4-02 (<date>)** — `ai_disabled` is judge-owned …" note under ADR-0033 §12
   row 13 and the §14 ADR-0016 row (the pattern of [ADR-0031 §8](../../adr/0031-platform-ai-and-two-tier-keys.md#8-amended-by-t7-2026-09-24)),
-  an entry in the status.md decisions log, and an **owner-confirm item** at the top of the PR body. If the owner rejects it, identity
-  gains the column in a follow-up and judge reads it through the 5-minute cache plus the refresh hook.
+  an entry in the status.md decisions log, and the first item of the PR body. The amendment lands in-session: launching the prompt
+  pre-approves it (D40). If the owner later wants identity to serve it, identity gains the column in a follow-up and judge reads it
+  through the 5-minute cache plus the refresh hook.
 
 ### 8 · Gating: `LLM_PLATFORM_ENABLED` + cohort + status + consent [X]
 
@@ -280,7 +281,8 @@ Platform AI runs for an account only if **all** hold, checked cheapest first ins
 5. Not `ai_disabled`; breaker closed; caps (task 4).
 
 **Day-1 note:** nothing writes consent rows until m4-05/m4-06's Settings toggles (and l-05's acceptance step), so on `v1.16.0` every AI path
-is off until the owner ticks the consents — expected; [m4-07](sprint-m4-07.md)'s enable step includes it.
+is off until the owner ticks the consents — expected; after [m4-07](sprint-m4-07.md)'s enable PR that is a post-ship owner event, never a
+step a session waits on.
 
 ### 9 · `judge admin` AI verbs [X]
 
@@ -369,8 +371,8 @@ is unchanged — keep bodies bounded to stay inside 256 Mi. Migrations are addit
 CI green (incl. `sqlc diff`) · PR squash-merged to `main` (no tag; ships in `v1.16.0`) · acceptance criteria met · statuses updated (this
 file + [`../status.md`](../status.md): Sprint board row, M4 stays 🔄, flag inventory adds "platform AI cohort-only (T-3 code default; owner
 milestone M4; removed at GA by ga-01)" next to the permanent `LLM_PLATFORM_ENABLED`) · decisions log: `ai_disabled` judge-owned
-(**owner-confirm**), `usage_ledger` = `llm_call`, `disputes export` moved to m4-04, consent kind names, L17 defaults compiled in · dated
-"Amended by m4-02" note under ADR-0033 §12 row 13 and the §14 ADR-0016 row, listed as an owner-confirm item in the PR body.
+(an ADR-0033 amendment, landed in-session per D40), `usage_ledger` = `llm_call`, `disputes export` moved to m4-04, consent kind names,
+L17 defaults compiled in · dated "Amended by m4-02" note under ADR-0033 §12 row 13 and the §14 ADR-0016 row, listed first in the PR body.
 
 ## Risks / watch-outs
 

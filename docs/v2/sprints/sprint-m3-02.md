@@ -4,7 +4,7 @@
 > **Prereqs:** [mi-07](sprint-mi-07.md) (MI-9: private repo, probe, pull secret, `v0.1.0`) · [m3-01](sprint-m3-01.md) (`canon` hashes, `packspec`, `packlint check|hash|fingerprint`, the hook)
 > **Unblocks:** [m3-05](sprint-m3-05.md) (the fixture pack + the `packspec` manifest reader for its loader) · [m3-07](sprint-m3-07.md) (evalpack `v1.0.0` is built by this pipeline) · [m3-04](sprint-m3-04.md) (its entry gate: the harness package, wire format and checker registry created here) · owner event `ev-packs-14` (author and stamp the 14 pilot packs) · also **creates** three shared packages that later sprints extend, never duplicate: `internal/platform/harness` (Go half; [m3-04](sprint-m3-04.md) adds C++/Python), `internal/platform/checker` ([m3-06](sprint-m3-06.md)'s `code@1` imports it) and `internal/packspec/gen` (m3-06's perf cases import it) · [m3-13](sprint-m3-13.md) (TL re-gate), [spk-02](sprint-spk-02.md) (multi-arch pack image)
 > **Release action:** **merge only + an optional evalpack `v0.2.0` (below every range)** — `xlearn-evalpack` PR merged to `main`; `v0.2.0` only as the build → push → probe proof; **no `>=1.0.0` tag** (that is [m3-07](sprint-m3-07.md)) · plus an xlearn PR (packspec, packlint pipeline, shared packages, fixture, compose anchor) that ships in the next app tag with no runtime change
-> **Calendar:** October, before pack authoring ramps — ≈ 2026-10-12 → 10-16 (beside the owner's spike week; no owner time needed), after mi-07 lands by Fri 2026-10-09 · owner reviews the pipeline README (~20 min), then `ev-packs-14` continues to mid-November
+> **Calendar:** October, before pack authoring ramps — ≈ 2026-10-12 → 10-16 (beside the owner's spike week; no owner time needed), after mi-07 lands by Fri 2026-10-09 · then the owner's `ev-packs-14` (author and stamp the 14 pilot packs with this pipeline) continues to mid-November
 > **Execute with:** [`../prompts/prompt-m3-02.md`](../prompts/prompt-m3-02.md) — one prompt, one session.
 
 ## Status
@@ -22,7 +22,6 @@ _Overall:_ ⬜ Not started
 | 7 | Synthetic fixture pack + public `pack-fixture` CI job + compose anchor | X | ⬜ |
 | 8 | Authoring rules (pack README) | E | ⬜ |
 | 9 | Verify + record | X · E | ⬜ |
-| 10 | Owner reviews the pipeline README → `ev-packs-14` | O | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row, the M3
@@ -33,7 +32,8 @@ _Overall:_ ⬜ Not started
 - [ ] MI-9 done ([mi-07](sprint-mi-07.md)): `sujaykumarsuman/xlearn-evalpack` is **private**, not a fork or template, checked out at
       `../xlearn-evalpack`; its probe is green on every push; `0.1.0` pushed; pull secrets + ImageRepository merged (no ImagePolicy)
 - [ ] [m3-01](sprint-m3-01.md) merged: `internal/course/canon`, `internal/packspec` source types, `cmd/packlint check|hash|fingerprint`;
-      the pre-push hook installed in this clone (`git config core.hooksPath` → `hack/git-hooks`)
+      the pre-push hook active in this clone (`git config core.hooksPath` → `hack/git-hooks`; if it's unset, run `make install-hooks`
+      first: a per-clone setting the session applies itself, not an owner step)
 - [ ] Parallel sessions: no open PR (in either repo) touches `cmd/packlint`, `internal/packspec`, `internal/platform/checker`,
       `internal/platform/harness`, `docker-compose.yml` or the evalpack workflows in a conflicting way (`gh pr list` in both repos,
       `git worktree list`, ListAgents); no peer session is editing `../xlearn-evalpack`
@@ -340,7 +340,9 @@ pack/                                     the built pack (manifest.json, cases.j
 
 ### 8 · Authoring rules (pack README) [E]
 
-In `xlearn-evalpack/README.md` ([t1 §7.3](../research/t1-content-data-model.md#73-where-ai-may-help), [ADR-0027 §8](../../adr/0027-content-evalpack-and-user-data-model.md#8-authoring-and-rights)):
+In `xlearn-evalpack/README.md` ([t1 §7.3](../research/t1-content-data-model.md#73-where-ai-may-help), [ADR-0027 §8](../../adr/0027-content-evalpack-and-user-data-model.md#8-authoring-and-rights)).
+The rules land as drafted (D40; the owner may revise them later with a content PR). The owner steps they name belong to pack
+authoring (`ev-packs-14`), not to this session:
 - Pack material is drafted with AI **only on API or no-training plans**.
 - **Expected outputs are never AI-written:** `packlint lock` computes them from the reference and checks them against the oracle.
 - Private keys: AI proposes, the **owner confirms**.
@@ -362,16 +364,12 @@ In `xlearn-evalpack/README.md` ([t1 §7.3](../research/t1-content-data-model.md#
   image if `v0.2.0` is tagged, and the probe stays green.
 - [`../status.md`](../status.md): Sprint board; M3 row; **content status** ("pack pipeline live — format 1; items stamped 0/14; TLs
   provisional until m3-13; C++/Python gates pending m3-04"); **evalpack stream** row (`v0.2.0` digest if tagged); **owner events**
-  (`ev-packs-14`: pipeline ready); **Decisions log** (public code / private data; one path per shared package —
-  `internal/platform/harness` (Go half here, m3-04 extends), `internal/platform/checker` (m3-06 imports), `internal/packspec/gen` with
+  (`ev-packs-14`: pipeline ready — the owner authors and stamps the 14 pilot packs with it, 28–41 owner hours, to mid-November; owner
+  content, not a task here, and it doesn't gate this sprint's _Overall_ ✅); **Decisions log** (public code / private data; one path
+  per shared package — `internal/platform/harness` (Go half here, m3-04 extends), `internal/platform/checker` (m3-06 imports), `internal/packspec/gen` with
   t4 §4.1's six generators (m3-06 imports; `graph@1` = the edge-list generator); the `/manifest.json` shape kept exactly to t1 §3.3;
   the separate `fixture` course instead of DSA items and the `FIXTURE_CONTENT_DIR` overlay contract handed to m3-05; the std-cache
   seed volume; the provisional TL scale; multi-arch; the `public-ref:` PR token).
-
-### 10 · Owner review [O]
-
-About 20 minutes: read the pack README (format + authoring rules) and confirm the AI rules, then continue `ev-packs-14` (author and
-stamp the 14 pilot packs, 28–41 owner hours, to mid-November).
 
 ## Acceptance criteria
 

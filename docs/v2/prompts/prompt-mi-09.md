@@ -3,6 +3,12 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-mi-09.md`](../sprints/sprint-mi-09.md)   ·   **Milestone:** MI (rollout step MI-11; not MI-9)   ·   **Prereqs:** [spk-01](../sprints/sprint-spk-01.md) + [spk-02](../sprints/sprint-spk-02.md) GO; window batched with [mi-08](../sprints/sprint-mi-08.md)
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] Sat 2026-10-24 is booked for the window (`ev-host-window`). That day you launch the window session with the runbook this sprint writes, after taking a Hostinger manual snapshot, and you keep hPanel/VNC reachable. Those are the runbook's own before-launch items, not this session's.
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md): repo conventions and the land-and-sync rule.
@@ -53,10 +59,13 @@
     the kernel OOM killer picks the victims;
   - CNPG 18.6, and k3s v1.36.5 if it is GA.
 - The cost is **one k3s restart and one PG restart**, after a manual snapshot.
-- **The owner executes the window. This session only prepares it:**
+- **This session only prepares the window.** A separate session launched on Sat 2026-10-24 executes it, with
+  the runbook as its prompt. Launching it on its date is the owner's approval for every window step,
+  including the k3s restart and the CNPG bump (D40). The owner's part comes before that launch: the Hostinger
+  manual snapshot, and hPanel/VNC kept reachable. This session delivers:
   - merged, linted, dry-run scripts;
-  - held **branches** (no PR) for the CNPG bump and, if GA, the k3s pin; the window opens and merges their PRs;
-  - a runbook the owner has reviewed.
+  - held **branches** (no PR) for the CNPG bump and, if GA, the k3s pin; the window session opens and merges their PRs;
+  - the merged runbook.
 - Each step below is tagged with the plan task(s) it ticks in the plan's Status table (the order differs from
   the plan's numbering).
 - `ssh vps` is **read-only** for you. You never change the live host.
@@ -73,8 +82,8 @@
 - [ ] spk-01 and spk-02 report **GO** (P0–P3 + image volume), and t3 §16.1–16.4 exist. If the spike forced **R1b**, stop: that's a D21 move trigger (R2), and the window's sandbox block moves to the runner VPS.
 - [ ] MI-0 done: `ssh vps uname -r` shows ≥ 6.8.0-142, and `host-verify --cluster` was green after it.
 - [ ] mi-02 merged: `host-verify.sh --help` lists `--cluster`, `--with-runner` and `--nats-stage`.
-- [ ] mi-08's MI-11a is merged, or its PRs are open and ready to batch into the window. Record which; it gates the window, not this session.
-- [ ] The owner has booked Sat 2026-10-24 (check status.md or ask).
+- [ ] mi-08's MI-11a is merged, or its branches are pushed (no PRs) and ready to batch into the window. Record which; it gates the window, not this session.
+- [ ] The window date Sat 2026-10-24 is on the calendar (`ev-host-window` in status.md).
 - [ ] Parallel sessions: `gh pr list -R sujaykumarsuman/infra` shows no open peer PR touching `hack/`, `cluster.yaml` or the README host sections. Check `git worktree list` and ListAgents too.
 
 ## Do this (in order)
@@ -128,7 +137,7 @@
 5. **[H] Baseline, read-only, on the live node** (plan task 5). Run `crictl info`, read the rendered
    `config.toml`, run `configz`, and read capacity/allocatable, `/etc/subuid|subgid` and the sysctls.
    - Find the maximum `pids.current` per pod under `kubepods.slice`. If any pod is above 2,048, raise
-     `pod-max-pids` or stop and ask.
+     `pod-max-pids` above it, and record the value and why in the Decisions log.
    - Run `host-verify --cluster --with-runner`.
    - Dry-run both `main`'s and your branch's `host-bootstrap.sh` on the node, **without** `--with-sandbox`,
      and diff the two outputs. The diff must be empty: your branch plans nothing beyond what `main` already
@@ -166,8 +175,8 @@
    - the real "v2 judge sandbox" section;
    - **Rebuild order:** `--with-sandbox` on the bootstrap line and `--expect-sandbox` on both verify lines,
      plus a note that an R-d restore rewinds the host files;
-   - a PR question to the owner about the Kernel reboot runbook's off-node `pg_dumpall`, which conflicts
-     with ADR-0034 §4.3.
+   - a PR note flagging the Kernel reboot runbook's off-node `pg_dumpall`, which conflicts with ADR-0034
+     §4.3. Leave that step as it is here; mi-11's monthly-window runbook resolves it per the ADR.
 
 9. **[I] Open and merge the host-script PR** (steps 2–4 + 8; closes plan tasks 2–4 and 9). Paste in the lint output, the baseline, the
    dry-run evidence and the task 1 divergence table (artefact · t3 §8.7 · final · spike row).
@@ -185,29 +194,37 @@
       step 7 opens and merges its PR.
     - **k3s pin** (`chore/k3s-v1.36.5-host-window`, only if GA, from step 7): runbook step 5b opens and
       merges its PR.
-    - Put each branch's compare link in the runbook, so the owner reviews the diffs in step 12.
+    - Put each branch's compare link in the runbook.
 
-11. **[X] Runbook** (plan task 10) `docs/v2/runbooks/host-window-2026-10.md`. Write steps 0–9 plus the
-    rollback from the plan's task 10. Give each step its command, expected output and stop condition. Include:
+11. **[X] Runbook** (plan task 10) `docs/v2/runbooks/host-window-2026-10.md`. It is the **prompt of the window
+    session** launched on Sat 2026-10-24, and launching it is the owner's approval for every step (D40). Write
+    steps 0–10 plus the rollback from the plan's task 10. Give each step its command, expected output and stop
+    condition. Include:
+    - a **Before you launch (owner)** block at the top: the manual Hostinger snapshot is taken and has
+      completed; hPanel and the VNC console are reachable; the last weekly image is ≤ 7 days old, with its
+      date given at launch;
     - steps 5b and 7 opening the held branches' PRs (`gh pr create -R sujaykumarsuman/infra --head <branch> …`)
       and merging them;
     - the batched MI-11a step, and **step 3b always**: `host-verify --cluster --with-runner` shows the memory
-      sum inside the rule before any host file goes in, whether or not mi-08's PRs were still open;
+      sum inside the rule before any host file goes in, whether or not mi-08's branches were still unmerged;
     - the k3s restart doubling as the stress test for mi-08's 512 Mi Flux controller limits;
     - the CNPG step's PSA note: if the new pod is refused under mi-08's `databases` `restricted` label,
       revert that label PR first;
     - the no-off-node-dump note;
+    - step 8's login smoke only through an already-signed-in browser session, otherwise "owner login smoke
+      pending" in status.md;
     - the exact rollback commands (`rm` + `apparmor_parser -R` + `sysctl --system` + restart k3s);
-    - the R-d order.
+    - the R-d order;
+    - step 10, the uniform **Ship** ending: the held branches' PRs were merged in steps 5b and 7, then the
+      status docs PR, then `git checkout main && git pull` in xlearn and `../infra`.
 
-12. **[O] Owner review** (plan task 11). Ask the owner to read the runbook (~15 min) before 10-24. Record
-    their approval, their k3s decision and their `pg_dumpall` answer.
-
-13. **[X] Record** (plan task 12) in status.md (see Update status). Open the xlearn docs PR and merge it.
+12. **[X] Record** (plan task 11) in status.md (see Update status). It rides the xlearn docs PR (see **Ship**
+    below).
 
 ## Constraints
 
-- **You never change the live host.** `ssh vps` is read-only. The window is an owner event.
+- **You never change the live host.** `ssh vps` is read-only. The window runs in its own session on its date
+  (ev-host-window).
 - **GitOps:** never `kubectl apply`. Host state is the one sanctioned manual path, and it stays scripted,
   BOM-hashed and asserted by `host-verify` after every reboot, k3s upgrade or rebuild
   ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)).
@@ -221,9 +238,9 @@
   on demand.
 - **The memory-sum rule** ([ADR-0035 §5](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#5-capacity-the-memory-sum-rule-triggers-and-ordered-responses)):
   MI-11a before MI-12. The runbook checks the sum with `--with-runner` before the host block goes in.
-- **Held branches:** the CNPG and k3s pin changes are pushed as branches with **no PR** and aren't yours to
-  merge. The window's runbook opens and merges their PRs (steps 7 and 5b). Never leave an open PR at session
-  end.
+- **Held branches:** the CNPG and k3s pin changes are pushed as branches with **no PR** and aren't this
+  session's to merge. The window session's runbook opens and merges their PRs (steps 7 and 5b). Never leave
+  an open PR at session end.
 - **Don't edit ADR-0030.** It's accepted in m3-03. Divergences from t3 §8.7 go in your PR description and the
   status decisions log.
 - **Not applicable, since there's no xlearn code:** goose + sqlc (`sqlc diff`), outbox/inbox, service
@@ -248,10 +265,11 @@
 
 ## Update status
 
-- Set each task row in [`../sprints/sprint-mi-09.md`](../sprints/sprint-mi-09.md) to 🔄 or ✅ as you go (each step above names its plan task), and _Overall_ to ✅ when all 12 plan tasks are done.
+- Set each task row in [`../sprints/sprint-mi-09.md`](../sprints/sprint-mi-09.md) to 🔄 or ✅ as you go (each step above names its plan task), and _Overall_ to ✅ when all 11 plan tasks are done.
 - Mirror it in [`../status.md`](../status.md):
   - the **Sprint board** row;
-  - the **MI track** MI-11 row: "prepared", the PR numbers, the window booked for 2026-10-24. The owner sets it ✅ in the window;
+  - the **MI track** MI-11 row: "prepared", the PR numbers, the window booked for 2026-10-24. The window session sets it ✅ (runbook step 9);
+  - the `ev-host-window` owner-event row: a session runs the runbook on 2026-10-24. Before launching it, the owner takes the manual Hostinger snapshot and keeps hPanel/VNC reachable;
   - the held branches (names and head commits, "opened and merged in ev-host-window"), so the next session's peer checks don't take them for stragglers.
 - Add **Decisions log** lines for:
   - `config.yaml.d` (or the fallback to `config.yaml`);
@@ -260,7 +278,7 @@
   - the k3s v1.36.5 decision;
   - the caps list for mi-10;
   - any divergence from t3 §8.7;
-  - the owner's `pg_dumpall` answer.
+  - the off-node `pg_dumpall` conflict (ADR-0034 §4.3), flagged for mi-11's monthly-window runbook.
 - No ADR is expected. If you must deviate from ADR-0030 §5 or ADR-0035 L23 values, write an ADR (check peers' ADR numbers first) rather than editing ADR-0030.
 
 ## Done when (acceptance)
@@ -269,10 +287,19 @@
 - [ ] `hack/host-lint.sh` green: shared constants identical; heredoc = constant = BOM for every artefact; shellcheck clean; mi-02's read-only lint still passes
 - [ ] On the live node, without `--with-sandbox`, your branch's `host-bootstrap.sh --dry-run` plans nothing beyond `main`'s copy (the two outputs diff empty), and `host-verify --cluster` is unchanged
 - [ ] The CNPG 18.6 branch (and the k3s pin branch, if GA) is pushed with no PR, lint-green locally, and linked from the runbook
-- [ ] Runbook reviewed by the owner before 10-24
+- [ ] The runbook is merged before 10-24, with its before-launch block (snapshot, hPanel/VNC, weekly-image date) and its Ship ending
 - [ ] The infra README host table, flags and Rebuild order are updated
-- Ship at session end per AGENT.md land-and-sync, with this sprint's release action: **infra PR(s) only**.
-  - Merge the host-script PR and the xlearn docs PR once their checks pass.
-  - Leave the CNPG and k3s pin changes as **pushed branches with no PR**, recorded in status.md. The window opens and merges their PRs, so no PR is left hanging.
-  - No tag.
-  - Sync local `main` in both repos.
+
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag).
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. (infra has no CI: the lint output, baseline and dry-run evidence in the PR body are the checks.)
+3. **Release action — infra PR(s) only:**
+   - Merge the host-script PR (plan tasks 2–4 + 9). It changes nothing on the cluster, since Flux doesn't apply `hack/`.
+   - Leave the CNPG 18.6 change and, if GA, the k3s pin change as **pushed branches with no PR**, recorded in status.md. The window session opens and merges their PRs (runbook steps 7 and 5b), so no PR is left hanging.
+   - Then merge the xlearn docs PR (the runbook + status).
+   - No tag. Nothing is applied to the live host by this session.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn and `../infra`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

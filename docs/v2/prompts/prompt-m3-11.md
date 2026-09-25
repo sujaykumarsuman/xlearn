@@ -3,6 +3,12 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-m3-11.md`](../sprints/sprint-m3-11.md)   ·   **Milestone:** M3 (M3-2 slice, ships in `v1.14.0`; the first M3 UI sprint)   ·   **Prereqs:** [m3-09](../sprints/sprint-m3-09.md), [ds-m3-01](../sprints/sprint-ds-m3-01.md) + [ds-m3-02](../sprints/sprint-ds-m3-02.md) (AB07–AB12 frozen), [mi-10](../sprints/sprint-mi-10.md) (runner dark, MI-12)
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] Read the date of the last Hostinger weekly image in hPanel: it must be ≤ 7 days old (the M3 hard entry checklist below). Put the date in your launch message.
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md): repo conventions, stack, and the land-and-sync rule.
@@ -36,12 +42,12 @@
 - [ ] AB07–AB12 frozen
 - [ ] The last Hostinger weekly image is ≤ 7 days old
 
-How to check (read-only): the status.md MI rows and Decisions log for the spike GO, MI-4…MI-13 and the pack count; `ssh vps 'bash -s -- --cluster --nats-stage=n3' < ../infra/hack/host-verify.sh` (or `--nats-stage=n4` once [mi-11](../sprints/sprint-mi-11.md) has run; read-only, as [mi-02](../sprints/sprint-mi-02.md) documents) for MI-8, the memory sum and TR-STEAL; `gh pr list --state merged` for the AB07–AB12 design PRs; the Hostinger panel date (ask the owner if it isn't recorded). Rollout step ids `MI-NN` are **not** sprint ids `mi-NN` — the plan's entry-gate key maps them.
+How to check (read-only): the status.md MI rows and Decisions log for the spike GO, MI-4…MI-13 and the pack count; `ssh vps 'bash -s -- --cluster --nats-stage=n3' < ../infra/hack/host-verify.sh` (or `--nats-stage=n4` once [mi-11](../sprints/sprint-mi-11.md) has run; read-only, as [mi-02](../sprints/sprint-mi-02.md) documents) for MI-8, the memory sum and TR-STEAL; `gh pr list --state merged` for the AB07–AB12 design PRs; the Hostinger weekly-image date from the owner's before-launch attestation (record it; never wait for it mid-run). Rollout step ids `MI-NN` are **not** sprint ids `mi-NN` — the plan's entry-gate key maps them.
 
 **Sprint gates:**
 
 - [ ] [m3-09](../sprints/sprint-m3-09.md) merged (routes, `judge` block incl. `stageParams`/`languages`/`runAvailable`, DTOs incl. `retryUsed`/`pendingReason`, the close route's Retry grading, error codes).
-- [ ] `design-system/screens/v2/AB07-workspace-code.html` … `AB12-week-mistakes-progress.html` exist on `main`.
+- [ ] [ds-m3-01](../sprints/sprint-ds-m3-01.md) and [ds-m3-02](../sprints/sprint-ds-m3-02.md) merged (the merge is the freeze): `design-system/screens/v2/AB07-workspace-code.html` … `AB12-week-mistakes-progress.html` exist on `main`.
 - [ ] **Parallel sessions:** `gh pr list`, `git worktree list`, ListAgents. No open PR edits `router.tsx`, `Problem.tsx`, `api.ts`, `main.tsx`, `web/package.json` or `internal/gateway/gateway.go`; [m3-12](../sprints/sprint-m3-12.md) must not start in parallel.
 
 ## Do this (in order)
@@ -74,7 +80,7 @@ How to check (read-only): the status.md MI rows and Decisions log for the spike 
    - the **self-path variant** (AB07 F12(a)): the v2 shell with v1 semantics — attempt 15:00 → hint 10:00 → solution, the early-reveal "owes another attempt in 3 days", the **re-implement from memory** stage (practice's self path still serves `stages.reimplement`), **Run on samples when `judge.runAvailable`**, **no Submit**, and the uncapped four-grade picker (the only place it appears);
    - 409 `ahead_of_schedule` on Start (only reachable by direct URL: AB09 F3(b) sends ahead rows to the arena) → a one-line notice + an arena link; typed 413/429 → the action card's error state (the dock's AB08 413/quota copy is M3-12's; expose `quota` from `judge.ts`);
    - < 1024 px: Statement / Work / Results tabs; the coach panel in attempt mode (M1-07's confirm);
-   - **Copy not on a frozen board:** the preloadError notice (step 4), the 5-minute "still grading" stop (step 2), the ahead-of-schedule notice, the time's-up line if AB04 F12's wording doesn't fit, the judged touch re-solve's deltas from AB04 F6 and Today's resume row (step 7). Draft each in AB07's voice, list them in a "Copy not on a frozen board" section of the PR body for the owner's sign-off, and add a Decisions-log line per string. They don't block the merge (nothing is visible on prod until m3-13 sets `JUDGE_BASE_URL`); owner edits land before the `v1.14.0` tag.
+   - **Copy not on a frozen board:** the preloadError notice (step 4), the 5-minute "still grading" stop (step 2), the ahead-of-schedule notice, the time's-up line if AB04 F12's wording doesn't fit, the judged touch re-solve's deltas from AB04 F6 and Today's resume row (step 7). Draft each in AB07's voice, list them in a "Copy not on a frozen board" section of the PR body, and add a Decisions-log line per string. They **land as drafted** (D40: launching this prompt approves them) and don't block the merge (nothing is visible on prod until m3-13 sets `JUDGE_BASE_URL`); the owner may revise any of them later with a content PR.
 
 6. **[X] Dock slot + `DockStatus`.** `Workspace.tsx` renders a dock slot (the Results tab below 1024 px) passing t4 §5.5's `ResultProps` (`{evaluation, practice, phase, context, parts, onFocusPart}`), so [m3-12](../sprints/sprint-m3-12.md) can mount its `web/src/components/judge/ResultsDock.tsx` there unchanged. Until then the slot holds a minimal `web/src/screens/workspace/DockStatus.tsx`: the phase line, AB07's one-line headlines (running, "37/40 hidden passed", "Too slow on large inputs", compile errors → marked lines) and Run's per-sample pass/fail. `CodeEditor` exposes a `diagnostics` prop (learner-file positions → lint marks). No AB08-only states here.
 
@@ -113,9 +119,9 @@ How to check (read-only): the status.md MI rows and Decisions log for the spike 
 - In [`../sprints/sprint-m3-11.md`](../sprints/sprint-m3-11.md): set each task 🔄 → ✅ (⛔ with a reason), and set _Overall_.
 - In [`../status.md`](../status.md):
   - the **Sprint board** row for M3-11 (M3 stays 🔄);
-  - the **Artboards** rows AB07–AB12 → "frozen (PR #, date)" if the design sprints didn't set them, and AB07 → consumed by M3-11;
-  - a line recording **the M3 hard entry checklist green**, with the date and the `host-verify --cluster` summary (memory sum, steal p95, NATS stage);
-  - **Decisions log** lines: the CSP outcome for CodeMirror, the preloadError loop guard, the asset-404 change, the editor chunk size, any additive Today field, and each drafted string not on a frozen board (pending owner sign-off).
+  - the **Artboards** rows AB07–AB12 → "frozen (merged, PR #N, date)" only if the ds-m3-01/ds-m3-02 sessions didn't already record them (skip any edit already done), and AB07 → consumed by M3-11;
+  - a line recording **the M3 hard entry checklist green**, with the date and the `host-verify --cluster` summary (memory sum, steal p95, NATS stage) and the weekly-image date from the owner's before-launch attestation;
+  - **Decisions log** lines: the CSP outcome for CodeMirror, the preloadError loop guard, the asset-404 change, the editor chunk size, any additive Today field, and each drafted string not on a frozen board (landed as drafted, D40; the owner may revise later with a content PR).
 - No ADR is expected (ADR-0029/0034 cover it). If you depart from them, run the parallel-sessions check before numbering one.
 
 ## Done when (acceptance)
@@ -131,4 +137,12 @@ How to check (read-only): the status.md MI rows and Decisions log for the spike 
 - [ ] The judged touch re-solve and Today's resume row work in compose.
 - [ ] CI green (web typecheck/lint/tests/build, bundle check, `go test ./...`, compose e2e incl. the Linux `judge-runner-e2e` job).
 
-**Ship at session end** per AGENT.md land-and-sync with **this sprint's release action: merge only (ships in `v1.14.0`)**. That means branch `feat/m3-11-workspace-code`, conventional commits with the attribution lines, a PR (with the AB07 screenshots and the deploy check), CI green, and a squash-merge, then `git checkout main && git pull`. **Do not tag**; [m3-13](../sprints/sprint-m3-13.md) cuts `v1.14.0` after [m3-12](../sprints/sprint-m3-12.md). There's no infra PR.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Branch `feat/m3-11-workspace-code`; this repo only (no infra PR); the PR carries the AB07 screenshots, the deploy check and the "Copy not on a frozen board" section.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships in `v1.14.0`):** Nothing deploys; it ships in `v1.14.0` (cut by [m3-13](../sprints/sprint-m3-13.md), after [m3-12](../sprints/sprint-m3-12.md) merges). Don't tag.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

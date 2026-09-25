@@ -77,7 +77,7 @@ expand-only tag, so no snapshot is needed.
    `assessment-replay` durable, plus any m2-01 diff) into `../infra/infrastructure/messaging/release.yaml`; reload only.
    Merge it **before** the tag; confirm Flux applied it (read-only). If N1 hasn't landed: record "n/a — the golden ships
    with N1" and note in status.md that the golden changed for mi-06.
-10. **[X] Merge** the xlearn PR (CI green, squash) per land-and-sync; `git checkout main && git pull`.
+10. **[X] Merge** the xlearn PR (CI green, squash; see Ship); `git checkout main && git pull`.
 11. **[X] Tag** (Task 7): walk the release checklist below; take the **next free minor** (indicative `v1.9.0`; its
     major must equal `.release-line`); `git tag v1.9.0 && git push origin v1.9.0`; GitHub release titled
     **`v1.9.0 — v2 build · M2a/M2b consumers`** noting "producers off", floor 1.7.0 (unchanged), no snapshot (expand-only).
@@ -156,7 +156,12 @@ Release checklist ([ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and
 - [ ] Replay command rehearsed in compose; runbook v2 written; ADR recorded.
 - [ ] ACL PR merged before the tag (or n/a — N1 not landed); **v1.9.0 verified** per the checklist and recorded in status.md.
 
-**Shipping:** per AGENT.md land-and-sync with **this sprint's release action — tag v1.9.0**: branch → conventional
-commits with the attribution lines → push → PR → CI green → squash-merge (and the `../infra` ACL PR, merged first) →
-walk the release checklist → push the tag → let Flux build and deploy → verify live (by looking) → record in
-status.md (a small docs PR, merged the same way) → `git checkout main && git pull` in every repo touched.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commits with the attribution lines, then push, then a PR in every repo touched: the xlearn PR and, only if N1 has landed, the `../infra` ACL PR (step 9), merged **before** the tag and never folded into it.
+2. Once CI is green (fix, then merge, on failure), squash-merge each. Never enable auto-merge. `../infra` has no CI: the rendered-block diff in the ACL PR's body is its check.
+3. **Release action — tag `v1.9.0`** (the next free minor): walk the release checklist (ADR-0034 §6, above and in the plan), push the tag, let Flux build and deploy, then verify live by looking (step 12: consumers bound and idle, no producer).
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way (the tag record needs the follow-up).
+5. Run `git checkout main && git pull` in every repo touched (xlearn, and `../infra` if step 9 ran). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

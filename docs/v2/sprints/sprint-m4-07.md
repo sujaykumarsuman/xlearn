@@ -4,7 +4,7 @@
 > **Prereqs:** [m4-06](sprint-m4-06.md) (and through it [m4-01](sprint-m4-01.md) … [m4-05](sprint-m4-05.md)) · [mi-12](sprint-mi-12.md) (MI-14: judge 443 + identity egress, `xlearn-judge-llm`, projected token, runbook, ADR-0031 Accepted) · owner events `ev-acceptance-set` (labelled) and `ev-provider-runbook` (done)
 > **Unblocks:** [l-05](sprint-l-05.md) (rides `v1.17.0`, not an M4 tag) · [l-04](sprint-l-04.md) (`v1.16.0` live) · [ga-01](sprint-ga-01.md) (M4 complete)
 > **Release action:** **tag `v1.16.0`** (indicative: the next free minor at tag time, [ADR-0034 §1.6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#16-indicative-tag-timeline); gate state after: `LLM_PLATFORM_ENABLED` + cohort; rollback floor unchanged at `1.13.0`) · **then the infra PR `LLM_PLATFORM_ENABLED=true`** (its own PR, after the tag is verified) · an `xlearn-evalpack` PR for the acceptance report (no evalpack tag: the acceptance set is not in the pack image) · a pre-tag ACL/NetworkPolicy infra PR only if task 6 finds a gap
-> **Calendar:** December 2026 · owner: ≈ 1 h running the acceptance commands with the `xlearn-calib` key (key-bearing, so only in the owner's own shell, [t5 §2](../research/t5-platform-ai.md#2-two-tiers-when-each-key-is-used)), ≈ 15 min reading the Console for the ledger checks · optional: ≈ 1 h day-1 dogfood (task 9; gates neither this sprint's ✅ nor M4 ✅). `ev-m4-day1` itself is only the date the enable PR merges.
+> **Calendar:** December 2026 · owner, before launch: export a fresh `xlearn-calib` key as `LLM_CALIB_API_KEY` in the shell that launches the session, on his machine (the session runs the key-bearing acceptance commands there and never prints the key; [t5 §2](../research/t5-platform-ai.md#2-two-tiers-when-each-key-is-used)) · owner, after ship (never waited on; `ev-m4-followup`, recorded by task 9): tick the two AI consents, ≈ 15 min in the Console (the ledger reads and the rate limits), optional ≈ 1 h day-1 dogfood (gates neither this sprint's ✅ nor M4 ✅). `ev-m4-day1` itself is only the date the enable PR merges.
 > **Execute with:** [`../prompts/prompt-m4-07.md`](../prompts/prompt-m4-07.md) — one prompt, one session.
 
 ## Status
@@ -15,14 +15,14 @@ _Overall:_ ⬜ Not started
 |---|------|------|--------|
 | 1 | Canary log test: unit (public CI) + the `-tags e2e` harness | X | ⬜ |
 | 2 | M4 exit suite (`-tags e2e` harness): pre-fill within caps, exhaustion → manual, breaker, kill switch, consent off, re-grade | X | ⬜ |
-| 3 | Analyzer acceptance run: agent dry run → owner's dev sweep (or m4-03 task 10's recorded results) → one frozen test-split run → report | E + O | ⬜ |
-| 4 | Size the L17 caps and Console rate limits; record the acceptance row (`judge admin calibration record --from -`) | X + O | ⬜ |
-| 5 | Ledger: extend m4-02's `judge admin ledger --month` (days, tokens) if missing; the monthly procedure; the pre-tag check on the calib run | X + O | ⬜ |
+| 3 | Analyzer acceptance run on the owner's before-launch `xlearn-calib` key: agent dry run → dev sweep (or m4-03 task 10's recorded results) → one frozen test-split run → report | X + E | ⬜ |
+| 4 | Size the L17 caps (+ the Console rate-limit values for the owner, after ship); record the acceptance row (`judge admin calibration record --from -`) | X | ⬜ |
+| 5 | Ledger: extend m4-02's `judge admin ledger --month` (days, tokens) if missing; the monthly procedure; the calib-run check (its Console read is the owner's, after ship: ⛔ pending in status.md, non-gating) | X | ⬜ |
 | 6 | Pre-tag infra check: ACL, NetworkPolicy, secret/values, JWKS, memory | I | ⬜ |
 | 7 | Tag `v1.16.0` (release checklist) + m4-01's pod smoke as the first post-tag step | X | ⬜ |
 | 8 | Enable for the cohort: sized values + `LLM_PLATFORM_ENABLED=true` (own PR, after the tag); record `ev-m4-day1` | I | ⬜ |
-| 9 | Owner day-1 dogfood (**optional**; gates neither _Overall_ ✅ nor M4 ✅) | O | ⬜ |
-| 10 | M4 exit recorded; production ledger vs Console (±5%) once there is production spend | X + O | ⬜ |
+| 9 | Record the owner's post-ship items as the owner event `ev-m4-followup` in status.md: the consents, the **optional** day-1 dogfood checklist, the Console follow-ups (the event gates nothing) | X | ⬜ |
+| 10 | M4 exit recorded; production ledger vs Console (±5%): the owner's Console read after the first production spend, ⛔ pending in status.md (non-gating) | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row, **M4 → ✅**, tag → floor, flag inventory, events, manual checks, the caps table).
@@ -33,7 +33,7 @@ _Overall:_ ⬜ Not started
 - [ ] **Acceptance set labelled** (`ev-acceptance-set`, already an [m4-01](sprint-m4-01.md) entry gate): `../xlearn-evalpack/acceptance/` holds **≥ 70** labelled examples, **test ≥ 40** (15 optimal, 15 suboptimal, 10 failing) + **dev ≥ 30**. They validate against mi-12's label schema, and the **test split is untouched** (its `configs_tried.log` is empty).
 - [ ] **Provider runbook executed** (`ev-provider-runbook`, [mi-12](sprint-mi-12.md)):
   - `xlearn-platform-prod` has a **$15** hard limit, Console alerts at 50%/80% and auto-reload **off**;
-  - the WIF service account and rule exist, **plus** the separate **`xlearn-calib`** workspace with its own limit and an owner key (7–30-day expiry) on the owner's machine. That key is **never in the cluster, never in this session**.
+  - the WIF service account and rule exist, **plus** the separate **`xlearn-calib`** workspace with its own limit. The owner's key for it (7–30-day expiry) is a **before-launch** item: exported as `LLM_CALIB_API_KEY` in the shell that launches the session, on the owner's machine (a missing key isn't a gate failure: task 3 says what lands). That key is **never in the cluster, never pasted into or printed by the session**.
 - [ ] **MI-14 live** ([mi-12](sprint-mi-12.md)):
   - [ADR-0031](../../adr/0031-platform-ai-and-two-tier-keys.md) Accepted;
   - judge egress = TCP 443 to non-cluster addresses + `xlearn-identity` :8081;
@@ -65,14 +65,14 @@ Sources:
 - Cap sizing within D25's dogfood limits.
 - Extending [m4-02](sprint-m4-02.md)'s audited `judge admin ledger --month` with a per-day breakdown and token sums, **if missing**. The acceptance row is written with m4-02's existing `judge admin calibration record --from -`, fed m4-03's `--calibration-out` row; there is no new verb.
 - The monthly ledger procedure, appended to `docs/v2/runbooks/platform-ai-provider.md` (mi-12's runbook reserves that section for this sprint).
-- The pre-tag infra check, the tag, m4-01's pod smoke, the enable PR, the owner's optional day-1 dogfood, the production ledger check and the M4 exit record.
+- The pre-tag infra check, the tag, m4-01's pod smoke, the enable PR, the M4 exit record, and the owner's post-ship items recorded as an owner event (the consents, the optional day-1 dogfood, the Console reads for the production ledger check).
 
 **Out**
 - Raising the limits to **$100 / $80** and re-sizing `SEAT_CAP` from ≥ 2 weeks of M4 data → the **v3 opening** ([rollout §11](../rollout-plan.md#11-opening-gates-v3)), not v2.
 - Platform AI on for **every** account (the T-1 default flip) → GA ([ga-01](sprint-ga-01.md), [ga-02](sprint-ga-02.md)).
 - The consents at the acceptance step (L-C) → [l-05](sprint-l-05.md); `v1.17.0` → [l-04](sprint-l-04.md).
 - Rubric calibration (≥ 50-example test split per rubric, QWK gate) → the SD-course milestone (v2.2+). No v2.0 item calls `Score`.
-- A second processor (the `gpt-6-luna` lever, an OpenAI challenger) → not v2.0 unless the owner approves it by ADR after a failed gate.
+- A second processor (the `gpt-6-luna` lever, an OpenAI challenger) → not v2.0; after a failed gate it is only an option recorded for the owner's decision (task 3), by ADR, never added here.
 - Any alert, push ping, opscheck digest or Flux Alert (D34). `judge admin` reads and the provider's own Console alerts replace them.
 
 ## Tasks
@@ -147,9 +147,11 @@ Sources:
 
 Record the run (date, commit, pass counts) in this file.
 
-### 3 · Analyzer acceptance run [E + O]
+### 3 · Analyzer acceptance run [X + E]
 
 The harness is `cmd/judge-eval` from [m4-03](sprint-m4-03.md). Acceptance runs are billed to the owner's **`xlearn-calib`** workspace, **never** `xlearn-platform-prod` and never from the cluster ([ADR-0031 §5](../../adr/0031-platform-ai-and-two-tier-keys.md#5-spend-owner-d25), [t5 §2](../research/t5-platform-ai.md#2-two-tiers-when-each-key-is-used)). Budget ≈ $10–30 ([t5 §5](../research/t5-platform-ai.md#5-cost-model)).
+
+**Before launch (owner):** a fresh `xlearn-calib` key (7–30-day expiry) exported as `LLM_CALIB_API_KEY` in the shell that launches the session, on the owner's machine. The session runs the key-bearing commands in that shell — a live run on an already-provisioned key within the stated budget, so launching the prompt pre-approves it (D40) — and never prints, copies or stores the key. **Key missing:** do step 1, land everything that doesn't depend on the run (the xlearn PR, task 6's read-only check), **don't tag** (no passed acceptance row), and record ⛔ "pending `LLM_CALIB_API_KEY` (owner, before launch)" in status.md; a re-run of the prompt picks up at step 2.
 
 1. **Agent dry run (no key).** `go run ./cmd/judge-eval --set ../xlearn-evalpack/acceptance --split dev --provider fake --out dry-run.json` (m4-03's flags; the output stays in the session scratchpad, never committed; `make judge-eval SET=../xlearn-evalpack/acceptance SPLIT=dev PROVIDER=fake` is the same):
    - validates the labels against mi-12's `label.schema.json` and checks the split counts and mix. Check the test split's labels against the schema too, but **never run the test split, even with `--provider fake`**: every test-split run appends its config hash to `configs_tried.log`;
@@ -157,10 +159,10 @@ The harness is `cmd/judge-eval` from [m4-03](sprint-m4-03.md). Acceptance runs a
    - confirms the test split's `configs_tried.log` is empty.
 
    Fix harness bugs here (X). m4-03's report already carries p95 µUSD per analysis from usage × `platform/llm` prices; make sure it also prints the run's **total µUSD** with the **same** usage parser and price table judge uses (task 5 compares it with the Console), and add that output if missing.
-2. **Dev results.** First check [`../status.md`](../status.md): if it already records [m4-03](sprint-m4-03.md) task 10's dev-split tuning (recommended effort, `max_tokens`, τ) for the current `prompt@v`/`schema@v`, **reuse it** and go straight to step 3. Otherwise the **owner** runs the dev sweep in his own terminal, with the key exported in that shell only (never pasted into a session):
+2. **Dev results.** First check [`../status.md`](../status.md): if it already records [m4-03](sprint-m4-03.md) task 10's dev-split tuning (recommended effort, `max_tokens`, τ) for the current `prompt@v`/`schema@v`, **reuse it** and go straight to step 3. Otherwise the session runs the dev sweep in its shell, where the owner exported the key before launch (never pasted, printed or stored):
 
    ```sh
-   export LLM_CALIB_API_KEY=…   # the xlearn-calib key, owner's shell only
+   # LLM_CALIB_API_KEY: exported by the owner before launch (the xlearn-calib key); never print it
    make judge-eval SET=../xlearn-evalpack/acceptance SPLIT=dev PROVIDER=anthropic SWEEP=effort:low-nothink,low,medium
    ```
 
@@ -168,7 +170,7 @@ The harness is `cmd/judge-eval` from [m4-03](sprint-m4-03.md). Acceptance runs a
    - the **cheapest** configuration that passes the thresholds on dev;
    - `max_tokens` = p99(thinking + visible) × 1.5 (provisional 4,000);
    - τ = the **D26 "materially different" fingerprint threshold** (`ANALYZER_FP_THRESHOLD`), from the report's τ sweep over the dev `pair_of` examples ([ADR-0031 §6](../../adr/0031-platform-ai-and-two-tier-keys.md#6-scope-of-ai-review-of-passing-solutions-owner-d26-refines-d16)).
-3. **Owner: one test run.** Freeze the tuple (`prompt@v`, `schema@v`, model, effort, `max_tokens`, `anthropic-version`, threshold) and run the **test split once**, in the owner's shell with `LLM_CALIB_API_KEY` exported:
+3. **One test run.** Freeze the tuple (`prompt@v`, `schema@v`, model, effort, `max_tokens`, `anthropic-version`, threshold) and run the **test split once**, in the same shell with `LLM_CALIB_API_KEY` still exported:
 
    ```sh
    ANALYZER_FP_THRESHOLD=<τ> go run ./cmd/judge-eval --set ../xlearn-evalpack/acceptance --split test \
@@ -184,14 +186,14 @@ The harness is `cmd/judge-eval` from [m4-03](sprint-m4-03.md). Acceptance runs a
      - schema-valid after ≤ 1 retry 100%;
      - truncation ≤ 2%;
      - p95 $/analysis recorded.
-   - **If it fails:** apply the levers in order. `low` with thinking disabled was already swept, so next cut D26's scope to course passes only (an owner call). A second test run counts as a new configuration in the log. After **two** failed test runs, **stop and report to the owner; don't tag.** Without a passed row the analyzer resolves to manual, and the M4 exit can't be met.
+   - **If it fails:** apply the levers in order. `low` with thinking disabled was already swept, so next cut D26's scope to course passes only (a pre-decided lever: launching the prompt pre-approves it, D40; record it in the decisions log, and the owner may restore D26 later). A second test run counts as a new configuration in the log. After **two** failed test runs, **don't tag**: land the xlearn PR and the report PR (both runs logged), record the options (another configuration, a second processor by ADR) and a recommendation in status.md, and mark M4 ⛔ "needs owner decision". Never wait. Without a passed row the analyzer resolves to manual, and the M4 exit can't be met.
 4. **Report** → an `xlearn-evalpack` PR: `acceptance/reports/<date>-<config>.json` (the test run's `report.json`) + `configs_tried.log`. **Numbers and the config tuple only:**
    - split sizes; per-category precision and recall; accuracy + lower bound; false-pointer rate; validity, truncation;
    - p50/p95 tokens (input, output, thinking); p50/p95 $/analysis; p95 latency; the total µUSD.
    
    No learner artefact, label text or pack text. Only the aggregate numbers go into the public status.md.
 
-### 4 · Size the L17 caps; record the acceptance row [X + O]
+### 4 · Size the L17 caps; record the acceptance row [X]
 
 **Sizing rule** ([ADR-0031 §5](../../adr/0031-platform-ai-and-two-tier-keys.md#5-spend-owner-d25), [t5 §6](../research/t5-platform-ai.md#6-budgets-metering-and-abuse-controls)): app cap ≥ 1.2 × the P90 projection for N active accounts at the measured unit cost; provider limit = app cap ÷ 0.8; above the ceiling, pull the levers. In owner-only v2 (D35), N = the owner plus active testers, and D25's dogfood limits apply: **provider $15, app $12** ([ADR-0035 §4](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#4-limits-inventory) L17).
 
@@ -203,14 +205,14 @@ The harness is `cmd/judge-eval` from [m4-03](sprint-m4-03.md). Acceptance runs a
   
   Expect the L17 defaults to hold. Keep the owner at the account default unless the projection needs more, and any owner override must leave the testers their headroom under the app cap.
 - **Values** go into task 8's infra PR: only those that differ from m4-02's compiled defaults, plus the analyzer route (effort, `max_tokens`) and the D26 threshold, **`ANALYZER_FP_THRESHOLD`** (m4-03; default 0.30). Use the env names judge actually reads (`grep -rn 'LLM_\|ANALYZER_' internal/judge internal/platform/llm cmd/judge`).
-- **Console rate limits (O):** the owner lowers or raises the `xlearn-platform-prod` per-model RPM/OTPM to ≈ 2 × what the llm lane can use at the measured p95 tokens (lane cap 8, 2 workers). mi-12's runbook left this for "after the acceptance run".
+- **Console rate limits (owner, after ship):** compute the `xlearn-platform-prod` per-model RPM/OTPM at ≈ 2 × what the llm lane can use at the measured p95 tokens (lane cap 8, 2 workers) and record the values in `ev-m4-followup` (task 9). Setting them is Console work, so the owner lowers or raises them after ship; nothing waits on it. mi-12's runbook left this for "after the acceptance run".
 - **Status table:** the measured unit cost, the projections and the chosen values go into [`../status.md`](../status.md).
 - **The acceptance row.** The analyzer class resolves to a pinned model **only through a passed row** ([ADR-0031 §3](../../adr/0031-platform-ai-and-two-tier-keys.md#3-models) "pinned catalog"). Without one, every analysis goes manual.
   - The verb is [m4-02](sprint-m4-02.md)'s **`judge admin calibration record --from <path>|-`**. It validates the tuple against the compiled catalog and the binary's `prompt@v`/`schema@v`, refuses a row whose gate failed (`passed=false`), and writes the row plus its audit row. Its input is **`row.json`**, the `llm_calibration` row [m4-03](sprint-m4-03.md)'s `--calibration-out` wrote in task 3, **not** the report. The judge image is distroless (no shell or `tar`, so no `kubectl cp`), so the row goes in on stdin: `ssh vps 'k3s kubectl exec -i -n xlearn deploy/xlearn-judge -- judge admin calibration record --from -' < row.json`. If `--from -` is missing, add stdin support here (X, with a test); add no new verb.
   - Before the tag, dry-check it in the e2e harness: `calibration record --from -` accepts the real `row.json` shape and refuses a copy with `passed=false`.
-  - Run it on production **after the tag and before task 8**. It's a sanctioned admin-CLI write via `kubectl exec` ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)), so the owner runs it, or the agent does on the owner's explicit go-ahead in chat. Log the use in status.md, and check `judge admin calibration list` shows the row.
+  - Run it on production yourself **after the tag and before task 8**. It's a sanctioned admin-CLI write via `kubectl exec` ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)) that this plan specifies, so launching the prompt pre-approves it (D40). Log the use in status.md, and check `judge admin calibration list` shows the row.
 
-### 5 · Ledger check [X + O]
+### 5 · Ledger check [X]
 
 - **Verb.** [m4-02](sprint-m4-02.md) ships `judge admin ledger --month YYYY-MM [--by purpose|model|account]`: USD totals from `llm_call` (settled rows plus `usage_unknown` at estimate), with an audit row. **Extend it additively if missing** (X, with tests): a per-day breakdown (`--by day`), status counts (`usage_unknown` at estimate, `inflight` flagged), the **token sums** (input, cache read/write, output) and the prices version. Task 10's cents-level check compares tokens, so the sums are required. Numbers only; read-only apart from its audit row.
 - **Procedure.** Append a "Monthly ledger check" section to `docs/v2/runbooks/platform-ai-provider.md`:
@@ -218,7 +220,7 @@ The harness is `cmd/judge-eval` from [m4-03](sprint-m4-03.md). Acceptance runs a
   - **ledger > Console:** the price table is stale or estimates stuck at `usage_unknown`. Fix `platform/llm/prices.go` (effective-dated) in a patch;
   - **Console > ledger:** external spend or a ledger bug. **Disable the credential first**, using the runbook's kill switches in order (Console rule/key, then `judge admin breaker set --scope llm`, then `LLM_PLATFORM_ENABLED=false`), then investigate ([t5 §6](../research/t5-platform-ai.md#6-budgets-metering-and-abuse-controls));
   - log each monthly check in status.md as a **manual check** (D34: nothing reminds you).
-- **Pre-tag validation on the calib run.** Compare the harness's total µUSD from task 3 with the `xlearn-calib` Console cost for that day (the owner reads the Console). Within ±5% validates the usage parser and price table **before any production spend**. If it's outside, fix it and re-check before tagging.
+- **Validation on the calib run.** Compare the harness's total µUSD from task 3 with the `xlearn-calib` Console cost for that day. Reading the Console is owner-only, so record the harness total and ⛔ "pending Console read (owner)" in status.md (listed in `ev-m4-followup`, task 9) and carry on: neither the tag nor the flip waits for it (D40; meanwhile the $15 provider limit and the breaker bound any mispricing). Within ±5% validates the usage parser and price table; outside it, fix `platform/llm/prices.go` in a `v1.16.x` patch, or for Console > ledger disable the credential first (the procedure above).
 
 ### 6 · Pre-tag infra check [I]
 
@@ -244,7 +246,7 @@ Read-only first. A PR only for a gap: each gap is its own `../infra` PR, merged 
   - once on, nothing changes a grade except the learner's own choices (D14), and pass review never touches grade or ladder (D26).
 - **Rollback floor after:** unchanged, **1.13.0** (expand-only migrations; the contract lint is silent). Not a contract, erase or GA tag, so no snapshot.
 - **First post-tag step: [m4-01](sprint-m4-01.md)'s pod smoke** (its task 10; it can't run before the code is deployed). Run `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-judge -- judge admin llm-smoke'`. It must pass: WIF mode, exchange latency recorded, Models 200, the `anthropic-workspace-id` header matching when present, and `claude-sonnet-5` and `claude-opus-5-5` listed. It only calls `GET /v1/models`, so it **spends nothing and writes no ledger row**, only its admin-audit row. A failure **blocks task 8 (the flag PR), not the tag**: breaker/manual is the safe state. Fix forward (e.g. the runbook's JWKS re-paste) and re-run.
-- **After the tag, by looking (D34):**
+- **After the tag, by looking (D34):** the reads below that need a login (the owner's allowance and consents, the checklist's login/dashboard/coach smoke) use an already-signed-in browser session if the session has one; otherwise run the credential-free checks and record "owner login smoke pending" as a pending-smoke note in status.md. Never enter credentials.
   - still dark (`LLM_PLATFORM_ENABLED=false`): the owner's `GET /api/me/ai-allowance` reads `state: off`, `reason: platform_disabled`, so the SPA shows no AI surface; a `learner` account (if one exists) gets 404 from the presence-gated routes. `GET /api/me/consents` answers for every account (m4-05: not cohort-gated), and its Settings section stays hidden;
   - judge is Ready;
   - review's durable on `XLEARN_JUDGE` and judge's on `XLEARN_PRACTICE` are bound, with no new `event_dead_letter` rows.
@@ -259,36 +261,39 @@ One `../infra` PR, **its own task, never folded into the tag**, opened only afte
 - **Cohort:** every AI feature stays behind the T-3 cohort until GA; a `learner` account gets nothing.
 - **After the merge:**
   - judge restarts once; `judge admin ai status` (m4-02's AI digest; plain `judge admin status` is m3-14's runner status) shows the flag on, cohort mode, the breaker closed and the calibration row in use;
-  - `GET /api/me/ai-allowance` → 200 for the owner, reading `state: off`, `reason: no_consent` until he ticks the consents (404 for a `learner` account, if one exists);
+  - `GET /api/me/ai-allowance` → 200 for the owner, reading `state: off`, `reason: no_consent` until he ticks the consents (404 for a `learner` account, if one exists); login-dependent, so handle it as in task 7;
   - `k3s kubectl top pod -n xlearn` shows judge well under its limit.
-- **Ask the owner to tick the two AI consents** in Settings (AB18): "xLearn AI reviews my graded work" and "…and also reviews my passing solutions". It takes a minute. They're unticked by default ([ADR-0031 §4](../../adr/0031-platform-ai-and-two-tier-keys.md#4-retention-and-privacy-owner-d24)), so no platform AI runs on his account until he does. They take effect on the next call: m4-05's gateway refreshes judge's account cache on every consent PATCH.
+- **The owner ticks the two AI consents** in Settings (AB18) after ship: "xLearn AI reviews my graded work" and "…and also reviews my passing solutions". It takes a minute, and it's his own use of the product, so it's a post-ship owner event (`ev-m4-followup`, task 9) that nothing waits on. They're unticked by default ([ADR-0031 §4](../../adr/0031-platform-ai-and-two-tier-keys.md#4-retention-and-privacy-owner-d24)), so no platform AI runs on his account until he does. They take effect on the next call: m4-05's gateway refreshes judge's account cache on every consent PATCH.
 - **Record M4 day 1** = this merge's date (`ev-m4-day1`). It starts the ≥ 2-week data window; the earliest `SEAT_CAP` re-size is day 1 + 14. That's an opening gate (v3), not GA.
 
-### 9 · Owner day-1 dogfood (optional) [O]
+### 9 · Owner post-ship items → `ev-m4-followup`, incl. the optional day-1 dogfood [X]
 
-**Optional, and not gating:** it gates neither this sprint's _Overall_ ✅ nor M4 ✅. The e2e suites (tasks 1–2) prove the exit behaviour, and task 10's production ledger check can use any production spend, including the owner's ordinary use. If the owner has about 1 h right after task 8 (consents already ticked; they apply at once, with no wait):
-- Solve 2–4 DSA items:
-  - one below Clean (a WA then a pass, or a hinted solve) → the AI mistake suggestion (AB16 F2) within about a minute; use or change it;
-  - one clean pass → improvement notes or "no improvement notes" (AB17);
-  - a due touch, if any (a synonym pattern answer exercises the claim).
-- Check the allowance meter (a percentage and a reset date, **no dollars**) and Today.
-- **Agent reads (read-only):** `judge admin ledger --month` (calls, cost, statuses), `judge admin ai status`, breaker closed, no `usage_unknown` or `inflight` rows older than their lease, no new dead letters.
-- If the first conclusion after ticking the consents goes unanalyzed, suspect a **failed cache refresh**, not an expected delay. m4-05's gateway logs an ERROR line when judge's `POST /internal/accounts/{id}/refresh` fails, and only then does the 5-minute TTL apply. Check `judge admin ai status` and the gateway/judge logs.
-- If a tester exists (after MI-5b), the tester ticks the consents and repeats one item. Otherwise the tester leg rests on task 2's e2e run.
-- File issues with the label `m4-dogfood`. Blockers are fixed forward in a `v1.16.x` patch (R-c), never by moving the tag.
-- If the owner skips it, mark this row ⛔ "skipped (optional)". The tag, the flip and M4 ✅ stand.
+The session's part is to record one owner event, **`ev-m4-followup`**, in status.md's owner events (with a pointer in the enable PR body). The event **gates nothing**: neither this sprint's _Overall_ ✅ nor M4 ✅, and no session waits on it. The e2e suites (tasks 1–2) prove the exit behaviour, and task 10's production ledger check can use any production spend, including the owner's ordinary use. The event lists:
+- **Consents** (task 8): the owner ticks both AI consents in Settings; testers do the same.
+- **Console** (owner-only): set the `xlearn-platform-prod` per-model RPM/OTPM to task 4's values; read the `xlearn-calib` cost for the calib-run day (task 5) and the `xlearn-platform-prod` cost and tokens for the first production-spend day(s) (task 10).
+- **Optional day-1 dogfood** (about 1 h, after ticking the consents; they apply at once, with no wait):
+  - Solve 2–4 DSA items:
+    - one below Clean (a WA then a pass, or a hinted solve) → the AI mistake suggestion (AB16 F2) within about a minute; use or change it;
+    - one clean pass → improvement notes or "no improvement notes" (AB17);
+    - a due touch, if any (a synonym pattern answer exercises the claim).
+  - Check the allowance meter (a percentage and a reset date, **no dollars**) and Today.
+  - **Reads (read-only):** `judge admin ledger --month` (calls, cost, statuses), `judge admin ai status`, breaker closed, no `usage_unknown` or `inflight` rows older than their lease, no new dead letters.
+  - If the first conclusion after ticking the consents goes unanalyzed, suspect a **failed cache refresh**, not an expected delay. m4-05's gateway logs an ERROR line when judge's `POST /internal/accounts/{id}/refresh` fails, and only then does the 5-minute TTL apply. Check `judge admin ai status` and the gateway/judge logs.
+  - If a tester exists (after MI-5b), the tester ticks the consents and repeats one item. Otherwise the tester leg rests on task 2's e2e run.
+  - The optional exhaustion drill (task 10).
+- File issues with the label `m4-dogfood`. Blockers are fixed forward in a `v1.16.x` patch (R-c), never by moving the tag. A follow-up records what the owner reports (or "skipped (optional)"); the tag, the flip and M4 ✅ stand either way.
 
-### 10 · Production ledger vs Console; M4 exit recorded [X + O]
+### 10 · Production ledger vs Console; M4 exit recorded [X]
 
-- **Ledger check** on the first production spend, from task 9's dogfood or the owner's ordinary use after ticking the consents. Run it the same or the next day, once the Console has settled: the owner reads the `xlearn-platform-prod` cost for those day(s), and the agent runs `judge admin ledger --month YYYY-MM --by day` (task 5). The totals must be within **±5%**. At cents-level totals (< $0.20), rounding swamps 5%, so **also compare token counts** (Console input/output tokens vs the ledger's token sums). Record both. If there's no settled production spend yet, leave this row ⛔ "pending first production spend / Console" and finish in a short follow-up; the tag and the flip stand. Until it's recorded, _Overall_ and M4 stay 🔄; the follow-up that records it sets both ✅.
-- **Optional production drill** (only with the owner's go-ahead in chat; it costs nothing because admission blocks before any call): `judge admin llm-limit <owner> --day-usd 0` → the next conclusion shows the paused allowance and manual entry → restore the owner's previous values (`llm-limit <owner> --clear` if he had no override) → log both writes in status.md. Otherwise exhaustion → manual rests on task 2.
+- **Ledger check** on the first production spend, from the owner's dogfood or ordinary use after ticking the consents, so it can only come after ship, and the Console read is owner-only: record ⛔ "pending first production spend / Console read (owner)" in status.md (listed in `ev-m4-followup`) with the procedure, and carry on. Once the Console has settled (the same or the next day), the owner reads the `xlearn-platform-prod` cost for those day(s), and `judge admin ledger --month YYYY-MM --by day` (task 5) gives the ledger side. The totals must be within **±5%**. At cents-level totals (< $0.20), rounding swamps 5%, so **also compare token counts** (Console input/output tokens vs the ledger's token sums). A short follow-up records both. It gates neither the tag, the flip, _Overall_ ✅ nor M4 ✅ (D40); a miss is a follow-up (the monthly procedure in task 5).
+- **Optional production drill** (it needs the owner's own conclusion, so it rides his post-ship dogfood in `ev-m4-followup` and is never waited on; it costs nothing because admission blocks before any call): `judge admin llm-limit <owner> --day-usd 0` → the next conclusion shows the paused allowance and manual entry → restore the owner's previous values (`llm-limit <owner> --clear` if he had no override) → log both writes in status.md. Otherwise exhaustion → manual rests on task 2.
 - **Record in [`../status.md`](../status.md):**
-  - **Milestones:** M4 ✅ with `v1.16.0`. Exit: "pre-fill within caps (acceptance run + e2e suite [+ day-1 dogfood]), exhaustion → manual (e2e suite [+ prod drill]), ledger within ±5% (calib run + production)".
+  - **Milestones:** M4 ✅ with `v1.16.0`, on the session's own evidence. Exit: "pre-fill within caps (acceptance run + e2e suite [+ day-1 dogfood]), exhaustion → manual (e2e suite [+ prod drill]), ledger within ±5% (calib run + production: ⛔ pending the owner's Console reads, non-gating)".
   - **m4-01's pod smoke** (task 7): paste the output into [sprint-m4-01.md](sprint-m4-01.md), set its task 10 ✅, tick its pod-smoke acceptance item and set its _Overall_ ✅; add a line to the decisions log.
   - **Tag → floor → snapshot:** `v1.16.0 → 1.13.0 → n/a`.
   - **Flag inventory:** `LLM_PLATFORM_ENABLED` = **true** (cohort; permanent kill switch; PR #). `LLM_ACCEPT_STD_RETENTION` unset (with the reason).
   - **The caps table** from task 4, and the analyzer tuple (model, effort, `max_tokens`, threshold, `prompt@v`) with the report's aggregate numbers.
-  - **Events:** `ev-m4-day1` ✅ (date; "SEAT_CAP re-size not before day 1 + 14, an opening gate").
+  - **Events:** `ev-m4-day1` ✅ (date; "SEAT_CAP re-size not before day 1 + 14, an opening gate"); `ev-m4-followup` ⬜ (task 9: consents, Console reads and rate limits, the optional dogfood; gates nothing).
   - **Manual checks:** the next monthly ledger check; a `retire_not_before` check before any model change; the JWKS kid check after k3s upgrades.
   - **Content:** acceptance set used (report version).
   - **Decisions log:** the chosen configuration and threshold (and whether the dev results came from m4-03 task 10); the caps; any verb extension (the ledger's per-day and token sums; `calibration record --from -` stdin if it was missing); the backlog rule (task 2); the httpx redaction; any admin-CLI write on production; m4-01's pod smoke result.
@@ -300,13 +305,13 @@ One `../infra` PR, **its own task, never folded into the tag**, opened only afte
 - [ ] **M4 exit (`-tags e2e`, CI's e2e lane):** pre-fill within caps; the degrade order holds; exhaustion → breaker → manual with no further provider calls; kill switch → nothing re-graded and the loop never blocks; consent off → no calls; one re-grade on an independent configuration.
 - [ ] **Acceptance run:** the frozen test split was run once (or twice, logged) and passed the gate. The report is in `xlearn-evalpack`; the `row.json` row is recorded on production with `judge admin calibration record --from -`.
 - [ ] **Caps:** sized per the rule within $15 / $12, recorded in status.md, and set in the enable PR.
-- [ ] **Ledger:** `ledger --month` prints per-day totals and token sums; the monthly procedure is merged; the calib run and the first production spend are each within ±5% of the Console (tokens compared at cents-level totals). The production check may close in a short follow-up (⛔ "pending first production spend / Console").
+- [ ] **Ledger:** `ledger --month` prints per-day totals and token sums; the monthly procedure is merged; the calib run's harness total is recorded, and each Console comparison (calib run, first production spend; ±5%, tokens compared at cents-level totals) is the owner's Console read after ship: ⛔ "pending Console read (owner)" in status.md until it lands, gating neither the tag, the flip, _Overall_ ✅ nor M4 ✅ (D40).
 - [ ] `v1.16.0` is live and verified per the checklist; m4-01's pod smoke passed after it (spent nothing, output recorded in sprint-m4-01.md); the `LLM_PLATFORM_ENABLED=true` PR merged after both; AI is on for the cohort only; M4 day 1 is recorded.
-- [ ] (Optional, not gating) the owner's day-1 dogfood is done and issues are filed, or the row reads ⛔ "skipped (optional)".
+- [ ] `ev-m4-followup` is in status.md with the consents, the Console items and the optional day-1 dogfood checklist (the owner's items gate nothing; findings come later as `m4-dogfood` issues).
 
 ## Release
 
-**Tag `v1.16.0`** ([ADR-0034 §1.6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#16-indicative-tag-timeline): M4 platform AI; gate state after: `LLM_PLATFORM_ENABLED` + cohort; rollback floor unchanged at **1.13.0**), followed by the `LLM_PLATFORM_ENABLED=true` infra PR (task 8) and the `xlearn-evalpack` report PR (task 3; no evalpack tag).
+**Tag `v1.16.0`** ([ADR-0034 §1.6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#16-indicative-tag-timeline): M4 platform AI; gate state after: `LLM_PLATFORM_ENABLED` + cohort; rollback floor unchanged at **1.13.0**), with the `xlearn-evalpack` report PR (task 3; no evalpack tag) and any pre-tag gap infra PR (task 6) merged before it, followed by the `LLM_PLATFORM_ENABLED=true` infra PR (task 8). No step waits on the owner (D40): the owner's post-ship items are `ev-m4-followup` (task 9).
 
 Release checklist ([ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#6-release-checklist) + the ADR-0035 §2 standing rule):
 - [ ] Before the tag: peers' tags and PRs are checked (parallel sessions; `git ls-remote --tags origin`, `gh pr list`, `git worktree list`, ListAgents)
@@ -347,16 +352,16 @@ Release checklist ([ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and
 
 ## Definition of Done
 
-CI green (including the canary unit tests, `sqlc diff` and the OpenAPI drift test) · the canary and M4 exit suites green in the `-tags e2e` harness (CI's e2e lane) · the acceptance report merged in `xlearn-evalpack` · any pre-tag infra gap merged · `v1.16.0` tagged, deployed by Flux (no hand `kubectl apply`) and verified by the checklist · m4-01's pod smoke green after the tag and recorded in sprint-m4-01.md (its task 10 ✅) · the acceptance row recorded on production (`calibration record --from -`) · the enable PR merged after the tag · the calib-run ledger check recorded, and the production ledger check recorded or ⛔ "pending first production spend / Console" · the optional day-1 dogfood recorded or ⛔ "skipped (optional)" · statuses updated (this file + [`../status.md`](../status.md): board row, **M4 → ✅**, tag/floor row, flag inventory, the caps table, events, manual checks, decisions log) · local `main` synced in xlearn, `../infra` and `../xlearn-evalpack`.
+CI green (including the canary unit tests, `sqlc diff` and the OpenAPI drift test) · the canary and M4 exit suites green in the `-tags e2e` harness (CI's e2e lane) · the acceptance report merged in `xlearn-evalpack` · any pre-tag infra gap merged · `v1.16.0` tagged, deployed by Flux (no hand `kubectl apply`) and verified by the checklist · m4-01's pod smoke green after the tag and recorded in sprint-m4-01.md (its task 10 ✅) · the acceptance row recorded on production (`calibration record --from -`) · the enable PR merged after the tag · the calib-run harness total recorded, with both Console comparisons recorded or ⛔ "pending Console read (owner)" · `ev-m4-followup` recorded (consents, Console items, the optional day-1 dogfood; never waited on) · statuses updated (this file + [`../status.md`](../status.md): board row, **M4 → ✅**, tag/floor row, flag inventory, the caps table, events, manual checks, decisions log) · local `main` synced in xlearn, `../infra` and `../xlearn-evalpack`.
 
 ## Risks / watch-outs
 
 - **Spend anomaly.** The provider's **$15 hard limit** is the backstop, with the app cap at $12, the breaker, and the Console alerts at 50%/80% (external to the cluster). No alert reaches the owner otherwise (D34): read `judge admin ledger` and `judge admin ai status` on the first production days.
-- **Overfitting the acceptance set.** The test split is touched once per configuration, and `configs_tried` is logged. Tuning happens on dev only. A third test run is a stop, not a retry.
-- **Keys in the session.** The agent never sees the `xlearn-calib` key, the salt or any token: the owner runs key-bearing commands in their own shell, and reports carry numbers only.
+- **Overfitting the acceptance set.** The test split is touched once per configuration, and `configs_tried` is logged. Tuning happens on dev only. A third test run is never made in-session: after two failures, no tag and ⛔ "needs owner decision" (not a retry).
+- **Keys in the session.** The agent never sees the `xlearn-calib` key, the salt or any token: the owner exports the calib key in the session's shell before launch, the harness reads it from the environment, the agent never prints or stores it, and reports carry numbers only.
 - **Privacy of the acceptance set.** Owner-written artefacts stay in the private repo. Only aggregate numbers are public.
 - **Cents-level ledger checks.** 5% of a few cents is rounding noise, so compare tokens too. The real ±5% test is the monthly check once spend accumulates.
-- **Console lag.** The cost view can trail by hours. Task 10 may close a day later, and the tag and flip don't wait for it.
+- **Console lag.** The cost view can trail by hours. The Console reads are the owner's, after ship, and the tag and flip don't wait for them.
 - **Stale inline JWKS** after a k3s upgrade → 401 → breaker → manual. Task 6 reads the kid check; the fix is the runbook's re-paste.
 - **Consent refresh.** Consents apply to the next call: m4-05's gateway calls judge's `POST /internal/accounts/{id}/refresh` after every consent PATCH. The 5-minute cache TTL only bounds a **failed** refresh, which logs an ERROR line. So an unanalyzed first conclusion after ticking the consents is a refresh failure to check (`judge admin ai status`, the logs), not an expected delay.
 - **A backlog on re-enable.** If the analyzer durable replayed attempts concluded while AI was off, re-enabling would spend on stale work. Task 2 pins the rule.

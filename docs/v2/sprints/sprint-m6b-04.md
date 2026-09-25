@@ -2,7 +2,7 @@
 
 > **Milestone:** M6b — voice, one shell. This is the **release sprint**: the M6b exit plus the **interviewer GA** (M6a + M6b; D28, D32). · **Track:** product · **Order:** 85
 > **Prereqs:**
-> - [m6b-03](sprint-m6b-03.md): the M6b dark patch is live, with the `coach admin interviews media-audit` verb, m6a-01's owner-only `qa_slice` in the setup UI, the runbook, and the owner's pre-flight look done;
+> - [m6b-03](sprint-m6b-03.md): the M6b dark patch is live, with the `coach admin interviews media-audit` verb, m6a-01's owner-only `qa_slice` in the setup UI and the runbook (its owner pre-flight look may still be an open pending-smoke note: task 2's run closes it);
 > - [m6a-06](sprint-m6a-06.md): the M6a dark patch is live and the M6a exit is recorded;
 > - [m6a-01](sprint-m6a-01.md) / [m6a-03](sprint-m6a-03.md): the `interviewAudience` gate this sprint flips, the start rule, `qa_slice` and its 409 `qa_session_unscored`;
 > - [mi-13](sprint-mi-13.md): MI-16.
@@ -11,8 +11,8 @@
 > - [m6c-01](sprint-m6c-01.md), [m6c-02](sprint-m6c-02.md), [m6c-03](sprint-m6c-03.md): the v2.2 outline cards, which go to v2.2 planning;
 > - [m5-01](sprint-m5-01.md)'s label: M5 rides `v2.1.0` only if it merged before this tag; otherwise it waits for ≥ `v2.2.0`.
 >
-> **Release action:** **tag `v2.1.0`**. This is the interviewer GA, the T-1 default flip that [ADR-0034 §1.1](../../adr/0034-v2-release-labelling-gating-and-rollback.md#11-scheme) reserves the minor for, so the GA-tag snapshot applies (task 5). Two conditional extras: **only if** m6b-03 left an owner-approval privacy-notice PR, a `v2.0.N` patch that makes it live before the run (task 1); **only if** S6 M7 failed, a `coach-interview` ImagePolicy bump as its own infra PR (task 6).
-> **Calendar:** ≈ Q1 2027, once [m6b-03](sprint-m6b-03.md)'s patch is live. **The owner must be present for about 45 minutes, in one sitting:** the fake-media run (task 2, on his own key, ≈ $0.7–1.2), the manual snapshot right before the tag, and the post-tag pre-flight look (task 5). Have the flip PR open and green before he arrives, so merge → snapshot → tag follow the run directly.
+> **Release action:** **tag `v2.1.0`**. This is the interviewer GA, the T-1 default flip that [ADR-0034 §1.1](../../adr/0034-v2-release-labelling-gating-and-rollback.md#11-scheme) reserves the minor for, so the GA-tag snapshot applies (the owner takes it before launch; task 5). Two conditional extras: **only if** m6b-03's privacy-notice update isn't live yet (normally n/a: m6b-03 merges it before its tag, D40), a `v2.0.N` patch that makes it live before the run (task 1); **only if** S6 M7 failed, a `coach-interview` ImagePolicy bump as its own infra PR (task 6).
+> **Calendar:** ≈ Q1 2027, once [m6b-03](sprint-m6b-03.md)'s patch is live. **Before launch, the owner** takes the Hostinger manual snapshot (`ev-snap-v2.1.0`, 1-day retention) and **is present for the session, about 45 minutes in one sitting** (the prompt's before-launch block, D40): the fake-media run (task 2, on his own key, ≈ $0.7–1.2) and the post-tag look (task 5, not a gate). Have the flip PR open and green before the run, so merge → tag follow it directly, on the snapshot's day.
 > **Execute with:** [`../prompts/prompt-m6b-04.md`](../prompts/prompt-m6b-04.md) — one prompt, one session.
 
 ## Status
@@ -21,16 +21,16 @@ _Overall:_ ⬜ Not started
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Pre-run: checks (and, only if needed, the privacy-notice patch), looped synthetic candidate clip, throwaway Chrome profile | X + H (+ O) | ⬜ |
-| 2 | Fake-media run on prod against m6b-03's dark patch (owner present, on the owner's key), to `proposed` → refused → abandoned | O + X | ⬜ |
+| 1 | Pre-run: checks (and, only if needed, the privacy-notice patch), looped synthetic candidate clip, throwaway Chrome profile | X + H | ⬜ |
+| 2 | Fake-media run on prod against m6b-03's dark patch (the owner present, a before-launch item; on his key), to `proposed` → refused → abandoned | O + X | ⬜ |
 | 3 | No media on the node, plus the cost reconciliation | H | ⬜ |
 | 4 | GA flip PR: `interviewAudience` `"cohort"` → `"all"` (T-1); release notes; flag inventory | X | ⬜ |
-| 5 | The owner's snapshot (`ev-snap-v2.1.0`), then tag `v2.1.0` and verify | O + X + H | ⬜ |
+| 5 | The owner's snapshot (`ev-snap-v2.1.0`, before launch), then tag `v2.1.0` and verify | O + X + H | ⬜ |
 | 6 | **Only if S6 M7 failed:** the `coach-interview` ImagePolicy bump (its own PR in `../infra`) | I | ⬜ |
 | 7 | Record: M6a and M6b exits, the tag row, flags, the run record | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
-> Update the _Overall_ line to match. Mirror the sprint's state into [`../status.md`](../status.md): the Sprint board row, the Milestones rows M6a and M6b, the milestone → tag → floor → snapshot row, the flag inventory, and owner event `ev-snap-v2.1.0`.
+> Update the _Overall_ line to match. Mirror the sprint's state into [`../status.md`](../status.md): the Sprint board row, the Milestones rows M6a and M6b, the milestone → tag → floor → snapshot row, the flag inventory, owner event `ev-snap-v2.1.0`, and the pending-smoke notes (m6b-03's owner pre-flight look, closed by task 2).
 > Full rules: [status protocol](README.md#status-protocol-way-of-working).
 
 ## Entry gates
@@ -42,17 +42,17 @@ _Overall:_ ⬜ Not started
   - the twin fairness gate ([m6a-03](sprint-m6a-03.md));
   - the `store:false` acceptance test and the replay suite ([m6a-02](sprint-m6a-02.md)).
 - [ ] **MI-16 done** ([mi-13](sprint-mi-13.md)), and [ADR-0032](../../adr/0032-realtime-ai-mock-interviewer.md) is Accepted ([ds-m6a-01](sprint-ds-m6a-01.md))
-- [ ] **[m6b-03](sprint-m6b-03.md)'s preparation is live**, and its task 7 is ✅ (the owner opened the voice pre-flight on prod):
+- [ ] **[m6b-03](sprint-m6b-03.md)'s preparation is live**, and its task 7 is ✅ (its patch verified; the owner's pre-flight look may still be an open pending-smoke note, which task 2's run closes):
   - `coach admin interviews media-audit`;
   - m6a-01's owner-only **`qa_slice`**, settable from the owner's setup UI ("QA slice (0.33×)");
   - `docs/runbooks/voice-fake-media-e2e.md`.
-- [ ] **The privacy notice covers the interviewer** (m6b-03's check). Either it was already "covered", or the owner has merged the owner-approval notice PR, and task 1 makes it live with a patch if no tag carries it yet. If the PR is still open, stop: the owner decides.
-- [ ] **The owner is booked (about 45 minutes, one sitting)** and has confirmed, himself (the agent never sees or handles the key):
+- [ ] **The privacy notice covers the interviewer** (m6b-03's check). Either it was already "covered", or m6b-03's notice update (merged as drafted, D40) is live. If an update is still unmerged or untagged, task 1 merges it (it lands as drafted) and makes it live with a patch before the run.
+- [ ] **The owner's before-launch items** (the prompt's `## Before you launch (owner)` block; launching attests them, D40; the agent never sees or handles the key). If one turns out to be missing, the session lands what doesn't depend on it and records ⛔ in status.md; it never waits. He is present for the session (about 45 minutes, one sitting), and he has confirmed, himself:
   - his `interview` default key is an OpenAI key with `voice_shell`;
   - the key sits in a dedicated project with a **hard spend limit** leaving ≥ $4 of headroom: the run's $3.00 cap plus $1, [t6 §8](../research/t6-realtime-interviewer.md#8-cost-on-byo-keys)'s "keep available" rule (onboarding advice, [t6 §3](../research/t6-realtime-interviewer.md#3-architecture--media-path));
   - his `account.region` is outside the EU/EEA;
   - he has no non-terminal interview and **no starts today (UTC)**, so a failure leaves one retry (L19: 2 starts a day);
-  - he can take a Hostinger manual snapshot in hPanel right before the tag, and the last weekly image is ≤ 7 days old.
+  - he took a Hostinger manual snapshot in hPanel right before launch (`ev-snap-v2.1.0`, 1-day retention, so the tag follows the same day), after checking that the last weekly image is ≤ 7 days old.
 - [ ] **The run host** is the owner's Mac, with Chrome stable (the S6-tested major or newer) plus `say` and `afconvert`
 - [ ] **Release line:** `.release-line` = `2`, and every `xlearn-*` ImagePolicy is `>=1.0.0 <3.0.0`, so `v2.1.0` needs no range change. No `v2.1.*` tag exists: `git ls-remote --tags origin 'refs/tags/v2.1*'` is empty.
 - [ ] **Only if S6 M7 failed:** `coach-interview` is live on m6b-03's patch
@@ -78,11 +78,11 @@ The flip is invisible today. Every v2 account is the owner or a tester (ga-01's 
 ## Scope
 
 **In**
-- Only if needed: the owner-merged privacy-notice PR made live with a `v2.0.N` patch before the run (O + X + H).
-- The fake-media run on prod, with the owner present (O + X).
+- Only if needed: m6b-03's privacy-notice update made live with a `v2.0.N` patch before the run, its PR merged first if still open (X + H).
+- The fake-media run on prod, with the owner present, attested before launch (O + X).
 - The no-media-on-node checks and the cost reconciliation (H).
 - The T-1 flip PR, the release notes and the flag-inventory update (X).
-- The owner's manual snapshot, then tagging `v2.1.0`, verifying it and recording it (O + X + H).
+- The owner's manual snapshot (before launch), then tagging `v2.1.0`, verifying it and recording it (O + X + H).
 - Only if S6 M7 failed: the `coach-interview` ImagePolicy bump, its own infra PR (I).
 
 **Out**
@@ -96,21 +96,21 @@ The flip is invisible today. Every v2 account is the owner or a tester (ga-01's 
 
 ## Tasks
 
-### 1 · Pre-run: checks, synthetic candidate clip, throwaway Chrome [X + H (+ O)]
+### 1 · Pre-run: checks, synthetic candidate clip, throwaway Chrome [X + H]
 
 Follow `docs/runbooks/voice-fake-media-e2e.md` ([m6b-03](sprint-m6b-03.md)). Fix any drift in the runbook in task 4's PR.
 
-**Only if m6b-03 left an owner-approval privacy-notice PR.** It is a code PR (the `/xlearn/privacy` page and the notice version, [l-05](sprint-l-05.md)), so it needs a tag to go live:
-- the **owner** reviews and merges it (O); the agent never merges it;
+**Only if m6b-03's privacy-notice update isn't live yet** (normally n/a: m6b-03 merges it before its tag, D40). It is a code PR (the `/xlearn/privacy` page and the notice version, [l-05](sprint-l-05.md)), so it needs a tag to go live:
+- if the PR is still open, merge it on CI green: it lands as drafted (D40), and the owner may revise it later with a content PR;
 - if no tag carries it yet, tag the **next free `v2.0.N`** from `main` with the release checklist below (no live interviews; title `v2.0.N — privacy notice (interviewer)`), before the run and before the flip PR merges;
-- every account, the owner included, then re-accepts the notice (AB19 F12, renotice) on next sign-in: the owner does that before task 2;
+- every account, the owner included, then re-accepts the notice (AB19 F12, renotice) on next sign-in: the owner does that when he signs in for task 2;
 - record the patch in status.md.
 
 **Pre-checks (agent):**
 - `ssh vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin interviews --live'` is empty;
 - healthz reports m6b-03's `v2.0.N` or later (or the notice patch);
 - `host-verify --cluster` is green;
-- the owner confirms the key, project and hard limit from his own OpenAI dashboard, and that he has no starts today.
+- the owner's key, project, hard limit, region and no-starts-today are before-launch items, attested by launching. Verify what the product shows once he signs in (task 2 step 1): the setup's `voice` block must show voice available. A `reason` there means an item is missing: handle it like a failed run (task 2), never a wait.
 
 **The start rule** ([m6a-01](sprint-m6a-01.md) task 2): a start is `setup —start→ preflight`, and it counts toward the ≤ 2 starts a day. In m6b-03's pre-flight order it happens after consent and the cap, before the voice check. A failure before it costs nothing. A failed voice check that returns the interview to `setup` (`preflight_fail`) needs a second start; a failure after it means abandoning that interview (1 non-terminal interview, L19) and starting a new one. Either way there is **one retry today at most**. Write this into the runbook if m6b-03 didn't.
 
@@ -139,7 +139,7 @@ open -na "Google Chrome" --args --user-data-dir="$SCRATCH/chrome-voice-e2e" --no
 
 ### 2 · Fake-media run on prod (owner present) [O + X]
 
-This runs against **production on m6b-03's dark patch**, in the owner's cohort account.
+This runs against **production on m6b-03's dark patch**, in the owner's cohort account. The owner's presence is a before-launch item (D40), as for S6: the agent prompts him at each of his steps. If he turns out not to be there when the run needs him, don't wait: record ⛔ in status.md ("fake-media run: owner not present"), close the flip PR unmerged (its branch stays), land any runbook fix in a docs PR, and a re-run is a fresh launch of the prompt (a new snapshot included).
 
 **Who does what:**
 - **The owner** signs in (the agent never types credentials), allows the mic, ticks every consent box himself, sets and confirms the $ cap, and clicks **Start**. He also clicks submit and abandon on the review screen.
@@ -163,7 +163,7 @@ This runs against **production on m6b-03's dark patch**, in the owner's cohort a
 | 13 | Proposal (AB27): voice-mode Communication is `self_only_voice`, with the AI's quotes, and the other dimensions carry AI proposals. The owner submits → **409 `qa_session_unscored`** (if m6a-06's screen withholds submit for a QA session, record that instead). Then the owner **abandons** the interview | the interview is `abandoned`; Progress shows no new scored mock (the abandoned row is listed, never charted); the public profile's mock count is unchanged (D31) |
 | 14 | In `chrome://webrtc-internals`, find the selected candidate pair | the remote address is an OpenAI address, **never the VPS's IP**, and there is no relay through our host. Save the dump to the scratchpad only (it holds IP addresses) |
 
-**If any step fails: stop.** No flip. File the issue, fix it in a `v2.0.x` patch, and re-run. The start rule (task 1) leaves at most one retry today; otherwise re-book the owner.
+**If any step fails: stop the run — no flip** (a gate failure, not a review). File the issue, fix it in a `v2.0.x` patch, and re-run: the start rule (task 1) leaves at most one retry today. If no retry is left, don't wait: close the flip PR unmerged, record ⛔ in status.md naming the issue (and the fix's patch, if it landed), and a re-run is a fresh launch of the prompt, with its before-launch items (a new snapshot included).
 
 ### 3 · No media on the node, plus the cost reconciliation [H]
 
@@ -204,7 +204,7 @@ ssh vps 'sudo k3s kubectl logs -n xlearn deploy/xlearn-coach --since=90m' \
 
 ### 4 · GA flip PR [X]
 
-Branch `feat/m6b-04-interviewer-ga`. The PR may open any time (open it before the owner arrives), but it **merges only after tasks 2–3 pass**. Merging deploys nothing, because deploys are tag-only.
+Branch `feat/m6b-04-interviewer-ga`. The PR may open any time (open it before the run), but it **merges only after tasks 2–3 pass**. Merging deploys nothing, because deploys are tag-only.
 
 **The T-1 flip.** It is one code default and the checks that read it:
 - [m6a-01](sprint-m6a-01.md)'s **`interviewAudience = "cohort"` → `"all"`**, the gate on the gateway's `/api/interviews/*` proxy;
@@ -247,10 +247,10 @@ The web needs no flag of its own: m6a-05's `MockRoute` shows Mock-v2 on the gate
 
 **Merging makes `main` a GA commit.** From the flip merge until the `v2.1.0` tag, a `v2.0.x` patch cut from `main` would ship the GA flip under a patch label, which ADR-0034 §1.1 forbids ("the minor moves only at a GA flip"). So:
 - before merging, tell the peer sessions (ListAgents, then a message to each) that `main` is about to carry the interviewer GA flip and that no `v2.0.x` may be cut from it;
-- merge only when the owner is present and the snapshot and tag can follow at once (task 5);
+- merge only when the tag can follow at once (task 5), on the day of the owner's before-launch snapshot;
 - if a `v2.0.x` tag appears on or after the flip commit, stop and report. Never move or re-push a tag.
 
-### 5 · The owner's snapshot, then tag `v2.1.0` and verify [O + X + H]
+### 5 · The owner's snapshot (before launch), then tag `v2.1.0` and verify [O + X + H]
 
 Before the tag, right after the flip merge:
 - Run the release checklist below.
@@ -258,16 +258,15 @@ Before the tag, right after the flip merge:
 - Confirm `git ls-remote --tags origin 'refs/tags/v2.1*'` is still empty, and that no `v2.0.x` tag points at or after the flip commit.
 - Confirm the ranges are already `<3.0.0` (`ssh vps 'sudo k3s kubectl get imagepolicy -n flux-system -o yaml' | grep range`). There is **no range change**: the "none" row of [ADR-0034 §1.4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#14-range-changes-and-the-ga-procedure).
 - `host-verify --cluster` is green and the host has settled.
-- **Snapshot (O, required; owner event `ev-snap-v2.1.0`, prepared by this sprint).** `v2.1.0` is a GA flip, the labelled release ADR-0034 §1.1 reserves the minor for, and [ADR-0034 §4.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#43-snapshot-rule) and §6 say to take a Hostinger manual snapshot "right before any contract, erase or GA tag". The owner confirms in hPanel that the last weekly image is ≤ 7 days old, then takes the manual snapshot. Record its time. It is kept for 1 day and is the R-d cover for the day. If the owner chooses to waive it, record that as an **explicit owner decision** in status.md's decisions log. Don't reinterpret the rule.
+- **Snapshot (O, before launch; owner event `ev-snap-v2.1.0`).** `v2.1.0` is a GA flip, the labelled release ADR-0034 §1.1 reserves the minor for, and [ADR-0034 §4.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#43-snapshot-rule) and §6 say to take a Hostinger manual snapshot "right before any contract, erase or GA tag". So the owner took it in hPanel right before launching this prompt (a before-launch item, D40), after confirming there that the last weekly image is ≤ 7 days old. Launching attests it, and that attestation confirms the checklist's "the snapshot is taken" line. Record its time (the time he gave, else the launch time). It is kept for 1 day and is the R-d cover for the day, so the tag follows the same day; a re-run on a later day needs a fresh snapshot before its launch. If the owner said in the session that he waived it, record that as an **explicit owner decision** in status.md's decisions log. Don't reinterpret the rule.
 
-Tag `v2.1.0` on the merged flip commit, straight after the snapshot. The release title is `v2.1.0 — interviewer GA`, and the notes come from task 4.
+Tag `v2.1.0` on the merged flip commit, straight after the merge (on the snapshot's day). The release title is `v2.1.0 — interviewer GA`, and the notes come from task 4.
 
 After the tag, by looking (D34):
 - healthz reports `v2.1.0`;
 - the images are the new ones;
 - every `xlearn-*` ImagePolicy's latest is `2.1.0`, and the HelmReleases are Ready. **Exception** (only if S6 M7 failed): `xlearn-coach-interview` is pinned to an exact version (m6b-02), so it lags until task 6's PR merges; re-check it then;
-- smoke-test login, the dashboard and coach;
-- the owner opens Mock-v2: the text/voice choice renders, and the voice pre-flight works up to the free mic check. He stops before `start` and abandons that `setup` interview. No paid session is needed, because task 2 proved the voice path;
+- smoke-test login, the dashboard and coach, and the owner's Mock-v2 look: the text/voice choice renders, and the voice pre-flight works up to the free mic check. He stops before `start` and abandons that `setup` interview. No paid session is needed, because task 2 proved the voice path. The owner is present (a before-launch item), so he does both right after the tag; the agent never signs in. If he can't, record them as a pending-smoke note in status.md and carry on: neither gates _Overall_ ✅;
 - `coach admin interviews --live` is empty, and `media-audit` still runs.
 
 **Rollback:**
@@ -285,8 +284,9 @@ If S6 recorded M7 pass, mark this ✅ "n/a — M7 passed". Otherwise, after the 
 In a docs PR after the tag, update `docs/v2/status.md`:
 - the Sprint board;
 - **Milestones: M6a ✅** (m6a-06's exit evidence, labelled in `v2.1.0`) and **M6b ✅**;
-- **milestone → tag → floor → snapshot:** `M6a + M6b (interviewer GA) → v2.1.0 → floor unchanged → snapshot <hPanel time>` (or "waived by the owner", with the decisions-log entry);
+- **milestone → tag → floor → snapshot:** `M6a + M6b (interviewer GA) → v2.1.0 → floor unchanged → snapshot <hPanel time, taken before launch>` (or "waived by the owner", with the decisions-log entry);
 - owner event `ev-snap-v2.1.0` ✅ (with the snapshot time, or "waived");
+- the pending-smoke notes: m6b-03's owner pre-flight look ✅ (task 2 walked the same pre-flight), and the post-tag look if it is still open (task 5);
 - the privacy-notice patch, if task 1 cut one;
 - the flag inventory, per task 4;
 - the **run record:**
@@ -312,7 +312,7 @@ Also add "shipped in `v2.1.0` (date)" to [ADR-0032](../../adr/0032-realtime-ai-m
   - the WebRTC pair was browser ↔ OpenAI only.
 - [ ] Spend ≤ the $3.00 cap, and the segment-log cost is within ±25% of the provider's usage (reconciled within 24 h)
 - [ ] The GA flip PR (`interviewAudience` → `"all"`, plus mi-13's `/segments` gate) merged only after the run. In compose, a `learner`-role account gets the interviewer, and the browser, EU/EEA, key, consent, L19, $-cap and `qa_slice` gates are unchanged. The cohort flag rows are removed.
-- [ ] **`v2.1.0` verified:** tagged with the release checklist (no live interviews, no range change, the owner's snapshot taken right before it or its waiver recorded), no `v2.0.x` cut from the flip commit, deployed by Flux, healthz, images, policies and HelmReleases checked, smoke test green
+- [ ] **`v2.1.0` verified:** tagged with the release checklist (no live interviews, no range change, the owner's before-launch snapshot attested for the tag's day, or its waiver recorded), no `v2.0.x` cut from the flip commit, deployed by Flux, healthz, images, policies and HelmReleases checked, smoke test green (or recorded as a pending-smoke note if the owner couldn't run it)
 - [ ] status.md shows M6a ✅, M6b ✅, the `v2.1.0` row with its snapshot, and the run record
 
 ## Release
@@ -343,7 +343,7 @@ Release checklist ([ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and
 - **ACL PRs:** n/a, no stream or consumer.
 - **New service:** n/a.
 - **Contract or erase:** n/a.
-- **GA tag: yes.** `v2.1.0` is the interviewer GA flip, so the line applies in full: `host-verify --cluster` green, the host settled, and the owner's manual snapshot taken right before the tag (task 5). There is no range change (ADR-0034 §1.4's "none" row), so no infra PR precedes it.
+- **GA tag: yes.** `v2.1.0` is the interviewer GA flip, so the line applies in full: `host-verify --cluster` green, the host settled, and the owner's manual snapshot taken before launch, on the tag's day (task 5; a before-launch item, D40). There is no range change (ADR-0034 §1.4's "none" row), so no infra PR precedes it.
 - **Live interviews:** none, checked right before the tag.
 - **Standing rule:** no new caller.
 - **Flags:** the interviewer's cohort-gate rows (`interviewAudience`) are removed.
@@ -355,7 +355,7 @@ The interviewer is the M6 milestone, so the record is **M6a + M6b → `v2.1.0` �
 
 - The fake-media run passed and was recorded, with no media on the node.
 - CI is green on the flip PR.
-- The owner's snapshot was taken right before the tag (or its waiver recorded as his decision).
+- The owner's snapshot was taken before launch, on the tag's day (or its waiver recorded as his decision).
 - `v2.1.0` is tagged after the checklist, deployed by Flux (no hand `kubectl`) and verified live.
 - If S6 M7 failed, task 6's infra PR is merged and `xlearn-coach-interview` runs `2.1.0`.
 - The M6a and M6b exits are recorded.
@@ -370,12 +370,12 @@ The interviewer is the M6 milestone, so the record is **M6a + M6b → `v2.1.0` �
 - **A cap set too low changes the run.** At $1.50 on GPT-Live, the 85% wrap ($1.275) could fire before the rail ends and skip steps 10–11. Keep the cap at ≈ 2.5× the expected spend.
 - **Fake audio isn't a conversation.** The synthetic utterances won't match the interviewer's questions. The run proves the media path, captions, the director following the editor, the Run echo, PTT, Hold/Talk, the finish, the transcript check and the proposal. It doesn't prove interview quality: S6 M14 (naturalness) and m6a-02's replay suite cover that.
 - **The QA session is never scored**, by design (m6a-01's `qa_slice`). The run ends at `proposed` with a 409 and an abandon; score-once rests on m6a-06's text exit and m6a-03's tests. Don't try to score it another way.
-- **L19's 2 starts a day** leave a single retry. m6a-01 counts a start at `setup → preflight`, which comes after consent and the cap and before the voice check. Book the owner on a day with no starts yet.
+- **L19's 2 starts a day** leave a single retry. m6a-01 counts a start at `setup → preflight`, which comes after consent and the cap and before the voice check. Launch only on a day with no starts yet (a before-launch item).
 - **The fake clip restarts on every `getUserMedia`**, and a hidden interview tab plus silence reaches the idle interrupt. Loop the clip, and keep webrtc-internals in its own window beside the interview.
 - **Flipping before the run defeats the point.** The flip PR merges only after tasks 2–3; the entry gate says so.
 - **A peer tags `v2.1.0` first** (for example M5 on its own). ADR-0034 §1.1 forbids it. Check right before tagging; if it happened, stop and report. Never move or re-push a tag.
 - **A peer cuts a `v2.0.x` patch after the flip merge.** It would ship the GA flip under a patch label. Announce the merge to the peers first, tag `v2.1.0` straight after it, and if a `v2.0.x` appears on or after the flip commit, stop and report.
-- **Forgetting the snapshot** removes R-d for the GA tag (ADR-0034 §4.3). It is the owner's hPanel step, right before the tag, while he is present.
+- **Forgetting the snapshot** removes R-d for the GA tag (ADR-0034 §4.3). It is the owner's hPanel step, right before launch (a before-launch item), on the tag's day.
 - **Tagging mid-interview rolls coach** (and `coach-interview`, if M7 failed). Check `--live` right before the tag.
 - **The flip is invisible in v2**, because every account is in the cohort. Prove it in compose with a `learner`-role account, not on prod.
 - **Chrome flags drift between versions** (fake-device looping, `--remote-debugging-port` rules). The runbook records the Chrome version used.

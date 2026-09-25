@@ -3,6 +3,12 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-p-01.md`](../sprints/sprint-p-01.md)   ·   **Milestone:** P   ·   **Prereqs:** [m3-13](../sprints/sprint-m3-13.md) (v1.14.0), [spk-02](../sprints/sprint-spk-02.md) (P3), [ds-p-01](../sprints/sprint-ds-p-01.md) (Q5 + freeze)
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] Only for a re-run after an earlier p-01 session found the pod-level seccomp gap (p-01 task 7 ⛔ in `status.md`): today is the host window you booked for the change (a short calendar event). A first run needs nothing from you.
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions, land-and-sync.
@@ -49,10 +55,10 @@ the pilot's items arrive in [p-02](../sprints/sprint-p-02.md) and its pack in [p
 
 - [ ] M3 shipped (v1.14.0) — `curl -s https://projects.sujaykumar.dev/xlearn/api/v1/healthz` reports ≥ 1.14.0
 - [ ] P3 TSAN result GO for go-race (spk-02) — t3 §16.2 on `main`
-- [ ] PRD Q5 confirmed (ev-q5, answered in ds-p-01 before AB15 was drafted): PRD §7 Q5 reads resolved **go-concurrency**
-  on `main`. If ds-p-01's record PR (`docs/ds-p-01-q5`) is still open, ask the owner to merge it or to approve your
-  merging it. Don't merge it on your own.
-- [ ] AB14–AB15 frozen — the ds-p-01 board PR is merged
+- [ ] PRD Q5 recorded (`ev-q5`, resolved in ds-p-01 before AB15 was drafted): PRD §7 Q5 reads resolved **go-concurrency**
+  on `main`, i.e. ds-p-01's record PR (`docs/ds-p-01-q5`) is merged (ds-p-01 merges it on CI green, D40). If it isn't,
+  ds-p-01 isn't done: stop and report.
+- [ ] AB14–AB15 frozen — the ds-p-01 board PR is merged (the merge is the freeze)
 - [ ] `runner-v1.0.0` live dark with `baseline@1` and the Go/C++/Python multipliers recorded; ADR-0030 Accepted
 - [ ] **The pod-level seccomp profile permits the ASLR mechanism.** The production host file
   `/var/lib/kubelet/seccomp/profiles/xlearn-runner.json` (mi-09, the amd64 file recorded verbatim in t3 §16.2) must allow
@@ -62,10 +68,13 @@ the pilot's items arrive in [p-02](../sprints/sprint-p-02.md) and its pack in [p
   or `ssh vps 'sudo cat /var/lib/kubelet/seccomp/profiles/xlearn-runner.json'`)
 - [ ] Parallel sessions: no open peer PR on `internal/runner/`, `deploy/runner.Dockerfile`, `runner-release.yml`, `ci.yml` (the `runner-it` / `runner-image-acceptance` jobs), `internal/judge/grader/`; no `runner-v*` tag in flight
 
-If Q5 recorded **SQL**, stop: p-01 must be re-planned to a `sql-pg` profile first. If t3 §16.2 says go-race failed even
-with a per-process `setarch -R` launcher, stop and report: Q5 goes back to the owner. If the **pod-level profile** lacks
-the `personality` rule, do steps 1–9 (the code ships dark) and step 2's host-change prep, then **stop before step 10's
-tag**. Report the gap and ask the owner to book the host change. The tag waits until `host-verify` shows the new file.
+If Q5 recorded **SQL**, stop: p-01 must be re-planned to a `sql-pg` profile first. If status.md marks p-01 ⛔ "needs
+owner decision" (ds-p-01 found P3 inconclusive for go-race), or t3 §16.2 says go-race failed even with a per-process
+`setarch -R` launcher, stop and report: Q5 goes back to the owner. If the **pod-level profile** lacks the `personality`
+rule, do steps 1–9 (the code ships dark) and step 2's host-change prep, **skip steps 10–11** (no tag in this session),
+do step 12 with task 7 ⛔ in status.md ("the tag waits for the go-race seccomp host change; owner to book a host
+window"), and run **Ship**. Nothing waits. A re-run on the booked date (see **Before you launch (owner)**) finds the code
+(steps 2–9) on `main`, runs step 2's runbook, and picks up at step 10. The tag waits until `host-verify` shows the new file.
 
 ## Do this (in order)
 
@@ -85,12 +94,17 @@ tag**. Report the gap and ask the owner to book the host change. The tag waits u
    256 MiB; if two go-race jobs don't, cap go-race at one concurrent job (`503 saturated` for the second).
    **Pod-level profile (entry gate):** the image's exec filter only narrows the pod-level profile. If the host file lacks
    the `personality` rule:
-   - **[I]** open an infra PR that changes only that file's heredoc in `../infra/hack/host-bootstrap.sh`, plus its
-     sha256 in `hack/host-bom.txt` and the `host-verify` constant. The PR description carries the §16.2 row and a JSON
-     diff. Hold it for the owner.
-   - **[X]** write `docs/v2/runbooks/host-seccomp-go-race.md`: merge the PR, run `host-bootstrap.sh --with-sandbox`
-     (no k3s restart; the file is read at pod create), then `host-verify --cluster --expect-sandbox`.
-   - Ask the owner to book the change. You never write to the host.
+   - **[I]** push an infra branch (e.g. `chore/host-seccomp-go-race`) with **no PR** (mi-09's window-branch pattern)
+     that changes only that file's heredoc in `../infra/hack/host-bootstrap.sh`, plus its sha256 in `hack/host-bom.txt`
+     and the `host-verify` constant. The commit message carries the §16.2 row and a JSON diff. Merged early, it would
+     make every `host-verify --expect-sandbox` FAIL `sandbox.seccomp`, so the runbook merges it in the window.
+   - **[X]** write `docs/v2/runbooks/host-seccomp-go-race.md`: open and merge the PR from that branch (its body carries
+     the §16.2 row and the JSON diff), run `host-bootstrap.sh --with-sandbox` (no k3s restart; the file is read at pod
+     create), then `host-verify --cluster --expect-sandbox`.
+   - The session that finds the gap doesn't write to the host: it records the gap and the owner action (book a host
+     window) in status.md. On a **re-run in the booked window** (the owner attests
+     it under **Before you launch (owner)**), run the runbook yourself: its host steps are pre-approved by launching this
+     prompt (D40).
 3. **[X] gotest@1 harness** (plan task 2): module assembly (rendered `go.mod` + `go.sum`, editable + read-only files,
    `visible_test.go`, `HiddenFiles` in Submit only; clean listed paths or REJECTED); the generated `TestMain` (fd 4
    frames, `goleak.VerifyNone` per test → LEAK, missing pass = fail); Run = visible tests `-count=1` with the learner's
@@ -133,24 +147,25 @@ tag**. Report the gap and ask the owner to book the host change. The tag waits u
 8. **[X] Verify locally:** `gofmt -l .` empty · `go vet ./...` · `go test -race ./...` · `sqlc diff` (unchanged) · web
    typecheck/test (unchanged) · the jail-capable job green · packlint self-tests · `docker compose up --build` still
    serves the DSA flow (the `gotest@1` fixture is test-only).
-9. **[X] Ship the code:** conventional commits with the attribution lines (e.g. `feat(runner): go-race profile and
-   gotest@1 harness`, `feat(judge): map gotest@1 results as honor-grade`, `docs(adr): …`); PR; CI green; squash-merge;
-   `git checkout main && git pull`.
+9. **[X] Ship the code** (**Ship** steps 1–2 below): conventional commits with the attribution lines (e.g.
+   `feat(runner): go-race profile and gotest@1 harness`, `feat(judge): map gotest@1 results as honor-grade`,
+   `docs(adr): …`); PR; CI green; squash-merge; `git checkout main && git pull`.
 10. **[X] Tag `runner-v1.1.0`** on the merge commit after the Release checklist in the plan (runner-stream reading).
-    Before tagging, the pod-profile gate must pass, either originally or after the owner's host change shows the new
-    sha256 in `host-verify`. Watch `runner-release.yml` build and push; confirm `deploy.yml` did not run for this tag.
+    Before tagging, the pod-profile gate must pass, either originally or after step 2's runbook (in the booked window)
+    shows the new sha256 in `host-verify`. Watch `runner-release.yml` build and push; confirm `deploy.yml` did not run for this tag.
 11. **[H] Verify dark on prod:** wait for the 2nd IUA commit on infra `main`, then through the tunnel
     (`ssh -L 18090:127.0.0.1:18090 vps 'k3s kubectl -n xlearn-runner port-forward deploy/xlearn-runner 18090:8090'`):
     `GET /v1/profiles` lists `go-race@1.26` + `gotest@1` + the new digest; `make runner-acceptance
     RUNNER_URL=http://127.0.0.1:18090 RUNNER_TOKEN_FILE=<(sops -d --extract '["stringData"]["token"]' ../infra/runner/secrets/runner-auth.enc.yaml)`
     passes. `k3s kubectl get deploy -n xlearn-runner` shows 1.1.0; `flux get images policy xlearn-runner` latest 1.1.0;
     `runner` Kustomization Ready; `host-verify --cluster --expect-sandbox` green (memory sum unchanged, no OOMKills,
-    disk < 70 %); one DSA Submit as the owner still grades. **If `/v1/profiles` omits `go-race@1.26` after the Recreate**
-    while CI's in-image canary passed, suspect the **pod-level seccomp profile** (EPERM on `personality`), not the
+    disk < 70 %); one DSA Submit still grades (as a cohort account in an already-signed-in browser session; you never
+    sign in, so otherwise record "owner login smoke pending" in status.md's pending-smoke notes). **If `/v1/profiles`
+    omits `go-race@1.26` after the Recreate** while CI's in-image canary passed, suspect the **pod-level seccomp profile** (EPERM on `personality`), not the
     image. Re-check the gate and follow step 2's host-change path; don't fix forward with a runner patch. **Calibrate**
     the go-race baseline at a quiet hour (sar steal recorded; re-run if > 5 %) and publish it in the TL-baseline doc (a
     docs PR, merge on green).
-12. **[X] Record** (plan task 8) and update this sprint's Status; docs PR merged; `main` synced.
+12. **[X] Record** (plan task 8) and update this sprint's Status, then ship: see **Ship** below.
 
 ## Constraints
 
@@ -164,7 +179,8 @@ tag**. Report the gap and ask the owner to book the host change. The tag waits u
 - **Runner hardening is not negotiable:** the host `vm.mmap_rnd_bits` is never lowered; `personality` is arg-filtered
   at both layers (the image's exec filter and, if it must change, the pod-level host file, which gains exactly
   `ADDR_NO_RANDOMIZE` and nothing broader); never exec into the runner (the VAP denies it; delete the pod instead).
-- **GitOps:** no `kubectl apply`; the runner deploys through the 2nd IUA; `ssh vps` is read-only except the port-forward.
+- **GitOps:** no `kubectl apply`; the runner deploys through the 2nd IUA; `ssh vps` is read-only except the port-forward
+  and, on a re-run in a booked host window, step 2's runbook (pre-approved by launching this prompt, D40).
   **Never move or re-push a tag** — fix forward with `runner-v1.1.1`.
 - **Memory-sum rule:** the runner's limits (2 CPU / 3 GiB) don't change; the slot budget or the go-race cap absorbs the
   new profile. Any limit change would be an infra PR plus a `host-verify --cluster` memory-sum check.
@@ -187,10 +203,12 @@ tag**. Report the gap and ask the owner to book the host change. The tag waits u
 
 - [`../sprints/sprint-p-01.md`](../sprints/sprint-p-01.md): task rows 🔄 → ✅ (⛔ with a reason), _Overall_.
 - [`../status.md`](../status.md): the **runner stream** row (`runner-v1.1.0`, digest, date, go-race baseline, steal);
-  the **Sprint board** row; **Milestones** P 🔄; the **Artboards** rows AB14, AB15, AB02 (full), AB05 (full) →
-  "frozen (PR #, date)"; [ds-p-01](../sprints/sprint-ds-p-01.md) task 8 and Overall ✅ (in its plan file too); owner
-  event **`ev-q5`** ✅ with its date (set it if the Q5 record PR didn't); **Decisions log** lines (ASLR mechanism, the
-  pod-level `personality` check and any host change, go-race cap, `module` schema, frame filter, ADR number). No flag changes.
+  the **Sprint board** row; **Milestones** P 🔄; if [ds-p-01](../sprints/sprint-ds-p-01.md)'s session didn't already
+  record them (skip any edit already done): the **Artboards** rows AB14, AB15, AB02 (full), AB05 (full) →
+  "frozen (PR #, date)", ds-p-01's _Overall_ ✅ (in its plan file too) and owner event **`ev-q5`** ✅ with its date;
+  **Decisions log** lines (ASLR mechanism, the pod-level `personality` check and any host change, go-race cap, `module`
+  schema, frame filter, ADR number); if the pod-level gate found a gap, task 7 ⛔ with the owner action (book a host
+  window) and the infra branch named. No flag changes.
 - The new ADR under `docs/adr/` (MADR-style, append-only).
 
 ## Done when (acceptance)
@@ -204,8 +222,12 @@ tag**. Report the gap and ask the owner to book the host change. The tag waits u
 - [ ] Schema extension additive (freeze guard green); `contract_hash` vectors cover `module`; the lints run in packlint, judge start and content CI
 - [ ] go-race baseline published; ADR merged; status.md updated
 
-**Ship at session end** per AGENT.md land-and-sync with **this sprint's release action: `runner-v1.1.0`** — branch, conventional
-commits with the attribution lines, PR, CI green, squash-merge, then the Release checklist and the `runner-v1.1.0` tag, let
-the 2nd IUA deploy it dark, verify on prod by looking, merge the docs/status PR, and `git checkout main && git pull` in this
-repo (and `../infra`, which the IUA committed to). **No `v*` tag**, and **no infra PR** except step 2's conditional
-pod-profile heredoc PR. That PR is held for the owner's host change, and the tag waits for it.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). (Branch `feat/p-01-go-race-profile`; the only infra PR is step 2's conditional seccomp change, opened and merged by its runbook in the booked window.)
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — `runner-v1.1.0` (runner stream):** Follow the stream's own tag procedure: the plan's Release checklist (runner-stream reading), then tag `runner-v1.1.0` on the merge commit; `runner-release.yml` builds it (confirm `deploy.yml` didn't run) and the 2nd IUA deploys it dark, with no infra PR (step 10). Verify on prod by looking through the tunnel and calibrate the go-race baseline (step 11); record it under **release streams** (digest, go-race baseline). No app tag: the judge and schema changes ship dark in `v1.15.0` ([p-03](../sprints/sprint-p-03.md)). If the pod-level gate found a gap, don't tag: task 7 stays ⛔ in status.md, and a re-run in the owner-booked window runs step 2's runbook, then this step.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn, and `../infra`, which the IUA commits to). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

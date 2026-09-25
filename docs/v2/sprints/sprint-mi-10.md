@@ -40,7 +40,7 @@ _Overall:_ ⬜ Not started
   - the seccomp profile and the subuid range are present;
   - L23 shows in `configz`.
 - [ ] **MI-11a merged** ([mi-08](sprint-mi-08.md)). [ADR-0035 §5](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#5-capacity-the-memory-sum-rule-triggers-and-ordered-responses) requires MI-11a before MI-12.
-- [ ] **`runner-v1.0.0` image exists** ([m3-15](sprint-m3-15.md)): `ghcr.io/sujaykumarsuman/xlearn-runner:1.0.0`, with its digest recorded and a reproducible build.
+- [ ] **`runner-v1.0.0` image exists** ([m3-15](sprint-m3-15.md)): `ghcr.io/sujaykumarsuman/xlearn-runner:1.0.0`, with its digest recorded and a reproducible build, and it's **anonymously pullable** (m3-15 task 8 ✅; if status.md still shows its ⛔ owner item for the package visibility, this gate is unmet).
 - [ ] **ADR-0030 Accepted** ([m3-03](sprint-m3-03.md) task 1). The image implements the mechanism the spike chose. The caps list (5 caps, or 4 without SETPCAP) is recorded in status.md ([mi-09](sprint-mi-09.md) task 1).
 - [ ] **Parallel sessions:** no open peer PR touches `clusters/vps/sandbox.yaml`, `runner/`, `apps/image-automation.yaml` or `.sops.yaml` (`gh pr list -R sujaykumarsuman/infra`, `git worktree list`, ListAgents).
 

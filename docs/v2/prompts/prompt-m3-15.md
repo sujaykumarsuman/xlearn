@@ -32,7 +32,8 @@ the pack TL gate needs, adds a dev-mode compose service for judge's e2e, rehears
 - [ ] `git ls-remote --tags origin 'refs/tags/runner-v*'` is empty; no peer PR touches `deploy/runner*`, `.github/workflows/`, `docker-compose.yml`, `Makefile` (`gh pr list`, `git worktree list`, ListAgents).
 - [ ] `.release-line` = `1` and `deploy.yml`'s `release-line` job is in place (MI-2a ✅).
 - [ ] For step 8: `../infra` `main` is synced (`git -C ../infra pull --ff-only`) and has mi-09's sandbox block and mi-14's `infrastructure/sandbox/`; otherwise use their PR branches or t3 §16.1 / §8.2 and note it.
-- [ ] For step 11: the owner is reachable in case the GHCR package must be made Public.
+
+No owner needs to be reachable (D40): if the new GHCR package comes up private in step 11, that step records the owner action as ⛔ and the session carries on.
 
 ## Do this (in order)
 
@@ -78,19 +79,25 @@ the pack TL gate needs, adds a dev-mode compose service for judge's e2e, rehears
    must pass unchanged. Record the summary and rotation count, then `multipass delete --purge`. No production credential in the VM;
    no timing conclusions.
 9. **[X] Verify** locally and in CI: `gofmt`, `go vet ./...`, `go test -race ./...`, `sqlc diff` unchanged, the new lanes green.
-10. **[X] PR** → conventional commits (`build(runner): …`, `ci(runner): …`, `test(runner): acceptance suite`, `docs(runner): TL baselines`)
+10. **[X] PR** (Ship steps 1–2 below) → conventional commits (`build(runner): …`, `ci(runner): …`, `test(runner): acceptance suite`, `docs(runner): TL baselines`)
     with the attribution lines → CI green → squash-merge.
-11. **[X + O] Rehearsal prerelease** (plan task 8): tag `runner-v1.0.0-rc.1` on `main` and push it. Check: the workflow built
+11. **[X] Rehearsal prerelease** (plan task 8): tag `runner-v1.0.0-rc.1` on `main` and push it. Check: the workflow built
     `1.0.0-rc.1`; **no `deploy.yml` run** for that ref; the anonymous pull works (`docker logout ghcr.io`, then pull). **If the pull is
-    refused, ask the owner to make the `xlearn-runner` package Public** (package settings, linked to `sujaykumarsuman/xlearn`) and wait
-    for a clear yes that it's done; don't change account or package settings yourself. Rebuild the rc commit locally for
+    refused** (a new GHCR package defaults to private), don't wait (D40) and don't change account or package settings yourself: making
+    the `xlearn-runner` package Public (package settings, linked to `sujaykumarsuman/xlearn`) is an owner-only action that can only
+    follow this push. Record ⛔ in status.md naming it (the MI-12 row and Blocked / needs input), set plan task 8 ⛔ with that reason,
+    and carry on: the tag doesn't depend on visibility. The follow-up is the same anonymous pull against `:1.0.0`; whichever session
+    re-runs it after the owner's flip ticks task 8 ✅, and it must pass before mi-10 deploys. Rebuild the rc commit locally for
     `linux/amd64` on the same pinned BuildKit image (a `docker-container` builder created with that image) and output settings, and
-    compare digests; `docker run --restart=always` the image in dev mode with `SUBSET=prod` as a smoke.
+    compare digests; `docker run --restart=always` the image in dev mode (the digest-identical local rebuild if the package is still
+    private) with `SUBSET=prod` as a smoke.
 12. **[X] Tag `runner-v1.0.0`** (plan task 9): run every release-checklist line in the plan, including its "for this tag" notes
     (re-check `git ls-remote --tags origin 'refs/tags/runner-v*'` right before tagging; major = `deploy/runner.release-line`). Tag the rc
-    commit (or cut `-rc.2` if runner paths changed since), push, verify the workflow, the digest, the anonymous pull and the GitHub
-    release (`runner-v1.0.0 — v2 build · M3 runner (dark)`). After the tag, **by looking**: fleet healthz, images and ImagePolicies are
-    **unchanged**, HelmReleases Ready, smoke login/dashboard/coach.
+    commit (or cut `-rc.2` if runner paths changed since), push, verify the workflow, the digest, the anonymous pull (or step 11's ⛔
+    owner item stays open) and the GitHub release (`runner-v1.0.0 — v2 build · M3 runner (dark)`). After the tag, **by looking**: fleet
+    healthz, images and ImagePolicies are **unchanged**, HelmReleases Ready, smoke login/dashboard/coach (through an already-signed-in
+    browser session if the session has one: never enter credentials; else the credential-free checks and an "owner login smoke
+    pending" pending-smoke note in status.md).
 13. **[X] Record** (docs PR, merge only): status.md rows and hand-offs (below).
 
 ## Constraints
@@ -128,7 +135,7 @@ the pack TL gate needs, adds a dev-mode compose service for judge's e2e, rehears
 - [`../status.md`](../status.md): the Sprint board row (m3-15 ✅); M3 🔄; the MI-12 row ("image `runner-v1.0.0` ✅; deploy = mi-10");
   the **runner stream** tag row (`runner-v1.0.0` → digest → floor n/a → snapshot n/a → not deployed); the TL-baselines link;
   **Decisions log**: the PCH choice, image size, the BuildKit pin, `deploy/runner.release-line` (documented in `docs/git-strategy.md`),
-  the package visibility (and who flipped it), the VM rehearsal result (incl. the expected `sandbox.seccomp` FAIL) and any VM-only
+  the package visibility (public at first push, or step 11's ⛔ owner item and its re-check), the VM rehearsal result (incl. the expected `sandbox.seccomp` FAIL) and any VM-only
   VAP widening; **hand-offs** to mi-10 (digest, `RUNNER_IMAGE_DIGEST` marker, `emptyDir` needs or none, **the plan's exact
   production command** — `SUBSET=prod REQUIRE_PROD=1 CALIBRATE=1` with the port-forward retry loop — and the expected rotation /
   `restartCount` rise), m3-02 (TL gate in this image, CI column, provisional), m3-06 (compose `runner` profile), m3-07, m3-13.
@@ -139,12 +146,19 @@ the pack TL gate needs, adds a dev-mode compose service for judge's e2e, rehears
 - [ ] Reproducible image digest across two builds, and the pushed rc digest equals a local rebuild on the same pinned BuildKit image.
 - [ ] The acceptance suite is green on the local jail-capable VM (full pod shape, prod mode) and in the CI in-image lane.
 - [ ] `deploy.yml` never runs for `runner-v*`, and `runner-release.yml` never for `v*` (test + rc observation).
-- [ ] `runner-v1.0.0` exists at `ghcr.io/sujaykumarsuman/xlearn-runner:1.0.0`, anonymously pullable, digest recorded; nothing deployed or moved.
+- [ ] `runner-v1.0.0` exists at `ghcr.io/sujaykumarsuman/xlearn-runner:1.0.0`, anonymously pullable (or, for a private package, step 11's ⛔ owner item recorded), digest recorded; nothing deployed or moved.
 - [ ] The TL-baselines doc is published (CI column; production column pending mi-10); the compose `runner` service works in dev mode
       and restarts after a SIGSYS rotation.
 - [ ] The suite waits across every rotation (expected = observed); `SUBSET` is required; `docs/git-strategy.md` has the runner
       stream.
 - [ ] No setuid bit, secret or pack content in the image; statuses and hand-offs recorded.
 
-Ship per AGENT.md land-and-sync with **this sprint's release action: tag `runner-v1.0.0`** (after the `-rc.1` rehearsal; no infra
-PR — the ImagePolicy is mi-10's) — then `git checkout main && git pull`.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). This repo only: step 10's PR on `feat/runner-release`, then step 13's docs/status PR; no `../infra` PR (read-only here; the ImagePolicy is mi-10's).
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — tag `runner-v1.0.0` (runner stream):** Follow the stream's own tag procedure: after step 10's merge, the `runner-v1.0.0-rc.1` rehearsal (step 11: `runner-release.yml` built it, no `deploy.yml` run, the anonymous pull or its ⛔ owner item, the local digest match, the `SUBSET=prod` smoke), then `runner-v1.0.0` via `runner-release.yml` (step 12: the plan's release checklist and its "for this tag" notes; by looking, the fleet is unchanged); record it under **release streams** (digest; `validated_against` / notes: the TL-baselines link; "not deployed"). No app tag; nothing deploys until mi-10.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way (step 13's docs PR).
+5. Run `git checkout main && git pull` in every repo touched (xlearn; `../infra` stays read-only, synced in the entry gates). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

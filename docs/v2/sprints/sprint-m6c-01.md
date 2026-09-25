@@ -5,7 +5,7 @@
 > **Unblocks:** nothing gates on it. Siblings: [m6c-02](sprint-m6c-02.md), [m6c-03](sprint-m6c-03.md).
 > **Sources:** [rollout §4](../rollout-plan.md#m5-later-2x-and-m6c-v22) (the M6c row) and [§8](../rollout-plan.md#8-what-ships-where-content-hours-the-d6-reading) (the v2.2+ row); [t6 §9](../research/t6-realtime-interviewer.md#9-phased-plan) P2.
 > **Release action:** **outline only (v2.2).** This card merges nothing and tags nothing. Once expanded, each build sprint is "merge only", shipping dark to the **T-3 cohort only** in `v2.1.x` patches (a T-1 cohort-audience code default, like [m6a-01](sprint-m6a-01.md)'s `interviewAudience`; no T-2 env). The label is the M6c GA flip at the **next free minor after `v2.1.0`**: `v2.2.0` is indicative, or the next minor if [m5-01](sprint-m5-01.md) has already taken it ([ADR-0034 §1.1](../../adr/0034-v2-release-labelling-gating-and-rollback.md#11-scheme), [§1.6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#16-indicative-tag-timeline)). A dedicated M6c GA tag sprint cuts it; task 1 has the v2.2 planning add it. No infra PR is expected: t6 lists P2 as "none server-side".
-> **Calendar:** v2.2+, after `v2.1.0` (≈ Q1 2027), so ≈ Q2 2027 or later *(inferred)*. No owner event is booked. The only owner actions are the photo ruling (entry gates) and the design review.
+> **Calendar:** v2.2+, after `v2.1.0` (≈ Q1 2027), so ≈ Q2 2027 or later *(inferred)*. No owner event is booked. The only owner input is the photo ruling, settled at v2.2 planning before any prompt exists (entry gates); the design sprint's board PR merges on CI green, and the merge is the freeze (D40).
 >
 > **Execute with:** no prompt yet. v2.2 planning expands this card into a full plan and writes `../prompts/prompt-m6c-01.md` (one prompt, one session). Expect about two sessions: the board-variant design sprint `ds-m6c-01`, which all three M6c cards share, and one build sprint.
 
@@ -16,7 +16,7 @@ _Overall:_ ⬜ Not started. This is an **outline card**: expand it at v2.2 plann
 | # | Task | Repo | Status |
 |---|------|------|--------|
 | 1 | Expand this card into a full plan and prompt at v2.2 planning | X | ⬜ |
-| 1a | Sketch: "show your work" photo sent to the brain, never stored (O2b). Needs an owner ruling against D29 first | X · O | ⬜ |
+| 1a | Sketch: "show your work" photo sent to the brain, never stored (O2b). Needs an owner ruling against D29, settled at v2.2 planning | X · O | ⬜ |
 | 1b | Sketch: chat-coach read-aloud in the interviewer's voice | X | ⬜ |
 | 1c | Sketch: opt-in local recording download (never uploaded) | X | ⬜ |
 
@@ -29,8 +29,8 @@ _Overall:_ ⬜ Not started. This is an **outline card**: expand it at v2.2 plann
 
 - [ ] **M6b shipped:** `v2.1.0` (interviewer GA) is live and verified ([m6b-04](sprint-m6b-04.md)). [ADR-0032](../../adr/0032-realtime-ai-mock-interviewer.md) is Accepted with the S6 results folded in ([ds-m6a-01](sprint-ds-m6a-01.md)).
 - [ ] **This card has been expanded** at v2.2 planning into a full plan plus `prompt-m6c-01.md` (BP1). Nothing here can be executed before that.
-- [ ] **The owner has ruled on the photo (1a)**, and the ruling is in the decisions log. The options are keep, narrow (file or phone photo only, no webcam) or drop. The reason: [D29](../feasibility.md#decisions-log-newest-first) (t6 [§13](../research/t6-realtime-interviewer.md#13-owner-decisions--resolved-2026-09-24-they-override-the-body-where-they-conflict), which overrides the body) says "**no video goes to the AI**" and "the camera is not part of the AI interview". The O2b photo comes from the older body text ([t6 §9](../research/t6-realtime-interviewer.md#9-phased-plan) P2).
-- [ ] **Board variants are frozen before the expansion's first UI sprint** (BP3). The expansion schedules one design sprint for all of M6c (e.g. `ds-m6c-01`, which opens a PR and stops for owner review). It drafts variant frames on the frozen boards, only for the rows each card's expansion keeps:
+- [ ] **The owner's photo ruling (1a) is settled at v2.2 planning**, before any prompt exists (a planning input, not a session stop), and the ruling is in the decisions log. The options are keep, narrow (file or phone photo only, no webcam) or drop. The reason: [D29](../feasibility.md#decisions-log-newest-first) (t6 [§13](../research/t6-realtime-interviewer.md#13-owner-decisions--resolved-2026-09-24-they-override-the-body-where-they-conflict), which overrides the body) says "**no video goes to the AI**" and "the camera is not part of the AI interview". The O2b photo comes from the older body text ([t6 §9](../research/t6-realtime-interviewer.md#9-phased-plan) P2).
+- [ ] **Board variants are frozen before the expansion's first UI sprint** (BP3). The expansion schedules one design sprint for all of M6c (e.g. `ds-m6c-01`, whose board PR merges on CI green: the merge is the freeze, D40). It drafts variant frames on the frozen boards, only for the rows each card's expansion keeps:
   - this card: AB01 coach states (the read-aloud control and its consent); AB24 and AB29 pre-flight and consent (the photo and recording opt-ins); AB25 and AB30 live HUDs (the photo action and the recording indicator);
   - [m6c-02](sprint-m6c-02.md): the AB27 voice-Communication proposal row (a proposed band with verified quotes) and the AB24/AB29 "Based on your last N sessions" estimate line;
   - [m6c-03](sprint-m6c-03.md): AB29's widened browser copy (Safari) and the voice-lite "device voice" label and consent (AB25/AB29).
@@ -70,7 +70,7 @@ Every extra keeps the v2.1 invariants:
 
 The v2.2 planning session is a docs-only session, like the v2 build-plan session. It replaces this card with a full plan in the v2 sprint format and writes the prompt. It must:
 - **Re-read what exists by then:** [t6 §9](../research/t6-realtime-interviewer.md#9-phased-plan) P2, the Accepted ADR-0032, the S6 results note ([spk-04](sprint-spk-04.md)) and the shipped M6b code (`internal/coach/interview/voice`, and the AB29/AB30 components under `web/src`). The sketches below predate all of it.
-- **Split the work into sessions:** most likely `ds-m6c-01` (board variants for all three M6c cards; PR, then stop for owner review) plus one or two build sprints. Name the design sprint in the Prereqs of every M6c UI sprint.
+- **Split the work into sessions:** most likely `ds-m6c-01` (board variants for all three M6c cards; the PR merges on CI green and the merge is the freeze, D40) plus one or two build sprints. Name the design sprint in the Prereqs of every M6c UI sprint.
 - **Gate each extra:** each ships **dark to the T-3 cohort only**, through a T-1 cohort-audience code default (the [m6a-01](sprint-m6a-01.md) `interviewAudience` pattern). **No T-2 env is added**, which keeps "no infra PR" true. Its default flips at the labelled minor ([ADR-0034 §2](../../adr/0034-v2-release-labelling-gating-and-rollback.md#2-feature-gating-three-tiers-no-flag-service)). The flags go into status.md's flag inventory with M6c as both the owning and the removal milestone. **Budget the count:** this card's three extras plus m6c-03's Safari widening and voice-lite could add up to five non-kill flags, and the inventory must stay at **≤ 6 live non-kill flags**. If there is no room, use one shared M6c audience constant. m6c-02's `VOICE_COMM_AI` is a permanent kill switch and doesn't count toward the limit.
 - **Add the M6c GA tag sprint:** a dedicated sprint (e.g. `m6c-04`, "tag the next free minor after `v2.1.0`") that flips the defaults of the extras that have merged and been dogfooded. It copies the [ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#6-release-checklist) release checklist plus the ADR-0035 §2 NetworkPolicy standing rule, and it carries the single batched privacy-notice version bump (1a Privacy). m6c-02's voice-Communication flip is **not** a precondition for it.
 - **Record the calls:**
@@ -79,7 +79,7 @@ The v2.2 planning session is a docs-only session, like the v2 build-plan session
 
 ### 1a · Sketch: "show your work" photo → brain, not stored (O2b) [X · O]
 
-**Owner ruling first [O].** D29 keeps the camera out of the AI interview. Three shapes are on the table:
+**Owner ruling first [O]**, settled at v2.2 planning before any prompt exists (a planning input, not a session stop). D29 keeps the camera out of the AI interview. Three shapes are on the table:
 - **keep:** a learner-initiated still from the webcam or a file;
 - **narrow (recommended):** a file or phone photo only, with the webcam never opened by this feature;
 - **drop.**
@@ -113,7 +113,7 @@ The catalog gains an image-input capability field next to the `interview_brain` 
 **Privacy.**
 - The canary log test ([t5 §8](../research/t5-platform-ai.md#8-privacy-and-residency)) is extended to the photo route and the brain call: no bytes and no base64 in logs, panic values or rows.
 - The ADR-0032 / [t6 §7](../research/t6-realtime-interviewer.md#7-privacy-consent-retention--accessibility) data inventory gains a "photo: to your provider, never stored" row.
-- **The privacy notice** (`web/src/content/privacy-notice.md`, with [l-05](sprint-l-05.md)'s notice-version parity test) gains the same row. A notice change **bumps the notice version**. Every account, the owner and testers included, then gets l-05's `403 acceptance_required` on every non-onboarding API until it re-accepts the notice. So **batch all M6c notice changes** into **one** version bump at the M6c GA minor: the photo, read-aloud (1b) and any voice-lite cloud recognizer or network voice ([m6c-03](sprint-m6c-03.md)). The owner approves the notice text in the PR, as with l-05's `ev-notice-text`. Until then, each extra's unticked consent carries its own disclosure for the cohort.
+- **The privacy notice** (`web/src/content/privacy-notice.md`, with [l-05](sprint-l-05.md)'s notice-version parity test) gains the same row. A notice change **bumps the notice version**. Every account, the owner and testers included, then gets l-05's `403 acceptance_required` on every non-onboarding API until it re-accepts the notice. So **batch all M6c notice changes** into **one** version bump at the M6c GA minor: the photo, read-aloud (1b) and any voice-lite cloud recognizer or network voice ([m6c-03](sprint-m6c-03.md)). The notice text lands as drafted (D40), as l-05's does; the owner may revise it later with a content PR. Until that bump, each extra's unticked consent carries its own disclosure for the cohort.
 
 **Assessment stays content-only.**
 - The never-list applies to images too: no face, appearance or background ([t6 §6](../research/t6-realtime-interviewer.md#6-assessment)).
@@ -216,7 +216,7 @@ Candidate acceptance to refine at expansion (not gates today):
 **Outline only (v2.2).** This card merges nothing and cuts no tag.
 
 Once expanded:
-- **design sprint:** "PR, stop for owner review";
+- **design sprint:** "land-and-sync; the merge is the design freeze" (the board PR merges on CI green, D40);
 - **build sprints:** "merge only (ships dark to the cohort in the next `v2.1.x` patch)". Every patch runs the ADR-0034 §6 checklist, **including "from M6: no live interviews"** (`coach admin interviews --live` must be empty);
 - **the M6c GA flip:** the dedicated M6c GA tag sprint that task 1 adds (e.g. `m6c-04`). It tags the next free minor after `v2.1.0` and flips the defaults of the extras that are ready. It copies the [ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#6-release-checklist) release checklist plus the ADR-0035 §2 NetworkPolicy standing rule, and carries the batched notice-version bump. No NetworkPolicy change is expected, because no new in-cluster caller is added;
 - **infra:** no infra PR, because no T-2 env is added.
@@ -237,7 +237,7 @@ Once expanded:
 
 ## Risks / watch-outs
 
-- **Conflict with D29 (photo).** The O2b photo predates D29's "camera is not part of the AI interview". Building it without an explicit owner ruling would contradict a settled decision. Get the ruling. If the answer is keep or narrow, record it as a new ADR amending ADR-0032 §3, and ADR-0035 §4 for the photo cap.
+- **Conflict with D29 (photo).** The O2b photo predates D29's "camera is not part of the AI interview". Building it without an explicit owner ruling would contradict a settled decision. Get the ruling at v2.2 planning, before any prompt exists. If the answer is keep or narrow, record it as a new ADR amending ADR-0032 §3, and ADR-0035 §4 for the photo cap.
 - **"No media on the node" creep.** A server-side TTS call for read-aloud would relay audio through coach and the gateway. Keep the audio on the browser↔OpenAI path, or use the device voice.
 - **The never-list through images** (EU AI Act Art. 5(1)(f); [t6 §6](../research/t6-realtime-interviewer.md#6-assessment)). A photo can include a face or a room. Mitigations: brain instructions, the consent copy, the post-hoc scan of photo notes, and **no scoring from images**.
 - **Cost surprises on the learner's key.** GPT-Live bills read-aloud per connected second. Show the cost on the control, cap each read, and count it in L19.

@@ -26,7 +26,7 @@
 
 - [ ] **m6a-01 merged:** `internal/coach/interview` with the FSM (injectable `Clock`) and its named sets (`locked`, `editable`, `live`, …), the `interview_event` log + `events.Append`, `interview.items`, the `CodeSource` interface, the constants `SnapshotMinInterval` / `SnapshotMaxBytes` / `MockRunPace`, coach's local `/chat` lock, `GET /interviews/active`, the gateway's `/api/interviews/*` proxy + cohort gate (`interviewAudience`) with its placeholder pick, `coach admin interviews --live`.
 - [ ] **v2.0.0 live, judge on:** `JUDGE_BASE_URL` set on prod; judge's `mock` context (m3-06); m3-14's admission rows + `job_telemetry`; m3-09's BFF answering `mock` with 422 `invalid_context` (its generic `/api/problems/{id}/…` routes keep that 422; `mock` opens only on this sprint's own routes); m3-11's lazy `CodeEditor.tsx`, `judge.ts` and drafts on `main`.
-- [ ] **AB25 frozen:** `design-system/screens/v2/AB25-live-hud-text.html` on `main`.
+- [ ] **AB25 frozen:** ds-m6a-01 merged (the merge is the freeze); `design-system/screens/v2/AB25-live-hud-text.html` on `main`.
 - [ ] **Parallel sessions:** `gh pr list`, `git worktree list`, ListAgents — no open peer PR edits `internal/judge/admission/**`, `internal/judge/dto/**`, `internal/gateway/withhold.go`, `internal/gateway/sse.go` or `CodeEditor.tsx`; note which of m6a-02/m6a-03 have merged (it decides the seams in steps 2, 3, 5 and 6, incl. assessment's `POST /mocks` `items[]` and the context-id fallback). Take the next free coach goose version at rebase.
 
 ## Do this (in order)
@@ -107,4 +107,12 @@
 - [ ] Coach locked in-session, unlocked while paused; evidence and echo carry aggregate / learner-visible data only.
 - [ ] CI green (Go, `sqlc diff`, drift + route-enumeration tests, web, bundle check, e2e).
 
-**Ship at session end** per AGENT.md land-and-sync with **this sprint's release action: merge only (ships dark in the next `v2.0.x` patch)**: branch `feat/m6a-04-mock-runs-editor-sse`, conventional commits with the attribution lines, a PR, CI green, squash-merge, then `git checkout main && git pull`. **Do not tag** — [m6a-06](../sprints/sprint-m6a-06.md) cuts the patch. There is no infra PR.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: xlearn only, on `feat/m6a-04-mock-runs-editor-sse`; there is no infra PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships dark in the next `v2.0.x` patch):** Nothing deploys; it ships dark in the next `v2.0.x` patch, cut by [m6a-06](../sprints/sprint-m6a-06.md). Don't tag.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

@@ -46,7 +46,7 @@ consents are l-05. Ships in **v1.16.0** (m4-07 tags).
 - [ ] m4-04 merged on `main` (`gh pr list --state merged --search "m4-04"`).
 - [ ] m4-02's pieces on `main`: `internal/platform/consent`; `/internal/accounts/{id}` returning live `consents`; judge's
       account cache with `POST /internal/accounts/{id}/refresh`; the consent gate in `Reserve`; `AllowanceFor`.
-- [ ] AB18 frozen: `design-system/screens/v2/AB18-ai-allowance-consents.html` on `main`.
+- [ ] AB18 frozen: ds-m4-01 merged (the merge is the freeze), so `design-system/screens/v2/AB18-ai-allowance-consents.html` is on `main`.
 - [ ] Parallel sessions: `gh pr list`, `git worktree list` and ListAgents show no peer editing identity's store, the
       gateway route table or `internal/judge/ai` right now.
 
@@ -78,7 +78,7 @@ consents are l-05. Ships in **v1.16.0** (m4-07 tags).
    drift test, `npm test` + typecheck in `web/`. For a manual look, the compose stack with a scratchpad `-f` override that
    points judge at a fake provider (m4-01's convention; never committed): dev login → `PATCH /api/me/consents` →
    `GET /api/me/ai-allowance` → withdraw → the next analysis is refused.
-9. **[X] Ship** per AGENT.md land-and-sync with this sprint's release action (below).
+9. **[X] Ship:** see **Ship** below.
 
 ## Constraints
 
@@ -114,7 +114,8 @@ consents are l-05. Ships in **v1.16.0** (m4-07 tags).
   the register's "$" wording), the judge cache refresh on every consent change (bounded by the 5-minute TTL on failure),
   withdrawing graded withdraws passing, graded ⇒ passing enforced inside `SetConsents` (every writer, l-05 included), the
   allowance's absent state = the unknown-route 404, the `off` state, and the conditional onboarding line. Add to m4-07's day-1 notes:
-  "owner and testers tick the consents in Settings before platform AI runs on their accounts".
+  "owner and testers tick the consents in Settings before platform AI runs on their accounts" (a post-ship owner event; no session
+  waits on it).
 
 ## Done when (acceptance)
 
@@ -125,6 +126,12 @@ consents are l-05. Ships in **v1.16.0** (m4-07 tags).
 - [ ] Names from shared constants; the onboarding coach step carries the t5 §9 copy and never overclaims.
 - [ ] openapi drift and all identity/gateway/judge/web tests green.
 
-**Shipping:** per AGENT.md land-and-sync with **this sprint's release action — merge only (ships in v1.16.0)**: branch →
-conventional commits with the attribution lines → push → PR → CI green → squash-merge; **no infra PR, do not tag**
-(m4-07 cuts v1.16.0); then `git checkout main && git pull`.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: xlearn only, on `feat/m4-05-ai-consents-allowance`.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships in `v1.16.0`):** Nothing deploys; it ships in `v1.16.0` (cut by [m4-07](../sprints/sprint-m4-07.md)). Don't tag. No infra PR.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.
