@@ -61,7 +61,7 @@
 - [ ] MI-4 live: `flux get kustomizations sandbox-guards` is Ready; `k3s kubectl get pods -n xlearn-runner` is empty; the VAP bindings are at `[Deny]` (mi-14's PR 2); the RuntimeClass `xlearn-judge`, PriorityClass `xlearn-sandbox-lowest`, Quota, LimitRange, `default-deny-all` and `judge-to-runner` exist. Check status.md for a spike VAP diff handed to mi-10.
 - [ ] The MI-11 window has been executed: `ssh vps 'bash -s -- --expect-sandbox --cluster' < ../infra/hack/host-verify.sh` is green (`judge` runtime, AppArmor enforce, seccomp, subuid, L23 in `configz`).
 - [ ] MI-11a merged (mi-08), and `host-verify --cluster --with-runner` shows the memory sum inside the rule.
-- [ ] `ghcr.io/sujaykumarsuman/xlearn-runner:1.0.0` exists (an anonymous `crane digest` works), and its digest matches m3-15's record.
+- [ ] `ghcr.io/sujaykumarsuman/xlearn-runner:1.0.0` exists (an anonymous `crane digest` works), and its digest matches m3-15's record. If m3-15 left a ⛔ owner item for the package visibility in status.md and the anonymous read still fails, this gate is unmet.
 - [ ] ADR-0030 is Accepted (m3-03), and status.md records the caps list (mi-09).
 - [ ] Parallel sessions: no open peer PR touches `clusters/vps/sandbox.yaml`, `runner/`, `apps/image-automation.yaml` or `.sops.yaml` (`gh pr list -R sujaykumarsuman/infra`, `git worktree list`, ListAgents). Also check whether m3-07 already generated the runner bearer.
 
@@ -209,7 +209,7 @@
   - who generated the bearer (and when);
   - the M3 hard-checklist key: MI-12 done.
 - Add **Decisions log** lines for `IfNotPresent`, the liveness path (`/healthz`), the caps (SETPCAP kept or dropped), and where the multipliers live.
-- No ADR is expected. If a VAP-vs-chart conflict forces a rule change, stop and raise it: an ADR-0030 amendment is the owner's call.
+- No ADR is expected. If a VAP-vs-chart conflict can't be fixed in the values (the only pre-decided path), don't change the VAP or ADR-0030 in this sprint. Land the PRs that don't depend on it (steps 2–3, the docs PR), push the runner change as a branch without a PR, and record the conflict, the options and a recommendation in status.md, with MI-12 marked ⛔ "needs owner decision (ADR-0030 amendment)". Don't wait.
 
 ## Done when (acceptance)
 
@@ -221,8 +221,13 @@
 - [ ] `baseline@1`, `CanaryMedian` and the Go/C++/Python TL multipliers (the `CALIBRATE=1` run) are recorded, with steal during the run, in `docs/architecture/runner-tl-baselines.md`'s production column
 - [ ] `flux get images policy xlearn-runner` shows `1.0.0` with its digest; the 2nd IUA is Ready; the first IUA is untouched
 - [ ] `runner` is off `apps`' wait path
-- Ship at session end per AGENT.md land-and-sync, with this sprint's release action: **infra PR(s) only** (`runner-v1.0.0` was already cut in m3-15).
-  - Merge the infra PRs in order (the secret and image automation, then the runner), putting the local check output in each PR body (infra has no CI).
-  - Merge the xlearn docs PR.
-  - No tag.
-  - Sync local `main` in both repos.
+
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: the `../infra` PRs of steps 1–4 first, then the xlearn docs PR (plus the multipliers PR only if they live in code).
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. `../infra` has no CI: put the local check output (render + VAP dry run, suite results) in each infra PR body and merge on it.
+3. **Release action — infra PR(s) only (`runner-v1.0.0` was already cut in m3-15):** merge the infra PRs in the plan's order, each its own PR and never folded into a tag: a pending spike VAP diff first, if status.md handed one over (before any runner pod exists); the `.sops.yaml` rule + `runner-auth` secret and the image automation (image before policy); then the `runner` Kustomization + HelmRelease. Verify live with step 7's `host-verify --cluster --expect-sandbox`. Then merge the xlearn docs PR (status, calibration). A multipliers PR, if they live in runner profiles, merges only and rides the next `runner-v*` tag. No tag.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn and `../infra`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

@@ -6,7 +6,7 @@
 > **Release action:** **merge only** (ships dark in the next `v2.0.x` patch, tagged by [m6a-06](sprint-m6a-06.md)) · no infra PR · no new pod
 > **Services:** web, plus two small **planned** backend pieces in coach + gateway (task 2: the interview estimate read and the text-mode Hold flag, one expand-only coach migration) — no upstream sprint builds them
 > **Artboards:** **AB13** A9 Mock-v2 (`design-system/screens/v2/AB13-mock-v2.html`) · **AB24** setup + consent + pre-flight + $ cap (`AB24-mock-setup-preflight.html`) · **AB25** live HUD, text (`AB25-live-hud-text.html`)
-> **Calendar:** Q1 2027. No owner time (the owner reviewed the boards at the freeze).
+> **Calendar:** Q1 2027. No owner time (the boards were frozen at ds-m6a-01's merge).
 > **Execute with:** [`../prompts/prompt-m6a-05.md`](../prompts/prompt-m6a-05.md) — one prompt, one session.
 
 ## Status
@@ -28,7 +28,7 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] **AB13, AB24, AB25 frozen:** [ds-m6a-01](sprint-ds-m6a-01.md)'s PR merged by the owner; `design-system/screens/v2/AB13-mock-v2.html`, `AB24-mock-setup-preflight.html` and `AB25-live-hud-text.html` exist on `main`.
+- [ ] **AB13, AB24, AB25 frozen:** [ds-m6a-01](sprint-ds-m6a-01.md) merged (the merge is the freeze); `design-system/screens/v2/AB13-mock-v2.html`, `AB24-mock-setup-preflight.html` and `AB25-live-hud-text.html` exist on `main`.
 - [ ] **m6a-03 merged:** `mock_session.status ∈ {open, scored, incomplete, abandoned}`, `format ∈ {classic, text, voice}`, `scored_by`, `time_multiplier`, `caveats[]`; rubric validation from the session's `rubric_snapshot` (no exactly-7 check); trends and aggregates count `scored` only; the proposal/accept routes (m6a-06 renders them).
 - [ ] **m6a-04 merged:** `CodeEditor` interview mode; `web/src/lib/interview/{snapshots,events,turns,run,drafts}.ts`; the picker and the classic Mock-v2 start (`POST /api/mocks {format:"classic", difficulty, language?}`); the Run, poll, **draft** (`GET|PUT /api/interviews/{id}/items/{ordinal}/draft`, `GET|PUT /api/mocks/{id}/items/{ordinal}/draft`) and evidence routes; the bounded `events`/`turns` streams.
 - [ ] **m6a-01 and m6a-02 on `main`:** m6a-01's `/api/interviews/*` — `GET /api/interviews/active`, `POST /api/interviews` (create in `setup`), `PUT …/optin`, `PUT /api/interviews/{id}/consent`, `POST /api/interviews/{id}/{start|attach|heartbeat|interrupt|pause|resume|finish|abandon}`, `GET /api/interviews/{id}` — with its cohort gate (`interviewAudience`); m6a-02's `turns`, `hint`, `probe`, `brief` and the pre-flight inside `start`. Write down the names that actually merged — this sprint calls them, it doesn't invent them.
@@ -163,7 +163,7 @@ Sources: [t6 §3–§5](../research/t6-realtime-interviewer.md#4-session-state-m
 
 ## Definition of Done
 
-CI green · screens match the frozen boards · acceptance criteria met · statuses updated (this file + [`../status.md`](../status.md): Sprint board, M6a row, Artboards rows AB13/AB24/AB25 → "frozen (PR #, date) · consumed by m6a-05") · local `main` synced after the squash-merge.
+CI green · screens match the frozen boards · acceptance criteria met · statuses updated (this file + [`../status.md`](../status.md): Sprint board, M6a row, Artboards rows AB13/AB24/AB25 → "· consumed by m6a-05" appended, plus "frozen (PR #, date)" only if the ds-m6a-01 session didn't already record it) · local `main` synced after the squash-merge.
 
 ## Risks / watch-outs
 

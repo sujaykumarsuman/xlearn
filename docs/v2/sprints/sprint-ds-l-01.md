@@ -2,8 +2,8 @@
 
 > **Milestone:** L — learner gate (design track)   ·   **Track:** design (parallel; order 7)
 > **Prereqs:** none (no prerequisite beyond `depends_on`)   ·   **Unblocks:** [l-02](sprint-l-02.md) (AB21 frozen before L-E's UI) · [l-05](sprint-l-05.md) (AB19–AB20 frozen before the L-A/L-C front door)
-> **Release action:** **PR, stop for owner review (design).** The agent never merges; the owner's approval and merge **is the freeze** (calendar event `ev-freeze-ds-l-01`).
-> **Calendar:** week 1–2 (2026-09-25 → 10-09). The owner reviews any time before [l-02](sprint-l-02.md) starts (early November). No owner design hours (BP3).
+> **Release action:** **land-and-sync; the merge is the design freeze** — the board PR squash-merges on CI green; no tag, nothing deploys (launching the prompt is the owner's approval, [D40](../feasibility.md#decisions-log-newest-first); the owner may review after the merge, and any change to a frozen board is a follow-up design PR)
+> **Calendar:** week 1–2 (2026-09-25 → 10-09); the freeze lands with this session's merge, well before [l-02](sprint-l-02.md) starts (early November). No owner event (`ev-freeze-ds-l-01` is automatic at the merge and needs no tick) and no owner design hours (BP3).
 > **Execute with:** [`../prompts/prompt-ds-l-01.md`](../prompts/prompt-ds-l-01.md) — one prompt, one session.
 
 ## Status
@@ -14,15 +14,19 @@ _Overall:_ ⬜ Not started
 |---|------|------|--------|
 | 1 | Board scaffolding (own files only; never `index.html` or `board.css`) | X | ⬜ |
 | 2 | AB19 ★ invite acceptance (hero): auth-page states, invite errors, acceptance step | X | ⬜ |
-| 3 | AB20 privacy notice / terms (draft notice text) | X | ⬜ |
+| 3 | AB20 privacy notice / terms (agent-drafted notice text; ships as drafted, D40) | X | ⬜ |
 | 4 | AB21 erase account (Settings) | X | ⬜ |
-| 5 | Self-review against the brief + screenshots (1440 px, 390 px) | X | ⬜ |
-| 6 | Open the design PR and STOP | X | ⬜ |
-| 7 | Freeze: the owner reviews, approves and merges (`ev-freeze-ds-l-01`) | O | ⬜ |
+| 5 | Self-review checklist (run before merging) + screenshots (1440 px, 390 px) | X | ⬜ |
+| 6 | Open the design PR (screenshots, frame lists, the ticked self-review checklist, "Decisions to confirm") | X | ⬜ |
+| 7 | Freeze: squash-merge on CI green (the merge is the freeze) → status → sync `main` | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
-> Update the _Overall_ line accordingly. **This design PR does not edit [`../status.md`](../status.md)** (it may stay open for days):
-> the first build sprint that consumes the boards ([l-02](sprint-l-02.md)) sets AB19–AB21 to "frozen (PR #, date)" there and marks task 7 ✅.
+> Update the _Overall_ line accordingly. **Land and sync ([D40](../feasibility.md#decisions-log-newest-first)):** the board PR
+> merges on CI green and the merge is the freeze, so this sprint records its own close-out. Once the PR number is known, a last
+> commit on the PR branch sets tasks 1–7 and _Overall_ ✅ here (task 7: "frozen: merged in PR #N, <date>") and, in
+> [`../status.md`](../status.md), this sprint's Sprint-board row ✅, the Artboards rows AB19, AB20 and AB21 → ✅ "frozen (merged,
+> PR #N, <date>)", and the Snapshot's artboard count (`ev-freeze-ds-l-01` is automatic: no tick). If the
+> merge slips to another day or fails after that commit, correct the rows in a follow-up docs PR merged the same way.
 > Full rules: [status protocol](README.md#status-protocol-way-of-working).
 
 ## Entry gates
@@ -45,17 +49,21 @@ Draft the three learner-gate boards — including the **AB19 invite-acceptance h
 - [l-02](sprint-l-02.md) builds the Settings erase section against a frozen **AB21** (freeze rule: AB21 before L-E);
 - [l-05](sprint-l-05.md) builds the auth page's invite state, the acceptance step and the privacy page against frozen **AB19–AB20** (AB19–AB20 before L-A).
 
-Per **BP3** (owner, 2026-09-24) agents draft every v2 board, heroes included; the owner only reviews and approves. The rollout's
-"owner designs the heroes in Claude Design" ([rollout §9](../rollout-plan.md#9-artboards-by-milestone)) is superseded by BP3.
+Per **BP3** (owner, 2026-09-24) agents draft every v2 board, heroes included. Per [D40](../feasibility.md#decisions-log-newest-first)
+the board PR merges on CI green and the merge is the freeze; the owner may review afterwards, and any change to a frozen board is
+a follow-up design PR. The rollout's "owner designs the heroes in Claude Design" ([rollout §9](../rollout-plan.md#9-artboards-by-milestone))
+is superseded by BP3.
 
 ## Scope
 
 **In**
 - AB19 ★, AB20 and AB21 as static HTML under `design-system/screens/v2/`, one file per board.
 - Every frame/state listed in Tasks 2–4, with final copy, a frame label citing its decision(s), and a behaviour-notes aside.
-- AB20 carries the **full draft notice text**; the owner approves the final wording later at `ev-notice-text` ([l-05](sprint-l-05.md)).
+- AB20 carries the **full notice text**, drafted by the agent. Per D40 it lands as drafted and [l-05](sprint-l-05.md) ships it;
+  the owner may revise it later with a content PR, and the owner's review of the notice is a
+  [v3 opening gate](../rollout-plan.md#11-opening-gates-v3), not a step in any v2 sprint.
 - 1440 px and 390 px screenshots of every board in the PR.
-- Freeze = owner approval + merge.
+- Freeze = the board PR merged on CI green (D40); plus this sprint's own rows in `docs/v2/status.md` (Status note).
 
 **Out**
 - Any `web/` code → [l-02](sprint-l-02.md) (AB21) and [l-05](sprint-l-05.md) (AB19, AB20).
@@ -65,7 +73,7 @@ Per **BP3** (owner, 2026-09-24) agents draft every v2 board, heroes included; th
 - Editing `design-system/screens/v2/index.html` or `board.css` → owned by [ds-m1-01](sprint-ds-m1-01.md) (written once).
 - The L-exit rehearsal runbook → [l-04](sprint-l-04.md).
 - Any web admin or waitlist surface: there is none (D33, [ADR-0033 §10](../../adr/0033-invite-only-admission-and-owner-admin.md#10-no-web-admin-no-waitlist)); AB23 is dropped.
-- Shipping boards (preview-only) and owner design hours beyond review (BP3).
+- Shipping boards (preview-only) and owner design hours (BP3; any owner review happens after the merge).
 
 ## Tasks
 
@@ -87,8 +95,8 @@ Static HTML boards under `design-system/screens/v2/`, one file per board, named 
   [`Auth.dc.html`](../../../design-system/screens/Auth.dc.html) and [`Settings.dc.html`](../../../design-system/screens/Settings.dc.html)
   are references only; draw from today's shipped `web/src/screens/Auth.tsx` and `Settings.tsx` structure (the Sign in / Sign up
   `ds-seg` pill, the Settings section rail), which have moved on from the `.dc.html` boards.
-- **Touch only this sprint's own board files** (and their screenshots). Parallel design PRs ([ds-m1-01](sprint-ds-m1-01.md),
-  [ds-m2-01](sprint-ds-m2-01.md)) never conflict on `index.html`.
+- **Touch only this sprint's own board files** (and their screenshots, plus this sprint's own rows in `docs/v2/status.md`).
+  Parallel design PRs ([ds-m1-01](sprint-ds-m1-01.md), [ds-m2-01](sprint-ds-m2-01.md)) never conflict on `index.html`.
 
 ### 2 · AB19 ★ invite acceptance (hero) [X]
 
@@ -109,11 +117,11 @@ against [l-03](sprint-l-03.md)'s backend.
 | F5 `invite_required` | `/xlearn/auth?error=invite_required` (a new GitHub user without an invite, or an email signup with no code): "You need an invite to create an account. Open the invite link you were sent, or sign in if you already have an account." | ADR-0033 §5 |
 | F6 No seats (`no_seats`) | Redeem refused because seats are full (the cap re-check at redeem; also the R0 seat-freeze lever): "xLearn is full right now, so this invite can't be used yet. It stays valid until 12 Oct 2026 — try again later, or ask the person who invited you." The error code is defined by [l-03](sprint-l-03.md); the board uses `no_seats` and flags it for confirmation. | ADR-0033 §3 |
 | F7 Email already registered | The invite is **not** consumed (the transaction rolls back): "An account with this email already exists. Sign in instead — your invite hasn't been used." | ADR-0033 §5, §9 (accepted leak to invite holders) |
-| F8 GitHub path with an invite | Behaviour frame: the Continue-with-GitHub form carries a hidden `invite` field (kept in the HttpOnly `oauthTx` cookie, 10 min); a **new** account redeems inside the create transaction and lands on F9; an **existing** account just signs in (invite untouched). If the invite names an email and GitHub's verified email differs → the **uniform F4 error** (conservative reading; flagged for the owner). | ADR-0033 §5, §2 (no auto-link into password accounts) |
+| F8 GitHub path with an invite | Behaviour frame: the Continue-with-GitHub form carries a hidden `invite` field (kept in the HttpOnly `oauthTx` cookie, 10 min); a **new** account redeems inside the create transaction and lands on F9; an **existing** account just signs in (invite untouched). If the invite names an email and GitHub's verified email differs → the **uniform F4 error** (conservative reading; listed under "Decisions to confirm"). | ADR-0033 §5, §2 (no auto-link into password accounts) |
 | **F9 ★ Acceptance step** (onboarding step 0) | Full-screen, before the path step. Title "Before you start", stepper "Step 1 of 5" (the acceptance step joins today's 4 onboarding steps — path, budget, username, coach — in `web/src/screens/Auth.tsx`). Three required items and one optional group:<ul><li>☐ **"I'm 18 or older."**</li><li>☐ **"I've read the [privacy notice] (version 1, effective 1 Dec 2026) and agree to it."** — the link opens AB20 in a new tab.</li><li>**Region:** "Where do you live?" select, pre-filled **India** from the invite (default `IN`); helper "Some features depend on local law — for example, voice mock interviews."</li><li>Fieldset **"xLearn AI (optional)"**, both **unticked**: ☐ "xLearn AI reviews my graded work — grade suggestions and feedback on work you submit." ☐ "…and also reviews my passing solutions for improvement notes." (disabled until the first is ticked). Helper: "Off unless you tick them. If on, your work is sent to Anthropic, processed outside India, kept by them for up to 30 days and never used for training. Change this any time in Settings. With these off, you grade your own work."</li></ul>**[Continue]** · secondary **[Sign out]**. | ADR-0033 §6, ADR-0031 §4, R-AD4, R-AI6, D24 |
 | F10 Acceptance · validation | Submit with a required box unticked: inline errors "Please confirm you're 18 or older." / "Please accept the privacy notice to continue."; focus moves to the first invalid item. **[Continue]** stays enabled (errors on submit, not a silently disabled button). | a11y |
 | F11 Acceptance · owner/tester | Same form for accounts with no invite (the owner and CLI-minted testers pass it once too): region defaults to India; if onboarding is otherwise complete the stepper reads "One more step". **Consents reflect existing live grants:** an account that already granted a consent in Settings (the owner during M4) sees that box ticked — draw this variant (first consent ticked from a live grant, helper "On — you turned this on in Settings."); a box is never pre-ticked without a live grant, and unticking one withdraws it. | ADR-0033 §6, §7, ADR-0031 §4 ([l-05](sprint-l-05.md) task 4) |
-| F12 Re-acceptance (`403 acceptance_required`) | Any non-onboarding API returns `403 acceptance_required` after a notice-version bump → the SPA routes here. Banner: "We've updated the privacy notice (version 2, effective 1 Mar 2027). Please review what changed and accept to keep using xLearn." **[What changed]** opens AB20-F2. Only the notice checkbox is asked again; 18+, region and the consents keep their recorded values (conservative reading; flagged for the owner). | ADR-0033 §6 |
+| F12 Re-acceptance (`403 acceptance_required`) | Any non-onboarding API returns `403 acceptance_required` after a notice-version bump → the SPA routes here. Banner: "We've updated the privacy notice (version 2, effective 1 Mar 2027). Please review what changed and accept to keep using xLearn." **[What changed]** opens AB20-F2. Only the notice checkbox is asked again; 18+, region and the consents keep their recorded values (conservative reading; listed under "Decisions to confirm"). | ADR-0033 §6 |
 | F13 Save failed | "Couldn't save your answers — check your connection and try again." Ticked boxes stay ticked. | — |
 | F14 < 1024 px / 390 px | Auth card full width; acceptance items stacked; the consent fieldset below the required items; **[Continue]** pinned at the bottom. | — |
 
@@ -135,7 +143,7 @@ sign-in (from the auth page and the acceptance step) and from Settings. Sources:
 
 | Frame | Content and final copy | Decisions |
 |---|---|---|
-| F1 Notice page (desktop, signed out) | Header "Privacy notice" · "Version 1 · effective 1 Dec 2026" · a table of contents. **Draft text**, one short section each:<ol><li>**Who runs xLearn** — one person, the owner, as a personal project; contact through the address in [Request an invite].</li><li>**What xLearn stores** — account (email, display name, username, password hash, a linked GitHub id), learning data (attempts, the code you submit, timings, grades, revision schedule, mistakes, mock scores), coach chats, your own AI keys (encrypted), region, your 18+ confirmation and your choices. One session cookie; no analytics, ads or tracking.</li><li>**How AI is used** — *xLearn AI* only if you opt in: your work goes to **Anthropic**, is processed **outside India**, may be kept by Anthropic for **up to 30 days** (flagged content up to 2 years) and is **never used for training**. *Your coach* uses your own OpenAI or Anthropic key under your account with them.</li><li>**What's public** — your profile at `/xlearn/u/<username>` shows stats for the courses you leave visible; never your code, answers, mistakes or notes. Toggles in Settings.</li><li>**Where data lives, and the data-loss window** — one server; **no off-node backups**; the hosting provider keeps a weekly image of the whole server. If the server or its disk fails, **up to about 7 days** of your data may be lost.</li><li>**Your choices** — the AI toggles, profile visibility, and erasing your account (what is erased; your username is held for 60 days; a weekly server image kept by the host may hold your data for **up to about 7 days**, and a pre-release snapshot for up to 1 day — if one is ever restored, the owner re-runs the erases made since it was taken; some internal event records keep a random account id, and older sign-up records also keep your display name, until the owner removes them on request).</li><li>**Age** — xLearn is for people 18 or older.</li><li>**Changes** — every version is numbered; after a change you're asked to accept again before continuing.</li></ol>Footer strip: "Draft notice text — the owner approves the final wording before release." | ADR-0033 §6, ADR-0031 §4, D12, D24 |
+| F1 Notice page (desktop, signed out) | Header "Privacy notice" · "Version 1 · effective 1 Dec 2026" · a table of contents. **The notice text** (agent-drafted; it ships as drafted, D40), one short section each:<ol><li>**Who runs xLearn** — one person, the owner, as a personal project; contact through the address in [Request an invite].</li><li>**What xLearn stores** — account (email, display name, username, password hash, a linked GitHub id), learning data (attempts, the code you submit, timings, grades, revision schedule, mistakes, mock scores), coach chats, your own AI keys (encrypted), region, your 18+ confirmation and your choices. One session cookie; no analytics, ads or tracking.</li><li>**How AI is used** — *xLearn AI* only if you opt in: your work goes to **Anthropic**, is processed **outside India**, may be kept by Anthropic for **up to 30 days** (flagged content up to 2 years) and is **never used for training**. *Your coach* uses your own OpenAI or Anthropic key under your account with them.</li><li>**What's public** — your profile at `/xlearn/u/<username>` shows stats for the courses you leave visible; never your code, answers, mistakes or notes. Toggles in Settings.</li><li>**Where data lives, and the data-loss window** — one server; **no off-node backups**; the hosting provider keeps a weekly image of the whole server. If the server or its disk fails, **up to about 7 days** of your data may be lost.</li><li>**Your choices** — the AI toggles, profile visibility, and erasing your account (what is erased; your username is held for 60 days; a weekly server image kept by the host may hold your data for **up to about 7 days**, and a pre-release snapshot for up to 1 day — if one is ever restored, the owner re-runs the erases made since it was taken; some internal event records keep a random account id, and older sign-up records also keep your display name, until the owner removes them on request).</li><li>**Age** — xLearn is for people 18 or older.</li><li>**Changes** — every version is numbered; after a change you're asked to accept again before continuing.</li></ol>Board annotation under the page (not page copy): "Notice text v1 as drafted by the agent — it ships as drafted (D40); the owner may revise it with a content PR (owner review: v3 opening gates)." | ADR-0033 §6, ADR-0031 §4, D12, D24 |
 | F2 "What changed" block | Shown for version ≥ 2 at the top of the page and from AB19-F12: "What changed in version 2" with 2–4 plain bullets and the previous version's date. | ADR-0033 §6 |
 | F3 Terms section | Same page, below the notice: "Terms" — xLearn is invite-only; one account per person; invites are single-use and not to be shared; the owner may suspend accounts; xLearn is provided as is, without warranty; course content is MIT-licensed. | D33, R-CT1 |
 | F4 In-app view | The same page inside the app shell when signed in (reached from Settings); identical text. | — |
@@ -150,8 +158,8 @@ records; long-form text is ≥ 16 px with a readable line length (~70 ch); headi
 [ADR-0035 §4](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#4-limits-inventory) L8, [ADR-0027 §6](../../adr/0027-content-evalpack-and-user-data-model.md#6-account-erase-v20)
 (as amended: no erase ledger, D12), [ADR-0034 §4.4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#44-reversibility-by-step) (erase is irreversible),
 [t1 §6.6](../research/t1-content-data-model.md#66-erase-path-none-exists-today-no-delete-apime-in-bffgo), PRD R-AC5 and R-AD6. Built in [l-02](sprint-l-02.md)
-(`DELETE /api/me`). Placement: the last card of the existing **"Sign-in & security"** section of `Settings.tsx`'s rail (flagged for the owner:
-the alternative is its own rail item).
+(`DELETE /api/me`). Placement: the last card of the existing **"Sign-in & security"** section of `Settings.tsx`'s rail (listed under
+"Decisions to confirm": the alternative is its own rail item).
 
 | Frame | Content and final copy | Decisions |
 |---|---|---|
@@ -168,7 +176,7 @@ the alternative is its own rail item).
 
 Behaviour notes must state: the owner is always refused on the web (no XSS can wipe the owner); the fresh-session window is 5 minutes;
 the typed value is checked on the server too; after success the session is gone and the public profile 404s at once (P11); what stays
-(ADR-0027 §6 note; l-01/l-02 risk lists — flagged for owner confirmation of the wording): "Some internal event records keep a random
+(ADR-0027 §6 note; l-01/l-02 risk lists — the wording is listed under "Decisions to confirm"): "Some internal event records keep a random
 account id, and older sign-up records also keep your display name, until the owner removes them on request" (identity's historic
 `account_created` events carry `display_name`; the re-seal is on request); backups: "a weekly server image kept by the host may hold
 your data for up to about 7 days, and a pre-release snapshot for up to 1 day; if one is ever restored, the owner re-runs the erases
@@ -176,11 +184,14 @@ made since it was taken" (D12: Hostinger's weekly images are the only safety net
 "can't be linked back to you". a11y: focus trap
 in the modal, Esc = Cancel, Enter never submits before the match, the danger button meets contrast on `--ds-err`.
 
-### 5 · Self-review against the brief [X]
+### 5 · Self-review checklist (run before merging) [X]
 
+The session's own gate before the merge (D40: nothing waits on the owner); its ticked result goes in the PR body.
 Walk every frame against its cited decisions and the [rollout §9](../rollout-plan.md#9-artboards-by-milestone) L row
 (AB19: 18+, notice, region, 2 unticked consents, `invite_required`, `invite_invalid`, no seats, `acceptance_required`, `mailto:`; AB20;
 AB21: typed confirmation, "sign in again", what's deleted, cooldown). Check that:
+- `theme.css` is linked (+ `board.css` when on `main`), never copied or overridden: `--ds-*` tokens only, no new colours, danger =
+  `--ds-err`, difficulty tokens where shown; the canonical index file names are used;
 - invite errors are uniform and never reveal why (F4), and no board shows an invite code anywhere after it is read;
 - both consents are unticked by default everywhere, including re-acceptance, and ticked only where F11 shows an existing live grant;
 - no board offers a web admin, a waitlist form or an owner erase button;
@@ -189,52 +200,57 @@ AB21: typed confirmation, "sign in again", what's deleted, cooldown). Check that
   "no backups" or "can't be linked back to you" claims;
 - text contrast ≥ 4.5:1 for every colour pair used.
 
-Screenshot every board full-page at **1440 px** and **390 px** into `design-system/screens/v2/shots/AB19@1440.png`, `AB19@390.png`
-(and AB20, AB21), each ≲ 500 KB (ds-m1-01's convention).
+Fix what fails, then re-check. Screenshot every board full-page at **1440 px** and **390 px** into
+`design-system/screens/v2/shots/AB19@1440.png`, `AB19@390.png` (and AB20, AB21), each ≲ 500 KB (ds-m1-01's convention).
 
-### 6 · Open the design PR and STOP [X]
+### 6 · Open the design PR [X]
 
 Branch `design/ds-l-01`, conventional commit `docs(design): L boards AB19★ AB20 AB21` with the attribution lines, PR titled
 "design: AB19★ AB20 AB21 (L)". The body: the screenshots (embedded from the branch), a frame list per board with decision cites, the
-self-review checklist, and **"Decisions to confirm"**:
+ticked self-review checklist (task 5), and **"Decisions to confirm"**. The list doesn't block the merge: each item states the default
+the merge freezes (the boards as drawn), and the owner may revisit any item after the merge through a follow-up design PR (recorded
+by the build sprint that implements it):
 1. the no-seats error code `no_seats` (l-03 defines it);
 2. a GitHub-verified email that differs from the invite's email → the uniform `invite_invalid`;
 3. re-acceptance asks only the notice (18+, region and consents keep their values);
 4. AB21's placement (last card of "Sign-in & security" vs its own rail item);
 5. the typed confirmation value (the username; the email when there is none);
-6. the "what stays" wording in AB21 and the draft notice text in AB20 (final text at `ev-notice-text`);
+6. the "what stays" wording in AB21 and the notice text in AB20 (it lands as drafted, D40; the owner's review of the notice is a
+   v3 opening gate, and a revision is a later content PR);
 7. erased data in the host's **weekly server image for up to about 7 days** (and a pre-release snapshot for 1 day), with "if one is
    ever restored, the owner re-runs the erases made since it was taken" — after a whole-node loss the erase list may itself be lost,
-   so the owner confirms this promise's wording (D12, ADR-0034 §4.2);
-8. the **display-name leftover**: older `account_created` events keep the display name until the owner re-seals on request — keep
-   the disclosure, or have [l-02](sprint-l-02.md) re-seal by default (ADR-0027 §6 note).
+   so this promise's wording is flagged; the wording as drawn is what the merge freezes (D12, ADR-0034 §4.2);
+8. the **display-name leftover**: older `account_created` events keep the display name until the owner re-seals on request — drawn:
+   keep the disclosure; the alternative is that [l-02](sprint-l-02.md) re-seals by default (ADR-0027 §6 note).
 
-**Do not merge.** Merging (by the owner, or on the owner's explicit approval in chat) is the freeze. The PR does not edit
-`docs/v2/status.md`.
+### 7 · Freeze: merge on CI green [X]
 
-### 7 · Freeze [O]
-
-The owner reviews and approves; on approval the PR is merged (`ev-freeze-ds-l-01`). [l-02](sprint-l-02.md) then records
-"frozen (PR #, date)" for AB19, AB20 and AB21 in [`../status.md`](../status.md) and marks this task ✅. Any owner change to a
-decision above is recorded by the build sprint that implements it.
+Once the PR number is known, push the status commit (the Status note). When CI is green (fix, then merge, on failure),
+squash-merge: **the merge is the freeze** (D40), and it gates [l-02](sprint-l-02.md) (AB21) and [l-05](sprint-l-05.md)
+(AB19–AB20). Never enable auto-merge. Then sync `main` (`git checkout main && git pull`). The owner may review after the merge;
+any change is a follow-up design PR.
 
 ## Acceptance criteria
 
 - [ ] Every frame listed for AB19, AB20, AB21 is present with final copy and states, and each frame cites its decision(s).
-- [ ] Boards link `../../theme.css` and use only its tokens/components; no new colours; preview-only; `index.html`, `board.css`, `theme.css` and `docs/v2/status.md` untouched.
+- [ ] Boards link `../../theme.css` and use only its tokens/components; no new colours; preview-only; `index.html`, `board.css` and `theme.css` untouched.
 - [ ] Invite errors are uniform; consents are unticked by default everywhere and never pre-ticked without a live grant (F11); the owner has no web erase; the notice covers Anthropic, ≤ 30 days, no training, outside India, the toggles and the ~7-day data-loss window.
-- [ ] PR open with 1440 px and 390 px screenshots; **not merged by the agent**.
+- [ ] The self-review checklist passed and is ticked in the PR body, with the eight "Decisions to confirm" (each item's frozen default stated).
+- [ ] PR **merged on CI green** (the freeze) with 1440 px and 390 px screenshots; `docs/v2/status.md` changed only in this sprint's rows (ds-l-01 ✅, AB19–AB21 "frozen (merged)").
 
 ## Release
 
-**PR, stop for owner review (design).** Nothing ships: boards are preview-only and never imported by `web/`. The owner's merge
-is the freeze that gates [l-02](sprint-l-02.md) (AB21 before L-E) and [l-05](sprint-l-05.md) (AB19–AB20 before L-A).
+**Land-and-sync; the merge is the design freeze** — the board PR squash-merges on CI green; no tag. Nothing ships: boards are preview-only and
+never imported by `web/`. Launching the prompt is the owner's approval ([D40](../feasibility.md#decisions-log-newest-first)), so
+nothing waits on the owner; the owner may review after the merge, and any change to a frozen board is a follow-up design PR.
+The merge is the freeze that gates [l-02](sprint-l-02.md) (AB21 before L-E) and [l-05](sprint-l-05.md) (AB19–AB20 before L-A).
 
 ## Definition of Done
 
-Three board files (+ screenshots) on the design branch · every frame present with final copy and decision cites · the self-review
-checklist and "Decisions to confirm" in the PR description · this file's Status updated (tasks 1–6 ✅, task 7 ⬜ until the owner
-merges) · no edits outside the three boards, their screenshots and this sprint file.
+Three board files (+ screenshots) merged on `main` (CI green; the freeze) · every frame present with final copy and decision
+cites · the ticked self-review checklist and "Decisions to confirm" in the PR description · this file's Status all ✅ and this
+sprint's `docs/v2/status.md` rows updated · no edits outside the three boards, their screenshots, this sprint file and those
+status rows · local `main` synced.
 
 ## Risks / watch-outs
 
@@ -245,6 +261,9 @@ merges) · no edits outside the three boards, their screenshots and this sprint 
 - **Pre-ticked or bundled consent.** The two AI consents must be separate, unticked, optional and withdrawable (t5 critique fix 6).
 - **Promising behaviour that isn't built yet.** AB19's consents only matter once M4 ships (they land with [l-05](sprint-l-05.md) in
   v1.17.0, after M4); AB21-F8's learner note disappears at [l-04](sprint-l-04.md). Label both.
-- **Notice copy read as final.** The AB20 text is a draft; mark it so on the board. [l-05](sprint-l-05.md) owns the approved text.
+- **Notice copy ships as drafted.** Per D40 the AB20 text lands as the agent drafted it and [l-05](sprint-l-05.md) ships it, so
+  write it as final-quality text, faithful to D12, D24 and ADR-0033 §6. Label it on the board as the agent-drafted version 1; the
+  owner reviews it at the [v3 opening gates](../rollout-plan.md#11-opening-gates-v3), and any revision is a later content PR.
 - **Parallel design PRs** ([ds-m1-01](sprint-ds-m1-01.md), [ds-m2-01](sprint-ds-m2-01.md)) — touch only your three boards and their
-  screenshots; rebase on `main` before pushing.
+  screenshots; rebase on `main` before pushing. They also edit `docs/v2/status.md` when they land: rebase before the status commit,
+  touch only this sprint's rows and keep theirs.

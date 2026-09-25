@@ -33,7 +33,7 @@ into cluster-admin. This sprint is last on the serialized gateway router (m1-03 
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
-- [ ] AB03 frozen: [ds-m1-01](../sprints/sprint-ds-m1-01.md)'s PR merged by the owner (the board exists on `main`)
+- [ ] AB03 frozen: [ds-m1-01](../sprints/sprint-ds-m1-01.md) merged (the merge is the freeze, D40; the board exists on `main`)
 - [ ] [m1-05](../sprints/sprint-m1-05.md) merged (router serialization; `httpx.ReadBody`)
 - [ ] [m1-03](../sprints/sprint-m1-03.md) merged (course-scoped routes + aliases, `useCourse()` → `{slug, view, status}`) and `v1.6.0` live
 - [ ] Parallel sessions: `gh pr list --state open`, `git worktree list`, ListAgents — no peer PR edits `internal/gateway/**`
@@ -136,7 +136,12 @@ into cluster-admin. This sprint is last on the serialized gateway router (m1-03 
 - [ ] `solution_facts` only with the solution stage.
 - [ ] Every v1 e2e green; golden = v1 except withheld fields on live items; CI green.
 
-Ship at session end per AGENT.md land-and-sync with **this sprint's release action — merge only**: conventional
-commits (`feat(gateway): …`, `feat(web): …`, `docs(adr): …`) with the attribution lines, push, open the PR, wait for CI
-green (fix-then-merge on failure), squash-merge, then `git checkout main && git pull`. **Do not tag** — this work ships in
-`v1.7.0`, which [m1-07](../sprints/sprint-m1-07.md) cuts; Flux deploys nothing until then, so there is no live verification in this session.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) (`feat(gateway): …`, `feat(web): …`, `docs(adr): …`) with the attribution lines, then push, then the PR. This repo only: no `../infra` PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. The renderer ADR merges with the PR (approved by the launch, D40).
+3. **Release action — merge only:** nothing deploys (`main` is build-only), so there is no live verification in this session. It ships in **`v1.7.0`**, which [m1-07](../sprints/sprint-m1-07.md) cuts. No tag here.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

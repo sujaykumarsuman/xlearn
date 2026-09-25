@@ -30,7 +30,7 @@ _Overall:_ ⬜ Not started
 
 - [ ] **S6 done** ([spk-04](sprint-spk-04.md)): the results note (t6 §16) and the scrubbed fixtures (`docs/v2/research/t6-s6-fixtures/`) are merged.
 - [ ] **ADR-0032 Accepted** with the S6 result folded in ([ds-m6a-01](sprint-ds-m6a-01.md) task 1; BP2: 0032 is accepted at S6, before the M6a design freeze).
-- [ ] **AB13, AB24–AB28 frozen**: the [ds-m6a-01](sprint-ds-m6a-01.md) and [ds-m6a-02](sprint-ds-m6a-02.md) PRs are merged on the owner's approval (merging *is* the freeze). Boards: `design-system/screens/v2/AB13-mock-v2.html`, `AB24-mock-setup-preflight.html`, `AB25-live-hud-text.html`, `AB26-grace-paused-resume.html`, `AB27-debrief-proposal.html`, `AB28-accessibility-settings.html`.
+- [ ] **AB13, AB24–AB28 frozen**: [ds-m6a-01](sprint-ds-m6a-01.md) and [ds-m6a-02](sprint-ds-m6a-02.md) merged (the merge is the freeze). Boards: `design-system/screens/v2/AB13-mock-v2.html`, `AB24-mock-setup-preflight.html`, `AB25-live-hud-text.html`, `AB26-grace-paused-resume.html`, `AB27-debrief-proposal.html`, `AB28-accessibility-settings.html`.
 - [ ] **M3 `mock` context live** (built in [m3-06](sprint-m3-06.md), shipped dark in v1.13.0; [m6a-04](sprint-m6a-04.md) only adds mock Run budgeting and the no-emission rule).
 - [ ] **v2.0.0 live** ([ga-02](sprint-ga-02.md)). It carries everything this sprint builds on: `coach.key_default(feature='interview')` and the catalog `interview_brain` capability ([m1-10](sprint-m1-10.md)); the `coach_paused` mode gate ([m1-07](sprint-m1-07.md)); `withhold()` and its fail-closed resolver ([m1-06](sprint-m1-06.md)); coach's erase consumer and the per-schema erase **coverage test** ([l-01](sprint-l-01.md)); `internal/platform/llm` typed errors ([m4-01](sprint-m4-01.md)); the arena reveal/submit records ([m3-08](sprint-m3-08.md), [m3-14](sprint-m3-14.md), [m3-09](sprint-m3-09.md)); `account.role` and the T-3 cohort ([m1-04](sprint-m1-04.md)).
 - [ ] **Parallel sessions:** no open peer PR adds a coach goose migration (if one does, take the next free version at rebase) or edits `internal/course` manifest types or `curriculum/courses/dsa/course.json` (serialize the golden update).
@@ -370,7 +370,7 @@ Sources: [ADR-0035 §2](../../adr/0035-v2-operations-nats-auth-limits-capacity.m
 - [ ] `coach admin interviews --live` lists exactly the live set with no PII; audit rows written.
 - [ ] The same-origin `text/plain` tab-close beacon reaches `interrupted(tab_closed)`; a cross-site or header-less one gets 403.
 - [ ] All `/api/interviews/*` return 404 for a `learner`; OpenAPI drift and route-enumeration tests green; no new NetworkPolicy or NATS
-      ACL needed (recorded) — or task 7's infra PR is open and listed as a gate for the M6a patch tag.
+      ACL needed (recorded) — or task 7's infra PR is merged (its own PR, before the M6a patch tag).
 
 ## Release
 
@@ -386,8 +386,8 @@ unchanged.
 
 CI green (`go test -race ./...` incl. the model check and property tests, real-PG integration via `XLEARN_TEST_DATABASE_URL`,
 `sqlc diff`, the migration lint, the erase coverage test, the manifest golden + never-list lint, the OpenAPI drift and
-route-enumeration tests, web build unchanged) · e2e lane green · merged via PR (squash) · task 7 recorded (or its infra PR open and
-listed as an m6a-06 gate) · statuses updated (this file + [`../status.md`](../status.md): Sprint board, M6a row "core merged (dark)",
+route-enumeration tests, web build unchanged) · e2e lane green · merged via PR (squash) · task 7 recorded (or its infra PR merged on
+its own, before m6a-06's tag) · statuses updated (this file + [`../status.md`](../status.md): Sprint board, M6a row "core merged (dark)",
 L19 row, flag inventory `interviewAudience=cohort`, the AB13/AB24–AB28 rows "frozen (PR #, date)" if not yet set, the release section's
 live-interview check, decisions log) · ADR-0032 update written · runbook written.
 

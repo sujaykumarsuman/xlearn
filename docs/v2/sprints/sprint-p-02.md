@@ -19,7 +19,7 @@ _Overall:_ ⬜ Not started
 | 4 | Multi-course UI: catalog, agenda, nav at full fidelity (AB02/AB05 full) | X | ⬜ |
 | 5 | Part registry + `code` widget (wrapping m3-11's editor); multi-file workspace: file tabs + editable list for `gotest@1` items (AB15 F1–F2) | X | ⬜ |
 | 6 | Tests + compose e2e | X | ⬜ |
-| 7 | Prepare `ev-pilot-content`: authoring guide section, content-status rows | X → O | ⬜ |
+| 7 | Prepare `ev-pilot-content` (the owner authors after ship; doesn't gate _Overall_ ✅): authoring guide section, content-status rows | X | ⬜ |
 | 8 | Record (status.md: flag inventory, content, decisions) | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
@@ -28,7 +28,7 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] AB14–AB15 (and AB02/AB05 full-fidelity) frozen
+- [ ] AB14–AB15 (and AB02/AB05 full-fidelity) frozen: [ds-p-01](sprint-ds-p-01.md) merged (the merge is the freeze)
 - [ ] PRD Q5 confirmed (ds-p-01)
 - [ ] [p-01](sprint-p-01.md) merged and `runner-v1.1.0` live dark: judge maps `gotest@1`; the `module` block is in `curriculum/_schema/item.schema.json` and `internal/course`
 - [ ] The M1/M2 `preview` plumbing is on `main`: m1-03's `courseVisible(m, cohort)`, m1-04 task 7 (cohort enrollment + visibility), m1-05 / m2-03 (public profile and `/public/stats` never show `preview`), m2-04's multi-course catalog/agenda
@@ -77,8 +77,8 @@ Sources: [ADR-0026 §1, §4](../../adr/0026-per-course-extensibility-model.md#4-
 [§6.3](../research/t4-judge-contract.md#63-mistake-pre-fill-two-tiers-data-only), [§6.6](../research/t4-judge-contract.md#66-touch-formats-and-pass-criteria-per-course),
 [t0 §6](../research/t0-extensibility-frame.md#6-six-course-fit), D3, D4, D7, D16, D18, [PRD §7 Q7](../../prd/xlearn-v2-prd.md#7-open-questions-routed-to-topics) (45 min / hint at 15 as the default).
 
-`curriculum/courses/go-concurrency/course.json` — proposed values; the owner confirms them in the PR (course design is
-data, and `course.Load`'s validator is the arbiter of shape):
+`curriculum/courses/go-concurrency/course.json` — proposed values; they land as drafted (D40), and the owner can revise
+them later with a content PR (course design is data, and `course.Load`'s validator is the arbiter of shape):
 
 | Block | Value |
 |---|---|
@@ -249,7 +249,7 @@ table, keyed by context, part and language).
   read-only ones locked, and — where the compose stack runs the runner (m3-06's e2e) — Runs the visible tests against the
   reference; a `learner` gets 404 on the catalog entry, the course, `gc-001` and enrollment, and `/u/<owner>` shows no pilot row.
 
-### 7 · Prepare `ev-pilot-content` [X → O]
+### 7 · Prepare `ev-pilot-content` [X]
 
 - `docs/v2/authoring.md` ([m3-01](sprint-m3-01.md)'s guide) gains a **go-concurrency (`gotest@1`)** section: the module
   layout and file roles, `api[]` and `contract_hash`, visible vs hidden tests, `goleak`, `testing/synctest` for time,
@@ -257,12 +257,14 @@ table, keyed by context, part and language).
   `mem_mb` ≥ 2 × peak, honor labelling, probe keys in the pack, quiz `distractors` tagged with declared categories, stamps.
 - `docs/v2/status.md` content status: go-concurrency rows per item (scaffolded ✅ · statement stamped · pack stamped);
   owner event `ev-pilot-content` marked ready (December, 10–20 h).
+- The authoring itself is owner content (`ev-pilot-content`), done after this sprint ships: it doesn't gate this
+  sprint's _Overall_ ✅, and [p-03](sprint-p-03.md)'s entry gate waits for it.
 
 ### 8 · Record [X]
 
 [`../status.md`](../status.md): Sprint board row; milestone P 🔄; the **flag inventory** row (task 3); the content
-rows (task 7); the Artboards rows AB02/AB05 (full) → consumed by p-02; Decisions-log lines (manifest values the owner
-confirmed, the status-CHECK relaxation, override semantics and its GA decision, no mock for the pilot, the part registry
+rows (task 7); the Artboards rows AB02/AB05 (full) → consumed by p-02; Decisions-log lines (manifest values as drafted,
+revisable by the owner with a content PR, the status-CHECK relaxation, override semantics and its GA decision, no mock for the pilot, the part registry
 `web/src/parts/registry.ts` created here with the `code` widget wrapping m3-11's editor).
 
 ## Acceptance criteria
@@ -299,5 +301,5 @@ CI green · squash-merged · no tag · the owner can use the course in compose �
   it's an M3 gap: stop and report instead of adding pilot-specific practice code (P exit: widget/profile code only).
 - **Honor labelling:** the catalog card and CTA say results count on the learner's honour; nothing implies judge-checked.
 - **Content rights:** statements, starters, tests and concepts are original; no copied Go examples.
-- **Manifest values are course design:** keep them proposals until the owner confirms in the PR; changing them later is
-  a deliberate, tested change (the method table test).
+- **Manifest values are course design:** they land as drafted (D40); the owner can revise them later with a content PR,
+  which is a deliberate, tested change (the method table test).

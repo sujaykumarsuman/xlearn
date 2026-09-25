@@ -46,11 +46,11 @@ _Overall:_ ⬜ Not started. This is an **outline card**: expand it at v2.2 plann
 - [ ] **This card has been expanded** at v2.2 planning into a full plan plus `prompt-m6c-02.md` (BP1).
 - [ ] **The [m6a-03](sprint-m6a-03.md) twin gate is green** for every brain model to be checked. The multi-speaker check extends that per-model gate to voice ([t6 §6](../research/t6-realtime-interviewer.md#6-assessment) item 7). A model that failed the twin gate is `self_only` and isn't checked.
 - [ ] **The S6 M11 result and the shipped shell are known** ([spk-04](sprint-spk-04.md) results note). If M11 was below 80%, timeline evidence is already dropped in voice mode, and the check design must account for that.
-- [ ] **Board variants are frozen before the expansion's first UI sprint** (BP3). They are drafted in the shared M6c design sprint (e.g. `ds-m6c-01`, a PR that stops for owner review; see [m6c-01](sprint-m6c-01.md)'s entry gates):
+- [ ] **Board variants are frozen before the expansion's first UI sprint** (BP3). They are drafted in the shared M6c design sprint (e.g. `ds-m6c-01`, whose PR merges on CI green: the merge is the freeze, D40; see [m6c-01](sprint-m6c-01.md)'s entry gates):
   - the **AB27** voice-Communication proposal row: a proposed band with verified quotes, replacing "you set this";
   - the **AB24/AB29** history-based estimate line, "Based on your last N sessions".
 
-  If that design sprint merged without these variants (e.g. this card is expanded later, after the fairness run), follow the [m5-01](sprint-m5-01.md) precedent instead: variant screenshots in the build PR, and owner approval before merge.
+  If that design sprint merged without these variants (e.g. this card is expanded later, after the fairness run), follow the [m5-01](sprint-m5-01.md) precedent instead: variant screenshots committed with the build PR, and the merge freezes the variant (D40; the owner may revise it later with a follow-up PR).
 - [ ] **For 1a's run** (an owner event, not a sprint):
   - the owner has recruited **≥ 10 consenting speakers** across accents, **including ≥ 1 disfluent speaker**, each with a signed consent;
   - every speaker is **18+** ([t6 §7](../research/t6-realtime-interviewer.md#7-privacy-consent-retention--accessibility)) and **not resident in the EU/EEA**, unless the legal review that [ADR-0032 §6](../../adr/0032-realtime-ai-mock-interviewer.md#6-privacy-cost-and-limits) requires for voice has cleared it;
@@ -84,7 +84,7 @@ _Overall:_ ⬜ Not started. This is an **outline card**: expand it at v2.2 plann
 
 The v2.2 planning session (docs only) replaces this card with a full plan and prompt. It must:
 - **Re-read what exists by then:** the Accepted ADR-0032, the S6 results note, m6a-03's twin-gate harness and its recorded tolerance, and m6b-02's segment log schema.
-- **Turn the run into an owner event:** add `ev-m6c-speakers` to the owner-events table, **prepared by** the expanded sprint (scripts, harness, consent form, runbook) and executed with the owner present.
+- **Turn the run into an owner event:** add `ev-m6c-speakers` to the owner-events table, **prepared by** the expanded sprint (scripts, harness, consent form, runbook) and executed with the owner present. Whichever prompt runs the event lists its owner-only steps (the recruiting, the throwaway OpenAI project with its hard limit, being present) under `## Before you launch (owner)` (D40).
 - **Record the pass rule:** as a decisions-log entry. It needs an ADR that amends ADR-0032 §3 only if it departs from [t6 §6](../research/t6-realtime-interviewer.md#6-assessment) item 7. Run the parallel-sessions check before numbering.
 - **Add the kill switch:** a **permanent** T-2 kill switch, e.g. `VOICE_COMM_AI`. It is unset by default, so shipping it needs no infra PR. Setting it to `off` is an infra PR (the kill path), and it forces `self_only_voice`. List it with the permanent kill switches and operating modes in the status.md flag inventory: it has **no removal milestone** and doesn't count toward the ≤ 6 live non-kill flags ([ADR-0034 §2](../../adr/0034-v2-release-labelling-gating-and-rollback.md#2-feature-gating-three-tiers-no-flag-service)). The pass-row check stays the standing gate underneath it. ADR-0034 §2 names five permanent kill switches, so add a decisions-log line recording this sixth one; the status.md inventory is the living list.
 - **Decouple the flip from M6c GA:** the Communication default flips at whichever labelled minor follows a passed run. It rides the M6c GA tag sprint (added by [m6c-01](sprint-m6c-01.md) task 1) only if the run has passed by then, and it never holds that tag.
@@ -206,7 +206,7 @@ Once expanded:
 - `ev-m6c-speakers` added to the owner events;
 - the pass rule recorded;
 - the kill switch entered in the flag inventory as a permanent kill switch, with no removal milestone;
-- the board variants scheduled in the shared M6c design sprint, or the m5-01 screenshot review planned.
+- the board variants scheduled in the shared M6c design sprint, or the m5-01 screenshot precedent planned (the build PR's merge freezes the variant).
 
 ## Risks / watch-outs
 

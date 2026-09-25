@@ -1,14 +1,22 @@
 # Prompt — Sprint l-04 · Web erase for every non-owner → v1.17.0 (L-A/L-C) + L-exit rehearsal prep
 
-> **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root. The owner-and-tester rehearsal (`ev-l-rehearsal`) may run as a later sitting of this same sprint.
+> **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root. The session runs the whole sprint, the L-exit rehearsal (`ev-l-rehearsal`) included (D40).
 > **Plan:** [`../sprints/sprint-l-04.md`](../sprints/sprint-l-04.md)   ·   **Milestone:** L (L exit)   ·   **Prereqs:** [l-05](../sprints/sprint-l-05.md) + [l-03](../sprints/sprint-l-03.md) (merged), [m4-07](../sprints/sprint-m4-07.md) (`v1.16.0` live), [l-02](../sprints/sprint-l-02.md), [mi-04](../sprints/sprint-mi-04.md) (MI-5b live)
+
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] **`ev-snap-v1.17.0`:** note the date of the last Hostinger weekly image, take a manual snapshot in hPanel (one at a time, 1-day retention) right before you launch, and put its time or id in your launch message. The tag lands the same day.
+- [ ] **The rehearsal's GitHub identity:** a second GitHub account you own, **not linked to xLearn and with no verified email that belongs to an xLearn account** (else GitHub auto-links into that account, or a password account refuses it). Sign in to github.com with it in a separate browser profile the session can drive, and put its verified email in your launch message (it binds the GitHub-path invite; never committed).
+- [ ] **Your xLearn sign-in,** in a browser profile the session can drive: after the tag the session passes your one-time acceptance step there (18+ and the notice ticked, the pre-filled region kept, your two AI consents left exactly as they are) and runs the smoke. Optional: without it, the step greets you at your next sign-in (recorded as your follow-up).
 
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md).
 - The plan: [`../sprints/sprint-l-04.md`](../sprints/sprint-l-04.md). It has the runbook steps 0–8, the abort path, the PR A/B recipe and the release notes.
 - [ADR-0033](../../adr/0033-invite-only-admission-and-owner-admin.md):
-  - **§1** (L's exit test: a tester-operated round-trip on production, both paths, then `closed`; the optional `set-role tester` for a judge grade);
+  - **§1** (L's exit test: a tester-operated round-trip on production, both paths, then `closed`; the optional `set-role tester` for a judge grade). Here you operate tester T1 yourself (D40);
   - **§7** (the web-erase column: learners from the L exit, the owner never);
   - **§9** (erase; clearing `note`);
   - **§11** (MI-5b before any non-owner account);
@@ -32,21 +40,21 @@
 
 This sprint:
 1. opens web erase to every non-owner;
-2. cuts **`v1.17.0`**, which labels L-A and L-C. It is treated as an erase tag, so `host-verify` and a snapshot come first;
-3. has the owner pass the acceptance step once;
-4. writes the **L-exit rehearsal runbook** and a **draft** infra PR A (`SIGNUP_MODE=invite`, explicit `SEAT_CAP`);
-5. then, in the owner-and-tester event **`ev-l-rehearsal`**, runs one invite round-trip on production on both create paths. PR B returns production to `closed`, and the result is recorded in status.md. That record is [ga-01](../sprints/sprint-ga-01.md)'s entry gate.
+2. cuts **`v1.17.0`**, which labels L-A and L-C. It is treated as an erase tag, so `host-verify` and the owner's before-launch snapshot come first;
+3. passes the owner's one-time acceptance step, in his signed-in profile;
+4. writes the **L-exit rehearsal runbook**;
+5. then runs **`ev-l-rehearsal`** itself (D40): infra PR A (`SIGNUP_MODE=invite`, explicit `SEAT_CAP`) opens the door, you play tester T1 through one invite round-trip on production on both create paths, and PR B returns production to `closed`. The result is recorded in status.md. That record is [ga-01](../sprints/sprint-ga-01.md)'s entry gate.
 
 v2 stays owner-only (D35), and the opening is v3.
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
 - [ ] `v1.16.0` is live (`curl -s https://projects.sujaykumar.dev/xlearn/api/v1/healthz`).
-- [ ] l-03 and l-05 are merged on `main`, and `ev-notice-text` is ✅ in `docs/v2/status.md`. `git log --oneline v1.16.0..main` holds only what `v1.17.0` should carry.
+- [ ] l-03 and l-05 are merged on `main` (l-05's notice landed as drafted; its owner review is a v3 opening gate, D40). `git log --oneline v1.16.0..main` holds only what `v1.17.0` should carry.
 - [ ] MI-5b is live: no admin console answers on `projects.sujaykumar.dev` (status.md MI-5b ✅).
 - [ ] Tester web erase works end to end, and identity expects the `topology.go` ack set, judge included (`v1.13.0`).
 - [ ] `host-verify --cluster` is available (mi-02).
-- [ ] **Before task 9 only:** the owner is present, and a tester has a browser, an email that isn't an xLearn account, and a GitHub account that isn't linked to xLearn and whose verified emails aren't xLearn accounts. If they aren't available, do tasks 1–8 and 7's runbook, ship the tag, and leave the sprint 🔄 "awaiting `ev-l-rehearsal`".
+- [ ] The launch message carries the snapshot's time or id and the second GitHub account's verified email (the before-launch block). **If the rehearsal identity is missing,** ship everything through the tag, record `ev-l-rehearsal` ⛔ "rehearsal identity missing" in status.md, and never open PR A.
 
 ## Do this (in order)
 
@@ -63,31 +71,30 @@ v2 stays owner-only (D35), and the opening is v3.
    - Compose with `SIGNUP_MODE: invite`: mint → sign up → accept → solve (self) → erase → `invite list` shows `erased` with an empty note, and `seats` is back. Fold the findings into the runbook.
    - **PR** (`feat(identity): web erase for every non-owner`, `docs: L-exit rehearsal runbook`) with the attribution lines → CI green → squash-merge.
 5. **[H] `host-verify --cluster`** (plan task 3) over `ssh vps`, per mi-02. It must be green and the host settled. Log the run in status.md.
-6. **[O] Snapshot `ev-snap-v1.17.0`** (plan task 4): ask the owner to note the last weekly image date and take the manual Hostinger snapshot **right before** the tag. Record the id or time and mark the event ✅.
+6. **[O] Snapshot `ev-snap-v1.17.0`** (plan task 4) — **taken before launch**. Record the id or time and the weekly-image date from the launch message, and mark the event ✅. The tag lands the same day.
 7. **[X] Tag `v1.17.0`** (plan task 5):
    - Run the §Release checklist from the plan. **Parallel-sessions check first:** `git ls-remote --tags origin`, `gh pr list`, `git worktree list`, ListAgents; the next free minor; major = `.release-line`.
    - Tag and create the release **`v1.17.0 — v2 build · L-A/L-C`** with the notes (including "every account passes the acceptance step once").
    - Verify by looking: healthz version, `get deploy -n xlearn` images, ImagePolicies' latest, HelmReleases Ready.
-   - The extra smoke: `auth/config` = `closed`, no Sign up tab, `/xlearn/privacy` logged out, `seats` shows 0 invites. `identity admin seats` on production is a `kubectl exec` that writes `admin_audit` (m1-04 audits reads too), so it is a sanctioned manual path (rollout §2.2): the **owner** runs it, or you do only with the owner's go-ahead, and it goes in the CLI-use log.
-8. **[O] Owner acceptance** (plan task 6): the owner signs in and passes the acceptance step once. Then smoke login, the dashboard and coach, and record it.
-9. **[I] PR A (draft)** (plan task 8):
+   - The extra smoke: `auth/config` = `closed`, no Sign up tab, `/xlearn/privacy` logged out, `seats` shows 0 invites. `identity admin seats` on production is a `kubectl exec` that writes `admin_audit` (m1-04 audits reads too), so it is a sanctioned manual path (rollout §2.2): you run it (approved by the launch, D40), and it goes in the CLI-use log.
+8. **[H] The owner's acceptance** (plan task 6): in the owner's signed-in profile, pass the step for him (D40): 18+ and the notice agreement ticked, the pre-filled region kept, both AI consents left exactly as they show (his live grants). Then smoke login, the dashboard and coach, and record it. **No such profile →** record task 6 ⛔ "owner follow-up: pass the acceptance step at your next sign-in", and run the smoke's login and dashboard through T1 in step 10.
+9. **[I] PR A** (plan task 8), opened at the start of the rehearsal window:
    - In `../infra` (up-to-date `main`), branch `chore/xlearn-signup-invite-rehearsal`, and edit **only the env block** of `apps/xlearn-identity.yaml`: `SIGNUP_MODE: invite` and `SEAT_CAP: "15"`, with comments.
    - Commit `chore(xlearn): SIGNUP_MODE=invite for the L-exit rehearsal (ev-l-rehearsal)` with the attribution lines.
-   - `gh pr create --draft`. The body says to merge only inside `ev-l-rehearsal` and that PR B follows at once, and links the runbook.
-   - **Do not merge it.**
-10. **[O] `ev-l-rehearsal`** (plan tasks 9–10), with the owner and tester present:
-    - rebase PR A, mark it ready, and the owner merges it;
-    - run the runbook steps 1–6, reading back each CLI output;
-    - then **[I] PR B** from a fresh `../infra` `main` (`SIGNUP_MODE: closed`, keep `SEAT_CAP`), commit `chore(xlearn): SIGNUP_MODE=closed after the L-exit rehearsal`; the owner merges it at once;
+   - `gh pr create` (not a draft). The body says it opens the L-exit rehearsal window and that PR B follows at once, and links the runbook. It merges in step 10.
+10. **[H] `ev-l-rehearsal`** (plan tasks 9–10), run by you (D40):
+    - rebase PR A if the IUA moved `main`, then merge it (the door opens);
+    - run the runbook steps 1–6 as tester T1, reading back each CLI output: the email path with a throwaway, unused `@example.test` address and a random password you never print or record; the GitHub path in the owner's second-GitHub-account profile (the launch approves the OAuth authorization); the invite links stay in the browser and terminal only;
+    - then **[I] PR B** from a fresh `../infra` `main` (`SIGNUP_MODE: closed`, keep `SEAT_CAP`), commit `chore(xlearn): SIGNUP_MODE=closed after the L-exit rehearsal`; merge it at once;
     - verify `auth/config` = `closed` and revoke leftovers.
 
-    On any surprise, take the **abort path** (PR B first).
+    On any surprise, take the **abort path** (PR B first). **A tester step you can't perform yourself** (a tool or rule stops you, e.g. typing the password) is a failure of that path, never a wait: abort it, record it ⛔ "needs a human" with the exact steps in status.md → Open owner items, and carry on.
 11. **[X] Record** (plan task 11):
     - the L rehearsal record in status.md (counts only; "tester T1"; PR A/B numbers; both paths ✅; seats baseline → +2 → baseline; notes empty; acks complete; the final mode `closed`; the snapshot the erases followed);
-    - L exit ✅, milestone L ✅, `ev-l-rehearsal` ✅;
+    - L exit ✅, milestone L ✅, `ev-l-rehearsal` ✅ (or the ⛔ path with its steps);
     - the CLI-use log.
 
-    Land it through a small docs PR (squash-merge).
+    Land it through a small docs PR (see Ship).
 
 ## Constraints
 
@@ -103,12 +110,12 @@ v2 stays owner-only (D35), and the opening is v3.
 
   The `identity admin` CLI through `kubectl exec` is the sanctioned manual path; log each use.
 - **Production `SIGNUP_MODE`:**
-  - `invite` **only** between PR A and PR B inside `ev-l-rehearsal`, attended, one sitting;
+  - `invite` **only** between PR A and PR B inside `ev-l-rehearsal`, attended by you, in this one session;
   - never `open`;
   - no invite other than the two rehearsal invites.
 - **D34:** no alerting, opscheck or Flux Alert. Verification is by looking and by the CLI.
 - **Memory-sum rule:** no new pod or container, so it is unaffected.
-- **Snapshot:** right before the tag (erase-tag line), only once the host has settled.
+- **Snapshot:** the owner's, taken right before launch on a settled host (erase-tag line, D40); the tag lands the same day.
 - **Parallel sessions:** peers' tags, PRs, worktrees and ListAgents are checked before the tag and before claiming an ADR number. No ADR is expected.
 - **Privacy:** no tester name, email, handle or account id in any committed file (the repo is public).
 
@@ -116,13 +123,13 @@ v2 stays owner-only (D35), and the opening is v3.
 
 - identity + web: web erase for learners and testers, the owner refused; tests including the e2e learner erase.
 - `docs/v2/runbooks/l-exit-rehearsal.md`.
-- Tag `v1.17.0` (release notes), verified; snapshot id recorded; owner acceptance recorded.
-- `../infra` PR A (draft → merged in the event) and PR B (opened and merged in the event).
+- Tag `v1.17.0` (release notes), verified; snapshot id recorded; owner acceptance recorded (or ⛔ as his follow-up).
+- `../infra` PR A and PR B, both opened and merged inside the rehearsal window.
 - The L rehearsal record, L exit ✅ and milestone L ✅ in `docs/v2/status.md`.
 
 ## Update status
 
-- The plan's Status table ([`../sprints/sprint-l-04.md`](../sprints/sprint-l-04.md)): tasks 🔄 → ✅; _Overall_ ✅ only after task 11. Until then it is 🔄 "awaiting `ev-l-rehearsal`".
+- The plan's Status table ([`../sprints/sprint-l-04.md`](../sprints/sprint-l-04.md)): tasks 🔄 → ✅; _Overall_ ✅ only after task 11 (🔄 while any rehearsal path is ⛔).
 - [`../status.md`](../status.md):
   - the Sprint board row;
   - **Milestones: L ✅** (the exit criterion met, with the date);
@@ -138,8 +145,16 @@ v2 stays owner-only (D35), and the opening is v3.
 
 - [ ] Learners and testers can erase on the web and the owner is refused; every `topology.go` ack arrives.
 - [ ] `v1.17.0` is tagged and verified; `host-verify --cluster` was green and the snapshot is recorded; `auth/config` = `closed` with no Sign up tab; `/xlearn/privacy` loads.
-- [ ] The owner passed the acceptance step once.
-- [ ] The runbook is written; PR A was a draft until the event.
-- [ ] **L exit:** an invite round-trip rehearsed on production with a tester on both create paths (redeem → accept → self-graded solve → web erase); seats back to baseline; the redeemed invites' `note` empty; production back to `SIGNUP_MODE=closed` (PR B merged, verified); recorded in status.md.
+- [ ] The owner's acceptance step passed once (by you in his signed-in profile, or recorded ⛔ as his follow-up).
+- [ ] The runbook is written; PR A and PR B were opened and merged only inside the rehearsal window.
+- [ ] **L exit:** an invite round-trip rehearsed on production with tester T1 (you) on both create paths (redeem → accept → self-graded solve → web erase); seats back to baseline; the redeemed invites' `note` empty; production back to `SIGNUP_MODE=closed` (PR B merged, verified); recorded in status.md.
 
-Ship per AGENT.md land-and-sync with **this sprint's release action: tag `v1.17.0`** (erase-tag lines: `host-verify --cluster` green and a snapshot first), **plus infra PR(s) for the rehearsal**. PR A stays a draft until `ev-l-rehearsal`, and PR B is opened and merged inside it. Neither is folded into the tag, and neither is ever merged outside the attended event. After merging the code PR, tagging and verifying, run `git checkout main && git pull` in **both** `xlearn` and `../infra`.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/l-exit-erase-all`, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched: the xlearn code + runbook PR (step 4), then — only after the tag is verified — the two `../infra` rehearsal PRs (steps 9–10), and a small docs PR for the record (step 11). Infra PRs are never folded into the tag.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. `../infra` has no CI: each rehearsal PR's check is its env-only diff and the post-merge `auth/config` read. PR A merges only to open the attended rehearsal window, and PR B right after it.
+3. **Release action — tag `v1.17.0`, treated as an erase tag** (the next free minor): walk the release checklist (ADR-0034 §6, in the plan; the erase line is `host-verify --cluster` green plus the owner's before-launch snapshot), push the tag the same day as the snapshot, let Flux deploy, verify live by looking (step 7), then pass the owner's acceptance step (step 8) and run `ev-l-rehearsal` (step 10). Production ends at `SIGNUP_MODE=closed`.
+4. Update status: the sprint file and `docs/v2/status.md` (step 11), in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in xlearn and `../infra`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

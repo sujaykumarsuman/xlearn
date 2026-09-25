@@ -3,8 +3,8 @@
 > **Milestone:** M1 — spine (**M1c contract**; closes M1) · **Track:** product (release sprint) · **Order:** 29
 > **Prereqs:** [m1-07](sprint-m1-07.md) (`v1.7.0` live, M1c-readiness record) · [mi-02](sprint-mi-02.md) (MI-8 `host-verify --cluster` extension)
 > **Unblocks:** [m2-01](sprint-m2-01.md) (M2 entry gate: M1 shipped, `v1.8.0` live)
-> **Release action:** **tag `v1.8.0`** — a **contract** tag: compose rehearsal, `host-verify --cluster`, manual snapshot first; rollback floor after: **1.7.0, hard** ([ADR-0034](../../adr/0034-v2-release-labelling-gating-and-rollback.md) §1.6, §3, §4.3)
-> **Calendar:** week 5 (2026-10-24 → 10-30), **after** the Sat 2026-10-24 host window ([mi-09](sprint-mi-09.md)) has settled — target Mon 10-26 → Wed 10-28 · owner event **`ev-snap-v1.8.0`** (~5 min, right before the tag)
+> **Release action:** **tag `v1.8.0`** — a **contract** tag: compose rehearsal, `host-verify --cluster`, and the owner's manual snapshot (taken before launch, D40) first; then the squash-merge and the tag back to back, with no owner stop; rollback floor after: **1.7.0, hard** ([ADR-0034](../../adr/0034-v2-release-labelling-gating-and-rollback.md) §1.6, §3, §4.3)
+> **Calendar:** week 5 (2026-10-24 → 10-30), **after** the Sat 2026-10-24 host window ([mi-09](sprint-mi-09.md)) has settled — target Mon 10-26 → Wed 10-28 · owner event **`ev-snap-v1.8.0`** (~5 min, **before launch**; the tag lands the same day)
 > **Execute with:** [`../prompts/prompt-m1-08.md`](../prompts/prompt-m1-08.md) — one prompt, one session.
 > **Tag names are indicative** ([ADR-0034 §1.6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#16-indicative-tag-timeline): take the next free minor at tag time). `v1.6.0` (M1a), `v1.7.0` (M1b) and `v1.8.0` (this tag) below stand for the tags **recorded in [`../status.md`](../status.md)**. Read the actual M1a / M1b tags there and substitute them everywhere, including the migration marker (`-- xlearn:contract floor=<M1b tag>`), the floor record, the `--ref` run, the rehearsal image tags and the R-b target.
 
@@ -18,7 +18,7 @@ _Overall:_ ⬜ Not started
 | 2 | Assert no old-shape reader or writer in HEAD **and** `v1.7.0` | X | ⬜ |
 | 3 | Compose rehearsal: forward (1.5.2 → 1.6.0 → 1.7.0 → HEAD) and R-b (1.7.0 on the contracted schema) | X | ⬜ |
 | 4 | `host-verify --cluster` green, host settled, weekly image ≤ 7 d | H | ⬜ |
-| 5 | Manual Hostinger snapshot right before the tag (`ev-snap-v1.8.0`) | O | ⬜ |
+| 5 | Manual Hostinger snapshot (`ev-snap-v1.8.0`), taken by the owner before launch | O (before launch) | ⬜ |
 | 6 | Tag `v1.8.0` + M1 exit record (floor 1.7.0 hard, snapshot id) | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
@@ -30,7 +30,7 @@ _Overall:_ ⬜ Not started
 - [ ] **`v1.7.0` live and verified** ([m1-07](sprint-m1-07.md) ✅), and **`v1.7.0` neither reads nor writes any column this contract drops** ([ADR-0034 §3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#3-migration-and-event-compatibility-rules): contract ≥ 1 release after the last reader or writer) — m1-07 task 5's record, re-proved against the `v1.7.0` tree in task 2 here.
 - [ ] **MI-8 `host-verify --cluster` extension available** ([mi-02](sprint-mi-02.md) merged in `../infra` `hack/host-verify.sh`).
 - [ ] **Host settled:** the October host window ([mi-09](sprint-mi-09.md), Sat 2026-10-24: host sandbox block, L23 kubelet args, pid limits, k3s/CNPG bumps) is finished and `host-verify --cluster` has been green for ≥ 24 h since its last restart — **or** the window is rebooked to ≥ 2 days after this tag. The snapshot must never straddle host changes (a restore also rewinds the host, [ADR-0034 §4.2](../../adr/0034-v2-release-labelling-gating-and-rollback.md#42-r-d-is-a-procedure-not-a-button)).
-- [ ] **Owner available** at tag time for the manual snapshot (`ev-snap-v1.8.0`).
+- [ ] **The owner's snapshot `ev-snap-v1.8.0` was taken before launch** on the settled host (attested by the launch, D40), and the launch message carries its name/time and the last weekly image's date (≤ 7 d).
 - [ ] **No peer is about to tag from `main`:** once the contract merges, any tag cut from `main` ships it. Check `gh pr list`, `git ls-remote --tags origin`, `git worktree list`, ListAgents, and tell active peers the merge → snapshot → tag window.
 
 ## Goal
@@ -40,7 +40,7 @@ and `'dsa'` defaults that M1a/M1b made redundant. The Go side, validating agains
 session's rubric snapshot, replaces every dropped CHECK. Prove it in compose on seeded data along the production
 lineage, forward from `v1.5.2` → `v1.6.0` (expand + backfills) → `v1.7.0` → HEAD, and **backward**: the `v1.7.0`
 images run on the contracted schema (the R-b floor). Then
-`host-verify --cluster`, a manual snapshot, and **`v1.8.0`**. This closes M1: golden = v1, every v1 e2e green,
+`host-verify --cluster` (the owner's manual snapshot was taken before launch), and **`v1.8.0`**. This closes M1: golden = v1, every v1 e2e green,
 events replay. From here the rollback floor is **1.7.0, hard**. Only R-d (the snapshot, ~1 day) can go below it.
 
 ## Scope
@@ -172,15 +172,18 @@ result and the migration logs into the PR body.
   NATS auth stage, NetworkPolicies present. Record the WARNs (e.g. TR-STEAL) in the PR; a WARN doesn't block.
 - **Host settled:** ≥ 24 h since the host window's last k3s / PG restart, with a green run after it
   ([ADR-0035 §3](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#3-no-alerting-in-v2-owner-d34), [rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)).
-- **Weekly image ≤ 7 d:** the owner reads the last Hostinger weekly image date in hPanel (as part of task 5).
+- **Weekly image ≤ 7 d:** the owner read the last Hostinger weekly image date in hPanel before launch (task 5); take it from the launch message.
 - Read-only throughout: no `kubectl apply`, no edits on the node.
 
-### 5 · Manual snapshot (`ev-snap-v1.8.0`) [O]
+### 5 · Manual snapshot (`ev-snap-v1.8.0`) [O, before launch]
 
-Right **after** the contract PR is squash-merged (merging deploys nothing; 1.x is tag-only) and task 4 is green,
-**right before** the tag: the owner takes a manual Hostinger snapshot in hPanel (one at a time, kept ~1 day; inside
-D12, [ADR-0034 §4.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#43-snapshot-rule)) and replies with its name/time and the weekly image
-date. The agent records both, then tags within the hour. No off-node `pg_dump` (D12).
+**Before launch** (D40), once the October host window has settled (≥ 24 h, a green `host-verify --cluster` after it, per
+status.md): the owner takes a manual Hostinger snapshot in hPanel (one at a time, kept ~1 day; inside D12,
+[ADR-0034 §4.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#43-snapshot-rule)) and puts its name/time and the
+weekly image date in the launch message. The session records both. After the rehearsal and task 4, it squash-merges the
+contract PR (merging deploys nothing; 1.x is tag-only) and tags at once, the same day as the snapshot. If the tag can't
+land inside the snapshot's life, don't merge the contract: record ⛔ "snapshot lapsed; re-take it and relaunch" in
+status.md. No off-node `pg_dump` (D12).
 
 ### 6 · Tag `v1.8.0` + M1 exit record [X]
 
@@ -189,8 +192,8 @@ dropped objects and "rollback floor 1.7.0 (hard); snapshot <id> taken <time>". A
 `ssh vps 'k3s kubectl logs -n xlearn deploy/xlearn-<svc> --since=30m | grep "migration applied"'` for curriculum,
 review, assessment, coach and practice; `k3s kubectl get pods -n xlearn` shows no crash-loop. In
 [`../status.md`](../status.md): **M1 ✅**; milestone M1c → tag `v1.8.0` → floor **1.7.0, hard** → snapshot (id, time,
-"preceded v1.8.0"); the M2 entry gate is satisfied ([m2-01](sprint-m2-01.md)); the decisions log records any item moved
-out of this contract.
+"preceded v1.8.0"); owner event `ev-snap-v1.8.0` ✅; the M2 entry gate is satisfied ([m2-01](sprint-m2-01.md)); the
+decisions log records any item moved out of this contract.
 
 ## Acceptance criteria
 
@@ -206,8 +209,8 @@ out of this contract.
       validated (including on the backfilled v1.5.2 rows).
 - [ ] `hack/lint-dropped-columns.sh --ref v1.7.0` and the HEAD run are clean (allowlist reviewed; the three v1
       conflict targets included); each conditional unique is dropped or logged with its deadline.
-- [ ] `host-verify --cluster` green on a settled host; weekly image ≤ 7 d; the manual snapshot taken right before the
-      tag and recorded.
+- [ ] `host-verify --cluster` green on a settled host; weekly image ≤ 7 d; the owner's manual snapshot taken before
+      launch (D40), the same day as the tag, and recorded.
 - [ ] `v1.8.0` verified; floor **1.7.0 (hard)** and the snapshot recorded in status.md; M1 ✅.
 
 ## Release
@@ -231,8 +234,8 @@ Release checklist ([ADR-0034](../../adr/0034-v2-release-labelling-gating-and-rol
 - [ ] (ADR-0035 §2 standing rule, not part of ADR-0034 §6) Every new in-cluster HTTP or NATS caller this tag introduces has its NetworkPolicy (ingress and egress) change in its own infra PR, merged before the tag
 
 **For this tag:** this **is** a contract. "Rehearsed in compose, floor marked" = task 3 + the file markers;
-"`host-verify --cluster` green, host settled, snapshot taken" = tasks 4 and 5, in that order, immediately before the
-tag. ACL PRs, new service, new callers and M6: **n/a** (no subject, stream, consumer, service or caller changes;
+"`host-verify --cluster` green, host settled, snapshot taken" = tasks 4 and 5 (the snapshot by the owner before launch,
+D40), with the merge and the tag the same day. ACL PRs, new service, new callers and M6: **n/a** (no subject, stream, consumer, service or caller changes;
 no new pod, so the memory-sum rule is unaffected). No flag changes.
 
 **If it goes wrong** ([ADR-0034 §4](../../adr/0034-v2-release-labelling-gating-and-rollback.md#41-mechanisms-fastest-first)): R-c (revert + patch tag) is the default. R-b to
@@ -242,8 +245,8 @@ restore, `host-verify --cluster`, re-run the erases.
 
 ## Definition of Done
 
-CI green (incl. the migration lint and `sqlc diff`) · rehearsal outputs in the PR · PR squash-merged right before
-the snapshot · `host-verify --cluster` green on a settled host · snapshot taken and recorded · `v1.8.0` tagged,
+CI green (incl. the migration lint and `sqlc diff`) · rehearsal outputs in the PR · `host-verify --cluster` green on a
+settled host · the owner's before-launch snapshot recorded · PR squash-merged and `v1.8.0` tagged back to back,
 deployed by Flux (no hand `kubectl`) and verified · acceptance criteria met · statuses updated (this file +
 [`../status.md`](../status.md): board, **M1 ✅**, tag → floor → snapshot) · anything moved out of the contract logged
 in the decisions log.
@@ -251,7 +254,8 @@ in the decisions log.
 ## Risks / watch-outs
 
 - **Irreversible below 1.7.0.** Once the migrations run, only R-d (the snapshot, ~1 day, loses every write since)
-  can undo them. Tag within the hour of the snapshot and verify at once.
+  can undo them. The owner snapshots right before launch; tag as soon as the rehearsal and `host-verify` pass, the same
+  day, and verify at once.
 - **A late reader or writer crash-loops.** During the rollout the new pod migrates while the old `v1.7.0` pod still
   serves, and every other service keeps running `v1.7.0` until its own pod rolls. The rehearsal must cover **all**
   services and their startup paths (curriculum's seed, coach's key writers). That is why phase 3 restarts everything.
@@ -259,11 +263,11 @@ in the decisions log.
 - **Wrong image tag or arch** silently sends the session to the rebuild fallback: GHCR tags have no `v`, and the
   images are amd64-only (`platform: linux/amd64` in the override).
 - **An un-snapshotted contract via a peer tag.** A patch tag cut from `main` after the merge would ship the contract
-  without the snapshot. Merge only when you are ready to snapshot and tag in the same sitting, and tell peers.
+  without the snapshot. Merge only when you are ready to tag at once (the snapshot is already taken), and tell peers.
 - **Host window interplay.** A snapshot taken before the Oct 24 window, then restored, would also undo the window's
-  host changes. Snapshot only after the window has settled. Hostinger keeps **one** manual snapshot, so this one
-  replaces the window's pre-change snapshot (mi-09). Declare the window good (`host-verify --cluster` green,
-  ≥ 24 h) before taking it.
+  host changes. The owner snapshots only after the window has settled. Hostinger keeps **one** manual snapshot, so this
+  one replaces the window's pre-change snapshot (mi-09). The window must be declared good (`host-verify --cluster`
+  green, ≥ 24 h, in status.md) before he takes it and launches.
 - **Event payload names ≠ columns.** Don't "clean up" `total_35` in `mock_completed` decoding or `total35` in the
   `/api/mocks/*` JSON; decoders stay forever and the API stays `/api/v1`.
 - **Lock time** is negligible (tiny tables: 1 account). Keep each file one transaction, with no data rewrite

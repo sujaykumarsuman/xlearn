@@ -80,7 +80,7 @@ Production stays `closed` with no invite, so everything here is **inert**. It me
 10. **[X] Verify:**
     - `gofmt -l`, `go vet ./...`, `go test -race ./...`, `go test -tags e2e ./internal/e2e/...` (PG 18), `sqlc diff`, the migration lint, the OpenAPI drift test, and web typecheck/test (no web change expected).
     - With `docker compose up --build` and identity overridden to `SIGNUP_MODE: invite` (no `DEV_AUTH` needed for this check), mint with `docker compose exec identity identity admin invite create --note test`. Redeem via `curl` on `/xlearn/api/v1/auth/signup`, reuse it (→ `invite_invalid`), check `/xlearn/api/v1/invites/check` and `/xlearn/api/v1/auth/config`, then erase the account through the CLI and confirm the invite shows `erased`.
-11. **[X] PR** with conventional commits (`feat(identity): …`, `feat(gateway): …`, `docs: …`) and the attribution lines → CI green → squash-merge. **No tag.**
+11. **[X] PR** with conventional commits (`feat(identity): …`, `feat(gateway): …`, `docs: …`) and the attribution lines → CI green → squash-merge (see Ship). **No tag.**
 
 ## Constraints
 
@@ -114,7 +114,7 @@ Production stays `closed` with no invite, so everything here is **inert**. It me
   - the L milestone: "L-A backend merged (inert)";
   - the flag inventory: `SIGNUP_MODE` (operating mode) accepts `closed|invite|open(dev)`; `SEAT_CAP` defaults to 15 in code with the > 40 guard;
   - limits: L2 (invite check) and L7 (invite + `SEAT_CAP`) built.
-  - Add a **pending-smoke note** for the carrying tag (its plan, indicatively m3-13, doesn't list these checks, so this note is the only handoff; the tag sprint's agent must read it before tagging): check `auth/config`=`closed` (read-only), the auth page unchanged, and `identity admin seats` → invites 0. `seats` is a `kubectl exec` that writes `admin_audit` (m1-04 audits reads), so it is a sanctioned manual path (rollout §2.2): the owner runs it, or the agent only with the owner's go-ahead, and it goes in the CLI-use log.
+  - Add a **pending-smoke note** for the carrying tag (its plan, indicatively m3-13, doesn't list these checks, so this note is the only handoff; the tag sprint's agent must read it before tagging): check `auth/config`=`closed` (read-only), the auth page unchanged, and `identity admin seats` → invites 0. `seats` is a `kubectl exec` that writes `admin_audit` (m1-04 audits reads), so it is a sanctioned manual path (rollout §2.2): the tag sprint's session runs it itself (approved by that prompt's launch, D40), and it goes in the CLI-use log.
 - Decisions log:
   - the lock key;
   - no CHECK on `kind`/`tier`;
@@ -137,4 +137,12 @@ Production stays `closed` with no invite, so everything here is **inert**. It me
 - [ ] `/api/invites/check` is limited (L2); `/api/auth/config` reports the effective mode.
 - [ ] CI green (`sqlc diff`, the migration lint, OpenAPI drift); merged to `main`.
 
-Ship per AGENT.md land-and-sync with **this sprint's release action: merge only (ships dark in the next tag; inert while `SIGNUP_MODE=closed` and no invite exists)**. That means PR, CI green, squash-merge, no tag and no infra PR, then `git checkout main && git pull`.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/la-admission-backend`, then conventional commit(s) with the attribution lines, then push, then the PR. This repo only: no `../infra` PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only:** nothing deploys (`main` is build-only). It ships dark and inert (production stays `SIGNUP_MODE=closed` with no invite) in **the next tag after the merge**: indicatively `v1.14.0` ([m3-13](../sprints/sprint-m3-13.md)), else `v1.15.0` or `v1.16.0`. The pending-smoke note tells that tag's session what to check. No tag here.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

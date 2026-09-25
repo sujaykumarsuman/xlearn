@@ -2,12 +2,12 @@
 
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-ds-l-01.md`](../sprints/sprint-ds-l-01.md)   ·   **Milestone:** L (design track)   ·   **Prereqs:** none
-> **This is a design sprint: it ends with an open PR and a STOP for owner review. You never merge it.**
+> **Design sprint: the board PR merges on CI green, and the merge is the freeze ([D40](../feasibility.md#decisions-log-newest-first)). Nothing waits on the owner.**
 
 ## Read first
 
-- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions (the land-and-sync
-  directive does **not** apply to design sprints: see the last line).
+- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions, including land-and-sync,
+  which this sprint follows (D40): see **Ship** at the end.
 - The plan: [`../sprints/sprint-ds-l-01.md`](../sprints/sprint-ds-l-01.md) — the frame tables in Tasks 2–4 are the brief.
 - Board conventions: [`../sprints/sprint-ds-m1-01.md`](../sprints/sprint-ds-m1-01.md) Task 1 (the index and its file names) and
   Task 2 (`board.css`, `bd-*` chrome, frame labels, behaviour notes, `.bd-narrow`, screenshots under `shots/`).
@@ -42,9 +42,11 @@ except during one L-exit rehearsal. Two build sprints consume your boards:
 - [l-05](../sprints/sprint-l-05.md) (December, after M4) builds the auth page's invite state, the acceptance step and the privacy
   page — **AB19–AB20 must be frozen before it**.
 
-Per **BP3** (owner, 2026-09-24) agents draft every v2 board, heroes included (AB19 is a hero ★); the owner only reviews. You draft
-three boards; the owner's approval + merge is the freeze. The notice text on AB20 is a **draft**: the owner approves the final wording
-at `ev-notice-text` in l-05.
+Per **BP3** (owner, 2026-09-24) agents draft every v2 board, heroes included (AB19 is a hero ★). Per **D40** (owner, 2026-09-25)
+launching this prompt is the owner's approval: you draft three boards, the PR merges on CI green, and **the merge is the freeze**;
+the owner may review afterwards, and any change is a follow-up design PR. The notice text on AB20 is owner content drafted by you:
+it **lands as drafted** and l-05 ships it. The owner may revise it later with a content PR; the owner's review of the notice is a
+[v3 opening gate](../rollout-plan.md#11-opening-gates-v3), not a step in this or any v2 sprint.
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
@@ -62,7 +64,8 @@ Then check (information, not a gate): `git fetch && git ls-tree origin/main desi
 ## Do this (in order)
 
 1. **[X] Branch** `design/ds-l-01` from an up-to-date `main`. Check peers first (`gh pr list`, `git worktree list`, ListAgents): other
-   design PRs may be open — you touch only your three boards, their screenshots and this sprint's plan file.
+   design PRs may be open — you touch only your three boards, their screenshots, this sprint's plan file and this sprint's own
+   rows in `docs/v2/status.md`.
 2. **[X] Scaffold** the three boards under `design-system/screens/v2/`: `<link rel="stylesheet" href="../../theme.css">` (+ `board.css`
    when on `main`), the Google Fonts `<link>` for Inter + JetBrains Mono, a `<style>` block for board-only layout using `--ds-*` tokens
    only (danger = `--ds-err`; native checkboxes styled with tokens). Frames: full-screen frames stack vertically; small states sit side
@@ -77,12 +80,14 @@ Then check (information, not a gate): `git fetch && git ls-tree origin/main desi
    **unticked** AI consents with the second disabled until the first is ticked, stepper "Step 1 of 5", **[Continue]**, **[Sign out]**);
    validation; owner/tester variant ("One more step"; consents pre-filled only from existing live grants — draw the ticked-from-a-grant case); re-acceptance on `403 acceptance_required`; save failed; mobile.
 4. **[X] AB20 privacy notice / terms** — frames F1–F5 of Task 3: the public `/xlearn/privacy` page with version + effective date, the
-   eight draft sections (who runs it; what's stored; how AI is used — Anthropic, outside India, ≤ 30 days, flagged up to 2 years, no
+   eight notice sections (who runs it; what's stored; how AI is used — Anthropic, outside India, ≤ 30 days, flagged up to 2 years, no
    training, and the BYO coach; what's public; one server, no off-node backups (the host's weekly image), **up to about 7 days** of data
    loss; your choices incl. erase, the 60-day username hold, erased data in the weekly image for up to ~7 days and in a pre-release
    snapshot for ≤ 1 day (erases re-run if one is restored), and the display-name leftover in older sign-up records; 18+; changes →
    re-acceptance), the "What changed" block, the Terms section,
-   the in-app view, and 390 px. Mark the text **"Draft notice text — the owner approves the final wording before release."**
+   the in-app view, and 390 px. Write it as final-quality text (it ships as drafted, D40) and add the board annotation
+   **"Notice text v1 as drafted by the agent — it ships as drafted (D40); the owner may revise it with a content PR (owner review:
+   v3 opening gates)."**
 5. **[X] AB21 erase account** — frames F1–F10 of Task 4, placed as the last card of Settings → "Sign-in & security": the eligible tester
    card ("xLearn keeps no off-node backups" — never plain "no backups") with the "What's erased" list and the 60-day username hold; "Sign in again" (session older than 5 minutes /
    `403 reauth_required`); the typed-confirmation modal (username, or email when none; **[Cancel]** default focus; the danger button
@@ -90,27 +95,29 @@ Then check (information, not a gate): `git fetch && git ls-tree origin/main desi
    ~7-day server-image line); the
    **owner-refused** card with no button (`403 erase_owner_cli_only`, "Use the admin CLI: `identity admin account erase`"); the
    **tester-only note** for learners (`403 erase_not_available`); other errors (`409 erase_in_progress`, 429, network); mobile.
-6. **[X] Self-review** — walk every frame against its cited decisions and the rollout §9 L row. Confirm: invite errors uniform, no invite
-   code visible after it's read, consents unticked by default everywhere and ticked only from a live grant (F11), no web admin / waitlist /
-   owner erase button, the notice's required statements present (incl. the weekly-image and display-name disclosures; no "can't be
-   linked back to you"), text contrast ≥ 4.5:1. Take full-page screenshots at **1440 px** and **390 px** (serve statically, e.g.
+6. **[X] Self-review checklist (before merging; nothing waits on the owner)** — walk every frame against its cited decisions and the
+   rollout §9 L row. Confirm: `theme.css` linked verbatim (`--ds-*` tokens only, no new colours, danger = `--ds-err`, no `ds-*`/`xl-*`
+   override); invite errors uniform, no invite code visible after it's read, consents unticked by default everywhere and ticked only
+   from a live grant (F11), no web admin / waitlist / owner erase button (D33), the notice's required statements present (Anthropic,
+   ≤ 30 days, no training, outside India, the toggles, the ~7-day window, incl. the weekly-image and display-name disclosures; no
+   "can't be linked back to you"), text contrast ≥ 4.5:1. Fix, then re-check; the ticked checklist goes in the PR body. Take
+   full-page screenshots at **1440 px** and **390 px** (serve statically, e.g.
    `python3 -m http.server 5198 --directory design-system`, then `npx playwright screenshot --full-page --viewport-size=1440,900 …`
    or headless Chrome `--headless=new --screenshot=… --window-size=1440,900`) into
    `design-system/screens/v2/shots/AB19@1440.png`, `AB19@390.png` (and AB20, AB21), each ≲ 500 KB.
-7. **[X] Update the plan's Status** (`docs/v2/sprints/sprint-ds-l-01.md`): tasks 1–5 ✅, _Overall_ 🔄 "PR open, awaiting owner review",
-   task 7 ⬜.
-8. **[X] Commit, open the PR, then STOP.** Conventional commit `docs(design): L boards AB19★ AB20 AB21` with the attribution lines from
-   the session's system reminder; push; `gh pr create` titled "design: AB19★ AB20 AB21 (L)". The body: screenshots embedded from the
-   branch (`…/blob/design/ds-l-01/design-system/screens/v2/shots/<file>?raw=true`), a frame list per board with decision cites, the
-   self-review checklist, and the eight **"Decisions to confirm"** from the plan's Task 6. Mark task 6 ✅ in the plan (amend or add a
-   commit before the PR is final). **Do not merge. Do not enable auto-merge.** Report the PR URL and stop.
+7. **[X] PR body** (for **Ship** step 1) — screenshots embedded from the branch
+   (`…/blob/design/ds-l-01/design-system/screens/v2/shots/<file>?raw=true`), a frame list per board with decision cites, the ticked
+   self-review checklist, and the eight **"Decisions to confirm"** from the plan's Task 6, each stating the default the merge
+   freezes (the boards as drawn). The list never blocks the merge; the owner may revisit any item afterwards through a follow-up
+   design PR.
+8. **[X] Land it** — run **Ship** below: PR, merge on CI green (the freeze), status, sync.
 
 ## Constraints
 
 - **Preview-only boards.** Static HTML on `theme.css` verbatim; no new colours or tokens; never imported by `web/`; never shipped.
   v1 `.dc.html` files are references only — do not edit them.
-- **Touch only your files:** the three boards, their screenshots under `shots/`, and this sprint's plan file. Never `index.html` or
-  `board.css` (ds-m1-01 owns them), never `theme.css`, never `docs/v2/status.md` (l-02 records the freeze).
+- **Touch only your files:** the three boards, their screenshots under `shots/`, this sprint's plan file and this sprint's own rows
+  in `docs/v2/status.md` (Update status). Never `index.html` or `board.css` (ds-m1-01 owns them), never `theme.css`.
 - **Decisions win.** Every frame cites the decisions it implements; if the plan and an ADR disagree, the ADR wins — note the
   discrepancy in the PR instead of inventing behaviour.
 - **Uniformity and consent:** one `invite_invalid` frame for every cause; consents unticked by default, separate, optional and
@@ -118,30 +125,46 @@ Then check (information, not a gate): `git fetch && git ls-tree origin/main desi
 - **No web admin, no waitlist, no owner web erase** (D33, ADR-0033 §7/§10). No alerting surface anywhere (D34).
 - **No `web/`, service, infra or deploy changes.** No `kubectl` of any kind.
 - **Parallel sessions:** other design PRs (ds-m1-01, ds-m2-01) may be open; rebase on `main` before pushing and resolve nothing
-  outside your files.
+  outside your files. They also edit `status.md` when they land: rebase before the status commit and keep their rows.
 
 ## Deliverables
 
 - `design-system/screens/v2/AB19-invite-acceptance.html` (★), `AB20-privacy-notice.html`, `AB21-erase-account.html`
   (or the names `index.html` links).
 - `design-system/screens/v2/shots/AB19@1440.png`, `AB19@390.png`, `AB20@1440.png`, `AB20@390.png`, `AB21@1440.png`, `AB21@390.png`.
-- An open PR with the screenshots, per-board frame lists, the self-review checklist and "Decisions to confirm".
-- This sprint's plan Status updated.
+- The PR, **merged on CI green** (the freeze), with the screenshots, per-board frame lists, the ticked self-review checklist and
+  "Decisions to confirm".
+- This sprint's plan Status and its `status.md` rows updated.
 
 ## Update status
 
-- In [`../sprints/sprint-ds-l-01.md`](../sprints/sprint-ds-l-01.md): tasks 1–6 ✅ as they land, _Overall_ 🔄 "PR #N open, awaiting
-  owner review"; leave task 7 ⬜.
-- **Do not edit [`../status.md`](../status.md)** from the design PR. After the owner merges, [l-02](../sprints/sprint-l-02.md) sets
-  AB19/AB20/AB21 to "frozen (PR #N, date)", marks task 7 ✅ and this sprint ✅.
-- No ADR is expected; if the owner's review changes a decision, the build sprint that implements it records the change.
+In the board PR — a last commit once the PR number is known, before the merge — or in a follow-up docs PR merged the same way:
+- [`../sprints/sprint-ds-l-01.md`](../sprints/sprint-ds-l-01.md): tasks 1–7 ✅ (task 7: "frozen: merged in PR #N, <date>"),
+  _Overall_ ✅.
+- [`../status.md`](../status.md): mark the sprint ✅ (ds-l-01's Sprint-board row) and the boards ✅ **"frozen (merged, PR #N, <date>)"**
+  (Artboards rows AB19, AB20, AB21); update the Snapshot's artboard count (`ev-freeze-ds-l-01` is automatic: no tick).
+- No ADR is expected. If the owner later changes a decision, the follow-up design PR and the build sprint that implements it record
+  the change.
 
 ## Done when (acceptance)
 
 - [ ] Every frame listed for AB19, AB20, AB21 is present with final copy and states, each citing its decision(s).
-- [ ] Boards use `../../theme.css` tokens/components only; preview-only; `index.html`, `board.css`, `theme.css` and `docs/v2/status.md` untouched.
+- [ ] Boards use `../../theme.css` tokens/components only; preview-only; `index.html`, `board.css` and `theme.css` untouched.
 - [ ] Invite errors uniform; consents unticked by default everywhere (ticked only from a live grant, F11); no owner web erase; the notice states Anthropic, ≤ 30 days, no training, outside India, the toggles and the ~7-day data-loss window.
-- [ ] PR open with 1440 px and 390 px screenshots; **not merged by the agent**.
+- [ ] The self-review checklist passed and is ticked in the PR body, with the eight "Decisions to confirm" (each item's frozen default stated).
+- [ ] PR **merged on CI green** (the freeze) with 1440 px and 390 px screenshots; the sprint file and `docs/v2/status.md` show ds-l-01 ✅ and AB19–AB21 "frozen (merged)"; local `main` synced.
 
-**Shipping:** this is a **design sprint** — the AGENT.md land-and-sync directive is replaced by this sprint's release action:
-**open the PR and STOP for owner review.** Do not merge, do not enable auto-merge, do not tag. The owner's approval + merge is the freeze.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. **Branch, commit, push, PR** — this repo only (a design sprint touches no `../infra`). On `design/ds-l-01` (step 1): conventional
+   commit `docs(design): L boards AB19★ AB20 AB21` with the attribution lines from the session's system reminder; push;
+   `gh pr create` titled "design: AB19★ AB20 AB21 (L)" with the body from step 7.
+2. **Merge on green** — once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — design: the merge is the freeze; no tag.** Nothing deploys (boards are preview-only). The owner may review
+   after the merge; any change to a frozen board is a follow-up design PR.
+4. **Update status** — as in "Update status" above (sprint ✅, AB19–AB21 "frozen (merged)"), in the same PR (a last commit before
+   step 2's merge) or a follow-up docs PR merged the same way.
+5. **Sync** — `git checkout main && git pull`. If a clean peer worktree holds `main`, use
+   `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

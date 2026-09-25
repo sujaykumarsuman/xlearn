@@ -4,7 +4,7 @@
 > **Prereqs:** [m3-07](sprint-m3-07.md) (judge on prod, born default-deny egress) · [spk-03](sprint-spk-03.md) (WIF spike result)
 > **Unblocks:** [m4-01](sprint-m4-01.md) (M4 entry: "MI-14 done") · also satisfies the gates in [m4-02](sprint-m4-02.md) (judge → identity :8081 confirmed — born in m3-07, reused by M4) and [m4-07](sprint-m4-07.md) (provider runbook executed)
 > **Release action:** **infra PR(s) only** (three `../infra` PRs) — plus an xlearn **docs** PR (ADR-0031, runbook, status) and an `xlearn-evalpack` template PR. **No tag**; nothing here ships in an xlearn image.
-> **Calendar:** December 2026, before M4 · owner event **`ev-provider-runbook`** (Anthropic Console, ~45 min) · prepares **`ev-acceptance-set`** (owner labels ≥ 70 examples, 5–10 h, before m4-01)
+> **Calendar:** December 2026, before M4 · owner event **`ev-provider-runbook`** (Anthropic Console, ~45 min), done **before launch** (D40) · prepares **`ev-acceptance-set`** (owner labels ≥ 70 examples, 5–10 h, before m4-01)
 > **Execute with:** [`../prompts/prompt-mi-12.md`](../prompts/prompt-mi-12.md) — one prompt, one session.
 
 ## Status
@@ -15,7 +15,7 @@ _Overall:_ ⬜ Not started
 |---|------|------|--------|
 | 1 | Accept ADR-0031 (fold the spk-03 result and the T7 amendments) | X | ⬜ |
 | 2 | Provider runbook `docs/v2/runbooks/platform-ai-provider.md` | X | ⬜ |
-| 3 | Owner executes the runbook (`ev-provider-runbook`) | O | ⬜ |
+| 3 | Provider Console setup (`ev-provider-runbook`) — before launch | O | ⬜ |
 | 4 | judge egress: TCP 443 to non-cluster (own PR); confirm m3-07's `xlearn-identity` :8081 rule | I | ⬜ |
 | 5 | `xlearn-judge-llm` secret + LLM values + projected SA token | I | ⬜ |
 | 6 | `host-verify --cluster`: WIF JWKS drift check | H | ⬜ |
@@ -30,7 +30,7 @@ _Overall:_ ⬜ Not started
 
 - [ ] **MI-13 done** ([m3-07](sprint-m3-07.md)): `xlearn-judge` Ready on prod, born with default-deny egress (DNS, PG, NATS, runner, `xlearn-gateway` :8080 for JWKS, `xlearn-identity` :8081 for the erase re-verify)
 - [ ] **WIF spike reported** ([spk-03](sprint-spk-03.md)): WIF **GO** with the `check_jti` decision and the measured refresh time, **or** the fallback (single-workspace key, 90-day expiry) chosen; the throwaway workspace and rule deleted
-- [ ] **MI-1 done** (`ev-mi1`): 2FA on the owner's Anthropic account (rollout §2: MI-1 unblocks the M4 provider accounts)
+- [ ] **MI-1 done** (`ev-mi1`): 2FA on the owner's Anthropic account (rollout §2: MI-1 unblocks the M4 provider accounts). This is a before-launch owner item, attested by launching the prompt
 - [ ] **Chart 0.3.0 egress template** in use by `apps/xlearn-judge.yaml` ([mi-01](sprint-mi-01.md), set by m3-07)
 - [ ] **Parallel sessions:** no open peer PR edits `../infra/apps/xlearn-judge.yaml` (e.g. [mi-11](sprint-mi-11.md)'s MI-15 egress, an evalpack bump) or `docs/adr/0031-*` (`gh pr list` in both repos, `git worktree list`, ListAgents) — else sequence with it
 
@@ -40,8 +40,9 @@ Open exactly what platform AI needs before M4 and nothing more: judge's **TCP 44
 addresses (its **`xlearn-identity` :8081** rule was born in [m3-07](sprint-m3-07.md) for the erase re-verify and
 carries M4's `/internal/accounts/{id}` read unchanged — confirmed here, not added), the **`xlearn-judge-llm`** SOPS secret, the non-secret
 LLM values (with the kill switch `LLM_PLATFORM_ENABLED=false`), and the **projected service-account token**
-that Workload Identity Federation exchanges; write and have the owner execute the **provider runbook** at
-D25's dogfood limits ($15 provider / $12 app, D35 owner-only v2); ship the **acceptance-set template** the
+that Workload Identity Federation exchanges; wire in the owner's before-launch Console setup and write it up
+as the **provider runbook** at D25's dogfood limits ($15 provider / $12 app, D35 owner-only v2); ship the
+**acceptance-set template** the
 owner labels before m4-01; and move **[ADR-0031](../../adr/0031-platform-ai-and-two-tier-keys.md) to
 Accepted** with the [spk-03](sprint-spk-03.md) result. No platform-AI code lands here (that is M4).
 
@@ -108,7 +109,9 @@ Maintenance note and the Status line; otherwise fold as described.
 
 ### 2 · Provider runbook [X]
 
-New `docs/v2/runbooks/platform-ai-provider.md` (owner-executable, one screen per section; source:
+New `docs/v2/runbooks/platform-ai-provider.md` (owner-executable, one screen per section; it records the
+before-launch setup of task 3 with its date and non-secret IDs, and carries the maintenance, break-glass and
+v3-raise procedures; source:
 [t5 §3 provider-side controls](../research/t5-platform-ai.md#3-where-the-platform-key-lives-and-secrets),
 [t5 §6](../research/t5-platform-ai.md#6-budgets-metering-and-abuse-controls), [ADR-0031 §2/§5](../../adr/0031-platform-ai-and-two-tier-keys.md#2-credential-and-egress)):
 
@@ -126,13 +129,29 @@ New `docs/v2/runbooks/platform-ai-provider.md` (owner-executable, one screen per
 | Maintenance | JWKS re-paste when `host-verify --cluster` WARNs on kid drift (check after every k3s upgrade and in the monthly window); monthly ledger vs Console (procedure added by m4-07); `retire_not_before` before any model change; no Admin keys in the cluster; ZDR requested opportunistically (sales). |
 | v3 opening | Raise to $100 / $80, re-sized with `SEAT_CAP` ([rollout §11](../rollout-plan.md#11-opening-gates-v3)). |
 
-### 3 · Owner executes the runbook [O]
+### 3 · Provider Console setup [O, before launch]
 
-Calendar event `ev-provider-runbook`. The agent prepares the issuer URL and the JWKS JSON (public keys, read
-live) and hands them over; the owner configures the Console (~45 min) and confirms: limit $15, alerts 50%/80%,
-auto-reload off, low RPM/OTPM, service account + issuer + rule created, IDs handed back. **If the owner
-can't do it in this session:** tasks 1, 2, 4, 6, 7 still land; task 5's PR stays a draft with the IDs as
-`TODO`, tasks 3 and 5 go ⛔ "waiting on ev-provider-runbook", and [m4-01](sprint-m4-01.md) stays gated.
+Calendar event `ev-provider-runbook`, done by the owner **before launching this sprint's prompt** (~45 min;
+provider-console work is owner-only, D40). The checklist is the prompt's *Before you launch (owner)* block,
+built from the task 2 table rows:
+- the org, with 2FA on;
+- `xlearn-platform-prod` with the $15 hard limit, alerts at 50%/80%, low RPM/OTPM, and prepaid credits with
+  auto-reload off;
+- the service account `xlearn-judge`, the inline-JWKS issuer and the rule;
+- `xlearn-calib` with its own limit and alerts.
+
+The owner reads the issuer URL and the JWKS JSON (public keys) live, with the two read-only commands in the
+task 2 WIF row. At launch they hand over the non-secret IDs (org, workspace, service account, federation
+rule), the `LLM_KEY_LABEL` and the pasted `kid`s. Launching attests the setup is done: the session can't see
+the Console, so it records the date and the IDs in the runbook and status.md.
+
+**If the setup turns out to be missing at launch:** tasks 1, 2, 4, 6 and 7 still land. Task 5 isn't opened,
+so no draft PR is left behind. Tasks 3 and 5 go ⛔ "waiting on ev-provider-runbook" in status.md, and
+[m4-01](sprint-m4-01.md) stays gated. A re-run of this prompt after the setup lands task 5.
+
+On the spk-03 fallback, the owner writes the break-glass key into the SOPS file once task 5 has created it;
+no agent handles it. Record that as a pending owner item in status.md. It's needed before
+[m4-07](sprint-m4-07.md) enables the cohort, and nothing here waits for it.
 
 ### 4 · judge egress: TCP 443 (+ confirm identity :8081) [I]
 
@@ -155,7 +174,7 @@ the NetworkPolicy values of `apps/xlearn-judge.yaml` (chart 0.3.0 egress templat
 
 ### 5 · `xlearn-judge-llm` secret, LLM values, projected token [I]
 
-One `../infra` PR after task 3 (it needs the IDs):
+One `../infra` PR; it needs the IDs from task 3's before-launch setup:
 - **`apps/secrets/xlearn-judge-llm.enc.yaml`** — Secret `xlearn-judge-llm`, namespace `xlearn`, `stringData.LLM_ENDUSER_SALT`
   (32 random bytes, base64; generated and encrypted in one pipe, never echoed); `LLM_ANTHROPIC_API_KEY` **only**
   on the fallback, written by the owner. Covered by the existing `apps/secrets/.*\.enc\.ya?ml$` SOPS rule.
@@ -197,8 +216,8 @@ A small `../infra` PR to `hack/host-verify.sh` (read-only, the MI-8 pattern, [AD
 - Prove it fires: pipe a scratch copy with one embedded kid altered (`sed … hack/host-verify.sh | ssh vps 'bash -s -- --cluster'`)
   → the WARN; nothing is written on the node. Paste both runs in the PR.
 - Keeps `hack/host-lint.sh`'s read-only grep and shellcheck green. After merge, refresh the node copy the sanctioned way
-  (`scp hack/host-verify.sh vps:/root/`, [mi-02](sprint-mi-02.md) task 7) so the owner's `ssh vps 'bash /root/host-verify.sh --cluster'` runs it.
-  Not an alert, timer or CronJob (D34).
+  (`scp hack/host-verify.sh vps:/root/`, [mi-02](sprint-mi-02.md) task 7), so the owner's `ssh vps 'bash /root/host-verify.sh --cluster'` runs it.
+  That node write is specified here, so launching the prompt pre-approves it (D40). Not an alert, timer or CronJob (D34).
 
 ### 7 · Analyzer acceptance-set template [E]
 
@@ -248,7 +267,7 @@ repo** (the AGENT.md never-copy rule, [m3-01](sprint-m3-01.md)) — not into the
 - [ ] [ADR-0031](../../adr/0031-platform-ai-and-two-tier-keys.md) **Accepted** with the spk-03 result and the T7 amendments folded into its body; ADR index row updated
 - [ ] judge's NetworkPolicy adds exactly **one** egress rule — **TCP 443 to non-cluster addresses** — nothing else new; m3-07's **`xlearn-identity` :8081** rule present (before/after diff in the PR); judge Ready and a cohort judged submit still grades. Policy verified here; functional 443 reachability is proven by `judge admin llm-smoke` from the pod ([m4-01](sprint-m4-01.md) task 10, m4-07 step 1)
 - [ ] `xlearn-judge-llm` loaded via `envFrom`; `LLM_PLATFORM_ENABLED=false`; the projected token (audience `https://api.anthropic.com`, 3600 s) mounted at `/var/run/secrets/anthropic.com/token` with automount still off
-- [ ] Runbook merged; Console limit **$15**, alerts **50%/80%**, auto-reload **off**, WIF issuer/rule/service account set (**owner confirms**)
+- [ ] Runbook merged; Console limit **$15**, alerts **50%/80%**, auto-reload **off**, WIF issuer/rule/service account set (the owner's before-launch setup, attested at launch and recorded with its date and IDs)
 - [ ] `host-verify --cluster` green, with the JWKS kid check reporting **PASS** from the embedded kid block (not INFO-skip; WIF path), a forced-drift run showing the WARN, and `/root/host-verify.sh` refreshed
 - [ ] Acceptance-set template merged in `xlearn-evalpack` (schema, README, dev/test dirs, CI validation, excluded from the pack image)
 
@@ -256,16 +275,17 @@ repo** (the AGENT.md never-copy rule, [m3-01](sprint-m3-01.md)) — not into the
 
 **Infra PR(s) only — no tag.** Three `../infra` PRs, each its own task and never folded into a tag
 ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)): (A) egress — merge first,
-any time before `v1.16.0`; (B) secret + values + token — after the owner's Console setup; (C) the host-verify
-check. Plus one xlearn **docs** PR (ADR-0031, runbook, status.md) and one `xlearn-evalpack` PR
-(template; no `evalpack v1.x` tag). Flux applies A and B within minutes; B restarts judge once, still AI-dark.
+any time before `v1.16.0`; (B) secret + values + token — with the IDs from the owner's before-launch Console
+setup; (C) the host-verify check. Plus one xlearn **docs** PR (ADR-0031 accepted in-session, runbook,
+status.md) and one `xlearn-evalpack` PR (template; no `evalpack v1.x` tag). Launching the prompt is the
+owner's approval for all of it (D40). Flux applies A and B within minutes; B restarts judge once, still AI-dark.
 The M4 code that uses these gates ships in **`v1.16.0`** ([m4-07](sprint-m4-07.md)), which flips
 `LLM_PLATFORM_ENABLED=true` for the cohort in its own infra PR. Rollback: `git revert` of A or B (fail-open for A).
 
 ## Definition of Done
 
 All infra PRs merged via GitOps (no hand `kubectl`) and reconciled · judge Ready · `host-verify --cluster` green ·
-docs PR and evalpack PR merged with CI green · acceptance criteria met (the owner confirmed the Console) ·
+docs PR and evalpack PR merged with CI green · acceptance criteria met (the Console setup attested at launch) ·
 statuses updated (this file + [`../status.md`](../status.md)) · ADR-0031 Accepted · local `main` synced in xlearn, `../infra` and `xlearn-evalpack`.
 
 ## Risks / watch-outs

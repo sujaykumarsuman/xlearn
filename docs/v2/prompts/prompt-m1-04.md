@@ -28,8 +28,8 @@ never check account status, nothing reads JWT roles, login skips bcrypt for unkn
 bcrypt runs unbounded under a 250m limit, and the shared origin has no CSP. This sprint makes roles and status real
 (in identity's DB, never the JWT), adds the audited owner CLI used via `kubectl exec`, the L7 and L3 guards, a strict CSP
 with cross-site write checks, and cohort visibility for `preview` courses. It merges only; `v1.7.0` is cut by m1-07.
-After that tag the owner sets his role once (`ev-owner-role`). The gateway router is serialized: m1-03 is merged, m1-05
-waits on this PR.
+Right after that tag, m1-07's session sets the owner's role once (`ev-owner-role`, D40). The gateway router is serialized:
+m1-03 is merged, m1-05 waits on this PR.
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
@@ -73,7 +73,7 @@ waits on this PR.
     public `/u/` page) with the browser console open — zero CSP violations; exercise every CLI verb against compose
     (`docker compose exec identity identity admin …`).
 11. **[X] PR** → conventional commits (`feat(identity): …`, `feat(gateway): …`) with the attribution lines → CI green →
-    squash-merge. **No tag.**
+    squash-merge (see Ship). **No tag.**
 
 ## Constraints
 
@@ -103,8 +103,8 @@ waits on this PR.
 ## Update status
 
 - This plan's Status table ([`../sprints/sprint-m1-04.md`](../sprints/sprint-m1-04.md)): tasks 🔄 → ✅; _Overall_ ✅.
-- [`../status.md`](../status.md): Sprint board row (m1-04 ✅, "merged, ships in v1.7.0"); owner events `ev-owner-role` (after
-  `v1.7.0`) and `ev-first-tester` (after MI-5b) → "prepared: runbook"; flag inventory: `SIGNUP_MODE` operating mode now guarded
+- [`../status.md`](../status.md): Sprint board row (m1-04 ✅, "merged, ships in v1.7.0"); owner events `ev-owner-role` (run by
+  m1-07's session after `v1.7.0`) and `ev-first-tester` (run by l-02's session after MI-5b) → "prepared: runbook"; flag inventory: `SIGNUP_MODE` operating mode now guarded
   by `DEV_AUTH` (L7), `SEAT_CAP` default 15 (code); limits L3 and L7 → built (ships in `v1.7.0`).
 - Decisions log: the CSP string and its `form-action` GitHub entry, revoke-all including the caller on password change, reads
   audited too, the OAuth `account_unavailable` redirect. ADR only for a call beyond ADR-0033/0035 (check peers' numbers first).
@@ -120,5 +120,12 @@ waits on this PR.
 - [ ] `preview` visible/enrollable for the cohort only.
 - [ ] CI green (`sqlc diff`); merged to `main`.
 
-Ship per AGENT.md land-and-sync with **this sprint's release action: merge only (ships in `v1.7.0`)** — PR, CI green,
-squash-merge, no tag, then `git checkout main && git pull`. The owner's `ev-owner-role` runs after m1-07 tags `v1.7.0`.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/m1b-identity-floor`, then conventional commit(s) with the attribution lines, then push, then the PR. This repo only: no `../infra` PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only:** nothing deploys (`main` is build-only). It ships in **`v1.7.0`**, which [m1-07](../sprints/sprint-m1-07.md) tags; m1-07's session then runs `ev-owner-role`. No tag here.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

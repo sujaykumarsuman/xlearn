@@ -120,9 +120,9 @@
      in 4 services, 4 acks, `closed_at` set, ack rows' `account_id` NULL, idempotent replay, and the forged-event path.
    - Docs: `docs/architecture/events.md`, `services.md`, `data-model.md` per the plan.
 
-10. **[X] PR, CI green — do not merge yet.** One PR (or a short serialized series): conventional commits with the attribution lines;
-    CI green (`go test ./...`, `sqlc diff`, the contract-header lint, golden/budget/registry, `nats-acl`, `e2e`, web tests). **Hold the
-    squash-merge until both infra PRs are merged** (the plan's task 7 order): the new start guard (`NATS_URL` set without
+10. **[X] PR, CI green; merge it only after both infra PRs.** One PR (or a short serialized series): conventional commits with the attribution lines;
+    CI green (`go test ./...`, `sqlc diff`, the contract-header lint, golden/budget/registry, `nats-acl`, `e2e`, web tests). **Keep the
+    squash-merge for step 13, after both infra PRs have merged** (the plan's task 7 order): the new start guard (`NATS_URL` set without
     `IDENTITY_BASE_URL` → refuse to start) and the new durables would crash-loop or be denied on prod if a peer tag shipped this code
     before the env and the ACL land.
 
@@ -204,10 +204,12 @@
 - [ ] N3 ≥ 24 h re-check recorded; the ACL (live `LEGACY` stage, diff-checked) and coach-seed/env PRs merged before the xlearn squash-merge; NetworkPolicy check recorded.
 - [ ] **coach connects with its nkey on prod**; v1.11.0 live and verified per the checklist; status.md updated.
 
-**Ship at session end** per AGENT.md land-and-sync with **this sprint's release action: tag v1.11.0** (the next free minor), in order:
-1. the xlearn PR → CI green (**not merged yet**);
-2. `../infra` PR 1 (ACL, rendered from the PR head with the live `LEGACY` stage, diff-checked) → merge → verify; PR 2 (coach seed + env) → merge → verify;
-3. squash-merge the xlearn PR → tag at once → Flux deploys → verify live per the checklist;
-4. `git checkout main && git pull` in xlearn and `../infra`.
+## Ship (land-and-sync — owner approval pre-granted)
 
-Never leave an open PR or merged work unpulled.
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/l-01-erase-consumers`, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched: the xlearn PR (step 10) and the two `../infra` PRs (steps 11–12). Here the order requires the infra PRs **first**: ACL re-render (rendered from the xlearn PR's head with the live `LEGACY` stage, diff-checked) → merge → verify; coach seed + env → merge → verify. Infra PRs are never folded into the tag.
+2. Once CI is green (fix, then merge, on failure), squash-merge: the two infra PRs first (`../infra` has no CI: the rendered-block diff and the verify evidence in each PR body are its checks), then the xlearn PR (step 13). Never enable auto-merge.
+3. **Release action — tag `v1.11.0`** (the next free minor): walk the release checklist (ADR-0034 §6, in the plan), push the tag on the merge commit right after the squash-merge, let Flux deploy, then verify live by looking (step 14). If the tag can't follow the merge at once, record "l-01 merged, untagged — infra PRs already merged; the next tag ships the erase consumers" in status.md.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in xlearn and `../infra`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

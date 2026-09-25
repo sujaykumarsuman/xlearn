@@ -183,8 +183,12 @@ Stop and report if any gate is unmet.
 - [ ] `default-deny-all` (no DNS) and `judge-to-runner` are present, and `host-verify --cluster` is green, including the VAP-binding check. `host-lint.sh` is clean, and the `--netpol-file` negative check FAILs.
 - [ ] status.md MI-4 and the decisions are recorded.
 
-**Ship at session end** per AGENT.md land-and-sync, with this sprint's release action, **infra PR(s) only**:
-1. `../infra` PR 1 (Warn), then PR 2 (Deny): conventional commits (`feat(sandbox): …`) with the required attribution lines. Merge each once validated and proven; there's no CI in infra.
-2. Let Flux reconcile, and verify live as above.
-3. Open an xlearn docs PR for the status updates. Merge it on CI green.
-4. Run `git checkout main && git pull` in **both** repos. There's no tag.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: `../infra` PR 1 (Warn, from `feat/mi-4-sandbox-guards`), then PR 2 (Deny), with `feat(sandbox): …` commits; then the xlearn docs PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. `../infra` has no CI: merge each infra PR once validated and proven, with the dry-run and proof output in its body.
+3. **Release action — infra PR(s) only:** merge the infra PRs in the plan's order, each its own PR and never folded into a tag: PR 1 (the guard objects, bindings at `[Warn, Audit]`), then let Flux reconcile and prove the Warn phase (step 6); then PR 2 (the `[Deny]` flip), reconcile and prove the Deny phase (step 8), and verify live (step 9). Then merge the xlearn docs PR. No tag.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn and `../infra`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

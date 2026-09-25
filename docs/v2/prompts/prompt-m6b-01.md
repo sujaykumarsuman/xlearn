@@ -3,6 +3,12 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-m6b-01.md`](../sprints/sprint-m6b-01.md)   ·   **Milestone:** M6b (voice, one shell)   ·   **Prereqs:** [mi-13](../sprints/sprint-mi-13.md), [ds-m6b-01](../sprints/sprint-ds-m6b-01.md), [m6a-06](../sprints/sprint-m6a-06.md)
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] *Optional, only for step 11's ≤ 2-minute live check (≈ $0.10):* your own OpenAI key, entered by you in the local compose stack's Settings and set as the `interview` default (the agent never types a key). Without it, the live leg is recorded as deferred to m6b-04, not ⛔.
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — conventions, service boundaries, land-and-sync.
@@ -47,8 +53,10 @@ drain, cost, caps and modes are [m6b-02](../sprints/sprint-m6b-02.md); the UI is
 ## Entry gates — verify first (stop and report if any is unmet)
 
 - [ ] [mi-13](../sprints/sprint-mi-13.md)'s `v2.0.x` patch is live: as the owner, `POST /xlearn/api/v1/interviews/<nonexistent>/segments` returns
-      coach's 404 through the gateway; status.md records coach 500m / 256 Mi, grace 60, 1/0 and the 443 egress.
-- [ ] [ds-m6b-01](../sprints/sprint-ds-m6b-01.md)'s PR is **merged by the owner** (AB29–AB30 on `main`).
+      coach's 404 through the gateway; status.md records coach 500m / 256 Mi, grace 60, 1/0 and the 443 egress. (Use an already-signed-in
+      browser session for the owner call if you have one, never credentials; otherwise an anonymous POST → 401 plus mi-13's status.md
+      record is the check.)
+- [ ] [ds-m6b-01](../sprints/sprint-ds-m6b-01.md)'s PR is **merged** (AB29–AB30 on `main`; the merge is the freeze, D40).
 - [ ] The S6 results exist and the decision is **not** "both fail"; they name the shell, M7, M13, the event filter, the current-screen
       finding, the sideband URL, the audio event names and the fixture path. [ADR-0032](../../adr/0032-realtime-ai-mock-interviewer.md) reads Accepted.
 - [ ] `account.region` exists and the acceptance step sets it (v1.17.0 live).
@@ -63,8 +71,9 @@ drain, cost, caps and modes are [m6b-02](../sprints/sprint-m6b-02.md); the UI is
 2. **[X] Reconcile** (plan task 1): write the S6 fact table into your PR draft; confirm the live route name (`/segments`); if
    `docs/adr/0007-ai-coach-byo-key-and-secrets.md` lacks its *Amendment (ADR-0032)* section, add it with ds-m6a-01's wording (SDP brokering
    only, each creation logged; the Realtime `client_secrets` fallback, 30–60 s TTL, **only if S6 showed brokering failing**; the key as a
-   `[]byte` per live segment, dropped on `interrupted`/`paused`, never in panics or logs); record the design freeze —
-   `sprint-ds-m6b-01.md` tasks 5–6 + _Overall_ ✅, status.md Artboards AB29–AB30 "frozen (PR #, date)", tick `ev-freeze-ds-m6b-01`.
+   `[]byte` per live segment, dropped on `interrupted`/`paused`, never in panics or logs); record the design freeze if ds-m6b-01's session
+   didn't (idempotent; skip any edit already done) — `sprint-ds-m6b-01.md` Status rows + _Overall_ ✅, status.md Artboards AB29–AB30
+   "frozen (PR #, date)", and `ev-freeze-ds-m6b-01` ✅ ("automatic at the merge") if status.md still lists it.
 3. **[X] Migration + sqlc** (plan task 4, last bullets): the next free coach goose version (expand only) — `interview_segment` gains
    `purpose` (`live`\|`preflight`, default `live`), `client_id`, `confirmed_at`; **`interview_event.kind` is widened with `caption` and
    `segment`** (drop and re-add m6a-01's CHECK with the two values; or extend the Go enum if the set is only enforced there), and
@@ -93,7 +102,8 @@ drain, cost, caps and modes are [m6b-02](../sprints/sprint-m6b-02.md); the UI is
    `connecting —interrupt→ interrupted` data-table row; `interrupted` → stays, a failed re-prime; auth → key disabled, `paused`);
    **no retry**. The `preflight` purpose speaks AB29 F5's fixed greeting and hangs up at 30 s. **Do not build the `client_secrets`
    fallback** — ADR-0032 §7 accepts it only conditionally (Realtime, only if S6 showed brokering failing); if S6 says brokering fails, stop
-   and report: it needs mi-13's `connect-src` widened in its own gateway PR with the owner's sign-off.
+   and report (a gate failure, not a review: ⛔ in status.md): it needs mi-13's `connect-src` widened in its own gateway PR, in a follow-up
+   sprint.
 7. **[X] Confirm, reaper, supersede** (plan task 5): coach `POST /interviews/{id}/segments/{n}/confirm` + one gateway interview-proxy row
    (default budget, cohort gate, `aud=coach`) + `openapi.yaml`/`api.md`; confirmation also from the first media event (then m6a-01's
    `segment_open` → `live`); the reaper as a job in m6a-01's sweeper (closes and hangs up segments unconfirmed after 15 s; once at startup);
@@ -121,11 +131,12 @@ drain, cost, caps and modes are [m6b-02](../sprints/sprint-m6b-02.md); the UI is
     `lease_lost`, `interrupted` → `cleared` (and a failed re-prime keeps `grace_until`), every FSM exit from `live` hangs up, key zeroed, `caption` → `turn` order), **the no-audio-persisted
     canary scan** over every coach table + logs + panics, the extended canary for `/api/interviews/*` and the decoder, the fixture contract,
     the gateway confirm/ask routes + OpenAPI drift. `go test ./...`, `go vet`, lint, `sqlc diff`, the web suite.
-11. **[X] Optional live check** (plan task 8, last bullet): **only if the owner gives an explicit go-ahead in chat** — he enters his own OpenAI
-    key in local compose Settings himself (you never type a key), sets it as the interview default and records the voice consent; you drive
-    Chrome with fake media and the DevTools snippet (`purpose:'preflight'`), ≤ 2 minutes, ≈ $0.10; confirm `connected`, the greeting caption
-    on SSE, the hang-up, `coach admin interviews --live` empty, and repeat the no-audio scan. Otherwise record "live leg deferred to m6b-04".
-12. **[X] Docs + status** (plan task 9), then PR → CI green → squash-merge. **No tag.**
+11. **[X] Optional live check** (plan task 8, last bullet), pre-approved by launching this prompt (D40): verify the before-launch item —
+    the owner's own OpenAI key in the local compose Settings as the `interview` default (you never type a key). If it's there, record the
+    voice consent for your test interview (compose test data; the audio is a fake clip), drive Chrome with fake media and the DevTools
+    snippet (`purpose:'preflight'`), ≤ 2 minutes, ≈ $0.10; confirm `connected`, the greeting caption on SSE, the hang-up,
+    `coach admin interviews --live` empty, and repeat the no-audio scan. Otherwise record "live leg deferred to m6b-04" (not ⛔).
+12. **[X] Docs + status** (plan task 9), then ship: see **Ship** below (**no tag**).
 
 ## Constraints
 
@@ -138,14 +149,15 @@ drain, cost, caps and modes are [m6b-02](../sprints/sprint-m6b-02.md); the UI is
   test is the gate. The browser never receives a token.
 - **One shell; the fallback is not built here:** only the S6 winner's adapter. ADR-0032 §7's `client_secrets` fallback is accepted but
   conditional (Realtime only, only if S6 showed brokering failing) and needs mi-13's `connect-src` widened to the provider origin in its own
-  gateway PR with the owner's sign-off — so if it's needed, stop and report; mi-13's CSP stays as it is in this session.
+  gateway PR, in a follow-up sprint — so if it's needed, stop and report (a gate failure: ⛔ in status.md); mi-13's CSP stays as it is in
+  this session.
 - **No retries** on session creation anywhere in coach.
 - **Dark:** everything behind M6a's T-3 cohort gate; no new flag; no UI (`web/` untouched — `theme.css` rules apply to m6b-03).
 - **GitOps / ops:** no infra change expected; if coach → identity `:8081` is missing from coach's egress, that is its own infra PR merged via
   Flux (never `kubectl apply`). D34: no metrics, alerts or opscheck — `coach admin interviews --live` is the only ops read (the decoder's
   per-segment dropped-frame tally is one log line at segment close, nothing exported).
 - **Memory-sum rule:** no new pod here; the decoder must stay inside S6 M8 (record the benchmark).
-- **Keys:** never type or paste an API key into any field; the live check needs the owner to do that himself.
+- **Keys:** never type or paste an API key into any field; the live check runs only on a key the owner entered himself before launch.
 - **Parallel sessions:** re-check peers' PRs and worktrees before opening the migration PR; claim an ADR number only after that check.
 
 ## Deliverables
@@ -161,16 +173,18 @@ drain, cost, caps and modes are [m6b-02](../sprints/sprint-m6b-02.md); the UI is
 ## Update status
 
 - [`../sprints/sprint-m6b-01.md`](../sprints/sprint-m6b-01.md): each task 🔄 → ✅ (⛔ with a reason); _Overall_ ✅ when all are.
-- [`../sprints/sprint-ds-m6b-01.md`](../sprints/sprint-ds-m6b-01.md): tasks 5–6 and _Overall_ ✅ (the freeze).
-- [`../status.md`](../status.md): Sprint board rows (ds-m6b-01 ✅, m6b-01 ✅); **Milestones** M6b 🔄; **Artboards** AB29–AB30 "frozen (PR #, date)";
-  owner event `ev-freeze-ds-m6b-01` ticked; flags — none new; **Decisions log** — the S6 winner + catalog `as_of`, precondition order and error
+- [`../sprints/sprint-ds-m6b-01.md`](../sprints/sprint-ds-m6b-01.md): its Status rows and _Overall_ ✅ (the freeze), only if its session didn't already.
+- [`../status.md`](../status.md): Sprint board rows (ds-m6b-01 ✅ if not already, m6b-01 ✅); **Milestones** M6b 🔄; **Artboards** AB29–AB30
+  "frozen (PR #, date)" if not already; owner event `ev-freeze-ds-m6b-01` ✅ ("automatic at the merge") if status.md still lists it; flags —
+  none new; **Decisions log** — the S6 winner + catalog `as_of`, precondition order and error
   codes (with their per-source-state FSM effects), confirm = browser call or first media event, supersede through the client lease, the
   current-screen mechanism (or diffs-only), the `caption` and `segment` event kinds (widened `kind` set), voice turns as `source='server'`,
   the sideband read limit, the `session_tampered` caveat, "brokering works; `client_secrets` fallback not needed", whether the live check ran (or deferred to
   m6b-04); a **hand-off line for m6b-03** — the `voice` block fields, the routes (`segments`, `confirm`, `ask`), the event kinds and the
   fake-provider endpoints for its compose walk.
-- No ADR expected (ADR-0032/0007 cover it). If you must diverge from t6 §3 (e.g. brokering impossible), stop and ask; an ADR number is claimed
-  only after the parallel-sessions check.
+- No ADR expected (ADR-0032/0007 cover it). If you must diverge from t6 §3 (e.g. brokering impossible), stop and report rather than wait
+  (a gate failure, not a review): record the options and a recommendation, and ⛔ "needs owner decision" in status.md. An ADR number is
+  claimed only after the parallel-sessions check.
 
 ## Done when (acceptance)
 
@@ -188,6 +202,12 @@ drain, cost, caps and modes are [m6b-02](../sprints/sprint-m6b-02.md); the UI is
 - [ ] The sideband survives > 32 KiB frames (`SetReadLimit`; real-socket test); `caption`/`segment` in the widened `kind` set and the S1 allowlist
 - [ ] CI green; merged; no tag
 
-Ship at session end per AGENT.md land-and-sync with **this sprint's release action — merge only (ships dark in m6b-03's `v2.0.x` patch)**:
-branch → conventional commit(s) with the attribution lines → push → PR → CI green → squash-merge → **no tag, no infra PR** (unless the
-coach → identity egress was missing) → `git checkout main && git pull`.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). The xlearn branch is `feat/m6b-01-voice-broker`.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships dark in m6b-03's `v2.0.x` patch):** Nothing deploys; it ships in the `v2.0.x` patch cut by [m6b-03](../sprints/sprint-m6b-03.md) (or rides an earlier peer `v2.0.x` patch, still dark: cohort-gated API, no UI). Don't tag. No infra PR, unless coach → identity `:8081` was missing from coach's egress: then that is its own `../infra` PR (ADR-0035 §2 standing rule), merged on its own; infra has no CI, so paste the rendered-policy diff into its PR body and merge on it.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn, and `../infra` if the egress PR was needed). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

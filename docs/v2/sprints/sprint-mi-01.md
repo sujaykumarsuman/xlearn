@@ -177,8 +177,8 @@ A knob belongs here only if its shape serves every later user. The chart isn't r
 ### 5 · Verify the host [H]
 
 After both reconciles, run `ssh vps 'bash -s -- --cluster' < hack/host-verify.sh`, which writes nothing on
-the node. Don't `scp` to `/root`: that's a node write, and refreshing the node copy is the owner's call. Expect
-no FAIL. If [mi-02](sprint-mi-02.md) has merged by then, the MI-8 checks run too.
+the node. Don't `scp` to `/root`: that's a node write this sprint doesn't specify, and [mi-02](sprint-mi-02.md)
+refreshes the node copy. Expect no FAIL. If [mi-02](sprint-mi-02.md) has merged by then, the MI-8 checks run too.
 
 ### 6 · Record [X]
 

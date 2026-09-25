@@ -20,8 +20,8 @@ _Overall:_ ⬜ Not started
 | 5 | NetworkPolicy presence (+ embedded `expected-netpol.tsv`) | H | ⬜ |
 | 6 | Steal and CPU (TR-*) | H | ⬜ |
 | 7 | Read-only proof, lint, `--json`, README; PR and merge | H | ⬜ |
-| 8 | Throwaway top sampler for MI-11a (owner OK) | H | ⬜ |
-| 9 | MI-0 follow-up (H0 result, S0 vmstat) | O | ⬜ |
+| 8 | Throwaway top sampler for MI-11a | H | ⬜ |
+| 9 | MI-0 follow-up (H0 result, S0 vmstat) | H | ⬜ |
 | 10 | Record | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
@@ -30,7 +30,7 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] MI-0 done: the H0 reboot into 6.8.0-142 (Fri 2026-09-25) and `host-verify --cluster` green after it. *Tasks 1–8 don't need the reboot. If it slipped, ask the owner whether to build them now and leave task 9 ⛔.*
+- [ ] MI-0 done: the H0 reboot into 6.8.0-142 (Fri 2026-09-25) and `host-verify --cluster` green after it. *Tasks 1–8 don't need the reboot. If it slipped, build them now and leave task 9's H0 check ⛔ (MI-0 pending); its S0 branch still runs if the window has ended.*
 - [ ] No open peer PR in `../infra` touches `hack/` (parallel sessions: `gh pr list -R sujaykumarsuman/infra`, `git worktree list`, ListAgents)
 
 ## Goal
@@ -239,15 +239,11 @@ Together they prove neither check is vacuous. Re-verify the field names on 2.14.
 - **Usage and README.** Update the usage text and the infra README host-scripts section: each new flag, and where each one is used (after host changes; the release checklist before contract, erase and GA tags; `--with-runner` in mi-08/mi-09; `--nats-stage` in mi-06/mi-11).
 - **PR.** Open it with this output in the body: `host-lint.sh`, a piped node run (`--cluster` green), the `--with-runner` FAIL, the `--nats-stage=n3` and `--nats-stage=n4` FAILs, the `SAR_BIN=/nonexistent` WARN, and the `--json` parse check. Merge it. infra has no CI.
 - **Agents verify by piping only:** `ssh vps 'bash -s -- --cluster' < hack/host-verify.sh`, which writes nothing on the node. Every run in this sprint uses that form.
-- **Refreshing the node copy is gated [O].** `scp hack/host-verify.sh vps:/root/` is a node write, and `ssh vps` stays read-only unless the owner explicitly asks. So after the merge, **ask the owner**:
-  - either the owner refreshes `/root/host-verify.sh` (the README way);
-  - or the owner gives an explicit OK and the agent runs the `scp` once, then `ssh vps 'bash /root/host-verify.sh --cluster'` once.
+- **Refresh the node copy (pre-approved).** `scp hack/host-verify.sh vps:/root/` is a node write, and `ssh vps` is otherwise read-only. This plan names the write, so launching the prompt pre-approves it (D40). After the merge, the agent runs the `scp` once, then `ssh vps 'bash /root/host-verify.sh --cluster'` once, and records it. If the refresh fails this session, record *"`/root/host-verify.sh` stale"* as a pending item. The piped run is the sprint's proof either way.
 
-  Record which happened. If neither happens this session, record *"`/root/host-verify.sh` stale: owner to refresh"* as a pending owner item. The piped run is the sprint's proof either way.
+### 8 · Throwaway top sampler for MI-11a [H]
 
-### 8 · Throwaway top sampler for MI-11a (owner OK) [H]
-
-- **Approval.** Ask the owner before starting it. It writes on the node (`/root/sample-top.sh`, `/var/tmp/xlearn-top.tsv` and `/var/tmp/xlearn-top.pid`), and `ssh vps` is otherwise read-only.
+- **Pre-approved node writes.** It writes on the node (`/root/sample-top.sh`, `/var/tmp/xlearn-top.tsv` and `/var/tmp/xlearn-top.pid`), and `ssh vps` is otherwise read-only. This plan names those writes, so launching the prompt pre-approves them (D40): start it without asking.
 - **The script:** `hack/sample-top.sh`.
   - It appends `k3s kubectl top pods -A --containers --no-headers`, timestamp-prefixed, to `/var/tmp/xlearn-top.tsv` every 5 minutes.
   - It stops itself after `SAMPLE_HOURS` (default 168).
@@ -256,21 +252,23 @@ Together they prove neither check is vacuous. Re-verify the field names on 2.14.
 - **It's not a timer, CronJob or alert (D34).** The file survives a reboot; the loop doesn't. Restart it after one.
 - **Expected size:** about 9 MB over 7 days.
 - **Hand-off:** [mi-08](sprint-mi-08.md) reads ≥ 48 h of samples, sets the p95 × 1.5 budgets, stops the loop and deletes the file.
-- If the owner declines, record that. mi-08 then keeps the `top` × 1.2 budgets.
+- If the owner declines it in-session (a "hold"), record "declined". mi-08 then keeps the `top` × 1.2 budgets.
 
-### 9 · MI-0 follow-up [O]
+### 9 · MI-0 follow-up [H]
 
-The owner confirms the H0 result (event `ev-mi0`): `uname -r` = 6.8.0-142, and `host-verify --cluster` is
-green after the reboot. On 2026-09-25 the node was still on 6.8.0-90, so the reboot hadn't happened yet.
+The agent verifies the H0 result (event `ev-mi0`) read-only: `ssh vps uname -r` = 6.8.0-142, and a piped
+`host-verify --cluster` is green after the reboot. On 2026-09-25 the node was still on 6.8.0-90, so the reboot
+hadn't happened yet.
 
 The S0 vmstat log is `/tmp/xlearn-s0-vmstat.log`, written by a self-terminating `vmstat -t -w 60 4320` that
 started 2026-09-24 07:52 UTC. Its 72 h window ends **2026-09-27 ≈ 07:52 UTC**. There are two branches:
 - **`ev-mi0` happened before the window ended.** The reboot ended the sampler, and tmpfiles empties `/tmp`
-  at boot. The owner says whether the log was copied off before the reboot.
+  at boot. Use the copy taken before the reboot if the owner's before-launch note names one (status.md's S0
+  row, or the launch message); if none is named, the log is lost.
 - **`ev-mi0` hadn't happened by the window's end.** The log is complete and still on the node, so it has to
   be collected and then removed. Do this before `ev-mi0` if it's still pending.
-  - Copying it off is a read. The agent may do it: `scp vps:/tmp/xlearn-s0-vmstat.log <scratchpad>/`.
-  - **Deleting it is a node write [O]:** the owner runs `ssh vps rm /tmp/xlearn-s0-vmstat.log`, or explicitly OKs the agent doing it.
+  - Copying it off is a read. The agent does it: `scp vps:/tmp/xlearn-s0-vmstat.log <scratchpad>/`.
+  - **Deleting it is a node write, pre-approved (D40):** this plan names it, so once the copy is verified the agent runs `ssh vps rm /tmp/xlearn-s0-vmstat.log`.
   - Record the deletion. It closes the pending S0 owner item.
 
 If a copy exists (either branch), the agent computes steal p50, p95 and max from its `st` column, and appends an
@@ -299,21 +297,21 @@ the source". sar already holds the history (rollout §2, MI-0).
 - [ ] With `sar` unavailable (`SAR_BIN=/nonexistent`), `host.steal` and `host.cpu` WARN "unmeasured" and never PASS.
 - [ ] The script is provably read-only: the `host-lint.sh` verb and output-redirection assertions pass (task 7's `redir_hits`), shellcheck is clean, and the embedded TSVs equal the files.
 - [ ] `--json` output parses line by line with `jq -c .`.
-- [ ] The sampler is running with the owner's OK (start time recorded), or it was declined and that's recorded.
+- [ ] The sampler is running (start time recorded), or it was declined in-session and that's recorded.
 - [ ] `docs/v2/status.md` records MI-0, MI-8 ✅, the memory-sum and steal baselines, and the S0 result.
 
 ## Release
 
 **infra PR(s) only**, with no tag:
 - One `../infra` PR carries `hack/host-verify.sh`, `memory-budget.tsv`, `expected-netpol.tsv`, `sample-top.sh`, `host-lint.sh`, the `host-bootstrap.sh` changes (`jq` + `sysstat` in `PKGS`, sysstat collection enabled) and the README.
-- The script ships the moment it's merged: the piped form (`ssh vps 'bash -s -- --cluster' < hack/host-verify.sh`) always runs the merged version. The `/root` copy is refreshed by the owner, or with the owner's explicit OK (task 7). It's used on demand, and in every contract, erase and GA tag checklist ([ADR-0034](../../adr/0034-v2-release-labelling-gating-and-rollback.md) §6).
+- The script ships the moment it's merged: the piped form (`ssh vps 'bash -s -- --cluster' < hack/host-verify.sh`) always runs the merged version. The agent refreshes the `/root` copy once after the merge (task 7; pre-approved by launching the prompt, D40). It's used on demand, and in every contract, erase and GA tag checklist ([ADR-0034](../../adr/0034-v2-release-labelling-gating-and-rollback.md) §6).
 - The status rows ship as an xlearn docs PR.
 - **Rollback:** `git revert`. The script is read-only, so it leaves no residue.
 
 ## Definition of Done
 
 - The infra PR is merged with its check output in the body.
-- A green piped `--cluster` run of the merged script is recorded. `/root/host-verify.sh` is either refreshed (by the owner or with the owner's OK) or recorded as a pending owner item.
+- A green piped `--cluster` run of the merged script is recorded. `/root/host-verify.sh` is refreshed (task 7), or recorded as pending if the refresh failed.
 - The sampler is running, or its decline is recorded.
 - Statuses are updated (this file + [`../status.md`](../status.md)), and the xlearn docs PR is merged.
 - Local `main` is synced in both repos.

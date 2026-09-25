@@ -24,7 +24,7 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] **AB04 and AB05 frozen**: the [ds-m2-01](sprint-ds-m2-01.md) design PR is merged by the owner (boards under `design-system/screens/v2/`, indexed by `design-system/screens/v2/index.html` from DS-M1-01).
+- [ ] **AB04 and AB05 frozen**: [ds-m2-01](sprint-ds-m2-01.md) merged (the merge is the freeze, D40; boards under `design-system/screens/v2/`, indexed by `design-system/screens/v2/index.html` from DS-M1-01).
 - [ ] **v1.9.0 live** ([m2-02](sprint-m2-02.md)), so this merges into v1.10.0 together with the producers.
 - [ ] **M2-03 merged**: the gateway BFF and web edits are serialized M2-03 → M2-04.
 - [ ] **M2-01's practice touch endpoints are on `main`** as [M2-01 task 4](sprint-m2-01.md#4--touch-endpoints--practice--review-read-x) specifies. If `main` drifted, follow `main` and note it in task 2:

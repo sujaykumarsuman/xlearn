@@ -5,7 +5,7 @@
 > **Unblocks:** [mi-13](sprint-mi-13.md) (MI-16 gates; needs M6a live dark) · [m6b-01](sprint-m6b-01.md) (voice builds on the live text interviewer)
 > **Release action:** **tag a `v2.0.x` patch** (the next free patch, e.g. `v2.0.N`; M6a stays dark behind the cohort gate) — [ADR-0034 §1.1](../../adr/0034-v2-release-labelling-gating-and-rollback.md#11-scheme): after `v2.0.0` the minor moves only at a GA flip, so this is **not** `v2.1.0`. Infra PR(s) only if task 7's memory read requires one (their own PR, never folded into the tag).
 > **Artboards:** **AB26** grace / paused / resume (`design-system/screens/v2/AB26-grace-paused-resume.html`) · **AB27** debrief + proposal (`AB27-debrief-proposal.html`) · **AB28** accessibility settings (`AB28-accessibility-settings.html`)
-> **Calendar:** Q1 2027. **Owner:** dogfood one ~45-minute text mock on production after the tag (task 8, O).
+> **Calendar:** Q1 2027. **Owner event after ship** (`ev-m6a-dogfood`, non-blocking): the owner dogfoods one ~45-minute text mock on production after the tag; task 8 records the event in status.md, and it gates nothing (not _Overall_ ✅, not the M6a row).
 > **Execute with:** [`../prompts/prompt-m6a-06.md`](../prompts/prompt-m6a-06.md) — one prompt, one session.
 
 ## Status
@@ -21,16 +21,16 @@ _Overall:_ ⬜ Not started
 | 5 | M6a exit e2e: a 45-minute text mock with pause/resume scores once (fake clock, fake provider + replay fixtures); `incomplete` and exposure paths | X | ⬜ |
 | 6 | Tag the `v2.0.x` patch (release checklist incl. **no live interviews**) | X | ⬜ |
 | 7 | Post-tag verify on prod + coach memory read (infra PR only if needed) | H + X (+ I) | ⬜ |
-| 8 | Owner dogfood: one ~45-minute text mock with a pause and resume, scored once | O | ⬜ |
+| 8 | Record the owner's post-ship dogfood (one ~45-minute text mock with a pause and resume, scored once) as owner event `ev-m6a-dogfood` in status.md; the event gates nothing | X | ⬜ |
 | 9 | Record: M6a row, tag → floor, decisions — in a post-tag docs PR (dogfood result in a second small docs PR) | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row, the
-> **M6a** milestone row, milestone → tag → floor, the Artboards rows, the Decisions log). Full rules: [status protocol](README.md#status-protocol-way-of-working).
+> **M6a** milestone row, milestone → tag → floor, the Artboards rows, the owner events (`ev-m6a-dogfood`), the Decisions log). Full rules: [status protocol](README.md#status-protocol-way-of-working).
 
 ## Entry gates
 
-- [ ] **AB26, AB27, AB28 frozen:** [ds-m6a-02](sprint-ds-m6a-02.md)'s PR merged by the owner; the three files exist under `design-system/screens/v2/`.
+- [ ] **AB26, AB27, AB28 frozen:** [ds-m6a-02](sprint-ds-m6a-02.md) merged (the merge is the freeze); the three files exist under `design-system/screens/v2/`.
 - [ ] **m6a-05 merged:** `MockRoute`, `MockHub`, `ClassicSession`, `InterviewSetup`, `LiveHud` and `web/src/lib/interview/api.ts`, with placeholder cards for the states this sprint renders; its Decisions-log gap notes read.
 - [ ] **Twin fairness gate green** ([m6a-03](sprint-m6a-03.md); [t6 §6](../research/t6-realtime-interviewer.md#6-assessment) "before M6a ships"): recorded per catalog model that can review; any failing model is set to `ai: self_only`. The tolerance is written in ADR-0032's follow-up (m6a-03).
 - [ ] **NetworkPolicy outcomes recorded:** [m6a-01](sprint-m6a-01.md) task 7's own outcome (none expected: `pause_exposure` goes through the gateway; if it did add a callee, that infra PR is merged) and [m6a-04](sprint-m6a-04.md)'s "no NetworkPolicy PR needed" record.
@@ -43,7 +43,7 @@ Finish the text interviewer and **prove M6a's exit — a 45-minute text mock sur
 - **AB26** — the owner's failsafes on screen: the 5-minute top-up **grace** modal (text form), the **paused** banner on every page (≤ 24 h, ≤ 3 pauses), the **resume** modal with the free deterministic state at once and the paid AI brief on a click (cached per pause), and the **`incomplete`** view after 24 h ([t6 §4](../research/t6-realtime-interviewer.md#4-session-state-machine--the-owners-failsafes); D30; R-MI3–R-MI5).
 - **AB27** — the brain-authored **debrief**, the AI **proposal** on public descriptors with verified quotes, and the **explicit accept** (no 24-hour auto-submit) → `ScoreMock` **once**; re-propose once; the free partial view for `incomplete` ([t6 §6](../research/t6-realtime-interviewer.md#6-assessment); D14 amended; R-MI6).
 - **AB28** — text-mode accessibility settings and the **time multiplier** default ([t6 §7](../research/t6-realtime-interviewer.md#7-privacy-consent-retention--accessibility); WCAG 2.2.1).
-- An **audit** that every T6 P0 item exists, an **exit e2e** in CI, the **patch tag** with "no live interviews" checked, and the owner's **dogfood** on production.
+- An **audit** that every T6 P0 item exists, an **exit e2e** in CI, the **patch tag** with "no live interviews" checked, and afterwards the owner's **dogfood** on production (a post-ship owner event; it doesn't gate the sprint).
 
 ## Scope
 
@@ -51,7 +51,7 @@ Finish the text interviewer and **prove M6a's exit — a 45-minute text mock sur
 - `web/src/screens/mock/{Grace,PausedBanner,ResumeModal,Interrupted,Incomplete,Debrief,ProposalReview}.tsx`, the `mock/:id/review` route (replacing m6a-05's placeholder), the app-wide banner slot in `AppShell.tsx`, the "Mock interviews" section in `Settings.tsx`, the "Scores waiting" row on Today (`web/src/screens/Dashboard.tsx`, AB27 F8).
 - coach: `interview_pref` (table, routes, erase coverage); the per-provider `billing_url` for the grace modal (task 1); gateway pass-through; small P0 gap fixes (task 4).
 - `internal/e2e/interview_exit_test.go`.
-- The `v2.0.x` patch tag, post-tag verification, the coach memory read, the owner's dogfood, status records.
+- The `v2.0.x` patch tag, post-tag verification, the coach memory read, status records (the owner's dogfood follows as a post-ship owner event).
 
 **Out**
 - Voice anything: the countdown-grace UI with the mic muted, voice pre-flight and notices, the voice HUD, captions, push-to-talk, "hold voice", rollover and make-before-break → M6b ([m6b-01](sprint-m6b-01.md)…[m6b-03](sprint-m6b-03.md)); AB29/AB30★.
@@ -95,7 +95,7 @@ Sources: [t6 §6](../research/t6-realtime-interviewer.md#6-assessment) (flow ste
 | **F2** preparing the review | "one call on your key (about $0.06)"; the aggregate judge line ("hidden tests 37 / 40") from m6a-04's evidence |
 | **F3 proposal** (`proposed`) | "AI-proposed scores — nothing is saved until you accept."; per dimension of the session's rubric: band 1–5 **or "No evidence"** with its reason, one verified quote with a message link (opens the transcript at that turn beside the on-screen code via `SnapshotAt`), a one-line why, a slider; the evidence column; ≤ 3 strengths; ≤ 3 improvements with drill links; summary; caveats; [Accept all] · [Re-propose once — uses your key (~$0.06)] · [Score it myself]; "Scores lock when saved."; provenance "Proposed by ⟨model⟩ · ⟨prompt v⟩ · from your messages and code only" |
 | **F4** edited | the row tagged `edited`; "saved as self-scored" banner |
-| **F5** second proposal | both proposals side by side, differences marked; accept either unchanged or score it yourself (the board's "decision to confirm" — follow what the owner approved); chip "Re-propose used" |
+| **F5** second proposal | both proposals side by side, differences marked; accept either unchanged or score it yourself (the board's "decision to confirm" — follow the frozen board: the default the ds-m6a-02 merge froze, or a follow-up design PR's change); chip "Re-propose used" |
 | **F6 saved** | "Saved · 26 / 35"; the **server-computed** chips (`AI-proposed · accepted` or `self`) + `honor`; notes pre-filled; [Talk it over with your coach →] (review mode); the public count-only line (D31) |
 | **F7** self-scored only | one variant per reason (custom model, model not cleared, `review_flag`, pause exposure), none naming a heuristic; quotes and evidence shown; empty sliders |
 | **F8** scores waiting | on the Mock hub history **and Today** (`Dashboard.tsx` reads `GET /api/interviews/active` client-side; no new aggregate): "Scores waiting for you"; "never saved automatically"; the reminder copy at 24 h and 7 d from `pending_since` (read-time only, m6a-03); the expiry date (30 days → `incomplete`). **No email or push** |
@@ -150,21 +150,23 @@ Run the **release checklist** (see *Release*) from `main` after this sprint's PR
 
 By looking (D34), read-only over `ssh vps`:
 - `/xlearn/api/v1/healthz` reports `2.0.N`; `k3s kubectl get deploy -n xlearn -o wide` shows the new images; every `xlearn-*` ImagePolicy's latest = the tag; HelmReleases Ready.
-- Smoke: login, the dashboard and coach (a chat streams); as the owner, `/dsa/mock` shows Mock-v2 and the setup reaches the pre-flight (don't start a paid interview here — task 8 does); a non-cohort account (a tester set to `learner`, or reasoning from the gate test if none exists) would see v1.
-- **Coach memory:** `k3s kubectl top pod -n xlearn` for coach vs its limit (128 Mi until [mi-13](sprint-mi-13.md) sets 256 Mi). If the working set sits above **70 %** of the limit at idle or climbs past it during task 8 — [t6 §3](../research/t6-realtime-interviewer.md#3-architecture--media-path)'s coach split-out trigger ("coach above 70% of its memory limit") — record the crossing as that trigger in the Decisions log beside the resize decision, and open an infra PR raising coach's limit **checked against the memory-sum rule** ([ADR-0035 §5](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#5-capacity-the-memory-sum-rule-triggers-and-ordered-responses); run `host-verify --cluster`), merged on its own — or pull mi-13's coach-sizing task forward. Record the numbers either way.
+- Smoke: login, the dashboard and coach (a chat streams); as the owner, `/dsa/mock` shows Mock-v2 and the setup reaches the pre-flight (don't start a paid interview here — the owner's post-ship dogfood does, task 8); a non-cohort account (a tester set to `learner`, or reasoning from the gate test if none exists) would see v1. An agent never enters credentials: use an already-signed-in owner browser session; without one, run the credential-free checks and record "owner login smoke pending" as a pending-smoke note in status.md.
+- **Coach memory:** `k3s kubectl top pod -n xlearn` for coach vs its limit (128 Mi until [mi-13](sprint-mi-13.md) sets 256 Mi). If the working set sits above **70 %** of the limit at idle or climbs past it during the owner's dogfood (task 8) — [t6 §3](../research/t6-realtime-interviewer.md#3-architecture--media-path)'s coach split-out trigger ("coach above 70% of its memory limit") — record the crossing as that trigger in the Decisions log beside the resize decision, and open an infra PR raising coach's limit **checked against the memory-sum rule** ([ADR-0035 §5](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#5-capacity-the-memory-sum-rule-triggers-and-ordered-responses); run `host-verify --cluster`), merged on its own — or pull mi-13's coach-sizing task forward. Record the numbers either way.
 - `ssh vps 'bash -s -- --cluster --expect-sandbox --nats-stage=<live stage recorded in status.md>' < ../infra/hack/host-verify.sh` green (read-only; the memory sum after the tag). The live stage is `n4`, or `n3` if [mi-11](sprint-mi-11.md) reverted N4 to the monthly window; `--expect-sandbox` because every run after the October host window passes it ([mi-09](sprint-mi-09.md)).
 
-### 8 · Owner dogfood [O]
+### 8 · Owner dogfood: record the owner event [X]
 
-After the tag, the owner runs **one real ~45-minute text mock on production** with his own `interview` key: consent and cap, one **pause** ("Save & resume later") and a **resume** with the paid brief, Finish, then accept or edit the proposal — **one score**. Record: wall time, spend vs the estimate (the provider console), pauses, whether the event stream held through Traefik across its 50 s reconnects, anything wrong. A blocker is fixed forward with another patch (never move or re-push a tag).
+**A post-ship owner event (`ev-m6a-dogfood`), non-blocking.** The session doesn't wait for it: task 9's record PR adds `ev-m6a-dogfood` to status.md's owner events (that is this task's ✅), and _Overall_ ✅ and the M6a milestone ✅ rest on the session's own evidence (the exit e2e, the tag verify). The event gates nothing.
+
+After the tag, the owner runs **one real ~45-minute text mock on production** with his own `interview` key: consent and cap, one **pause** ("Save & resume later") and a **resume** with the paid brief, Finish, then accept or edit the proposal — **one score**. When the owner reports, record: wall time, spend vs the estimate (the provider console), pauses, whether the event stream held through Traefik across its 50 s reconnects, anything wrong. Anything it finds becomes a follow-up PR; a blocker is fixed forward with another patch (never move or re-push a tag).
 
 ### 9 · Record [X]
 
-The sprint PR merged before the tag, so these records land in a **post-tag docs PR** (`docs(v2): record v2.0.N — M6a dark`, branch `docs/m6a-06-record`): CI green, squash-merge, then `git checkout main && git pull`. It updates [`../status.md`](../status.md): the M6a milestone row → "✅ dark in v2.0.N (exit: e2e + owner dogfood <date>); GA at v2.1.0" (or "🔄 dark in v2.0.N; exit e2e ✅, owner dogfood pending" if task 8 hasn't happened yet); milestone → tag → floor (floor unchanged; no snapshot, not a contract, erase or GA tag); the Artboards rows AB26–AB28 → "frozen (PR #, date) · consumed by m6a-06"; the flag inventory (no new env flag; the interview cohort gate is a T-1 constant flipped at v2.1.0); the P0 audit summary and any v2.1.0 blockers; the coach memory numbers and the host-verify result (task 7); the `kubectl exec` of `coach admin interviews --live` (a sanctioned manual path, logged). **The owner's dogfood (task 8)** usually comes after the session: its result and the M6a row's final ✅ land in a second small docs PR (`docs(v2): record M6a dogfood`) when the owner reports, or in the next sprint's status update — the first PR's description names which.
+The sprint PR merged before the tag, so these records land in a **post-tag docs PR** (`docs(v2): record v2.0.N — M6a dark`, branch `docs/m6a-06-record`): CI green, squash-merge, then `git checkout main && git pull`. It updates [`../status.md`](../status.md): the M6a milestone row → "✅ dark in v2.0.N (exit: e2e <date>); GA at v2.1.0" (on the session's own evidence; the owner's dogfood doesn't hold it); the owner events: `ev-m6a-dogfood` (after the tag; non-blocking, task 8); milestone → tag → floor (floor unchanged; no snapshot, not a contract, erase or GA tag); the Artboards rows AB26–AB28 → "frozen (PR #, date) · consumed by m6a-06"; the flag inventory (no new env flag; the interview cohort gate is a T-1 constant flipped at v2.1.0); the P0 audit summary and any v2.1.0 blockers; the coach memory numbers and the host-verify result (task 7); the `kubectl exec` of `coach admin interviews --live` (a sanctioned manual path, logged). **The owner's dogfood** comes after the session: its result (and `ev-m6a-dogfood` ✅) lands in a second small docs PR (`docs(v2): record M6a dogfood`) when the owner reports, or in the next sprint's status update — the first PR's description names which.
 
 ## Acceptance criteria
 
-- [ ] **M6a exit:** a 45-minute text mock survives pause and resume and **scores once** — the e2e scenario A green in CI **and** the owner's dogfood on production recorded.
+- [ ] **M6a exit:** a 45-minute text mock survives pause and resume and **scores once** — the e2e scenario A green in CI (the owner's production dogfood follows as the post-ship owner event `ev-m6a-dogfood` and doesn't gate this).
 - [ ] Every AB26, AB27 and AB28 frame matches the frozen board at 1440 px and 390 px (screenshots in the PR).
 - [ ] Grace → paused → resume works as specified (free state at once; the brief only on a click and cached per pause; "Still no credit" charges nothing); after 24 h → `incomplete`, unscored, out of trends, no AI call without a click (scenario B).
 - [ ] The proposal needs an **explicit** accept (no auto-submit); re-propose once; the server's `scored_by` label shown; `pause_exposure` → `self` (scenario C).
@@ -204,7 +206,7 @@ For this tag:
 
 ## Definition of Done
 
-CI green (web typecheck/lint/tests/build, bundle check, `go test ./...`, `sqlc diff`, OpenAPI drift and route-enumeration tests, the exit e2e) · the PR merged, then `v2.0.N` tagged, deployed by Flux and verified by looking (no hand `kubectl apply`) · the post-tag record docs PR merged (task 9) · the owner's dogfood recorded (the second docs PR or the named next status update) · acceptance criteria met · statuses updated (this file + [`../status.md`](../status.md)) · no open PR left behind · local `main` synced in xlearn (and `../infra` if task 7 opened a PR).
+CI green (web typecheck/lint/tests/build, bundle check, `go test ./...`, `sqlc diff`, OpenAPI drift and route-enumeration tests, the exit e2e) · the PR merged, then `v2.0.N` tagged, deployed by Flux and verified by looking (no hand `kubectl apply`) · the post-tag record docs PR merged (task 9), with `ev-m6a-dogfood` listed in status.md's owner events (task 8; its result lands later where that PR names, and gates nothing) · acceptance criteria met · statuses updated (this file + [`../status.md`](../status.md)) · no open PR left behind · local `main` synced in xlearn (and `../infra` if task 7 opened a PR).
 
 ## Risks / watch-outs
 

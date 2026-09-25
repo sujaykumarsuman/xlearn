@@ -81,7 +81,7 @@ contract-header lint, and cuts `v1.6.0`. Production has 1 account and 19 events;
 6. **[X] Verify** (plan task 5): `gofmt`, `go vet`, `go test -race ./...`, web tests, `-tags e2e` (golden = v1, unchanged);
    the 19-event synthetic v1 fixture replay (+ its v2 twin) against golden projections; compose upgrade from `v1.5.2`
    images with seeded data → backfills correct; then **`v1.5.2` images on the expanded schema** boot and pass the smoke (R-b).
-7. **[X] PR** → conventional commit(s) `feat(m1a): …` with the attribution lines → CI green → squash-merge.
+7. **[X] PR** → conventional commit(s) `feat(m1a): …` with the attribution lines → CI green → squash-merge (see Ship).
 8. **[I] Infra PR** in `../infra` (its own PR, never folded into the tag): add `NATS_URL` to `apps/xlearn-identity.yaml`.
    This PR owns identity's prod `NATS_URL`; mi-06's identity N2 PR adds only the seed and inbox prefix. If MI-5 is live
    and its `messaging` NetworkPolicy doesn't admit identity on 4222, add identity in this PR; if MI-5 isn't live, there's
@@ -139,5 +139,12 @@ contract-header lint, and cuts `v1.6.0`. Production has 1 account and 19 events;
 - [ ] Infra `NATS_URL` PR merged before the tag.
 - [ ] `v1.6.0` live and verified (healthz, images, policies, HelmReleases, smoke; identity on NATS).
 
-Ship per AGENT.md land-and-sync with **this sprint's release action: tag `v1.6.0`** (plus the identity infra PR merged
-before it) — then `git checkout main && git pull` in both repos.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/m1a-expand`, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched: the xlearn PR (step 7) and the identity `NATS_URL` PR in `../infra` (step 8: its own PR, merged **before** the tag, never folded into it).
+2. Once CI is green (fix, then merge, on failure), squash-merge each. Never enable auto-merge. `../infra` has no CI: the env diff and the NetworkPolicy check in its PR body are its checks.
+3. **Release action — tag `v1.6.0`** (the next free minor): walk the release checklist (ADR-0034 §6, in the plan), push the tag, let Flux deploy, then verify live by looking (step 9: healthz, images, ImagePolicies, HelmReleases Ready, smoke, identity relay connected, `XLEARN_IDENTITY` exists).
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in xlearn and `../infra`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

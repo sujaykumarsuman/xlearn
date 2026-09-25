@@ -2,13 +2,21 @@
 
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-ds-p-01.md`](../sprints/sprint-ds-p-01.md)   ·   **Milestone:** P (design track)   ·   **Prereqs:** [ds-m1-01](../sprints/sprint-ds-m1-01.md), [ds-m2-01](../sprints/sprint-ds-m2-01.md), [ds-m3-01](../sprints/sprint-ds-m3-01.md) merged; [spk-02](../sprints/sprint-spk-02.md)'s P3 result recorded
-> **This is a design sprint: it starts by asking the owner PRD Q5, and it ends with an open board PR and a STOP for owner review. You never merge the board PR.**
+> **Design sprint: PRD Q5 is confirmed by the owner before launch (below); the Q5 record PR and the board PR both merge on CI green, and the board merge is the freeze ([D40](../feasibility.md#decisions-log-newest-first)). Nothing waits on the owner mid-session.**
+
+## Before you launch (owner)
+
+- [ ] **PRD Q5 — the pilot course (`ev-q5`).** Default: **go-concurrency** (recommended; SQL is the fallback). Launching this
+      prompt confirms the default; to choose SQL instead, say so in the launch message. The input is spk-02's P3 verdict in
+      [t3 §16.2](../research/t3-sandbox.md): if go-race failed even with a per-process `setarch -R` launcher, the session
+      applies the SQL fallback on its own (step 2).
+
+Launching attests the item above is done (D40); the session never asks for it again.
 
 ## Read first
 
-- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions. The land-and-sync
-  directive does **not** apply in this session (see the last line). The board PR is never merged by you. The small Q5
-  record PR is merged only if the owner explicitly says yes to merging it.
+- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — repo conventions, including land-and-sync,
+  which this sprint follows (D40): see **Ship** at the end.
 - The plan: [`../sprints/sprint-ds-p-01.md`](../sprints/sprint-ds-p-01.md) — the frame tables in tasks 3–5 are the brief.
 - Conventions and file names: `design-system/screens/v2/index.html` (its Conventions block) and `board.css`, both from
   [ds-m1-01](../sprints/sprint-ds-m1-01.md); the frozen boards you extend or build on: `AB02-course-nav.html`,
@@ -36,12 +44,15 @@
 ## Context
 
 Milestone **P** ships the second course as **manifest + content with widget/profile code only**: go-concurrency
-(recommended; PRD Q5 stays open until the owner confirms it at P entry), as a `preview` course visible only to the
+(recommended; PRD Q5 is confirmed by the owner before launch — see **Before you launch** — and recorded in step 3), as a
+`preview` course visible only to the
 owner/tester cohort until GA. It needs the **go-race** runner profile ([p-01](../sprints/sprint-p-01.md), `runner-v1.1.0`),
 the multi-course catalog/agenda/nav and a multi-file workspace ([p-02](../sprints/sprint-p-02.md)), and the A7 quiz widget
 plus the race verdict views ([p-03](../sprints/sprint-p-03.md), `v1.15.0`). The rollout freeze rule says **AB14–AB15 are
-frozen before P**, and AB02/AB05 come to full fidelity here. Per **BP3** (owner, 2026-09-24) agents draft every board and
-the owner only reviews. This session: ask Q5, record it, draft four boards' worth of frames, open the PR, stop.
+frozen before P**, and AB02/AB05 come to full fidelity here. Per **BP3** (owner, 2026-09-24) agents draft every board; per
+**D40** (owner, 2026-09-25) launching this prompt is the owner's approval for every change it makes. This session: land the Q5
+record, draft four boards' worth of frames, and land the board PR — its merge is the freeze. The owner may review
+afterwards; a change to a frozen board is a follow-up design PR.
 
 go-concurrency results are **honor-grade**: the hidden tests run inside the learner's program (`gotest@1`), so results are
 labelled honor and excluded from judge-checked %. The runner returns RACE / DEADLOCK / LEAK / WA / TLE / RE / CE, a
@@ -49,7 +60,7 @@ goroutine dump on timeouts reduced to learner-package function names and file:li
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
-- [ ] **PRD Q5 confirmed by the owner** (go-concurrency, or the SQL fallback) — you ask it in step 2, **before AB15 is drafted** (`ev-q5`)
+- [ ] **PRD Q5 confirmed before launch** (`ev-q5`, the block above; launching attests it): go-concurrency unless the launch message names SQL. Step 2 applies the fallback rule if P3 contradicts it, **before AB15 is drafted**; not a wait
 - [ ] spk-02's **P3 result is recorded** in t3 §16.2 (`git fetch && git show origin/main:docs/v2/research/t3-sandbox.md | grep -n '16.2'`)
 - [ ] **AB02 and AB05 frozen** (ds-m1-01 and ds-m2-01 merged): `git ls-tree origin/main design-system/screens/v2/`
 - [ ] **AB07★ and AB08 frozen** (ds-m3-01 merged)
@@ -61,22 +72,28 @@ use the index's names and say so in the PR.
 
 1. **[X] Sync and check peers.** `git checkout main && git pull`; `gh pr list`, `git worktree list`, ListAgents — other
    design or build PRs may be open; you will touch only your files.
-2. **[O] Ask PRD Q5 in chat.** Give the owner three lines: the P3 TSAN verdict from t3 §16.2; the recommendation
-   (go-concurrency: reuses Go + the code widget + the quiz, honor-grade; SQL: cheapest *checked* course, heaviest runner
-   profile); the consequence (SQL → AB15 becomes the SQL explorer and p-01 is re-planned to `sql-pg` before it starts). If
-   P3 failed for go-race, say go-concurrency needs a redesign or SQL. In the **same message**, ask: "OK to merge the Q5
-   record PR (PRD §7, rollout §13, status.md) once CI is green?" **Wait for the answer.** If none comes in-session, do
-   steps 4–5 (course-agnostic) and stop before step 6, reporting why.
+2. **[X] Settle PRD Q5 — don't ask and wait** (D40). Take the course the owner confirmed before launch (the launch message's,
+   else go-concurrency) and check it against the P3 verdict in t3 §16.2 (the plan's task 1 rule):
+   - SQL named in the launch message → **SQL** (cheapest *checked* course, heaviest runner profile): AB15 becomes the SQL
+     explorer and p-01 is re-planned to `sql-pg` before it starts;
+   - go-concurrency, and go-race works (default policy or a per-process `setarch -R` launcher) → **go-concurrency** (reuses Go
+     + the code widget + the quiz, honor-grade);
+   - go-concurrency, but go-race failed even with the per-process launcher → the pre-decided **SQL** fallback, as above; note
+     in the Q5 PR that redesigning go-concurrency without go-race was set aside, so the owner can revisit it after the merge;
+   - a P3 result that fits neither → keep go-concurrency for AB15, record the options and your recommendation in the Q5 PR,
+     and mark p-01's Sprint-board row ⛔ "needs owner decision (Q5: P3 inconclusive for go-race)" in `status.md`. Still land
+     both PRs.
 3. **[X] Record Q5 in its own docs PR.** Branch `docs/ds-p-01-q5`:
-   - `docs/prd/xlearn-v2-prd.md` §7: strike Q5 and add "**Resolved (owner, <date>):** <course>";
+   - `docs/prd/xlearn-v2-prd.md` §7: strike Q5 and add the resolved line (wording below);
    - `docs/v2/rollout-plan.md` §13: the PRD Q5 row marked resolved;
-   - `docs/v2/status.md`: owner event `ev-q5` ✅ (date), a Decisions-log line (course, the P3 input, fallback status), and
-     only if SQL: a flag on the p-01 board row "re-plan to `sql-pg` before start".
-   Commit `docs(v2): PRD Q5 resolved — pilot course <slug> (ev-q5)` with the attribution lines; push; PR.
-   - **Merge only if the owner explicitly said yes** to the merge question in step 2 (it edits the PRD and the rollout
-     plan; a Q5 answer alone isn't approval, per BP3): on green CI, squash-merge, then `git checkout main && git pull`.
-   - Otherwise leave it open, note its URL for the board PR body and your report, and go on from the current `main`.
-     p-01's entry gate waits for the owner's merge, and p-01's Record task sets `ev-q5` ✅ if this PR didn't.
+   - `docs/v2/status.md`: owner event `ev-q5` ✅ (date; "confirmed before launch; recorded by ds-p-01"), the "Open owner items" PRD Q5 row
+     resolved, a Decisions-log line (course, the P3 input, fallback status), and only if SQL: a flag on the p-01 board row
+     "re-plan to `sql-pg` before start" (or the ⛔ from step 2's last case);
+   - this sprint's plan file: task 1 ✅.
+   The PRD §7 line reads "**Resolved (<date>):** <course> — confirmed by the owner before launch of ds-p-01 (D40)", plus "; the
+   SQL fallback applied (P3: <verdict>)" when step 2's fallback did. Commit `docs(v2): PRD Q5 resolved — pilot course <slug> (ev-q5)`
+   with the attribution lines; push; PR. **Merge it on CI green** (fix, then merge, on failure; never enable auto-merge) —
+   launching this prompt approved it (D40) — then `git checkout main && git pull`.
 4. **[X] Branch** `design/ds-p-01` from the updated `main`. Scaffold per the index Conventions: `../../theme.css` then
    `board.css`, the Google Fonts link, `bd-*` chrome, tokens only in the file's `<style>`, frame labels
    `AB14-F3 · <state>` / `AB02-P1 · <state>`, final copy, decision refs and a behaviour-notes aside per frame (timers,
@@ -101,31 +118,29 @@ use the index's names and say so in the PR.
    manifest nav without Mock, the Preview badge, item crumbs, the non-cohort NotFound and switcher, the preview CTA; the
    catalog for cohort vs non-cohort; the two-course agenda in minutes, "nothing fits", R-SR5 per course, the 7-day agenda.
    Label the older low-fidelity second-course frames "superseded by P·n"; change nothing else in the frozen frames.
-8. **[X] Self-review.** Walk every frame against its decision (D10, D15–D18, P7, I8) and the rollout §9 P row. Leak check: no
+8. **[X] Self-review checklist (before merging; nothing waits on the owner).** Check `theme.css` is linked verbatim (then
+   `board.css`; tokens only, no new colours, no `ds-*`/`xl-*` override; difficulty tokens). Walk every frame against its
+   decision (D10, D15–D18, P7, I8) and the rollout §9 P row. Leak check: no
    key or rationale before a counted conclusion; no hidden test name, source, line or output; no hidden-test frame in a
    dump or race report; no topic chip on a live item; the pilot absent from every non-cohort frame. Decision check (I8):
    no mistake entry and no revision line on a non-revisable drill. Pre-fill appears only on revisable items (AB14 F12,
-   AB15 F15). Contrast ≥ 4.5:1.
+   AB15 F15). Contrast ≥ 4.5:1. Fix, then re-check; the ticked checklist goes in the PR body.
    Full-page screenshots at **1440** and **390** px into `design-system/screens/v2/shots/` (`AB14@1440.png`,
    `AB15@1440.png`, `AB02-p@1440.png`, `AB05-p@1440.png`, and the `@390` pairs; each ≲ 500 KB), e.g.
    `npx playwright screenshot --full-page --viewport-size=1440,1024 file://$PWD/design-system/screens/v2/AB14-workspace-quiz.html design-system/screens/v2/shots/AB14@1440.png`.
-9. **[X] Commit and open the PR.** Commit `docs(design): P boards AB14 AB15 + AB02/AB05 full fidelity` with the
-    attribution lines; push; `gh pr create` titled `docs(design): AB14 AB15 (+ AB02/AB05 full fidelity) — P boards`
-    (append "· AB15 = SQL explorer" if Q5 flipped). Body: embedded screenshots, a frame list per board with decision
-    cites, the self-review checklist, open questions (at least: D17's arena reveal vs t4 §4.3's "never in the arena"),
-    and the Q5 record PR's link and state (merged, or open for the owner).
-10. **[X] Update the plan's Status, then STOP.** Now that the PR number is known, set the plan's Status on the same
-    branch: tasks 1–7 ✅, task 8 ⬜, _Overall_ 🔄 "PR #N open, awaiting owner review", with the real number. Commit it
-    (`docs(design): ds-p-01 status — PR #N open`, attribution lines) and push to the same PR. **Do not merge. Do not
-    enable auto-merge.** Report the PR URL (and the Q5 record PR's URL if it's still open) and stop.
+9. **[X] PR body** (for **Ship** step 1) — embedded screenshots, a frame list per board with decision cites, the ticked
+    self-review checklist, **"Decisions to confirm"** (at least: D17's arena reveal vs t4 §4.3's "never in the arena" —
+    drawn and frozen: D17), and the merged Q5 record PR's link. Each item states the default the merge freezes; the list
+    never blocks the merge, and the owner may revisit any item afterwards through a follow-up design PR.
+10. **[X] Land it** — run **Ship** below: board PR, merge on CI green (the freeze), status, sync.
 
 ## Constraints
 
 - **Preview-only boards.** Static HTML on `theme.css` verbatim plus `board.css`; no new colours or tokens; never imported
   by `web/`, never embedded, never shipped; v1 `.dc.html` files are references only.
 - **Touch only your files** in the board PR: `AB14-workspace-quiz.html`, `AB15-go-concurrency-race.html`, the appended
-  sections of `AB02-course-nav.html` / `AB05-catalog-agenda.html`, their `shots/`, and this sprint's plan file. Never
-  `index.html`, `board.css`, `theme.css` or `docs/v2/status.md` (the Q5 record PR is the only `status.md` edit).
+  sections of `AB02-course-nav.html` / `AB05-catalog-agenda.html`, their `shots/`, this sprint's plan file and this sprint's
+  own `docs/v2/status.md` rows (Update status). Never `index.html`, `board.css` or `theme.css`.
 - **Decisions win.** Cite the decision per frame; where t4's body and an owner decision differ, draw the decision and flag it.
 - **Withholding** ([ADR-0027 §1](../../adr/0027-content-evalpack-and-user-data-model.md#1-the-publicprivate-rule)): keys and
   rationale only after a counted conclusion; hidden tests never named or shown; dump/race frames filtered to learner files.
@@ -135,33 +150,50 @@ use the index's names and say so in the PR.
   ([ADR-0005](../../adr/0005-data-ownership-and-migrations.md)), goose/sqlc, outbox/inbox, the memory-sum rule,
   consumers-before-producers and ACL-before-consumer don't apply: this session changes no code.
 - **Parallel sessions:** other design PRs may be open; rebase on `main` before pushing and resolve nothing outside your files.
+  Other sessions also edit `status.md` when they land: rebase before each status commit and keep their rows.
 
 ## Deliverables
 
-- A docs PR recording PRD Q5 (PRD §7, rollout §13, `status.md` `ev-q5`): merged if the owner explicitly approved the merge, otherwise open for the owner.
+- A docs PR recording PRD Q5 (PRD §7, rollout §13, `status.md` `ev-q5`), **merged on CI green**.
 - `design-system/screens/v2/AB14-workspace-quiz.html`, `AB15-go-concurrency-race.html` (or the SQL explorer), and the
   "P · full fidelity" sections in `AB02-course-nav.html` / `AB05-catalog-agenda.html`, with screenshots in `shots/`.
-- An open board PR with per-board frame lists, the self-review checklist and open questions.
+- The board PR, **merged on CI green** (the freeze), with per-board frame lists, the ticked self-review checklist and
+  "Decisions to confirm".
 
 ## Update status
 
-- [`../sprints/sprint-ds-p-01.md`](../sprints/sprint-ds-p-01.md) on the design branch: tasks 1–7 ✅ as they land, _Overall_
-  🔄 "PR #N open, awaiting owner review"; leave task 8 ⬜.
-- [`../status.md`](../status.md): **only** through the Q5 record PR (`ev-q5` ✅, Decisions log, the p-01 flag if SQL).
-  After the owner merges the board PR, [p-01](../sprints/sprint-p-01.md) sets AB14, AB15, AB02 (full) and AB05 (full) to
-  "frozen (PR #N, date)", marks task 8 ✅ and this sprint ✅.
-- No ADR is expected. If the owner's review changes a decision (e.g. the arena reveal for quizzes), the build sprint that
-  implements it records the ADR.
+- Q5 record PR (step 3): [`../status.md`](../status.md) — `ev-q5` ✅, the "Open owner items" PRD Q5 row resolved, the
+  Decisions-log line, the p-01 flag if SQL (or the ⛔ of step 2's last case); this sprint file task 1 ✅.
+- Board PR — a last commit once the PR number is known, before the merge — or a follow-up docs PR merged the same way:
+  - [`../sprints/sprint-ds-p-01.md`](../sprints/sprint-ds-p-01.md): tasks 2–8 ✅ (task 8: "frozen: merged in PR #N, <date>"),
+    _Overall_ ✅;
+  - [`../status.md`](../status.md): mark the sprint ✅ (ds-p-01's Sprint-board row) and the boards ✅ **"frozen (merged, PR #N,
+    <date>)"** (Artboards rows AB14, AB15; AB02 and AB05 as "full fidelity frozen (merged, PR #N, <date>)"); update the
+    Snapshot's artboard count (`ev-freeze-ds-p-01` is automatic: no tick).
+- No ADR is expected. If the owner later changes a decision (e.g. the arena reveal for quizzes), the follow-up design PR and
+  the build sprint that implements it record the change.
 
 ## Done when (acceptance)
 
-- [ ] PRD Q5 is answered by the owner and recorded before AB15 was drafted.
+- [ ] PRD Q5, as confirmed before launch (or by the fallback rule when P3 contradicts it), is recorded — its docs PR merged on CI green — before AB15 was drafted.
 - [ ] Every frame of AB14 (F1–F14), AB15 (F1–F16 or the SQL explorer set), AB02-P1–P7 and AB05-P1–P7 is present with final copy, its state and a cited behaviour-notes aside.
 - [ ] No board leaks withheld data, and no non-cohort frame shows the pilot.
-- [ ] Boards use `../../theme.css` + `board.css` verbatim and open with no JS runtime; `index.html`, `board.css`, `theme.css` and `status.md` are untouched by the board PR.
-- [ ] Board PR open with 1440 px and 390 px screenshots; **not merged by the agent**.
+- [ ] Boards use `../../theme.css` + `board.css` verbatim and open with no JS runtime; `index.html`, `board.css` and `theme.css` are untouched.
+- [ ] The self-review checklist passed and is ticked in the PR body, with "Decisions to confirm" (each item's frozen default stated).
+- [ ] Board PR **merged on CI green** (the freeze) with 1440 px and 390 px screenshots; the sprint file and `docs/v2/status.md` show ds-p-01 ✅ and AB14, AB15 (and AB02/AB05 full fidelity) "frozen (merged)"; local `main` synced.
 
-**Shipping:** this is a **design sprint** — the AGENT.md land-and-sync directive is replaced by this sprint's release
-action: **open the board PR and STOP for owner review.** Do not merge it, do not enable auto-merge, do not tag. The
-owner's approval + merge is the freeze. (The small Q5 record PR in step 3 is docs-only. It is merged on green only
-if the owner explicitly said yes to merging it; otherwise it stays open for the owner.)
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. **Branch, commit, push, PR** — this repo only (a design sprint touches no `../infra`). Two PRs: the Q5 record PR
+   (`docs/ds-p-01-q5`, step 3) lands first; then, on `design/ds-p-01` (step 4), conventional commit `docs(design): P boards
+   AB14 AB15 + AB02/AB05 full fidelity` with the attribution lines; push; `gh pr create` titled `docs(design): AB14 AB15
+   (+ AB02/AB05 full fidelity) — P boards` (append "· AB15 = SQL explorer" if Q5 flipped) with the body from step 9.
+2. **Merge on green** — once CI is green (fix, then merge, on failure), squash-merge each PR. Never enable auto-merge.
+3. **Release action — design: the merge is the freeze; no tag.** Nothing deploys (boards are preview-only; the Q5 record is
+   docs-only). The owner may review after the merge; any change to a frozen board is a follow-up design PR.
+4. **Update status** — as in "Update status" above (sprint ✅, AB14/AB15 and AB02/AB05 full fidelity "frozen (merged)"), in the
+   same PR (a last commit before step 2's merge) or a follow-up docs PR merged the same way.
+5. **Sync** — `git checkout main && git pull`. If a clean peer worktree holds `main`, use
+   `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

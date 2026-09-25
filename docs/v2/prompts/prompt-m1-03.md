@@ -39,7 +39,7 @@ m1-03 → m1-04 → m1-05 → m1-06 in that order, so land this in one PR.
 ## Entry gates — verify first (stop and report if any is unmet)
 
 - [ ] `v1.6.0` live (`curl -s https://projects.sujaykumar.dev/xlearn/api/v1/healthz` reports it; ImagePolicies at `1.6.0`)
-- [ ] AB01–AB03 frozen: ds-m1-01's design PR is merged (by or on the explicit approval of the owner)
+- [ ] AB01–AB03 frozen: ds-m1-01's design PR is merged (the merge is the freeze, D40)
 - [ ] No open peer PR edits `internal/gateway/bff.go`'s route table or `web/src/router.tsx` (`gh pr list`, `git worktree list`, ListAgents)
 
 ## Do this (in order)
@@ -80,7 +80,7 @@ m1-03 → m1-04 → m1-05 → m1-06 in that order, so land this in one PR.
    web typecheck/lint/test/build, `-tags e2e` (golden = v1).
 9. **[X] DSA parity:** `docker compose up` on `v1.6.0` images vs this branch; screenshot every DSA screen at 1440 px and 390 px;
    attach to the PR; fix any unintended diff.
-10. **[X] PR** → conventional commits (`feat(m1b): …`) with the attribution lines → CI green → squash-merge. **No tag.**
+10. **[X] PR** → conventional commits (`feat(m1b): …`) with the attribution lines → CI green → squash-merge (see Ship). **No tag.**
 
 ## Constraints
 
@@ -111,8 +111,9 @@ m1-03 → m1-04 → m1-05 → m1-06 in that order, so land this in one PR.
 ## Update status
 
 - This plan's Status table ([`../sprints/sprint-m1-03.md`](../sprints/sprint-m1-03.md)): tasks 🔄 → ✅; _Overall_ ✅.
-- [`../status.md`](../status.md): Sprint board row (m1-03 ✅, "merged, ships in v1.7.0"); **artboards AB01–AB03 → frozen
-  (ds-m1-01 PR #, date)** (this is the first build sprint consuming them); decisions log: the `/api/paths/{slug}` prefix, the alias
+- [`../status.md`](../status.md): Sprint board row (m1-03 ✅, "merged, ships in v1.7.0"); **confirm artboards AB01–AB03 read
+  "frozen (ds-m1-01 PR #, date)"** (ds-m1-01's merge records them under D40; repair if missing; this is the first build sprint
+  consuming them); decisions log: the `/api/paths/{slug}` prefix, the alias
   list and its earliest removal tag, `course.DefaultSlug` as the one mixed-version default, the coach context rewrite for every
   course-scoped context (t0 §7, beyond t1 §4's concept-only line), the weak-area upsert on the new unique (m1-08 may drop the v1
   one), `mock_completed` keeping `total_35` in data.
@@ -129,5 +130,12 @@ m1-03 → m1-04 → m1-05 → m1-06 in that order, so land this in one PR.
 - [ ] Enrollment refuses any non-`active` course.
 - [ ] CI green (`sqlc diff`, OpenAPI drift); merged to `main`.
 
-Ship per AGENT.md land-and-sync with **this sprint's release action: merge only (ships in `v1.7.0`)** — PR, CI green,
-squash-merge, no tag, then `git checkout main && git pull`.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `feat/m1b-course-resolution`, then conventional commit(s) with the attribution lines, then push, then the PR (one PR: the gateway router is serialized). This repo only: no `../infra` PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only:** nothing deploys (`main` is build-only). It ships in **`v1.7.0`**, which [m1-07](../sprints/sprint-m1-07.md) tags once m1-04, m1-05, m1-06 and m1-10 have merged too. No tag here.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

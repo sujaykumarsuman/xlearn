@@ -1,9 +1,9 @@
 # Sprint spk-03 — WIF spike (≤ ½ day, throwaway)
 
 > **Milestone:** MI — the WIF item of rollout step **MI-14**, run in the **MI-10** spike week if it fits · **Track:** spike · **Order:** 18
-> **Prereqs:** [spk-01](sprint-spk-01.md) (its throwaway multipass k3s, or any throwaway k3s)
+> **Prereqs:** [spk-01](sprint-spk-01.md) (its throwaway multipass k3s, or any throwaway k3s) · the owner's before-launch Console setup (task 2). Launching this prompt is the WIF spike's own go-ahead (D23, D40)
 > **Unblocks:** [mi-12](sprint-mi-12.md) (ADR-0031 → Accepted, production WIF config), and through it [m4-01](sprint-m4-01.md) (`platform/llm` WIF auth)
-> **Release action:** **no merge (spike, throwaway).** Nothing from the VM is committed; only a **docs PR** recording the result (t5 §15 + `status.md`) merges.
+> **Release action:** **no merge (spike, throwaway).** Nothing from the VM is committed; only a **docs PR** recording the result (t5 §15 + `status.md`) merges, on CI green with no owner stop (D40).
 > **Calendar:** **Fri 2026-10-16** if it fits the spike week (ev-spike-week, after [spk-02](sprint-spk-02.md)); otherwise any day before M4 — it must report before [mi-12](sprint-mi-12.md) (December).
 > **Execute with:** [`../prompts/prompt-spk-03.md`](../prompts/prompt-spk-03.md) — one prompt, one session.
 
@@ -13,14 +13,14 @@ _Overall:_ ⬜ Not started
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Throwaway k3s (`xl-spike`, or a fresh `xlearn-wif`) + probe pods (projected token, audience `https://api.anthropic.com`); print issuer + JWKS | H | ⬜ |
-| 2 | Throwaway Anthropic workspace + WIF issuer (from task 1's output), rule and service account | O | ⬜ |
+| 1 | Throwaway k3s (`xl-spike`, or a fresh `xlearn-wif`; started before launch) + probe pods (projected token, audience `https://api.anthropic.com`); print issuer + JWKS | H | ⬜ |
+| 2 | Throwaway Anthropic workspace + WIF issuer (inline JWKS from the VM), rule and service account | O (before launch) | ⬜ |
 | 3 | Q-W1/Q-W2: token claims (`jti`?) and rotation cadence | H | ⬜ |
 | 4 | Q-W4: token exchange + first Messages call, timed; workspace header; scope check | H | ⬜ |
 | 5 | Q-W3: `jti` reuse and the in-place restart → `check_jti` decision | H | ⬜ |
 | 6 | Side checks: audience rejected by the API server; JWKS stability | H | ⬜ |
 | 7 | Report: GO (+ `check_jti`) or fallback → t5 §15 + `status.md` (docs PR) | X | ⬜ |
-| 8 | Tear down: workspace, issuer, rule, SA deleted; VM purged (spk-03 is `xl-spike`'s last user) | O + H | ⬜ |
+| 8 | Tear down: VM purged (spk-03 is `xl-spike`'s last user); the workspace, issuer, rule and SA deletion recorded as an owner follow-up (not a wait) | H | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + the MI table's MI-14 row: its WIF-spike item, the way spk-01/spk-02 record MI-10).
@@ -28,10 +28,10 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] **Owner go-ahead for the WIF spike** (ev-spike-goahead, by Fri 2026-10-09). D23's go-ahead covers P0–P3 and the image volume; WIF is its own optional yes ([rollout §13](../rollout-plan.md#13-open-owner-items))
-- [ ] A throwaway k3s exists: the [spk-01](sprint-spk-01.md) VM **`xl-spike`** (stopped, `multipass list`), handed over by [spk-02](sprint-spk-02.md)'s teardown when both run in the spike week — spk-01 and spk-02 leave its purge to this sprint, the last user — **or** a fresh multipass VM **`xlearn-wif`** can be launched (≈ 20 min, task 1)
-- [ ] Owner available for ≈ 30 min in the Anthropic Console: create right after the VM prints the issuer and JWKS (task 2), delete at the end (task 8)
-- [ ] *(soft)* MI-1 owner hygiene done — 2FA on the Anthropic account ([rollout §2](../rollout-plan.md#2-mi-infra-track), MI-1)
+- [ ] **The WIF go-ahead is this launch** (D23, D40). D23's go-ahead covers P0–P3 and the image volume; WIF is its own optional yes ([rollout §13](../rollout-plan.md#13-open-owner-items)), given by launching this prompt. Record it under `ev-spike-goahead`
+- [ ] A throwaway k3s is up (started before launch): the [spk-01](sprint-spk-01.md) VM **`xl-spike`**, handed over by [spk-02](sprint-spk-02.md)'s teardown when both run in the spike week — spk-01 and spk-02 leave its purge to this sprint, the last user — **or** a fresh multipass VM **`xlearn-wif`** (≈ 20 min, task 1's commands)
+- [ ] The owner's Console objects exist (task 2, done before launch) and the launch message carries their non-secret ids. If they don't, run the tasks that need no Console object (1, 3 and 6), record Q-W3/Q-W4 ⛔ "Console objects missing" in `status.md`, and land the partial results (D40)
+- [ ] *(soft)* MI-1 owner hygiene done — 2FA on the Anthropic account ([rollout §2](../rollout-plan.md#2-mi-infra-track), MI-1), read from `status.md`
 
 ## Goal
 
@@ -60,7 +60,7 @@ with this result (BP2).
 - A throwaway k3s (the spk-01 multipass VM `xl-spike`, or a fresh `xlearn-wif`) running the **same k3s version
   as production**.
 - A throwaway Anthropic workspace with its own WIF issuer (inline JWKS from the VM), rule and service account,
-  created and deleted by the owner.
+  created by the owner before launch and deleted by the owner afterwards (a recorded follow-up, D40).
 - Q-W1…Q-W4, two side checks (task 6), and a one-page result.
 
 **Out**
@@ -75,13 +75,15 @@ with this result (BP2).
 ## Tasks
 
 **The VM, `<vm>` below:** `xl-spike` (spk-01's, handed over by spk-02: `multipass start xl-spike`) or, when this
-sprint runs outside the spike week or `xl-spike` is gone, a fresh `xlearn-wif`. **Run every `kubectl`, `curl`
+sprint runs outside the spike week or `xl-spike` is gone, a fresh `xlearn-wif`. The owner starts it before launch,
+because task 2's issuer needs its JWKS; the launch message names it. **Run every `kubectl`, `curl`
 and `systemctl` inside it** (`multipass exec <vm> -- sudo k3s kubectl …`). The laptop's kubectl context and
 `127.0.0.1:6443` tunnel to **production** ([spk-01](sprint-spk-01.md)), so `KUBECONFIG` stays unset.
 
 ### 1 · Throwaway k3s + probe pods [H]
 
-- **VM:** `multipass start xl-spike` if it is still there (it already runs production's `v1.36.4+k3s1`); else
+- **VM:** up since before launch (task 2); these are the commands the owner used, and a stopped VM restarts the
+  same way. `multipass start xl-spike` if it is still there (it already runs production's `v1.36.4+k3s1`); else
   `multipass launch 24.04 --name xlearn-wif --cpus 2 --memory 4G --disk 10G` and install k3s pinned to
   production's `v1.36.4+k3s1` (the `INSTALL_K3S_VERSION` pin from `../infra/hack/host-bootstrap.sh`). No sandbox
   host files are needed. arm64 vs amd64 does not matter here: token issuance and rotation are Kubernetes
@@ -122,10 +124,12 @@ spec:
 - **Never** set `ANTHROPIC_API_KEY` anywhere in the VM or pods (it would shadow federation in any SDK; the spike
   uses raw `curl`).
 
-### 2 · Throwaway workspace + WIF issuer, rule and service account [O]
+### 2 · Throwaway workspace + WIF issuer, rule and service account [O, before launch]
 
-Right after task 1 has printed the issuer and the JWKS, the owner, in the Anthropic Console (the agent never
-holds Console credentials):
+**Before launch** (D40: Console work is owner-only, so it isn't a mid-run wait), the owner starts the VM and prints
+its public JWKS with task 1's commands (`multipass start xl-spike`, or launch `xlearn-wif` and install the pinned
+k3s; then `multipass exec <vm> -- sudo k3s kubectl get --raw /openid/v1/jwks`). Then, in the Anthropic Console
+(the agent never holds Console credentials):
 - In the org production will use (the dedicated xLearn org if it already exists, else the current one — record
   which; WIF availability can differ by org or tier), create workspace **`xlearn-wif-spike`** with the
   **lowest monthly spend limit** the Console allows and auto-reload off. The spike makes a handful of
@@ -140,7 +144,7 @@ holds Console credentials):
   `oauth_scope: workspace:inference`, `token_lifetime_seconds: 3600`, the one workspace. Leave `check_jti` at
   its default for now (task 5 changes it).
 - Hand the agent the **non-secret identifiers** the exchange needs (org, workspace, service-account and
-  federation-rule ids). No API key is created.
+  federation-rule ids) in the launch message, with the VM's name. No API key is created.
 
 ### 3 · Q-W1 / Q-W2: claims and rotation [H]
 
@@ -182,11 +186,14 @@ holds Console credentials):
   file's `jti`/`iat` are **unchanged**. Then exchange again (this is what judge does on boot) and record the
   result.
 - **(c) Pod recreate:** delete and recreate the pod → new token, fresh `jti` → exchange succeeds (control).
-- **Decision:** if (a) rejects and (b) re-presents a used `jti`, the owner sets **`check_jti=false`** on the
-  one-rule issuer; re-run (a)/(b) → both succeed. This is acceptable per
+- **Decision:** if (a) rejects and (b) re-presents a used `jti`, the decision is **`check_jti=false`** on the
+  one-rule issuer, the pre-decided path. This is acceptable per
   [t5 §3](../research/t5-platform-ai.md#3-where-the-platform-key-lives-and-secrets): the token is
-  audience-bound and lives ≤ 1 h. Record the alternative considered and not taken (cache the access token in a
-  memory-backed `emptyDir`, which survives container restarts) for mi-12 to confirm.
+  audience-bound and lives ≤ 1 h. Setting the flag is a Console action, so the session doesn't wait for it (D40):
+  it records the decision, and the confirming re-run of (a)/(b) under `check_jti=false` is handed to
+  [mi-12](sprint-mi-12.md), which creates the production issuer with the flag (`status.md` → Hand-offs). Record
+  the alternative considered and not taken (cache the access token in a memory-backed `emptyDir`, which survives
+  container restarts) for mi-12 to confirm.
 
 ### 6 · Side checks [H]
 
@@ -215,13 +222,16 @@ A docs PR in xlearn (the only thing this sprint merges):
   used, and "throwaway resources deleted on <date>".
 - **`docs/v2/status.md`:** the MI table's **MI-14** row, WIF-spike item (spk-03: GO / fallback, date, link to
   t5 §15; MI-14 itself stays open until [mi-12](sprint-mi-12.md)), the Sprint
-  board row, and a Decisions-log line.
+  board row, a Decisions-log line, `ev-spike-goahead` (WIF: the launch, D40), the `check_jti` re-run hand-off to
+  mi-12 if the flag is needed, and the owner follow-up from task 8.
 - ADR-0031 is **not** edited here — [mi-12](sprint-mi-12.md) folds this result in and accepts it.
 
-### 8 · Tear down [O + H]
+### 8 · Tear down [H]
 
-- **O:** delete the rule, the issuer, the service account and the workspace `xlearn-wif-spike`. The issuer
-  shares production's default `iss` string, so it **must** be gone before mi-12 creates the production issuer.
+- **Owner follow-up (recorded, not a wait):** the owner deletes the rule, the issuer, the service account and the
+  workspace `xlearn-wif-spike` in the Console. The issuer shares production's default `iss` string, so it **must**
+  be gone before mi-12 creates the production issuer: record it in `status.md` → Open owner items (mi-12's entry
+  checks it is gone).
 - **H:** delete the `wif-spike` namespace, then `multipass delete --purge <vm>`. spk-03 is **`xl-spike`'s last
   user**: spk-01 hands it on and spk-02's teardown hands it to this sprint ("spk-03 deletes it"), so purge it
   here. It also still holds spk-02's evalpack pull secret. If this sprint ran on a fresh `xlearn-wif` instead,
@@ -236,21 +246,21 @@ A docs PR in xlearn (the only thing this sprint merges):
 - [ ] **WIF GO** — with the `check_jti` decision, the re-exchange rule and the lifetime invariant — **or the
       fallback chosen** (90-day single-workspace key, created in mi-12); recorded in t5 §15 and `status.md`.
 - [ ] The exact exchange request shape (endpoint + field names, no secrets) is in t5 §15 for m4-01.
-- [ ] Throwaway workspace, issuer, rule and service account deleted (owner confirms); probe namespace and VM
-      gone; no token or access token in any committed file.
+- [ ] Probe namespace and VM gone; no token or access token in any committed file; the deletion of the throwaway
+      workspace, issuer, rule and service account recorded as an owner follow-up (mi-12's entry checks it).
 
 ## Release
 
 **No merge (spike, throwaway).** The VM, manifests and probe scripts live only in the session scratchpad and
 the VM, and are never committed. The **results docs PR** (t5 §15 + `status.md` + this file's statuses) is the
-only merge — squash-merged under the standing merge authority (docs only; no tag, no deploy). ADR-0031 moves
+only merge — squash-merged on CI green, with no owner stop (D40; docs only; no tag, no deploy). ADR-0031 moves
 to Accepted in [mi-12](sprint-mi-12.md), not here.
 
 ## Definition of Done
 
-Every question answered with numbers · GO or fallback decided and recorded (t5 §15, `status.md`) · throwaway
-resources deleted · nothing from the spike committed except the results docs PR · statuses updated (this file
-+ [`../status.md`](../status.md)).
+Every question answered with numbers · GO or fallback decided and recorded (t5 §15, `status.md`) · the VM and
+namespace deleted, and the Console objects' deletion recorded as an owner follow-up · nothing from the spike
+committed except the results docs PR · statuses updated (this file + [`../status.md`](../status.md)).
 
 ## Risks / watch-outs
 
@@ -260,7 +270,8 @@ resources deleted · nothing from the spike committed except the results docs PR
 - **The laptop points at production.** Its kubectl context and `127.0.0.1:6443` tunnel to the VPS, so a
   `kubectl` or `curl` typed on the laptop hits production. Every command goes through `multipass exec <vm>`.
 - **Same issuer string as production.** k3s' default `iss` is identical on every cluster; a leftover
-  throwaway issuer could collide with mi-12's. Task 8 deletes it; mi-12's entry checks it is gone.
+  throwaway issuer could collide with mi-12's. The owner deletes it after this sprint (task 8's recorded
+  follow-up); mi-12's entry checks it is gone.
 - **Tokens are secrets for up to an hour.** Decode claims, never paste a whole token or access token into the
   transcript, a doc or a PR.
 - **Org / tier differences.** A new dedicated org may start in the Evaluation tier; if the spike runs in the

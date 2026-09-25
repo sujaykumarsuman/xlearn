@@ -413,5 +413,3 @@ decisions logged (deadline Miss scoped to judged attempts, the course watermark 
 - **Consumer start blocking readiness** — start it in the background.
 - **`mistake_hint` is null until m3-10** fills `mistakes.prefill` — expected, not a bug.
 - **Migration races** with peers touching practice — rebase last, next free version, CI's duplicate check.
-</content>
-</invoke>

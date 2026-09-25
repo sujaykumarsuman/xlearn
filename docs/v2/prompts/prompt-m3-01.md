@@ -54,8 +54,8 @@ the repo guards, an authoring guide and the `problem.contract_hash` column. v2 i
    Add `classify.go` (every `course.Item` JSON path → contract or content-only) and the tests: classification (reflection), golden
    vectors over m1-01's original fixtures + a class-mode fixture + the DSA manifest (`-update` flag), the mutation table (incl. the
    non-edits: reformatting, `1e-6` ↔ `0.000001`), round trip, self-path → `""`. Keep `ContentHash`'s bytes unless they break a rule
-   (then update m1-09's golden). Generator `@v` stays out of `contract_hash` and `constraints[]` is content-only (owner to confirm) —
-   both per the plan, both logged.
+   (then update m1-09's golden). Generator `@v` stays out of `contract_hash` and `constraints[]` is content-only (decided here; the
+   owner may revisit it later) — both per the plan, both logged.
 3. **[X] `internal/packspec` + `cmd/packlint`** — source-format types (root and item `pack.json`, strict, allowed subdirs);
    `packlint check` with the plan's nine rules and exit codes, `packlint hash`; tests against a temp **synthetic** pack.
    Never name a package or directory `evalpack`.
@@ -80,8 +80,9 @@ the repo guards, an authoring guide and the `problem.contract_hash` column. v2 i
    `git checkout -- web/dist/.gitkeep`), e2e on PG 18, `make contentlint`. Manual hook check with a scratch pack dir
    (`XLEARN_EVALPACK_DIR`), a planted **synthetic** string and a **local bare remote** — blocked, payload not printed; never push
    the plant to `origin`.
-10. **[X] Update status** (below), commit (conventional, e.g. `feat(content): canonical hashes, contract_hash, packlint, pre-push
-    fingerprint hook`) with the attribution lines, push, open the PR. Ask the owner to run task 9 (install the hook) after merge.
+10. **[X] Update status** (below), including the post-ship owner event `ev-hook-install` (the owner installs the hook after the
+    merge; it doesn't gate this sprint), then **Ship:** see **Ship** below (commit e.g. `feat(content): canonical hashes,
+    contract_hash, packlint, pre-push fingerprint hook`).
 
 ## Constraints
 
@@ -111,12 +112,14 @@ the repo guards, an authoring guide and the `problem.contract_hash` column. v2 i
 
 ## Update status
 
-- [`../sprints/sprint-m3-01.md`](../sprints/sprint-m3-01.md): each task 🔄 → ✅ (task 9 ✅ once the owner confirms); _Overall_ ✅ when all are.
+- [`../sprints/sprint-m3-01.md`](../sprints/sprint-m3-01.md): each task 🔄 → ✅; _Overall_ ✅ when all are (the hook install is a
+  post-ship owner event, not a task).
 - [`../status.md`](../status.md): the Sprint board row; the **M3** milestone row (🔄, content track started) and its **T25/T26**
   checklist line (✅ on merge); **content status** (tooling live; grandfathered unstamped hint/editorial items: N);
-  **owner events** (`ev-packs-14` can use the tooling; task 9 hook install); **Decisions log**: canon@1, number normalization and
-  domain separation; the field classification (limits content-only with advisory; **`constraints[]` content-only — owner to
-  confirm**); generator `@v` outside `contract_hash` (t4 §5.6 #9 deviation); the `packspec` name; migration `00004`; stamp-gate
+  **owner events** (`ev-packs-14` can use the tooling; add **`ev-hook-install`**: the owner installs the hook on the authoring
+  machine after the merge, ~5 min, per the plan's task 8); **Decisions log**: canon@1, number normalization and domain separation;
+  the field classification (limits content-only with advisory; **`constraints[]` content-only — decided here, flagged for the owner
+  to revisit**); generator `@v` outside `contract_hash` (t4 §5.6 #9 deviation); the `packspec` name; migration `00004`; stamp-gate
   grandfathering; the `label-edit-ok:` token; the `SYNTHETIC.md` marker rule; the reference file names.
 - No ADR (ADR-0027 is Accepted and this implements it). A change to a decided shape needs a new ADR — check peers for the number first.
 
@@ -132,5 +135,12 @@ the repo guards, an authoring guide and the `problem.contract_hash` column. v2 i
       pass honours only `SYNTHETIC.md`-marked `internal/**/testdata/` trees.
 - [ ] `problem.contract_hash` + `grading_summary` seeded (migration `00004`); `GET /problems/{id}` shows the prefix; `sqlc diff` clean; every v1 e2e green.
 
-Shipping: per AGENT.md land-and-sync with this sprint's release action — **merge only** (it ships dark in the next app tag):
-branch → PR → CI green → squash-merge → `git checkout main && git pull`. **Do not tag.** No infra PR, no evalpack change.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: xlearn only, on `feat/m3-authoring-tooling`.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships dark in the next app tag):** nothing deploys; it ships in `v1.6.0` (cut by [m1-02](../sprints/sprint-m1-02.md)) if merged before that tag, else in `v1.7.0` (cut by [m1-07](../sprints/sprint-m1-07.md)). Don't tag. No infra PR, no evalpack change; packlint, contentlint and the hook never enter an image.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way (including the post-ship owner event `ev-hook-install`).
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

@@ -1,9 +1,9 @@
 # Sprint spk-04 — S6 voice-shell bake-off (owner present, throwaway)
 
 > **Milestone:** M6a — spike **S6**, which gates the M6a design freeze · **Track:** spike · **Kind:** spike · **Order:** 71
-> **Prereqs:** none in `depends_on` · the owner's explicit go-ahead **O1** and the owner's presence for the day (event `ev-s6`) · soft: [m1-10](sprint-m1-10.md) (the catalog's provisional `voice_shell` entries this spike confirms or corrects)
+> **Prereqs:** none in `depends_on` · launching this prompt is the owner's go-ahead **O1** (D40); the owner's presence for the day (event `ev-s6`), the two OpenAI projects and their keys are before-launch items · soft: [m1-10](sprint-m1-10.md) (the catalog's provisional `voice_shell` entries this spike confirms or corrects)
 > **Unblocks:** [ds-m6a-01](sprint-ds-m6a-01.md) (accepts [ADR-0032](../../adr/0032-realtime-ai-mock-interviewer.md) from this result, then drafts AB13/AB24/AB25) · [m6a-02](sprint-m6a-02.md) (the scrubbed replay fixtures) · [ds-m6b-01](sprint-ds-m6b-01.md) (browser gate list, chosen shell, M7 deploy shape) · [mi-13](sprint-mi-13.md) (shell, M8 coach memory, the CSP/Permissions-Policy check) · consumed later by [m6b-01](sprint-m6b-01.md) (adapter, SDP shapes, sideband event types) and [m6b-02](sprint-m6b-02.md) (rollover, M7, cost events, push-to-talk)
-> **Release action:** **no merge (spike, throwaway).** The harness, the raw logs, the fake-capture audio and the OpenAI projects are never committed and are deleted at the end. Only the results note, the **scrubbed** fixtures and the status rows land, through one docs PR
+> **Release action:** **no merge (spike, throwaway).** The harness, the raw logs, the fake-capture audio and the OpenAI projects are never committed and are deleted at the end. Only the results note, the **scrubbed** fixtures and the status rows land, through one docs PR squash-merged on CI green with no owner review stop (D40)
 > **Calendar:** event **`ev-s6`**: any day the owner is present, **before the M6a design freeze**. Recommended after M3 and within ~4 weeks before [ds-m6a-01](sprint-ds-m6a-01.md) (≈ Dec 2026 – Jan 2027), because the voice APIs were weeks old at planning time and the result ages. **Time box:** 1 working day, ≤ 8 h hands-on plus a 65-minute unattended soak. **Spend:** `xlearn-s6` has a $10 hard limit (enforced); the harness stops itself at $8, with per-leg checkpoints (GPT-Live legs ≤ $5.50, leaving ≥ $2.50 for mini and the browsers). `xlearn-s6-quota` starts at $1 and is raised in $1 steps to at most $3. Worst case across both projects: $11. t6 expects ≈ $6–7
 > **Execute with:** [`../prompts/prompt-spk-04.md`](../prompts/prompt-spk-04.md) — one prompt, one session.
 
@@ -13,7 +13,7 @@ _Overall:_ ⬜ Not started
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Accounts: two throwaway OpenAI projects ($10 and $1 hard limits), project-scoped keys | O | ⬜ |
+| 1 | Accounts: two throwaway OpenAI projects ($10 and $1 hard limits), project-scoped keys | O (before launch) | ⬜ |
 | 2 | Harness (1.5 h): SDP brokers, sideband decoder, stub director, JSONL log, proxy, static page | H | ⬜ |
 | 3 | GPT-Live runs: scripted mock, mid-call restart, tamper, 65-min soak, quota, reseed (t6 §10 steps 2–7) | O · H | ⬜ |
 | 4 | mini runs: steps 2 (10 min), 3, 4, 6, 7, plus native push-to-talk, `semantic_vad` low, cache ratio (step 8) | O · H | ⬜ |
@@ -29,9 +29,9 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] **Owner explicit go-ahead O1, given in this session.** D28 approved S6 as specified; the go-ahead on the day is still required, and **no agent uses the key without it** ([t6 §10](../research/t6-realtime-interviewer.md#10-the-smallest-spike)).
-- [ ] **The owner is present for the day** (event `ev-s6`, ≤ 1 working day): creates the projects and keys, plays the candidate, rates naturalness and continuity, reads the usage page.
-- [ ] **The owner's OpenAI organisation is usage Tier 1 or higher** (GPT-Live has no free tier) and has 2FA on (MI-1, event `ev-mi1`). Record the tier; 2FA missing is noted, not a blocker.
+- [ ] **The go-ahead O1 is this launch on the day** (D40). D28 approved S6 as specified; launching the prompt is the go-ahead the day still needs, and **no agent uses a key the owner didn't set before launch** ([t6 §10](../research/t6-realtime-interviewer.md#10-the-smallest-spike)).
+- [ ] **The owner is present for the day** (a before-launch item, event `ev-s6`, ≤ 1 working day): he plays the candidate, rates naturalness and continuity, reads the usage page, raises the quota project's limit at task 1's steps and deletes the projects at the end. The projects and keys exist before launch (task 1).
+- [ ] **The owner's OpenAI organisation is usage Tier 1 or higher** (GPT-Live has no free tier) and has 2FA on (MI-1, event `ev-mi1`), both stated in the launch message. Record the tier; 2FA missing is noted, not a blocker.
 - [ ] **The owner's Mac:** Chrome stable (Edge optional), Firefox and Safari installed; Go ≥ 1.26 (the repo's `go.mod` line); a home network in India (record wired/Wi-Fi). Headphones are available but **not** used for M3.
 - [ ] **Nothing touches the VPS or the cluster.** No `ssh vps`, no `kubectl`: the laptop's kube context tunnels to production.
 - [ ] **Parallel sessions:** no open peer PR edits [`../research/t6-realtime-interviewer.md`](../research/t6-realtime-interviewer.md) or adds `docs/v2/research/t6-s6-fixtures/` (`gh pr list --state open`, `git worktree list`, ListAgents).
@@ -80,9 +80,9 @@ natural than mini; otherwise mini; both fail → text only, voice revisited in 3
 **Shared setup.**
 - **Work directory:** `<scratchpad>/s6/`, **outside every git repo**, never committed. It holds the Go harness (its own
   throwaway module), the static page, the fake-capture WAV, the Chrome test profile and the raw logs. Task 8 deletes it.
-- **The key** lives only in environment variables the owner sets in the harness's terminal (`read -s OPENAI_KEY_S6`,
-  `read -s OPENAI_KEY_S6_QUOTA`; no echo, not in shell history). The agent never prints, reads back, logs or writes it. The
-  harness never logs request headers.
+- **The key** lives only in environment variables the owner sets before launch, in the shell the session starts from
+  (`read -s OPENAI_KEY_S6`, `read -s OPENAI_KEY_S6_QUOTA`, then `export`; no echo, not in shell history), so the harness
+  inherits them. The agent never prints, reads back, logs or writes it. The harness never logs request headers.
 - **Prices:** the harness tallies spend on `xlearn-s6` from usage events, at the prices on the model pages **that day** (entered
   as constants). It hangs up every session and refuses new ones at **$8**.
 - **Leg budget on `xlearn-s6`.** The harness tallies per shell and enforces two checkpoints:
@@ -96,21 +96,24 @@ natural than mini; otherwise mini; both fail → text only, voice revisited in 3
 - **Key-shaped pattern.** Every key check below uses `KEYRE='\bsk-(proj-|svcacct-|admin-)?[A-Za-z0-9_-]{20,}'` with `rg`, never a
   bare `sk-`: the repo already holds 60+ harmless `sk-` strings (test fakes, v1 board placeholders, and words like `risk-`).
 
-### 1 · Accounts [O]
+### 1 · Accounts [O, before launch]
 
-- The owner creates, in the OpenAI dashboard, a **throwaway project `xlearn-s6`** with a **project hard spend limit of $10**
-  (enforced, not an alert) and a second throwaway project **`xlearn-s6-quota`** with a **$1 hard limit** for step 6.
+- **Before launch** (D40: dashboard work is owner-only), the owner creates, in the OpenAI dashboard, a **throwaway project
+  `xlearn-s6`** with a **project hard spend limit of $10** (enforced, not an alert) and a second throwaway project
+  **`xlearn-s6-quota`** with a **$1 hard limit** for step 6.
 - **The quota project's limit, step by step** (it's the only brake on that project, since the harness self-stop covers `xlearn-s6`):
   - $1 for GPT-Live's quota leg, then raised to **$2** to time recovery;
   - mini's quota leg drives it to failure at $2, then it is raised to **$3** to time mini's recovery;
   - never higher. The owner reads the project's spend before each raise, and the note records each figure.
 - One **project-scoped key** per project, restricted to the realtime/live and Responses APIs where the UI allows, with the
-  shortest expiry offered. The owner sets them as environment variables; nothing else holds them.
-- Record only non-secret facts: the org's usage tier, which key restrictions the UI offered (they feed AB24's key-hygiene copy),
-  and the project names. The agent never logs into the dashboard.
-- **Before the first run, ask the owner one question and record the answer in the note.** "If GPT-Live passes every hard gate
-  and mini fails one, does GPT-Live win even when M14 < mini + 1? That is, does M14 only decide between two passers?" D28 reads
-  literally "otherwise mini" and doesn't cover this case. An answer given before the runs puts the case inside the rules (task 6).
+  shortest expiry offered. The owner sets them as environment variables before launch; nothing else holds them.
+- Record only non-secret facts, from the launch message: the org's usage tier, which key restrictions the UI offered (they
+  feed AB24's key-hygiene copy), and the project names. The agent never logs into the dashboard.
+- **The owner answers one question in the launch message, and the session records the answer in the note.** "If GPT-Live
+  passes every hard gate and mini fails one, does GPT-Live win even when M14 < mini + 1? That is, does M14 only decide between
+  two passers?" D28 reads literally "otherwise mini" and doesn't cover this case. An answer given before the runs puts the
+  case inside the rules (task 6); without one, the case follows task 6's "not answered" path. The session doesn't ask
+  mid-run.
 
 ### 2 · Harness (1.5 h) [H]
 
@@ -225,18 +228,21 @@ Rows cut by the **time box or spend** ("not run (time box)", "not run (spend)") 
 - **GPT-Live passes every H and M14 ≥ mini + 1** → GPT-Live-1 is the default shell.
 - **Otherwise, mini passes every H** → `gpt-realtime-2.1-mini` is the default, with a planned rollover at the start of Code.
 - **GPT-Live is the sole passer** (every H passes, mini fails an H, but M14 < mini + 1): decided by the owner's answer to the
-  task 1 question:
+  task 1 question in the launch message:
   - he said yes (M14 only decides between two passers) → GPT-Live-1 is the default;
   - he said no → no shell qualifies, and the "both fail" rule applies;
-  - he wasn't asked → escalate, with the recommendation "GPT-Live-1, the only shell that passed every hard gate".
-- **Both fail** → P0 text only; voice is revisited in 3 months (record the date). M6b and its sprints go ⛔ until then; the owner decides what v2.1.0 carries.
+  - he didn't answer → outside the rules: record the options with the recommendation "GPT-Live-1, the only shell that passed
+    every hard gate", mark ds-m6a-01's ADR-0032 gate ⛔ "needs owner decision" in `status.md`, and still land the results.
+- **Both fail** → P0 text only; voice is revisited in 3 months (record the date). M6b and its sprints go ⛔ until then; the owner decides what v2.1.0 carries (⛔ "needs owner decision").
 - **M7 fails** (for the chosen shell) → [m6b-02](sprint-m6b-02.md) adds the `coach-interview` Deployment (same image, `COACH_ROLE=interview`, own ImagePolicy).
 - **The browser gate list:** Chrome/Edge, plus Safari only if its leg passed; Firefox gets text mode with an explanation.
 
 A hard gate cut by the time box or spend **disqualifies GPT-Live** under rule 1: D28 needs it to pass every hard gate. The
-following results are **not decided here**; record them and escalate to the owner in the note:
+following results are **not decided here** (they fall outside every pre-decided path): record the options and a
+recommendation in the note, mark ds-m6a-01's ADR-0032 gate ⛔ "needs owner decision" in `status.md`, and still land the
+results PR (D40):
 - a cut hard gate that leaves mini's pass, or "both fail", resting on an unmeasured row;
-- the sole-passer case without a prior owner answer;
+- the sole-passer case without an owner answer in the launch message;
 - the spend over $10, or the quota project over $3;
 - a broken architecture assumption, such as a page-side provider request;
 - SDP brokering impossible on both shells.
@@ -272,14 +278,15 @@ Commit the fixtures under **`docs/v2/research/t6-s6-fixtures/`**:
 
 Before staging, run
 `rg -n "$KEYRE"'|sess_|rtc_|org-|proj_|v=0|a=candidate|a=fingerprint|ice-ufrag|([0-9]{1,3}\.){3}[0-9]{1,3}|@' docs/v2/research/t6-s6-fixtures/`.
-It must return nothing, and **the owner skims one fixture per scenario** and confirms.
+It must return nothing, and **the agent skims one fixture per scenario** before staging. The merge doesn't wait on an owner
+review (D40); the owner may look afterwards.
 
 **Results note:** append **`## 16. S6 results (spk-04, <date>)`** to [`../research/t6-realtime-interviewer.md`](../research/t6-realtime-interviewer.md)
 (one line in its top status blockquote points at it). About one page:
 - **environment:** date, Mac and Chrome versions, network, the org tier, the model ids and prices on the day with `as_of`, and every delta from t6 §2/§3/§8;
 - **the measurement table** (M1–M17 per shell: number or task 6 label, threshold, pass/fail);
 - **the decision:** shell, deploy shape (M7), browser gate list, and whether client delegation is used, with the owner's
-  answer to the task 1 sole-passer question;
+  launch-message answer to the task 1 sole-passer question (or "not answered");
 - **for [m6b-01](sprint-m6b-01.md):** the SDP request/response shapes (endpoint and field names only), whether GPT-Live needs its data channel and mini works without one, whether brokering worked on both (else the `client_secrets` fallback is needed), the exact audio event types the decoder drops, and whether a sideband filter exists;
 - **for [m6b-02](sprint-m6b-02.md):** the rollover rule (GPT-Live's duration limit if found, `usage_ratio` at 60 min), reseed TTFA, push-to-talk mechanics (native vs emulated), the cache ratio after silence;
 - **for [m6a-02](sprint-m6a-02.md):** the quota path (codes, where they arrived, detection latency, whether the live session died, the overshoot, time to recover after raising the limit), the probe's behaviour, and the fixture index;
@@ -291,16 +298,18 @@ It must return nothing, and **the owner skims one fixture per scenario** and con
 
 **Leave ADR-0032 untouched** (it stays Proposed; [ds-m6a-01](sprint-ds-m6a-01.md) task 1 accepts it). **`docs/v2/status.md`:** the
 Sprint board row, the spike-results row (spk-04: shell, deploy shape, date, link to t6 §16), `ev-s6` ✅ with the date, and
-Decisions log lines (the shell; the deploy shape; the browser list; any escalation to the owner).
+Decisions log lines (the shell; the deploy shape; the browser list; any ⛔ "needs owner decision" with its options).
 
 ### 8 · Teardown [O · H]
 
-- The owner deletes both OpenAI projects and their keys (this also deletes their logs) and confirms in the session.
+- The owner, present for the day, deletes both OpenAI projects and their keys (this also deletes their logs). Don't hold the
+  docs PR for his confirmation: if it hasn't come by the time you ship, record it ⛔ in `status.md` → Open owner items.
 - **Key check, before the harness directory is deleted.** It uses the key-shaped `KEYRE` and is scoped to what S6 could have touched; a
   repo-wide `git grep 'sk-'` is noise, with 60+ harmless hits on `main`.
   - **What the docs PR adds:** `git diff origin/main...HEAD | rg -n "^\+.*$KEYRE"` → nothing.
   - **The harness directory and the shell history:** `rg -c "$KEYRE" <scratchpad>/s6 ~/.zsh_history`. Counts only, never print
-    matches: the history may hold unrelated keys. A non-zero count goes to the owner to inspect and clean.
+    matches: the history may hold unrelated keys. A non-zero count goes to `status.md` → Open owner items for the owner to
+    inspect and clean (don't wait).
 - Then the agent deletes `<scratchpad>/s6/` (harness, raw logs, WAV, Chrome profile).
 
 ## Acceptance criteria
@@ -308,20 +317,21 @@ Decisions log lines (the shell; the deploy shape; the browser list; any escalati
 - [ ] Every M1–M17 row is recorded **per shell**. Each entry has a number, or one of the task 6 labels for rows t6 §10 leaves unmeasured by design: mini M5 judged on the documented cap plus the reseed TTFA, mini M8 "not run on this shell", and M15 on the shell that wasn't winning so far unless time allowed. Rows cut by the box or spend are marked "not run (time box / spend)". The decision (shell, deploy shape, browser gate list) follows the task 6 rules or is explicitly escalated.
 - [ ] `xlearn-s6` stayed ≤ $8 (the harness self-stop; hard limit $10). The GPT-Live checkpoint of $5.50 held, or its cut legs are marked. `xlearn-s6-quota` stayed ≤ $3, raised only in the task 1 steps. Per-project and per-leg totals are recorded.
 - [ ] The harness page ran under the gateway's shipped CSP (m1-04's string verbatim, including `connect-src 'self'`) and `camera=(self), microphone=(self)` with no violation and no page-side provider request, recorded for mi-13.
-- [ ] Only the scrubbed fixtures (`index.json` with `observed`/`expected_class`/`expected_action`), the t6 §16 note and the status rows are committed, through one merged docs PR. The scrub `rg` is empty and the owner confirmed the fixtures.
-- [ ] Both OpenAI projects and keys are deleted (owner confirmed). The scoped key checks came back clean: the PR diff and the `rg -c` of the harness directory and shell history. The harness directory, raw logs and audio are gone.
+- [ ] Only the scrubbed fixtures (`index.json` with `observed`/`expected_class`/`expected_action`), the t6 §16 note and the status rows are committed, through one merged docs PR. The scrub `rg` is empty and the agent skimmed one fixture per scenario.
+- [ ] Both OpenAI projects and keys are deleted by the owner, or the deletion is recorded ⛔ as his follow-up. The scoped key checks came back clean: the PR diff and the `rg -c` of the harness directory and shell history. The harness directory, raw logs and audio are gone.
 
 ## Release
 
 **No merge: a throwaway spike.** The harness, logs, audio and projects are never committed and are deleted. The only merge is
-the **docs PR** (t6 §16, `docs/v2/research/t6-s6-fixtures/`, `status.md`); it ships in no tag. No infra PR; nothing touches
-production.
+the **docs PR** (t6 §16, `docs/v2/research/t6-s6-fixtures/`, `status.md`), squash-merged on CI green with no owner review
+stop (D40); it ships in no tag. An escalated result still lands, marked ⛔ "needs owner decision". No infra PR; nothing
+touches production.
 
 ## Definition of Done
 
 Results recorded and the docs PR merged · no production change (no `ssh vps`, no `kubectl`) · statuses updated here and in
-[`../status.md`](../status.md) · projects, keys, raw logs and the harness gone · the time box and the $8 self-stop respected; any
-unfinished row marked "not run (time box)" or "not run (spend)".
+[`../status.md`](../status.md) · raw logs and the harness gone; projects and keys deleted by the owner, or recorded as his
+follow-up · the time box and the $8 self-stop respected; any unfinished row marked "not run (time box)" or "not run (spend)".
 
 ## Risks / watch-outs
 
@@ -341,4 +351,5 @@ unfinished row marked "not run (time box)" or "not run (spend)".
   and cut the Firefox/Safari legs before the mini legs if the box runs out.
 - **The result ages.** If [m6b-01](sprint-m6b-01.md) starts more than ~8 weeks after this run, it re-checks the fixtures and
   model pages first (its risk).
-- **A "both fail" outcome changes v2.1.** Don't soften it: record it, and let the owner decide what v2.1.0 carries.
+- **A "both fail" outcome changes v2.1.** Don't soften it: record it with ⛔ "needs owner decision", let the owner decide what
+  v2.1.0 carries, and still land the results (D40).

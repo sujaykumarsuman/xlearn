@@ -22,7 +22,7 @@
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
-- [ ] AB13, AB24 and AB25 exist on `main` (the owner merged [ds-m6a-01](../sprints/sprint-ds-m6a-01.md)'s PR).
+- [ ] AB13, AB24 and AB25 exist on `main` ([ds-m6a-01](../sprints/sprint-ds-m6a-01.md) merged; the merge is the freeze).
 - [ ] [m6a-03](../sprints/sprint-m6a-03.md) merged (`status`/`format`/`scored_by`/`time_multiplier`/`caveats`, snapshot rubric, `scored`-only aggregates, proposal/accept routes).
 - [ ] [m6a-04](../sprints/sprint-m6a-04.md) merged (editor interview mode, `web/src/lib/interview/{snapshots,events,turns,run,drafts}.ts`, picker, the classic start `POST /api/mocks {format:"classic", difficulty, language?}`, the Run / draft (`…/items/{ordinal}/draft` on interviews and mocks) / evidence routes, bounded streams).
 - [ ] m6a-01/m6a-02 routes on `main`: `GET /api/interviews/active`, `POST /api/interviews`, `PUT …/optin`, `PUT /api/interviews/{id}/consent`, `POST /api/interviews/{id}/{start|attach|heartbeat|interrupt|pause|resume|finish|abandon}`, `GET /api/interviews/{id}`, and m6a-02's `turns`, `hint`, `probe`, `brief` (pre-flight runs inside `start`); the cohort gate (`interviewAudience`). **Write down the merged names** before coding.
@@ -71,7 +71,7 @@
 ## Update status
 
 - [`../sprints/sprint-m6a-05.md`](../sprints/sprint-m6a-05.md): each task 🔄 → ✅ (⛔ with a reason); set _Overall_.
-- [`../status.md`](../status.md): the **Sprint board** row (M6a stays 🔄); the **Artboards** rows AB13, AB24, AB25 → "frozen (PR #, date) · consumed by m6a-05" if the design sprint's rows weren't set yet; **Decisions log** lines for the route URLs, the estimate read and the text-mode Hold added here (routes, the `quiet` column), the beacon approach, and every server gap you found (with the route or behaviour missing) so m6a-06's P0 audit picks them up.
+- [`../status.md`](../status.md): the **Sprint board** row (M6a stays 🔄); the **Artboards** rows AB13, AB24, AB25 → append "· consumed by m6a-05" (and set "frozen (PR #, date)" only if the ds-m6a-01 session didn't already record it); **Decisions log** lines for the route URLs, the estimate read and the text-mode Hold added here (routes, the `quiet` column), the beacon approach, and every server gap you found (with the route or behaviour missing) so m6a-06's P0 audit picks them up.
 - No ADR expected.
 
 ## Done when (acceptance)
@@ -84,4 +84,12 @@
 - [ ] No client-side price, clock, grade or transition.
 - [ ] CI green.
 
-**Ship at session end** per AGENT.md land-and-sync with **this sprint's release action: merge only (ships dark in the next `v2.0.x` patch)**: branch `feat/m6a-05-mock-ui-part-1`, conventional commits with the attribution lines, a PR with the board screenshots and the compose-check notes, CI green, squash-merge, then `git checkout main && git pull`. **Do not tag** — [m6a-06](../sprints/sprint-m6a-06.md) cuts the patch. No infra PR.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: xlearn only, on `feat/m6a-05-mock-ui-part-1`, with the board screenshots and the compose-check notes in the PR; there is no infra PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships dark in the next `v2.0.x` patch):** Nothing deploys; it ships dark in the next `v2.0.x` patch, cut by [m6a-06](../sprints/sprint-m6a-06.md). Don't tag.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

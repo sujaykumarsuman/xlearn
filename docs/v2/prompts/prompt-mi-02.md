@@ -3,6 +3,12 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-mi-02.md`](../sprints/sprint-mi-02.md)   ·   **Milestone:** MI (rollout step MI-8 + the MI-0 follow-up)   ·   **Prereqs:** none in code; MI-0 (H0 reboot, Fri 2026-09-25)
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] If the H0 reboot (`ev-mi0`) came before the S0 window ended (2026-09-27 ≈ 07:52 UTC): say in `status.md`'s S0 row, or in the launch message, whether `/tmp/xlearn-s0-vmstat.log` was copied off before the reboot, and where the copy is. With no note, the session records the log as lost at reboot.
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md): repo conventions and the land-and-sync rule.
@@ -47,7 +53,7 @@
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
-- [ ] MI-0 done: the H0 reboot into 6.8.0-142 (Fri 2026-09-25), and `host-verify --cluster` green after it. *If it slipped, ask the owner whether to build tasks 1–8 now and leave task 9 ⛔.*
+- [ ] MI-0 done: the H0 reboot into 6.8.0-142 (Fri 2026-09-25), and `host-verify --cluster` green after it. *If it slipped, build tasks 1–8 now and leave task 9's H0 check ⛔ (MI-0 pending); its S0 branch still runs if the window has ended.*
 - [ ] No open peer PR in `../infra` touches `hack/`. Check `gh pr list -R sujaykumarsuman/infra`, `git worktree list` and ListAgents. If [mi-01](../sprints/sprint-mi-01.md) is open and adds `chart-diff.sh` to `host-lint.sh`, rebase onto it and keep both changes.
 
 ## Do this (in order)
@@ -104,21 +110,20 @@
    - Update the script header, the usage text, and the README host-scripts section.
    - Run the script on the node **only** in the piped form, `ssh vps 'bash -s -- --cluster' < hack/host-verify.sh`, which writes nothing. Also run it with `--with-runner`, `--nats-stage=n3`, `--nats-stage=n4` and `--json`.
    - Open the PR with that output and `host-lint.sh` in the body, and merge it. infra has no CI.
-   - **[O] The `/root` copy.** `scp hack/host-verify.sh vps:/root/` is a node write, so **ask the owner**: they refresh it, or they explicitly OK you doing it once (then run `ssh vps 'bash /root/host-verify.sh --cluster'` once; it must be green). If neither happens, record "`/root/host-verify.sh` stale: owner to refresh" as a pending owner item.
+   - **The `/root` copy (pre-approved, D40).** After the merge, run `scp hack/host-verify.sh vps:/root/` once: it's a node write this plan names, so launching this prompt pre-approves it. Then run `ssh vps 'bash /root/host-verify.sh --cluster'` once; it must be green. Record it. If the refresh fails, record "`/root/host-verify.sh` stale" as a pending item.
 
-9. **[H] Sampler, with the owner's OK only** (plan task 8):
-   - Ask the owner. It writes on the node: `/root/sample-top.sh`, `/var/tmp/xlearn-top.tsv` and `/var/tmp/xlearn-top.pid`.
-   - If they approve:
+9. **[H] Sampler** (plan task 8):
+   - It writes on the node: `/root/sample-top.sh`, `/var/tmp/xlearn-top.tsv` and `/var/tmp/xlearn-top.pid`. The plan names these writes, so launching this prompt pre-approves them (D40). Don't ask; build and start it:
      - `hack/sample-top.sh` samples every 5 minutes with a timestamp, stops itself after `SAMPLE_HOURS=168`, and writes a PID file;
      - start it with `scp hack/sample-top.sh vps:/root/ && ssh vps 'nohup setsid bash /root/sample-top.sh </dev/null >/dev/null 2>&1 &'`;
      - record the start time and PID.
    - It ships in the same infra PR, or a follow-up.
 
-10. **[O → X] MI-0 follow-up** (plan task 9):
-    - Ask the owner for the H0 result (event `ev-mi0`: kernel 6.8.0-142, post-reboot `--cluster` green). On 2026-09-25 the node was still on 6.8.0-90.
+10. **[H → X] MI-0 follow-up** (plan task 9):
+    - Verify the H0 result yourself, read-only (event `ev-mi0`): `ssh vps uname -r` shows kernel 6.8.0-142, and the piped `--cluster` run is green after the reboot. On 2026-09-25 the node was still on 6.8.0-90.
     - The S0 log `/tmp/xlearn-s0-vmstat.log` has a 72 h window that ends **2026-09-27 ≈ 07:52 UTC**. Take the branch that applies:
-      - **`ev-mi0` came first:** ask whether the log was copied off before the reboot, which empties `/tmp`.
-      - **The window ended first:** copy the log off yourself (`scp vps:/tmp/xlearn-s0-vmstat.log <scratchpad>/`, a read). Then the **owner** deletes it from the node (`ssh vps rm /tmp/xlearn-s0-vmstat.log`, a write), or explicitly OKs you doing it. Record the deletion.
+      - **`ev-mi0` came first:** the reboot emptied `/tmp`. Use the copy the before-launch note names; if it names none, the log is lost.
+      - **The window ended first:** copy the log off yourself (`scp vps:/tmp/xlearn-s0-vmstat.log <scratchpad>/`, a read). Once the copy is verified, delete it from the node yourself (`ssh vps rm /tmp/xlearn-s0-vmstat.log`): a node write the plan names, so launching this prompt pre-approves it (D40). Record the deletion.
     - If a copy exists, compute steal p50, p95 and max from the `st` column and append an S0 row to [t3 §15](../research/t3-sandbox.md). Otherwise record "lost at reboot; sar is the source".
 
 11. **[X] Record** (branch `docs/mi-02-status`):
@@ -129,7 +134,7 @@
 ## Constraints
 
 - **`host-verify.sh` is read-only, provably.** It uses `kubectl get` and `top` only; JSON goes through `get --raw` via the API-server proxy. No `exec`, `port-forward`, temp files or network calls outside the node. host-lint enforces this.
-- **`ssh vps` stays read-only.** Every node write needs the owner's explicit OK first: the `/root/host-verify.sh` refresh, the sampler's files, and deleting the S0 log. Verification always uses the piped form, `bash -s`, which writes nothing.
+- **`ssh vps` stays read-only** except the three node writes this prompt names, which launching it pre-approves (D40): the `/root/host-verify.sh` refresh, the sampler's files, and deleting the S0 log. Verification always uses the piped form, `bash -s`, which writes nothing.
 - **D34, no alerting:**
   - no timer, CronJob, push channel, Flux `Provider`/`Alert`, healthchecks.io or opscheck;
   - the sampler is a self-terminating one-off, never a monitor;
@@ -149,7 +154,7 @@
   - `hack/host-lint.sh` (the read-only proof, the TSV equality check, shellcheck);
   - `hack/host-bootstrap.sh` (`jq` and `sysstat` in `PKGS`; sysstat collection enabled);
   - the README host-scripts section.
-- `/root/host-verify.sh` refreshed by the owner or with the owner's OK, or recorded as a pending owner item. The sampler running, or its decline recorded.
+- `/root/host-verify.sh` refreshed (step 8), or recorded as pending if that failed. The sampler running, or its in-session decline recorded.
 - `hack/host-bootstrap.sh`: `jq` and `sysstat` in `PKGS`, sysstat collection enabled.
 - xlearn docs PR: the status rows, the Decisions log lines, and the t3 §15 S0 row if the log exists.
 
@@ -169,11 +174,15 @@
 - [ ] With `SAR_BIN=/nonexistent`, `host.steal`/`host.cpu` WARN "unmeasured" and never PASS.
 - [ ] Read-only proven: the host-lint verb and output-redirection (`redir_hits`) checks pass, shellcheck is clean, and the embedded TSVs equal the files.
 - [ ] `--json` parses line by line.
-- [ ] The sampler is running with the owner's OK (start recorded), or its decline is recorded.
+- [ ] The sampler is running (start recorded), or its in-session decline is recorded.
 - [ ] `docs/v2/status.md` records MI-0, MI-8 ✅, the baselines and the S0 result.
-- Ship at session end per AGENT.md land-and-sync, with this sprint's release action: **infra PR(s) only**.
-  - Merge the `../infra` PR yourself, with the node-run output in the body (infra has no CI).
-  - Get the `/root/host-verify.sh` refresh done by the owner or with the owner's OK, or record it as pending.
-  - Merge the xlearn status docs PR.
-  - No tag.
-  - Sync local `main` in both repos.
+
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: `feat/mi-8-host-verify-cluster` in `../infra`, then `docs/mi-02-status` in xlearn.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. infra has no CI: paste the node-run output and `host-lint.sh` into the PR body and merge on them.
+3. **Release action — infra PR(s) only (host script):** Merge the infra PR (plus a sampler follow-up PR if `sample-top.sh` didn't ride it; each its own PR, never folded into a tag), then the xlearn docs/status PR. No tag. The script ships on merge (the piped form always runs the merged version); refresh the `/root` copy once afterwards (step 8).
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn and `../infra`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

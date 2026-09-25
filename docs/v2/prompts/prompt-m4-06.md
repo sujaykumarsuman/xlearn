@@ -14,7 +14,7 @@
   - neighbours for shared vocabulary: AB04 (touch result), AB05 (Today), AB08 (results dock), AB11 (badges), AB12 (provenance), AB19 (acceptance consents, if frozen).
   
   Tokens and components: [`design-system/README.md`](../../../design-system/README.md), `design-system/theme.css`.
-- The design brief behind the boards: [`../sprints/sprint-ds-m4-01.md`](../sprints/sprint-ds-m4-01.md). It covers which frames are live in v2.0, the behaviour notes and the decisions to confirm.
+- The design brief behind the boards: [`../sprints/sprint-ds-m4-01.md`](../sprints/sprint-ds-m4-01.md). It covers which frames are live in v2.0, the behaviour notes and the "Decisions to confirm" list, whose drafted defaults froze with the merge (D40; a later change is a follow-up design PR).
 - **Decisions:**
   - [ADR-0029 §3](../../adr/0029-judge-contract-and-learning-signal.md#3-conclusion-practice-the-single-writer) (D14, pass review);
   - [ADR-0031](../../adr/0031-platform-ai-and-two-tier-keys.md): §4 consents, §5 percent-never-dollars and degrade order, §6 D26, §7 UI names;
@@ -51,7 +51,7 @@ v2 is owner-only use (D35), and nothing alerts (D34): degraded states are in-app
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
-- [ ] AB16–AB18 frozen: the ds-m4-01 PR is merged (`git log origin/main -- design-system/screens/v2/AB1[678]-*`), and status.md's artboard rows read "frozen (PR #, date)".
+- [ ] AB16–AB18 frozen: the ds-m4-01 PR is merged, and the merge is the freeze (`git log origin/main -- design-system/screens/v2/AB1[678]-*`); status.md's artboard rows read "frozen (PR #, date)" (recorded by the ds-m4-01 session or m4-01's close-out).
 - [ ] [m4-03](../sprints/sprint-m4-03.md) merged: the analyzer (passes and failures, D26 touch passes), review's `category_source=analyzer` + concepts + "correct, with improvements", pointer notes per (account, item), and its gateway routes: `GET /api/problems/{id}/pointer-notes`, `GET /api/attempts/{id}/analysis`, `improvements` + `optional[]` on `GET /api/revision/due`, `POST`/`DELETE /api/problems/{id}/optional-revisit`.
 - [ ] [m4-04](../sprints/sprint-m4-04.md) merged: `provisional` with `accept_deadline_at` / `server_now` / `ceiling` / flags; `POST /api/attempts/{id}/accept {grade?, category?}` (edit and override = accept with `grade ≠ candidate_grade`), `POST /api/evaluations/{id}/dispute`, `POST /api/attempts/{id}/claim` and their error codes; `self_grade_pending` reasons; `grades_waiting` on `GET /api/dashboard`; `PRACTICE_SETTLE_WINDOW` (with `DEV_AUTH`).
 - [ ] [m4-05](../sprints/sprint-m4-05.md) merged: `GET /api/me/ai-allowance`, `PATCH /api/me/consents` (two AI kinds + behavioral), and a consent read with version and timestamp.
@@ -126,7 +126,7 @@ v2 is owner-only use (D35), and nothing alerts (D34): degraded states are in-app
 9. **[X] Visual check + docs.**
    - Use a temporary `web/vite.mock.config.ts` (never committed) to compare every frame with AB16–AB18 at 1440 px and 390 px; attach the screenshots to the PR.
    - Update `docs/architecture/api.md` (screens → AI routes, any passthrough).
-10. **[X] PR.** Conventional commit(s), e.g. `feat(web): AI suggestion/dispute, pointer notes, allowance + consents (AB16–AB18)`, with the attribution lines → CI green → squash-merge. **No tag.**
+10. **[X] Ship:** see **Ship** below (commit e.g. `feat(web): AI suggestion/dispute, pointer notes, allowance + consents (AB16–AB18)`). **No tag.**
 
 ## Constraints
 
@@ -170,4 +170,12 @@ v2 is owner-only use (D35), and nothing alerts (D34): degraded states are in-app
 - [ ] `ai` provenance shows in Progress and the public profile; judge-checked % is unchanged.
 - [ ] Outside the cohort or with LLM off, the UI is v1.15's; boards matched at 1440/390 px; all checks and CI green.
 
-Ship per AGENT.md land-and-sync with **this sprint's release action: merge only** (ships dark in `v1.16.0`, tagged by [m4-07](../sprints/sprint-m4-07.md)): squash-merge once CI is green, **no tag**, then `git checkout main && git pull`.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: xlearn only, on `feat/m4-ai-ui`, with the 1440/390 px screenshots in the PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships dark in `v1.16.0`):** Nothing deploys; it ships in `v1.16.0` (cut by [m4-07](../sprints/sprint-m4-07.md)). Don't tag. No infra PR.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

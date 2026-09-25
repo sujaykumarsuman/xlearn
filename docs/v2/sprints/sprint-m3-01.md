@@ -4,7 +4,7 @@
 > **Prereqs:** [m1-01](sprint-m1-01.md) (item schema frozen, `internal/course`) · [m1-09](sprint-m1-09.md) (the whole sprint builds on it: the resolved item type and `canon.ContentHash`, `cmd/contentlint` + the `content` CI job, `curriculum/README.md`, curriculum `00002`/`00003`, `problem.content_hash`)
 > **Unblocks:** [m3-02](sprint-m3-02.md) (the evalpack pipeline) · owner event `ev-packs-14` (author the 14 pilot packs with this tooling) · also the **single** hash and lint definitions that [m2-01](sprint-m2-01.md) (`canon.PolicyVersion` on attempts), [m3-05](sprint-m3-05.md) (judge's contract check; t4 §5.6 re-runs the lints at judge start) and [m3-08](sprint-m3-08.md) (contract pinning) import — never re-implemented
 > **Release action:** **merge only** — ships dark in the next app tag (`v1.6.0` if merged before [m1-02](sprint-m1-02.md) cuts it, else `v1.7.0`). packlint, contentlint and the hook are dev tools and never enter an image.
-> **Calendar:** ≈ 2026-10-06 → 10-07, right after `ev-schema-freeze` and m1-09's merge (week 2, before m1-02 tags) · owner installs the hook (~5 min)
+> **Calendar:** ≈ 2026-10-06 → 10-07, right after `ev-schema-freeze` and m1-09's merge (week 2, before m1-02 tags) · after the merge, owner event `ev-hook-install` (the owner installs the hook, ~5 min; doesn't gate this sprint)
 > **Execute with:** [`../prompts/prompt-m3-01.md`](../prompts/prompt-m3-01.md) — one prompt, one session.
 
 ## Status
@@ -21,7 +21,6 @@ _Overall:_ ⬜ Not started
 | 6 | Authoring guide `docs/v2/authoring.md` | X | ⬜ |
 | 7 | curriculum `contract_hash` + `grading_summary` (migration `00004`, seed, `GET /problems/{id}`) | X | ⬜ |
 | 8 | Verify + record | X | ⬜ |
-| 9 | Owner installs the hook on the authoring machine | O | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row,
@@ -131,7 +130,7 @@ with its sidecars inlined) under whatever name m1-09 gave it. Reuse that type; n
 |---|---|
 | every part's `{id, type}` | prompts, statements, section bodies, labels (option/field **labels**, param **names**) |
 | grader steps `{step, kind, inputs (sorted)}` | `samples[]`, `limits{time_ms, memory_mb}`, `languages[]` |
-| code: `signature{mode, name, params[].type (ordered), returns, ops[]{name, params[].type, returns}}`, `harness` (`name@v`), `checker{name, params}` | `constraints[]` — packlint re-validates cases on the next pack PR (advisory, task 2 check 8). **A new classification (t1 §3.4 lists it on neither side): owner to confirm** — see below |
+| code: `signature{mode, name, params[].type (ordered), returns, ops[]{name, params[].type, returns}}`, `harness` (`name@v`), `checker{name, params}` | `constraints[]` — packlint re-validates cases on the next pack PR (advisory, task 2 check 8). **A new classification (t1 §3.4 lists it on neither side), decided here; the owner may revisit it** — see below |
 | choice option **ids**, blank field **ids** (sorted) | provenance, links, review stamps, `concepts[]`, `solution_facts`, metadata |
 | probe `{id, type}` (sorted); asset, rubric (and later palette) `id@v` (sorted) | `revision.probes[].prompt_md`, `timer_s`, `criterion` |
 
@@ -143,8 +142,9 @@ kinds, inputs, harness, checker, generator, rubric and palette `@v`"), both logg
 - **`constraints[]` is content-only.** Tightening a constraint can make existing hidden cases invalid, and loosening one can make
   the pack incomplete. This sprint does not move the hash for either; packlint's advisory re-check (rule 8) plus the private CI's
   generic validator ([m3-02](sprint-m3-02.md)) catch both on the next pack PR. Because this decides **which public edits invalidate
-  hidden cases**, the Decisions log line is marked **"owner to confirm"**. If the owner rejects it, `constraints[]` moves to the
-  contract column before any pack is stamped (no packs exist yet, so the switch costs nothing).
+  hidden cases**, the Decisions log line flags it for the owner to revisit; it lands as decided (D40, no sign-off). If the owner
+  later rejects it, `constraints[]` moves to the contract column in a follow-up PR, which costs nothing before any pack is stamped
+  (no packs exist yet).
 
 **Tests** (`internal/course/canon/*_test.go`):
 - **Classification test:** reflect over `course.Item`'s JSON paths; every path is in `contractPaths` or `contentOnlyPaths`
@@ -323,17 +323,16 @@ Add a one-line pointer from `curriculum/README.md` (m1-09) to the guide.
   (`git init --bare <scratch>/remote.git`) → blocked, payload not printed; remove it → push passes. Never push the plant to `origin`.
 - [`../status.md`](../status.md): Sprint board; M3 row 🔄 (content track started); the M3 checklist line **T25/T26** ✅ on merge;
   **content status** ("authoring tooling live: packlint, hook, hashes; grandfathered unstamped hint/editorial items: N");
-  **owner events** (`ev-packs-14` can use the tooling); **Decisions log**: canon@1 rules, number normalization and domain
-  separation; the contract/content field classification (limits content-only with the advisory re-check; **`constraints[]`
-  content-only — owner to confirm**); generator `@v` kept out of `contract_hash` (specs live in the pack; t4 §5.6 #9 deviation); the
-  `packspec` name; migration `00004`; stamp-gate grandfathering; the `label-edit-ok:` PR-body token; the `SYNTHETIC.md` marker rule
-  for `internal/**/testdata/` pack artefacts; the public reference file names (`_code/solution.{go,cpp,py}`).
-
-### 9 · Owner installs the hook [O]
-
-About 5 minutes on the authoring machine: `git pull`, `make install-hooks`, check `git config core.hooksPath` → `hack/git-hooks`,
-then the dry run from the authoring guide (a planted synthetic string pushed to a local bare remote is blocked). Recorded in the
-owner-events table.
+  **owner events** (`ev-packs-14` can use the tooling; the new post-ship event `ev-hook-install`, below); **Decisions log**: canon@1
+  rules, number normalization and domain separation; the contract/content field classification (limits content-only with the
+  advisory re-check; **`constraints[]` content-only — decided here, flagged for the owner to revisit**); generator `@v` kept out of
+  `contract_hash` (specs live in the pack; t4 §5.6 #9 deviation); the `packspec` name; migration `00004`; stamp-gate grandfathering;
+  the `label-edit-ok:` PR-body token; the `SYNTHETIC.md` marker rule for `internal/**/testdata/` pack artefacts; the public reference
+  file names (`_code/solution.{go,cpp,py}`).
+- **Post-ship owner event `ev-hook-install`** (added to status.md's owner events by this task; not a task here, and it doesn't gate
+  _Overall_ ✅): about 5 minutes on the authoring machine after the merge — `git pull`, `make install-hooks`, check
+  `git config core.hooksPath` → `hack/git-hooks`, then the dry run from the authoring guide (a planted synthetic string pushed to a
+  local bare remote is blocked).
 
 ## Acceptance criteria
 
@@ -354,7 +353,7 @@ additive fields. No infra PR, no evalpack tag. packlint, contentlint and the hoo
 
 ## Definition of Done
 
-CI green · merged to `main` (squash, conventional commit) · acceptance criteria met · statuses updated (this file + [`../status.md`](../status.md)) · the owner has installed the hook (task 9) · decisions logged. No new
+CI green · merged to `main` (squash, conventional commit) · acceptance criteria met · statuses updated (this file + [`../status.md`](../status.md), including the post-ship owner event `ev-hook-install`) · decisions logged. No new
 ADR: this implements ADR-0027 as decided; changing a decided shape needs a new ADR (check peers for the next free number first).
 
 ## Risks / watch-outs

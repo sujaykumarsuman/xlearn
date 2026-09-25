@@ -4,7 +4,7 @@
 > **Prereqs:** [mi-13](sprint-mi-13.md) (MI-16 live: the 20 s `POST /api/interviews/{id}/segments` route, `Permissions-Policy`, coach 500m / 256 Mi, grace 60 s, rollingUpdate 1/0, WSS egress) · [ds-m6b-01](sprint-ds-m6b-01.md) (AB29–AB30 frozen) · [m6a-06](sprint-m6a-06.md) (M6a shipped dark: interview core, brain, bounded SSE, segment log)
 > **Unblocks:** [m6b-02](sprint-m6b-02.md) (lease, drain, cost, caps, modes, rollover) → [m6b-03](sprint-m6b-03.md) (voice UI + the v2.0.x patch)
 > **Release action:** **merge only** (ships dark in [m6b-03](sprint-m6b-03.md)'s `v2.0.x` patch; if a peer cuts an earlier `v2.0.x` patch it rides that one, still dark: cohort-gated API, no UI)
-> **Calendar:** Q1 2027 · no owner event (an optional ≤ 2-minute live check on the owner's key, only with his go-ahead in chat, ≈ $0.10)
+> **Calendar:** Q1 2027 · no owner event (an optional ≤ 2-minute live check on the owner's key, ≈ $0.10: pre-approved by launching the prompt (D40), and run only if the owner saved his OpenAI key in the local compose stack before launch, else deferred to [m6b-04](sprint-m6b-04.md))
 > **Execute with:** [`../prompts/prompt-m6b-01.md`](../prompts/prompt-m6b-01.md) — one prompt, one session.
 
 ## Status
@@ -13,7 +13,7 @@ _Overall:_ ⬜ Not started
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Reconcile inputs: S6 facts, route name, fixtures, ADR-0007 amendment, record the AB29–AB30 freeze | X | ⬜ |
+| 1 | Reconcile inputs: S6 facts, route name, fixtures, ADR-0007 amendment, record the AB29–AB30 freeze (if ds-m6b-01 didn't) | X | ⬜ |
 | 2 | Catalog `voice_shell` row final + `VoiceShell` transport + `voice.Segment` (m6a-02's `Segment`) + the S6-winner adapter | X | ⬜ |
 | 3 | Segment key lifetime (ADR-0007 amendment) extended to the sideband, reaper and supersede paths | X | ⬜ |
 | 4 | SDP broker `POST /interviews/{id}/segments`: preconditions, mint log, typed errors, pre-flight purpose | X | ⬜ |
@@ -32,7 +32,7 @@ _Overall:_ ⬜ Not started
 - [ ] **MI-16 done and its `v2.0.x` patch live** ([mi-13](sprint-mi-13.md)): `POST /xlearn/api/v1/interviews/{id}/segments` answers on prod
       (cohort-only, 20 KiB cap → typed 413, **20 s** budget → typed 504 `sdp_timeout`, no retry, body never logged); coach runs
       500m / 256 Mi, grace 60 s, rollingUpdate 1/0; coach egress admits TCP 443 (recorded in status.md)
-- [ ] **AB29–AB30 frozen** ([ds-m6b-01](sprint-ds-m6b-01.md) merged by the owner, `ev-freeze-ds-m6b-01`)
+- [ ] **AB29–AB30 frozen:** [ds-m6b-01](sprint-ds-m6b-01.md) merged (the merge is the freeze, D40)
 - [ ] **S6 result** ([spk-04](sprint-spk-04.md)): the winning shell; **not** "both fail" (then voice waits 3 months — stop); M7 (deploy shape,
       consumed by m6b-02); M13 (GPT-Live rejects browser `session.update`? Realtime accepted an offer with **no data channel**?); whether a
       sideband **event filter** exists; whether the D29 **current-screen item is replaceable in place** on the winner; the exact sideband
@@ -109,8 +109,9 @@ M6a cohort gate; the UI is [m6b-03](sprint-m6b-03.md)'s.
   [ADR-0032 §7](../../adr/0032-realtime-ai-mock-interviewer.md#7-adr-0007-amendments): SDP brokering only, each segment creation logged; the
   Realtime `client_secrets` fallback (30–60 s TTL) **only if S6 showed brokering failing**; the key held as a `[]byte` per live segment,
   dropped on `interrupted` or `paused`, never in panic values or logs. If ds-m6a-01 already folded it, leave it as it is.
-- **Record the freeze** (design exception, [ds-m6b-01](sprint-ds-m6b-01.md)): its tasks 5–6 and _Overall_ ✅; status.md Artboards AB29–AB30
-  "frozen (PR #, date)"; tick `ev-freeze-ds-m6b-01`.
+- **Record the freeze, if ds-m6b-01's session didn't** ([ds-m6b-01](sprint-ds-m6b-01.md)'s PR merged on CI green and the merge is the
+  freeze, D40; idempotent, so skip any edit already done): its Status rows and _Overall_ ✅; status.md Artboards AB29–AB30 "frozen (PR #,
+  date)"; `ev-freeze-ds-m6b-01` ✅ ("automatic at the merge"), if status.md still lists it.
 
 ### 2 · Catalog + `VoiceShell` + `voice.Segment` + the winner's adapter [X]
 
@@ -225,9 +226,10 @@ learner may try again with a click (AB29 F5b/F5d).
 - **`client_secrets` fallback** ([ADR-0032 §7](../../adr/0032-realtime-ai-mock-interviewer.md#7-adr-0007-amendments),
   [t6 §3](../research/t6-realtime-interviewer.md#3-architecture--media-path)): **accepted but conditional** — Realtime only, a 30–60 s TTL, one
   per segment, logged, and only if S6 recorded that brokering failed on the winner (GPT-Live has no fallback: brokering is its only path).
-  It is **not built in this session.** If S6 recorded that brokering failed, **stop and report**: the fallback puts a short-lived token in
-  the browser and needs [mi-13](sprint-mi-13.md)'s CSP `connect-src` widened to the provider origin — its own gateway PR (mi-13's CSP test
-  changed with it) with the owner's sign-off, not a new ADR. Otherwise record "brokering works on the winner; fallback not needed".
+  It is **not built in this session.** If S6 recorded that brokering failed, **stop and report** (a gate failure, not a review: ⛔ in
+  status.md): the fallback puts a short-lived token in the browser and needs [mi-13](sprint-mi-13.md)'s CSP `connect-src` widened to the
+  provider origin — its own gateway PR (mi-13's CSP test changed with it) in a follow-up sprint, not a new ADR. Otherwise record "brokering
+  works on the winner; fallback not needed".
 - **Voice consent kinds** (`internal/coach/interview/consent.go`, versioned like M6a's text kinds — [m6a-01](sprint-m6a-01.md) says "voice
   kinds are M6b's"): `voice_audio_stream` ("Stream my microphone to OpenAI using my key. My voice also passes through xLearn's server in
   memory only; it is never written to disk or logs."), `voice_private_place` ("nearby voices are sent and transcribed too"), and the voice
@@ -348,13 +350,15 @@ Sources: [ADR-0032 §3](../../adr/0032-realtime-ai-mock-interviewer.md#3-what-th
   "Logging"): `/api/interviews/*` and the sideband decoder never log transcripts, audio, SDP, prompts or completions.
 - **Contract:** the adapter's request (minus secrets) equals the S6 fixture's shape; the fixture's answer and sideband frames parse.
 - **Gateway:** the confirm and ask routes (cohort gate, `aud=coach`); the OpenAPI drift test.
-- **Optional live check** — only with the owner's explicit go-ahead in chat (≈ $0.10, ≤ 2 minutes): in compose the **owner enters his own
-  OpenAI key** in local Settings (the agent never types a key), sets it as the `interview` default, and records the voice consent; Chrome
+- **Optional live check** — pre-approved by launching the prompt (D40; ≈ $0.10, ≤ 2 minutes), and run only if the owner's before-launch
+  item is in place: **his own OpenAI key**, entered by him in the local compose Settings and set as the `interview` default (the agent never
+  types a key). The session records the voice consent for its test interview (compose test data; the audio is a fake clip); Chrome
   with `--use-fake-ui-for-media-stream --use-fake-device-for-media-stream --use-file-for-fake-audio-capture=<clip.wav>`; from DevTools:
   `getUserMedia({audio:true})` → `new RTCPeerConnection()` (+ `createDataChannel('oai-events')` only on GPT-Live) → `createOffer` →
   `fetch('/xlearn/api/v1/interviews/<id>/segments', {method:'POST', …, body: JSON.stringify({sdp, purpose:'preflight', client_id})})` →
   `setRemoteDescription(answer)` → `connected` → the greeting caption arrives on SSE → hang up; then `coach admin interviews --live` is
-  empty and the no-audio scan is repeated. Without a go-ahead, record "live leg deferred to [m6b-04](sprint-m6b-04.md) task 1".
+  empty and the no-audio scan is repeated. Without that key, record "live leg deferred to [m6b-04](sprint-m6b-04.md) task 2" (not ⛔: the
+  check is optional).
 
 ### 9 · Docs + record [X]
 
@@ -370,7 +374,8 @@ Sources: [ADR-0032 §3](../../adr/0032-realtime-ai-mock-interviewer.md#3-what-th
 ## Acceptance criteria
 
 - [ ] Browser ↔ provider WebRTC with the SDP brokered via coach: the fixture contract and fake-shell integration pass, and the live check
-      connected (or is recorded as deferred to m6b-04 for want of the owner's go-ahead); no response to the browser ever carries a credential
+      connected (or is recorded as deferred to m6b-04 because the owner's key wasn't in local compose at launch); no response to the browser
+      ever carries a credential
 - [ ] **No audio bytes persisted or logged** (canary scan over every coach table, logs and panics = 0 hits); audio frames are discarded unparsed
 - [ ] Every segment creation is logged as a mint row with no SDP and no IP; SDP never appears in logs
 - [ ] An unconfirmed session is hung up at 15 s; a second tab's lease takeover hangs up the first tab's session; ≤ 1 open segment per interview;
@@ -394,13 +399,14 @@ subject, stream or consumer changes, so no ACL PR. No new always-on pod (memory-
 ## Definition of Done
 
 CI green · merged via PR (squash) · no tag · acceptance criteria met · ADR-0007 carries the ADR-0032 §7 amendment · statuses updated (this file,
-[ds-m6b-01](sprint-ds-m6b-01.md)'s freeze, [`../status.md`](../status.md)) · local `main` synced.
+[ds-m6b-01](sprint-ds-m6b-01.md)'s freeze if its session didn't record it, [`../status.md`](../status.md)) · local `main` synced.
 
 ## Risks / watch-outs
 
 - **Provider API drift since S6.** GPT-Live and Realtime-2.1 are weeks old at S6: re-run the scrubbed fixtures against the current docs; if a
-  shape changed, fix the adapter and note it; if the change breaks brokering itself, stop and report — ADR-0032 §7's `client_secrets`
-  fallback is conditional (Realtime only) and first needs mi-13's `connect-src` widened in its own gateway PR with the owner's sign-off.
+  shape changed, fix the adapter and note it; if the change breaks brokering itself, stop and report (a gate failure: ⛔ in status.md) —
+  ADR-0032 §7's `client_secrets` fallback is conditional (Realtime only) and first needs mi-13's `connect-src` widened in its own gateway
+  PR, in a follow-up sprint.
 - **Frame size.** coder/websocket's default 32 KiB read limit closes the sideband on the first large `session.updated` or audio frame —
   and tamper detection with it; `SetReadLimit` at attach and the > 32 KiB real-socket test are the guard.
 - **Parsing audio by accident.** `json.Unmarshal` on a whole frame, `conn.Read`, or logging a frame on error all break the "unparsed" promise the

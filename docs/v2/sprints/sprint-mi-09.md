@@ -2,9 +2,9 @@
 
 > **Milestone:** MI — infra-first track (rollout step **MI-11**; sprint ids `mi-NN` ≠ rollout steps `MI-N`, and this is **not** MI-9) · **Track:** infra (host) · **Order:** 26
 > **Prereqs:** [spk-01](sprint-spk-01.md) + [spk-02](sprint-spk-02.md) (spike **GO**: P0–P3 + image volume) · batched with [mi-08](sprint-mi-08.md) (MI-11a) in the window · reads [mi-02](sprint-mi-02.md)'s `host-verify --cluster` flags
-> **Unblocks:** [mi-10](sprint-mi-10.md) (runner dark, MI-12) once the owner has run the window. ADR-0030's acceptance is [m3-03](sprint-m3-03.md)'s first task, so runner code never waits on this sprint.
-> **Release action:** **infra PR(s) only.** The host-script PR merges before the window (the owner applies the scripts by hand in it). The CNPG 18.6 change, and the k3s pin change if v1.36.5 is GA, are pushed as **branches without a PR** (`chore/cnpg-18.6-host-window`, `chore/k3s-v1.36.5-host-window`); the window's runbook opens and merges their PRs (the same pattern as [mi-11](sprint-mi-11.md)'s N4 fallback), so this session leaves no open PR behind. The runbook and status ride an xlearn docs PR (merge only, no tag).
-> **Calendar:** week 4 (Sat 2026-10-17 → Fri 10-23), right after mi-08. Prepares the owner event **ev-host-window, Sat 2026-10-24** (BP4).
+> **Unblocks:** [mi-10](sprint-mi-10.md) (runner dark, MI-12) once the window has run. ADR-0030's acceptance is [m3-03](sprint-m3-03.md)'s first task, so runner code never waits on this sprint.
+> **Release action:** **infra PR(s) only.** The host-script PR merges before the window (the window session applies the scripts by hand in it). The CNPG 18.6 change, and the k3s pin change if v1.36.5 is GA, are pushed as **branches without a PR** (`chore/cnpg-18.6-host-window`, `chore/k3s-v1.36.5-host-window`); the window's runbook opens and merges their PRs (the same pattern as [mi-11](sprint-mi-11.md)'s N4 fallback), so this session leaves no open PR behind. The runbook and status ride an xlearn docs PR (merge only, no tag).
+> **Calendar:** week 4 (Sat 2026-10-17 → Fri 10-23), right after mi-08. Prepares **ev-host-window, Sat 2026-10-24** (BP4): a session launched that day runs this sprint's runbook, with approval to run it on its date pre-granted (D40). The owner's part comes before that launch: a Hostinger manual snapshot, and hPanel/VNC kept reachable.
 > **Execute with:** [`../prompts/prompt-mi-09.md`](../prompts/prompt-mi-09.md) — one prompt, one session.
 
 ## Status
@@ -23,8 +23,7 @@ _Overall:_ ⬜ Not started
 | 8 | k3s pin: v1.36.5 only if GA, held branch for the window | H | ⬜ |
 | 9 | infra README: host table, flags, Rebuild order (the DR runbook) | I | ⬜ |
 | 10 | Window runbook `docs/v2/runbooks/host-window-2026-10.md` | X | ⬜ |
-| 11 | Owner reviews the runbook (~15 min) | O | ⬜ |
-| 12 | Record | X | ⬜ |
+| 11 | Record | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + MI track row MI-11).
@@ -33,24 +32,25 @@ _Overall:_ ⬜ Not started
 ## Entry gates
 
 - [ ] [spk-01](sprint-spk-01.md) and [spk-02](sprint-spk-02.md) report **GO** (P0–P3 + image volume), and their results are in [t3](../research/t3-sandbox.md) §16.1–16.4 (the final host files verbatim, plus the MI-10 verdict)
-- [ ] The spike did **not** force R1b. R1b is a D21 move trigger: the runner goes to its own VPS (R2), and this window's sandbox block moves with it. If R1b, stop and report to the owner
+- [ ] The spike did **not** force R1b. R1b is a D21 move trigger: the runner goes to its own VPS (R2), and this window's sandbox block moves with it. If R1b, stop and report (a gate failure)
 - [ ] MI-0 done: the node runs the H0 kernel (≥ 6.8.0-142; it was still 6.8.0-90 on 2026-09-24) and `host-verify --cluster` was green after the reboot
 - [ ] [mi-02](sprint-mi-02.md) merged: `host-verify --cluster`, `--with-runner` and `--nats-stage=…` exist (the runbook calls them)
 - [ ] MI-11a merged, or batched into the same window ([mi-08](sprint-mi-08.md)). This gates the **window**, not this sprint
-- [ ] The window date is booked with the owner (**Sat 2026-10-24**), together with the spike week (ev-spike-goahead)
+- [ ] The window date is on the calendar: **Sat 2026-10-24** (`ev-host-window` in status.md)
 - [ ] Parallel sessions: no open peer PR in `../infra` touches `hack/`, `infrastructure/database/cluster/cluster.yaml` or the README host sections (`gh pr list -R sujaykumarsuman/infra`, `git worktree list`, ListAgents)
 
 ## Goal
 
-Turn the spike results into **scripted host changes** and a **runbook the owner executes** on Sat
-2026-10-24. The window is batched with MI-11a (BP4) and costs **one k3s restart and one PG restart**.
+Turn the spike results into **scripted host changes** and a **runbook that a window session executes** on
+Sat 2026-10-24 (launching that session on its date is the owner's approval, D40). The window is batched with
+MI-11a (BP4) and costs **one k3s restart and one PG restart**.
 It carries:
 - the **host sandbox block** ([ADR-0030 §5](../../adr/0030-runner-technology-and-host-hardening.md#5-host-and-cluster-hardening) step A6): sysctls, the containerd `judge` runtime drop-in, the `xlearn-runner` AppArmor and pod-level seccomp profiles, and the kubelet subuid/subgid range;
 - **L23** ([ADR-0035 §4](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#4-limits-inventory)): kubelet `system-reserved` 1 GiB, `eviction-hard memory.available<500Mi`, and a pod pid limit. The kubelet then evicts the lowest-priority pod (the runner, once it exists) before the kernel OOM killer picks a victim;
 - **CNPG 18.4 → 18.6**, and **k3s v1.36.5 only if it is GA** (Track B bumps folded into the same restarts).
 
 This sprint changes nothing on the live host. `ssh vps` stays read-only. It delivers merged scripts, held
-branches, a dry-run proof and a reviewed runbook.
+branches, a dry-run proof and a merged runbook.
 
 ## Scope
 
@@ -61,12 +61,14 @@ branches, a dry-run proof and a reviewed runbook.
 - CNPG `18.6-system-trixie` branch, and the k3s v1.36.5 pin branch only if GA. Both are pushed without a PR
   and held for the window.
 - The infra README host sections, including **Rebuild order** (the DR runbook; the infra repo has no separate `dr-runbook.md`).
-- The window runbook `docs/v2/runbooks/host-window-2026-10.md` (the owner executes it).
+- The window runbook `docs/v2/runbooks/host-window-2026-10.md` (the window session executes it).
 
 **Out**
-- **Executing the window**: owner event ev-host-window, Sat 2026-10-24.
+- **Executing the window**: ev-host-window, Sat 2026-10-24. A separate session launched that day runs the
+  runbook, and approval to run it on its date is pre-granted (D40). The owner's part is before that launch:
+  the Hostinger manual snapshot, and hPanel/VNC reachable.
 - **Accepting ADR-0030**: [m3-03](sprint-m3-03.md) task 1. This sprint notes divergences from t3 §8.7 in its PR only. The window intentionally applies the §5 host block on the spike GO while ADR-0030 is still Proposed ([status.md decisions log](../status.md#decisions-log)).
-- **MI-11a limit hygiene**: [mi-08](sprint-mi-08.md). The runbook merges mi-08's PRs in the window if they are still open; this sprint doesn't redo them.
+- **MI-11a limit hygiene**: [mi-08](sprint-mi-08.md). If mi-08 left them as pushed branches, the runbook opens and merges their PRs in the window; this sprint doesn't redo them.
 - **Runner deployment** (MI-12): [mi-10](sprint-mi-10.md). Runner caps and values live there, not on the host.
 - **Per-language exec seccomp allowlists** (Go, C++, Python, amd64): they ship **inside the runner image** ([m3-04](sprint-m3-04.md)). The host holds only the pod-level profile.
 - **`sandbox-guards`** (namespace, VAP, RuntimeClass, Quota, NetworkPolicies): [mi-14](sprint-mi-14.md).
@@ -193,7 +195,8 @@ runbook compares against:
 - `k3s crictl info` runtimes; the rendered `config.toml`; `configz`; node capacity and allocatable;
   `/etc/subuid` and `/etc/subgid`; the task 2 sysctls.
 - **The pid ceiling:** the maximum `pids.current` per pod under `/sys/fs/cgroup/kubepods.slice/`. If any pod
-  is above 2,048, raise `pod-max-pids` (or stop and ask) before the window.
+  is above 2,048, raise `pod-max-pids` above it before the window, and record the value and why in the
+  Decisions log.
 - **The memory picture:** `host-verify --cluster --with-runner` (from mi-02, after mi-08 if merged). Record
   `memory.available` today: after L23, eviction starts 500 Mi above the kernel OOM.
 - `host-bootstrap.sh --dry-run` **without** `--with-sandbox` plans nothing beyond what `main`'s copy plans.
@@ -235,9 +238,9 @@ runbook compares against:
 - MI-2's prune guard on the Cluster ([mi-01](sprint-mi-01.md)) is untouched.
 - Push it as the branch **`chore/cnpg-18.6-host-window`**, one conventional commit, **with no PR**. AGENT.md
   allows no open PR at session end, and a PR opened now couldn't be merged by this session anyway (the change
-  restarts PG, so it belongs in the window). Put the branch's compare link in the runbook so the owner reviews
-  the diff in task 11. The runbook's step 7 opens the PR from the branch and merges it (the owner, or an
-  agent session assisting in the window with the owner's go-ahead).
+  restarts PG, so it belongs in the window). Put the branch's compare link in the runbook. The runbook's
+  step 7 opens the PR from the branch and merges it: the window session does this, pre-approved by
+  launching it (D40).
 
 ### 8 · k3s pin: v1.36.5 only if GA, held branch for the window [H]
 
@@ -263,28 +266,41 @@ Same PR as tasks 2–4:
   snapshot restore rewinds the host files too, so after any R-d restore you re-run bootstrap and verify.
 - **Kernel reboot runbook**, step 1: flag that its off-node `pg_dumpall` conflicts with
   [ADR-0034 §4.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#43-snapshot-rule) (no off-node
-  dump in v2: PII off the node, bends D12). Leave the step as it is and ask the owner in the PR.
-  [mi-11](sprint-mi-11.md)'s monthly-window runbook records the owner's call.
+  dump in v2: PII off the node, bends D12). Leave the step as it is here, and flag the conflict in the PR
+  body and a Decisions-log line. [mi-11](sprint-mi-11.md)'s monthly-window runbook resolves it per
+  ADR-0034 §4.3 (D40: no owner answer to wait for).
 
 ### 10 · Window runbook `docs/v2/runbooks/host-window-2026-10.md` [X]
 
-The owner executes it (an agent session may assist). Every step gives the command, the expected output
+A session launched on Sat 2026-10-24 executes it, and the runbook doubles as that session's prompt.
+Launching it on its date is the owner's approval for every step (D40), the host writes, the k3s restart and
+the CNPG bump included. So the runbook opens with a **Before you launch (owner)** block:
+- the manual Hostinger snapshot is taken and has completed;
+- hPanel and the Hostinger VNC console are reachable;
+- the date of the last Hostinger weekly image is known and ≤ 7 days old; the owner gives it at launch.
+
+It ends with the uniform **Ship** section (land-and-sync). Every step gives the command, the expected output
 and a stop condition:
 
-0. **T−1 day:** runbook reviewed (task 11). Ready: mi-08's MI-11a PRs if still open, and the held branches
-   `chore/cnpg-18.6-host-window` and (if GA) `chore/k3s-v1.36.5-host-window`, rebased on `main` and still
-   lint-green. Copy scripts from `main`: `scp hack/host-bootstrap.sh hack/host-verify.sh vps:/root/`.
-1. **Pre-checks.** The last Hostinger weekly image is ≤ 7 days old. `host-verify --cluster` gives the baseline:
-   anything red now isn't the window's fault. No deploy or tag in flight (`flux get kustomizations`; peer
-   sessions paused).
-2. **Manual Hostinger snapshot**; wait until it completes. Keep the Hostinger VNC console open. **No
-   off-node `pg_dumpall`** ([ADR-0034 §4.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#43-snapshot-rule)).
-3. **Batched MI-11a** (only if mi-08's PRs are still open): merge them, then wait for Flux and the
+0. **Ready.** mi-08's MI-11a branches if not yet merged (open their PRs now and merge them in the window), and the held branches `chore/cnpg-18.6-host-window` and
+   (if GA) `chore/k3s-v1.36.5-host-window`, rebased on `main` and still lint-green. Copy scripts from `main`:
+   `scp hack/host-bootstrap.sh hack/host-verify.sh vps:/root/`. This node write, like every host step below,
+   is pre-approved by launching the window session (D40).
+1. **Pre-checks.** Record the weekly-image date the owner gave at launch (≤ 7 days old). `host-verify --cluster`
+   gives the baseline: anything red now isn't the window's fault. No deploy or tag in flight
+   (`flux get kustomizations`; peer sessions paused).
+2. **Snapshot and console (owner, before launch).** Launching the session attests the manual Hostinger
+   snapshot has completed and that hPanel/VNC are reachable. Record the snapshot time. If the snapshot turns
+   out to be missing, run nothing restart-inducing: record ⛔ in status.md, land that record, and the window
+   moves.
+   **No off-node `pg_dumpall`** ([ADR-0034 §4.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#43-snapshot-rule)).
+3. **Batched MI-11a** (only if mi-08 left its changes as pushed branches): open their PRs and merge them, then wait for Flux and the
    controller restarts.
    - **3b, always** (whether or not step 3 merged anything): `host-verify --cluster --with-runner` must show
      the memory sum inside the rule, about 0.9 GiB inside
      ([ADR-0035 §5](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#5-capacity-the-memory-sum-rule-triggers-and-ordered-responses)),
-     before any host file goes in. If it doesn't, stop. Record the numbers.
+     before any host file goes in. If it doesn't, stop before any host change: record the numbers and ⛔
+     in status.md, and land that record.
 4. **Host files:** `bash /root/host-bootstrap.sh --with-sandbox --dry-run`, then apply it. Sysctls and
    AppArmor are live now. The drop-in, the kubelet config and the subuid range wait for the restart.
 5. **One k3s restart:** (a) on v1.36.4, `systemctl restart k3s`; or (b) open the k3s pin PR from
@@ -303,9 +319,13 @@ and a stop condition:
      `restricted` label. If the new CNPG pod is refused (a `FailedCreate` event), revert mi-08's `databases`
      label PR first, then let CNPG retry.
 8. **`host-verify --cluster --expect-sandbox --nats-stage=<live>`** must be green. The live stage is `n3` if
-   [mi-06](sprint-mi-06.md) has run N3, else `n1` or `open`. Smoke-test login, the dashboard and coach.
+   [mi-06](sprint-mi-06.md) has run N3, else `n1` or `open`. Smoke-test the dashboard and coach. Test login
+   only through an already-signed-in browser session, since an agent never enters credentials. Otherwise
+   record "owner login smoke pending" in status.md and carry on.
 9. **Record** in `docs/v2/status.md`: MI-11 ✅; a window log line with the snapshot time, k3s version, CNPG
    image, memory-sum numbers, anything that restarted or was evicted, and the `configz` values.
+10. **Ship** (land-and-sync, D40). The held branches' PRs are already merged (steps 5b and 7). Merge the
+    status docs PR, then run `git checkout main && git pull` in xlearn and `../infra`.
 
 **Rollback**
 - **Host files:** the runbook lists the exact commands: `rm` the drop-ins and profiles, `apparmor_parser -R`,
@@ -316,15 +336,12 @@ and a stop condition:
 - **Worst case:** R-d, the snapshot restore, in the [ADR-0034 §4.2](../../adr/0034-v2-release-labelling-gating-and-rollback.md#42-r-d-is-a-procedure-not-a-button)
   order. The restore rewinds the host files too.
 
-### 11 · Owner reviews the runbook [O]
-
-The owner reads the runbook (~15 min) before 10-24 and confirms the snapshot and VNC plan, the k3s
-decision (task 8) and the `pg_dumpall` question (task 9). Approve, or request changes.
-
-### 12 · Record [X]
+### 11 · Record [X]
 
 In `docs/v2/status.md`:
 - the MI track MI-11 row: "prepared", with the PR numbers, and the window booked for 2026-10-24;
+- the `ev-host-window` row: a session runs the runbook on 2026-10-24. Before launching it, the owner takes
+  the manual Hostinger snapshot and keeps hPanel/VNC reachable;
 - the Sprint board row;
 - Decisions log lines: `config.yaml.d` vs `config.yaml`, `--with-sandbox`/`--expect-sandbox`,
   `SANDBOX_CONTAINERD_MODE` (drop-in or `.tmpl`), the k3s decision, the caps list handed to mi-10, and any divergence from t3 §8.7;
@@ -338,31 +355,33 @@ In `docs/v2/status.md`:
 - [ ] `hack/host-lint.sh` green: shared constants identical; heredoc = constant = BOM hash for every artefact; shellcheck clean; mi-02's read-only lint still passes
 - [ ] On the live node, **without** `--with-sandbox`, the PR branch's `host-bootstrap.sh --dry-run` plans nothing beyond `main`'s copy (the two outputs diff empty), and `host-verify --cluster` is unchanged (sandbox: INFO only)
 - [ ] The CNPG 18.6 branch (and the k3s pin branch, if GA) is pushed with no PR, lint-green, and linked from the runbook
-- [ ] Runbook reviewed by the owner before 10-24
+- [ ] The runbook is merged before 10-24, with its before-launch block (snapshot, hPanel/VNC, weekly-image date) and its Ship ending
 - [ ] The infra README host table, flags and Rebuild order are updated
 
 ## Release
 
-**Infra PR(s) only.**
+**Infra PR(s) only.** Launching the prompt is the owner's approval for all of it (D40); nothing waits on the
+owner.
 1. The host-script PR (tasks 2–4 + 9) **merges before the window**. Flux doesn't apply `hack/`, so merging
-   changes nothing on the cluster. The owner copies the scripts from `main` in the window.
+   changes nothing on the cluster. The window session copies the scripts from `main` (runbook step 0).
 2. The CNPG 18.6 change and the k3s pin change (if GA) are pushed as **branches without a PR**
-   (`chore/cnpg-18.6-host-window`, `chore/k3s-v1.36.5-host-window`). The window opens and merges their PRs at
-   runbook steps 7 and 5b, so this session leaves no open PR behind (AGENT.md), the same pattern as
-   [mi-11](sprint-mi-11.md)'s N4 fallback branch.
+   (`chore/cnpg-18.6-host-window`, `chore/k3s-v1.36.5-host-window`). The window session opens and merges
+   their PRs at runbook steps 7 and 5b, so this session leaves no open PR behind (AGENT.md), the same pattern
+   as [mi-11](sprint-mi-11.md)'s N4 fallback branch.
 3. The xlearn docs PR (runbook + status) merges; `main` is build-only, so no tag and no deploy.
 
 ## Definition of Done
 
 Host-script PR merged with lint green · the dry run recorded in the PR · held branches pushed (no PR) and recorded in status.md ·
-runbook merged and owner-reviewed · statuses updated (this file + [`../status.md`](../status.md)) ·
+runbook merged · statuses updated (this file + [`../status.md`](../status.md)) ·
 nothing applied to the live host by the agent · no `kubectl apply` · no alert, timer or CronJob added (D34).
 
 ## Risks / watch-outs
 
 - **If the spike ended on nsjail or R1-U**, the profile and drop-in differ from t3 §8.7. mi-09 must use the
   spike's final files (task 1), not the research draft.
-- **One k3s restart and one PG restart:** snapshot first. A restore rewinds the host too.
+- **One k3s restart and one PG restart:** snapshot first (the owner's before-launch item for the window
+  session). A restore rewinds the host too.
 - **The drop-in could stop merging.** A k3s upgrade that renames `config-v3.toml.d` or drops the `imports`
   line would leave the `judge` runtime silently missing. The verify check fails loudly, and task 6
   dry-runs the exact pin.

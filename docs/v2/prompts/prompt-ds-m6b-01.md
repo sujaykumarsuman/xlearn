@@ -2,11 +2,12 @@
 
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-ds-m6b-01.md`](../sprints/sprint-ds-m6b-01.md)   ·   **Milestone:** M6b (design track)   ·   **Prereqs:** [ds-m6a-01](../sprints/sprint-ds-m6a-01.md), [ds-m6a-02](../sprints/sprint-ds-m6a-02.md), [spk-04](../sprints/sprint-spk-04.md)
+> **Design sprint: the board PR merges on CI green, and the merge is the freeze ([D40](../feasibility.md#decisions-log-newest-first)). Nothing waits on the owner.**
 
 ## Read first
 
-- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — conventions. **This sprint overrides the
-  land-and-sync directive:** it ends at an open PR and never merges (BP3, design sprints).
+- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — conventions, including land-and-sync,
+  which this sprint follows (D40): see **Ship** at the end.
 - The plan: [`../sprints/sprint-ds-m6b-01.md`](../sprints/sprint-ds-m6b-01.md) — the frame tables (AB29 F1–F14 incl. F5a–F5d,
   AB30 F1–F19), file names, copy and the "Decisions to confirm" list are spelled out there. Follow them exactly.
 - [`../rollout-plan.md`](../rollout-plan.md) [§9 Artboards by milestone](../rollout-plan.md#9-artboards-by-milestone) (M6b row, freeze
@@ -42,7 +43,9 @@ in **Chrome/Edge only**, is **not offered to EU/EEA accounts**, needs an **OpenA
 and every interview carries a **mandatory $ cap** (wrap-up at 85%). The AI follows the on-screen widgets (D29) and never sees the
 learner — self-view is local and off by default. The rollout freeze rule says AB29–AB30 are frozen before M6b, and
 [m6b-01](../sprints/sprint-m6b-01.md)'s entry gate requires the freeze. The owner decided (BP3, 2026-09-24) that agents draft every
-v2 board — the AB30 hero included — and the owner only reviews. No `web/` code here; boards are preview-only static HTML. AB29/AB30
+v2 board — the AB30 hero included — and (D40, 2026-09-25) that launching this prompt is the owner's approval: the board PR merges on
+CI green and the merge is the freeze; the owner may review afterwards (a change to a frozen board is a follow-up design PR). No
+`web/` code here; boards are preview-only static HTML. AB29/AB30
 draw only the **voice deltas**: text setup/consent is AB24, the text HUD AB25, grace/paused/resume AB26, debrief/proposal AB27.
 
 ## Entry gates — verify first (stop and report if any is unmet)
@@ -50,7 +53,7 @@ draw only the **voice deltas**: text setup/consent is AB24, the text HUD AB25, g
 - [ ] The S6 results note exists ([spk-04](../sprints/sprint-spk-04.md)): winning shell, browser gate list, M7, M3b, captions path, M9.
       If the S6 decision was "both fail" (voice deferred 3 months), **stop and report** — there is nothing to design yet.
 - [ ] [ADR-0032](../../adr/0032-realtime-ai-mock-interviewer.md) reads **Accepted** ([ds-m6a-01](../sprints/sprint-ds-m6a-01.md)).
-- [ ] AB24–AB28 are on `main` (frozen by the owner via [ds-m6a-01](../sprints/sprint-ds-m6a-01.md) / [ds-m6a-02](../sprints/sprint-ds-m6a-02.md)).
+- [ ] AB24–AB28 are on `main` (frozen: [ds-m6a-01](../sprints/sprint-ds-m6a-01.md) / [ds-m6a-02](../sprints/sprint-ds-m6a-02.md) merged).
 - [ ] Parallel sessions: `gh pr list --state open`, `git worktree list`, ListAgents — no open PR adds or edits
       `design-system/screens/v2/AB29-*` or `AB30-*`. If one does, stop and report.
 - _Informational:_ if `design-system/screens/v2/index.html` is on `main`, use the file names it links for AB29–AB30 and link `board.css`;
@@ -87,24 +90,26 @@ draw only the **voice deltas**: text setup/consent is AB24, the text HUD AB25, g
    `segment`, `cap`, `notice` — incl. `notice{idle_check}`),
    its decision ref, a11y (focus order, contrast, `aria-live` only for phase changes and the grace warning, icon + text indicators,
    reduced motion, shortcuts) and the `< 1024 px` intent. Every board ends with a 390 px section.
-6. **[X] Self-review** — walk each frame against its decision (D27, D29, D30, D31, D34, ADR-0032 §3–§6) and the rollout §9 M6b row. Run the
+6. **[X] Self-review checklist (before merging; nothing waits on the owner)** — check `theme.css` is linked verbatim (then
+   `board.css`; `--ds-*` tokens only, no new colours, no `ds-*`/`xl-*` override; difficulty tokens); walk each frame against its
+   decision (D27, D29, D30, D31, D34, ADR-0032 §3–§6) and the rollout §9 M6b row. Run the
    checks: **no video to the AI** anywhere; **no score, band or delivery metric on the HUD**; no comment on tone, accent or emotion; no
    pattern chip, reference solution, unreleased hint, hidden test or rubric anchor; every "no voice" notice offers text; the consent
-   discloses in-memory audio through xLearn; no copy implying anyone was alerted. Fix, then re-check.
+   discloses in-memory audio through xLearn; no copy implying anyone was alerted. Fix, then re-check. The ticked checklist goes
+   in the PR body.
 7. **[X] Screenshots** — serve statically (e.g. `python3 -m http.server 5198 --directory design-system`, or open from disk) and capture
    each board full-page at **1440 px** and **390 px** (Browser pane `resize_window` + screenshot, or headless Chrome
    `--headless=new --screenshot=… --window-size=1440,900`). Save to `design-system/screens/v2/shots/AB29@1440.png`, `AB29@390.png`,
    `AB30@1440.png`, `AB30@390.png`, each ≲ 500 KB.
-8. **[X] Sprint file** — in `docs/v2/sprints/sprint-ds-m6b-01.md` set tasks 1–4 ✅, task 5 🔄 "PR #N open — awaiting owner review",
-   _Overall_ 🔄. **Do not edit `docs/v2/status.md`.**
-9. **[X] Commit + PR, then STOP** — conventional commit `docs(design): AB29 AB30 — M6b voice boards` ending with the attribution lines;
-   push; open the PR titled `docs(design): AB29 AB30 ★ — M6b voice boards` with each board's frame list, the screenshots embedded via
-   `https://github.com/sujaykumarsuman/xlearn/blob/design/ds-m6b-01/design-system/screens/v2/shots/<file>?raw=true`, and **"Decisions to
-   confirm"** (at least: no live spend meter on the HUD per t6 §8 vs the brief's "cost meter vs $ cap"; all five consent boxes required;
-   the shortcuts; push-to-talk switchable mid-call; voice on narrow screens; the region wording and where "Confirm your region" leads;
-   the transcript self-edit step placed before AB27; the mic-loss 30 s timing vs t6's 10 s; the voice-only idle pre-warning vs AB25 F12;
-   the `cap_reached` actions; the daily limit pausing mid-interview; any divergence from AB24–AB28/AB19).
-   **Do not merge. Do not enable auto-merge.** Report the PR link and stop. Requested changes go on the same branch.
+8. **[X] PR body** (for **Ship** step 1) — each board's frame list, the screenshots embedded via
+   `https://github.com/sujaykumarsuman/xlearn/blob/design/ds-m6b-01/design-system/screens/v2/shots/<file>?raw=true`, the ticked
+   self-review checklist, and **"Decisions to confirm"** (at least: no live spend meter on the HUD per t6 §8 vs the brief's "cost
+   meter vs $ cap"; all five consent boxes required; the shortcuts; push-to-talk switchable mid-call; voice on narrow screens; the
+   region wording and where "Confirm your region" leads; the transcript self-edit step placed before AB27; the mic-loss 30 s timing
+   vs t6's 10 s; the voice-only idle pre-warning vs AB25 F12; the `cap_reached` actions; the daily limit pausing mid-interview; any
+   divergence from AB24–AB28/AB19), each stating the default the merge freezes (the boards as drawn). The list never blocks the
+   merge; the owner may revisit any item afterwards through a follow-up design PR.
+9. **[X] Land it** — run **Ship** below: PR, merge on CI green (the freeze), status, sync.
 
 ## Constraints
 
@@ -113,29 +118,30 @@ draw only the **voice deltas**: text setup/consent is AB24, the text HUD AB25, g
 - **`theme.css` verbatim:** link `../../theme.css`; never copy, fork or override `ds-*`/`xl-*` rules. Dark theme only. Difficulty tokens
   Easy=`--ds-ok`, Medium=`--ds-warn`, Hard=`--ds-err`. Board layout CSS uses `--ds-*` tokens only.
 - **Static HTML:** no JS runtime, no `support.js`, no `.dc.html` canvas markup. Fonts via the Google Fonts `<link>` only.
-- **Touch only this sprint's files:** the two boards and their four screenshots. Never edit `index.html` or `board.css` (written once by
-  ds-m1-01) or another sprint's board.
+- **Touch only this sprint's files:** the two boards, their four screenshots, this sprint's plan file and this sprint's own rows in
+  `docs/v2/status.md` (Update status). Never edit `index.html` or `board.css` (written once by ds-m1-01) or another sprint's board.
 - **Decisions on screen:** D29 (no video to the AI; self-view local and off by default), ADR-0032 §5 (no score live; debrief content-only
   and brain-authored), §6 (Chrome/Edge, EU/EEA off, Anthropic → text, cap mandatory), D34 (no alert promises), D31 (nothing public).
 - **One shell:** draw the S6 winner; the other shell is at most one aside line.
 - **Final copy:** real strings with the real error codes; no placeholder text.
-- **No `status.md` edit** from a design PR; [m6b-01](../sprints/sprint-m6b-01.md) records the freeze.
-- **Parallel sessions:** check peers' open PRs and worktrees before creating the board files. The memory-sum rule, GitOps and the
-  release checklist are not in play: nothing here runs in the cluster.
+- **Parallel sessions:** check peers' open PRs and worktrees before creating the board files; rebase on `origin/main` before the
+  status commit and keep other sessions' `status.md` rows. The memory-sum rule, GitOps and the release checklist are not in play:
+  nothing here runs in the cluster.
 
 ## Deliverables
 
 - `design-system/screens/v2/AB29-voice-preflight-notices.html`, `AB30-voice-live-hud.html`.
 - `design-system/screens/v2/shots/AB29@{1440,390}.png`, `AB30@{1440,390}.png`.
-- An open PR (not merged) with frame lists, screenshots and "Decisions to confirm".
+- The PR, **merged on CI green** (the freeze), with frame lists, screenshots, the ticked self-review checklist and "Decisions to confirm".
 
 ## Update status
 
-- `docs/v2/sprints/sprint-ds-m6b-01.md` Status table in the PR: tasks 1–4 ✅, task 5 🔄 (PR #), _Overall_ 🔄.
-- **Not** `docs/v2/status.md`: [m6b-01](../sprints/sprint-m6b-01.md) flips the AB29–AB30 Artboards rows to "frozen (PR #, date)", sets this
-  sprint ✅ on the Sprint board and ticks owner event `ev-freeze-ds-m6b-01` once the owner has merged.
-- No ADR expected. If you resolve a real ambiguity (e.g. the live spend meter), list it under "Decisions to confirm" in the PR for the
-  owner rather than writing an ADR.
+In the board PR — a last commit once the PR number is known, before the merge — or in a follow-up docs PR merged the same way:
+- `docs/v2/sprints/sprint-ds-m6b-01.md`: tasks 1–6 ✅ (task 6: "frozen: merged in PR #N, <date>"), _Overall_ ✅.
+- `docs/v2/status.md`: mark the sprint ✅ (ds-m6b-01's Sprint-board row) and the boards ✅ **"frozen (merged, PR #N, <date>)"**
+  (Artboards rows AB29, AB30); update the Snapshot's artboard count (`ev-freeze-ds-m6b-01` is automatic: no tick).
+- No ADR expected. If you resolve a real ambiguity (e.g. the live spend meter), list it under "Decisions to confirm" with the
+  default you froze, rather than writing an ADR.
 
 ## Done when (acceptance)
 
@@ -144,7 +150,21 @@ draw only the **voice deltas**: text setup/consent is AB24, the text HUD AB25, g
 - [ ] No frame shows video going to the AI, a score or delivery metric on the HUD, or withheld item data; every "no voice" notice keeps
       text one click away; the consent frame discloses in-memory audio through xLearn's server.
 - [ ] Boards open with no JS runtime; `theme.css` is linked, not copied; only the two board files and their screenshots are added.
-- [ ] PR open with 1440 px and 390 px screenshots of each board and "Decisions to confirm"; **not merged by the agent**.
+- [ ] The self-review checklist passed and is ticked in the PR body, with "Decisions to confirm" (each item's frozen default stated).
+- [ ] PR **merged on CI green** (the freeze) with 1440 px and 390 px screenshots of each board; the sprint file and
+      `docs/v2/status.md` show ds-m6b-01 ✅ and AB29, AB30 "frozen (merged)"; local `main` synced.
 
-Shipping: **design sprint — open the PR and STOP for owner review.** This overrides AGENT.md's end-of-session land-and-sync: do not
-merge, do not enable auto-merge, do not tag. The owner's merge (or explicit approval in chat) is the freeze.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. **Branch, commit, push, PR** — this repo only (a design sprint touches no `../infra`). On `design/ds-m6b-01` (step 1):
+   conventional commit `docs(design): AB29 AB30 — M6b voice boards` ending with the attribution lines; push; open the PR titled
+   `docs(design): AB29 AB30 ★ — M6b voice boards` with the body from step 8.
+2. **Merge on green** — once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — design: the merge is the freeze; no tag.** Nothing deploys (boards are preview-only). The owner may review
+   after the merge; any change to a frozen board is a follow-up design PR.
+4. **Update status** — as in "Update status" above (sprint ✅, AB29/AB30 "frozen (merged)"), in the same PR (a last commit before
+   step 2's merge) or a follow-up docs PR merged the same way.
+5. **Sync** — `git checkout main && git pull`. If a clean peer worktree holds `main`, use
+   `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

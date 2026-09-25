@@ -9,7 +9,7 @@
 > HelmRelease/policy**; PR B (the `coach-interview` HelmRelease with its own chart-rendered NetworkPolicy, its pinned ImagePolicy and the
 > routing switch) merged **after** it ([m6b-03](sprint-m6b-03.md)'s entry gate needs that Deployment live and routed). This conditional tag
 > is a deliberate deviation from the register's "merge only (+ infra PR only if M7 failed)" — see Release
-> **Calendar:** Q1 2027 · no owner event (an optional live restart check on the owner's key, only with his go-ahead in chat, ≈ $0.20)
+> **Calendar:** Q1 2027 · no owner event (an optional live restart check on the owner's key, ≈ $0.20: pre-approved by launching the prompt (D40), and run only if the owner saved his OpenAI key in the local compose stack before launch)
 > **Execute with:** [`../prompts/prompt-m6b-02.md`](../prompts/prompt-m6b-02.md) — one prompt, one session.
 
 ## Status
@@ -234,7 +234,9 @@ If S6 recorded **M7 pass**, mark rows 7a–7e ✅ "n/a — M7 passed" and skip t
 "If M7 fails"; [ADR-0032 §2](../../adr/0032-realtime-ai-mock-interviewer.md#2-architecture)), in this order — each row its own PR or tag.
 xlearn's NetworkPolicies are **chart-rendered per release** from `apps/xlearn-*.yaml` ([mi-03](sprint-mi-03.md) MI-5a,
 [mi-11](sprint-mi-11.md) MI-15), and chart `networkPolicy.enabled` defaults to `false`: so `coach-interview`'s **own** ingress/egress can
-only be born with its HelmRelease (PR B), while every **peer's** side changes first (PR A).
+only be born with its HelmRelease (PR B), while every **peer's** side changes first (PR A). The signed-in smoke checks in 7b–7d use an
+already-signed-in browser session if the session has one (the agent never enters credentials); otherwise record "owner login smoke
+pending" as a pending-smoke note in status.md and carry on.
 
 **7a · X — role code (merged with this sprint's PR)**
 - `cmd/coach`: `COACH_ROLE ∈ {all (default, today's behaviour), core, interview}`. `interview` serves `/interviews/*` and

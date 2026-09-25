@@ -4,7 +4,7 @@
 > **Prereqs:** [mi-11](sprint-mi-11.md) (MI-15: coach egress policy) · [spk-04](sprint-spk-04.md) (S6 result) · [m6a-06](sprint-m6a-06.md) (M6a shipped dark in a v2.0.x patch)
 > **Unblocks:** [m6b-01](sprint-m6b-01.md) (entry gate: "the 20 s SDP route exists on prod")
 > **Release action:** **tag a `v2.0.x` patch** (MI-16 gateway parts only; the next free patch, [ADR-0034 §1.1](../../adr/0034-v2-release-labelling-gating-and-rollback.md#11-scheme)) **+ infra PR(s)**, merged first and never folded into the tag
-> **Calendar:** Q1 2027, before M6b (after [ds-m6b-01](sprint-ds-m6b-01.md) opens its PR, before [m6b-01](sprint-m6b-01.md)) · no calendar event; **one ~2-minute owner step** at task 7 (the signed-in `fetch` on prod — agents don't enter passwords)
+> **Calendar:** Q1 2027, before M6b (after [ds-m6b-01](sprint-ds-m6b-01.md) lands, before [m6b-01](sprint-m6b-01.md)) · no calendar event; no mid-run owner step (before launch, the owner's account has an OpenAI key saved for task 6's smoke; task 7's signed-in `fetch` uses an already-signed-in browser session, or is recorded as "owner login smoke pending" — agents never enter passwords)
 > **Execute with:** [`../prompts/prompt-mi-13.md`](../prompts/prompt-mi-13.md) — one prompt, one session.
 
 ## Status
@@ -34,6 +34,7 @@ _Overall:_ ⬜ Not started
 - [ ] **S6 result known** ([spk-04](sprint-spk-04.md)): chosen shell, M7 deploy shape, M8 coach memory, browser list, and whether the harness page connected under `connect-src 'self'`; [ADR-0032](../../adr/0032-realtime-ai-mock-interviewer.md) Accepted ([ds-m6a-01](sprint-ds-m6a-01.md))
 - [ ] **M6a shipped dark** ([m6a-06](sprint-m6a-06.md)): its `v2.0.x` patch is live, so the gateway's `/api/interviews/*` proxy, its cohort gate and `coach admin interviews --live` exist
 - [ ] **Post-GA release line** ([ga-02](sprint-ga-02.md)): `.release-line` = `2`; every `xlearn-*` range `>=1.0.0 <3.0.0`
+- [ ] **Weekly image fresh** (owner, before launch): the last Hostinger weekly image in hPanel is ≤ 7 days old, since the coach-sizing PR restarts coach ([rollout §2.2](../rollout-plan.md)); if not, that PR is ⛔ and the rest lands
 - [ ] **Memory-sum margin read:** `host-verify --cluster` shows ≥ the coach resize's cost + 0.05 GiB inside the rule (cost = 2 × (S6 M8 memory limit − 128 Mi), limits + surge term; **≥ 0.3 GiB** at the default 256 Mi)
 - [ ] **Parallel sessions:** no open peer PR on the gateway's security headers or interview routes, `../infra/apps/xlearn-coach.yaml`, the sibling HelmReleases or `../infra/charts/project` (`gh pr list` in both repos, `git worktree list`, ListAgents)
 
@@ -206,8 +207,9 @@ The provider sideband is an outbound `wss://` connection on **TCP 443** ([t6 §3
 [mi-11](sprint-mi-11.md)'s MI-15 policy gives coach TCP 443 to non-cluster addresses (for the BYO providers).
 Read the rendered policy (`k3s kubectl get networkpolicy -n xlearn -o yaml`): if coach already has 443 to
 `0.0.0.0/0` minus the cluster ranges, record "covered by MI-15 (infra#N)" and make **no change**; if it is narrower,
-extend it to that block in its own PR. Smoke: the owner's coach chat on an OpenAI key succeeds (coach →
-`api.openai.com:443` under the policy). A `coach-interview` Deployment's egress, if ever needed, is [m6b-02](sprint-m6b-02.md)'s.
+extend it to that block in its own PR. Smoke: a coach chat on the owner's OpenAI key (saved before launch) succeeds (coach →
+`api.openai.com:443` under the policy), in an already-signed-in browser session; without one, record "owner login smoke
+pending" in status.md and carry on. A `coach-interview` Deployment's egress, if ever needed, is [m6b-02](sprint-m6b-02.md)'s.
 
 ### 7 · Tag the `v2.0.x` patch + verify [X + H]
 
@@ -215,9 +217,10 @@ After the infra PRs (tasks 4–6) are merged and reconciled and the xlearn PR (t
 green: run the release checklist below, tag the **next free `v2.0.N`** (`git ls-remote --tags origin 'refs/tags/v2.0.*'`),
 GitHub release title `v2.0.N — v2.1 build · MI-16 voice gates`. Then the MI-16 checks on prod:
 - `curl -sI https://projects.sujaykumar.dev/xlearn/` → `permissions-policy: camera=(self), microphone=(self)` and the CSP unchanged; siblings → the deny (task 4).
-- **SDP route live** (a ~2-minute owner step — agents don't sign in on prod): the owner, signed in, runs in DevTools
+- **SDP route live** (a signed-in check — agents never enter credentials): in an already-signed-in browser session, run in DevTools
   `fetch('/xlearn/api/v1/interviews/<nonexistent-id>/segments', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{"sdp":"v=0"}'}).then(async r => [r.status, r.headers.get('content-type'), await r.text()])`
-  and pastes the result. Expect **404 from coach** — today coach's default mux answers `text/plain` `404 page not found`
+  and record the result. Without a signed-in session, record "owner login smoke pending: SDP route `fetch`" in status.md
+  and carry on with the credential-free checks below. Expect **404 from coach** — today coach's default mux answers `text/plain` `404 page not found`
   (its handler lands in m6b-01) — **not** the gateway's typed JSON `not_found` (which would mean the cohort gate or the
   route missed). The proof is the read-only coach access log, which tells the two apart even if m6a gave coach a typed
   404: `ssh vps 'k3s kubectl logs -n xlearn deploy/xlearn-coach --since=5m' | grep '/segments'` shows
@@ -242,9 +245,9 @@ Traefik's args — the SDP route needs every layer at ≥ 20 s.
 
 - [ ] Every non-xLearn router that serves a document — chart-rendered (airlift, projects-hub, landscape, kubescope) and raw (Longhorn UI, mi-04's `airlift-admin`/`airlift-admin-block`, `kubescope-route` if present, any newer sibling) — answers `Permissions-Policy: camera=(), microphone=()` (redirect-only `ops-redirects` recorded n/a); the mechanism (0.3.0 knob, or the recorded 0.3.x exception) is in the decisions log; xLearn documents answer `camera=(self), microphone=(self)` (self only)
 - [ ] CSP unchanged — `script-src 'self'`, `connect-src 'self'` (no provider origin, no `wss:`), no `webrtc` directive — and the compose loopback check connects with zero CSP violations
-- [ ] `POST /xlearn/api/v1/interviews/{id}/segments` is live on prod: cohort-only, 20 KiB cap (typed 413), **20 s** budget (typed 504), no retry, SDP never logged; the owner's signed-in fetch gets coach's 404 (plain text) and coach's access log shows the request; signed out → 401; the prod timeout audit finds nothing on the path below 20 s
+- [ ] `POST /xlearn/api/v1/interviews/{id}/segments` is live on prod: cohort-only, 20 KiB cap (typed 413), **20 s** budget (typed 504), no retry, SDP never logged; a signed-in fetch gets coach's 404 (plain text) and coach's access log shows the request (or it's recorded as owner login smoke pending); signed out → 401; the prod timeout audit finds nothing on the path below 20 s
 - [ ] coach runs S6 M8's limits (default 500m / 256 Mi), grace 60 s, rollingUpdate 1/0; `host-verify --cluster` memory sum inside the rule (numbers recorded)
-- [ ] coach egress admits TCP 443 to non-cluster addresses (MI-15 confirmed or extended); the owner's coach chat works
+- [ ] coach egress admits TCP 443 to non-cluster addresses (MI-15 confirmed or extended); a coach chat on the owner's OpenAI key works (or it's recorded as owner login smoke pending)
 - [ ] `v2.0.N` tagged with the release checklist and verified; no interviewer behaviour change
 
 ## Release

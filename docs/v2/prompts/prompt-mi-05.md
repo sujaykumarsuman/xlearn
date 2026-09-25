@@ -188,8 +188,12 @@ Stop and report if any gate is unmet.
 - [ ] `make nats-acl-test` and CI `nats-acl` are green on NATS 2.14: the allowed and denied matrix for 6 services plus ops, and the N1/N3/N4 `legacy` stages.
 - [ ] No behaviour change: unit, e2e, web and `sqlc diff` are green.
 
-**Ship at session end** per AGENT.md land-and-sync, with this sprint's release action, **merge only (ships dark in v1.6.0)**:
-1. Commit with conventional commits (for example `feat(events): N0 topology, ACL render, dead letters, nkey client options (MI-6)`), including the required attribution lines.
-2. Push, open the PR, and wait for CI green, `nats-acl` included. On a failure, fix and then merge.
-3. Squash-merge. **Don't tag.** m1-02 cuts v1.6.0.
-4. `git checkout main && git pull`.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: `feat/mi-05-nats-n0` in xlearn only (for example `feat(events): N0 topology, ACL render, dead letters, nkey client options (MI-6)`).
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. CI includes the new `nats-acl` job.
+3. **Release action — merge only (ships dark in v1.6.0):** Nothing deploys; it ships in `v1.6.0` (cut by [m1-02](../sprints/sprint-m1-02.md)). Don't tag. No infra PR here.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn only). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

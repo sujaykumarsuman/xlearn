@@ -29,7 +29,7 @@ _Overall:_ ⬜ Not started
 ## Entry gates
 
 - [ ] **spk-01 and spk-02 report GO** and a mechanism is chosen: [t3 §16.1–§16.4](../research/t3-sandbox.md) exist on `main`, and §16.4 reads "Spike P0–P3 GO" with the jail mechanism named (go-sandbox `forkexec.Runner`, or the nsjail `--disable_clone_newuser` fallback, R1-N).
-- [ ] **No open owner decision from the spike.** If P1 fell through to R1-U or R1b, those are owner decisions (R1b is a D21 trigger that moves the runner to R2). They must be recorded in `docs/v2/status.md` before this sprint starts.
+- [ ] **No open "needs owner decision" gate from the spike** (D40). If P1 fell through to R1-U or R1b, those are owner decisions (R1b is a D21 trigger that moves the runner to R2): the spike records the options and marks the gate ⛔ in `docs/v2/status.md`. The decision must be recorded there before this sprint starts; if it isn't, this gate is unmet (stop and report).
 - [ ] **ADR-0030 is still Proposed** and no peer PR edits it (`gh pr list --search 0030`, `git worktree list`, ListAgents). Task 1 accepts it; [mi-09](sprint-mi-09.md) and the spikes deliberately left it alone.
 - [ ] **The amd64 per-profile allowlists are in t3 §16.2** as sorted syscall-name lists (at least `go`). Task 7's test profile uses the `go` list; the `cpp` and `python` lists go to [m3-04](sprint-m3-04.md).
 - [ ] **No open peer PR touches** `cmd/runner`, `internal/runner`, `internal/platform/runnerapi` or `go.mod`'s go-sandbox line.
@@ -50,7 +50,7 @@ The language profiles and harness codecs are [m3-04](sprint-m3-04.md); the image
 ## Scope
 
 **In**
-- ADR-0030 → **Accepted** (task 1; BP2). The spike's results table and the chosen mechanism go into the ADR; ADR-0035 §6's amendments are folded into ADR-0030 §5.
+- ADR-0030 → **Accepted** (task 1; BP2), in this session on the spike GO, with no owner sign-off (D40). The spike's results table and the chosen mechanism go into the ADR; ADR-0035 §6's amendments are folded into ADR-0030 §5.
 - `cmd/runner` (spawner, front, canary) and `internal/runner/...`.
 - The jail per the spike: go-sandbox `forkexec.Runner` without `CLONE_NEWUSER`, or nsjail `--disable_clone_newuser` if §16.4 chose R1-N.
 - Per-case cgroups, outside measurement and the L14 caps ([ADR-0035 §4](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#4-limits-inventory)).

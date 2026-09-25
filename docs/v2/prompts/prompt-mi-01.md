@@ -118,7 +118,7 @@
    - Watch read-only until `k3s kubectl get hr -A` shows all 15 Ready and the 11 chart Deployments carry `helm.sh/chart: project-0.3.0`.
    - Diff the pod snapshot: **it must be identical**. If any pod rolled, revert immediately (`git revert`, PR, merge) and report.
 
-5. **[H] Verify the host:** `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh`, which writes nothing on the node. Don't `scp` to `/root`: refreshing the node copy is the owner's call. Expect no FAIL.
+5. **[H] Verify the host:** `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh`, which writes nothing on the node. Don't `scp` to `/root`: that's a node write this prompt doesn't specify, and [mi-02](../sprints/sprint-mi-02.md) refreshes the node copy. Expect no FAIL.
 
 6. **[X] Record** (branch `docs/mi-01-status` in this repo):
    - [`../sprints/sprint-mi-01.md`](../sprints/sprint-mi-01.md): task rows ✅ and _Overall_ ✅;
@@ -167,8 +167,13 @@
 - [ ] After the MI-3 merge, all 15 HelmReleases are Ready, the 11 chart releases are on `project-0.3.0`, and **no pod restarted**.
 - [ ] `host-verify --cluster` shows no FAIL.
 - [ ] `docs/v2/status.md` shows MI-2 and MI-3 ✅ with their PR numbers.
-- Ship at session end per AGENT.md land-and-sync, with this sprint's release action: **infra PR(s) only**.
-  - Merge MI-2, then MI-3, yourself, with the local check output in each PR body (infra has no CI).
-  - Merge the xlearn status docs PR.
-  - No tag.
-  - Sync local `main` in both repos.
+
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: `chore/mi-2-prune-guard` and `feat/mi-3-chart-0.3.0` in `../infra`, then `docs/mi-01-status` in xlearn.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. infra has no CI: paste the local checks into each PR body and merge on them.
+3. **Release action — infra PR(s) only:** Merge the infra PRs in the plan's order (each its own PR, never folded into a tag): MI-2 first, then MI-3 (a rolled pod means revert, per step 4), then the xlearn docs/status PR. No tag. Run `host-verify --cluster` after both reconciles (step 5).
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn and `../infra`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

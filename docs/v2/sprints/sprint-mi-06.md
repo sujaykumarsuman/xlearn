@@ -13,12 +13,12 @@ _Overall:_ ⬜ Not started
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Generate the nkeys (four service seeds → SOPS, agent in-session; ops seed offline, owner only) | O + I | ⬜ |
+| 1 | Generate the nkeys (four service seeds → SOPS, agent in-session; the ops public key comes from the owner, generated offline before launch) | I | ⬜ |
 | 2 | Local rehearsal of the N1 / N3 server config (NATS 2.14.6) | H | ⬜ |
 | 3 | **N1** PR: nkey users + fine ACLs + `legacy` + `no_auth_user` + `PIN_NATS_STAGE=n1` — the one restart | I | ⬜ |
 | 4 | **N2** PRs: seed + env per service — practice → review → assessment → identity (identity also gets `NATS_URL`) | I | ⬜ |
 | 5 | **N3** PR: `legacy` → `deny ">"` (reload) + `PIN_NATS_STAGE=n3` + verify | I | ⬜ |
-| 6 | NATS break-glass runbook + first (read-only) use | X + O | ⬜ |
+| 6 | NATS break-glass runbook; tunnel proved by the N3 probe (the owner's first ops-seed use is recorded as a pending owner event) | X | ⬜ |
 | 7 | Record (status NATS rows, MI-7, events.md note) | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
@@ -31,7 +31,7 @@ Each gate guards one stage; a later stage may wait while an earlier one proceeds
 
 - [ ] **Before N1:** MI-6 merged ([mi-05](sprint-mi-05.md)) — `internal/platform/events/testdata/nats-authorization.golden.conf` and `make nats-acl-render` on `main`
 - [ ] **Before N1:** MI-8 host-verify NATS stage check available ([mi-02](sprint-mi-02.md)) — `hack/host-verify.sh --cluster --nats-stage=open|n1|n3|n4`, with the script constant `PIN_NATS_STAGE=open` that this sprint bumps
-- [ ] **Before N1:** Hostinger weekly image date checked (≤ 7 days; the owner reads hPanel) — N1 is a restart-inducing step ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag))
+- [ ] **Before N1:** Hostinger weekly image date checked (≤ 7 days; the owner reads hPanel before launch and records it in status.md, and the session verifies it) — N1 is a restart-inducing step ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)). If it isn't recorded, don't wait: set N1 and the stages after it ⛔ in status.md, naming the owner item, and land the rest (the runbook and status docs PR)
 - [ ] **Before N2:** `v1.6.0` — the tag carrying N0 ([m1-02](sprint-m1-02.md)) — live on all seven `xlearn-*` Deployments, with the NATS-auth integration test (`make nats-acl-test`, its CI job) green at that tag
 - [ ] **Before identity's N2:** `v1.6.0` live on `xlearn-identity` (the NATS publisher code), and either no `messaging` ingress NetworkPolicy exists yet or MI-5's policy lists `xlearn-identity` as a 4222 caller (forward-declared, [mi-03](sprint-mi-03.md)) — `ssh vps 'k3s kubectl -n messaging get networkpolicy -o yaml'`
 - [ ] **Before N3:** MI-5 PR merged ([mi-03](sprint-mi-03.md)'s first PR: `databases` + `messaging` ingress). MI-5a and MI-4 ([mi-14](sprint-mi-14.md)) do **not** gate this sprint
@@ -73,9 +73,9 @@ nats.go refuses nkey auth against a server that sends no nonce (ADR-0035 context
 
 ## Tasks
 
-### 1 · Generate the nkeys [O + I]
+### 1 · Generate the nkeys [I; the ops key: O, before launch]
 
-On the owner's machine (never the VPS, never CI). **O** = the ops key, the owner alone; **I** = the four service
+On the owner's machine (never the VPS, never CI). **O, before launch** = the ops key, the owner alone; **I** = the four service
 seed files in `../infra/apps/secrets/`, which the agent generates in-session on that machine and which land in the
 N2 PRs. Tools: `go install github.com/nats-io/nkeys/nk@latest` and
 `go install github.com/nats-io/natscli/nats@latest` (the CLI is for task 6).
@@ -97,9 +97,12 @@ N2 PRs. Tools: `go install github.com/nats-io/nkeys/nk@latest` and
 
   Then delete the plaintext `<svc>.nk`. The agent may run these four in-session (seed piped straight into the
   file, never echoed); each encrypted file lands in its own N2 PR (task 4).
-- **ops.** The **owner alone** runs `nk -gen user -pubout` and gives the agent only the public key. The seed goes
-  offline with the two age-key copies (MI-1) — never in git, the cluster or a transcript
+- **ops (owner, before launch).** The **owner alone** runs `nk -gen user -pubout` offline before launching the
+  prompt and gives the agent only the public key. The seed goes offline with the two age-key copies (MI-1) — never
+  in git, the cluster or a transcript
   ([ADR-0035 §2](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#2-nats-auth-nkey-users-fine-acls-server-first), "Other identities").
+  The session checks it has the public key before N1. If it's missing, N1 can't render the ops user: don't wait;
+  set N1 ⛔ in status.md, naming the owner item, and land what doesn't depend on it.
 - **judge, coach: not now.** m3-07 and l-01 generate theirs with their ACL PRs, so no seed waits unencrypted
   for weeks.
 
@@ -166,8 +169,9 @@ tighten in the S12 hardening pass" to point at ADR-0035):
   `internal/platform/events/nats.go`, `consumer.go`). Watch
   `ssh vps 'k3s kubectl -n messaging rollout status sts/nats'`.
 - **Verify:** a **plain** `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` (no `--nats-stage`
-  override, so it proves the bumped constant) green; then get the node copy `/root/host-verify.sh` refreshed
-  the mi-02 way (gated [O]: the owner refreshes it, or the agent runs the `scp` once with the owner's explicit OK; otherwise record "`/root/host-verify.sh` stale: owner to refresh" as a pending owner item);
+  override, so it proves the bumped constant) green; then refresh the node copy `/root/host-verify.sh` the mi-02
+  way: the agent runs `scp ../infra/hack/host-verify.sh vps:/root/` once (a node write this plan names, so
+  launching the prompt pre-approves it, D40);
   `/connz?auth=true` (`ssh vps 'k3s kubectl get --raw "/api/v1/namespaces/messaging/pods/nats-0:8222/proxy/connz?auth=true"'`)
   shows every connection authorised as **`legacy`**, and the count is back to the pre-restart count recorded
   above; `/jsz?consumers=true` shows every durable with pending
@@ -237,15 +241,17 @@ connections; if one remains, find the straggler before going on. Change only `le
   (≈ 1–2 min). Confirm `/varz` `config_load_time` moved and `start` did not.
 - **Verify right after:** a **plain** `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` (no
   override; it now checks `n3`) green — no `legacy` or anonymous connection; the node copy refreshed the mi-02
-  way (owner, or `scp` with the owner's OK; else a pending owner item); all services reconnected with their nkeys; outbox unsent 0,
-  pending 0; login, dashboard and coach smoke OK.
-- **Denied → logged (on prod, harmless):** through the break-glass tunnel (task 6) **without** a seed,
-  `nats pub probe.n3 x` and `nats sub probe.n3` (a subject no stream captures) → both refused. The `nats-0` log
-  shows the violation for user `legacy`. Close the tunnel and re-run the plain `host-verify --cluster`.
+  way (the pre-approved `scp`); all services reconnected with their nkeys; outbox unsent 0, pending 0; login,
+  dashboard and coach smoke OK (login in an already-signed-in browser session if the session has one; otherwise
+  the credential-free checks, plus "owner login smoke pending (N3)" as a pending-smoke note in status.md).
+- **Denied → logged (on prod, harmless):** the agent opens the break-glass tunnel (task 6) and, **without** a
+  seed, runs `nats pub probe.n3 x` and `nats sub probe.n3` (a subject no stream captures) → both refused. The
+  `nats-0` log shows the violation for user `legacy`. Close the tunnel, log the probe in the NATS break-glass log,
+  and re-run the plain `host-verify --cluster`.
 - The **≥ 24 h re-check** is [l-01](sprint-l-01.md)'s first task; record the N3 timestamp so l-01 can gate on it.
 - **Revert:** `git revert` (a reload).
 
-### 6 · Break-glass runbook + first use [X + O]
+### 6 · Break-glass runbook [X]
 
 Write **`docs/v2/runbooks/nats-break-glass.md`** — the only sanctioned manual NATS path
 ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag), "No hand-applied changes"):
@@ -259,20 +265,23 @@ Write **`docs/v2/runbooks/nats-break-glass.md`** — the only sanctioned manual 
   Read first (`stream ls`, `stream info`, `consumer info`); mutate only against a written plan; close the
   tunnel; leave no seed copy in the working directory.
 - **Why it passes MI-5:** port-forward enters the pod's network namespace through the kubelet, so the
-  `messaging` NetworkPolicy doesn't apply (proved by the first use below).
+  `messaging` NetworkPolicy doesn't apply (proved by task 5's N3 probe through the tunnel, after MI-5).
 - **Rotation / revocation** (ADR-0035 §2): add the new public key → roll the seed (SOPS + a `podAnnotations`
   bump, e.g. `xlearn.dev/nats-seed-rev`) → remove the old key. Every step is a reload; removing a key alone
   revokes it. Same for ops.
 - **Never:** a Job or pod carrying the ops seed, `kubectl apply`, SOPS in `messaging`.
 - **Log every use** in `status.md` → NATS break-glass log (date, who, why, commands, outcome).
-- **First use [O]:** right after N1, the owner runs `nats stream ls` through the runbook (read-only) → log
-  entry #1. That proves the tunnel, the ops key and the ACL before anyone needs them.
+- **First use (a pending owner item, not a wait):** the owner runs `nats stream ls` through the runbook
+  (read-only) with the offline ops seed and logs it in the break-glass log. That proves the ops key and its ACL
+  before anyone needs them; task 5's N3 probe already proves the tunnel. Task 7 records it in status.md as the
+  post-ship owner event `ev-nats-ops-first-use`; it doesn't gate _Overall_ ✅.
 
 ### 7 · Record [X]
 
 - `docs/v2/status.md`: the MI table's **MI-7** row (N1 / N2 × 4 / N3 dates and `../infra` PR numbers); the
-  **NATS rows** (stage = n3, the N3 timestamp for l-01's ≥ 24 h re-check); the break-glass log entry #1; the
-  Sprint board row; Decisions-log lines (judge/coach keys deferred to their ACL PRs, m3-07 / l-01; `legacy`
+  **NATS rows** (stage = n3, the N3 timestamp for l-01's ≥ 24 h re-check); the break-glass log (the N3 probe);
+  the owner event `ev-nats-ops-first-use` (post-ship, prepared by mi-06: the owner's first ops-seed
+  `nats stream ls`); a pending-smoke note if the N3 login smoke couldn't run; the Sprint board row; Decisions-log lines (judge/coach keys deferred to their ACL PRs, m3-07 / l-01; `legacy`
   password bcrypt; the N2 order; identity joined NATS in its N2 PR; `PIN_NATS_STAGE` now `n3`).
 - `docs/architecture/events.md`: a short "NATS auth (v2)" note — nkey users per service, fine ACLs rendered from
   `topology.go`, a new stream/consumer/subject needs its infra ACL PR merged before the consuming tag; link
@@ -289,7 +298,9 @@ Write **`docs/v2/runbooks/nats-break-glass.md`** — the only sanctioned manual 
 - [ ] identity is on NATS with its own nkey: `XLEARN_IDENTITY` exists and its relay drains (l-01's entry gate).
 - [ ] **No event lost:** every outbox's unsent count is 0 and every durable's pending is 0 after N1, after each
       N2 and after N3; a real flow (attempt → review + assessment) works end to end.
-- [ ] The break-glass runbook exists and has been used once (read-only), logged in `status.md`.
+- [ ] The break-glass runbook exists, and its tunnel is proved by the N3 probe (logged in `status.md`). The
+      owner's first ops-seed use is recorded as the post-ship owner event `ev-nats-ops-first-use`; it doesn't gate
+      _Overall_ ✅.
 
 ## Release
 
@@ -304,8 +315,8 @@ narrow an `xlearn-*` ImagePolicy below it (R-b) while seeds are mounted.
 ## Definition of Done
 
 Six infra PRs merged through GitOps (no hand `kubectl apply`) · a plain `host-verify --cluster` green at
-`PIN_NATS_STAGE=n3` (node copy refreshed, or recorded as a pending owner item) ·
-zero event loss shown (outbox and pending at 0) · runbook written and proved · acceptance met · statuses updated
+`PIN_NATS_STAGE=n3` (node copy refreshed) ·
+zero event loss shown (outbox and pending at 0) · runbook written and its tunnel proved (the N3 probe) · acceptance met · statuses updated
 (this file + [`../status.md`](../status.md)) · notable calls in the Decisions log.
 
 ## Risks / watch-outs
@@ -318,8 +329,8 @@ zero event loss shown (outbox and pending at 0) · runbook written and proved ·
   the N3 merge. Revert N3 if anything drops.
 - **A stale `PIN_NATS_STAGE` makes every plain `--cluster` run vacuous** (`open` always PASSes). The release
   checklist (contract, erase, GA) and the M3 checklist rely on the plain run, so the bump rides in the N1 and N3
-  PRs themselves, and the node copy in `/root` is refreshed after each (owner-gated, per mi-02; a stale copy is
-  recorded as a pending owner item).
+  PRs themselves, and the node copy in `/root` is refreshed after each (per mi-02; pre-approved by launching the
+  prompt, D40).
 - **Golden vs live drift.** Render at the tag the cluster runs (`v1.6.0`), not at `main`. A newer `main` may
   declare durables the live code doesn't use yet (harmless) or rename one (not harmless).
 - **Chart keys.** `config.merge` / `podTemplate.merge` are confirmed against `helm show values` in task 2. If a

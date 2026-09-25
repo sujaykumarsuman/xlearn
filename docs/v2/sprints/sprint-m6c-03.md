@@ -11,7 +11,7 @@
 > **Release action:** **outline only (v2.2).** This card merges nothing and tags nothing. Once expanded:
 > - **Safari widening and voice-lite:** merge only, shipping dark **to the T-3 cohort only** in `v2.1.x` patches (a T-1 cohort-audience code default; no T-2 env, so no infra PR). Their default flips are labelled at the M6c GA minor, the next free minor after `v2.1.0` (`v2.2.0` indicative, or the next one if [m5-01](sprint-m5-01.md) has already taken it) ([ADR-0034 §1.1](../../adr/0034-v2-release-labelling-gating-and-rollback.md#11-scheme)). The dedicated M6c GA tag sprint that [m6c-01](sprint-m6c-01.md) task 1 adds cuts it.
 > - **The canary:** a runbook plus a script, merged; nothing deploys.
-> - **AB31:** "PR, stop for owner review (design)", but only in a design sprint at SD-course planning, **not** in M6c.
+> - **AB31:** "land-and-sync; the merge is the design freeze" (D40), but only in a design sprint at SD-course planning, **not** in M6c.
 >
 > **Calendar:** v2.2+, after `v2.1.0` (≈ Q1 2027) *(inferred)*. The Safari leg needs the owner present (≈ 30 min). The canary is a manual weekly check, read by looking.
 >
@@ -46,11 +46,11 @@ _Overall:_ ⬜ Not started. This is an **outline card**: expand it at v2.2 plann
 - [ ] **1a only if:** the S6 Safari leg **failed** (the [spk-04](sprint-spk-04.md) results note, M15) **and** an upstream fix is known (a WebKit or OpenAI release note, or a closed issue). If S6 passed Safari, it is already in the gate list and 1a is moot. If no fix is known, 1a is dropped.
 - [ ] **1b only if:** an Anthropic-only user asked for voice, and the request is recorded in the decisions log. In v2 that means the owner or a tester (D35). Real demand arrives at the v3 opening, so this is likely later.
 - [ ] **1c only if:** the owner opts in. It spends about $0.03 a week on his own key and needs his account. Each run also uses **one of his ≤ 2 interview starts that day** (1c).
-- [ ] **Board variants are frozen before the expansion's first UI sprint** (BP3), for the rows kept. They are drafted in the shared M6c design sprint (e.g. `ds-m6c-01`, a PR that stops for owner review; see [m6c-01](sprint-m6c-01.md)'s entry gates):
+- [ ] **Board variants are frozen before the expansion's first UI sprint** (BP3), for the rows kept. They are drafted in the shared M6c design sprint (e.g. `ds-m6c-01`, whose PR merges on CI green: the merge is the freeze, D40; see [m6c-01](sprint-m6c-01.md)'s entry gates):
   - **1a:** AB29's widened browser copy ("Voice runs on Chrome, Edge or Safari N+") and the Safari version-floor notice;
   - **1b:** the voice-lite "device voice" label, its mic control and any recognizer consent (AB25/AB29).
 
-  If that design sprint merged without them, follow the [m5-01](sprint-m5-01.md) precedent instead: variant screenshots in the build PR, and owner approval before merge.
+  If that design sprint merged without them, follow the [m5-01](sprint-m5-01.md) precedent instead: variant screenshots committed with the build PR, and the merge freezes the variant (D40; the owner may revise it later with a follow-up PR).
 - [ ] **1d is not drafted in M6c.** AB31 needs:
   - the **SD course** scheduled by its own planning;
   - **M4** shipped (`ai_rubric`, the llm lane);
@@ -91,7 +91,7 @@ Also **park the canvas board (AB31)** with a brief that the SD course's planning
 The v2.2 planning session (docs only) replaces this card with a full plan and prompt. It must:
 - **Check each trigger** (entry gates) and keep only the rows whose trigger fired. 1d always moves out, to SD-course planning.
 - **Re-read what exists by then:** the S6 results note (browser legs, SDP and ICE candidates), m6b-03's gate code and m6b-04's fake-media procedure.
-- **Plan the Safari leg:** it needs the owner present. Book it as a short owner event, `ev-m6c-safari`, prepared by the expanded sprint. Order it **after** a patch that admits Safari for the cohort only (1a), because m6b-03's gate sends Safari to text on production today.
+- **Plan the Safari leg:** it needs the owner present. Book it as a short owner event, `ev-m6c-safari`, prepared by the expanded sprint; whichever prompt runs the leg lists the owner's presence under `## Before you launch (owner)` (D40). Order it **after** a patch that admits Safari for the cohort only (1a), because m6b-03's gate sends Safari to text on production today.
 - **Record in the decisions log:** the Safari widening, whether voice-lite ships, and the canary's shape. None of these needs a new ADR unless it changes ADR-0032's §6 constraints beyond the "at launch" wording.
 
 ### 1a · Sketch: Safari leg → widen the voice gate [X · O]
@@ -117,7 +117,7 @@ The pass/fail note uses the S6 results format.
 
 **If it passes [X]:**
 - the M6c GA tag sprint flips the Safari admission from the cohort to everyone, keeping the version floor;
-- AB29's browser copy ships as the variant frozen in the design sprint (entry gates). There is no copy change without that review;
+- AB29's browser copy ships as the variant frozen in the design sprint (entry gates). There is no copy change without that frozen variant;
 - update PRD R-MI1 ("Chrome or Edge"). ADR-0032 §6 says Chrome/Edge "at launch", so the widening is a decisions-log line, not an in-place edit of the Accepted ADR (task 1);
 - leave Permissions-Policy and CSP unchanged ([mi-13](sprint-mi-13.md)).
 
@@ -201,7 +201,7 @@ For an SD **mock**, add a frame where the interviewer's "current screen" is the 
 **Where.**
 - File: `design-system/screens/v2/AB31-workspace-canvas.html`, on `theme.css` verbatim, following the board conventions of [ds-m1-01](sprint-ds-m1-01.md).
 - It is drafted in a design sprint, e.g. `ds-sd-01`, at SD-course planning.
-- The index (`design-system/screens/v2/index.html`) already marks AB31 "outline only", and ds-m1-01's rule says later design PRs **never edit** it. So that design sprint adds only the new board file. It links the board from **status.md's AB31 artboard row**, which also records the freeze (the merge, on owner approval). If SD-course planning wants the index row linked too, its own plan states an explicit exception to ds-m1-01's rule for that one row: by v2.2+ no parallel early design PRs remain.
+- The index (`design-system/screens/v2/index.html`) already marks AB31 "outline only", and ds-m1-01's rule says later design PRs **never edit** it. So that design sprint adds only the new board file. It links the board from **status.md's AB31 artboard row**, which also records the freeze (the merge on CI green is the freeze, D40). If SD-course planning wants the index row linked too, its own plan states an explicit exception to ds-m1-01's rule for that one row: by v2.2+ no parallel early design PRs remain.
 - **Nothing is drafted in M6c.**
 
 ## Acceptance criteria
@@ -209,7 +209,7 @@ For an SD **mock**, add a frame where the interviewer's "current screen" is the 
 - [ ] n/a (outline). Nothing here is executable until the card is expanded.
 
 Candidate acceptance to refine at expansion (not gates today):
-- [ ] **Safari (if its trigger fired):** the cohort-only admission shipped before the leg; the leg's note is recorded. If it passed, the M6c GA flip admits Safari at or above the floor for everyone, the owner-approved AB29 copy and the PRD wording are updated, and the gate-matrix tests are green. If it failed, the cohort admission is removed. Firefox still gets text.
+- [ ] **Safari (if its trigger fired):** the cohort-only admission shipped before the leg; the leg's note is recorded. If it passed, the M6c GA flip admits Safari at or above the floor for everyone, the frozen AB29 copy variant and the PRD wording are updated, and the gate-matrix tests are green. If it failed, the cohort admission is removed. Firefox still gets text.
 - [ ] **Voice-lite (if its trigger fired):**
   - works on an Anthropic-only key, with no new server route;
   - cloud-recognizer use is disclosed and consented (or refused);
@@ -227,7 +227,7 @@ Once expanded:
 - **Safari widening and voice-lite:** "merge only (ships dark to the cohort in the next `v2.1.x` patch)", with the ADR-0034 §6 checklist on each patch, including **"from M6: no live interviews"**. Their default flips ride the **M6c GA minor**, cut by the dedicated M6c GA tag sprint that [m6c-01](sprint-m6c-01.md) task 1 adds (e.g. `m6c-04`). That tag sprint copies the [ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#6-release-checklist) release checklist plus the ADR-0035 §2 NetworkPolicy standing rule. No new in-cluster caller is expected.
 - **The Safari leg:** an owner event with no merge. Its note lands through a docs PR.
 - **The canary:** the runbook and script merge. Nothing deploys, and there's no tag.
-- **AB31:** "PR, stop for owner review (design)" in the SD course's design sprint, outside M6c.
+- **AB31:** "land-and-sync; the merge is the design freeze" in the SD course's design sprint, outside M6c.
 - **infra:** no infra PR, because no T-2 env is added.
 
 ## Definition of Done

@@ -89,7 +89,7 @@ m4-03 wires the analyzer triggers, m4-04 the provisional/dispute flow, m4-05 the
    (`ai_review_graded`, `ai_review_passing`, `ai_behavioral`; extend an existing kinds package if l-05 already made one);
    `internal/judge/ai/accounts.go` (5-minute TTL, LRU ≤ 1,000, fail closed when identity is unreachable); judge
    `POST /internal/accounts/{id}/refresh` (drops one entry, enqueues nothing). `ai_disabled` stays **judge-owned** in `llm_account_limit`
-   — an amendment to Accepted ADR-0033 (§12 row 13 has judge reading it from identity), so it is an owner-confirm item (step 13).
+   — an amendment to Accepted ADR-0033 (§12 row 13 has judge reading it from identity), recorded in step 13; it lands in-session (D40).
 9. **[X] Gating (task 8)** — in `Reserve`, cheapest first: `LLM_PLATFORM_ENABLED` (false → `ErrUnavailable{disabled}` before any row, read
    or credential fetch) → cohort (`platformAICohortOnly = true`: `role ∈ {owner, tester}`) → `status = active` → task consent → not
    `ai_disabled` → breaker → caps.
@@ -113,7 +113,8 @@ m4-03 wires the analyzer triggers, m4-04 the provisional/dispute flow, m4-05 the
     `docs/v2/runbooks/platform-ai-provider.md` at it. Under [ADR-0033 §12](../../adr/0033-invite-only-admission-and-owner-admin.md#12-authz-deltas-across-v2)
     row 13 and the §14 ADR-0016 row, a dated **amendment** note (the ADR-0031 §8 pattern): "**Amended by m4-02 (<date>):** `ai_disabled` is
     judge-owned (`judge.llm_account_limit`), set by `judge admin ai-disable` and the auto-throttle; identity serves role, status, tier and
-    consents." Put it first under **"Owner to confirm"** in the PR body — it changes an Accepted ADR and the register.
+    consents." Put it first in the PR body under **"ADR amendment (pre-approved, D40)"** — it changes an Accepted ADR and the register;
+    the owner may revise it later with a follow-up PR.
 
 ## Constraints
 
@@ -133,7 +134,7 @@ m4-03 wires the analyzer triggers, m4-04 the provisional/dispute flow, m4-05 the
   no new pod or container; the lane runs in judge's existing 256 Mi — bounded caches (LRU ≤ 1,000), bounded response bodies.
 - **GitOps:** no `kubectl apply`, no infra PR in this sprint; read-only `ssh vps` only for the gate check.
 - **Parallel sessions:** re-check peers' judge migrations and PRs right before merging; take the next free goose version at rebase. Check
-  peers' ADR numbers before any ADR (none expected; the ADR-0033 note is a dated amendment, not a new ADR — and an owner-confirm item).
+  peers' ADR numbers before any ADR (none expected; the ADR-0033 note is a dated amendment, not a new ADR, and it lands in-session per D40).
 
 ## Deliverables
 
@@ -142,7 +143,7 @@ m4-03 wires the analyzer triggers, m4-04 the provisional/dispute flow, m4-05 the
   `allowance.go`, `breaker.go`, `gate.go`, `accounts.go`, tests); the `ai_rubric` grader in `internal/judge/grader`; llm-lane workers.
 - identity internal read extended + contract test; `internal/platform/consent`.
 - judge `POST /internal/accounts/{id}/refresh`; status read `ai` field.
-- `judge admin` AI verbs; docs and the new `docs/runbooks/judge-admin.md`; the ADR-0033 §12/§14 amendment note (owner-confirm); compose output in the PR.
+- `judge admin` AI verbs; docs and the new `docs/runbooks/judge-admin.md`; the ADR-0033 §12/§14 amendment note (lands in-session, D40); compose output in the PR.
 
 ## Update status
 
@@ -150,7 +151,7 @@ m4-03 wires the analyzer triggers, m4-04 the provisional/dispute flow, m4-05 the
 - [`../status.md`](../status.md): Sprint board row for m4-02; Milestones row M4 stays 🔄; **flag inventory** — add "platform AI cohort-only
   (T-3 code default `platformAICohortOnly`; owner milestone M4; removal at GA, [ga-01](../sprints/sprint-ga-01.md))" beside the permanent kill
   switch `LLM_PLATFORM_ENABLED` (still `false`).
-- **Decisions log:** `ai_disabled` is judge-owned (amends ADR-0033 §12 row 13 — **owner to confirm**); T1's `usage_ledger` = `judge.llm_call`; `judge admin disputes export` moved to m4-04 with
+- **Decisions log:** `ai_disabled` is judge-owned (amends ADR-0033 §12 row 13; landed in-session per D40, the owner may revise it later); T1's `usage_ledger` = `judge.llm_call`; `judge admin disputes export` moved to m4-04 with
   its table; consent kind names; L17 defaults compiled in at D25 dogfood values; `LLM_PROVIDER_LIMIT_USD` feeds only the spend-anomaly check.
 - ADRs: no new ADR; the dated "Amended by m4-02" note under ADR-0033 §12 row 13 and the §14 ADR-0016 row.
 
@@ -168,7 +169,12 @@ m4-03 wires the analyzer triggers, m4-04 the provisional/dispute flow, m4-05 the
 - [ ] The `judge admin` AI verbs work with audit rows; erase anonymizes the ledger and deletes samples and limits.
 - [ ] CI green incl. `sqlc diff`.
 
-Ship at session end per AGENT.md land-and-sync with **this sprint's release action — merge only**: conventional commits (`feat(judge): …`,
-`feat(identity): …`) with the attribution lines, push, open the PR, wait for CI green (fix-then-merge on failure), squash-merge, then
-`git checkout main && git pull`. **Do not tag** — this work ships in `v1.16.0`, which [m4-07](../sprints/sprint-m4-07.md) cuts after
-[m4-03](../sprints/sprint-m4-03.md)…[m4-06](../sprints/sprint-m4-06.md); nothing deploys until then.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: xlearn only, on `feat/m4-02-judge-ai` (commits such as `feat(judge): …`, `feat(identity): …`).
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships in `v1.16.0`):** Nothing deploys; it ships in `v1.16.0` (cut by [m4-07](../sprints/sprint-m4-07.md), after [m4-03](../sprints/sprint-m4-03.md)…[m4-06](../sprints/sprint-m4-06.md)). Don't tag. No infra PR.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

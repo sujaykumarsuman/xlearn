@@ -2,11 +2,12 @@
 
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-ds-m1-01.md`](../sprints/sprint-ds-m1-01.md)   ·   **Milestone:** M1 (design track)   ·   **Prereqs:** none
+> **Design sprint: the board PR merges on CI green, and the merge is the freeze ([D40](../feasibility.md#decisions-log-newest-first)). Nothing waits on the owner.**
 
 ## Read first
 
-- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — conventions. **This sprint overrides the
-  land-and-sync directive:** it ends at an open PR and never merges (BP3, design sprints).
+- [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — conventions, including land-and-sync,
+  which this sprint follows (D40): see **Ship** at the end.
 - The plan: [`../sprints/sprint-ds-m1-01.md`](../sprints/sprint-ds-m1-01.md) — the frame tables (AB01 F1–F15, AB02 F1–F9,
   AB03 F1–F9), the canonical board file names and the index layout are spelled out there. Follow them exactly.
 - [`../rollout-plan.md`](../rollout-plan.md) [§9 Artboards by milestone](../rollout-plan.md#9-artboards-by-milestone) (board list,
@@ -30,9 +31,11 @@
 ## Context
 
 v2 turns DSA into "a course like any other" (M1) before the judge and platform AI land. M1b's UI sprints — m1-03
-(course nav), m1-06 (revision), m1-10 and m1-07 (coach) — must build against **owner-approved** boards, and the rollout
+(course nav), m1-06 (revision), m1-10 and m1-07 (coach) — must build against **frozen** boards, and the rollout
 freeze rule says AB01–AB03 are frozen before M1b. The owner decided (BP3, 2026-09-24) that agents draft **every** v2
-board and the owner only reviews. This is the first v2 design sprint, so it also writes the board index for all
+board, and (D40, 2026-09-25) that launching this prompt is the owner's approval for all of it: the board PR merges on CI
+green, the merge is the freeze, and the owner may review afterwards (a change to a frozen board is a follow-up design
+PR). This is the first v2 design sprint, so it also writes the board index for all
 AB01–AB30 and the shared `board.css`, once, so the other design PRs (ds-m2-01 and ds-l-01 run in the same weeks) never
 conflict. No `web/` code changes here; boards are preview-only static HTML.
 
@@ -72,21 +75,21 @@ conflict. No `web/` code changes here; boards are preview-only static HTML.
    `plan.est_minutes["touch_<format>"]`), **pattern withheld** (`xl-lock` "Pattern hidden while due")
    on due and active rows, revealed only after scoring, empty / overdue (R-SR5 per course) / all-courses states, narrow.
 7. **[X] Narrow sections** — every board ends with `.bd-narrow` frames (390 px) for its key frames.
-8. **[X] Self-review** — walk each frame against its cited decision (D27, D18, L18, ADR-0026 §5, ADR-0027 §1, R-SR2, D4) and
-   the rollout §9 list; run the leak check (no pattern chip while live, no hidden inputs, no answers); check contrast and
-   focus order notes exist on every frame. Fix, then re-check.
+8. **[X] Self-review checklist (before merging; nothing waits on the owner)** — walk each frame against its cited decision
+   (D27, D18, L18, ADR-0026 §5, ADR-0027 §1, R-SR2, D4) and the rollout §9 list; check `theme.css` is linked verbatim (tokens
+   only, no new colours, no `ds-*`/`xl-*` override; difficulty tokens) and `board.css` defines only `bd-*` plus the `.xl-app`
+   override; run the leak check (no pattern chip while live, no hidden inputs, no answers); check AB02's parity frames keep
+   v1's copy; check contrast and focus order notes exist on every frame. Fix, then re-check. The ticked checklist goes in the PR body.
 9. **[X] Screenshots** — serve the repo statically (e.g. `python3 -m http.server 5198 --directory design-system`, or open the
    files from disk) and capture each board full-page at **1440 px** and **390 px** (Browser pane `resize_window` +
    screenshot, or headless Chrome `--headless=new --screenshot=… --window-size=1440,900`). Save to
    `design-system/screens/v2/shots/AB0n@1440.png` / `AB0n@390.png`, each ≲ 500 KB.
-10. **[X] Sprint file** — in `docs/v2/sprints/sprint-ds-m1-01.md` set tasks 1–6 ✅, task 7 🔄 "PR #N open — awaiting owner
-    review", _Overall_ 🔄. **Do not edit `docs/v2/status.md`.**
-11. **[X] Commit + PR, then STOP** — conventional commit `docs(design): v2 board index + AB01–AB03 (M1)` ending with the
-    attribution lines; push; open the PR titled `docs(design): AB01 AB02 AB03 — M1 boards (+ v2 board index)` with each
-    board's frame list and screenshots embedded via `https://github.com/sujaykumarsuman/xlearn/blob/design/ds-m1-01/design-system/screens/v2/shots/<file>?raw=true`,
-    plus a "Decisions to confirm" list for any ambiguity you resolved **and every proposed visible change vs v1 for DSA**
-    (each a yes/no for the owner). **Do not merge. Do not enable auto-merge.** Report
-    the PR link and stop. If the owner requests changes later, apply them on the same branch.
+10. **[X] PR body** (for **Ship** step 1) — each board's frame list; the screenshots embedded via
+    `https://github.com/sujaykumarsuman/xlearn/blob/design/ds-m1-01/design-system/screens/v2/shots/<file>?raw=true`; the ticked
+    self-review checklist (step 8); and a **"Decisions to confirm"** list for any ambiguity you resolved **and every proposed
+    visible change vs v1 for DSA**. The list doesn't block the merge: each item states the default the merge freezes (for
+    DSA, always the parity frame), and the owner may revisit any item after the merge through a follow-up design PR.
+11. **[X] Land it** — run **Ship** below: PR, merge on CI green (the freeze), status, sync.
 
 ## Constraints
 
@@ -99,8 +102,10 @@ conflict. No `web/` code changes here; boards are preview-only static HTML.
   them. Board files use the index's names exactly.
 - **No leaks:** boards never show a pattern while an item is live, never show hidden inputs or answers.
 - **Final copy:** real strings with the real error codes; no placeholder text.
-- **No status.md edit** from a design PR; the first consuming build sprint (m1-03) records the freeze.
-- **Parallel sessions:** check peers' open PRs and worktrees before creating `index.html` / `board.css`.
+- **`status.md`: own rows only** — this sprint's Sprint-board row, the AB01–AB03 Artboards rows and the Snapshot's artboard
+  count (`ev-freeze-ds-m1-01` is automatic: no tick).
+- **Parallel sessions:** check peers' open PRs and worktrees before creating `index.html` / `board.css`; ds-m2-01 and ds-l-01
+  also edit `status.md` when they land, so rebase on `origin/main` before the status commit and keep their rows.
 - D34 (no alerting) and the memory-sum rule are not in play: nothing here runs in the cluster.
 
 ## Deliverables
@@ -108,23 +113,36 @@ conflict. No `web/` code changes here; boards are preview-only static HTML.
 - `design-system/screens/v2/index.html` (AB01–AB31 rows) and `design-system/screens/v2/board.css`.
 - `design-system/screens/v2/AB01-coach-states.html`, `AB02-course-nav.html`, `AB03-revision-v2.html`.
 - `design-system/screens/v2/shots/AB0{1,2,3}@{1440,390}.png`.
-- An open PR (not merged) with screenshots, frame lists and "Decisions to confirm".
+- The PR, **merged on CI green** (the freeze), with screenshots, frame lists, the ticked self-review checklist and "Decisions to confirm".
 
 ## Update status
 
-- `docs/v2/sprints/sprint-ds-m1-01.md` Status table in the PR: tasks 1–6 ✅, task 7 🔄 (PR #), _Overall_ 🔄.
-- **Not** `docs/v2/status.md`. After the owner's merge, the plan's Status-note close-out (four idempotent edits: this
-  sprint's task 7 + _Overall_ ✅; the Sprint-board row; Artboards AB01–AB03 "frozen (PR #, date)"; owner event
-  `ev-freeze-ds-m1-01` ✅) is made by m1-03, or by whichever consumer (m1-06, m1-10, m1-07) first finds it unset.
-- No ADR expected; if you resolve a real design ambiguity (e.g. D27 confirm placement), list it under "Decisions to confirm"
-  in the PR for the owner rather than writing an ADR.
+In the board PR — a last commit once the PR number is known, before the merge — or in a follow-up docs PR merged the same way:
+- `docs/v2/sprints/sprint-ds-m1-01.md`: tasks 1–7 ✅ (task 7: "frozen: merged in PR #N, <date>"), _Overall_ ✅.
+- `docs/v2/status.md`: mark the sprint ✅ (ds-m1-01's Sprint-board row) and the boards ✅ **"frozen (merged, PR #N, <date>)"**
+  (Artboards rows AB01, AB02, AB03); update the Snapshot's artboard count (`ev-freeze-ds-m1-01` is automatic: no tick).
+- No ADR expected. If you resolve a real design ambiguity (e.g. D27 confirm placement), list it under "Decisions to confirm"
+  with the default you froze, and add a Decisions-log line in `status.md` if a build sprint depends on it.
 
 ## Done when (acceptance)
 
 - [ ] `index.html` lists AB01–AB31 (AB23 dropped, AB31 outline) with the plan's file names and links; `board.css` defines only `bd-*` classes plus the `.xl-app` fill override.
 - [ ] Every frame listed for AB01 (F1–F15), AB02 (F1–F9) and AB03 (F1–F9) is present with final copy, its state and a behaviour-notes aside citing its decision.
 - [ ] No board leaks withheld data; boards open with no JS runtime; `theme.css` is linked, not copied.
-- [ ] PR open with 1440 px and 390 px screenshots of each board; **not merged by the agent**.
+- [ ] The self-review checklist passed and is ticked in the PR body, with "Decisions to confirm" (each item's frozen default stated).
+- [ ] PR **merged on CI green** (the freeze) with 1440 px and 390 px screenshots of each board; the sprint file and `docs/v2/status.md` show ds-m1-01 ✅ and AB01–AB03 "frozen (merged)"; local `main` synced.
 
-Shipping: **design sprint — open the PR and STOP for owner review.** This overrides AGENT.md's end-of-session
-land-and-sync: do not merge, do not enable auto-merge, do not tag. The owner's merge (or explicit approval in chat) is the freeze.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. **Branch, commit, push, PR** — this repo only (a design sprint touches no `../infra`). On `design/ds-m1-01`: conventional
+   commit `docs(design): v2 board index + AB01–AB03 (M1)` with the attribution lines; push; open the PR titled
+   `docs(design): AB01 AB02 AB03 — M1 boards (+ v2 board index)` with the body from step 10.
+2. **Merge on green** — once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — design: the merge is the freeze; no tag.** Nothing deploys (boards are preview-only). The owner may
+   review after the merge; any change to a frozen board is a follow-up design PR.
+4. **Update status** — as in "Update status" above (sprint ✅, AB01–AB03 "frozen (merged)"), in the same PR (a last commit
+   before step 2's merge) or a follow-up docs PR merged the same way.
+5. **Sync** — `git checkout main && git pull`. If a clean peer worktree holds `main`, use
+   `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

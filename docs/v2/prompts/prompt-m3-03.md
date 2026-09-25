@@ -21,14 +21,15 @@ v2 runs untrusted learner code (Go, C++, Python; D20) on the single production n
 a user-namespaced runc pod (`hostUsers:false`) in `xlearn-runner`, a capability-holding **spawner** that never parses a learner
 byte, a capless **front** that parses all of them, and a **fresh jail per test case without a user namespace**, each in its own
 cgroup v2 leaf, with all verdict evidence read outside the learner's process. The spike week (spk-01/spk-02) answered the
-go/no-go questions and recorded the mechanism in t3 §16. ADR-0030 stayed **Proposed** until now (BP2); **you accept it as step 2**.
+go/no-go questions and recorded the mechanism in t3 §16. ADR-0030 stayed **Proposed** until now (BP2); **you accept it as step 2**,
+in this session, with no owner sign-off (D40).
 The host files ship in the Oct 24 window (mi-09), the guard objects in mi-14, the deployment in mi-10; none of that blocks you,
 and you touch none of it. Production has one user (the owner, D35); nothing here reaches production until mi-10.
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
 - [ ] t3 §16.1–§16.4 are on `main` and §16.4 reads **"Spike P0–P3 GO"** with a named mechanism (go-sandbox `forkexec.Runner`, or nsjail R1-N).
-- [ ] No open owner decision from the spike (R1-U / R1b would be one; `docs/v2/status.md` decisions log). If one is open → **stop**.
+- [ ] No open "needs owner decision" gate from the spike (D40). R1-U or R1b would be one: the spike records the options and `docs/v2/status.md` marks the gate ⛔. If one is open and the owner's decision isn't recorded, that's a gate failure: **stop** and report.
 - [ ] ADR-0030 is still `Proposed` and no peer PR edits it: `gh pr list --state open --search "0030"`, `git worktree list`, ListAgents.
 - [ ] t3 §16.2 holds the amd64 `go` allowlist as a sorted syscall-name list.
 - [ ] No open peer PR touches `cmd/runner`, `internal/runner`, `internal/platform/runnerapi` or the go-sandbox line in `go.mod`.
@@ -109,8 +110,8 @@ and you touch none of it. Production has one user (the owner, D35); nothing here
     (including "judge's `/v1/profiles` check refuses `mode=dev` in production"), mi-10, m3-15 in `docs/v2/status.md`.
 12. **[X] Verify**: `gofmt`, `go vet ./...`, `go test -race ./...` (macOS and Linux), `sqlc diff` (unchanged), the `runner-it` job
     green on the PR. Don't mark a jail task ✅ from a macOS run.
-13. **[X] PR** → conventional commits (`docs(adr): accept 0030 …`, `feat(runner): …`) with the attribution lines → CI green →
-    squash-merge.
+13. **[X] PR:** conventional commits (`docs(adr): accept 0030 …`, `feat(runner): …`) with the attribution lines; see **Ship**
+    below.
 
 ## Constraints
 
@@ -165,5 +166,12 @@ and you touch none of it. Production has one user (the owner, D35); nothing here
 - [ ] 401 / 400 / 503 / disconnect / drain behaviour tested; no release build contains `testgo@0`; no `go-sandbox/container` import.
 - [ ] CI green on macOS-safe and Linux lanes; `sqlc diff` unchanged; docs and hand-offs recorded.
 
-Ship per AGENT.md land-and-sync with **this sprint's release action: merge only** (the runner ships in `runner-v1.0.0`, cut in
-[m3-15](../sprints/sprint-m3-15.md)) — no tag, no infra PR; then `git checkout main && git pull`.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). (Here: xlearn only, branch `feat/runner-core`.)
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. (CI includes the new `runner-it` job.)
+3. **Release action — merge only:** nothing deploys. The runner ships in `runner-v1.0.0`, cut by [m3-15](../sprints/sprint-m3-15.md), and `runnerapi` rides judge from `v1.13.0` ([m3-07](../sprints/sprint-m3-07.md)). Don't tag; no infra PR. ADR-0030's acceptance lands in this same PR.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

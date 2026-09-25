@@ -1,7 +1,15 @@
 # Prompt — Sprint mi-04 · Admin consoles to ops.sujaykumar.dev (MI-5b)
 
 > **One self-contained prompt = one sprint = one session.** Paste it into a fresh coding session at the xlearn repo root.
-> **Plan:** [`../sprints/sprint-mi-04.md`](../sprints/sprint-mi-04.md) · **Milestone:** MI (rollout step MI-5b) · **Prereqs:** none (owner present for DNS)
+> **Plan:** [`../sprints/sprint-mi-04.md`](../sprints/sprint-mi-04.md) · **Milestone:** MI (rollout step MI-5b) · **Prereqs:** none (the DNS record is a before-launch owner item)
+
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] Add the DNS record `A ops` in the Hostinger zone `sujaykumar.dev`: the same IPv4 as `projects.sujaykumar.dev`, TTL 300, no AAAA (`ev-mi5b-dns`).
+- [ ] Update your bookmarks to `https://ops.sujaykumar.dev/{kubescope,landscape,longhorn}/` and `https://ops.sujaykumar.dev/airlift/admin` (`ev-mi5b-dns`). They answer once PR 2 merges; after that the old console roots 302 there.
+- [ ] If you have stable egress IP ranges, give them in the launch message. PR 3 uses them only if the cross-origin acceptance fails, and they go only into the private infra repo, never xlearn or `status.md`. Without them, PR 3 falls back to `KUBESCOPE_READ_ONLY=true`.
 
 ## Read first
 
@@ -35,16 +43,17 @@
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
-- [ ] The owner is present now to add the DNS record (task 1), and will be available about 10 minutes at the end for the signed-in browser probe (task 4b).
+- [ ] `ev-mi5b-dns` was done before launch (the DNS record and bookmarks); step 1 verifies the record resolves.
 - [ ] `git -C ../infra fetch && git -C ../infra status` shows a clean tree on up-to-date `main`. `gh pr list -R sujaykumarsuman/infra --state open` shows no peer PR touching the files in the plan's task 3, or you've agreed an order. Also check `git worktree list` and `ListAgents` for peers.
-- [ ] No non-owner account exists yet. If the M1b CLI is live, **ask the owner** to run `identity admin account list` (the sanctioned admin-CLI `kubectl exec` path, [rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)) and report the result. Run it yourself only if the owner asks you to, and then log that use in `docs/v2/status.md` as §2.2 requires; your own `ssh vps` access stays read-only. If a `tester` exists, continue anyway, but log the gap in the Decisions log as urgent.
+- [ ] No non-owner account exists yet. If the M1b CLI is live, run `identity admin account list` yourself through the sanctioned admin-CLI `kubectl exec` path ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)); launching this prompt pre-approves that one use (D40). Log it in `docs/v2/status.md`'s CLI-use log, as §2.2 requires; otherwise your `ssh vps` access stays read-only. If a `tester` exists, continue anyway, but log the gap in the Decisions log as urgent.
 
 ## Do this (in order)
 
-1. **[O] DNS (`ev-mi5b-dns`).**
-   - Ask the owner to add `A ops` in the Hostinger zone `sujaykumar.dev`, with the same IPv4 as `projects` and TTL 300. No AAAA.
-   - Poll until `dig +short ops.sujaykumar.dev A`, `dig @1.1.1.1 …` and `dig @8.8.8.8 …` all equal `dig +short projects.sujaykumar.dev A`, and `ssh vps 'getent hosts ops.sujaykumar.dev'` agrees.
+1. **[O, before launch] DNS (`ev-mi5b-dns`): verify it.**
+   - The owner added `A ops` in the Hostinger zone `sujaykumar.dev` before launch, with the same IPv4 as `projects` and TTL 300. No AAAA.
+   - Check that `dig +short ops.sujaykumar.dev A`, `dig @1.1.1.1 …` and `dig @8.8.8.8 …` all equal `dig +short projects.sujaykumar.dev A`, and `ssh vps 'getent hosts ops.sujaykumar.dev'` agrees. Poll briefly if it's still propagating (TTL 300).
    - Don't open PR 1 for merge before that.
+   - **If the record is missing:** everything else depends on it (the certificate's HTTP-01 challenge, then PR 2). Set task 1 ⛔ "DNS record missing (owner, before launch)" in the sprint file and `status.md`, land that as the docs PR (step 7), and end there; a re-run starts at step 1. Don't wait.
 2. **[I] Infra PR 1: the certificate.**
    - Branch `feat/ops-tls` in `../infra`.
    - Add a `Certificate` `ops-tls` in `kube-system` (secret `ops-tls`, dnsNames `[ops.sujaykumar.dev]`, ClusterIssuer `letsencrypt-prod`) to `infrastructure/configs/certificate.yaml`.
@@ -75,12 +84,13 @@
    - Run the plan's table rows 1–8 with `curl` (`-s -o /dev/null -w '%{http_code} %{redirect_url}\n'`, or print the body where the table expects JSON).
    - Every write targets `xl-probe-missing`, so nothing changes even if a guard were missing.
    - Paste the observed column into PR 2's description.
-5. **[O + H] Acceptance 4b** (the owner, in their signed-in browser).
-   - The owner signs in to landscape and kubescope on `ops`.
-   - In kubescope, they open a shell on an `xlearn-curriculum` pod (distroless, no shell, so nothing runs) and copy the exec WebSocket URL from the Network tab into `EXEC_URL`.
+5. **[H] Acceptance 4b** (a browser signed in to the consoles on `ops`).
+   - It needs landscape and kubescope signed in on `ops`, which exists only after PR 2 and needs the owner's credentials; you never enter them. If this session can drive such a browser (the owner may sign in on `ops` once PR 2 merges; don't wait for that), run 4b there.
+   - **Otherwise (D40, blocking case):** set task 4 ⛔ "owner signed-in probe (4b) pending" in the sprint file and `status.md`, and keep MI-5b 🔄, not ✅ (`ev-first-tester` and l-02 need 4b to pass or PR 3 to be live). Do step 6 only if a 4a row failed, then step 7. A follow-up session re-runs this step, then step 6 if any row fails.
+   - In kubescope, open a shell on an `xlearn-curriculum` pod (distroless, no shell, so nothing runs) and copy the exec WebSocket URL from the Network tab into `EXEC_URL`.
    - **The probe page must send no CSP.** Use the hub root, `https://projects.sujaykumar.dev/`, **never an xLearn page**. [m1-04](../sprints/sprint-m1-04.md) gives every xLearn page `connect-src 'self'` (in v1.7.0, which may overlap this sprint). A CSP blocks `fetch` and `WebSocket` to `ops` inside the browser before any request leaves, so (c)–(e) would pass falsely.
      - First run `curl -sI https://projects.sujaykumar.dev/ | grep -i content-security-policy`. It must print nothing (true at planning). If the hub sends a CSP, find another `projects` path that the same check shows sends none.
-   - On a tab at that page, they paste this snippet into devtools:
+   - On a tab at that page, paste this snippet into devtools:
    ```js
    const ops = 'https://ops.sujaykumar.dev';
    const EXEC_URL = 'wss://ops.sujaykumar.dev/kubescope/…copied…';
@@ -107,13 +117,13 @@
    - kubescope logs JSON: `ssh vps 'k3s kubectl -n kubescope logs deploy/kubescope --since=15m'`. Look for an `"msg":"http request"` line with `"status":403` on the `…/xl-probe-missing/restart` path (the `cross_origin_rejected` code is only in the response body, never logged), and an `"msg":"exec websocket upgrade failed"` line whose error says `not authorized`.
    - Longhorn / ForwardAuth: landscape's `logMW` skips `/api/forward-auth`, so its logs show nothing. Use the browser's 403 for (b) and (d), with the JSON body `{"error":"cross-origin request refused"}` where devtools shows the response.
 
-   The owner then checks that landscape, kubescope, Longhorn (via the landscape session) and airlift admin work on `ops`, and updates their bookmarks. Add the 4b table to PR 2.
+   Then, in the same signed-in browser, check that landscape, kubescope, Longhorn (via the landscape session) and airlift admin work on `ops`. Add the 4b table to PR 2.
 6. **[I] Only if any 4a/4b row fails: infra PR 3.**
-   - Add `ipAllowList` middlewares with the owner's egress ranges (supplied by the owner; only in the private infra repo, never in xlearn).
+   - Add `ipAllowList` middlewares with the owner's egress ranges (given at launch; only in the private infra repo, never in xlearn).
    - **Longhorn:** a Middleware in `longhorn-system`, first in `ui.yaml`'s chain.
    - **kubescope:** set `route.enabled: false` and add a raw IngressRoute with redirect-slash, stripPrefix and `ipAllowList` in `apps/kubescope-route.yaml`. Don't add a chart knob; chart 0.3.0's list is frozen.
    - Do the same for any other console that failed.
-   - Fallback when there are no stable ranges: `KUBESCOPE_READ_ONLY=true`.
+   - Fallback when no stable ranges were given at launch: `KUBESCOPE_READ_ONLY=true`. Record any other failed console with no fallback ⛔ in `status.md`; don't wait for ranges.
    - Commit `feat(ops): ipAllowList on kubescope and Longhorn (MI-5b interim)`. infra has no CI, so paste the `yq` parse and the `hack/host-lint.sh` output into the PR body. Then merge it under the standing authority, reconcile, and re-run the failed rows. They must now return 403 from off-range addresses.
    - Re-run `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` (read-only). Expect no FAIL.
 7. **[X] Record.**
@@ -156,11 +166,11 @@
 - In [`../sprints/sprint-mi-04.md`](../sprints/sprint-mi-04.md), move each task ⬜ → 🔄 → ✅, or ⛔ with a reason. Task 5 becomes "✅ n/a" when 4a/4b pass. Set _Overall_ ✅ when every task is done.
 - In [`../status.md`](../status.md):
   - the **Sprint board** row for mi-04;
-  - the **MI rows**: MI-5b ✅, with the date, the infra PR numbers and whether the allowlist was needed;
+  - the **MI rows**: MI-5b ✅, with the date, the infra PR numbers and whether the allowlist was needed. If 4b couldn't run: MI-5b 🔄 and task 4 ⛔ "owner signed-in probe (4b) pending", so `ev-first-tester` and l-02 see it;
   - the owner calendar event `ev-mi5b-dns` done;
   - the note "required before the first `tester`; an opening gate that must stay true";
   - **Decisions log** lines: the separate `ops-tls` certificate through the TLSStore; airlift admin moved and blocked on `projects`; the allowlist decision; any console that needed a fallback; the register's "update projects-hub links" descoped (another repo, the redirects cover the hub's `/landscape/` link, an optional owner follow-up); landscape's per-app public URLs now point at `ops` (a cosmetic regression), with the upstream issue link;
-  - any admin-CLI `kubectl exec` you ran at the owner's request (rollout §2.2 log);
+  - the **CLI-use log**: the admin-CLI `kubectl exec` you ran for the entry gate (rollout §2.2);
 - No new ADR is expected, because ADR-0033 §11 already decides this. If a console needs a code fix upstream, open an issue in its repo and link it from the Decisions log instead.
 
 ## Done when (acceptance)
@@ -168,11 +178,16 @@
 - [ ] `ops.sujaykumar.dev` resolves publicly and serves a valid `ops-tls` certificate. `projects` still serves `projects-tls`.
 - [ ] No admin console answers on `projects.sujaykumar.dev`: roots 302 to `ops`, no console API responds, airlift admin returns 403, and airlift and xLearn are unaffected.
 - [ ] The consoles refuse cross-origin mutating calls and WebSocket upgrades from `projects` (4a #7, 4b a–e), or the `ipAllowList` is live on every console that failed.
-- [ ] The owner logs in to landscape and kubescope at the new URLs; Longhorn and airlift admin work on `ops`.
+- [ ] Sign-in to landscape and kubescope works at the new URLs (4b's signed-in browser); Longhorn and airlift admin work on `ops`.
 - [ ] Flux `infra-configs`, `infra-storage` and `apps` are Ready, and `host-verify --cluster` is green.
 - [ ] The infra README is rewritten, and `docs/v2/status.md` records MI-5b ✅.
 
-**Shipping.** Ship at session end per AGENT.md land-and-sync, with **this sprint's release action: infra PR(s) only**.
-- Merge PR 1, then PR 2, then PR 3 if it's needed. infra has no CI, so each PR body carries the pasted checks, and you merge under the standing authority. Let Flux apply each one, verify live, and run `host-verify --cluster` after PR 2 (and PR 3).
-- Then land the xlearn docs PR. **No tag.**
-- Finish with `git checkout main && git pull` in both `../infra` and xlearn. If a peer's worktree holds `main`, run `git -C <worktree> merge --ff-only origin/main` there.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: `feat/ops-tls` and `feat/ops-consoles` (plus PR 3's branch if needed) in `../infra`, then `docs/mi-04-status` in xlearn.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. infra has no CI: each PR body carries the pasted checks, and you merge on them.
+3. **Release action — infra PR(s) only:** Merge the infra PRs in the plan's order (each its own PR, never folded into a tag): PR 1 (certificate) → PR 2 (routes + README) → PR 3 only if a 4a/4b row fails. Let Flux apply each one and verify live, with `host-verify --cluster` after PR 2 (and PR 3). Then the xlearn docs/status PR. No tag.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn and `../infra`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

@@ -18,7 +18,7 @@ _Overall:_ ⬜ Not started
 | 3 | evalpack ImagePolicy (image before policy) | I | ⬜ |
 | 4 | judge nkey + NATS ACL PR (before the tag) | I | ⬜ |
 | 5 | Tag `v1.13.0` (release checklist) — first `xlearn-judge` image | X | ⬜ |
-| 6 | `xlearn-judge` GHCR package pullable anonymously | O | ⬜ |
+| 6 | `xlearn-judge` GHCR package pullable anonymously (if not: ⛔ owner action, task 8 left to a re-run) | X | ⬜ |
 | 7 | judge DB 4-step PR (role, schema, secrets) | I | ⬜ |
 | 8 | judge HelmRelease PR: image automation, runner bearer, pack volume, born default-deny egress | I | ⬜ |
 | 9 | Verify (Ready, evaluable, nkey, erase consumer, policies, memory sum, still dark) | H | ⬜ |
@@ -172,13 +172,20 @@ judge's erase ack from this tag; no learner-visible change". Anything else merge
 - **Gate state after:** judge dark. **Rollback floor after:** unchanged (judge's schema is new and additive).
   **Snapshot:** not required (not a contract, erase or GA tag).
 
-### 6 · `xlearn-judge` GHCR package pullable [O]
+### 6 · `xlearn-judge` GHCR package pullable [X]
 
 A first push creates a new GHCR package. The cluster pulls every `xlearn-*` image without a pull secret, so confirm an
-**anonymous** read works like the other seven: `crane ls ghcr.io/sujaykumarsuman/xlearn-judge` lists `1.13.0`. If it
-returns 401/403, the **owner** sets the package to public in GitHub (it holds only public code, [ADR-0027 §1](../../adr/0027-content-evalpack-and-user-data-model.md);
-the pack is a separate private image) and links it to the repo. **Never** do this to `xlearn-evalpack`. Task 8 waits for
-this, or judge would sit in ImagePullBackOff and its ImageRepository would fail to scan.
+**anonymous** read works like the other seven: `crane ls ghcr.io/sujaykumarsuman/xlearn-judge` lists `1.13.0`. If it does,
+carry on.
+
+If it returns 401/403, the package has to be set to public in GitHub and linked to the repo (it holds only public code,
+[ADR-0027 §1](../../adr/0027-content-evalpack-and-user-data-model.md); the pack is a separate private image). That is an
+**owner-only** GitHub-settings action, and the package exists only after this session's tag push, so it can't be a
+before-launch item. **Don't wait** (D40): land everything that doesn't depend on it (task 7's DB 4-step PR, task 10's record),
+set task 8 ⛔ (task 9 follows it) and record ⛔ "owner: set the `xlearn-judge` package public and link it to the repo" in
+status.md. A **re-run of this prompt** after the owner has done it re-checks this task and picks up at task 8, then tasks 9
+and 10. **Never** do this to `xlearn-evalpack`. Task 8 never merges before this check passes, or judge would sit in
+ImagePullBackOff and its ImageRepository would fail to scan.
 
 ### 7 · judge DB 4-step PR [I] (after the tag)
 
@@ -200,6 +207,8 @@ before its schema exists would crash-loop and hold `apps` not-Ready under `wait:
 - *Fallback:* one combined PR with task 8; the brief crash-loop self-heals ([ADR-0034 §1.5](../../adr/0034-v2-release-labelling-gating-and-rollback.md#15-other-release-streams)). Accepted, not preferred.
 
 ### 8 · judge HelmRelease PR [I] (after tasks 6 and 7)
+
+Only once task 6's anonymous read passes; otherwise this task is ⛔ and a re-run of this prompt picks it up (task 6).
 
 **Runner bearer (owned here).** `apps/secrets/xlearn-judge-runner-auth.enc.yaml`: Secret `xlearn-judge-runner-auth`,
 key `token`, the **same value** as the runner's `runner/secrets/runner-auth.enc.yaml`:
@@ -307,7 +316,9 @@ Read-only, over `ssh vps`:
   the plan.
 - **Still dark:** `JUDGE_BASE_URL` absent from `apps/xlearn-gateway.yaml` and from the live gateway env
   (`k3s kubectl -n xlearn get deploy xlearn-gateway -o jsonpath='{..env}'`); the SPA shows no judge surface.
-- Smoke: login, the dashboard and coach.
+- Smoke: login, the dashboard and coach. An agent never enters credentials: use an already-signed-in browser session if there is
+  one; otherwise run the credential-free checks, record "owner login smoke pending" as a pending-smoke note in status.md, and
+  carry on.
 
 ### 10 · Record [X]
 
@@ -317,6 +328,10 @@ floor → snapshot row **`M3-1 → v1.13.0 → floor unchanged → snapshot n/a`
 live, ACL PR, reload date); the runner-auth secret's provenance (who generated it, when — never the value); **flag
 inventory**: judge's kill-switch env (a permanent kill switch, L15) and `JUDGE_BASE_URL` unset; the memory-sum numbers;
 decisions log: the gateway :8080 (JWKS) and identity :8081 (erase re-verify) egress additions to MI-13 (mi-11 leaves judge's policy as is; mi-12 then adds only TCP 443 and verifies :8081 is present; rollout §12's M4 line reads "443" only), and the two-PR DB/HelmRelease order.
+
+If task 6 found the package private: record what landed, task 8 ⛔ and the ⛔ "owner: set the `xlearn-judge` package public and
+link it to the repo" (Sprint board row and **Blocked / needs input**); MI-13 stays 🔄 until the re-run lands task 8 and completes
+this record.
 
 ## Acceptance criteria
 
@@ -358,6 +373,8 @@ Release checklist ([ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and
   MI-5a and MI-4. The gateway → judge and practice → judge calls start only in `v1.14.0`, and their ingress is already
   in task 8's policy.
 - *Extra after-tag reads:* identity logs show its `XLEARN_JUDGE` ack consumer waiting (not failing) until task 8, then bound.
+- *Smoke:* never enter credentials. The login smoke uses an already-signed-in browser session if there is one, else the
+  credential-free checks plus an "owner login smoke pending" pending-smoke note in status.md (task 9).
 
 ## Definition of Done
 
@@ -384,5 +401,3 @@ NATS, content) · notable calls in the decisions log.
   so invisible until [m3-13](sprint-m3-13.md)'s dogfood. Record provenance; rotate as a pair of PRs, runner first.
 - **Rollback:** R-a the kill-switch env; remove judge by reverting the HelmRelease PR (Flux prunes it; the schema and
   NATS user stay, harmless); R-b of the fleet below `1.13.0` only drops identity's expectation of judge's ack.
-</content>
-</invoke>

@@ -33,7 +33,7 @@
 - **Signup is closed (D33).** Two parts, both **live in v1.5.2** (2026-09-24):
   - **MI-2b:** GitHub no longer auto-links into accounts that have a password (amends ADR-0023 §3). xlearn#51.
   - **MI-2c:** `SIGNUP_MODE ∈ {open, closed}` (`invite` reserved for v2); anything but `open`, unset included, is `closed`. xlearn#52, with infra#30 setting `closed` on identity. **Production signup has been closed since 2026-09-24 (D13 enforced).** v1.5.2 honours `open` without `DEV_AUTH`; that runtime guard is M1b work (§4).
-- **The opening is v3 (D35).** Its gates are listed in §11: MI-5b live, alerting revisited, `SEAT_CAP` re-sized from ≥ 2 weeks of M4 data, the privacy notice and erase live, and `SIGNUP_MODE=invite`.
+- **The opening is v3 (D35).** Its gates are listed in §11: MI-5b live, alerting revisited, `SEAT_CAP` re-sized from ≥ 2 weeks of M4 data, the privacy notice (reviewed by the owner, moved there by D40) and erase live, and `SIGNUP_MODE=invite`.
 - **Release labels (D32).** Every milestone ships as a **1.x minor**:
   - **`v2.0.0`** is the owner-facing GA default flip;
   - **`v2.1.0`** is the interviewer GA (M6a + M6b);
@@ -205,7 +205,7 @@ One PR carries the union of every topic's asks, all default-off:
 | **Exit** | <ol><li>An infra PR sets `SIGNUP_MODE=invite`.</li><li>The owner mints an invite for each create path.</li><li>In a tester-operated browser, each invite is redeemed, one on the email path and one on the GitHub path. Each account (role `learner`) accepts, solves and is graded on the self path (judge stays cohort-gated before GA), then erases itself on the web. Seats return to 0/15. *Optional:* `identity admin account set-role <user> tester` after redemption rehearses a judge grade and frees the seat.</li><li>An infra PR sets `SIGNUP_MODE=closed` again.</li><li>Record the rehearsal in status.md.</li></ol> |
 | **Services** | identity, gateway, web, and every erase consumer |
 | **Artboards** | AB19★, AB20, AB21 |
-| **Content** | the notice text (owner) |
+| **Content** | the notice text: agent-drafted, it lands with the L-A front door as drafted (D40). The owner reviews it before the opening (§11), and a revision is a content PR |
 
 ### v2.0 GA: the owner-facing default flip
 
@@ -292,7 +292,7 @@ graph LR
 | Chain | Path | Lands (inferred) |
 |---|---|---|
 | **Engineering** | spike go-ahead → spike week (mid-Oct) → October host window → runner dark (Nov) → M3 (Nov) → M4 (Dec) → GA | ≈ late Dec |
-| **Owner hours** | 14 packs (28–41 h) → M3 · pilot content (10–20 h) → P · acceptance set (5–10 h) → M4 · hero artboards and reviews (15–25 h) before each UI sprint. **≈ 58–96 h**; at ~10 h/week from the M1a schema freeze (~Oct 5) | ≈ mid-Nov to mid-Dec |
+| **Owner hours** | 14 packs (28–41 h) → M3 · pilot content (10–20 h) → P · acceptance set (5–10 h) → M4. **≈ 43–71 h**; at ~10 h/week from the M1a schema freeze (~Oct 5). The board hours are off this chain: agents draft every board (D38), each `ds-*` merge is its freeze, and the owner may review boards afterwards, asynchronously (D40). It was ≈ 58–96 h with "hero artboards and reviews (15–25 h)" | ≈ mid-Nov to mid-Dec |
 
 - **Both chains converge around December**, so GA lands ≈ Dec 2026–Jan 2027.
 - **The October window date can slip M3 by a month.** Book it the day the spike week is booked.
@@ -308,7 +308,9 @@ graph LR
 | **L** (identity-centred) | L-E after N3 + MI-5; L-A and L-C with M4 | during M3/M4 |
 | **Interviewer** | S6 any time the owner is present; M6a after M3, alongside M4 | after M3 |
 
-**Owner calendar events** (calendar events, not sprints)
+**Owner calendar events** (calendar events, not sprints). Since D40, an owner-only action is done **before launch**
+of the sprint that needs it (listed in that prompt's `## Before you launch (owner)` block), and nothing waits on the
+owner mid-session. The build plan's calendar is the detailed list.
 
 | When | Event | Gates |
 |---|---|---|
@@ -316,13 +318,13 @@ graph LR
 | ✅ 2026-09-24 | **infra#28** (`host-bootstrap` + `host-verify`) merged at 10:03Z; local `../infra` `main` is synced. | MI-0 |
 | ✅ 2026-09-24 | **v1.5.2 live** (`1b90d2b`): MI-2b (xlearn#51, auto-link fix) and MI-2c (xlearn#52, `SIGNUP_MODE`; infra#30 sets `closed`), so **signup is closed in production**. **MI-2a done:** xlearn#53 (`.release-line`) + infra#29 (ranges `<2.0.0`) | M1 tags |
 | weeks 2–4 | **MI-5b:** a DNS record and cert for `ops.sujaykumar.dev`; update the landscape and kubescope bookmarks | the first `tester` (L-E) |
-| mid-October | **Spike week** (P0–P3, image volume, optionally WIF). Needs the owner's go-ahead (D23). | MI-11, M3 |
+| mid-October | **Spike week** (P0–P3, image volume, optionally WIF). The owner's go-ahead (D23) is launching the spike prompt (D40). | MI-11, M3 |
 | late October | **October host window** (MI-11, with MI-11a). Book it with the spike. | MI-12, M3 |
 | before M4 | **WIF spike** (≤ ½ day), if it didn't run in the spike week | M4 |
 | before the M6a design freeze | **S6** voice spike (owner present, $10 hard limit) | M6a |
-| before each contract, erase or GA tag | **Hostinger manual snapshot** | — |
+| before launch of each contract, erase or GA tag sprint | **Hostinger manual snapshot** (hPanel; owner-only, D40) | — |
 | L exit | **Tester invite round-trip** on production (`invite` → `closed`) | L exit |
-| GA day | **GA snapshot**, range PR, then the `v2.0.0` tag | v2.0.0 |
+| GA day | **GA snapshot** (before launch of the GA cut), then the range PR and the `v2.0.0` tag | v2.0.0 |
 
 ---
 
@@ -387,8 +389,8 @@ This table is copied from ADR-0034 §1.6 and must stay identical to it. Take the
 | M3 entry | 14 pilot packs (Go/C++/Python refs) | 28–41 |
 | P | pilot course (~10 items plus course gates) | 10–20 |
 | M4 | analyzer acceptance set (≥ 70 labelled) | 5–10 |
-| every UI milestone | 5 hero artboards plus reviews of ~25 drafted boards | 15–25 |
-| **gating v2.0** | | **≈ 58–96** |
+| every UI milestone | ~~5 hero artboards plus reviews of ~25 drafted boards~~: agents draft every board (D38), and each `ds-*` merge is its freeze. The owner may review boards afterwards, asynchronously, off the gating path (D40) | 0 gating (was 15–25) |
+| **gating v2.0** | | **≈ 43–71** (was ≈ 58–96) |
 | v2.x waves | week 1–4 packs (~35 in total) + the full 151-item self tier | D6 + D20 = 215–335 h in total, including the rows above |
 | M5 | all 151 packed | +230–340 |
 
@@ -430,9 +432,9 @@ This table is copied from ADR-0034 §1.6 and must stay identical to it. Take the
 | Settings | AB18, AB21, AB22 |
 | Auth | AB19 |
 
-**Production (D38, build-plan session):** agents draft **all** boards, the 5 heroes included, as static HTML on `theme.css` under `design-system/screens/v2/` in design sprints (`ds-*`); the owner reviews and approves. See [build-plan.md](build-plan.md).
+**Production (D38, build-plan session; D40):** agents draft **all** boards, the 5 heroes included, as static HTML on `theme.css` under `design-system/screens/v2/` in design sprints (`ds-*`). Each board PR lands on CI green, and **the merge is the freeze** (D40). The owner may review a board after the fact; D38's review now happens asynchronously, per D40, and a change to a frozen board is a follow-up design PR. See [build-plan.md](build-plan.md).
 
-**Freeze rule.** A milestone's boards are frozen before its first UI sprint:
+**Freeze rule.** A milestone's boards are frozen (its `ds-*` PR merged, D40) before its first UI sprint:
 
 | Boards | Frozen before |
 |---|---|
@@ -478,6 +480,7 @@ None of these gates v2.0 GA. All of them gate the first real invitee.
 - [ ] **Alerting revisited (D34).** Adopt the kept healthchecks.io design (dead-man plus opscheck) or an alternative, or re-accept the no-alert risk in writing.
 - [ ] **`SEAT_CAP` re-sized** from ≥ 2 weeks of M4 spend data. It starts at 15; platform AI binds first, at 13–17 seats.
 - [ ] **The privacy notice is live**, stating Anthropic, 30-day retention, the toggles and the data-loss window. **Web erase is live for non-owners.**
+- [ ] **The owner reviews the privacy-notice text** (moved from l-05 by D40). l-05 landed the agent-drafted text; a revision is a content PR.
 - [ ] **Platform-AI limits raised** from D25's dogfood defaults ($15 provider / $12 app) to $100 / $80, re-sized with `SEAT_CAP`.
 - [ ] **`SIGNUP_MODE=invite`** via an infra PR. Production never runs `open` while the runner is on the production node.
 - [ ] **R2 first if needed.** Open signup (a D21 trigger) or `SEAT_CAP` > 40 (a T7 threshold) requires R2, the dedicated runner VPS, before admitting anyone.
@@ -583,8 +586,8 @@ None of these gates v2.0 GA. All of them gate the first real invitee.
 |---|---|---|
 | **PRD Q5:** the pilot course | P entry | go-concurrency (SQL fallback) |
 | **PRD Q7:** per-problem time budgets | a future research session; not a gate | manifest default of 45 min, hint at 15 (D18) |
-| **Artboard production** | before M1b (AB01–AB03) | ✅ decided (D38): agents draft all boards in `ds-*` sprints; the owner reviews. |
-| **Spike go-aheads:** P0–P3 + image volume (D23); WIF | mid-October; before M4 | one spike week, with WIF included if convenient |
+| **Artboard production** | before M1b (AB01–AB03) | ✅ decided (D38, D40): agents draft all boards in `ds-*` sprints, and the boards land on CI green. The merge is the freeze. The owner may review after the fact: D38's review happens asynchronously, per D40. |
+| **Spike go-aheads:** P0–P3 + image volume (D23); WIF | mid-October; before M4 | one spike week, with WIF included if convenient. Launching spk-01 (spk-03 for WIF) is the go-ahead (D40) |
 | **October host-window date** | when the spike is booked | late October, batched with MI-11a |
 | **S6 scheduling** (approved; owner present) | before the M6a design freeze | any time the owner is present; M6a starts after M3 |
 | **infra#28** | before MI-0 | ✅ merged 2026-09-24; local `../infra` `main` synced. |
@@ -592,3 +595,4 @@ None of these gates v2.0 GA. All of them gate the first real invitee.
 | **MI-5b** (DNS, cert, bookmarks) | before the first `tester` (L-E) | weeks 2–4. Testers count as non-owner accounts (ADR-0033 §11). |
 | **ADR sign-off** (0026–0035) | the build-plan session | ✅ (D37): 0026–0029 and 0033–0035 Accepted 2026-09-24; 0030, 0031 and 0032 stay Proposed until their spikes (accepted in m3-03, mi-12 and ds-m6a-01). |
 | **Alerting revisit** (D34) | before the first real invite (v3) | the kept healthchecks.io design |
+| **Privacy-notice text review** | before the first real invite (v3, §11) | moved from l-05 by D40: l-05 lands the agent-drafted text, and a revision is a content PR |

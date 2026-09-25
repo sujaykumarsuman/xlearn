@@ -25,7 +25,7 @@ _Overall:_ ⬜ Not started
 ## Entry gates
 
 - [ ] **v1.9.0 live** ([m2-02](sprint-m2-02.md)): assessment projections v2 (`proj_activity` dated by `anchor_at`, `proj_touch_stats`, `proj_outcome_mix_v2(account_id, path_slug, graded_by, trust, outcome, cnt)`, and `path_slug` on `proj_coverage`/`proj_mastery`) are bound in prod, and `problemTotal=151` is gone.
-- [ ] **AB06 and AB22 frozen**: the [ds-m2-01](sprint-ds-m2-01.md) design PR is merged by the owner (boards under `design-system/screens/v2/`, indexed by `design-system/screens/v2/index.html` from DS-M1-01).
+- [ ] **AB06 and AB22 frozen**: [ds-m2-01](sprint-ds-m2-01.md) merged (the merge is the freeze, D40; boards under `design-system/screens/v2/`, indexed by `design-system/screens/v2/index.html` from DS-M1-01).
 - [ ] **The M1b public floor is on `main` and live in v1.7.0+** ([m1-05](sprint-m1-05.md)): P1 (mock count only), P2 (the resolver returns `visible_courses[]` = enrolled ∩ visible ∩ active), P4 (limits and the 60 s negative-404 cache), P10 (the public-shape allowlist test) and P11 (suspend → 404, with no positive status cache).
 - [ ] **`auth.RequireRole` exists** in `internal/platform/auth` and guards the user routes ([m1-04](sprint-m1-04.md)).
 - [ ] **The identity visibility columns exist**: `account.profile_visibility` and `path_enrollment.public_visible` ([m1-02](sprint-m1-02.md)).

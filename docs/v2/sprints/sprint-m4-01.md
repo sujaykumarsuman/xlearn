@@ -26,7 +26,7 @@ _Overall:_ ⬜ Not started
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row,
-> Milestones row M4 → 🔄, Artboards rows AB16–AB18 → frozen). Task 10 can only run after the tag: leave it 🔄
+> Milestones row M4 → 🔄, Artboards rows AB16–AB18 → frozen if ds-m4-01 didn't already). Task 10 can only run after the tag: leave it 🔄
 > "runs in m4-07 task 7 (after-tag reads)" when this PR merges; [m4-07](sprint-m4-07.md) records the output here, ticks it and
 > sets _Overall_ ✅. (m4-07's entry gate cannot require the smoke: it runs only after m4-07's own tag.)
 > Full rules: [status protocol](README.md#status-protocol-way-of-working).
@@ -41,7 +41,7 @@ _Overall:_ ⬜ Not started
       `v1.16.0` and P/M4 never edit `internal/judge` concurrently
 - [ ] **Acceptance set labelled:** ≥ 70 (≥ 40 test + 30 dev) in `xlearn-evalpack` `acceptance/` (`ev-acceptance-set`) —
       [rollout §3](../rollout-plan.md#3-milestone-map) M4 entry
-- [ ] **AB16–AB18 frozen** ([ds-m4-01](sprint-ds-m4-01.md) merged by the owner) — [rollout §3](../rollout-plan.md#3-milestone-map) M4 entry
+- [ ] **AB16–AB18 frozen** ([ds-m4-01](sprint-ds-m4-01.md) merged; the merge is the freeze) — [rollout §3](../rollout-plan.md#3-milestone-map) M4 entry
 - [ ] **WIF result recorded** ([spk-03](sprint-spk-03.md) → t5 §15): WIF GO with the `check_jti` value, the exchange endpoint and
       field names, access-token lifetime vs rotation interval — **or** the fallback (single-workspace key, 90 days) chosen
 - [ ] **Parallel sessions:** no open peer PR or worktree touches `internal/coach/**`, `internal/platform/**` or `internal/judge/**`
@@ -304,8 +304,9 @@ is unchanged. Rollback floor unchanged. Until m4-07, the deployed images run the
 
 CI green (incl. `sqlc diff`) · PR squash-merged to `main` (no tag; ships in `v1.16.0`) · tasks 1–9 ✅ and task 10 🔄 "runs in m4-07
 task 7 (after-tag reads)" · acceptance criteria met except the pod smoke, which m4-07 ticks · statuses updated (this file + [`../status.md`](../status.md):
-Sprint board row, M4 row 🔄, AB16–AB18 "frozen (PR #, date)", `ev-freeze-ds-m4-01` ✅, [ds-m4-01](sprint-ds-m4-01.md) set ✅) · the
-decisions log carries the credential mode and the re-exchange rule.
+Sprint board row, M4 row 🔄; and, if [ds-m4-01](sprint-ds-m4-01.md)'s session didn't already record them, AB16–AB18 "frozen (PR #, date)",
+`ev-freeze-ds-m4-01` ✅ ("automatic at the ds-m4-01 merge", if still listed) and ds-m4-01 set ✅) · the decisions log carries the
+credential mode and the re-exchange rule.
 
 ## Risks / watch-outs
 

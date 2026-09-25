@@ -3,6 +3,13 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-mi-06.md`](../sprints/sprint-mi-06.md) · **Milestone:** MI (step MI-7; hard precondition for M3 and L-E) · **Prereqs:** [mi-05](../sprints/sprint-mi-05.md), [m1-02](../sprints/sprint-m1-02.md) (`v1.6.0`), [mi-03](../sprints/sprint-mi-03.md) (MI-5), [mi-02](../sprints/sprint-mi-02.md)
 
+## Before you launch (owner)
+
+Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
+
+- [ ] Generate the NATS **ops** nkey offline (`nk -gen user -pubout`). Keep the seed with the two offline age-key copies from MI-1 (`ev-mi1`; make them first if they don't exist yet), never in git, the cluster or a transcript, and give the session only its public key (`U…`) in the launch message.
+- [ ] Read the date of the last Hostinger weekly image in hPanel and record it in `status.md` (or give it in the launch message). N1 restarts NATS, so it must be ≤ 7 days old.
+
 ## Read first
 
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — conventions, GitOps, land-and-sync.
@@ -38,7 +45,7 @@ join through their own ACL PRs ([m3-07](../sprints/sprint-m3-07.md), [l-01](../s
 
 - [ ] **Before N1:** mi-05 merged — the golden file and `make nats-acl-render` exist on `main`.
 - [ ] **Before N1:** mi-02 merged — `host-verify.sh --cluster --nats-stage=…` and its `PIN_NATS_STAGE=open` constant exist in `../infra/hack/`.
-- [ ] **Before N1:** the owner confirms the last Hostinger weekly image is ≤ 7 days old (N1 restarts NATS).
+- [ ] **Before N1:** the last Hostinger weekly image date is recorded (a before-launch item) and ≤ 7 days old (N1 restarts NATS). If it isn't recorded, don't wait: set N1 and the stages after it ⛔ in status.md, naming the owner item, and land the rest (the runbook and status docs PR).
 - [ ] **Before N2:** `v1.6.0` live on all seven `xlearn-*` Deployments (`ssh vps 'k3s kubectl -n xlearn get deploy -o wide'`) and the NATS-auth integration test green at that tag.
 - [ ] **Before identity's N2:** `v1.6.0` on `xlearn-identity`, and either no `messaging` NetworkPolicy yet or MI-5's policy lists `xlearn-identity` as a 4222 caller (`ssh vps 'k3s kubectl -n messaging get networkpolicy -o yaml'`).
 - [ ] **Before N3:** the MI-5 PR (mi-03's first) merged; all four N2 PRs verified; zero `legacy` connections.
@@ -48,15 +55,16 @@ N1 may proceed while the N2 or N3 gates are still open; stop at the first stage 
 
 ## Do this (in order)
 
-1. **[O + I] Keys** (on the owner's machine; you generate the four service seeds in-session and their SOPS
-   files land in the N2 PRs; the owner alone generates ops). Install `nk` and `nats`
+1. **[I] Keys** (on the owner's machine; you generate the four service seeds in-session and their SOPS
+   files land in the N2 PRs; the owner generated ops offline before launch). Install `nk` and `nats`
    (`go install github.com/nats-io/nkeys/nk@latest`, `…/natscli/nats@latest`). For practice, review,
    assessment and identity: generate the seed into a mode-600
    scratch file (never printed), derive the public key with `nk -inkey … -pubout`, write
    `../infra/apps/secrets/xlearn-nats-<svc>.enc.yaml` (Secret `xlearn-nats-<svc>`, ns `xlearn`,
-   `stringData.seed`), `sops --encrypt --in-place`, delete the plaintext. Ask the **owner** to generate the
-   **ops** key themselves and give you only its public key; its seed stays offline with the age-key copies.
-   Don't generate judge or coach keys.
+   `stringData.seed`), `sops --encrypt --in-place`, delete the plaintext. The **ops** key is a before-launch
+   owner item: use the public key from the launch message (its seed stays offline with the age-key copies). If
+   you don't have it, don't wait: N1 can't render the ops user, so set N1 ⛔ in status.md, naming the owner item,
+   and land what doesn't depend on it. Don't generate judge or coach keys.
 2. **[H] Rehearse locally.** In an xlearn worktree at tag `v1.6.0`, `make nats-acl-render`; build the N1 values
    excerpt (the golden users for practice, review, assessment, identity and ops as YAML under `config.merge`,
    plus `legacy` and `no_auth_user`; drop judge/coach entries if the golden has them and note it in the PR).
@@ -72,14 +80,16 @@ N1 may proceed while the N2 or N3 gates are still open; stop at the first stage 
    `hack/host-lint.sh`. Put the public-key table, the rehearsal output and the host-lint output in the PR body.
    Record the live `/connz` connection count (7 on 2026-09-24: practice, review, assessment). Merge → watch
    `rollout status sts/nats` → verify: a **plain** `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh`
-   (no `--nats-stage` override) green, then the mi-02 node-copy refresh, gated [O]: the owner refreshes
-   `/root/host-verify.sh`, or you run `scp ../infra/hack/host-verify.sh vps:/root/` once with the owner's
-   explicit OK; otherwise record "`/root/host-verify.sh` stale: owner to refresh"; `/connz?auth=true` all `legacy` with the recorded count restored; `/jsz?consumers=true` pending
+   (no `--nats-stage` override) green, then the mi-02 node-copy refresh: run
+   `scp ../infra/hack/host-verify.sh vps:/root/` once (pre-approved by launching this prompt, D40);
+   `/connz?auth=true` all `legacy` with the recorded count restored; `/jsz?consumers=true` pending
    → 0; each outbox's unsent → 0 (psql via `kubectl exec` on `projects-pgstore-1`, read-only); no
    permission ERRORs in `xlearn-*` logs. Anything off → revert + a second annotation bump.
-4. **[O + X] First break-glass use.** Write the runbook (step 7; plan task 6) far enough for the owner to run
-   `nats stream ls` through the `ssh -L … port-forward svc/nats` tunnel with the offline ops seed (default
-   inbox, no `--inbox-prefix`: ops subscribes on `_INBOX.>`). Log entry #1.
+4. **[X] Break-glass runbook, ready for the owner's first use.** Write the runbook (step 7; plan task 6) far
+   enough for the owner to run `nats stream ls` through the `ssh -L … port-forward svc/nats` tunnel with the
+   offline ops seed (default inbox, no `--inbox-prefix`: ops subscribes on `_INBOX.>`). Don't wait for that run:
+   it's a pending owner item, recorded in status.md as the post-ship owner event `ev-nats-ops-first-use`
+   (step 7), and it doesn't gate _Overall_ ✅.
 5. **[I] N2 PRs, one per service: practice → review → assessment → identity.** Each PR adds its encrypted seed
    file plus `NATS_NKEY_SEED_FILE=/var/run/secrets/nats/seed`, `NATS_INBOX_PREFIX=_INBOX_<svc>`, and the
    `extraVolumes` (secret `xlearn-nats-<svc>`, `defaultMode: 0440`, item `seed`) / `extraVolumeMounts`
@@ -93,9 +103,12 @@ N1 may proceed while the N2 or N3 gates are still open; stop at the first stage 
    `PIN_NATS_STAGE` `n1` → `n3` in `hack/host-verify.sh` (run `hack/host-lint.sh`); **no** annotation bump.
    Before merging: zero `legacy` connections and MI-5 merged. After: `/varz` `config_load_time` moved and
    `start` unchanged; a **plain** `host-verify --cluster` (now checking `n3`) green, then refresh the `/root`
-   copy the same owner-gated way; all services back on nkeys; outbox and pending 0; login, dashboard and coach smoke. Owner's
-   machine: an anonymous `nats pub probe.n3 x` / `nats sub probe.n3` through the tunnel is refused, and the
-   `nats-0` log shows it; re-run the plain `--cluster`. Record the N3 timestamp.
+   copy the same way; all services back on nkeys; outbox and pending 0; login, dashboard and coach smoke (login
+   in an already-signed-in browser session if you have one; otherwise the credential-free checks, plus "owner
+   login smoke pending (N3)" as a pending-smoke note). On this machine you open the tunnel and, with no seed,
+   run an anonymous `nats pub probe.n3 x` / `nats sub probe.n3`: both are refused, and the `nats-0` log shows
+   it. Close the tunnel, log the probe in the break-glass log, and re-run the plain `--cluster`. Record the N3
+   timestamp.
 7. **[X] Runbook + record** on a `docs/…` branch in xlearn:
    - finish `docs/v2/runbooks/nats-break-glass.md` (when, how, why port-forward passes MI-5, rotation and
      revocation, never-list, the log rule);
@@ -108,7 +121,7 @@ N1 may proceed while the N2 or N3 gates are still open; stop at the first stage 
   `patch` or `delete` by hand. Reads (`get`, `get --raw` proxy, `logs`, a read-only `psql` via `exec`) are
   fine. The break-glass path is the only manual NATS path, and this sprint uses it read-only. The only host
   write is mi-02's node-copy refresh (`scp ../infra/hack/host-verify.sh vps:/root/`) after the N1 and N3
-  merges, and only with the owner's explicit OK (or the owner does it).
+  merges, which launching this prompt pre-approves (D40).
 - **Server before clients:** N1 before any seed; each N2 verified before the next; N3 only at zero `legacy`.
   **Infra PRs stand alone** — never folded into a tag. No SOPS decryption in `messaging`: public keys are
   plaintext values.
@@ -130,10 +143,10 @@ N1 may proceed while the N2 or N3 gates are still open; stop at the first stage 
 
 - `../infra`: N1 PR (`messaging` values: users, `legacy`, `no_auth_user`, restart annotation; `hack/host-verify.sh`
   `PIN_NATS_STAGE=n1`); four N2 PRs (seed SOPS file + mount + env per service; identity's also adds `NATS_URL`);
-  N3 PR (`legacy` deny; `PIN_NATS_STAGE=n3`). The node copy `/root/host-verify.sh` refreshed after N1 and N3 (owner-gated), or recorded as a pending owner item.
+  N3 PR (`legacy` deny; `PIN_NATS_STAGE=n3`). The node copy `/root/host-verify.sh` refreshed after N1 and N3 (pre-approved, D40).
 - xlearn docs PR: `docs/v2/runbooks/nats-break-glass.md`, the `events.md` note, `status.md` updates, this
   sprint's statuses.
-- Live: every NATS connection on its own nkey; `legacy` denied; the break-glass path proved once.
+- Live: every NATS connection on its own nkey; `legacy` denied; the break-glass tunnel proved (the N3 probe).
 
 ## Update status
 
@@ -143,7 +156,10 @@ N1 may proceed while the N2 or N3 gates are still open; stop at the first stage 
   - the **MI** table's MI-7 row (N1, N2 × 4 and N3 dates with `../infra` PR numbers);
   - the **NATS** rows: stage `n3`, and the **N3 timestamp** that [l-01](../sprints/sprint-l-01.md)'s ≥ 24 h
     re-check and [mi-11](../sprints/sprint-mi-11.md) gate on;
-  - the **NATS break-glass log** (entry #1 plus the N3 probe);
+  - the **NATS break-glass log** (the N3 probe);
+  - the **Owner calendar events**: add `ev-nats-ops-first-use` (after this sprint; the owner's first ops-seed
+    `nats stream ls` through the runbook, logged in the break-glass log; prepared by mi-06);
+  - the **Pending-smoke notes**, if the N3 login smoke couldn't run in a signed-in session;
   - the **Decisions log** (judge/coach keys deferred to m3-07/l-01; bcrypt'd `legacy`; N2 order; identity
     joined NATS in its N2 PR; `PIN_NATS_STAGE` now `n3`; anything the rehearsal changed).
 - No new ADR expected (ADR-0035 governs). If you must deviate from ADR-0035 §2, write an ADR after checking
@@ -156,9 +172,14 @@ N1 may proceed while the N2 or N3 gates are still open; stop at the first stage 
 - [ ] N3 applied as a reload; a plain `host-verify --cluster` (`PIN_NATS_STAGE=n3`) green right after; timestamp recorded for l-01.
 - [ ] identity on NATS with its own nkey: `XLEARN_IDENTITY` exists and its relay drains.
 - [ ] No event lost: outbox unsent 0 and pending 0 after every stage; a real flow works end to end.
-- [ ] Break-glass runbook written and used once (read-only), logged.
+- [ ] Break-glass runbook written; its tunnel proved by the N3 probe and logged; `ev-nats-ops-first-use` recorded for the owner's first ops-seed use (post-ship; it doesn't gate _Overall_ ✅).
 
-**Shipping:** release action = **infra PR(s) only**. Per AGENT.md land-and-sync, merge each `../infra` PR after
-its verify step (no CI in `../infra`; standing merge authority), let Flux reconcile, verify live, then
-branch → commit (with the attribution lines) → PR → merge the xlearn docs PR. Finish with
-`git checkout main && git pull` in **both** repos (the peer-worktree route if `main` is held elsewhere). No tag.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: `feat/nats-auth-n1`, one branch per N2 service and `feat/nats-auth-n3` in `../infra`, then a `docs/…` branch in xlearn.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. infra has no CI: paste each PR's verify output into its body and merge on it.
+3. **Release action — infra PR(s) only:** Merge the infra PRs in the plan's order (each its own PR, never folded into a tag): N1 → N2 practice → review → assessment → identity → N3, each only after the previous one's verify step passes and Flux has reconciled; then the xlearn docs/status PR. No tag. Run a plain `host-verify --cluster` after N1 and after N3, each followed by the `/root` copy refresh.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn and `../infra`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

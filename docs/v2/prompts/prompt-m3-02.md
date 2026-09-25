@@ -48,7 +48,7 @@ protocol (m3-04 adds C++/Python). v2 is owner-only (D35).
 - [ ] MI-9 done: `gh repo view sujaykumarsuman/xlearn-evalpack --json visibility,isFork,isTemplate` → `PRIVATE/false/false`;
       `../xlearn-evalpack` checked out; its latest probe run green; `0.1.0` exists; the infra pull secrets + ImageRepository merged.
 - [ ] m3-01 merged: `internal/course/canon`, `internal/packspec`, `cmd/packlint check|hash|fingerprint` on `main`; `git config core.hooksPath`
-      → `hack/git-hooks` in this clone.
+      → `hack/git-hooks` in this clone (if it's unset, run `make install-hooks` yourself first: a per-clone setting, not an owner step).
 - [ ] Parallel sessions: `gh pr list --state open` in **both** repos, `git worktree list`, ListAgents — nothing conflicting on `cmd/packlint`,
       `internal/packspec`, `internal/platform/checker`, `internal/platform/harness`, `docker-compose.yml` or the evalpack workflows; no
       peer in `../xlearn-evalpack`.
@@ -95,6 +95,7 @@ protocol (m3-04 adds C++/Python). v2 is owner-only (D35).
    executor, shared harness/checker, fixture pack`) with the attribution lines; push; PR; CI green; squash-merge.
    **Cut line:** this xlearn PR stands alone. If the session can't finish steps 9–12 too, stop here: don't touch
    `../xlearn-evalpack` `main`, set plan tasks 1, 5, 6, 8 ⛔ "carried: evalpack half", and a follow-up session runs steps 9–13 only.
+   This session still runs step 13 and **Ship** below (xlearn only).
 9. **[E] Branch** `feat/pack-pipeline` in `../xlearn-evalpack`. Format v1: `pack.json` → `format_major: 1`, the item layout and `drafts/`,
    `tests.lock` with its tool-version header, the `Makefile` (`packcheck`, `lock`, `build`, `image`, `selftest`) calling
    `go -C ../xlearn run ./cmd/packlint`; replace `hack/build.sh` with `packlint build` (keep the version == tag check).
@@ -105,7 +106,7 @@ protocol (m3-04 adds C++/Python). v2 is owner-only (D35).
     **before** the push, then the probe. Prove a planted `gen/` file fails the listing test, then remove it.
 12. **[E] README** — the authoring rules (plan task 8). Commit (`feat: pack format v1, packcheck gates, image build`) with the attribution
     lines; PR; the `selftest` + probe green; squash-merge. Optional: tag `v0.2.0` and check build → push → probe. **Never tag `>=1.0.0`.**
-13. **[X] Update status** (below) as an xlearn docs commit/PR if the code PR has already merged; ask the owner for task 10.
+13. **[X] Update status** (below) as an xlearn docs commit/PR if the code PR has already merged; then **Ship:** see **Ship** below.
 
 ## Constraints
 
@@ -137,10 +138,10 @@ protocol (m3-04 adds C++/Python). v2 is owner-only (D35).
 
 ## Update status
 
-- [`../sprints/sprint-m3-02.md`](../sprints/sprint-m3-02.md): each task 🔄 → ✅ (task 10 once the owner confirms); _Overall_ ✅ when all are.
+- [`../sprints/sprint-m3-02.md`](../sprints/sprint-m3-02.md): each task 🔄 → ✅; _Overall_ ✅ when all are.
 - [`../status.md`](../status.md): the Sprint board row; the **M3** row; **content status** (pipeline live, format 1, items stamped 0/14,
   TLs provisional until m3-13, C++/Python gates pending m3-04); the **evalpack stream** row (`v0.2.0` + digest if tagged); **owner events**
-  (`ev-packs-14`: pipeline ready); **Decisions log**: public code / private data; the three shared-package paths and who extends
+  (`ev-packs-14`: pipeline ready — the owner's pack authoring continues; it doesn't gate this sprint); **Decisions log**: public code / private data; the three shared-package paths and who extends
   them; the manifest kept to t1 §3.3's shape; the `fixture` course instead of DSA items and the `FIXTURE_CONTENT_DIR` overlay
   contract for m3-05; the std-cache seed; the provisional TL scale; multi-arch; the `public-ref:` token.
 - No ADR (ADR-0027 is Accepted). A change to a decided shape needs a new ADR — check peers for the next free number first.
@@ -155,6 +156,15 @@ protocol (m3-04 adds C++/Python). v2 is owner-only (D35).
 - [ ] `internal/platform/harness` (Go half), `internal/platform/checker` and `internal/packspec/gen` exist once, at those paths, with golden tests.
 - [ ] The pack README carries the authoring rules; `docs/v2/status.md` is updated.
 
-Shipping: per AGENT.md land-and-sync with this sprint's release action — **merge only + an optional evalpack `v0.2.0`**, in both
-repos: branch → PR → CI green → squash-merge → `git checkout main && git pull` in xlearn **and** `../xlearn-evalpack` (at the cut line:
-xlearn only). Optional `v0.2.0` evalpack tag only; **never a `>=1.0.0` tag, never an xlearn tag.** No infra PR.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: the xlearn PR first (step 8 above, `feat/m3-evalpack-pipeline`), then the `../xlearn-evalpack` PR (step 12 above, `feat/pack-pipeline`); no `../infra` PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. (The evalpack PR's checks are its `selftest` and probe jobs.)
+3. **Release action — merge only + an optional evalpack `v0.2.0`:**
+   - xlearn: nothing deploys; the PR ships in the next app tag with no runtime change: `v1.6.0` (cut by [m1-02](../sprints/sprint-m1-02.md)) if merged before that tag, else `v1.7.0` (cut by [m1-07](../sprints/sprint-m1-07.md)). Don't tag xlearn.
+   - `../xlearn-evalpack`: the pipeline lands on `main`. `v0.2.0` is optional; if you tag it, follow the evalpack stream's own procedure: check peers' evalpack tags first (`git ls-remote --tags` there), tag `v0.2.0`, let `build.yml` run `packlint build`, the listing test, the multi-arch push and the probe (anonymous GET 401/403), and record it under **release streams** in status.md (digest, `validated_against`). It sits below every `>=1.0.0 <2.0.0` range, so nothing deploys. **Never tag `>=1.0.0`** ([m3-07](../sprints/sprint-m3-07.md) cuts `v1.0.0`).
+   - At the cut line (step 8 above): xlearn only; plan tasks 1, 5, 6 and 8 are ⛔ "carried: evalpack half", and a follow-up session runs steps 9–13 above.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn and `../xlearn-evalpack`; at the cut line, xlearn only). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

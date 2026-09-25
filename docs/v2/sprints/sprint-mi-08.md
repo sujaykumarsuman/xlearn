@@ -30,8 +30,8 @@ _Overall:_ ⬜ Not started
 
 - [ ] MI-3 merged ([mi-01](sprint-mi-01.md)): chart `0.3.0` with the `automountServiceAccountToken` knob, and `hack/chart-diff.sh`
 - [ ] MI-8 memory-sum check available ([mi-02](sprint-mi-02.md)): `host-verify --cluster [--with-runner]`, `hack/memory-budget.tsv` and its embedded copy in `hack/host-verify.sh` (checked by `hack/host-lint.sh`)
-- [ ] ≥ 48 h of samples exist in `/var/tmp/xlearn-top.tsv` (mi-02 started the sampler after the H0 reboot; it self-stops after `SAMPLE_HOURS`, default 168 h, so by now it has normally finished) — **or** the owner declined the sampler in mi-02 (its Decisions-log line) → keep the provisional `top × 1.2` budgets and say so (task 1)
-- [ ] Hostinger weekly image date checked (≤ 7 days; the owner reads hPanel) — the controller restarts are a restart-inducing step ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag))
+- [ ] ≥ 48 h of samples exist in `/var/tmp/xlearn-top.tsv` (mi-02 started the sampler after the H0 reboot; it self-stops after `SAMPLE_HOURS`, default 168 h, so by now it has normally finished) — **or** mi-02 recorded the sampler as declined (its Decisions-log line) → keep the provisional `top × 1.2` budgets and say so (task 1)
+- [ ] Hostinger weekly image date checked (≤ 7 days): the owner reads hPanel **before launch** (the prompt's before-launch item; launching attests it, D40) — the controller restarts are a restart-inducing step ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag))
 - [ ] Parallel sessions: no `xlearn` tag rolling out and no peer PR open on the files below (a fleet rollout during the 24 h watch muddles it)
 
 ## Goal
@@ -88,15 +88,15 @@ cert-manager ×3, Traefik, metrics-server, local-path, svclb ×2 and the NATS re
   sampled p95, use the current value instead and say so.
 - Put the table (container → p50, p95, max, proposed limit or budget) in the PR descriptions. It is the only
   record once the file is gone.
-- **Clean up** (a node write: ask the owner for an OK first, as mi-02 did for the start): stop the loop only if it is still alive, by its PID
+- **Clean up** (a node write this plan names: pre-approved by launching the prompt, D40, so the session runs it): stop the loop only if it is still alive, by its PID
   file, then delete all three files:
   `ssh vps 'pid=$(cat /var/tmp/xlearn-top.pid 2>/dev/null); [ -n "$pid" ] && ps -p "$pid" -o args= | grep -q sample-top.sh && kill "$pid"; rm -f /var/tmp/xlearn-top.tsv /var/tmp/xlearn-top.pid /root/sample-top.sh'`.
   The sampler was throwaway, never a timer (D34).
-- **If the owner declined the sampler** (mi-02): there is nothing to read or delete. Keep mi-02's provisional
+- **If mi-02 recorded the sampler as declined**: there is nothing to read or delete. Keep mi-02's provisional
   `top × 1.2` budget rows, and size the Traefik/cert-manager limits (task 3) and the Flux check (task 2) from the
   fresh `top` snapshot, treated as both p50 and p95. Mark them provisional in the PR and the Decisions log.
-- If the owner approved it but there are < 48 h of samples (the loop died at an unplanned reboot), restart it per
-  mi-02 and wait: the budget rows outlive this sprint.
+- If the sampler ran but there are < 48 h of samples (the loop died at an unplanned reboot), restart it per
+  mi-02 (a node write, pre-approved by launching the prompt, D40) and wait: the budget rows outlive this sprint.
 
 ### 2 · Flux controllers → 512 Mi [I]
 
@@ -176,8 +176,8 @@ requests. Request ≈ p50.
   - Keep longhorn-manager and the CSI parts budget-only: an OOM stalls attach/detach, which the window's PG
     restart needs.
 - After merge, `host-verify --cluster` must report **no** "no limit and no budget entry" WARN, **zero**
-  provisional budgets (unless the sampler was declined) and no "unused budget" INFO. Then get the node copy
-  refreshed so the owner's `/root` run uses the new budgets, the mi-02 way (gated [O]: the owner refreshes it, or the agent runs the `scp` once with the owner's explicit OK; otherwise record "`/root/host-verify.sh` stale: owner to refresh" as a pending owner item).
+  provisional budgets (unless the sampler was declined) and no "unused budget" INFO. Then refresh the node copy
+  so on-demand `/root/host-verify.sh` runs use the new budgets: the session runs `scp ../infra/hack/host-verify.sh vps:/root/` once itself (a node write this plan names; pre-approved by launching the prompt, D40).
 
 ### 5 · PSA labels (MI-15 slice) [I]
 
@@ -218,8 +218,10 @@ requests. Request ≈ p50.
 - **MI-11a (tasks 2–4):**
   - **preferred:** merged by Thu 2026-10-22, so the 24 h controller watch is clean before the Sat 2026-10-24
     window, whose k3s restart then doubles as the 512 Mi stress test;
-  - **fallback (BP4 batch):** leave the PRs open, labelled for the window. [mi-09](sprint-mi-09.md)'s runbook
-    step "merge the mi-08 PRs → `host-verify --cluster --with-runner`" merges them.
+  - **fallback (BP4 batch, when the session runs after Thu 2026-10-22):** push the two changes as branches
+    without PRs (no PR stays open across sessions, D40) and record the branch names in status.md. The window
+    session runs [mi-09](sprint-mi-09.md)'s runbook on its date: it opens their PRs, merges them, then runs
+    `host-verify --cluster --with-runner`.
 - **After merge:** `ssh vps 'bash -s -- --cluster --with-runner' < ../infra/hack/host-verify.sh`. Record
   Σ limits, Σ limitless p95 (budget file), the largest surge, the host share, the total vs capacity − 0.5 GiB,
   and the margin.
@@ -259,7 +261,7 @@ here ships in an image.
 
 ## Definition of Done
 
-All four infra PRs merged through GitOps (or, for MI-11a, handed to the window with the owner's agreement) ·
+All four infra PRs merged through GitOps (or, for MI-11a, handed to the window's batched step per BP4 when the session runs after Thu 2026-10-22) ·
 `host-verify --cluster --with-runner` inside the memory-sum rule · no unbudgeted limitless container · PSA and
 tokens verified · statuses updated (this file + [`../status.md`](../status.md)) · decisions logged.
 
@@ -280,7 +282,7 @@ tokens verified · statuses updated (this file + [`../status.md`](../status.md))
   them.
 - **Stale or missing samples.** The sampler ran for 7 days after mi-02, so its data is 2–3 weeks old: cross-check
   against a fresh `top` (task 1). If an unplanned reboot left < 48 h, restart it and wait rather than fall back:
-  the budget rows outlive this sprint. The only fallback to `top × 1.2` is the owner having declined the
-  sampler in mi-02.
+  the budget rows outlive this sprint. The only fallback to `top × 1.2` is mi-02 having recorded the
+  sampler as declined.
 - **Editing only `hack/memory-budget.tsv` changes nothing live.** `host-verify` reads the embedded copy;
   `host-lint.sh` catches the drift, so run it before the PR.

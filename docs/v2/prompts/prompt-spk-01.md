@@ -1,7 +1,7 @@
 # Prompt — Sprint spk-01 · Sandbox mechanism spike P0–P2 (multipass arm64, throwaway)
 
 > **One self-contained prompt = one sprint = one session.** Paste it into a fresh coding session at the xlearn repo root.
-> **Plan:** [`../sprints/sprint-spk-01.md`](../sprints/sprint-spk-01.md) · **Milestone:** MI (rollout step MI-10, part 1) · **Prereqs:** `ev-spike-goahead`, MI-0; soft: [mi-14](../sprints/sprint-mi-14.md)
+> **Plan:** [`../sprints/sprint-spk-01.md`](../sprints/sprint-spk-01.md) · **Milestone:** MI (rollout step MI-10, part 1) · **Prereqs:** MI-0; soft: [mi-14](../sprints/sprint-mi-14.md). Launching this prompt is the D23 go-ahead (`ev-spike-goahead`, D40)
 
 ## Read first
 
@@ -38,7 +38,7 @@ The M3 hard checklist needs "Spike P0–P3 **GO**" ([rollout §5](../rollout-pla
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
-- [ ] `docs/v2/status.md` records the owner's go-ahead for P0–P3 and the image-volume spike (`ev-spike-goahead`, D23). **If it isn't recorded, stop.** The spike needs an explicit owner go-ahead.
+- [ ] The go-ahead for P0–P3 and the image-volume spike (D23) is this launch (D40). Record `ev-spike-goahead` ✅ in `docs/v2/status.md` with the results; don't ask for another one.
 - [ ] `ssh vps uname -r` (read-only) shows `6.8.0-142` or later, which means MI-0 is done.
 - [ ] `multipass version` is ≥ 1.16, and the Mac has ≥ 8 GiB of RAM and 30 GB of disk free. There's no existing `xl-spike` VM, or it's one you may reuse and it's clean.
 - [ ] Soft: find mi-14's manifests (`git -C ../infra log -- infrastructure/sandbox`, or `gh pr list -R sujaykumarsuman/infra`). If they're absent, use the t3 §8.2 draft and plan to report the diff.
@@ -93,7 +93,7 @@ The M3 hard checklist needs "Spike P0–P3 **GO**" ([rollout §5](../rollout-pla
      - from the jail: SIGSYS on a disallowed syscall, and no host core helper spawned;
      - CONNECT `kubectl exec`/`attach` into the pod (X1/X2), and `kubectl debug` (E1), which must all be denied;
      - delete/recreate the pod × 50.
-   - **Fallbacks, still inside the time box:** try **nsjail `--disable_clone_newuser`**. Past that, only *record* whether R1-U or R1b would work. They are owner decisions, and R1b is a D21 trigger.
+   - **Fallbacks, still inside the time box:** try **nsjail `--disable_clone_newuser`** (the pre-decided Plan B). Past that, the result is outside the pre-decided paths: only *record* whether R1-U or R1b would work, with a recommendation, and mark the M3 line ⛔ "needs owner decision" in `status.md`. They are owner decisions, and R1b is a D21 trigger. The results PR still lands.
 3. **[H] P1b (0.75 h).** Build a race fixture with `go test -c -race` and run it in the jail (clone3 → ENOSYS → clone). Boot `postgres` in the jail on `/job/sock` with `listen_addresses=''`, and run one query. Record the results. They go to p-01 and don't gate M3.
 4. **[H] P2 (2.5 h).**
    - **Write the throwaway supervisor** of about 400 lines in `~/xl-spike/sup/`:
@@ -128,7 +128,7 @@ The M3 hard checklist needs "Spike P0–P3 **GO**" ([rollout §5](../rollout-pla
      - the VAP diff, plus E1 as a corpus addition (and your own corpus, if mi-14's was absent);
      - the line "no timing conclusions".
    - Update `docs/v2/status.md` (below).
-   - Commit `docs(v2): sandbox spike P0–P2 results (MI-10)`, open the PR, and merge it once CI is green.
+   - Commit `docs(v2): sandbox spike P0–P2 results (MI-10)`, open the PR, and merge it once CI is green (see Ship).
    - Send the VAP diff, if there is one, to mi-14: a comment on its infra PR, or an infra issue if it has merged.
    - **Stop the VM** with `multipass stop xl-spike`. **Don't delete it**; spk-02 and spk-03 reuse it.
 
@@ -144,7 +144,7 @@ The M3 hard checklist needs "Spike P0–P3 **GO**" ([rollout §5](../rollout-pla
 - **Hard stop.** 10 h of core effort for P0–P3, counted as effort, not elapsed days. This session's core share is 7 h, and P1b's 0.75 h is outside the core. At the stop, record the unfinished rows as "not run (time box)". Unknown never counts as GO.
 - **Never relax the VAP to get exec** into the positive pod. Use CRI exec or a baked command. A loosened VAP invalidates the X1/X2 proof.
 - **No timing conclusions** from arm64/HVF.
-- **Don't decide past R1-N.** R1-U and R1b go to the owner through the Decisions log and status.md.
+- **Don't decide past R1-N.** R1-U and R1b go to the owner as options with a recommendation: in t3 §16.1, the Decisions log and a ⛔ "needs owner decision" in status.md. Never wait for the answer (D40).
 - **Don't edit ADR-0030.** m3-03 accepts it. No new ADR is expected. If a finding needs one, check peers' ADR numbers first (`gh pr list --state all`, `git worktree list`, `ListAgents`), because parallel sessions claim numbers.
 - **No alerting** tooling of any kind (D34).
 - **Credentials.** The spike needs none. Don't copy any production secret or kubeconfig into the VM.
@@ -162,8 +162,8 @@ The M3 hard checklist needs "Spike P0–P3 **GO**" ([rollout §5](../rollout-pla
 - In [`../status.md`](../status.md):
   - the **Sprint board** row for spk-01;
   - the **MI rows**, MI-10 part 1: "P0–P2: GO/NO-GO (mechanism: …)";
-  - the owner calendar event `ev-spike-week` in progress;
-  - **Decisions log** lines: the mechanism chosen; any fallback that needs an owner decision (R1-U/R1b); the SETPCAP answer.
+  - the owner calendar events: `ev-spike-goahead` ✅ (the launch, D40) and `ev-spike-week` in progress;
+  - **Decisions log** lines: the mechanism chosen; any fallback that needs an owner decision (R1-U/R1b, marked ⛔ "needs owner decision"); the SETPCAP answer.
   - hand-off notes to spk-02, mi-09, mi-14 and m3-03.
 
 ## Done when (acceptance)
@@ -174,7 +174,12 @@ The M3 hard checklist needs "Spike P0–P3 **GO**" ([rollout §5](../rollout-pla
 - [ ] The final host files and the mechanism are in t3 §16.1, and the hand-offs are noted.
 - [ ] Nothing but results is committed. The VM is stopped and handed to spk-02, and `~/xl-spike/` is outside every repo.
 
-**Shipping.** Per AGENT.md land-and-sync, with **this sprint's release action: no merge (spike, throwaway)**.
-- The spike is never committed. Its results reach `main` only through the docs PR, which you merge once CI is green.
-- Finish with `git checkout main && git pull`. If a peer's worktree holds `main`, run `git -C <worktree> merge --ff-only origin/main` there.
-- **No tag, no infra PR.**
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch `docs/spk-01-results`, then the conventional commit `docs(v2): sandbox spike P0–P2 results (MI-10)` with the attribution lines, then push, then the PR. This repo only: no `../infra` PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — spike (throwaway):** the supervisor, corpus, manifests, VM and logs are never committed; only this results docs PR lands. No tag, no deploy. A result outside the pre-decided paths (R1-U/R1b) still lands, with its options and recommendation in t3 §16.1 and ⛔ "needs owner decision" in `status.md`. The VM stays stopped for spk-02.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

@@ -1,7 +1,7 @@
 # Sprint mi-04 — Admin consoles to ops.sujaykumar.dev (MI-5b)
 
 > **Milestone:** MI — infra-first track, rollout step **MI-5b** · **Track:** infra (parallel) · **Kind:** infra
-> **Prereqs:** none. MI-5b depends on no other MI step ([rollout §2](../rollout-plan.md#2-mi-infra-track)); the owner adds the DNS record at the start of the session (event `ev-mi5b-dns`)
+> **Prereqs:** none. MI-5b depends on no other MI step ([rollout §2](../rollout-plan.md#2-mi-infra-track)); the owner adds the DNS record before launch (event `ev-mi5b-dns`)
 > **Unblocks:** [l-02](sprint-l-02.md) (hard gate: MI-5b live before the first `tester` is minted, `ev-first-tester`, prepared by [m1-04](sprint-m1-04.md)) · [l-04](sprint-l-04.md) (entry gate) · [mi-13](sprint-mi-13.md) (entry gate: the console hosts are final) · [m1-06](sprint-m1-06.md) / [m1-07](sprint-m1-07.md) (soft gate: before the M1 Markdown renderer ships in v1.7.0) · the v3 opening gate ([rollout §11](../rollout-plan.md#11-opening-gates-v3))
 > **Release action:** infra PR(s) only: two PRs, plus a third only if the acceptance fails. No xlearn tag. The status update is an xlearn docs PR
 > **Calendar:** weeks 2–4, target week 2 (Mon 2026-10-05 → Fri 2026-10-09). Avoid spike week (Mon 2026-10-12 → Fri 2026-10-16), when the owner is booked; the fallback is week 4 (by Fri 2026-10-23). MI-5b has float only until the first `tester` is minted (L-E, around the M2/M3 boundary; [rollout §6](../rollout-plan.md#6-critical-path-parallel-tracks-owner-calendar))
@@ -13,10 +13,10 @@ _Overall:_ ⬜ Not started
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | DNS record for `ops.sujaykumar.dev` (event `ev-mi5b-dns`) | O | ⬜ |
+| 1 | DNS record for `ops.sujaykumar.dev` (`ev-mi5b-dns`) — before launch | O | ⬜ |
 | 2 | Certificate `ops-tls` + TLSStore entry (infra PR 1) | I | ⬜ |
 | 3 | Move the IngressRoutes, block airlift admin on the shared origin, add old-URL redirects, rewrite the README (infra PR 2) | I | ⬜ |
-| 4 | Cross-origin acceptance: credential-free probes, then the owner's signed-in browser probe | H + O | ⬜ |
+| 4 | Cross-origin acceptance: credential-free probes (4a), then the signed-in browser probe (4b; ⛔ for a follow-up if no signed-in session) | H | ⬜ |
 | 5 | Interim guard: `ipAllowList` (infra PR 3, **only if task 4 fails**) | I | ⬜ |
 | 6 | Record MI-5b in `docs/v2/status.md` | X | ⬜ |
 
@@ -26,10 +26,9 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] The owner is available at the start of the session to add the DNS record. Task 1 is that owner action, and it records `ev-mi5b-dns`.
-- [ ] The owner is available for about 10 minutes at the end, signed in to the consoles, for the browser probe (task 4b) and the login check.
+- [ ] The DNS record exists: the owner adds it before launch (task 1, `ev-mi5b-dns`), and the session verifies it resolves before anything else (task 1).
 - [ ] Local `../infra` `main` is synced. No open peer PR touches `apps/kubescope.yaml`, `apps/landscape.yaml`, `apps/airlift.yaml`, `infrastructure/storage/ui.yaml` or `infrastructure/configs/`. If one does, agree the merge order first (parallel sessions).
-- [ ] No non-owner account exists on production yet: `identity admin account list` shows only the owner, or the M1b CLI isn't live yet. The **owner** runs the CLI (the sanctioned admin-CLI `kubectl exec` path, [rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)) and reports the result. If the owner asks the agent to run it instead, that use is logged in `docs/v2/status.md`, as §2.2 requires. If a `tester` already exists, this sprint is overdue. Treat it as urgent and record the gap in the Decisions log.
+- [ ] No non-owner account exists on production yet: `identity admin account list` shows only the owner, or the M1b CLI isn't live yet. The session runs the CLI itself through the sanctioned admin-CLI `kubectl exec` path ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)); launching the prompt pre-approves that one use (D40), and it's logged in `docs/v2/status.md`'s CLI-use log, as §2.2 requires. If a `tester` already exists, this sprint is overdue. Treat it as urgent and record the gap in the Decisions log.
 
 ## Goal
 
@@ -62,13 +61,17 @@ AI-rendered xLearn content, while the owner is signed in, can drive kubescope to
 
 ## Tasks
 
-### 1 · DNS record [O]
+### 1 · DNS record [O, before launch]
 
-Owner action, recorded as `ev-mi5b-dns`. In the Hostinger DNS zone for `sujaykumar.dev` (nameservers `ns1/ns2.dns-parking.com`), add **`A ops`** with the same IPv4 value as `projects.sujaykumar.dev`'s A record and a TTL of 300. Add no AAAA record: `projects` has none, so keep parity. No CAA record exists, and none is needed.
+Owner action before launch, recorded as `ev-mi5b-dns` (with the bookmark update, see Risks). In the Hostinger DNS zone for `sujaykumar.dev` (nameservers `ns1/ns2.dns-parking.com`), add **`A ops`** with the same IPv4 value as `projects.sujaykumar.dev`'s A record and a TTL of 300. Add no AAAA record: `projects` has none, so keep parity. No CAA record exists, and none is needed.
 
 The agent verifies propagation before task 2 merges, because Let's Encrypt resolves through public resolvers:
 - `dig +short ops.sujaykumar.dev A` equals `dig +short projects.sujaykumar.dev A`, checked against the local resolver, `@1.1.1.1` and `@8.8.8.8`;
 - the node sees the same (`ssh vps 'getent hosts ops.sujaykumar.dev'`).
+
+If the record is missing (not just still propagating), don't wait: everything else depends on it (the HTTP-01
+challenge needs it, and PR 2 needs `ops-tls`). Set task 1 ⛔ in this file and status.md, naming the owner action,
+and land that as the docs PR; a re-run starts at task 1.
 
 ### 2 · Certificate [I] — infra PR 1 `feat(tls): certificate for ops.sujaykumar.dev (MI-5b)`
 
@@ -118,7 +121,7 @@ Merge only after `ops-tls` is Ready. **landscape and the Longhorn UI must move i
   - the old-URL redirects, and a list of every router this sprint adds (`airlift-admin-block`, `airlift-admin`, the redirects), so [mi-13](sprint-mi-13.md)'s sibling-router deny can find them;
   - update the Layout lines for `storage/ui.yaml` and `landscape.yaml`.
 
-### 4 · Cross-origin acceptance [H + O]
+### 4 · Cross-origin acceptance [H]
 
 **4a — agent, credential-free, from the laptop** (none of these carries a session, and every write targets an object that doesn't exist):
 
@@ -133,8 +136,16 @@ Merge only after `ops-tls` is Ready. **landscape and the Longhorn UI must move i
 | 7 | `curl -s -X POST -H 'Origin: https://projects.sujaykumar.dev' -H 'Sec-Fetch-Site: same-site' https://ops.sujaykumar.dev/kubescope/api/v1/workloads/deployments/default/xl-probe-missing/restart`; repeat with `Sec-Fetch-Site: cross-site`, and with `Origin` only | `403 cross_origin_rejected` (kubescope's guard runs before auth) |
 | 8 | the same POST with neither header | `401 unauthenticated` (the control) |
 
-**4b — owner, signed-in browser, about 5 minutes.** This is the only faithful test for the WebSocket and the Longhorn paths, because the consoles' cookies must ride the request. `SameSite=Strict` and `Lax` cookies are sent on same-site requests.
-1. Sign in to landscape and kubescope on `ops`. In kubescope, open a shell on an `xlearn-curriculum` pod. Its image is distroless with no shell, so nothing runs. Copy the exec WebSocket URL from the Network tab.
+**4b — signed-in browser, about 5 minutes.** This is the only faithful test for the WebSocket and the Longhorn paths, because the consoles' cookies must ride the request. `SameSite=Strict` and `Lax` cookies are sent on same-site requests.
+
+It needs a browser signed in to landscape and kubescope on `ops`, which exists only after PR 2 merges and needs
+the owner's credentials (an agent never enters them). Run 4b in such a browser if the session can drive one: the
+owner may sign in on `ops` once PR 2 merges, but the session never waits for that. **Otherwise (D40, blocking
+case):** land PR 1, PR 2 (and PR 3 if a 4a row failed) and the docs PR; set task 4 ⛔ "owner signed-in probe (4b)
+pending" in this file and status.md; keep MI-5b 🔄, not ✅, because `ev-first-tester` and l-02 need 4b to pass or
+PR 3 to be live. A follow-up session picks up at 4b (the prompt's step 5), then task 5 if a row fails.
+
+1. With landscape and kubescope signed in on `ops`: in kubescope, open a shell on an `xlearn-curriculum` pod. Its image is distroless with no shell, so nothing runs. Copy the exec WebSocket URL from the Network tab.
 2. **Run the probe from a `projects` page that sends no CSP: the hub root `https://projects.sujaykumar.dev/`.** Never use an xLearn page. [m1-04](sprint-m1-04.md) gives every xLearn page `connect-src 'self'` (in v1.7.0, which may overlap this sprint), and a CSP blocks `fetch` and `WebSocket` to `ops` inside the browser, before any request leaves. (c)–(e) would then pass falsely, and (a)/(b) would show `(blocked:csp)`.
    - First confirm: `curl -sI https://projects.sujaykumar.dev/ | grep -i content-security-policy` prints nothing (true at planning). If the hub ever sends a CSP, pick another `projects` path that the same check shows sends none.
    - Open a tab on that page and paste the snippet from the prompt into devtools. It sends:
@@ -151,7 +162,7 @@ Merge only after `ops-tls` is Ready. **landscape and the Longhorn UI must move i
 4. **Evidence, read-only.**
    - **kubescope** logs JSON: `ssh vps 'k3s kubectl -n kubescope logs deploy/kubescope --since=15m'`. Look for an `"msg":"http request"` line with `"status":403` on the `…/xl-probe-missing/restart` path (the body `cross_origin_rejected` isn't logged), and an `"msg":"exec websocket upgrade failed"` line whose error says `not authorized`.
    - **Longhorn / landscape ForwardAuth:** landscape doesn't log `/api/forward-auth` (too chatty), so its logs show nothing. The evidence is the browser's 403 for (b) and (d), with the JSON body `{"error":"cross-origin request refused"}` where devtools shows the response.
-5. The owner confirms the login check: landscape, kubescope, Longhorn (through the landscape session) and airlift admin all work on `ops`, and the owner's bookmarks are updated.
+5. The login check, in the same signed-in browser: landscape, kubescope, Longhorn (through the landscape session) and airlift admin all work on `ops`. The owner updated the bookmarks before launch (`ev-mi5b-dns`); the old-URL redirects cover any that weren't.
 
 Record the 4a and 4b tables (request, expected, observed) in PR 2's description.
 - **All pass:** there's no allowlist, and task 5 is n/a.
@@ -159,19 +170,20 @@ Record the 4a and 4b tables (request, expected, observed) in PR 2's description.
 
 ### 5 · Interim guard (only if task 4 fails) [I] — infra PR 3 `feat(ops): ipAllowList on kubescope and Longhorn (MI-5b interim)`
 
-- **`ipAllowList` middlewares.** Use Traefik 3.7 `traefik.io/v1alpha1` `Middleware` with `spec.ipAllowList.sourceRange` set to the owner's egress ranges, which the owner supplies. Traefik sees real client IPs because of `externalTrafficPolicy: Local` in `traefik-config.yaml`.
+- **`ipAllowList` middlewares.** Use Traefik 3.7 `traefik.io/v1alpha1` `Middleware` with `spec.ipAllowList.sourceRange` set to the owner's egress ranges, which the owner gives at launch (a before-launch item in the prompt). Traefik sees real client IPs because of `externalTrafficPolicy: Local` in `traefik-config.yaml`.
   - **Longhorn:** add a middleware in `longhorn-system`, first in `ui.yaml`'s chain.
   - **kubescope:** chart 0.2.2 renders only a ForwardAuth middleware, and chart 0.3.0's knob list is frozen ([rollout §2.1](../rollout-plan.md#21-chart-030-knob-list)). So set `route.enabled: false` in `apps/kubescope.yaml` and add a raw IngressRoute in a new file `apps/kubescope-route.yaml`, with redirect-slash, stripPrefix and `ipAllowList` middlewares.
   - Apply the same treatment to any other console that failed.
 - **The ranges** live only in the private infra repo. Never copy them into xlearn, which is a public repo, and never into `status.md`.
-- **If the owner can't give stable ranges:** set `KUBESCOPE_READ_ONLY=true`. That disables every kubescope mutation, `exec` included, because there's no exec-only switch. It stays set until the console is fixed upstream, and the README says so.
+- **If no stable ranges were given at launch:** set `KUBESCOPE_READ_ONLY=true`. That disables every kubescope mutation, `exec` included, because there's no exec-only switch. It stays set until the console is fixed upstream, and the README says so. Any other failed console with no such fallback is recorded ⛔ in status.md; don't wait for ranges.
 - **Break-glass if the owner's IP changes:** `ssh vps` plus `k3s kubectl` (read-only unless the owner acts), then a one-line PR to update the range.
 
 ### 6 · Record [X]
 
 In `docs/v2/status.md`:
-- MI rows: **MI-5b ✅** with the date and the infra PR numbers. Say whether the allowlist was needed.
+- MI rows: **MI-5b ✅** with the date and the infra PR numbers. Say whether the allowlist was needed. If 4b couldn't run, MI-5b stays 🔄 with task 4 ⛔ "owner signed-in probe (4b) pending" (task 4).
 - Mark the owner event `ev-mi5b-dns` done.
+- The CLI-use log: the entry gate's `identity admin account list`, if the CLI was live.
 - Add a note: *required before the first `tester` ([ADR-0033 §11](../../adr/0033-invite-only-admission-and-owner-admin.md#11-admin-console-isolation-mi-5b)), and an opening gate that must stay true ([rollout §11](../rollout-plan.md#11-opening-gates-v3))*.
 - Decisions log:
   - a separate `ops-tls` certificate through the TLSStore;
@@ -189,7 +201,7 @@ In `docs/v2/status.md`:
   - `/airlift/admin` and `/airlift/api/admin/*` return 403;
   - `/airlift/` and `/xlearn/` are unaffected.
 - [ ] **The consoles refuse cross-origin mutating calls and WebSocket upgrades** from `https://projects.sujaykumar.dev`: 4a #7 returns 403, and 4b (a)–(e) pass. **Or** the `ipAllowList` (PR 3) is live on every console that failed.
-- [ ] **The owner logs in to landscape and kubescope at the new URLs.** Longhorn opens through the landscape session on `ops`, and airlift admin works on `ops`.
+- [ ] **Sign-in to landscape and kubescope works at the new URLs** (4b's signed-in browser). Longhorn opens through the landscape session on `ops`, and airlift admin works on `ops`.
 - [ ] Flux `infra-configs`, `infra-storage` and `apps` are Ready, and `host-verify --cluster` is green after the merges.
 - [ ] The infra README's "Admin consoles" section is rewritten, and `docs/v2/status.md` records MI-5b ✅.
 
@@ -205,14 +217,14 @@ In `docs/v2/status.md`:
 
 - Infra PRs are merged and reconciled by Flux; nothing is applied by hand ([ADR-0009](../../adr/0009-deployment-and-gitops.md)).
 - The acceptance criteria are met, and the acceptance tables are in PR 2.
-- Owner bookmarks are updated.
+- Owner bookmarks were updated before launch (`ev-mi5b-dns`).
 - Statuses are updated in this file and in [`../status.md`](../status.md).
 - Local `main` is synced in both repos.
 
 ## Risks / watch-outs
 
 - **Same-site, not same-origin.** `ops` and `projects` share a site, so the consoles' cookies ride XSS-triggered requests, and CORS doesn't cover WebSocket upgrades. The isolation holds only because each console checks `Origin` / `Sec-Fetch-Site` itself. That is why task 4 runs, and why a console upgrade that drops those checks needs the allowlist back (README rule).
-- **The owner's monitoring moves.** landscape and kubescope are the D34 monitoring. The old-URL redirects soften the change. Update the bookmarks in the same session.
+- **The owner's monitoring moves.** landscape and kubescope are the D34 monitoring. The old-URL redirects soften the change. The owner updates the bookmarks before launch (`ev-mi5b-dns`).
 - **landscape and Longhorn are coupled** through the `ls_session` cookie and `LANDSCAPE_PUBLIC_URL`. Moving one without the other breaks the Longhorn sign-in.
 - **airlift's admin token is the shared admin password.** Blocking its admin page on `projects` closes the `sessionStorage` path. Rotating `projects-admin` afterwards is cheap (infra README "Rotate it"), but its consumer restart is a hand step, so rotation is the owner's call and isn't planned. Decoupling the token belongs in the airlift repo.
 - **Cookie tossing.** Script on `projects` can set a `Domain=sujaykumar.dev` cookie that `ops` receives. It can shadow a console cookie and sign the owner out, but it can't forge a session, because tokens are HMAC-signed. `__Host-` cookie names would close this; that belongs in the console repos.

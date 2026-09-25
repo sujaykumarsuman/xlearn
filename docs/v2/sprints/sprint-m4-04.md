@@ -35,7 +35,7 @@ _Overall:_ ⬜ Not started
 - [ ] [m4-02](sprint-m4-02.md)'s `ai_rubric` grader is registered on the llm lane and covered by its fixture-item tests, and
       `llm_calibration` rows gate which configurations may run (the re-grade builds on both). The end-to-end proof is this
       sprint's own e2e ([task 7](#7--events-replay-tests-x)), not a gate
-- [ ] AB16★ frozen ([ds-m4-01](sprint-ds-m4-01.md)): `design-system/screens/v2/AB16-ai-suggestion-dispute.html` — its frames
+- [ ] AB16★ frozen: [ds-m4-01](sprint-ds-m4-01.md) merged (the merge is the freeze): `design-system/screens/v2/AB16-ai-suggestion-dispute.html` — its frames
       (provisional card, dispute modal, re-grade compare, override confirm, honor claim) define the endpoint contract
 - [ ] Parallel sessions: no peer PR open on practice or judge migrations, or on `internal/gateway` route tables
 

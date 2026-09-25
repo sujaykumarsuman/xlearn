@@ -21,7 +21,7 @@ _Overall:_ ⬜ Not started
 | 7 | Acceptance harness `cmd/judge-eval` + synthetic set | X | ⬜ |
 | 8 | Topology/registry, e2e, docs, ADR | X | ⬜ |
 | 9 | Infra ACL PR (re-rendered golden), merged before v1.16.0 | I | ⬜ |
-| 10 | Dev-split tuning run on the owner's machine (optional here; required before m4-07's test run) | O | ⬜ |
+| 10 | Dev-split tuning run on the owner's before-launch `xlearn-calib` key (optional here; required before m4-07's test run) | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + the
@@ -30,7 +30,7 @@ _Overall:_ ⬜ Not started
 ## Entry gates
 
 - [ ] [m4-02](sprint-m4-02.md) merged: `internal/judge/ai` `Scorer{Reserve, Score, Feedback, Analyze}` (with `Analyze`'s schema, validator and `pass_review`); the `llm_call` ledger; the llm lane (queue cap 8); L17 caps, pace gate and breaker; the gate inside `Reserve` (`LLM_PLATFORM_ENABLED`, owner/tester cohort, `status`, consent per purpose, `ai_disabled`, breaker, caps); the `internal/platform/consent` kind constants; the calibration/acceptance-row catalog gate and `judge admin calibration record --from <file.json>`; `httptest` fake providers for tests ([m4-01](sprint-m4-01.md)'s convention: fakes are never committed as compose services); identity `/internal/accounts/{id}` returning `role`, `tier`, `status`, `consents` (`ai_disabled` is judge-owned, `llm_account_limit`)
-- [ ] AB17 frozen ([ds-m4-01](sprint-ds-m4-01.md)): `design-system/screens/v2/AB17-pointer-notes.html` and AB16's F2 (the analyzer suggestion on a deterministic grade) — their frames define the read endpoints below
+- [ ] AB17 frozen: [ds-m4-01](sprint-ds-m4-01.md) merged (the merge is the freeze): `design-system/screens/v2/AB17-pointer-notes.html` and AB16's F2 (the analyzer suggestion on a deterministic grade) — their frames define the read endpoints below
 - [ ] review `mistake_entry.{category_source, category_suggested, concepts, concepts_source, last_refreshed_by_attempt_id}` live ([m3-10](sprint-m3-10.md), v1.14.0)
 - [ ] `problem_solved` v2 carries `attempt_id`, the grade, `anchor_at`, `revisable`, `language`, `gave_up`; `touch_concluded` carries `attempt_id`, `revision_item_id`, `touch_passed`, `evaluation_ids[]` ([m2-05](sprint-m2-05.md), [m3-08](sprint-m3-08.md)). If either lacks `attempt_id`, stop and report
 - [ ] Migration numbering: judge/review migrations are serialized m4-02 → **m4-03** → m4-04 → m4-05; no peer PR is open on `internal/judge/store/migrations` or `internal/review/store/migrations`
@@ -97,7 +97,7 @@ learner-derived text into the Postgres log ([t1 §4 judge](../research/t1-conten
 | `judge.pointer_note` | `PK (account_id, item_id)` · `path_slug` · `notes jsonb` (≤ 3 × `{note ≤ 240 runes, lines [from,to] \| null}`, ≤ 8 KiB total, C3 learner-private) · `revisit_suggested` · `revisit_reason` (≤ 200) · `analysis_id` · `updated_at`. The latest done pass review **replaces** the row; a review with no pointers deletes it (the improved solution no longer needs them). |
 | `judge.review_fingerprint` | `PK (account_id, item_id)` · `language` · `fp_v` · `shingles bigint[]` · `analysis_id` · `reviewed_at` — the last **reviewed** passing solution (D26's baseline). |
 | `review.revision_item` | `+ improvements_at timestamptz NULL`, `+ improvements_analysis_id uuid NULL` |
-| `review.optional_revisit` | AB17 F2–F3: `id` · `account_id` · `path_slug` · `problem_id` · `due_on date` · `analysis_id` · `created_at` · `done_at` · `removed_at`; partial unique `(account_id, problem_id) WHERE done_at IS NULL AND removed_at IS NULL`. **Off-ladder** (D16/D26): never a five-touch level, never counted by R-SR5 or the Today minutes budget. Drop this row (and task 6's routes) if the owner cut AB17 F3 at the freeze. |
+| `review.optional_revisit` | AB17 F2–F3: `id` · `account_id` · `path_slug` · `problem_id` · `due_on date` · `analysis_id` · `created_at` · `done_at` · `removed_at`; partial unique `(account_id, problem_id) WHERE done_at IS NULL AND removed_at IS NULL`. **Off-ladder** (D16/D26): never a five-touch level, never counted by R-SR5 or the Today minutes budget. Drop this row (and task 6's routes) if the merged AB17 board has no F3 (e.g. cut by a follow-up design PR). |
 
 `reason` values (Go enum, `internal/judge/ai/analyzer.go`): `platform_disabled`, `not_cohort`, `account_inactive`,
 `ai_disabled`, `no_consent`, `not_code`, `no_evidence`, `blank_draft`, `starter_only`, `too_quick`, `too_large`,
@@ -117,7 +117,7 @@ services; `sqlc diff` clean.
 3. **Shingle + winnow:** hash every 5-token window (FNV-64), keep window minima over `w = 4` → the fingerprint set.
 4. `similarity = Jaccard(a, b)`; **materially different ⇔ `1 − similarity > τ`**, or a different language, or no
    baseline. **τ = `ANALYZER_FP_THRESHOLD`, 0.30 provisional**; the dev split tunes it
-   ([task 10](#10--dev-split-tuning-run-o)); m4-07 sets the tuned value and records it with `fp@1` in status.md.
+   ([task 10](#10--dev-split-tuning-run-x)); m4-07 sets the tuned value and records it with `fp@1` in status.md.
 
 Golden tests: reformat / comment / rename-only variants of a reference solution → similarity ≥ 0.95; a genuinely
 different algorithm for the same problem (e.g. sort + two pointers vs hash map) → < 0.5; per-language fixtures for Go,
@@ -318,7 +318,7 @@ validator, fingerprint) so it measures exactly what production runs:
 - **Frozen test split:** only a **`--split test --provider anthropic`** run appends
   `config_hash = sha256(model, effort, max_tokens, prompt_v, schema_v, analyzer_v, fp_v)` to
   `acceptance/test/configs_tried.log`. Such a run with a hash already in the log is refused without `--force-rerun`; the
-  check runs before any credential is read. Dev runs (including [task 10](#10--dev-split-tuning-run-o)'s) and every
+  check runs before any credential is read. Dev runs (including [task 10](#10--dev-split-tuning-run-x)'s) and every
   `--provider fake` run never write the log, so m4-07's fake dry run can confirm it is still empty.
   `go test ./cmd/judge-eval/...` copies the synthetic set to `t.TempDir()`. A harness test asserts two things: dev and fake
   runs leave the log byte-identical, and a pre-seeded hash refuses an anthropic test run with no key needed.
@@ -362,13 +362,17 @@ A permissions change is a config reload, not a restart. **Merged before v1.16.0*
 standing rule). The PR states that **no NetworkPolicy change is needed**: no new in-cluster HTTP caller (gateway → judge
 and judge/review → NATS already exist). GitOps only; never `kubectl apply`.
 
-### 10 · Dev-split tuning run [O]
+### 10 · Dev-split tuning run [X]
 
-Optional in this sprint, required before m4-07's test-split run. The agent prepares the command; the **owner** runs it on
-his machine with the `xlearn-calib` key in the environment (never pasted into a session):
+Optional in this sprint, required before m4-07's test-split run. **Before launch (owner):** a fresh `xlearn-calib` key
+exported as `LLM_CALIB_API_KEY` in the shell that launches the session, on his machine (never pasted into a session).
+The session then runs the command itself — a live run on an already-provisioned key within the stated budget, so
+launching the prompt pre-approves it (D40) — and never prints, copies or stores the key:
 `make judge-eval SET=../xlearn-evalpack/acceptance SPLIT=dev PROVIDER=anthropic SWEEP=effort:low-nothink,low,medium`.
 Output: the recommended effort, `max_tokens` (p99 thinking + visible × 1.5) and τ. Recorded in status.md; the dev split
-may be re-run freely (it is not frozen). Billed to `xlearn-calib` (≈ $10–30 for the whole acceptance effort).
+may be re-run freely (it is not frozen). Billed to `xlearn-calib` (≈ $10–30 for the whole acceptance effort). **Key
+missing:** task 10 ⛔ "no calib key in the session env: runs at m4-07 start", recorded in status.md; everything else lands.
+Being optional here, task 10 never blocks _Overall_ ✅.
 
 ## Acceptance criteria
 
@@ -391,8 +395,8 @@ may be re-run freely (it is not frozen). Billed to `xlearn-calib` (≈ $10–30 
 - [ ] `cmd/judge-eval` runs **end to end on the synthetic set** (fake provider) and reports per-category precision/recall,
       accuracy + bootstrap LB, false-pointer rate, line validity, schema-valid, truncation, p95 µUSD and the τ sweep; it
       writes an `llm_calibration`-shaped row for `judge admin calibration record`; a repeated test-split config is refused.
-- [ ] Registry, stream-budget, ACL golden and NATS-auth integration tests green; the infra ACL PR merged (or approved to
-      merge before v1.16.0).
+- [ ] Registry, stream-budget, ACL golden and NATS-auth integration tests green; the infra ACL PR merged (before
+      v1.16.0).
 
 ## Release
 

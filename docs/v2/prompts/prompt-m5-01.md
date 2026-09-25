@@ -56,7 +56,7 @@ v2.0 GA (`v2.0.0`) turned judge on for every account, but DSA still honours self
 - [ ] **`v2.0.0` live** ([ga-02](../sprints/sprint-ga-02.md)): `.release-line = 2`; the 8 fleet `xlearn-*` ImagePolicies are `>=1.0.0 <3.0.0`, while `xlearn-runner` and `xlearn-evalpack` stay `<2.0.0` (ga-02 leaves them alone); judge on for every account; `JUDGE_BASE_URL` set on the gateway and practice; `GRADING_OVERRIDE` unset.
 - [ ] On `main`: m3-08, m3-09, m3-11, m3-12, m1-01 as listed in the plan's entry gates.
 - [ ] The evalpack PAT expires more than 14 days from now (status.md `ev-pat-expiry`).
-- [ ] **Release path decided** ([ADR-0034 §1.1](../../adr/0034-v2-release-labelling-gating-and-rollback.md#11-scheme): M5 "rides v2.1.0 if it's ready by then"). Ride `v2.1.0` if `v2.1.0` isn't tagged and all of these hold: m6b-03's `v2.0.x` patch is tagged, m6b-04 hasn't started its tag, and the owner confirms **no `v2.0.x` patch will be cut from `main`** before `v2.1.0`. Otherwise (including when `v2.1.0` is already tagged) take the own minor ≥ `v2.2.0`.
+- [ ] **Release path decided** ([ADR-0034 §1.1](../../adr/0034-v2-release-labelling-gating-and-rollback.md#11-scheme): M5 "rides v2.1.0 if it's ready by then"). Ride `v2.1.0` if `v2.1.0` isn't tagged and all of these hold: m6b-03's `v2.0.x` patch is tagged, m6b-04 hasn't started its tag, and **no `v2.0.x` patch will be cut from `main`** before `v2.1.0` (a commitment this session records in the Decisions log; launching the prompt approves it, D40). Otherwise (including when `v2.1.0` is already tagged) take the own minor ≥ `v2.2.0`.
 - [ ] No DSA item or contract change is waiting to go live without its stamped pack.
 - [ ] **Parallel sessions:**
   - no open PR edits `curriculum/courses/dsa/course.json`, `internal/course/`, `internal/practice/`, `internal/gateway/judge*.go`, `web/src/screens/Workspace.tsx`, `web/src/screens/workspace/*`, `web/src/components/judge/*` or `web/src/router.tsx`;
@@ -121,21 +121,9 @@ v2.0 GA (`v2.0.0`) turned judge on for every account, but DSA still honours self
 10. **[X] PR with the variant screenshots** (plan task 9):
     - Take V1–V6 at 1440 px and 390 px, beside the frozen AB07 F1/F12 crops. Use a throwaway vite mock config (never committed) or compose.
     - Commit them as `design-system/screens/v2/shots/AB07-m5-V<n>@1440.png` / `@390.png` (≲ 500 KB each).
-    - The PR body carries the frame and copy table, the coverage output, the drill times, and **"Decisions to confirm"**: `touch`/`mock` stay `allowed`; `no_judge` → picker; every former `self_grade_pending` trigger → `voided` (contract change mid-attempt, the third infra-released close, budget exhausted), each with its V5 cause line; an `ok` item with its submit lane off → refused (V3), not self; pre-flip self attempts honoured; the release path.
+    - The PR body carries the frame and copy table, the coverage output, the drill times, and **"Decisions to confirm"**: `touch`/`mock` stay `allowed`; `no_judge` → picker; every former `self_grade_pending` trigger → `voided` (contract change mid-attempt, the third infra-released close, budget exhausted), each with its V5 cause line; an `ok` item with its submit lane off → refused (V3), not self; pre-flip self attempts honoured; the release path. The list doesn't block the merge: each item states the default that lands, and the owner may revisit any of them afterwards with a follow-up PR (D40).
     - Conventional commit(s) ending with the attribution lines.
-11. **[O] Owner approval: STOP until it arrives.** The owner approves the variant screenshots and copy in the PR (BP3: this stands in for a design freeze). **Do not merge without explicit owner approval.** If it doesn't come this session, leave the PR open, set task 10 ⛔ "awaiting owner review", and end the session.
-12. **[X] Release** (plan Release), after the approval and green CI. ADR-0034 §1.1: ride `v2.1.0` if ready and every ride condition holds; otherwise the own minor.
-    - **Ride `v2.1.0`** (only under the entry-gate conditions):
-      1. Re-run `hack/m5-coverage-check.sh` and the PAT > 14-day check.
-      2. Squash-merge **untagged**.
-      3. Record "rides `v2.1.0`" in status.md, plus a Decisions-log hand-off for m6b-04: **right before tagging `v2.1.0`, re-run the coverage check and the PAT > 14-day check; if either fails, hold M5 (a PR reverting the DSA manifest line and its golden row to `allowed`) and tag without it; otherwise list M5 in the notes and run the M5 smoke after its verify.** The flip goes live only at that tag.
-      4. **Never tag `v2.1.0` here.**
-    - **Own minor (otherwise):**
-      1. Squash-merge.
-      2. Re-run `hack/m5-coverage-check.sh` and the PAT check.
-      3. Walk the release checklist below.
-      4. Tag the **next free minor after `v2.1.0`** (≥ `v2.2.0`; major = `.release-line`), titled `v2.N.0 — DSA evaluator-only (M5)`, with the release notes listing `git log <last-tag>..main`.
-      5. Verify by looking, then run the M5 smoke.
+11. **[X] Ship:** see **Ship** below. Its step 3 is the release (plan task 10 and Release): ride `v2.1.0` if ready and every ride condition holds, otherwise the own minor.
 
 ## Constraints
 
@@ -160,7 +148,7 @@ v2.0 GA (`v2.0.0`) turned judge on for every account, but DSA still honours self
   - never let the flip ship in a `v2.0.x` patch;
   - never move or re-push a tag.
 - **Parallel sessions:** check peers' PRs, tags, worktrees and ListAgents before numbering the migration, claiming the ADR number, or tagging. **Before the tag: no live interviews** (`coach admin interviews --live` empty).
-- **Owner review gate:** no merge before the owner approves the variant (step 11). It is the only exception to land-and-sync in this sprint.
+- **No owner review gate (D40):** the AB07 variant and its copy land as drafted once CI is green; the owner may revise them later with a follow-up PR.
 
 ## Deliverables
 
@@ -175,14 +163,14 @@ v2.0 GA (`v2.0.0`) turned judge on for every account, but DSA still honours self
 
 ## Update status
 
-- [`../sprints/sprint-m5-01.md`](../sprints/sprint-m5-01.md): each task 🔄 → ✅ (task 10 ⛔ while it awaits the owner); _Overall_ ✅ once released (own minor) or merged to ride.
+- [`../sprints/sprint-m5-01.md`](../sprints/sprint-m5-01.md): each task 🔄 → ✅; _Overall_ ✅ once released (own minor) or merged to ride.
 - [`../status.md`](../status.md):
   - **Sprint board** row m5-01;
   - **Milestones:** M5 ✅ with `v2.N.0`, or "rides `v2.1.0`" until m6b-04 verifies;
   - **milestone → tag → floor → snapshot:** `M5 → v2.N.0 → floor unchanged → snapshot n/a` (`void_reason` is expand-only; on the ride path the row is m6b-04's `v2.1.0`);
   - **flag inventory:** the grading override (permanent kill switch) "also restores the DSA picker since M5"; the T-1 line "DSA `self_report.outcome = evaluator_only`". No new flag;
   - **content table:** "DSA 100% packed", plus the **pack-first rule** for any later DSA item or contract change;
-  - **Artboards:** the AB07 row "M5 evaluator-only variant approved (PR #, date)".
+  - **Artboards:** the AB07 row "M5 evaluator-only variant merged (PR #, date)".
 - **Decisions log:**
   - the effective-policy rules (`no_judge` → `allowed`);
   - start refuses rather than falling back;
@@ -206,7 +194,7 @@ v2.0 GA (`v2.0.0`) turned judge on for every account, but DSA still honours self
 - [ ] An item with `spec_mismatch` blocks counted attempts with the "Grading paused" badge; the arena still works.
 - [ ] The override restores the picker within minutes: the compose drill passes, nothing is re-graded, and the times are recorded; the R-a recipe is in the runbook.
 - [ ] The golden is updated with its citation, the validation rule is tested, `sqlc diff` is clean, and CI is green.
-- [ ] The owner approved the AB07 evaluator-only variant in the PR; the screenshots are committed.
+- [ ] The AB07 evaluator-only variant lands as drafted (no owner approval step, D40); the screenshots are committed.
 - [ ] The coverage check and the PAT > 14-day check are green right before the tag that makes the flip live: this sprint's own tag, or, on the ride path, at merge time and again by m6b-04 right before `v2.1.0` (the hand-off is recorded).
 - [ ] Released: `v2.N.0` verified by the checklist plus the M5 smoke (no picker on DSA; `/api/judge/status?path=dsa` shows `selfReport: evaluator_only`). Or merged to ride `v2.1.0`, with the hand-off recorded.
 
@@ -227,8 +215,21 @@ Release checklist for the tag ([ADR-0034 §6](../../adr/0034-v2-release-labellin
 
 Here, ACL, new service, contract and NetworkPolicy are all n/a. A snapshot isn't required (not a contract, erase or GA tag; R-a residue none). **No live interviews applies.**
 
-Ship per AGENT.md land-and-sync with **this sprint's release action** (ADR-0034 §1.1: M5 "rides v2.1.0 if it's ready by then"):
-- **Ride:** merge untagged to ride `v2.1.0` when it is ready before m6b-04 and every ride condition holds, with the m6b-04 pre-tag re-check hand-off recorded; never cut `v2.1.0` for M5 alone.
-- **Own minor (otherwise):** tag the next free minor after `v2.1.0` (≥ `v2.2.0`).
+## Ship (land-and-sync — owner approval pre-granted)
 
-In both cases the merge happens **only after the owner approves the AB07 variant** (step 11). Without that approval, leave the PR open and stop. Afterwards run `git checkout main && git pull` in xlearn. There is no infra PR, so `../infra` needs only a `git pull`.
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: xlearn only, on `feat/m5-dsa-evaluator-only` (step 1), with the variant screenshots and the PR body from step 10; there is no infra PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. On the ride path, step 3's pre-merge checks come first.
+3. **Release action — ride `v2.1.0` if ready, else tag the next free minor ≥ `v2.2.0` (ADR-0034 §1.1):** take the path the entry gate decided (plan task 10 and Release).
+   - **Ride `v2.1.0`: merge only** (only while every ride condition still holds):
+     1. Right before step 2's merge, re-run `hack/m5-coverage-check.sh` and the PAT > 14-day check.
+     2. Squash-merge **untagged**. Nothing deploys: the flip ships in `v2.1.0`, cut by [m6b-04](../sprints/sprint-m6b-04.md). Don't tag, and **never cut `v2.1.0` for M5 alone**.
+     3. Record "rides `v2.1.0`" and the no-`v2.0.x`-patch commitment in status.md, plus a Decisions-log hand-off for m6b-04: **right before tagging `v2.1.0`, re-run the coverage check and the PAT > 14-day check; if either fails, hold M5 (a PR reverting the DSA manifest line and its golden row to `allowed`) and tag without it; otherwise list M5 in the notes and run the M5 smoke after its verify.** The flip goes live only at that tag.
+   - **Own minor: tag** (otherwise):
+     1. After step 2's merge, re-run `hack/m5-coverage-check.sh` and the PAT check.
+     2. Walk the release checklist (ADR-0034 §6; the list under "Done when" above), including "from M6: no live interviews" (`coach admin interviews --live` empty right before the tag). No snapshot is required (not a contract, erase or GA tag).
+     3. Push the tag: the **next free minor after `v2.1.0`** (≥ `v2.2.0`; major = `.release-line`), titled `v2.N.0 — DSA evaluator-only (M5)`, with the release notes listing `git log <last-tag>..main`. Never move or re-push a tag.
+     4. Let Flux deploy, then verify live by looking and run the M5 smoke (the plan's Release table). An agent never enters credentials: without an already-signed-in owner browser session, run the credential-free checks and record "owner login smoke pending" as a pending-smoke note in status.md.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way. On the own-minor path, the tag record (milestone → tag → floor → snapshot) lands in that follow-up docs PR after the verify.
+5. Run `git checkout main && git pull` in every repo touched (xlearn; there is no infra PR, so `../infra` needs only a `git pull`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

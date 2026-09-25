@@ -45,7 +45,7 @@ infra. Everything is dark and lazy until [m4-07](../sprints/sprint-m4-07.md) tag
 - [ ] The latest tag is ≥ `v1.15.0` and < `v1.16.0` (a `v1.15.x` patch is fine; `git ls-remote --tags origin | sort -V | tail`),
       `/xlearn/api/v1/healthz` reports it, and `v1.14.0` exists.
 - [ ] `ev-acceptance-set` ✅ in status.md (≥ 70 labelled: ≥ 40 test + 30 dev).
-- [ ] AB16–AB18 frozen: [ds-m4-01](../sprints/sprint-ds-m4-01.md)'s PR merged (the three board files are on `main`).
+- [ ] AB16–AB18 frozen: [ds-m4-01](../sprints/sprint-ds-m4-01.md)'s PR merged (the three board files are on `main`; the merge is the freeze).
 - [ ] t5 §15 (spk-03) exists and states WIF GO + `check_jti` (or the fallback); note the exchange field names and the
       access-token lifetime vs rotation interval.
 - [ ] Parallel sessions: `gh pr list --state open`, `git worktree list`, ListAgents — no peer PR or worktree touches
@@ -140,9 +140,10 @@ infra. Everything is dark and lazy until [m4-07](../sprints/sprint-m4-07.md) tag
 
 - [`../sprints/sprint-m4-01.md`](../sprints/sprint-m4-01.md): tasks 1–9 🔄 → ✅ as they land; task 10 🔄 "runs in m4-07 task 7
   (after-tag reads)"; _Overall_ 🔄 until m4-07 records the smoke and ticks task 10.
-- [`../status.md`](../status.md): Sprint board row for m4-01; **Milestones** row M4 → 🔄; **Artboards** rows AB16–AB18 → "frozen (PR #, date)"
-  and [ds-m4-01](../sprints/sprint-ds-m4-01.md) ✅ on the board (set its tasks 6–7 and _Overall_ ✅ in its sprint file); events —
-  `ev-freeze-ds-m4-01` ✅. Flag inventory unchanged (`LLM_PLATFORM_ENABLED` is a permanent kill switch, still `false`).
+- [`../status.md`](../status.md): Sprint board row for m4-01; **Milestones** row M4 → 🔄; if [ds-m4-01](../sprints/sprint-ds-m4-01.md)'s
+  session didn't already record them (skip any edit already done): **Artboards** rows AB16–AB18 → "frozen (PR #, date)", ds-m4-01 ✅
+  on the board (and its Status rows and _Overall_ ✅ in its sprint file), and event `ev-freeze-ds-m4-01` ✅ ("automatic at the
+  ds-m4-01 merge") if status.md still lists it. Flag inventory unchanged (`LLM_PLATFORM_ENABLED` is a permanent kill switch, still `false`).
 - **Decisions log:** credential mode shipped (WIF with `check_jti=<value>` or break-glass key), the re-exchange rule (new `iat` only;
   cached token to expiry; never a used `jti`), `platform_allowed` models (Sonnet 5, Opus 5.5), the price table's `as_of`.
 - ADRs: none expected; a dated note in ADR-0031 §2 only if the re-exchange rule departs from t5 §3.
@@ -161,7 +162,12 @@ infra. Everything is dark and lazy until [m4-07](../sprints/sprint-m4-07.md) tag
       in m4-07 task 7's after-tag reads, before its task 8 (task 10 🔄).
 - [ ] CI green incl. `sqlc diff`.
 
-Ship at session end per AGENT.md land-and-sync with **this sprint's release action — merge only**: conventional commits
-(`feat(llm): …`, `refactor(coach): …`) with the attribution lines, push, open the PR, wait for CI green (fix-then-merge on failure),
-squash-merge, then `git checkout main && git pull`. **Do not tag** — this work ships in `v1.16.0`, which [m4-07](../sprints/sprint-m4-07.md)
-cuts; Flux deploys nothing new until then, so the pod smoke (task 10) runs there, in task 7's after-tag reads before task 8.
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). (Branch `feat/m4-01-platform-llm`, commits such as `feat(llm): …` and `refactor(coach): …`; this repo only.)
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — merge only (ships in `v1.16.0`):** Nothing deploys; it ships in `v1.16.0` (cut by [m4-07](../sprints/sprint-m4-07.md)). Don't tag. No infra PR. Flux deploys nothing new until that tag, so the pod smoke (task 10) runs there, in m4-07 task 7's after-tag reads, before its task 8.
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

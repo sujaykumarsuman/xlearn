@@ -75,9 +75,21 @@ milestones ship as `1.x` minors until the `v2.0.0` GA. v1 maintenance and UI/UX 
   sprint from an up-to-date local `main` — never end a session with merged work unpulled or open PRs
   left hanging. Caveats: don't enable PR **auto-merge** unless asked (merge yourself once CI is green);
   and if the user says "hold / don't ship," that overrides for that session.
-  **v2 exceptions** (the sprint's plan and prompt say which applies): a **design** sprint (`ds-*`) opens its
-  board PR and **stops** for owner review (the owner's merge is the freeze); the **GA PR** (`ga-01`) merges
-  only on the owner's explicit approval; a **spike** (`spk-*`) is throwaway and merges only its results docs
-  PR; a **merge-only** sprint deploys nothing (only a tag deploys), so "verify live" happens at the tag sprint.
+  **v2 sprint prompts (D40, owner directive 2026-09-25): launching a sprint prompt is the owner's approval
+  for every change that prompt makes**. That covers merges, tags (contract, erase and GA tags included),
+  infra PRs, design-board freezes, ADR acceptances, drafted owner content, and the production operations the
+  prompt specifies. **Never stop for owner review.** Every prompt ends with its
+  `## Ship (land-and-sync — owner approval pre-granted)` section, which lands and syncs according to the
+  sprint's release action:
+  - a **design** sprint (`ds-*`) merges on CI green, and **the merge is the freeze** (the owner may review
+    afterwards; changes come as a follow-up design PR);
+  - the **GA PR** merges on CI green;
+  - a **spike** (`spk-*`) is throwaway and lands only its results docs;
+  - a **merge-only** sprint deploys nothing (only a tag deploys), so "verify live" happens at the tag sprint.
+
+  Owner-only actions (hPanel snapshots or VNC, provider consoles, creating accounts or keys, DNS at the
+  registrar, being present for S6) go in the prompt's `## Before you launch (owner)` block, and launching
+  attests they're done. If one is missing, land everything that doesn't depend on it and mark the gap ⛔ in
+  `docs/v2/status.md`. Don't wait.
 - Record notable technical decisions as ADRs; keep docs concise and skimmable.
 - Update `docs/v2/status.md` when you finish a chunk of build work (`docs/v1/status.md` for v1 feedback work).

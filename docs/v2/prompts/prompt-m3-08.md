@@ -141,8 +141,12 @@ builds the gateway side in parallel; [m3-10](../sprints/sprint-m3-10.md) consume
 - [ ] Give-up is synchronous: solution unlocked at once; lock = earliest pass below `close_seq`, else Miss.
 - [ ] New event fields present; subject-registry and golden-ACL tests green; the ACL PR merged; `sqlc diff` clean; CI green.
 
-Ship per AGENT.md land-and-sync with **this sprint's release action: merge only (ships in `v1.14.0`, tagged by
-[m3-13](../sprints/sprint-m3-13.md)) plus the NATS ACL infra PR merged in this sprint** — then `git checkout main && git pull`
-in xlearn and `../infra`.
-</content>
-</invoke>
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here the xlearn PR goes first (step 10 above), then the `../infra` ACL PR rendered from `main` after that merge (step 11 above; plus the egress PR only if step 11 needs it).
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. (infra has no CI: the `make nats-acl-render` diff in the PR body is the check; verify the reload after the merge.)
+3. **Release action — merge only (ships in `v1.14.0`) + the ACL PR:** nothing deploys from the xlearn PR; it ships in `v1.14.0`, cut by [m3-13](../sprints/sprint-m3-13.md). Don't tag. The NATS ACL infra PR (plan task 8) is merged in this sprint, on its own and before `v1.14.0`, then verified (reload, no `legacy`, no permission-violation logs, `host-verify --cluster --nats-stage=n3` or `n4`).
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way (the ACL PR and its reload date go in the follow-up, since that PR merges after the xlearn one).
+5. Run `git checkout main && git pull` in every repo touched (xlearn and `../infra`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

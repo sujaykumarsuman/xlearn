@@ -67,10 +67,16 @@ is a read you perform.
    permission-violation logs, `host-verify --cluster --nats-stage=n3` green.
 5. **[X] Tag `v1.13.0`** (plan task 5): run every release-checklist line in the plan first (peers, next free minor,
    major = `.release-line`, ACL merged). Title `v1.13.0 — v2 build · M3-1 judge dark`. After the tag: 7 releases on the
-   new version, their ImagePolicies' latest = the tag, healthz reports it, smoke login/dashboard/coach; the
-   `xlearn-judge` image exists; identity's `XLEARN_JUDGE` consumer is waiting, not failing.
-6. **[O] GHCR visibility** (plan task 6): `crane ls ghcr.io/sujaykumarsuman/xlearn-judge` anonymously. If 401/403, ask the
-   owner to make **that package** public and link it to the repo (it holds only public code). Never touch `xlearn-evalpack`'s visibility.
+   new version, their ImagePolicies' latest = the tag, healthz reports it, smoke login/dashboard/coach (never enter
+   credentials: use an already-signed-in browser session if you have one, else run the credential-free checks and leave
+   "owner login smoke pending" as a pending-smoke note in status.md); the `xlearn-judge` image exists; identity's
+   `XLEARN_JUDGE` consumer is waiting, not failing.
+6. **[X] GHCR check** (plan task 6): `crane ls ghcr.io/sujaykumarsuman/xlearn-judge` anonymously lists `1.13.0` → carry on.
+   If it returns 401/403, **don't wait**: making **that package** public and linking it to the repo is an owner-only
+   GitHub-settings action (it holds only public code), and the package only exists since your tag push. Still do steps 7
+   and 10, record ⛔ "owner: set the `xlearn-judge` package public and link it to the repo" in status.md, set plan task 8 ⛔
+   and skip steps 8–9. A re-run of this prompt after the owner has done it skips the ✅ steps (never re-tag) and picks up at
+   step 8. Never touch `xlearn-evalpack`'s visibility.
 7. **[I] DB 4-step PR** (plan task 7): `pg-xlearn-judge.enc.yaml`, the `xlearn_judge` managed role (`connectionLimit: -1` like its neighbours), schema `judge` in
    `xlearn-database.yaml`, `apps/secrets/xlearn-judge-db.enc.yaml` (same password, generated offline, never echoed).
    Merge; verify role + schema owner + CNPG healthy (read-only psql via exec).
@@ -85,7 +91,7 @@ is a read you perform.
 9. **[H] Verify** (plan task 9): judge 1/1 Ready; `judge admin status` → pack `1.0.0`, N evaluable; NATS (judge's key, no
    `legacy`, `XLEARN_JUDGE` exists, erase durable and identity's ack durable bound); PG sessions ≤ 8; JWKS OK; memory
    sum and NetworkPolicy checks green in `host-verify --cluster`; the erase durable replayed past requests with no dead
-   letters; `JUDGE_BASE_URL` still unset on the gateway; smoke again.
+   letters; `JUDGE_BASE_URL` still unset on the gateway; smoke again (step 5's credential rule).
 10. **[X] Record** (plan task 10) in an xlearn docs PR, then merge it.
 
 ## Constraints
@@ -123,6 +129,8 @@ is a read you perform.
   switch; `JUDGE_BASE_URL` unset); memory-sum numbers.
 - Decisions log: judge's gateway :8080 (JWKS) and identity :8081 (erase re-verify) egress added to MI-13's list (mi-11 leaves judge's policy as is; mi-12 then adds only TCP 443 and verifies :8081 is present); the DB 4-step as its own PR before the
   HelmRelease; the identity/`XLEARN_JUDGE` startup finding. ADR only for a call beyond ADR-0034/0035 (check peers' ADR numbers).
+- If step 6 found the package private: task 8 ⛔ and the ⛔ "owner: set the `xlearn-judge` package public and link it to the
+  repo" (Sprint board row and **Blocked / needs input**); MI-13 stays 🔄 until the re-run lands step 8 and completes the record.
 
 ## Done when (acceptance)
 
@@ -132,8 +140,17 @@ is a read you perform.
 - [ ] Born default-deny egress (DNS, PG, NATS, runner, gateway :8080, identity :8081); expected-netpol updated; `host-verify --cluster` green incl. the memory sum.
 - [ ] `v1.13.0` verified per the release checklist; evalpack `v1.0.0` + ImagePolicy live.
 
-Ship per AGENT.md land-and-sync with **this sprint's release action: evalpack `v1.0.0` + tag `v1.13.0` + infra PRs (ACL
-before the tag; DB 4-step and HelmRelease after it)** — each infra PR merged on its own after verification, then
-`git checkout main && git pull` in xlearn, `../infra` and `../xlearn-evalpack`.
-</content>
-</invoke>
+## Ship (land-and-sync — owner approval pre-granted)
+
+> Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
+
+1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). Here: the four `../infra` PRs, each its own, in the release action's order below; the xlearn docs/status PR (plus a merge-only fix PR if the pre-flight needed one); `../xlearn-evalpack` gets a tag, not a PR.
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge. (infra has no CI: paste each PR's local checks from the plan, e.g. the ACL render diff, `helm template`, `--dry-run=server` and the selector proof, into its body and merge on them; verify after each merge.)
+3. **Release action — evalpack `v1.0.0` + tag `v1.13.0` (ACL PR before, DB 4-step and HelmRelease after):** in this order, never folding an infra PR into the tag:
+   - evalpack `v1.0.0` by the stream's own procedure (step 2 above): `make packcheck` and `packlint check` against the commit you'll tag, tag `v1.0.0`, CI builds it and the anonymous manifest GET is 401/403; record it under **release streams** (digest, `validated_against`);
+   - the evalpack ImagePolicy PR (step 3 above), then the judge nkey + NATS ACL PR (step 4 above), both merged and verified **before** the tag;
+   - walk the release checklist (ADR-0034 §6; the plan's Release checklist), push the tag `v1.13.0` (the next free version), let Flux deploy, then verify live by looking (step 5 above); no snapshot (not a contract, erase or GA tag);
+   - the anonymous GHCR check (step 6 above), then the judge DB 4-step PR (step 7 above), then the judge HelmRelease PR (step 8 above). If step 6 found the package private, step 8 is ⛔ in status.md and a re-run lands it; the session never waits;
+   - verify (step 9 above) and record (step 10 above).
+4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
+5. Run `git checkout main && git pull` in every repo touched (xlearn, `../infra` and `../xlearn-evalpack`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.
