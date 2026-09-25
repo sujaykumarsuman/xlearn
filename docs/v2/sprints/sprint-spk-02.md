@@ -17,15 +17,15 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ⛔ **Partial.** Interrupted on 2026-09-25. The P3 jail setup and probes are recorded on amd64; every other row is ⛔ and needs a re-run. See [t3 §16.2–16.4](../research/t3-sandbox.md#162-p3-amd64-replay-spk-02--partial-).
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | P3 amd64 environment: the second VPS (SSH access given by the owner before launch), or a GitHub Actions scratch job | H (+ O before launch) | ⬜ |
-| 2 | P3 replay: the amd64 pod seccomp profile, TSAN under `mmap_rnd_bits=32`, amd64 allowlists (Go, C++, Python), KILL re-run (2 h) | H | ⬜ |
-| 3 | Image-volume spike (i) mount, (ii) cached-image credential check, (iii) initContainer fallback (≈ 1.5 h) | H | ⬜ |
-| 4 | Report → `t3-sandbox.md` §16.2–16.4, t1 §3.3 pointer, `status.md` (docs PR, 1 h) | X | ⬜ |
-| 5 | Teardown: VM, work directory, SSH alias; the second VPS reimage or scratch repo deletion recorded as an owner follow-up (not a wait) | H | ⬜ |
+| 1 | P3 amd64 environment: the second VPS (SSH access given by the owner before launch), or a GitHub Actions scratch job | H (+ O before launch) | ✅ env A = `skriptvalley-vps` (D41): kernel 6.8.0-142, `mmap_rnd_bits=32`, k3s v1.36.4, a private registry |
+| 2 | P3 replay: the amd64 pod seccomp profile, TSAN under `mmap_rnd_bits=32`, amd64 allowlists (Go, C++, Python), KILL re-run (2 h) | H | ⛔ partial (interrupted). The profile is generated, and the jail setup and probes pass on amd64. **Finding: the broad AppArmor `remount,` rule allows read-write remounts of `/` and `/sys`.** TSAN, PG, the allowlists, the KILL re-run and the x86_64-only variant were not run ([t3 §16.2](../research/t3-sandbox.md#162-p3-amd64-replay-spk-02--partial-)) |
+| 3 | Image-volume spike (i) mount, (ii) cached-image credential check, (iii) initContainer fallback (≈ 1.5 h) | H | ⛔ not run: interrupted before the pods. The registry, the images and the kubelet settings are recorded ([t3 §16.3](../research/t3-sandbox.md#163-image-volume-spk-02--not-run-)) |
+| 4 | Report → `t3-sandbox.md` §16.2–16.4, t1 §3.3 pointer, `status.md` (docs PR, 1 h) | X | ✅ partial results landed, with the ⛔ rows marked (D40) |
+| 5 | Teardown: VM, work directory, SSH alias; the second VPS reimage or scratch repo deletion recorded as an owner follow-up (not a wait) | H | ✅ env A restored on 2026-09-25 (D41: no reimage; the alias is the owner's, so it stays). `xl-spike` purged. `~/xl-spike/` kept for reference (orchestrator) |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, and ⛔ if it's blocked (say why).
 > A NO-GO row is still ✅ once it's recorded with numbers. Update the _Overall_ line to match, and mirror the sprint's state into

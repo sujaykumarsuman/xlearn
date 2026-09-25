@@ -1212,3 +1212,111 @@ replay before mi-09 ships. Fresh-mount **path confinement to `/jail` is enforced
   regex is required for the real runner.
 
 **No timing conclusions (arm64 / HVF).**
+
+### 16.2 P3 amd64 replay (spk-02) — partial ⛔
+
+Run 2026-09-25 on **environment A**, the owner's spare `skriptvalley-vps` (D41; launch = go-ahead, D40).
+**The session was interrupted after the jail-setup and probe rows.** Under D40 the partial results land here and
+every row not run is ⛔. Everything else is thrown away: the harness, image, registry and k3s were removed at
+teardown, and nothing was committed. **No timing conclusions** (1-vCPU KVM guest, not the production guest).
+
+**Environment**
+
+| Component | Value | Production (for contrast) |
+|---|---|---|
+| Host | Hostinger KVM 1: 1 vCPU AMD EPYC 9354P, 3.9 GB RAM, KVM guest | 4 × EPYC 9355P |
+| Kernel | `6.8.0-142-generic` x86_64 (`apt full-upgrade` from 6.8.0-90, then a reboot) | `6.8.0-142-generic` (MI-0) |
+| `vm.mmap_rnd_bits` | **32** (left as is, never lowered) | 32 |
+| `apparmor_restrict_unprivileged_userns` | 1 | 1 |
+| H0 mirror + sandbox sysctls | `core_pattern=core`, `suid_dumpable=0`, apport masked; the §8.7 sysctls | H0 done; sandbox block at the host window |
+| k3s / containerd / runc | `v1.36.4+k3s1` (`--disable traefik`) / `2.3.4-k3s1.36` / `1.4.2` | same |
+| `judge` drop-in | merged verbatim (`crictl info`: `cgroupWritable:true`, `SystemdCgroup:true`) | — |
+| Toolchain | go1.26.8 (checksummed); runner image `debian:trixie-slim` + g++ + python3 + PGDG PG 18, pulled by the kubelet | — |
+
+**Path used:** the supervisor ran inside spk-01's positive pod shape on the pinned k3s (the "closest to
+production" option): `hostUsers:false`, 5 caps, Localhost AppArmor + Localhost seccomp, `runtimeClassName`
+→ `judge`, driven over CRI exec. The pod's uid_map was `0 1074397184 65536` (non-identity, inside the
+`kubelet` subuid range). The guard VAPs were not re-applied, because P0 was already proven in §16.1.
+
+**The amd64 pod seccomp profile (generated; validation partial).** It was built with §16.1's recipe from
+containerd **v2.3.4 `DefaultProfile`** on amd64 with the 5 runner caps:
+- the same 14 removals (the new mount API, `bpf`, `perf_event_open`, `fanotify_*`, `lookup_dcookie`, `syslog`, and containerd's broad `socket` rule);
+- `socket()` limited to AF_UNIX and AF_INET/AF_INET6 `SOCK_STREAM` (proto 0/TCP);
+- `pivot_root` **added**.
+
+`architectures: [SCMP_ARCH_X86_64, SCMP_ARCH_X86, SCMP_ARCH_X32]`, `defaultAction: SCMP_ACT_ERRNO`, **381 names**,
+sha256 `40412b25…a5ca570`. Against the arm64 file (385 names) it adds `arch_prctl` and `modify_ldt`, and drops
+`arm_fadvise64_64`, `arm_sync_file_range`, `breakpoint`, `cacheflush`, `set_tls` and `sync_file_range2`. The
+x86_64-only variant (sha256 `8817e742…e22445`) and a variant with an exact-argument
+`personality(0x0040000)` rule were generated **but not run** ⛔. **The verbatim JSON is not recorded here** ⛔.
+mi-09 regenerates it from the recipe, which is deterministic, and records it once the ⛔ rows below pass.
+
+**Jail setup on amd64 (three-arch profile, spk-01's AppArmor profile)**
+
+| Step | Result | Pass |
+|---|---|---|
+| jail via `CLONE_INTO_CGROUP` / via `cgroup.procs` + sync | OK / OK | ✅ |
+| caps in the child | `CapEff/CapPrm/CapInh = 0`, `NoNewPrivs=1`, `CapBnd 0x2001e0`; a mount after the drop → EACCES(13) | ✅ |
+| procfs `hidepid=invisible,subset=pid` | only the jail's own pid visible | ✅ |
+| `go build` / `g++ -std=gnu++20 -O2 -static` / `python3` in the jail | ran | ✅ (functional only) |
+| in-pod overlayfs under `hostUsers:false` | **EACCES(13)**, the same as arm64 | ✅ confirms the GOCACHE seed can't be an in-pod overlay |
+| a disallowed syscall in the jail | `SIGSYS`; `core_pattern` unchanged (`core`) | ✅ |
+
+**Negative probes from the supervisor (three-arch profile, spk-01's AppArmor profile)**
+
+| Probe | Result | Pass |
+|---|---|---|
+| spk-01's 17 (`unshare -U`, `clone3(NEWUSER)`, `fsopen`, `open_tree`, `mount` outside `/jail`, SCTP, NETLINK, PACKET, raw inet, `ptrace(1)`, `keyctl`, `add_key`, `userfaultfd`, `io_uring_setup`, `bpf`, `perf_event_open`, `setns`) | all denied with the same errnos as arm64 | ✅ 17/17 |
+| `move_mount` / `mount_setattr` | EPERM / EPERM | ✅ |
+| x32-ABI `getpid` | ENOSYS(38) | ✅ |
+| ia32-ABI `getpid` (`int $0x80`) | **allowed** (returned the pid) | expected under the three-arch baseline. It is the evidence for the x86_64-only proposal; that variant is ⛔ not run |
+| **remount of `/` read-write, remount of `/sys` read-write** | **unexpected success** | ❌ **finding.** spk-01's broad `remount,` AppArmor rule lets the supervisor context remount the container's read-only `/` and `/sys` read-write. The probe restored `/` to read-only. The line was stopped here, as the probe rules require, and not investigated further |
+| `personality(ADDR_NO_RANDOMIZE)` (information only) | EPERM: RuntimeDefault's `personality` rule allows only a fixed set of argument values, and this isn't one of them. The `0xffffffff` query is allowed | if go-race needs ASLR off, the pod profile needs the exact-argument rule |
+
+**Consequence of the finding (mi-09, before the host window).** The broad `remount,` rule **must not ship.**
+It must be replaced by remount rules scoped to the jail tree, plus the jail's own read-only root remount after
+`pivot_root`. Both remount probes join the must-deny set, and the jail setup has to be re-proven with the
+scoped rules. This is also the ro-bind-remount rule that §16.1 left open, so that item stays ⛔.
+
+**Rows not run (interrupted, ⛔).** None of these count as GO:
+- TSAN / go-race under `mmap_rnd_bits=32` and its ASLR policy;
+- postgres in the jail on amd64, and the SQL balloon;
+- the RET_LOG allowlists for `go`, `cpp`, `python` and `go-race` (through auditd), and the compile-jail sets;
+- the KILL re-run;
+- the x86_64-only pod-profile variant;
+- the scoped AppArmor remount rule;
+- the GOCACHE seed without an overlay.
+
+Prepared for the re-run, throwaway and outside every repo: 22 reference programs per language (Go, C++,
+Python; synthetic inputs). Their outputs were cross-checked natively against the Python references: Go 22/22,
+C++ 22/22.
+
+### 16.3 Image volume (spk-02) — not run ⛔
+
+**Environment:** A's pinned k3s (as above). The private registry was `registry:2` + htpasswd over TLS with a
+throwaway CA. An anonymous `GET /v2/` returned **401**. k3s `registries.yaml` carried the endpoint CA only, **no
+credentials**, so credentials could come only from `imagePullSecrets`. The image was a synthetic `FROM scratch`
+pack: one layer per course plus `/manifest.json`, random bytes, 160 KiB, **linux/amd64 only**. It holds no
+evalpack content. The variant-A init image (the pack layers + a static copier `ENTRYPOINT`) was built and pushed.
+
+**Kubelet settings:**
+- `configz`: `imagePullCredentialsVerificationPolicy: NeverVerifyPreloadedImages`; `featureGates` not overridden;
+- kubelet metrics: `KubeletEnsureSecretPulledImages` **BETA, enabled (1)**; `ImageVolume` enabled (1).
+
+**(i), (ii), (ii-b), (iii): not run ⛔.** The session was interrupted before any image-volume pod was created.
+**Verdict: none.** This isn't a fallback and doesn't need an owner decision: the pre-decided chain (GO → GO
+with `AlwaysVerify` → fallback A, else B, else ORAS) still applies once the rows run.
+
+### 16.4 MI-10 verdict and proposed ADR-0030 deltas (partial)
+
+**Spike P0–P2 GO (spk-01); P3 incomplete ⛔; image volume not run ⛔.** The M3 checklist line "Spike P0–P3 GO
+and the image-volume spike GO" stays **unticked** until the ⛔ rows of §16.2 and §16.3 are re-run.
+
+What m3-03 can already fold into ADR-0030:
+- **Mechanism:** unchanged. go-sandbox `forkexec.Runner` with no user namespace, spawned via `CLONE_INTO_CGROUP`; the jail setup reproduces on amd64 kernel 6.8.0-142.
+- **Pod seccomp:** §16.1's recipe on amd64 (381 names; `pivot_root` added). The architectures stay open ⛔. So far the ia32 `int $0x80` entry point is open under the three-arch baseline and the x32 ABI returns ENOSYS; the x86_64-only variant still has to be run with the jail setup, the probes and the references.
+- **AppArmor:** replace the broad `remount,` rule with jail-scoped remount rules (§16.2 finding). This is required, not optional.
+- **ASLR policy:** open ⛔. Note that the RuntimeDefault-derived pod profile denies `personality(ADDR_NO_RANDOMIZE)`.
+- **GOCACHE:** not an in-pod overlay (EACCES on amd64 too); the mechanism stays an A8 item.
+- **Where the allowlists live:** unchanged (pod seccomp → mi-09; per-profile exec allowlists → m3-04), but no amd64 allowlists exist yet ⛔.
+- **SETPCAP:** as §16.1.
