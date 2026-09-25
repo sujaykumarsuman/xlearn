@@ -3,7 +3,8 @@
 Cross-sprint living tracker for the v2 build. Updated per the
 [status protocol](sprints/README.md#status-protocol-way-of-working) whenever a task or sprint changes state (it's
 baked into every `prompt-<id>.md`). Per-task detail lives in each [`sprints/sprint-<id>.md`](sprints/); the static
-plan is [`build-plan.md`](build-plan.md); the source is the [rollout plan](rollout-plan.md). Newest decisions at the
+plan is [`build-plan.md`](build-plan.md); the source is the [rollout plan](rollout-plan.md); the one-page run order
+with workstream diagrams is [`execution-order.md`](execution-order.md). Newest decisions at the
 top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 
 - **Build line:** v2 · **Phase:** **build plan scaffolded** (2026-09-24): 89 sprints (86 plan + prompt pairs, 3 M6c

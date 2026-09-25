@@ -6,6 +6,8 @@
 prompt in [`prompts/`](prompts/). Decisions live in the [feasibility log](feasibility.md) (D0–D35, plus D36–D39 = the build-plan session's BP1–BP4 and D40 = the owner's sprint merge directive) and the
 ADRs [0026](../adr/0026-per-course-extensibility-model.md)–[0035](../adr/0035-v2-operations-nats-auth-limits-capacity.md);
 the product scope is the [v2 PRD](../prd/xlearn-v2-prd.md). Live progress is in [`status.md`](status.md).
+**At a glance:** [execution-order.md](execution-order.md) clubs the 89 prompts into 19 workstreams and shows the
+run order week by week, with diagrams.
 If this file and an ADR disagree, the ADR wins and this file gets fixed.
 
 - **Build line:** v2 · **Live release:** v1.5.2 (signup closed) · **Planned:** 2026-09-24 (build-plan session, owner decisions BP1–BP4) · **Amended:** 2026-09-25 by **D40** (every prompt lands and syncs; launching it is the owner's approval).
