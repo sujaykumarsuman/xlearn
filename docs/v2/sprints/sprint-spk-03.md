@@ -13,18 +13,18 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ **Done 2026-09-25: WIF GO, with `check_jti=false` on the one-rule issuer.** `jti` is present, and an in-place restart re-presents it (an opaque 401 until the next rotation). Exchange p50 0.33 s; `anthropic-workspace-id` matched 5/5. The rule scope is `workspace:developer`, because the Console offers no `workspace:inference`, so ADR-0031 amendments are proposed for mi-12. The VM is purged. See [t5 §15](../research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25).
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Throwaway k3s (`xl-spike`, or a fresh `xlearn-wif`; started before launch) + probe pods (projected token, audience `https://api.anthropic.com`); print issuer + JWKS | H | ⬜ |
-| 2 | Throwaway Anthropic workspace + WIF issuer (inline JWKS from the VM), rule and service account | O (before launch) | ⬜ |
-| 3 | Q-W1/Q-W2: token claims (`jti`?) and rotation cadence | H | ⬜ |
-| 4 | Q-W4: token exchange + first Messages call, timed; workspace header; scope check | H | ⬜ |
-| 5 | Q-W3: `jti` reuse and the in-place restart → `check_jti` decision | H | ⬜ |
-| 6 | Side checks: audience rejected by the API server; JWKS stability | H | ⬜ |
-| 7 | Report: GO (+ `check_jti`) or fallback → t5 §15 + `status.md` (docs PR) | X | ⬜ |
-| 8 | Tear down: VM purged (spk-03 is `xl-spike`'s last user); the workspace, issuer, rule and SA deletion recorded as an owner follow-up (not a wait) | H | ⬜ |
+| 1 | Throwaway k3s (`xl-spike`, or a fresh `xlearn-wif`; started before launch) + probe pods (projected token, audience `https://api.anthropic.com`); print issuer + JWKS | H | ✅ fresh `xlearn-wif` (arm64 multipass, k3s `v1.36.4+k3s1`, `--disable traefik`); issuer `https://kubernetes.default.svc.cluster.local`; one RS256 key (kid `W2B3g78j…ZANY`). Namespace `wif-spike`, SA `wif-probe` and pods `wif-probe-3600` / `wif-probe-600` with the plan's spec |
+| 2 | Throwaway Anthropic workspace + WIF issuer (inline JWKS from the VM), rule and service account | O (before launch) | ✅ the owner, 2026-09-25, in **Sujay's Individual Org** (`ced627ab-…`): workspace ($1 limit), service account, issuer (inline JWKS, JTI replay protection on by default) and rule (exact subject, audience, 1 h). The rule scope is **`workspace:developer`**, because the Console offers no `workspace:inference`. The org UUID came by message after launch |
+| 3 | Q-W1/Q-W2: token claims (`jti`?) and rotation cadence | H | ✅ **`jti` present** (a UUID), with `iss`, `sub`, `aud` (array), `iat`, `nbf`, `exp` and the `kubernetes.io` pod/node/SA block. Rotation: 600 s at **81.0–90.7 %** of TTL (5 rotations, 486–544 s); 3600 s at **80.0 %** (2881 s); a k3s restart re-issues every token. `expires_in` 3600, the documented `min(rule lifetime, 2 × JWT remaining)` (an aged token got 261) |
+| 4 | Q-W4: token exchange + first Messages call, timed; workspace header; scope check | H | ✅ exchange p50 0.332 s / max 0.473 s; first Messages call p50 1.613 s / max 1.824 s (5 runs, a fresh `jti` each). `anthropic-workspace-id` matches on 5/5, and so does the exchange response's `workspace_id`. Files / Batches return **200 / 200**, not 403, because the scope is `workspace:developer` |
+| 5 | Q-W3: `jti` reuse and the in-place restart → `check_jti` decision | H | ✅ (a) the second exchange of the same file gets an opaque **401** `authentication_error`. (b) `kill 1` → `restartCount` +1, with the same `jti` and `iat` → **401**, until the kubelet rotated the file (~42 min here); then 200. (c) Recreate → **200**. Result: **`check_jti=false`** on the one-rule issuer (the pre-decided path). The confirming re-run is handed to mi-12 |
+| 6 | Side checks: audience rejected by the API server; JWKS stability | H | ✅ the projected token against the throwaway API server → **401** (a default-audience control → 200). Rule matchers: default audience, another SA and `workspace_id: default` → 401 each; a refused attempt doesn't burn the `jti`. The JWKS is **unchanged** after a k3s restart and after `k3s certificate rotate`, and an exchange afterwards still returned 200. Only `rotate-ca` with a new `service.key`, or a rebuild, changes it |
+| 7 | Report: GO (+ `check_jti`) or fallback → t5 §15 + `status.md` (docs PR) | X | ✅ [t5 §15](../research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25), with `status.md` updated in the same PR (ADR-0031 stays Proposed; its amendments are proposed for mi-12) |
+| 8 | Tear down: VM purged (spk-03 is `xl-spike`'s last user); the workspace, issuer, rule and SA deletion recorded as an owner follow-up (not a wait) | H | ✅ 2026-09-25: namespace `wif-spike` deleted and VM `xlearn-wif` purged (`multipass list`: no instances; `xl-spike` was already gone). The Console objects are an owner follow-up in `status.md` → Open owner items. The scratchpad and the branch were grepped for tokens: none |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + the MI table's MI-14 row: its WIF-spike item, the way spk-01/spk-02 record MI-10).

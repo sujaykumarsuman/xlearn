@@ -3,6 +3,8 @@
 > **Status:** settled with the owner 2026-09-24 (**D24–D27**, §12). §12 overrides the body where they conflict, notably:
 > - D16 scope = course passes plus *materially different* touch passes marked "correct, with improvements";
 > - D18 = per problem, with no mock or realtime lock during attempts.
+>
+> **WIF spike (spk-03, 2026-09-25): WIF GO** with `check_jti=false` on the one-rule issuer ([§15](#15-wif-spike-result-spk-03-2026-09-25)). §15 overrides §3 where they conflict: notably the rule scope is `workspace:developer`, not `workspace:inference`.
 
 # T5: Platform AI and two-tier keys
 
@@ -725,3 +727,102 @@ Why the bound: at n≈30, a grader whose true QWK is 0.60 passes a single test a
 - `docs/v2/research/t2-object-storage-backups.md` L91 (Hostinger images hold k3s Secrets and `sops-age`)
 - `docs/v2/research/t3-sandbox.md` L587 (Track B egress)
 - Coach and secrets line references as cited in the draft (checked by critic 2): `internal/coach/providers.go:133`, `handlers.go:381`, `internal/platform/secrets/secrets.go:118,133`, `web/src/screens/Auth.tsx:699,708`
+
+---
+
+## 15. WIF spike result (spk-03, 2026-09-25)
+
+Run 2026-09-25 on a throwaway multipass VM (D41 pulled the spike forward; launching the prompt was the WIF go-ahead, D23/D40). Everything on the VM was thrown away. Only this section and the status rows are committed. **No token value was printed, logged or committed.** The projected tokens stayed in the pods and on the VM. The access tokens existed only in a pod's `/tmp` for the length of one script. Every value below is a decoded claim or a non-secret response field.
+
+**Environment**
+
+| Item | Value |
+|---|---|
+| VM | `xlearn-wif`: multipass on the owner's Mac, Ubuntu 24.04 **arm64**, 2 CPU / 4 GiB. The architecture doesn't matter here: token issuance and rotation are Kubernetes behaviour |
+| k3s | `v1.36.4+k3s1` (production's pin), installed with `--disable traefik`; containerd `2.3.4-k3s1.36` |
+| Issuer / JWKS | `iss` = `https://kubernetes.default.svc.cluster.local` (the same string production uses); one RSA-2048 `RS256` key, kid `W2B3g78jobYPZv69l_I-FYASHgMHbSzqcSdX_woZANY` |
+| Org | **Sujay's Individual Org** (`ced627ab-c84c-4f9c-b126-a252462a1ae0`), the owner's current org; no dedicated xLearn org exists. WIF works in it |
+| Console objects (the owner's, created before launch) | Workspace `xlearn-wif-spike` (`wrkspc_017ZKXnJ1a9BxwcEm7e9rhGi`; $1 monthly limit; auto-reload off). Service account `xlearn-wif-spike` (`svac_019eVYj3HcGdou7MMvmDWzZN`; org role Developer). Issuer `xlearn-wif-spike-k3s` (`fdis_01VKrjGxwBjDDrCASJS1CUQw`; inline JWKS; **JTI replay protection on**, the default; max JWT lifetime 1 h). Rule `xlearn-wif-spike-probe` (`fdrl_01JM53aDwbkXy1RJ2fhG9LCf`; subject exactly `system:serviceaccount:wif-spike:wif-probe`; audience `https://api.anthropic.com`; the one workspace; **scope `workspace:developer`**; token lifetime 1 h) |
+| Probes | Namespace `wif-spike`; ServiceAccount `wif-probe` (`automountServiceAccountToken: false`); pods `wif-probe-3600` and `wif-probe-600` with the plan's spec (projected token at `/var/run/secrets/anthropic.com/token`, audience `https://api.anthropic.com`). Runs that need a fresh `jti` use fresh pods with the same spec. Raw `curl` + `jq`; `ANTHROPIC_API_KEY` was never set |
+| Spend | 5 Messages calls on `claude-sonnet-5`, each 16 input / 4 output tokens with thinking disabled: under $0.001 |
+
+**Results**
+
+| Q | Check | Result |
+|---|---|---|
+| **Q-W1** | Claims of the projected token | Header: `alg` `RS256` and `kid` (no `typ`). Payload: `aud` (an array: `["https://api.anthropic.com"]`), `exp`, `iat`, `nbf` (= `iat`), `iss`, `sub` (`system:serviceaccount:wif-spike:wif-probe`), **`jti` present (a UUID)** ✅, and `kubernetes.io` {`namespace`, `node` {name, uid}, `pod` {name, uid}, `serviceaccount` {name, uid}}. `exp − iat` is exactly 3600 (or 600), within the issuer's 1 h maximum |
+| **Q-W2** | Rotation, sampled every 60 s on the VM host | **600 s:** 5 rotations, at 486–544 s after `iat` (**81.0–90.7 %** of TTL; median 517 s). **3600 s:** one rotation at **2881 s (80.0 %)**, inside the in-place-restarted container. The kubelet marks a token due at 80 % of TTL (minus up to 10 s of jitter). It rewrites the file at its next pod sync, so a rotation lands 0 to ~90 s after the 80 % point: at most ~2970 s for 3600 s. A k3s (kubelet) restart re-issues every projected token at once; seen twice, each time with a new `iat` and `jti` within seconds of k3s coming back |
+| Q-W2 | Access-token lifetime | `expires_in` = **3600** for a fresh 3600 s token (5/5). It follows the documented `min(rule token lifetime, 2 × (JWT exp − now))`: an aged 600 s token with 132 s left got **261**. **The invariant holds:** the access-token lifetime (3600 s) is longer than the rotation interval (2881 s observed; at most ~2970 s), so re-exchanging on each new `iat` never leaves judge without a valid token |
+| **Q-W3 (a)** | The same file exchanged twice | First exchange 200. Second, 56 s later: **401** `authentication_error` "Authentication failed" (`req_011CfQ39tCfE955xhrid6FLX`). The response is opaque by design: the deny reason (`jti_reused`) appears only in the Console's authentication history |
+| **Q-W3 (b)** | In-place restart (`kubectl exec … -- kill 1`) | `restartCount` 0 → **1**: same pod uid, new container id, exit code 1 (the trap). The token file's `jti` and `iat` are **unchanged**, so the boot exchange gets **401** again (`req_011CfQ3CmAaV2YgZinWeGxtG`). The lock-out ends only when the kubelet rotates the file: here it ran from the restart at 10:57:29Z to the rotation at 11:39:16Z (~42 min). The same restarted container then exchanged **200** (`req_011CfQ6NsZfyMLQKH19KfjRt`) |
+| **Q-W3 (c)** | Pod deleted and recreated | New pod uid, new token, fresh `jti` → **200** with `expires_in` 3600 (`req_011CfQ6SFg3FsMcDzV1sfbPp`) |
+| **Q-W4** | Exchange + first Messages call, 5 runs, a fresh `jti` each | Exchange **p50 0.332 s, max 0.473 s**. First `POST /v1/messages` (16 in / 4 out tokens): **p50 1.613 s, max 1.824 s**. Together: **p50 1.926 s, max 2.297 s**, well under 5 s. Measured from the owner's Mac through multipass NAT, not from the VPS |
+| Q-W4 | Workspace pin | `anthropic-workspace-id: wrkspc_017ZKXnJ1a9BxwcEm7e9rhGi` on **5/5** calls, and `anthropic-organization-id` = the org UUID. The exchange response also carries `workspace_id` (the same value), so judge can pin before its first call |
+| Scope | Files and Batches with the access token | **200 / 200** for `GET /v1/files` and `GET /v1/messages/batches` (list calls, status only). Not 403, because the rule's scope is `workspace:developer` (finding 1 below) |
+| Side | Audience binding: the projected token against the **throwaway** API server's `/api`, from inside `wif-probe-600` | **401**. Control: a default-audience TokenRequest token for the same SA → 200. A leaked judge token can't be used against the cluster |
+| Side | Rule matchers: TokenRequest tokens exchanged from the VM | A default-audience token (`aud` = `["https://kubernetes.default.svc.cluster.local","k3s"]`) → **401**. Another SA's subject → **401**. `workspace_id: default` → **401**: the service account's Default-workspace membership doesn't widen the rule. The same token, then sent with the rule's workspace → **200**, so a refused attempt doesn't burn the `jti`. A fresh control → 200 |
+| Side | JWKS stability (`/openid/v1/jwks`) | **Unchanged** (same kid, same JWKS hash, `service.key` untouched) after `systemctl restart k3s`, and again after `k3s certificate rotate` + restart. That command rotates every component certificate but not the service-account key. An exchange after both still returned 200 with the originally pasted inline JWKS. Only `k3s certificate rotate-ca` with a new `service.key` (per the k3s docs; not run here) or a node rebuilt without the old `/var/lib/rancher/k3s/server/tls/service.key` changes it |
+
+**Exchange request shape (for m4-01; field names only)**
+
+- `POST https://api.anthropic.com/v1/oauth/token` with `content-type: application/json`. No `anthropic-version` or `anthropic-beta` header was needed.
+- Body (the RFC 7523 `jwt-bearer` grant):
+  - `grant_type` = `urn:ietf:params:oauth:grant-type:jwt-bearer`;
+  - `assertion`: the projected JWT verbatim, trailing newline trimmed, at most 16 KiB;
+  - `federation_rule_id` (`fdrl_…`), `organization_id` (UUID), `service_account_id` (`svac_…`);
+  - `workspace_id` (`wrkspc_…`): optional for a one-workspace rule, but send it.
+- **200:** `access_token` (`sk-ant-oat01-…`), `token_type` `Bearer`, `expires_in`, `scope`, `workspace_id`. It also carries two undocumented fields, `next_challenge` (an empty string) and `next_challenge_expires_in` (0), which belong to another grant, so decode leniently and ignore unknown fields.
+- **Every assertion denial is the same 401:** `{"type":"error","error":{"type":"authentication_error","message":"Authentication failed"},"request_id":…}`, whether the cause is `jti` reuse, audience, subject or workspace. A malformed request is a 400 `invalid_request_error` (per the WIF reference; not exercised here).
+- The access token shares the `sk-ant-oat01-` prefix with other Anthropic OAuth tokens. Add that prefix to judge's log canary and redaction patterns.
+- Then `POST /v1/messages` with `authorization: Bearer <access_token>` and `anthropic-version: 2023-06-01` (no `x-api-key`, no beta header).
+
+**Decision: WIF GO, with `check_jti=false` on the one-rule issuer.** This is the pre-decided path: (a) rejected the reuse and (b) re-presented a used `jti`. Why production must set it:
+- **An in-place restart locks judge out.** A container restart (OOM kill, crash, liveness failure) keeps the pod's token file. judge's boot exchange then re-presents a used `jti` and is refused until the kubelet's next rotation: up to ~48–50 min at 3600 s (~42 min in this run).
+- **The refusal can't be told apart.** It is an opaque 401, the same as JWKS drift or an archived rule. m4-01's planned `jti_reused` branch can't be built from the response, so every restart would open the breaker as an auth failure.
+- **Retries hit it too.** A retry after a lost 200 (a timeout after the server accepted) would re-present a used `jti` (inferred). A *refused* attempt doesn't burn the `jti` (the matcher row above).
+- **The weakening is bounded.** A stolen projected token is replayable only until its `exp` (≤ 1 h), only against this rule (exact subject, audience, one workspace), and any access token it mints lives ≤ 1 h anyway. Production has one rule on the issuer, so no other rule loses replay protection.
+
+Alternatives considered and not taken (mi-12 confirms):
+
+| Alternative | Why not |
+|---|---|
+| Cache the access token in a memory-backed `emptyDir` | It survives container restarts, but it puts a live bearer token on a volume, adds cache-invalidation code, and doesn't cover the lost-response retry |
+| `expirationSeconds: 600` with `check_jti` on | Shortens the lock-out to about 9 minutes, but every restart still opens the breaker, and judge exchanges about 7 times an hour |
+| judge mints fresh tokens through the TokenRequest API | Needs an API-server credential and RBAC for judge's service account; automount stays off |
+
+The confirming re-run of (a) and (b) under `check_jti=false` is handed to mi-12, because it is a Console change and the spike never touched the Console. Expected: (a) 200 and (b) 200.
+
+**Values mi-12 sets**
+
+| Where | Setting |
+|---|---|
+| Pod | Projected `serviceAccountToken`: `audience: https://api.anthropic.com`, **`expirationSeconds: 3600`**, `path: token`, mounted read-only at `/var/run/secrets/anthropic.com`; `automountServiceAccountToken: false`. Keep `expirationSeconds` at or below the issuer's max JWT lifetime (1 h by default); `exp − iat` is exactly 3600 |
+| Issuer | `issuer_url` = `https://kubernetes.default.svc.cluster.local`. JWKS **inline**: paste the **`keys` array**, because the Console field takes the array, not the `{"keys": […]}` wrapper. **`check_jti` off**: untick "Enforce single-use tokens (JTI replay protection)", which defaults on. Max JWT lifetime 1 h (the default) |
+| Rule | `subject_prefix` exactly `system:serviceaccount:xlearn:xlearn-judge` (no `*`); `audience` = `https://api.anthropic.com`; the one workspace `xlearn-platform-prod`; **token lifetime 1 h, set explicitly** (the Console's options are 1 m, 5 m, 10 m (default), 1 h, 24 h or custom); scope per finding 1 below |
+| judge | `LLM_ANTHROPIC_ORG_ID`, `…_WORKSPACE_ID`, `…_SERVICE_ACCOUNT_ID` and `…_FEDERATION_RULE_ID` as non-secret values. `ANTHROPIC_API_KEY` is never set |
+
+**Re-exchange rule (m4-01):**
+- **Boot:** exchange lazily on the first platform call. This works even if the file was already exchanged before the restart, because `check_jti=false` allows it.
+- **Afterwards:** re-exchange only when the file's `iat` is newer than the one last exchanged. That happens every ~48–50 min (and after every k3s restart), 10 or more minutes before the cached 3600 s token expires.
+- **Errors:** retry transport errors and 5xx a bounded number of times. Treat every 401/403 as `llm.ErrAuth` (the breaker); the reason is in the Console's authentication history.
+- **Pin:** refuse the token unless the exchange response's `workspace_id` equals `LLM_ANTHROPIC_WORKSPACE_ID`, then check `anthropic-workspace-id` on every response.
+
+**Lifetime invariant:** the access-token lifetime is **longer than** the rotation interval. A fresh file gets `min(3600, 2 × 3600)` = 3600 s; rotation comes at 80 % of 3600 s plus at most one kubelet sync (2881 s observed; at most ~2970 s). A re-presented aged file keeps the invariant too: `min(3600, 2 × (3600 − a)) > 2970 − a` for every age `a` before the rotation point.
+
+**Findings that amend ADR-0031** (proposed; mi-12 folds them in when it accepts the ADR, and this sprint doesn't edit it):
+1. **Scope (§2, Consequences).**
+   - **What the Console offers:** the rule form has only `workspace:developer` and `org:admin`, no `workspace:inference` (owner, 2026-09-25).
+   - **What the docs say:** the WIF reference and the Admin API reference (fetched 2026-09-25) still list `workspace:inference`, settable only by an `org:admin` OAuth caller through `POST /v1/organizations/federation_rules`. Untested here: the spike holds no admin credential.
+   - **What was measured:** under `workspace:developer` the token reached Files and Batches (200 / 200).
+   - **Proposal:** use **`workspace:developer`**, the least privilege the Console offers. mi-12 may instead create the rule through the Admin API with `workspace:inference`, and keeps it only if a Files call then returns 403.
+   - **Either way, the credential no longer guarantees "Messages only".** judge's request builder is the enforcement: Messages only; no `tools`, `mcp_servers` or `container`; the golden request-shape test and the CI lint. Drop "The inference-only scope blocks Files, Batch and agents" from Consequences. t5 §3's `RetentionPolicy` line "`workspace:inference` enforces most of this at the credential" no longer holds.
+   - The extra reach is small: judge stores nothing in the workspace, and the workspace limit caps spend.
+2. **Credential (§2).** WIF GO. `check_jti=false` on the one-rule issuer; rule token lifetime 1 h, set explicitly; `expirationSeconds: 3600`; plus the re-exchange rule and the invariant above.
+3. **Workspace pinning (§2).** Check the exchange response's `workspace_id` before first use, as well as `anthropic-workspace-id` on each response; both matched 5/5. The service account is always a member of the Default workspace (the Console locks it). The rule refuses `workspace_id: default` (401), so that membership doesn't widen the credential.
+4. **Maintenance (§2).** Paste the JWKS inline as the `keys` array. It survives k3s restarts and `k3s certificate rotate`. It changes only with `k3s certificate rotate-ca` carrying a new `service.key`, or on a node rebuilt without the old `service.key`. After either, re-paste it: exchanges 401 until then (breaker → manual grading). `host-verify --cluster`'s kid check shows the drift (mi-12 task 6). A k3s restart does re-issue every projected token, but that is only a newer `iat` for judge to re-exchange.
+5. **Provider-side controls (§2, §5, §8).** The org's monthly spend limit is **$5** today (owner, 2026-09-25). No workspace can spend past it, so before mi-12 the org limit must rise to at least the sum of the workspace limits it holds: $15 for `xlearn-platform-prod` (dogfood) plus about $50 for `xlearn-calib` during M4 bring-up, and enough for $100 at the v3 opening. This is an mi-12 before-launch item.
+6. **Org.** WIF works in the owner's current org. The dedicated-org question stays with mi-12 (t5 §3's "Org" row); if a new org is created, re-check WIF there.
+
+**Throwaway resources:** the namespace `wif-spike` and the VM `xlearn-wif` were deleted on 2026-09-25 (`multipass delete --purge`; `multipass list` shows no instances, so `xl-spike` is gone too). The Console objects (rule, issuer, service account, workspace) are left for the owner's clean-up (status.md → Open owner items). The issuer is inert once the VM is purged, because its signing key went with the VM. It must still be deleted before mi-12 creates the production issuer, which uses the same `issuer_url`.
+
+Sources, fetched 2026-09-25: [Workload Identity Federation](https://platform.claude.com/docs/en/manage-claude/workload-identity-federation) (exchange flow, token lifetime and refresh, `jti` single use); [WIF reference](https://platform.claude.com/docs/en/manage-claude/wif-reference) (request and response fields, OAuth scopes, JWT verification, errors); [WIF with Kubernetes](https://platform.claude.com/docs/en/manage-claude/wif-providers/kubernetes) (inline `keys` array, rule shape); the Admin API references for [federation issuers](https://platform.claude.com/docs/en/api/admin/federation_issuers) (`check_jti`, `max_jwt_lifetime_seconds`) and [federation rules](https://platform.claude.com/docs/en/api/admin/federation_rules) (`oauth_scope` accepts `workspace:inference` from OAuth callers); [k3s `certificate`](https://docs.k3s.io/cli/certificate) (`rotate` covers client and server certificates only; the service-account issuer key rotates with `rotate-ca`).
