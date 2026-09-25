@@ -1224,8 +1224,8 @@ teardown, and nothing was committed. **No timing conclusions** (1-vCPU KVM guest
 up again from its baseline: kernel `6.8.0-142`, `mmap_rnd_bits=32`, k3s `v1.36.4+k3s1 --disable traefik`, the
 `judge` drop-in, spk-01's host files, go1.26.8 (checksummed), the private registry, and the same generator (the
 four pod-profile variants hash identically to the first session's). Block 1 is the image volume (§16.3) plus the
-GOCACHE seed (below) ✅; block 2 (TSAN, PG, allowlists, KILL, architectures) and block 3 (AppArmor remount
-narrowing) follow.
+GOCACHE seed (below) ✅. Block 2 (TSAN, PG, allowlists, KILL, architectures, below) ✅. Block 3 (AppArmor
+remount narrowing) follows.
 
 **Environment**
 
@@ -1255,8 +1255,9 @@ containerd **v2.3.4 `DefaultProfile`** on amd64 with the 5 runner caps:
 sha256 `40412b25…a5ca570`. Against the arm64 file (385 names) it adds `arch_prctl` and `modify_ldt`, and drops
 `arm_fadvise64_64`, `arm_sync_file_range`, `breakpoint`, `cacheflush`, `set_tls` and `sync_file_range2`. The
 x86_64-only variant (sha256 `8817e742…e22445`) and a variant with an exact-argument
-`personality(0x0040000)` rule were generated **but not run** ⛔. **The verbatim JSON is not recorded here** ⛔.
-mi-09 regenerates it from the recipe, which is deterministic, and records it once the ⛔ rows below pass.
+`personality(0x0040000)` rule were generated but not run in the first session. Re-run block 2 ran the x86_64-only
+variant, found the `personality` variant **unnecessary** (TSAN needs no ASLR change), and records the final JSON
+verbatim (see "Re-run block 2" below).
 
 **Jail setup on amd64 (three-arch profile, spk-01's AppArmor profile)**
 
@@ -1276,7 +1277,7 @@ mi-09 regenerates it from the recipe, which is deterministic, and records it onc
 | spk-01's 17 (`unshare -U`, `clone3(NEWUSER)`, `fsopen`, `open_tree`, `mount` outside `/jail`, SCTP, NETLINK, PACKET, raw inet, `ptrace(1)`, `keyctl`, `add_key`, `userfaultfd`, `io_uring_setup`, `bpf`, `perf_event_open`, `setns`) | all denied with the same errnos as arm64 | ✅ 17/17 |
 | `move_mount` / `mount_setattr` | EPERM / EPERM | ✅ |
 | x32-ABI `getpid` | ENOSYS(38) | ✅ |
-| ia32-ABI `getpid` (`int $0x80`) | **allowed** (returned the pid) | expected under the three-arch baseline. It is the evidence for the x86_64-only proposal; that variant is ⛔ not run |
+| ia32-ABI `getpid` (`int $0x80`) | **allowed** (returned the pid) | expected under the three-arch baseline. It is the evidence for the x86_64-only proposal, which closes it (block 2 below) |
 | **remount of `/` read-write, remount of `/sys` read-write** | **unexpected success** | ❌ **finding.** spk-01's broad `remount,` AppArmor rule lets the supervisor context remount the container's read-only `/` and `/sys` read-write. The probe restored `/` to read-only. The line was stopped here, as the probe rules require, and not investigated further |
 | `personality(ADDR_NO_RANDOMIZE)` (information only) | EPERM: RuntimeDefault's `personality` rule allows only a fixed set of argument values, and this isn't one of them. The `0xffffffff` query is allowed | if go-race needs ASLR off, the pod profile needs the exact-argument rule |
 
@@ -1286,11 +1287,11 @@ It must be replaced by remount rules scoped to the jail tree, plus the jail's ow
 scoped rules. This is also the ro-bind-remount rule that §16.1 left open, so that item stays ⛔.
 
 **Rows not run in the first session (⛔ until the re-run blocks land).** None of these count as GO:
-- TSAN / go-race under `mmap_rnd_bits=32` and its ASLR policy (block 2);
-- postgres in the jail on amd64, and the SQL balloon (block 2);
-- the RET_LOG allowlists for `go`, `cpp`, `python` and `go-race` (through auditd), and the compile-jail sets (block 2);
-- the KILL re-run (block 2);
-- the x86_64-only pod-profile variant (block 2);
+- ~~TSAN / go-race under `mmap_rnd_bits=32` and its ASLR policy~~ → done in block 2 (below);
+- ~~postgres in the jail on amd64, and the SQL balloon~~ → done in block 2;
+- ~~the RET_LOG allowlists for `go`, `cpp`, `python` and `go-race` (through auditd), and the compile-jail sets~~ → done in block 2;
+- ~~the KILL re-run~~ → done in block 2;
+- ~~the x86_64-only pod-profile variant~~ → done in block 2;
 - the scoped AppArmor remount rule (block 3);
 - ~~the GOCACHE seed without an overlay~~ → done in block 1 (below).
 
@@ -1328,6 +1329,156 @@ production):
   GOOS/GOARCH). A mismatch just means cache misses (cold speed), never a wrong build. Build it in the runner-image
   pipeline, either baked into the image or as a sibling image volume. Both measured the same; the image volume lets
   the seed update without rebuilding the runner.
+
+**Re-run block 2 (2026-09-25): TSAN, postgres, amd64 allowlists, KILL re-run, pod-profile architectures ✅.**
+Everything ran inside spk-01's positive pod shape on env A: `hostUsers:false`, the 5 caps, the `judge` runtime,
+Localhost AppArmor (spk-01's profile, still with the broad `remount,` rule that block 3 replaces) and a Localhost pod
+seccomp profile. The work was driven over CRI exec, with the same supervisor cross-built by go1.26.8. Two pods
+were used: one on the three-arch profile, and one on the x86_64-only variant. Host `vm.mmap_rnd_bits` stayed
+**32** throughout, and nothing lowered it.
+
+*go-race / TSAN (Q-C) ✅: no ASLR policy needed.*
+- The fixtures were P1b's `go test -c -race` binary: `TestRace`, `TestNoRace`, `TestChannels`, `TestContext` and
+  `TestDeadlock`. It is a non-PIE `EXEC`, dynamically linked to glibc; glibc landed at randomized addresses near
+  `0x7abe…`.
+- Every run passed: the race was detected (exit 66), the deadlock was classified (exit 2, test timeout), and the
+  clean tests passed.
+  - Three-arch pod, no exec filter: 20 rounds × 5 = **100/100**.
+  - Three-arch pod, go-race KILL filter: **25/25**.
+  - x86_64-only pod, go-race KILL filter: **125/125** (5 + 20 rounds).
+- **TSAN never called `personality`.** In the RET_LOG run of the go-race profile, where the pod profile allows the
+  `0xffffffff` query, no `personality` record appeared at all. The pod profile keeps RuntimeDefault's `personality`
+  rule, which denies `ADDR_NO_RANDOMIZE` (§16.2 probes). The generated `personality(0x0040000)` variants are
+  **not needed** and don't ship; `setarch -R` isn't needed either.
+- go-race is **in** the pilot as far as the sandbox goes (p-01).
+
+*postgres in the jail (amd64) ✅.*
+- PG 18 ran as uid 999 on a Unix socket, with `listen_addresses=''`, and returned `select 42`.
+- The SQL balloon (`array_agg` over 60 M rows) ran with its backend moved into a case cgroup (`memory.max`
+  128 MiB, `oom.group=1`). The backend was OOM-killed there (`oom_kill 2`, `oom_group_kill 1`) → **MLE**.
+- The postmaster recovered, and `select 43` succeeded on the 2nd try.
+- The container's own `memory.events.local` stayed at `oom_kill 0`.
+- The result was the same on both pods.
+
+*Allowlist method.*
+- Each profile's exec jail ran with a classic-BPF filter whose default action was `SECCOMP_RET_LOG`. Records were
+  collected through **auditd**: `auditctl -b 8192 -r 0`, then the `type=SECCOMP` records were parsed from
+  `/var/log/audit/audit.log` and mapped with `ausyscall x86_64`.
+- It ran in two passes, to keep the flood small:
+  1. one program with an empty allowlist, so every syscall is logged;
+  2. every program with pass 1's names allowed, so only syscalls not yet seen are logged.
+
+  The result is the union.
+- `auditctl -s` showed **`lost 0`** after every run.
+- The inputs were the 22 references per language (3 rounds in the KILL re-run), plus P1b's race fixtures for
+  go-race. The P2 corpus ran separately under the `go` profile.
+- The filter's fixed rules, which m3-04 should keep:
+  - a non-x86_64 arch, or an x32 number (`nr ≥ 0x40000000`) → `KILL_PROCESS`;
+  - `clone3` → `ERRNO(ENOSYS)`, so glibc falls back to `clone`;
+  - **`clone` only with `CLONE_THREAD` set**: threads yes, `fork` no;
+  - `prctl` only with `PR_SET_VMA` (where listed);
+  - `personality` in **no** profile.
+
+**Per-profile amd64 exec allowlists.** Kernel names, sorted; `ausyscall` prints `pread64` as `pread`.
+**0 unexpected SIGSYS** under KILL.
+
+| Profile | Size | Allowlist |
+|---|---|---|
+| `go` (static, `CGO_ENABLED=0`) | 27 | `arch_prctl clone`† `epoll_create1`‡ `epoll_ctl`‡ `epoll_pwait`‡ `eventfd2`‡ `execve exit_group fcntl futex getpid gettid madvise mmap nanosleep openat prctl`§ `prlimit64 read rt_sigaction rt_sigprocmask rt_sigreturn sched_getaffinity sched_yield sigaltstack tgkill write` |
+| `cpp` (`g++ -std=gnu++20 -O2 -static`) | 19 | `arch_prctl brk execve exit_group fstat futex getrandom lseek mmap mprotect munmap prlimit64 read readlinkat rseq set_robust_list set_tid_address write writev` |
+| `python` (`python3` 3.13, dynamic) | 39 | `access arch_prctl brk clone`† `close execve exit exit_group fcntl fstat futex getcwd`¶ `getdents64 getegid geteuid getgid getrandom gettid getuid ioctl lseek madvise mmap mprotect mremap munmap newfstatat open openat pread64 prlimit64 read readlink rseq rt_sigaction rt_sigprocmask set_robust_list set_tid_address write` |
+| `go-race` (`go test -c -race`, dynamic) | 40 | `access arch_prctl brk clone`† `close epoll_create1 epoll_ctl epoll_pwait eventfd2 execve exit_group fcntl fstat futex getpid getrandom gettid gettimeofday madvise mmap mprotect munmap nanosleep openat prctl`§ `pread64 prlimit64 read readlinkat rseq rt_sigaction rt_sigprocmask rt_sigreturn sched_getaffinity sched_yield set_robust_list set_tid_address sigaltstack tgkill write` |
+
+Justified additions beyond what the references logged:
+- † `clone` is allowed only with `CLONE_THREAD`. Python's threading (a deep-recursion reference runs in a thread)
+  and the Go and TSAN runtimes all pass it. A plain `os.fork()` in Python then dies with SIGSYS; it succeeded before
+  the argument check was added.
+- ‡ The `go` profile gets `epoll_create1`, `epoll_ctl`, `epoll_pwait` and `eventfd2`. The Go runtime's netpoller
+  backs every timer (`time.Sleep`, `time.After`, context deadlines): it was seen in go-race's `TestContext` and the
+  corpus `sleep` row. The DSA references have no timers, but the go-concurrency pilot needs them. They create only
+  process-local fds.
+- § `prctl` is allowed with **arg0 = `PR_SET_VMA`** only. Go ≥ 1.25 names its anonymous mappings when the main
+  module declares `go ≥ 1.25`. The references were built in GOPATH mode and never called it, but a module-mode
+  binary (`go 1.26`) SIGSYS'd at `prctl` without this rule. It only labels the process's own mappings.
+- ¶ Python gets `getcwd` (seen under `python3 -c`). It is read-only and reveals `/work`.
+- Never allowlisted, and never seen in any LOG set: the new mount API, `bpf`, `io_uring_*`, `userfaultfd`, the
+  keyring calls, `socket`, `ptrace` and `personality`.
+- For m3-04: `python` needs `ioctl` (`TCGETS` on stdin) and legacy `open`. Consider narrowing `ioctl` to `TCGETS`.
+
+**Compile-jail sets** (informational: compile seccomp is ENOSYS-default, t3 §6.2; all builds cold):
+- `go build` (54): `arch_prctl chdir clone close copy_file_range dup3 epoll_create1 epoll_ctl epoll_pwait eventfd2 execve exit_group faccessat2 fallocate fchmodat fcntl flock fstat ftruncate futex getcwd getdents64 getpid gettid lseek madvise mkdirat mmap munmap nanosleep newfstatat openat pidfd_open pidfd_send_signal pipe2 prctl pread64 prlimit64 pwrite64 read readlinkat renameat rt_sigaction rt_sigprocmask rt_sigreturn sched_getaffinity sched_yield sigaltstack tgkill uname unlinkat utimensat waitid write`
+- `g++ -static` (38): `access arch_prctl brk chmod clone close dup execve exit_group faccessat2 fcntl fstat futex getcwd getrandom getrusage ioctl lseek mmap mprotect mremap munmap newfstatat openat pread64 prlimit64 read readlink rseq rt_sigaction rt_sigprocmask set_robust_list set_tid_address sysinfo umask unlink wait4 write`
+- `python3 -m py_compile` (38): `access arch_prctl brk close execve exit_group fcntl fstat futex getcwd getdents64 getegid geteuid getgid getrandom gettid getuid ioctl lseek mkdir mmap mprotect mremap munmap newfstatat open openat pread64 prlimit64 read readlink rename rseq rt_sigaction rt_sigprocmask set_robust_list set_tid_address write`
+- `go test -c -race` (78, cgo): the `go build` set plus `brk chmod dup fadvise64 getegid geteuid getgid getppid getrandom getrusage getuid ioctl mprotect readlink rseq set_robust_list set_tid_address statfs sysinfo umask unlink vfork wait4`, all logged.
+- The compile jail's process spawning (`posix_spawn` → `clone(CLONE_VM|CLONE_VFORK)`, `vfork`) is **not**
+  compatible with the exec profiles' `CLONE_THREAD`-only rule, so compile filters must not reuse it.
+- Without `/proc` in the jail, `go build` needs `GOROOT=/usr/local/go` set (else `go: cannot find GOROOT directory:
+  'go' binary is trimmed`). `GOTELEMETRY=off` avoids the telemetry sidecar.
+
+**KILL re-run (KILL-default, the allowlists above) ✅**
+
+| Run | Three-arch pod | x86_64-only pod |
+|---|---|---|
+| references `go` / `cpp` / `python`, 3 rounds × 22 each | **66/66 / 66/66 / 66/66 correct, 0 SIGSYS** | **66/66 / 66/66 / 66/66, 0 SIGSYS** |
+| go-race fixtures (`go-race` profile) | 25/25 | 125/125 |
+| P2 corpus under `go`: balloon / MLE × 20 / threadbomb | MLE / **20/20** / RE(pids) | the same |
+| P2 corpus under `go`: `sleep`, `spin`, `stdoutflood` | OK | OK |
+| P2 corpus under `go`: `forkbomb`, `orphan` / `tmpfsfill` / `inodefill` | SIGSYS (`pidfd_open`) / SIGSYS (`close`) / SIGSYS (`newfstatat`), **expected**: the learner `go` profile can't spawn processes or manage files | the same |
+| container-level OOM (`memory.events.local oom_kill`) | 0 (the hierarchical delta of 42 = the case-cgroup OOMs) | 0 |
+| disallowed-syscall cases | `socket(AF_INET)` from Go → SIGSYS after `pre-socket`; ia32 `int $0x80` → SIGSYS (arch `0x40000003`); x32 `getpid` → SIGSYS; Python `socket.socket()` → SIGSYS; Python `os.fork()` → SIGSYS (`clone` without `CLONE_THREAD`) | the same |
+
+The corpus workloads ran as a standalone module-mode Go binary, so they met the same profile a submission would.
+Two early KILL attempts failed for harness reasons, not policy ones, and are excluded: a garbage-collected stdin fd
+in the throwaway driver, and the supervisor binary's own `go-sandbox` init calling `statfs`.
+
+**Pod-profile architectures: x86_64-only vs the three-arch baseline**
+
+| Check | Three-arch (`X86_64, X86, X32`) | x86_64-only |
+|---|---|---|
+| jail setup (both spawn paths, caps → 0, procfs `hidepid`, `go build`, `g++ -static`, `python3`, SIGSYS row) | ✅ | ✅ identical |
+| spk-01's 17 must-deny probes + `move_mount`/`mount_setattr` | denied | denied, same errnos |
+| ia32 `int $0x80` `getpid` from the supervisor | **allowed** (returned the pid) | **blocked**: the thread gets SIGSYS (audit `arch=40000003 syscall=20 code=0x0`, i.e. `KILL_THREAD`); the syscall never runs |
+| x32 `getpid` from the supervisor | ENOSYS(38) | blocked the same way (`code=0x0`) |
+| references (KILL), go-race, postgres + SQL balloon, C++/Python compiles | ✅ | ✅, nothing broke |
+
+- **Proposal to m3-03 (ADR-0030 delta): x86_64-only.** Nothing legitimate broke, and it closes the ia32 compat entry
+  point for every process in the runner pod.
+- Caveat: runc's bad-arch action is `KILL_THREAD`. In the multi-threaded supervisor, a stray compat syscall would
+  leave a hung zombie leader, not a clean exit; the probe child had to be killed by hand. Inside the jail, the exec
+  filter's `KILL_PROCESS` takes precedence, so a learner process dies cleanly.
+
+**The final amd64 pod seccomp profile (mi-09 ships this file)** `/var/lib/kubelet/seccomp/profiles/xlearn-runner.json`:
+- It is §16.1's recipe on containerd v2.3.4 `DefaultProfile` (5 caps; 14 removals; `socket` limited; **`pivot_root`
+  added**) with `architectures: [SCMP_ARCH_X86_64]`.
+- 15 rules, 381 names; 7,035 bytes; **sha256 `730a7a5535897636ac69de4c17547ae2c4d1169bedcc44486525faa8ae5f418d`**.
+- The rules are one per line, with names sorted. It is equivalent, as JSON, to the generator's indented output
+  (sha256 `8817e742…e22445`).
+- The names list is containerd's, including i386-only names that libseccomp skips on x86_64.
+- **Validated as shipped.** A fresh pod loaded it as its Localhost profile; the runtime spec shows `[SCMP_ARCH_X86_64]`, 15 rules and `pivot_root`. The jail setup passed, and the references passed under KILL 22/22 per language.
+
+```json
+{
+  "defaultAction": "SCMP_ACT_ERRNO",
+  "architectures": ["SCMP_ARCH_X86_64"],
+  "syscalls": [
+    {"names": ["_llseek", "_newselect", "accept", "accept4", "access", "adjtimex", "alarm", "bind", "brk", "cachestat", "capget", "capset", "chdir", "chmod", "chown", "chown32", "clock_adjtime", "clock_adjtime64", "clock_getres", "clock_getres_time64", "clock_gettime", "clock_gettime64", "clock_nanosleep", "clock_nanosleep_time64", "close", "close_range", "connect", "copy_file_range", "creat", "dup", "dup2", "dup3", "epoll_create", "epoll_create1", "epoll_ctl", "epoll_ctl_old", "epoll_pwait", "epoll_pwait2", "epoll_wait", "epoll_wait_old", "eventfd", "eventfd2", "execve", "execveat", "exit", "exit_group", "faccessat", "faccessat2", "fadvise64", "fadvise64_64", "fallocate", "fchdir", "fchmod", "fchmodat", "fchmodat2", "fchown", "fchown32", "fchownat", "fcntl", "fcntl64", "fdatasync", "fgetxattr", "flistxattr", "flock", "fork", "fremovexattr", "fsetxattr", "fstat", "fstat64", "fstatat64", "fstatfs", "fstatfs64", "fsync", "ftruncate", "ftruncate64", "futex", "futex_requeue", "futex_time64", "futex_wait", "futex_waitv", "futex_wake", "futimesat", "get_robust_list", "get_thread_area", "getcpu", "getcwd", "getdents", "getdents64", "getegid", "getegid32", "geteuid", "geteuid32", "getgid", "getgid32", "getgroups", "getgroups32", "getitimer", "getpeername", "getpgid", "getpgrp", "getpid", "getppid", "getpriority", "getrandom", "getresgid", "getresgid32", "getresuid", "getresuid32", "getrlimit", "getrusage", "getsid", "getsockname", "getsockopt", "gettid", "gettimeofday", "getuid", "getuid32", "getxattr", "getxattrat", "inotify_add_watch", "inotify_init", "inotify_init1", "inotify_rm_watch", "io_cancel", "io_destroy", "io_getevents", "io_pgetevents", "io_pgetevents_time64", "io_setup", "io_submit", "ioctl", "ioprio_get", "ioprio_set", "ipc", "kill", "landlock_add_rule", "landlock_create_ruleset", "landlock_restrict_self", "lchown", "lchown32", "lgetxattr", "link", "linkat", "listen", "listmount", "listxattr", "listxattrat", "llistxattr", "lremovexattr", "lseek", "lsetxattr", "lsm_get_self_attr", "lsm_list_modules", "lsm_set_self_attr", "lstat", "lstat64", "madvise", "map_shadow_stack", "membarrier", "memfd_create", "memfd_secret", "mincore", "mkdir", "mkdirat", "mknod", "mknodat", "mlock", "mlock2", "mlockall", "mmap", "mmap2", "mprotect", "mq_getsetattr", "mq_notify", "mq_open", "mq_timedreceive", "mq_timedreceive_time64", "mq_timedsend", "mq_timedsend_time64", "mq_unlink", "mremap", "mseal", "msgctl", "msgget", "msgrcv", "msgsnd", "msync", "munlock", "munlockall", "munmap", "name_to_handle_at", "nanosleep", "newfstatat", "open", "openat", "openat2", "pause", "pidfd_open", "pidfd_send_signal", "pipe", "pipe2", "pkey_alloc", "pkey_free", "pkey_mprotect", "poll", "ppoll", "ppoll_time64", "prctl", "pread64", "preadv", "preadv2", "prlimit64", "process_mrelease", "pselect6", "pselect6_time64", "pwrite64", "pwritev", "pwritev2", "read", "readahead", "readlink", "readlinkat", "readv", "recv", "recvfrom", "recvmmsg", "recvmmsg_time64", "recvmsg", "remap_file_pages", "removexattr", "removexattrat", "rename", "renameat", "renameat2", "restart_syscall", "rmdir", "rseq", "rt_sigaction", "rt_sigpending", "rt_sigprocmask", "rt_sigqueueinfo", "rt_sigreturn", "rt_sigsuspend", "rt_sigtimedwait", "rt_sigtimedwait_time64", "rt_tgsigqueueinfo", "sched_get_priority_max", "sched_get_priority_min", "sched_getaffinity", "sched_getattr", "sched_getparam", "sched_getscheduler", "sched_rr_get_interval", "sched_rr_get_interval_time64", "sched_setaffinity", "sched_setattr", "sched_setparam", "sched_setscheduler", "sched_yield", "seccomp", "select", "semctl", "semget", "semop", "semtimedop", "semtimedop_time64", "send", "sendfile", "sendfile64", "sendmmsg", "sendmsg", "sendto", "set_robust_list", "set_thread_area", "set_tid_address", "setfsgid", "setfsgid32", "setfsuid", "setfsuid32", "setgid", "setgid32", "setgroups", "setgroups32", "setitimer", "setpgid", "setpriority", "setregid", "setregid32", "setresgid", "setresgid32", "setresuid", "setresuid32", "setreuid", "setreuid32", "setrlimit", "setsid", "setsockopt", "setuid", "setuid32", "setxattr", "setxattrat", "shmat", "shmctl", "shmdt", "shmget", "shutdown", "sigaltstack", "signalfd", "signalfd4", "sigprocmask", "sigreturn", "socketcall", "socketpair", "splice", "stat", "stat64", "statfs", "statfs64", "statmount", "statx", "symlink", "symlinkat", "sync", "sync_file_range", "syncfs", "sysinfo", "tee", "tgkill", "time", "timer_create", "timer_delete", "timer_getoverrun", "timer_gettime", "timer_gettime64", "timer_settime", "timer_settime64", "timerfd_create", "timerfd_gettime", "timerfd_gettime64", "timerfd_settime", "timerfd_settime64", "times", "tkill", "truncate", "truncate64", "ugetrlimit", "umask", "uname", "unlink", "unlinkat", "uretprobe", "utime", "utimensat", "utimensat_time64", "utimes", "vfork", "vmsplice", "wait4", "waitid", "waitpid", "write", "writev"], "action": "SCMP_ACT_ALLOW"},
+    {"names": ["personality"], "action": "SCMP_ACT_ALLOW", "args": [{"index": 0, "value": 0, "op": "SCMP_CMP_EQ"}]},
+    {"names": ["personality"], "action": "SCMP_ACT_ALLOW", "args": [{"index": 0, "value": 8, "op": "SCMP_CMP_EQ"}]},
+    {"names": ["personality"], "action": "SCMP_ACT_ALLOW", "args": [{"index": 0, "value": 131072, "op": "SCMP_CMP_EQ"}]},
+    {"names": ["personality"], "action": "SCMP_ACT_ALLOW", "args": [{"index": 0, "value": 131080, "op": "SCMP_CMP_EQ"}]},
+    {"names": ["personality"], "action": "SCMP_ACT_ALLOW", "args": [{"index": 0, "value": 4294967295, "op": "SCMP_CMP_EQ"}]},
+    {"names": ["process_vm_readv", "process_vm_writev", "ptrace"], "action": "SCMP_ACT_ALLOW"},
+    {"names": ["arch_prctl", "modify_ldt"], "action": "SCMP_ACT_ALLOW"},
+    {"names": ["clone", "clone3", "mount", "quotactl", "quotactl_fd", "setdomainname", "sethostname", "setns", "umount", "umount2", "unshare"], "action": "SCMP_ACT_ALLOW"},
+    {"names": ["pivot_root"], "action": "SCMP_ACT_ALLOW"},
+    {"names": ["socket"], "action": "SCMP_ACT_ALLOW", "args": [{"index": 0, "value": 1, "op": "SCMP_CMP_EQ"}]},
+    {"names": ["socket"], "action": "SCMP_ACT_ALLOW", "args": [{"index": 0, "value": 2, "op": "SCMP_CMP_EQ"}, {"index": 1, "value": 15, "valueTwo": 1, "op": "SCMP_CMP_MASKED_EQ"}, {"index": 2, "value": 0, "op": "SCMP_CMP_EQ"}]},
+    {"names": ["socket"], "action": "SCMP_ACT_ALLOW", "args": [{"index": 0, "value": 2, "op": "SCMP_CMP_EQ"}, {"index": 1, "value": 15, "valueTwo": 1, "op": "SCMP_CMP_MASKED_EQ"}, {"index": 2, "value": 6, "op": "SCMP_CMP_EQ"}]},
+    {"names": ["socket"], "action": "SCMP_ACT_ALLOW", "args": [{"index": 0, "value": 10, "op": "SCMP_CMP_EQ"}, {"index": 1, "value": 15, "valueTwo": 1, "op": "SCMP_CMP_MASKED_EQ"}, {"index": 2, "value": 0, "op": "SCMP_CMP_EQ"}]},
+    {"names": ["socket"], "action": "SCMP_ACT_ALLOW", "args": [{"index": 0, "value": 10, "op": "SCMP_CMP_EQ"}, {"index": 1, "value": 15, "valueTwo": 1, "op": "SCMP_CMP_MASKED_EQ"}, {"index": 2, "value": 6, "op": "SCMP_CMP_EQ"}]}
+  ]
+}
+```
 
 ### 16.3 Image volume (spk-02)
 
@@ -1386,16 +1537,17 @@ pod), ahead of variant B. ADR-0027's image-volume line stands.
 
 ### 16.4 MI-10 verdict and proposed ADR-0030 deltas
 
-**Spike P0–P2 GO (spk-01); P3 incomplete ⛔ (re-run blocks 2–3 pending); image volume GO (re-run block 1,
-2026-09-25).** The M3 checklist line "Spike P0–P3 GO and the image-volume spike GO" stays **unticked** until the
-⛔ rows of §16.2 are re-run.
+**Spike P0–P2 GO (spk-01). P3 (re-run block 2, 2026-09-25): Q-C GO, meaning TSAN works with no ASLR policy, and
+the amd64 allowlists pass KILL with 0 unexpected SIGSYS. Image volume GO (re-run block 1, 2026-09-25).** The M3
+checklist line "Spike P0–P3 GO and the image-volume spike GO" stays **unticked** until block 3 lands the scoped
+AppArmor remount rule. That rule is §16.2's finding, and it is required before mi-09 ships.
 
 What m3-03 can already fold into ADR-0030:
 - **Mechanism:** unchanged. go-sandbox `forkexec.Runner` with no user namespace, spawned via `CLONE_INTO_CGROUP`; the jail setup reproduces on amd64 kernel 6.8.0-142.
-- **Pod seccomp:** §16.1's recipe on amd64 (381 names; `pivot_root` added). The architectures stay open ⛔. So far the ia32 `int $0x80` entry point is open under the three-arch baseline and the x32 ABI returns ENOSYS; the x86_64-only variant still has to be run with the jail setup, the probes and the references.
+- **Pod seccomp:** §16.1's recipe on amd64 (381 names; `pivot_root` added), with **`architectures: [SCMP_ARCH_X86_64]` proposed** (x86_64-only). Nothing legitimate broke, and it closes the ia32 `int $0x80` entry point that the three-arch baseline leaves open (§16.2, block 2). The file is recorded verbatim in §16.2 (sha256 `730a7a55…418d`), and mi-09 ships it. If m3-03 prefers the baseline, the only change is the `architectures` line.
 - **AppArmor:** replace the broad `remount,` rule with jail-scoped remount rules (§16.2 finding). This is required, not optional.
-- **ASLR policy:** open ⛔. Note that the RuntimeDefault-derived pod profile denies `personality(ADDR_NO_RANDOMIZE)`.
+- **ASLR policy: none.** The Go 1.26 race runtime works in the jail under `mmap_rnd_bits=32` without calling `personality` (125/125 + 100/100 runs). The pod profile keeps RuntimeDefault's `personality` rule, so `ADDR_NO_RANDOMIZE` stays denied, and no exec profile allows `personality`. Never lower the host sysctl.
 - **GOCACHE:** not an in-pod overlay (EACCES on amd64 too). Use a **read-only seed in place** (`GOCACHE` = the seed, baked into the image or mounted as an image volume; `TMPDIR` on the case tmpfs), built with the exec profile's exact toolchain and flags: about 12 s → 0.35 s per compile on env A, with no per-case copy (§16.2). A8 re-measures the timing.
 - **Eval pack (not ADR-0030; for m3-07/mi-09):** image volume **GO** with the kubelet defaults (§16.3), so ADR-0027's image-volume line stands. The pack credential must stay pod-level only (never node-level).
-- **Where the allowlists live:** unchanged (pod seccomp → mi-09; per-profile exec allowlists → m3-04), but no amd64 allowlists exist yet ⛔.
+- **Where the allowlists live:** pod seccomp → mi-09 (the file above); per-profile exec allowlists → m3-04 (`go` 27, `cpp` 19, `python` 39, `go-race` 40; §16.2 block 2). They carry the fixed rules: non-x86_64/x32 → KILL, `clone3` → ENOSYS, `clone` with `CLONE_THREAD` only, `prctl` with `PR_SET_VMA` only.
 - **SETPCAP:** as §16.1.
