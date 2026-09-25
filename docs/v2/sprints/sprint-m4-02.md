@@ -291,7 +291,7 @@ Sources: [ADR-0033 §8](../../adr/0033-invite-only-admission-and-owner-admin.md#
 [rollout §4 M4](../rollout-plan.md#4-per-milestone-detail) (the on-demand read that replaces the opscheck AI digest, D34),
 [t5 §3](../research/t5-platform-ai.md#3-where-the-platform-key-lives-and-secrets) (kill switches).
 
-In m3-14's dispatcher (`internal/judge/admin/`), run as `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-judge -- judge admin …'`. Every
+In m3-14's dispatcher (`internal/judge/admin/`), run as `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-judge -- judge admin …'`. Every
 verb — reads included — writes judge's admin-audit row in the same transaction plus one stderr line; nothing prints a secret or learner
 content. `<user>` is an account id or a username (resolved through identity's existing `GET /internal/accounts/by-username/{username}`);
 for an email, use `identity admin account list` first.
@@ -303,7 +303,7 @@ for an email, use `identity admin account list` first.
 | `llm-limit <user> [--month-usd N] [--day-usd N] [--analyses N] [--finals N]` · `llm-limit <user> --clear` | Per-account overrides (e.g. the owner at 2 × a learner) |
 | `ledger --month YYYY-MM [--by purpose\|model\|account]` | Totals in USD from `llm_call` (settled rows + `usage_unknown` at estimate) — the number [m4-07](sprint-m4-07.md) compares with the Console (±5 %) |
 | `breaker show\|set\|clear [--scope runner\|llm]` | Extends m3-14's `breaker` verb with a scope; `runner` is the default and keeps m3-14's grammar (`set --level auto\|0\|1\|2 --for …`) unchanged. `--scope llm` (kill switch 2): `show` = state, reason, `opened_by`, since, until; `set [--for <dur>]` opens it with reason `owner` (no `--for` = until `clear`; the owner's note goes into the audit row's detail, never the enum); `clear` closes it. `--level` is refused with `--scope llm` |
-| `calibration list` · `calibration record --from <path>\|-` | List rows; record a row produced by `cmd/judge-eval` ([m4-03](sprint-m4-03.md)). `-` reads the row JSON on **stdin** — the production form, because the distroless judge image has no shell or `tar` for `kubectl cp`: `ssh vps 'k3s kubectl exec -i -n xlearn deploy/xlearn-judge -- judge admin calibration record --from -' < row.json`. Validates the tuple against the compiled catalog and the binary's `prompt@v`/`schema@v`, refuses a row whose gate failed (`passed=false`), writes the row + audit row. [m4-07](sprint-m4-07.md) uses this verb for the analyzer acceptance row (no separate `calibration import`) |
+| `calibration list` · `calibration record --from <path>\|-` | List rows; record a row produced by `cmd/judge-eval` ([m4-03](sprint-m4-03.md)). `-` reads the row JSON on **stdin** — the production form, because the distroless judge image has no shell or `tar` for `kubectl cp`: `ssh sujaykumar-vps 'k3s kubectl exec -i -n xlearn deploy/xlearn-judge -- judge admin calibration record --from -' < row.json`. Validates the tuple against the compiled catalog and the binary's `prompt@v`/`schema@v`, refuses a row whose gate failed (`passed=false`), writes the row + audit row. [m4-07](sprint-m4-07.md) uses this verb for the analyzer acceptance row (no separate `calibration import`) |
 
 `disputes export` → [m4-04](sprint-m4-04.md), with the `evaluation_dispute` table it reads.
 

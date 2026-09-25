@@ -59,7 +59,7 @@
 ## Entry gates — verify first (stop and report if any is unmet)
 
 - [ ] MI-4 live: `flux get kustomizations sandbox-guards` is Ready; `k3s kubectl get pods -n xlearn-runner` is empty; the VAP bindings are at `[Deny]` (mi-14's PR 2); the RuntimeClass `xlearn-judge`, PriorityClass `xlearn-sandbox-lowest`, Quota, LimitRange, `default-deny-all` and `judge-to-runner` exist. Check status.md for a spike VAP diff handed to mi-10.
-- [ ] The MI-11 window has been executed: `ssh vps 'bash -s -- --expect-sandbox --cluster' < ../infra/hack/host-verify.sh` is green (`judge` runtime, AppArmor enforce, seccomp, subuid, L23 in `configz`).
+- [ ] The MI-11 window has been executed: `ssh sujaykumar-vps 'bash -s -- --expect-sandbox --cluster' < ../infra/hack/host-verify.sh` is green (`judge` runtime, AppArmor enforce, seccomp, subuid, L23 in `configz`).
 - [ ] MI-11a merged (mi-08), and `host-verify --cluster --with-runner` shows the memory sum inside the rule.
 - [ ] `ghcr.io/sujaykumarsuman/xlearn-runner:1.0.0` exists (an anonymous `crane digest` works), and its digest matches m3-15's record. If m3-15 left a ⛔ owner item for the package visibility in status.md and the anonymous read still fails, this gate is unmet.
 - [ ] ADR-0030 is Accepted (m3-03), and status.md records the caps list (mi-09).
@@ -73,7 +73,7 @@
    - Write the task 4 values.
    - Re-run mi-14's `hack/sandbox-vap-test.sh` with its **G1** positive control rebuilt from those values:
      `helm template ../infra/charts/project -f <values>`, the Deployment's pod template wrapped as a `Pod`
-     in `xlearn-runner`, then a server-side dry run over `ssh vps`. G1 must be **admitted with no warning**,
+     in `xlearn-runner`, then a server-side dry run over `ssh sujaykumar-vps`. G1 must be **admitted with no warning**,
      and B1–B14 must still be denied. A server-side dry run persists nothing.
    - The image renders as `ghcr.io/sujaykumarsuman/xlearn-runner@sha256:<digest>`, and the pod fits the
      Quota and LimitRange.
@@ -128,7 +128,7 @@
    - Through step 5's tunnel, `GET /v1/profiles` must report `mode: prod` and `image_digest` equal to m3-15's
      recorded digest (not `unknown`).
    - **Real exec/attach proof** (mi-14's X1/X2 needs a running pod):
-     `ssh vps 'k3s kubectl -n xlearn-runner exec deploy/xlearn-runner -- true'` must be **denied by the
+     `ssh sujaykumar-vps 'k3s kubectl -n xlearn-runner exec deploy/xlearn-runner -- true'` must be **denied by the
      VAP**; do the same for `attach`. Record the message. Nothing runs, because the request is refused at
      admission.
 

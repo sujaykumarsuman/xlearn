@@ -140,7 +140,7 @@
   - the parallel-sessions check (peers' tags, PRs, worktrees, ListAgents) before tagging or claiming an ADR number;
   - never move or re-push a tag;
   - the conditional `coach-interview` bump is its own infra PR, never folded into the tag.
-- **GitOps only:** never `kubectl apply`/`edit`/`rollout` by hand. `ssh vps` is for reads and `host-verify.sh`; `kubectl exec` only runs the admin CLIs (`coach admin`).
+- **GitOps only:** never `kubectl apply`/`edit`/`rollout` by hand. `ssh sujaykumar-vps` is for reads and `host-verify.sh`; `kubectl exec` only runs the admin CLIs (`coach admin`).
 - **D34:** no alerting, opscheck, interview counters, Flux Alert or push channel. The release checklist's live-interview check is the M6 ops step.
 - **Memory-sum rule:** no new pod here. If M7 failed, `coach-interview` was sized and checked in m6b-02; don't resize anything.
 - **Consumers before producers / ACL before the consuming tag:** n/a (no streams or consumers).

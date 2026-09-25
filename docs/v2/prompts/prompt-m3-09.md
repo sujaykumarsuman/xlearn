@@ -31,7 +31,7 @@
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
-- [ ] **`v1.13.0` live:** `ssh vps 'k3s kubectl get deploy -n xlearn -o wide'` shows `xlearn-judge` Ready at `1.13.0`+; `/xlearn/api/v1/healthz` reports `1.13.0`+; [`../status.md`](../status.md) carries m3-07's record (MI-13 ✅ and the evalpack-stream row with the item count; its verify read N evaluable) (**don't** run `judge admin status` for this gate: every `judge admin` verb, reads included, writes an `admin_audit` row on prod, [m3-14](../sprints/sprint-m3-14.md) task 5); the gateway has **no** `JUDGE_BASE_URL` (`ssh vps 'k3s kubectl get deploy -n xlearn xlearn-gateway -o yaml' | grep JUDGE` is empty).
+- [ ] **`v1.13.0` live:** `ssh sujaykumar-vps 'k3s kubectl get deploy -n xlearn -o wide'` shows `xlearn-judge` Ready at `1.13.0`+; `/xlearn/api/v1/healthz` reports `1.13.0`+; [`../status.md`](../status.md) carries m3-07's record (MI-13 ✅ and the evalpack-stream row with the item count; its verify read N evaluable) (**don't** run `judge admin status` for this gate: every `judge admin` verb, reads included, writes an `admin_audit` row on prod, [m3-14](../sprints/sprint-m3-14.md) task 5); the gateway has **no** `JUDGE_BASE_URL` (`ssh sujaykumar-vps 'k3s kubectl get deploy -n xlearn xlearn-gateway -o yaml' | grep JUDGE` is empty).
 - [ ] **M3-14 merged:** judge's `POST /submissions`, `GET /submissions/{id}`, `POST /runs`, `GET /runs/{id}` (their 2xx carry `quota`), drafts, `GET /arena/{item}/history`, `GET /arena/{item}/submissions/{id}/parts/{part_id}`, `GET /arena/progress`, `POST /arena/{item}/studied`, the internal `GET /internal/status?path=` (no JWT), admission and its DTO allowlist exist on `main` (`grep -n "HandleFunc\|Handle(" internal/judge/*.go`).
 - [ ] **M3-08 merged** (or its PR's contract available to build against), with its task-7 internal contract: `POST /problems/{id}/attempt/start` + `{judge}`, `GET /state/{problemId}` with the M3 fields, `POST /attempts/{id}/close`, the `hint_locked` / `use_give_up` / `evaluated_item` 409s, `POST /problems/{id}/arena-reveal`.
 - [ ] **The M1b gateway floor is on `main`:** `authSession`/`inCohort`, `httpx.ReadBody` + `BodyLimit*`, the typed 429/413 envelopes, `withhold()` with the `withholdPolicy` field on `apiRoute`, course resolution.
@@ -90,7 +90,7 @@
 - **Outbox/inbox:** no new event and no new durable, so no ACL PR. If you find you need one, stop: it's a plan change.
 - **Allowlist, never pass-through**, for every judge-derived body. The SPA never sends a context id, pin, seq or `submitted_at`.
 - **Presence by config** everywhere; `JUDGE_BASE_URL` stays unset on prod (M3-13 sets it after the tag). No SSE.
-- **GitOps:** never `kubectl apply`; `ssh vps` read-only for the entry gates only (`get deploy`, healthz, the gateway env grep — no `judge admin` verb, since each writes an audit row). **No alerting of any kind (D34)**: the status endpoint feeds an in-app badge only.
+- **GitOps:** never `kubectl apply`; `ssh sujaykumar-vps` read-only for the entry gates only (`get deploy`, healthz, the gateway env grep — no `judge admin` verb, since each writes an audit row). **No alerting of any kind (D34)**: the status endpoint feeds an in-app badge only.
 - **No new always-on pod**, so the memory-sum rule ([ADR-0035 §5](../../adr/0035-v2-operations-nats-auth-limits-capacity.md)) is unchanged; the new gateway caches are small and bounded.
 - **Parallel sessions:** check peers' PRs, tags and worktrees (and ListAgents) before merging and before claiming an ADR number.
 - This sprint **does not tag**.

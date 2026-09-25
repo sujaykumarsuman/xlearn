@@ -39,15 +39,15 @@
 ## Entry gates — verify first (stop and report if any is unmet)
 
 - [ ] **N3 applied ≥ 24 h ago:** status.md's NATS rows carry the N3 timestamp, and now − that ≥ 24 h.
-- [ ] **MI-5 live:** `ssh vps 'k3s kubectl get networkpolicy -n messaging -o yaml'` admits 4222 from `xlearn-coach` (forward-declared) as well as practice, review, assessment, identity.
-- [ ] **MI-5a live:** `ssh vps 'k3s kubectl get networkpolicy -n xlearn -o yaml'` — identity admits same-namespace pods on :8081.
-- [ ] **v1.10.0 live:** `ssh vps 'k3s kubectl get deploy -n xlearn -o wide'` ≥ 1.10.0, and healthz agrees.
+- [ ] **MI-5 live:** `ssh sujaykumar-vps 'k3s kubectl get networkpolicy -n messaging -o yaml'` admits 4222 from `xlearn-coach` (forward-declared) as well as practice, review, assessment, identity.
+- [ ] **MI-5a live:** `ssh sujaykumar-vps 'k3s kubectl get networkpolicy -n xlearn -o yaml'` — identity admits same-namespace pods on :8081.
+- [ ] **v1.10.0 live:** `ssh sujaykumar-vps 'k3s kubectl get deploy -n xlearn -o wide'` ≥ 1.10.0, and healthz agrees.
 - [ ] **identity on NATS with its nkey:** `XLEARN_IDENTITY` exists (JetStream info via `host-verify --cluster` or the API-server proxy) and identity's outbox has 0 unsent.
 - [ ] **Parallel sessions:** `git ls-remote --tags origin`, `gh pr list`, `git worktree list`, ListAgents → the **next free minor** (use it instead of 1.11.0 everywhere if taken); no open peer PR adds goose migrations to identity, practice, review, assessment or coach, or edits `topology.go` or `consumer.go` (if one does, rebase after it and take the next free versions).
 
 ## Do this (in order)
 
-1. **[H] N3 ≥ 24 h re-check.** `ssh vps 'bash -s -- --cluster --nats-stage=n3' < ../infra/hack/host-verify.sh` → no `legacy` connection,
+1. **[H] N3 ≥ 24 h re-check.** `ssh sujaykumar-vps 'bash -s -- --cluster --nats-stage=n3' < ../infra/hack/host-verify.sh` → no `legacy` connection,
    all checks green. Note the result for status.md. A `legacy` connection → stop and report.
 
 2. **[X] Branch** `feat/l-01-erase-consumers` from an up-to-date `main`.

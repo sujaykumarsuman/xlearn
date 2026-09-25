@@ -132,7 +132,7 @@ m4-03 wires the analyzer triggers, m4-04 the provisional/dispute flow, m4-05 the
 - **D34:** no alert, push channel, healthchecks.io ping or opscheck — breaker reasons are log lines, a badge and `judge admin ai status`.
 - **Memory-sum rule ([ADR-0035 §5](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#5-capacity-the-memory-sum-rule-triggers-and-ordered-responses)):**
   no new pod or container; the lane runs in judge's existing 256 Mi — bounded caches (LRU ≤ 1,000), bounded response bodies.
-- **GitOps:** no `kubectl apply`, no infra PR in this sprint; read-only `ssh vps` only for the gate check.
+- **GitOps:** no `kubectl apply`, no infra PR in this sprint; read-only `ssh sujaykumar-vps` only for the gate check.
 - **Parallel sessions:** re-check peers' judge migrations and PRs right before merging; take the next free goose version at rebase. Check
   peers' ADR numbers before any ADR (none expected; the ADR-0033 note is a dated amendment, not a new ADR, and it lands in-session per D40).
 

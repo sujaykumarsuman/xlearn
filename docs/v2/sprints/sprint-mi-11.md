@@ -130,7 +130,7 @@ smoke, then `host-verify --cluster`. Revert with `git revert`; it fails open.
 
 - **The erase round trip** is the path [l-01](sprint-l-01.md) warned breaks silently: a consumer that can't
   reach identity :8081 naks and retries, so the request just never closes, and nothing alerts (D34). The
-  session runs it itself: the CLI over `ssh vps 'k3s kubectl exec …'` is pre-approved by launching the prompt (D40).
+  session runs it itself: the CLI over `ssh sujaykumar-vps 'k3s kubectl exec …'` is pre-approved by launching the prompt (D40).
   - **Before PR a**, the session mints two throwaway testers with the CLI (`identity admin account create --role
     tester --email …`, as in ev-first-tester; no data needed).
   - **After PR a and again after PR b**, the session erases one of them with l-02's CLI verb

@@ -117,11 +117,11 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 6. **[I] ImageRepository (re-run), in the same PR as the two Secrets (5b):**
    - Add `xlearn-evalpack` (namespace `flux-system`, `image: ghcr.io/sujaykumarsuman/xlearn-evalpack`, `interval: 5m`, `secretRef: {name: xlearn-evalpack-pull}`) to `apps/image-automation.yaml`, and extend its header comment: the evalpack policy (`>=1.0.0 <2.0.0`) lands after `v1.0.0`, in m3-07. **Add no ImagePolicy.**
    - Open the PR with the checks in the body (infra has no CI), and merge it.
-   - Verify read-only over `ssh vps`:
+   - Verify read-only over `ssh sujaykumar-vps`:
      - the ImageRepository reports `Ready=True`, `tagCount 1`, `latestTags [0.1.0]`;
      - both Secrets exist with type `kubernetes.io/dockerconfigjson` (`-o jsonpath='{.type}'`; never print `data`);
      - `k3s kubectl get kustomization apps -n flux-system` is Ready;
-     - `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` shows no FAIL.
+     - `ssh sujaykumar-vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` shows no FAIL.
 
 7. **[X] Record** (branch `docs/mi-07-status` here, after each launch):
    - the Status table in [`../sprints/sprint-mi-07.md`](../sprints/sprint-mi-07.md);
@@ -137,7 +137,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 - **The PAT never touches the transcript, argv, shell history, a plaintext file or git.** Only the owner handles it. The committed files are SOPS-encrypted (`.sops.yaml` rule).
 - **Image before policy** ([ADR-0034](../../adr/0034-v2-release-labelling-gating-and-rollback.md) §1.4): no evalpack ImagePolicy in this sprint, and **no `>=1.0.0` tag**. `0.1.0` only.
 - **No content.** The scaffold carries no items, cases, keys or anything copied from xlearn or derived from answers.
-- **GitOps:** the Secrets and the ImageRepository reach the cluster only through a merged `../infra` PR. `ssh vps` is read-only. No `kubectl create secret` against the cluster.
+- **GitOps:** the Secrets and the ImageRepository reach the cluster only through a merged `../infra` PR. `ssh sujaykumar-vps` is read-only. No `kubectl create secret` against the cluster.
 - **D34, no alerting:** no scheduled or notification workflow. The probe runs on push, pull request, dispatch and tag only, and the PAT expiry is a status.md date.
 - **Not applicable here, since there's no xlearn code:** goose + sqlc (`sqlc diff`), outbox/inbox, service boundaries ([ADR-0005](../../adr/0005-data-ownership-and-migrations.md)), `theme.css` verbatim, consumers-before-producers, the ACL-PR-before-consuming-tag rule, and the memory-sum rule (no new pod).
 - **Parallel sessions:** check peers' infra PRs and the `gh repo list` before creating the repo and before merging. Peers' `hack/host-lint.sh` and README edits (mi-01, mi-02) are the likeliest conflicts: rebase and keep every shellcheck addition. Rebase on infra `main`, where the image-automation bot commits often.

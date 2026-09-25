@@ -33,7 +33,7 @@ Each gate guards one stage; a later stage may wait while an earlier one proceeds
 - [ ] **Before N1:** MI-8 host-verify NATS stage check available ([mi-02](sprint-mi-02.md)) — `hack/host-verify.sh --cluster --nats-stage=open|n1|n3|n4`, with the script constant `PIN_NATS_STAGE=open` that this sprint bumps
 - [ ] **Before N1:** Hostinger weekly image date checked (≤ 7 days; the owner reads hPanel before launch and records it in status.md, and the session verifies it) — N1 is a restart-inducing step ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)). If it isn't recorded, don't wait: set N1 and the stages after it ⛔ in status.md, naming the owner item, and land the rest (the runbook and status docs PR)
 - [ ] **Before N2:** `v1.6.0` — the tag carrying N0 ([m1-02](sprint-m1-02.md)) — live on all seven `xlearn-*` Deployments, with the NATS-auth integration test (`make nats-acl-test`, its CI job) green at that tag
-- [ ] **Before identity's N2:** `v1.6.0` live on `xlearn-identity` (the NATS publisher code), and either no `messaging` ingress NetworkPolicy exists yet or MI-5's policy lists `xlearn-identity` as a 4222 caller (forward-declared, [mi-03](sprint-mi-03.md)) — `ssh vps 'k3s kubectl -n messaging get networkpolicy -o yaml'`
+- [ ] **Before identity's N2:** `v1.6.0` live on `xlearn-identity` (the NATS publisher code), and either no `messaging` ingress NetworkPolicy exists yet or MI-5's policy lists `xlearn-identity` as a 4222 caller (forward-declared, [mi-03](sprint-mi-03.md)) — `ssh sujaykumar-vps 'k3s kubectl -n messaging get networkpolicy -o yaml'`
 - [ ] **Before N3:** MI-5 PR merged ([mi-03](sprint-mi-03.md)'s first PR: `databases` + `messaging` ingress). MI-5a and MI-4 ([mi-14](sprint-mi-14.md)) do **not** gate this sprint
 - [ ] **Before N3:** all four N2 PRs verified — `/connz?auth=true` shows **no** `legacy` connection
 
@@ -167,12 +167,12 @@ tighten in the S12 hardening pass" to point at ADR-0035):
 - Merge → the `messaging` Kustomization reconciles (1 m) → `nats-0` restarts (~30–60 s plus the 30 s lame duck).
   The outboxes buffer; clients reconnect on their own (`MaxReconnects(-1)`, 2 s wait —
   `internal/platform/events/nats.go`, `consumer.go`). Watch
-  `ssh vps 'k3s kubectl -n messaging rollout status sts/nats'`.
-- **Verify:** a **plain** `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` (no `--nats-stage`
+  `ssh sujaykumar-vps 'k3s kubectl -n messaging rollout status sts/nats'`.
+- **Verify:** a **plain** `ssh sujaykumar-vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` (no `--nats-stage`
   override, so it proves the bumped constant) green; then refresh the node copy `/root/host-verify.sh` the mi-02
-  way: the agent runs `scp ../infra/hack/host-verify.sh vps:/root/` once (a node write this plan names, so
+  way: the agent runs `scp ../infra/hack/host-verify.sh sujaykumar-vps:/root/` once (a node write this plan names, so
   launching the prompt pre-approves it, D40);
-  `/connz?auth=true` (`ssh vps 'k3s kubectl get --raw "/api/v1/namespaces/messaging/pods/nats-0:8222/proxy/connz?auth=true"'`)
+  `/connz?auth=true` (`ssh sujaykumar-vps 'k3s kubectl get --raw "/api/v1/namespaces/messaging/pods/nats-0:8222/proxy/connz?auth=true"'`)
   shows every connection authorised as **`legacy`**, and the count is back to the pre-restart count recorded
   above; `/jsz?consumers=true` shows every durable with pending
   draining to 0; every service's outbox unsent → 0
@@ -239,7 +239,7 @@ connections; if one remains, find the straggler before going on. Change only `le
   both back together); run `hack/host-lint.sh` and paste its output. [mi-11](sprint-mi-11.md) bumps it to `n4`.
 - **No** annotation bump: the reloader sidecar SIGHUPs `nats-server` once the ConfigMap lands in the pod
   (≈ 1–2 min). Confirm `/varz` `config_load_time` moved and `start` did not.
-- **Verify right after:** a **plain** `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` (no
+- **Verify right after:** a **plain** `ssh sujaykumar-vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` (no
   override; it now checks `n3`) green — no `legacy` or anonymous connection; the node copy refreshed the mi-02
   way (the pre-approved `scp`); all services reconnected with their nkeys; outbox unsent 0, pending 0; login,
   dashboard and coach smoke OK (login in an already-signed-in browser session if the session has one; otherwise

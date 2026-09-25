@@ -108,7 +108,7 @@ Sources: [ADR-0033 §7](../../adr/0033-invite-only-admission-and-owner-admin.md#
 
 `v1.17.0` opens web erase to every non-owner, and the rehearsal's learner erases follow it. So it is **treated as an erase tag** ([ADR-0034 §4.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#43-snapshot-rule), §6). Record the call in the decisions log.
 
-Run the MI-8 `host-verify --cluster` over `ssh vps`, as [mi-02](sprint-mi-02.md) documents. It must be green: memory sum, Flux Ready, no OOMKills, PVCs < 60%, NATS `auth_required` with no `legacy`, and the NetworkPolicies present. The host must have settled, with no restart-inducing change in flight.
+Run the MI-8 `host-verify --cluster` over `ssh sujaykumar-vps`, as [mi-02](sprint-mi-02.md) documents. It must be green: memory sum, Flux Ready, no OOMKills, PVCs < 60%, NATS `auth_required` with no `legacy`, and the NetworkPolicies present. The host must have settled, with no restart-inducing change in flight.
 
 ### 4 · Snapshot [O, before launch]
 
@@ -125,7 +125,7 @@ Run the release checklist (§Release). The GitHub release title is **`v1.17.0 �
 - `curl -s https://projects.sujaykumar.dev/xlearn/api/v1/auth/config` → `{"signup":"closed"}`;
 - the auth page shows the invite-only state with **no Sign up tab** and the `mailto:` link;
 - `/xlearn/privacy` loads logged out;
-- `identity admin seats` → `outstanding invites 0`. This runs on production through `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin seats'`, and m1-04 audits every verb, reads included, so it writes an `admin_audit` row. It is a **sanctioned manual path** ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)), not a read-only check: the session runs it (approved by the launch, D40), and it is logged in status.md's CLI-use log.
+- `identity admin seats` → `outstanding invites 0`. This runs on production through `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin seats'`, and m1-04 audits every verb, reads included, so it writes an `admin_audit` row. It is a **sanctioned manual path** ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)), not a read-only check: the session runs it (approved by the launch, D40), and it is logged in status.md's CLI-use log.
 
 Record in [`../status.md`](../status.md):
 - milestone L-A/L-C → tag `v1.17.0` → rollback floor **unchanged** (copy the current floor; no contract) → snapshot id;
@@ -148,14 +148,14 @@ next sign-in.
 
 ### 7 · Rehearsal runbook [X]
 
-Write `docs/v2/runbooks/l-exit-rehearsal.md`. Every CLI call has the form `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin …'` and is logged in status.md as a sanctioned manual path ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)).
+Write `docs/v2/runbooks/l-exit-rehearsal.md`. Every CLI call has the form `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin …'` and is logged in status.md as a sanctioned manual path ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)).
 
 0. **Preconditions.**
    - `v1.17.0` is live and verified (task 5), and task 6 is done or recorded ⛔.
    - Record the baseline, as **counts only**: `identity admin seats` and `identity admin account list --role learner --status active`. The baseline is 0 if the strangers have already been triaged; otherwise note N. `ga-01` owns the triage.
    - `invite list --status outstanding` is empty.
    - The rehearsal identity from before launch is ready (the second GitHub account's browser profile). Note the time. No snapshot is needed, since no tag is involved; task 4's covers it.
-1. **Open the door.** Open PR A (task 8) and merge it. Wait for Flux, and check the env with `ssh vps 'k3s kubectl -n xlearn get deploy xlearn-identity -o jsonpath=…'`. Confirm `GET /xlearn/api/v1/auth/config` → `{"signup":"invite"}`.
+1. **Open the door.** Open PR A (task 8) and merge it. Wait for Flux, and check the env with `ssh sujaykumar-vps 'k3s kubectl -n xlearn get deploy xlearn-identity -o jsonpath=…'`. Confirm `GET /xlearn/api/v1/auth/config` → `{"signup":"invite"}`.
 2. **Mint two invites** with a short TTL:
    - `invite create --ttl 1d --note "L rehearsal · email path"`;
    - `invite create --ttl 1d --email <the second GitHub account's verified email, from the launch message> --note "L rehearsal · GitHub path"` (this also rehearses the `intended_email` binding);

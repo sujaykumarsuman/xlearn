@@ -75,14 +75,14 @@ metadata:
   `clusters/vps/databases.yaml` or `messaging.yaml`, or moving these files, would garbage-collect the
   Cluster and the Namespaces, and the PVCs with them. With the annotation, Flux leaves the object in place
   (orphaned) instead.
-- **Read-only facts to confirm and record** (measured 2026-09-24; re-read over `ssh vps`):
+- **Read-only facts to confirm and record** (measured 2026-09-24; re-read over `ssh sujaykumar-vps`):
   - `sts/nats` `persistentVolumeClaimRetentionPolicy` = `Retain/Retain`;
   - StorageClass `longhorn` `reclaimPolicy` = `Retain`;
   - `Database` `xlearn` `databaseReclaimPolicy: retain` (already in git).
 
   These change nothing in this PR.
 - Validate offline: `yq` parses every file, and `git diff` shows metadata only.
-- After merge (read-only over `ssh vps`):
+- After merge (read-only over `ssh sujaykumar-vps`):
   - `k3s kubectl get cluster.postgresql.cnpg.io projects-pgstore -n databases -o jsonpath='{.metadata.annotations}'` and the two Namespaces show the annotation;
   - `k3s kubectl get kustomizations -n flux-system` shows `databases` and `messaging` Ready;
   - `projects-pgstore-1` and `nats-0` keep their start times (an annotation on the Cluster CR isn't propagated to pods).
@@ -176,7 +176,7 @@ A knob belongs here only if its shape serves every later user. The chart isn't r
 
 ### 5 · Verify the host [H]
 
-After both reconciles, run `ssh vps 'bash -s -- --cluster' < hack/host-verify.sh`, which writes nothing on
+After both reconciles, run `ssh sujaykumar-vps 'bash -s -- --cluster' < hack/host-verify.sh`, which writes nothing on
 the node. Don't `scp` to `/root`: that's a node write this sprint doesn't specify, and [mi-02](sprint-mi-02.md)
 refreshes the node copy. Expect no FAIL. If [mi-02](sprint-mi-02.md) has merged by then, the MI-8 checks run too.
 

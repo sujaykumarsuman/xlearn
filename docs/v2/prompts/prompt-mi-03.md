@@ -63,15 +63,15 @@ Stop and report if any gate is unmet.
 - [ ] *(For MI-5a only)* Chart 0.3.0 is merged ([mi-01](../sprints/sprint-mi-01.md)), with multi-source ingress and a same-namespace source in `charts/project/values.yaml`. If it isn't, **do MI-5 alone**, record mi-03 as 🔄 (MI-5a waiting on mi-01), and stop.
 - [ ] `cd ../infra && git checkout main && git pull`. Peer check in both repos: `gh pr list --state open`, `git worktree list`, ListAgents. No open PR touches `apps/xlearn-*.yaml`, `infrastructure/{database/cluster,messaging}/` or `hack/expected-netpol.tsv` (mi-14 edits the `.tsv` too).
 - [ ] The last Hostinger weekly image date is recorded in status.md (the owner reads hPanel before launch; see above). [Rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag) requires it before any restart-inducing step, and this sprint's two `podAnnotations` bumps each restart a pod. **If it's missing, don't wait:** land MI-5 (step 2 restarts nothing) and the docs PR, and set the restart-inducing work (step 3's restart PR, steps 4–5) ⛔ in status.md, naming the owner item; a re-run picks up at step 3.
-- [ ] No xlearn release is mid-rollout (`ssh vps 'sudo k3s kubectl get deploy -n xlearn'`: all available). No `v*` tag was pushed in the last 15 min (`git ls-remote --tags origin`).
+- [ ] No xlearn release is mid-rollout (`ssh sujaykumar-vps 'sudo k3s kubectl get deploy -n xlearn'`: all available). No `v*` tag was pushed in the last 15 min (`git ls-remote --tags origin`).
 
 ## Do this (in order)
 
 1. **Caller matrix [H]** (plan task 1):
    - Re-derive the matrix from `../infra/apps/xlearn-*.yaml` env.
    - Confirm it against live state, read-only:
-     - NATS: `ssh vps 'sudo k3s kubectl get --raw /api/v1/namespaces/messaging/services/nats-headless:8222/proxy/connz'`, with client IPs mapped via `get pods -n xlearn -o wide`;
-     - PG: `ssh vps 'sudo k3s kubectl exec -n databases projects-pgstore-1 -c postgres -- psql -d xlearndb -Atc "select usename, client_addr, count(*) from pg_stat_activity where client_addr is not null group by 1,2"'`, with IPs mapped to pods.
+     - NATS: `ssh sujaykumar-vps 'sudo k3s kubectl get --raw /api/v1/namespaces/messaging/services/nats-headless:8222/proxy/connz'`, with client IPs mapped via `get pods -n xlearn -o wide`;
+     - PG: `ssh sujaykumar-vps 'sudo k3s kubectl exec -n databases projects-pgstore-1 -c postgres -- psql -d xlearndb -Atc "select usename, client_addr, count(*) from pg_stat_activity where client_addr is not null group by 1,2"'`, with IPs mapped to pods.
    - **Stop** on any caller that isn't in the plan's matrix.
    - Re-read the Traefik, NATS, PG and xlearn pod labels (`--show-labels`).
 
@@ -83,7 +83,7 @@ Stop and report if any gate is unmet.
    - Add two rows to `hack/expected-netpol.tsv` in mi-02's three-column format (`namespace <TAB> name <TAB> added-by`): `databases<TAB>projects-pgstore-ingress<TAB>mi-03` and `messaging<TAB>nats-ingress<TAB>mi-03`. Paste the same rows, byte-identical, into the **embedded copy** in `hack/host-verify.sh` between its `# >>> expected-netpol.tsv` / `# <<< expected-netpol.tsv` markers. host-verify runs via `bash -s` and never reads the file.
    - **Validate:**
      - `hack/host-lint.sh` clean (the embedded copy equals the file);
-     - server dry-run **the two new files only**: `ssh vps 'sudo k3s kubectl apply --dry-run=server -f -' < infrastructure/database/cluster/networkpolicy.yaml`, and the same for `infrastructure/messaging/networkpolicy.yaml`;
+     - server dry-run **the two new files only**: `ssh sujaykumar-vps 'sudo k3s kubectl apply --dry-run=server -f -' < infrastructure/database/cluster/networkpolicy.yaml`, and the same for `infrastructure/messaging/networkpolicy.yaml`;
      - the **selector proof**: run each `from` selector as a `-l` query against live pods, and each target selector must match exactly `projects-pgstore-1` and `nats-0`.
    - Open the PR with the matrix and the proofs, then merge it. **Record the merge date** (mi-06's N3 gate).
    - Wait until `get networkpolicy -n databases,messaging` shows both policies.
@@ -95,8 +95,8 @@ Stop and report if any gate is unmet.
      - `/jsz?consumers=true`: `num_pending` and `num_ack_pending` both 0;
      - outbox unsent is 0 in practice, review and assessment;
      - CNPG Cluster healthy, and the operator logs are clean for 2 min;
-     - `ssh vps 'bash -s -- --cluster --nats-stage=open' < ../infra/hack/host-verify.sh` still reads NATS, which proves the node-local proxy path;
-     - `curl -sf https://projects.sujaykumar.dev/xlearn/api/healthz` and `GET /xlearn/api/u/<owner-username>` return 200 with data. Find the username once, read-only: `ssh vps 'sudo k3s kubectl exec -n databases projects-pgstore-1 -c postgres -- psql -d xlearndb -Atc "select username from identity.account where username is not null order by created_at limit 3"'` (prod had one account on 2026-09-24, the owner's; filter on `role = 'owner'` once m1-02's column is live). Record it in status.md;
+     - `ssh sujaykumar-vps 'bash -s -- --cluster --nats-stage=open' < ../infra/hack/host-verify.sh` still reads NATS, which proves the node-local proxy path;
+     - `curl -sf https://projects.sujaykumar.dev/xlearn/api/healthz` and `GET /xlearn/api/u/<owner-username>` return 200 with data. Find the username once, read-only: `ssh sujaykumar-vps 'sudo k3s kubectl exec -n databases projects-pgstore-1 -c postgres -- psql -d xlearndb -Atc "select username from identity.account where username is not null order by created_at limit 3"'` (prod had one account on 2026-09-24, the owner's; filter on `role = 'owner'` once m1-02's column is live). Record it in status.md;
      - the login smoke (login, dashboard, coach). Login needs credentials, which you never enter: use an already-signed-in browser session if you have one; otherwise record "owner login smoke pending (MI-5)" as a pending-smoke note in status.md and carry on (D40).
    - **Any error: `git revert` the MI-5 PR** (fail-open) and stop.
 
@@ -124,8 +124,8 @@ Stop and report if any gate is unmet.
 
 6. **Verify [H]:**
    - `hack/host-lint.sh` is clean: the embedded `expected-netpol.tsv` equals the file, with all 9 new rows.
-   - `ssh vps 'bash -s -- --cluster --nats-stage=open' < ../infra/hack/host-verify.sh` is green, with NetworkPolicy presence covering all 9 new names and no restarts beyond the two annotation bumps.
-   - **Negative check:** `ssh vps "bash -s -- --cluster --nats-stage=open --netpol-file <(printf 'databases\tno-such-policy\tneg\n')" < ../infra/hack/host-verify.sh` must **FAIL** `cluster.netpol`, which proves the presence check isn't vacuous. Paste both runs into the MI-5a PR.
+   - `ssh sujaykumar-vps 'bash -s -- --cluster --nats-stage=open' < ../infra/hack/host-verify.sh` is green, with NetworkPolicy presence covering all 9 new names and no restarts beyond the two annotation bumps.
+   - **Negative check:** `ssh sujaykumar-vps "bash -s -- --cluster --nats-stage=open --netpol-file <(printf 'databases\tno-such-policy\tneg\n')" < ../infra/hack/host-verify.sh` must **FAIL** `cluster.netpol`, which proves the presence check isn't vacuous. Paste both runs into the MI-5a PR.
    - Note in status.md that the next xlearn tag's fleet rollout is the full re-proof; its release checklist runs `host-verify` and the smoke.
 
 7. **Record [X]** (plan task 7): open an xlearn docs PR on `docs/mi-03-fences` with:

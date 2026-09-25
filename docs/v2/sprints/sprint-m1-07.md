@@ -303,7 +303,7 @@ record that "the first path-aware release (the consumer floor for non-DSA events
 
 After `v1.7.0` is verified, the session runs it itself (D40: launching this prompt approves this production operation;
 runbook `docs/runbooks/identity-admin.md` from m1-04):
-`ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account set-role <owner> owner'`.
+`ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account set-role <owner> owner'`.
 `<owner>` is the owner's account: `… identity admin account list` shows it (production has exactly one account, the
 owner's, until the first tester in L-E). If the list shows more than one account and the owner's can't be told apart,
 don't guess: record task 7 ⛔ "owner account ambiguous" in status.md and carry on. Then confirm with

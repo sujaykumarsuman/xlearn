@@ -87,7 +87,7 @@ Production had one account, the owner's, on 2026-09-23.
 ### 5. Invites: mint and redeem
 
 - **Mint (L):**
-  - Run `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin invite create --ttl 7d [--tier standard] [--email x] [--region IN] --note "…"'`.
+  - Run `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin invite create --ttl 7d [--tier standard] [--email x] [--region IN] --note "…"'`.
   - It prints `https://projects.sujaykumar.dev/xlearn/auth#invite=<22 chars>`, plus the invite id, the expiry and the seats (e.g. `5/15`).
   - **The code is 128 bits** (16 random bytes, base64url). Only its **sha256** is stored. The TTL defaults to **7 days**, with a **30-day maximum**.
   - The owner sends the link over his own channel; **xLearn sends no email**.

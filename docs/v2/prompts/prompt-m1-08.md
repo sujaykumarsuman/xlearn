@@ -125,7 +125,7 @@ Mon 10-26 → Wed 10-28. The owner's part is ~5 minutes before launch (`ev-snap-
    table and logs, and the replay result. CI green. **Merge it in step 10**, after `host-verify`, right before the tag.
 9. **[H] `host-verify --cluster` (task 4).** With `../infra` on an up-to-date `main`, from the xlearn root (agent
    shells reset there, and xlearn has no `hack/host-verify.sh`):
-   `ssh vps 'bash -s -- --cluster --expect-sandbox --json --nats-stage=<live stage from status.md: n3, or n4 after mi-11>' < ../infra/hack/host-verify.sh`
+   `ssh sujaykumar-vps 'bash -s -- --cluster --expect-sandbox --json --nats-stage=<live stage from status.md: n3, or n4 after mi-11>' < ../infra/hack/host-verify.sh`
    → no FAIL (a `legacy` NATS connection is a FAIL at n3); note WARNs; confirm ≥ 24 h since the window's last
    restart. Drop `--expect-sandbox` only if the window was rebooked past this tag. Read-only only.
 10. **[X] Merge (the [O] snapshot, task 5, was taken before launch).** Record the snapshot name/time and the weekly date
@@ -135,7 +135,7 @@ Mon 10-26 → Wed 10-28. The owner's part is ~5 minutes before launch (`ev-snap-
 11. **[X] Tag `v1.8.0` (task 6)** right after the merge, with the plan's release checklist (verbatim; the contract lines
     are tasks 3–5). Re-check peers and `.release-line` just before `git push origin v1.8.0`; create the GitHub release
     **`v1.8.0 — v2 build · M1c contract`** (notes: the dropped objects; floor 1.7.0 hard; snapshot id). After Flux:
-    healthz reports the version; `ssh vps 'k3s kubectl get deploy,pods -n xlearn -o wide'` shows the new images and no
+    healthz reports the version; `ssh sujaykumar-vps 'k3s kubectl get deploy,pods -n xlearn -o wide'` shows the new images and no
     crash-loop; ImagePolicies' latest = the tag and HelmReleases Ready; `… logs deploy/xlearn-<svc> --since=30m | grep "migration applied"`
     for the five services; smoke login, dashboard, coach (plus a mistake edit and a mock page load).
 12. **[X] If anything fails after the tag:** R-c (revert + patch tag) by default. R-b to `1.7.0` is proven safe;
@@ -149,7 +149,7 @@ Mon 10-26 → Wed 10-28. The owner's part is ~5 minutes before launch (`ev-snap-
 - **goose + sqlc:** next free version per service at rebase; commit `sqlc generate` output; `sqlc diff` clean; the migration lint green.
 - **No scope creep:** no feature, no `SET NOT NULL` beyond the list, no event or API rename (`total_35` / `total35` stay in payload decoders and `/api/mocks/*`).
 - **Events:** nothing changes on NATS — no subject, stream or consumer (no ACL PR); envelope append-only, decoders forever.
-- **GitOps:** no `kubectl apply`; `ssh vps` is read-only (`get`, `logs`, `host-verify`); the snapshot is the owner's hPanel action, taken before launch.
+- **GitOps:** no `kubectl apply`; `ssh sujaykumar-vps` is read-only (`get`, `logs`, `host-verify`); the snapshot is the owner's hPanel action, taken before launch.
 - **D34 / D12:** no alert, timer, CronJob or push channel; no off-node `pg_dump`, no backups beyond the manual snapshot.
 - **Memory-sum rule:** no new pod; unchanged.
 - **Parallel sessions:** check peers' PRs, tags and worktrees (and ListAgents) before merging the contract, before the snapshot and again right before pushing the tag; don't claim an ADR number without checking.

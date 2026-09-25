@@ -245,7 +245,7 @@ sprint copies it. In short:
 - **Never `kubectl apply` by hand**; all cluster change flows through `infra` + Flux. The sanctioned
   manual paths are:
   - the admin CLIs via `kubectl exec` (`identity admin`, `judge admin`);
-  - the NATS ops break-glass (an `ssh vps` port-forward and the offline ops seed);
+  - the NATS ops break-glass (an `ssh sujaykumar-vps` port-forward and the offline ops seed);
   - the host scripts (`hack/host-bootstrap.sh`, `hack/host-verify.sh`).
 
   Log each break-glass use in `docs/v2/status.md`.

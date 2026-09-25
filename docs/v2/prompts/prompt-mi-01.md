@@ -60,7 +60,7 @@
      - the `databases` Namespace in `infrastructure/database/cluster/namespace.yaml`;
      - the `messaging` Namespace in `infrastructure/messaging/namespace.yaml`.
    - Validate with `yq` and check that `git diff` is metadata-only.
-   - Re-read over `ssh vps`, read-only:
+   - Re-read over `ssh sujaykumar-vps`, read-only:
      - `k3s kubectl get sts nats -n messaging -o jsonpath='{.spec.persistentVolumeClaimRetentionPolicy}'`;
      - `k3s kubectl get sc longhorn -o jsonpath='{.reclaimPolicy}'`.
    - Commit (conventional, with the attribution lines), push, open the PR with the checks in the body, and merge it (`gh pr merge --squash --delete-branch`).
@@ -107,7 +107,7 @@
      - `knob-cronjob.yaml`: assert a CronJob and **no** Deployment, Service, IngressRoute or Middleware;
      - `knob-netpol-gateway.yaml` and `knob-netpol-internal.yaml`: mi-03's exact shapes, per the plan's task 4.
    - Run `helm lint --strict` with each file, and `kubeconform -strict` if you have it.
-   - Before merging, snapshot the pods over `ssh vps`: `k3s kubectl get pods -A -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,START:.status.startTime`.
+   - Before merging, snapshot the pods over `ssh sujaykumar-vps`: `k3s kubectl get pods -A -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,START:.status.startTime`.
    - Open the PR with this output in the body:
      - chart-diff (11/11);
      - `--self-test` (exit 1);
@@ -118,7 +118,7 @@
    - Watch read-only until `k3s kubectl get hr -A` shows all 15 Ready and the 11 chart Deployments carry `helm.sh/chart: project-0.3.0`.
    - Diff the pod snapshot: **it must be identical**. If any pod rolled, revert immediately (`git revert`, PR, merge) and report.
 
-5. **[H] Verify the host:** `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh`, which writes nothing on the node. Don't `scp` to `/root`: that's a node write this prompt doesn't specify, and [mi-02](../sprints/sprint-mi-02.md) refreshes the node copy. Expect no FAIL.
+5. **[H] Verify the host:** `ssh sujaykumar-vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh`, which writes nothing on the node. Don't `scp` to `/root`: that's a node write this prompt doesn't specify, and [mi-02](../sprints/sprint-mi-02.md) refreshes the node copy. Expect no FAIL.
 
 6. **[X] Record** (branch `docs/mi-01-status` in this repo):
    - [`../sprints/sprint-mi-01.md`](../sprints/sprint-mi-01.md): task rows ✅ and _Overall_ ✅;
@@ -127,7 +127,7 @@
 
 ## Constraints
 
-- **GitOps only.** Never `kubectl apply`, `edit`, `annotate` or `delete` by hand. `ssh vps` is **read-only** here (`get`, `top` and the `host-verify` reads). Everything reaches the cluster through a merged `../infra` PR ([ADR-0009](../../adr/0009-deployment-and-gitops.md)).
+- **GitOps only.** Never `kubectl apply`, `edit`, `annotate` or `delete` by hand. `ssh sujaykumar-vps` is **read-only** here (`get`, `top` and the `host-verify` reads). Everything reaches the cluster through a merged `../infra` PR ([ADR-0009](../../adr/0009-deployment-and-gitops.md)).
 - **Infra PRs are their own tasks.** They're never folded into a tag. MI-2 and MI-3 are separate PRs, and MI-2 merges first.
 - **No pod may roll.** Today's memory margin is thin ([ADR-0035](../../adr/0035-v2-operations-nats-auth-limits-capacity.md) §5 memory-sum rule), and this sprint adds no pod. `chart-diff.sh` must be green **before** the merge.
 - **D34, no alerting:** no Flux `Provider`/`Alert`, no opscheck, no CronJob user, no healthchecks.io. `workload: cronjob` stays default-off and unused.

@@ -107,7 +107,7 @@ No owner needs to be reachable (D40): if the new GHCR package comes up private i
 - **Image before policy:** this sprint creates the image; the ImageRepository/ImagePolicy and the 2nd IUA are mi-10's infra PRs, after
   the tag. **No infra PR here.**
 - **GitOps / production:** no `kubectl apply` against production; `kubectl apply` happens only inside the throwaway VM. Read-only
-  `ssh vps` for the after-tag checks. `../infra` is read-only.
+  `ssh sujaykumar-vps` for the after-tag checks. `../infra` is read-only.
 - **Security:** the image carries no secret, no pack content, no setuid bit; privileged containers are CI/compose-only; the dev token is
   obviously non-secret and never used outside compose.
 - **Service boundaries** ([ADR-0005](../../adr/0005-data-ownership-and-migrations.md)): the runner has no DB, NATS or egress.

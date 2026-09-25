@@ -191,13 +191,13 @@ Notes: web erase for testers; owner CLI-only; learners at the L exit; username h
 
 **`ev-first-tester` runs here** (D40: launching approves the mint and the erase). After confirming MI-5b is live (status.md), mint a
 throwaway tester with the CLI:
-`ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account create --role tester --email <an unused @example.test address>'`.
+`ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account create --role tester --email <an unused @example.test address>'`.
 Keep its one-time password in the terminal only (never in a file, log, PR or status.md); the account is erased minutes later. Then
 operate the tester yourself, in a private window or a separate browser profile you drive:
 1. Sign in as the tester; claim a username; create a little data (start an attempt, open a mistake, visit coach).
 2. Sign in again (fresh session) and erase from Settings → the erased banner.
 3. Checks, through the sanctioned admin CLI and read-only views only (no raw `psql` against other services' schemas):
-   `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin erasures --since <today>'` → **closed, 4 acks**. That
+   `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin erasures --since <today>'` → **closed, 4 acks**. That
    is the per-service proof: each service writes its ack in the **same transaction** as its deletes and outbox deletes (l-01 task 2),
    so an ack means that service's rows are gone. Then `/xlearn/u/<username>` → 404; the owner's session shows the username as
    unavailable (in his signed-in profile, if available; task 4's tests cover it otherwise); no ERROR on the erase paths (`k3s kubectl logs -n xlearn deploy/xlearn-<svc> --since=30m` for practice, review,

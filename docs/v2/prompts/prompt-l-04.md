@@ -64,13 +64,13 @@ v2 stays owner-only (D35), and the opening is v3.
    - `Settings.tsx`: the erase section shows for learners without the tester-only note.
    - Tests: the handler matrix; `/api/me` `erase_web` per role; a `-tags e2e` learner erase created through an invite, with every `topology.go` ack (practice, review, assessment, coach, judge); an unaccepted learner's `DELETE /api/me` passes the gateway's acceptance gate (API level only: the SPA has no erase path while acceptance is required, per l-05); the Settings component tests.
    - Update `api.md`.
-3. **[X] Runbook** (plan task 7): write `docs/v2/runbooks/l-exit-rehearsal.md` with preconditions, steps 0–8, verification (`identity admin erasures --since <event start>` shows both requests closed with every ack; `erasures --open` is empty), the abort path (CLI erase is `identity admin account erase <user> --confirm <user>`), privacy ("tester T1", counts only) and the R-d note. Every CLI line has the form `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin …'`.
+3. **[X] Runbook** (plan task 7): write `docs/v2/runbooks/l-exit-rehearsal.md` with preconditions, steps 0–8, verification (`identity admin erasures --since <event start>` shows both requests closed with every ack; `erasures --open` is empty), the abort path (CLI erase is `identity admin account erase <user> --confirm <user>`), privacy ("tester T1", counts only) and the R-d note. Every CLI line has the form `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin …'`.
 4. **[X] Verify + compose dry run** (plan task 2):
    - **Notice truth check:** l-05's notice says erase is "in Settings, for every non-owner". Confirm step 2's change is on the commit you will tag (a learner's `/api/me` reports `erase_web: "allowed"`). If not, don't tag.
    - The full suite: `gofmt -l`, `go vet ./...`, `go test -race ./...`, `-tags e2e`, `sqlc diff`, the migration lint (no contract since `v1.16.0`), OpenAPI drift, and web typecheck/lint/test/build.
    - Compose with `SIGNUP_MODE: invite`: mint → sign up → accept → solve (self) → erase → `invite list` shows `erased` with an empty note, and `seats` is back. Fold the findings into the runbook.
    - **PR** (`feat(identity): web erase for every non-owner`, `docs: L-exit rehearsal runbook`) with the attribution lines → CI green → squash-merge.
-5. **[H] `host-verify --cluster`** (plan task 3) over `ssh vps`, per mi-02. It must be green and the host settled. Log the run in status.md.
+5. **[H] `host-verify --cluster`** (plan task 3) over `ssh sujaykumar-vps`, per mi-02. It must be green and the host settled. Log the run in status.md.
 6. **[O] Snapshot `ev-snap-v1.17.0`** (plan task 4) — **taken before launch**. Record the id or time and the weekly-image date from the launch message, and mark the event ✅. The tag lands the same day.
 7. **[X] Tag `v1.17.0`** (plan task 5):
    - Run the §Release checklist from the plan. **Parallel-sessions check first:** `git ls-remote --tags origin`, `gh pr list`, `git worktree list`, ListAgents; the next free minor; major = `.release-line`.

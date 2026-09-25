@@ -79,18 +79,18 @@ cert-manager ×3, Traefik, metrics-server, local-path, svclb ×2 and the NATS re
 
 ### 1 · Read the samples [H]
 
-- Copy `/var/tmp/xlearn-top.tsv` off the node (`ssh vps 'cat /var/tmp/xlearn-top.tsv' > <scratch>/top.tsv`) and
+- Copy `/var/tmp/xlearn-top.tsv` off the node (`ssh sujaykumar-vps 'cat /var/tmp/xlearn-top.tsv' > <scratch>/top.tsv`) and
   compute p50 / p95 / max per **(namespace, owner, container)**. Group by the pod's owner prefix: pod names
   change on every rollout. Cover every limitless container, the six Flux controllers (to confirm 512 Mi is
   ≥ 2.5 × their p95), Traefik, the three cert-manager containers and metrics-server.
 - Record the sample window (first and last timestamp). The samples are about 2–3 weeks old by now, so take one
-  fresh `ssh vps 'k3s kubectl top pods -A --containers'` and, wherever a container's current use exceeds its
+  fresh `ssh sujaykumar-vps 'k3s kubectl top pods -A --containers'` and, wherever a container's current use exceeds its
   sampled p95, use the current value instead and say so.
 - Put the table (container → p50, p95, max, proposed limit or budget) in the PR descriptions. It is the only
   record once the file is gone.
 - **Clean up** (a node write this plan names: pre-approved by launching the prompt, D40, so the session runs it): stop the loop only if it is still alive, by its PID
   file, then delete all three files:
-  `ssh vps 'pid=$(cat /var/tmp/xlearn-top.pid 2>/dev/null); [ -n "$pid" ] && ps -p "$pid" -o args= | grep -q sample-top.sh && kill "$pid"; rm -f /var/tmp/xlearn-top.tsv /var/tmp/xlearn-top.pid /root/sample-top.sh'`.
+  `ssh sujaykumar-vps 'pid=$(cat /var/tmp/xlearn-top.pid 2>/dev/null); [ -n "$pid" ] && ps -p "$pid" -o args= | grep -q sample-top.sh && kill "$pid"; rm -f /var/tmp/xlearn-top.tsv /var/tmp/xlearn-top.pid /root/sample-top.sh'`.
   The sampler was throwaway, never a timer (D34).
 - **If mi-02 recorded the sampler as declined**: there is nothing to read or delete. Keep mi-02's provisional
   `top × 1.2` budget rows, and size the Traefik/cert-manager limits (task 3) and the Flux check (task 2) from the
@@ -167,7 +167,7 @@ requests. Request ≈ p50.
     `cert-manager-cainjector`, `cert-manager-webhook`, and `longhorn-ui` if it gets one. Otherwise they show as
     "unused budget" INFO.
 - **Re-embed** the edited file byte-identically between the `# >>> memory-budget.tsv` / `# <<< memory-budget.tsv`
-  markers in `../infra/hack/host-verify.sh`. The script runs as `ssh vps 'bash -s' < host-verify.sh` (or from
+  markers in `../infra/hack/host-verify.sh`. The script runs as `ssh sujaykumar-vps 'bash -s' < host-verify.sh` (or from
   `/root/host-verify.sh`) with no TSV beside it, so **only the embedded copy counts**. Run `hack/host-lint.sh`
   (it fails when the copies differ) and paste its output into the PR.
 - **Limits** only where the Longhorn `1.12.1` chart exposes `resources` for a part outside the data path. That
@@ -177,7 +177,7 @@ requests. Request ≈ p50.
     restart needs.
 - After merge, `host-verify --cluster` must report **no** "no limit and no budget entry" WARN, **zero**
   provisional budgets (unless the sampler was declined) and no "unused budget" INFO. Then refresh the node copy
-  so on-demand `/root/host-verify.sh` runs use the new budgets: the session runs `scp ../infra/hack/host-verify.sh vps:/root/` once itself (a node write this plan names; pre-approved by launching the prompt, D40).
+  so on-demand `/root/host-verify.sh` runs use the new budgets: the session runs `scp ../infra/hack/host-verify.sh sujaykumar-vps:/root/` once itself (a node write this plan names; pre-approved by launching the prompt, D40).
 
 ### 5 · PSA labels (MI-15 slice) [I]
 
@@ -191,7 +191,7 @@ requests. Request ≈ p50.
   never tightens enforcement silently; bump it with k3s), `warn: restricted`, `warn-version: latest`,
   `audit: restricted`, `audit-version: latest`. Keep the MI-2 prune annotations on the two Namespaces.
 - **Dry-run first** (server side; nothing persists), for each namespace at its level:
-  `ssh vps 'k3s kubectl label --dry-run=server --overwrite ns databases pod-security.kubernetes.io/enforce=restricted pod-security.kubernetes.io/enforce-version=v1.36'`.
+  `ssh sujaykumar-vps 'k3s kubectl label --dry-run=server --overwrite ns databases pod-security.kubernetes.io/enforce=restricted pod-security.kubernetes.io/enforce-version=v1.36'`.
   Any "existing pods … violate" warning blocks that label. Paste the output into the PR.
 - Labels restart nothing. `databases` meets its first real admission at the **window's PG restart** (CNPG 18.6,
   mi-09). If the CNPG pod is refused (a `FailedCreate` event), revert the `databases` label first. `xlearn` meets
@@ -222,7 +222,7 @@ requests. Request ≈ p50.
     without PRs (no PR stays open across sessions, D40) and record the branch names in status.md. The window
     session runs [mi-09](sprint-mi-09.md)'s runbook on its date: it opens their PRs, merges them, then runs
     `host-verify --cluster --with-runner`.
-- **After merge:** `ssh vps 'bash -s -- --cluster --with-runner' < ../infra/hack/host-verify.sh`. Record
+- **After merge:** `ssh sujaykumar-vps 'bash -s -- --cluster --with-runner' < ../infra/hack/host-verify.sh`. Record
   Σ limits, Σ limitless p95 (budget file), the largest surge, the host share, the total vs capacity − 0.5 GiB,
   and the margin.
 - **Also project the full v2 state by hand:** + judge 256 Mi (+ its surge) + coach P1 128 Mi. Compare with

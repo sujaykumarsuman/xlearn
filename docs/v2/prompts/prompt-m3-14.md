@@ -96,7 +96,7 @@ owner account (D35).
 - **D34:** no alert, no ping, no opscheck, no healthchecks.io anywhere. `judge admin` is read on demand via `kubectl exec`.
 - **Leak rules (ADR-0027 §5, INV-7):** DTOs are an allowlist; nothing from `EVALPACK_DIR`, no hidden inputs, expected
   outputs, per-case timing, ordinals, test names or pack paths ever leaves judge; no handler serves the pack.
-- **GitOps:** no infra change here; never `kubectl apply`. Read-only `ssh vps` only if you need to check something live.
+- **GitOps:** no infra change here; never `kubectl apply`. Read-only `ssh sujaykumar-vps` only if you need to check something live.
 - **Memory-sum rule:** no new pod here (judge's pod and limits are m3-07's); keep judge's working set small (no in-memory
   counters, stream large inputs).
 - **Parallel sessions:** check peers' PRs, tags and worktrees before numbering migrations; never tag here.

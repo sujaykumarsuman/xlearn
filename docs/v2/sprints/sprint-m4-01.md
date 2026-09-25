@@ -257,7 +257,7 @@ Sources: [t5 §3](../research/t5-platform-ai.md#3-where-the-platform-key-lives-a
 - `docs/architecture/services.md`: judge row — "holds the platform-AI credential (WIF; break-glass key), `internal/judge/ai`";
   coach row — "BYO keys only, over the shared `internal/platform/llm` adapters".
 - `docs/v2/runbooks/platform-ai-provider.md` (created by [mi-12](sprint-mi-12.md)) gains: **Smoke from the judge pod**
-  (`ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-judge -- judge admin llm-smoke'`, expected output); **Break-glass switch**
+  (`ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-judge -- judge admin llm-smoke'`, expected output); **Break-glass switch**
   (owner writes the key into the SOPS file and bumps `xlearn.dev/llm-rev` → judge logs the key-mode WARN; removing it returns to
   WIF); **An exchange 401** (check `host-verify --cluster` for the JWKS kid drift WARN → re-paste the JWKS per the runbook).
 - No new ADR expected (this implements ADR-0031 §1–§4). If spk-03's numbers force a different re-exchange rule than t5 §3, add a
@@ -267,7 +267,7 @@ Sources: [t5 §3](../research/t5-platform-ai.md#3-where-the-platform-key-lives-a
 
 Cannot run before the code is deployed, and M4 ships in one tag, so it is **not** an m4-07 entry gate. It runs in
 **[m4-07](sprint-m4-07.md) task 7's after-tag reads**, after `v1.16.0` rolls out and **before** task 8 (the
-`LLM_PLATFORM_ENABLED=true` infra PR): `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-judge -- judge admin llm-smoke'` must
+`LLM_PLATFORM_ENABLED=true` infra PR): `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-judge -- judge admin llm-smoke'` must
 pass (WIF mode, exchange latency recorded, Models 200, workspace header matching when present, both models listed). Not a host
 script: it is the xlearn verb from task 8 run through `kubectl exec`. **Semantics are this sprint's:** `GET /v1/models` only,
 **spends nothing and writes no ledger row** (only its admin-audit row) — m4-02's `llm_call.purpose` has no `smoke` value; the first

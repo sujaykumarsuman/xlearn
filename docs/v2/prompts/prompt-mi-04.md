@@ -45,13 +45,13 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 
 - [ ] `ev-mi5b-dns` was done before launch (the DNS record and bookmarks); step 1 verifies the record resolves.
 - [ ] `git -C ../infra fetch && git -C ../infra status` shows a clean tree on up-to-date `main`. `gh pr list -R sujaykumarsuman/infra --state open` shows no peer PR touching the files in the plan's task 3, or you've agreed an order. Also check `git worktree list` and `ListAgents` for peers.
-- [ ] No non-owner account exists yet. If the M1b CLI is live, run `identity admin account list` yourself through the sanctioned admin-CLI `kubectl exec` path ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)); launching this prompt pre-approves that one use (D40). Log it in `docs/v2/status.md`'s CLI-use log, as §2.2 requires; otherwise your `ssh vps` access stays read-only. If a `tester` exists, continue anyway, but log the gap in the Decisions log as urgent.
+- [ ] No non-owner account exists yet. If the M1b CLI is live, run `identity admin account list` yourself through the sanctioned admin-CLI `kubectl exec` path ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)); launching this prompt pre-approves that one use (D40). Log it in `docs/v2/status.md`'s CLI-use log, as §2.2 requires; otherwise your `ssh sujaykumar-vps` access stays read-only. If a `tester` exists, continue anyway, but log the gap in the Decisions log as urgent.
 
 ## Do this (in order)
 
 1. **[O, before launch] DNS (`ev-mi5b-dns`): verify it.**
    - The owner added `A ops` in the Hostinger zone `sujaykumar.dev` before launch, with the same IPv4 as `projects` and TTL 300. No AAAA.
-   - Check that `dig +short ops.sujaykumar.dev A`, `dig @1.1.1.1 …` and `dig @8.8.8.8 …` all equal `dig +short projects.sujaykumar.dev A`, and `ssh vps 'getent hosts ops.sujaykumar.dev'` agrees. Poll briefly if it's still propagating (TTL 300).
+   - Check that `dig +short ops.sujaykumar.dev A`, `dig @1.1.1.1 …` and `dig @8.8.8.8 …` all equal `dig +short projects.sujaykumar.dev A`, and `ssh sujaykumar-vps 'getent hosts ops.sujaykumar.dev'` agrees. Poll briefly if it's still propagating (TTL 300).
    - Don't open PR 1 for merge before that.
    - **If the record is missing:** everything else depends on it (the certificate's HTTP-01 challenge, then PR 2). Set task 1 ⛔ "DNS record missing (owner, before launch)" in the sprint file and `status.md`, land that as the docs PR (step 7), and end there; a re-run starts at step 1. Don't wait.
 2. **[I] Infra PR 1: the certificate.**
@@ -60,7 +60,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
    - Add `certificates: [{secretName: ops-tls}]` to the `default` TLSStore in `tlsstore.yaml`. Keep `defaultCertificate: projects-tls`.
    - Commit `feat(tls): certificate for ops.sujaykumar.dev (MI-5b)` and open the PR. infra has no CI, so paste the `yq` parse of both files and the `hack/host-lint.sh` output (a sanity run) into the PR body. Then merge it under the standing authority.
    - Let Flux reconcile. There's no `kubectl apply` and no `flux` write.
-   - Verify read-only: `ssh vps 'k3s kubectl -n kube-system get certificate ops-tls'` shows Ready, and `openssl s_client … -servername ops.sujaykumar.dev` shows the new certificate while `projects` still serves `projects-tls`.
+   - Verify read-only: `ssh sujaykumar-vps 'k3s kubectl -n kube-system get certificate ops-tls'` shows Ready, and `openssl s_client … -servername ops.sujaykumar.dev` shows the new certificate while `projects` still serves `projects-tls`.
 3. **[I] Infra PR 2: move the consoles** (branch `feat/ops-consoles`, after `ops-tls` is Ready). Make exactly the changes in the plan's task 3 table:
    - `apps/kubescope.yaml`: `route.host`;
    - `apps/landscape.yaml`: `route.host` and `LANDSCAPE_PUBLIC_URL=https://ops.sujaykumar.dev/landscape`;
@@ -78,8 +78,8 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
    - If mi-01's chart PR is open, coordinate the rebase and the `chart-diff.sh` re-run.
 
    Then commit `feat(ops): move admin consoles to ops.sujaykumar.dev (MI-5b)`, open the PR, merge it under the standing authority, and let Flux reconcile.
-   - Confirm read-only: `ssh vps 'k3s kubectl get ingressroute -A -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,MATCH:.spec.routes[*].match'` shows no console on `projects` other than the redirect and the 403 block.
-   - Verify the host and cluster, read-only: `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh`. It writes nothing on the node. Expect no FAIL.
+   - Confirm read-only: `ssh sujaykumar-vps 'k3s kubectl get ingressroute -A -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,MATCH:.spec.routes[*].match'` shows no console on `projects` other than the redirect and the 403 block.
+   - Verify the host and cluster, read-only: `ssh sujaykumar-vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh`. It writes nothing on the node. Expect no FAIL.
 4. **[H] Acceptance 4a** (credential-free, from the laptop).
    - Run the plan's table rows 1–8 with `curl` (`-s -o /dev/null -w '%{http_code} %{redirect_url}\n'`, or print the body where the table expects JSON).
    - Every write targets `xl-probe-missing`, so nothing changes even if a guard were missing.
@@ -114,7 +114,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
    - **Inconclusive, never a pass:** `(blocked:csp)`, `(failed)`, or a network error with no status. Fix the probe page and re-run.
 
    **Evidence, read-only:**
-   - kubescope logs JSON: `ssh vps 'k3s kubectl -n kubescope logs deploy/kubescope --since=15m'`. Look for an `"msg":"http request"` line with `"status":403` on the `…/xl-probe-missing/restart` path (the `cross_origin_rejected` code is only in the response body, never logged), and an `"msg":"exec websocket upgrade failed"` line whose error says `not authorized`.
+   - kubescope logs JSON: `ssh sujaykumar-vps 'k3s kubectl -n kubescope logs deploy/kubescope --since=15m'`. Look for an `"msg":"http request"` line with `"status":403` on the `…/xl-probe-missing/restart` path (the `cross_origin_rejected` code is only in the response body, never logged), and an `"msg":"exec websocket upgrade failed"` line whose error says `not authorized`.
    - Longhorn / ForwardAuth: landscape's `logMW` skips `/api/forward-auth`, so its logs show nothing. Use the browser's 403 for (b) and (d), with the JSON body `{"error":"cross-origin request refused"}` where devtools shows the response.
 
    Then, in the same signed-in browser, check that landscape, kubescope, Longhorn (via the landscape session) and airlift admin work on `ops`. Add the 4b table to PR 2.
@@ -125,7 +125,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
    - Do the same for any other console that failed.
    - Fallback when no stable ranges were given at launch: `KUBESCOPE_READ_ONLY=true`. Record any other failed console with no fallback ⛔ in `status.md`; don't wait for ranges.
    - Commit `feat(ops): ipAllowList on kubescope and Longhorn (MI-5b interim)`. infra has no CI, so paste the `yq` parse and the `hack/host-lint.sh` output into the PR body. Then merge it under the standing authority, reconcile, and re-run the failed rows. They must now return 403 from off-range addresses.
-   - Re-run `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` (read-only). Expect no FAIL.
+   - Re-run `ssh sujaykumar-vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` (read-only). Expect no FAIL.
 7. **[X] Record.**
    - Branch `docs/mi-04-status` in xlearn. Update this sprint's Status table and `docs/v2/status.md` (below).
    - Open an issue in the landscape repo (`sujaykumarsuman/landscape`): derive each app's public-URL host from its IngressRoute match rather than from `LANDSCAPE_PUBLIC_URL`. Link it from the Decisions log. Don't change landscape's code.
@@ -133,7 +133,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 
 ## Constraints
 
-- **GitOps only.** Every cluster change is an infra PR that Flux reconciles. Never run `kubectl apply`, `kubectl edit`, `flux suspend` or `flux reconcile` against production. Use `ssh vps 'k3s kubectl get|logs …'` for reads only.
+- **GitOps only.** Every cluster change is an infra PR that Flux reconciles. Never run `kubectl apply`, `kubectl edit`, `flux suspend` or `flux reconcile` against production. Use `ssh sujaykumar-vps 'k3s kubectl get|logs …'` for reads only.
   - **Your laptop's kubectl context may tunnel to production** (`127.0.0.1:6443`), so don't use it for anything.
   - Infra PRs are their own tasks ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)).
 - **No chart change.** Chart 0.2.2's `route.host` is enough, and chart 0.3.0's knob list is frozen ([rollout §2.1](../rollout-plan.md#21-chart-030-knob-list)). Use raw manifests for any extra route or middleware, in the route's own namespace.

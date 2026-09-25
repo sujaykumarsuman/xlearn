@@ -130,7 +130,7 @@ in text) so M6b needs no migration, and export small interfaces for every seam i
 - **Dark:** cohort gate (T-1 default `cohort` + T-3 role); no T-2 env; nothing reachable by a `learner`.
 - **Outbox/NATS:** no new subject, stream or consumer (so no ACL PR); if you find you need one, stop and re-plan (consumers before
   producers; the ACL PR merged before the consuming tag).
-- **GitOps:** never `kubectl apply`; `ssh vps` read-only; `kubectl exec` only for admin CLIs. **D34:** no alerting, no counters job.
+- **GitOps:** never `kubectl apply`; `ssh sujaykumar-vps` read-only; `kubectl exec` only for admin CLIs. **D34:** no alerting, no counters job.
 - **Memory-sum rule:** no new pod, no limit change (coach stays 250m / 128 Mi until mi-13).
 - **Frontend:** none (UI is m6a-05/06); theme.css untouched.
 - **Parallel sessions:** check peers' PRs/worktrees before claiming a migration number or an ADR number.

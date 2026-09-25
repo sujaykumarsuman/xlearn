@@ -154,11 +154,11 @@ spec:
 - **any new caller updates this policy in its own infra PR, merged before its tag** (the ADR-0035 §2 standing rule).
 
 **Also in this PR:** `hack/expected-netpol.tsv` gets two rows in mi-02's three-column format (`namespace <TAB> name <TAB> added-by`): `databases<TAB>projects-pgstore-ingress<TAB>mi-03` and `messaging<TAB>nats-ingress<TAB>mi-03`.
-- **Update the embedded copy too.** host-verify runs via `ssh vps 'bash -s' < host-verify.sh` and never sees the file; it reads the table between its `# >>> expected-netpol.tsv` / `# <<< expected-netpol.tsv` markers. Paste the same rows there, byte-identical.
+- **Update the embedded copy too.** host-verify runs via `ssh sujaykumar-vps 'bash -s' < host-verify.sh` and never sees the file; it reads the table between its `# >>> expected-netpol.tsv` / `# <<< expected-netpol.tsv` markers. Paste the same rows there, byte-identical.
 - Run `hack/host-lint.sh` clean before opening the PR. It fails when the embedded copy differs from the file.
 
 **Before merge:**
-- server dry-run **the two new files only**: `ssh vps 'sudo k3s kubectl apply --dry-run=server -f -' < infrastructure/database/cluster/networkpolicy.yaml`, and the same for `infrastructure/messaging/networkpolicy.yaml`. That persists nothing. Don't run `kubectl kustomize` on the directories: they have no `kustomization.yaml` (Flux generates one; don't add one), and `infrastructure/database/cluster/` holds SOPS-encrypted `pg-*.enc.yaml` files that can't be dry-run;
+- server dry-run **the two new files only**: `ssh sujaykumar-vps 'sudo k3s kubectl apply --dry-run=server -f -' < infrastructure/database/cluster/networkpolicy.yaml`, and the same for `infrastructure/messaging/networkpolicy.yaml`. That persists nothing. Don't run `kubectl kustomize` on the directories: they have no `kustomization.yaml` (Flux generates one; don't add one), and `infrastructure/database/cluster/` holds SOPS-encrypted `pg-*.enc.yaml` files that can't be dry-run;
 - run the **selector proof**, which evaluates each policy's selectors against live pods:
   - `get pods -n xlearn -l 'app.kubernetes.io/instance in (…PG list…)' -o name` lists exactly the 6 live DB services;
   - the NATS list lists the 6 live instances (identity and coach pods exist but don't connect yet);
@@ -180,7 +180,7 @@ Existing TCP connections (pgx pools, NATS clients) can survive a new policy thro
    - **Outboxes:** unsent rows are 0 in practice, review and assessment (read-only `select count(*) … where sent_at is null`).
    - **CNPG:** `get clusters.postgresql.cnpg.io -n databases` shows "Cluster in healthy state". The operator logs show no connection errors for 2 min.
    - **App:** `curl -sf https://projects.sujaykumar.dev/xlearn/api/healthz`, and `GET /xlearn/api/u/<owner-username>`. The public dashboard runs gateway → identity → PG, and gateway → assessment and curriculum → PG, and needs no credentials.
-     - **Find the username once, read-only:** `ssh vps 'sudo k3s kubectl exec -n databases projects-pgstore-1 -c postgres -- psql -d xlearndb -Atc "select username from identity.account where username is not null order by created_at limit 3"'`. Prod had one account on 2026-09-24, the owner's. Once m1-02's `role` column is live, filter on `role = 'owner'` instead (mind the shell quoting). Record the username in status.md so later sessions skip the lookup.
+     - **Find the username once, read-only:** `ssh sujaykumar-vps 'sudo k3s kubectl exec -n databases projects-pgstore-1 -c postgres -- psql -d xlearndb -Atc "select username from identity.account where username is not null order by created_at limit 3"'`. Prod had one account on 2026-09-24, the owner's. Once m1-02's `role` column is live, filter on `role = 'owner'` instead (mind the shell quoting). Record the username in status.md so later sessions skip the lookup.
    - **Login smoke:** login, dashboard and coach. Login needs credentials, which an agent never enters. Use the owner's already-signed-in browser session if this session has one; otherwise the credential-free checks above stand, record "owner login smoke pending (MI-5)" as a pending-smoke note in status.md, and carry on (D40).
 3. **Revert** is `git revert` of the MI-5 PR, which fails open: Flux prunes the policies within about 1 min. Revert on any caller error.
 
@@ -240,11 +240,11 @@ identity :8081, curriculum :8082, practice :8083, review :8084, assessment :8085
 ### 6 · Verify [H]
 
 - `hack/host-lint.sh` is clean: the embedded `expected-netpol.tsv` equals the file, now with the 9 new rows.
-- `ssh vps 'bash -s -- --cluster --nats-stage=open' < hack/host-verify.sh` is green:
+- `ssh sujaykumar-vps 'bash -s -- --cluster --nats-stage=open' < hack/host-verify.sh` is green:
   - NetworkPolicy presence covers the 9 new names;
   - pods show no OOMKills and no restarts beyond the two annotation bumps;
   - the NATS stage read works.
-- **Negative check:** `ssh vps "bash -s -- --cluster --nats-stage=open --netpol-file <(printf 'databases\tno-such-policy\tneg\n')" < hack/host-verify.sh` must **FAIL** `cluster.netpol`. The node's bash evaluates the `<(…)`, and mi-02's `--netpol-file` override reads it. That proves the presence check isn't vacuous. Paste both runs into the MI-5a PR.
+- **Negative check:** `ssh sujaykumar-vps "bash -s -- --cluster --nats-stage=open --netpol-file <(printf 'databases\tno-such-policy\tneg\n')" < hack/host-verify.sh` must **FAIL** `cluster.netpol`. The node's bash evaluates the `<(…)`, and mi-02's `--netpol-file` override reads it. That proves the presence check isn't vacuous. Paste both runs into the MI-5a PR.
 - Repeat the login smoke once more (login, dashboard, coach) the same way: in a signed-in session, else it stays on the pending-smoke note.
 - **The next fleet rollout is the full proof:** the next xlearn tag, likely v1.6.0, restarts every caller under both fences. That tag's release checklist already runs `host-verify` and the smoke. Note that in status.md.
 

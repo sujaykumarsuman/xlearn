@@ -3,6 +3,13 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root, **with the owner at the keyboard for the day**.
 > **Plan:** [`../sprints/sprint-spk-04.md`](../sprints/sprint-spk-04.md)   ·   **Milestone:** M6a (spike S6, gates the M6a design freeze)   ·   **Prereqs:** none in `depends_on`; the launch is the go-ahead O1 (D40); the owner's presence (event `ev-s6`) is a before-launch item
 
+## D41 changes (read first; they override the text below where they conflict)
+
+> **D41 (owner, 2026-09-25): spikes first.** All four spikes run **before any build sprint**, so every design yes/no is answered before M1 starts: spk-01 and spk-02 on Fri 2026-09-25 (agent-only, after the MI-0 reboot), spk-03 and spk-04 on Sat 2026-09-26 (spk-03 after the owner's Console step; spk-04 with the owner present). For this sprint, overriding the text below:
+> - **Run on Sat 2026-09-26, with the owner present** (`ev-s6`). The "recommended after M3" timing is superseded; the owner accepted that results age.
+> - **A ≤ 1 h recheck runs before ds-m6a-01** (event `ev-s6-recheck`, non-blocking for everything before M6a): the same shells, the hard gates and M14 only, and a note if the winner or its price changed.
+> - **Sole-passer question, answered by the owner on 2026-09-25: yes.** If GPT-Live passes every hard gate and mini fails one, GPT-Live wins even when its M14 isn't a full point higher (a shell that fails a hard gate isn't viable).
+
 ## Before you launch (owner)
 
 Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
@@ -45,7 +52,7 @@ from your note.
 - [ ] **The owner is present for the day** (the before-launch block, event `ev-s6`) to play the candidate, rate the shells and raise the quota limit.
 - [ ] The owner's OpenAI org is **Tier 1+** and the 2FA state (MI-1) are in the launch message; record both (2FA missing is noted, not a blocker).
 - [ ] Chrome stable, Firefox and Safari installed; `go version` ≥ 1.26.
-- [ ] **No command touches production:** no `ssh vps`, no `kubectl` (the laptop's context tunnels to production).
+- [ ] **No command touches production:** no `ssh sujaykumar-vps`, no `kubectl` (the laptop's context tunnels to production).
 - [ ] Parallel sessions: `gh pr list --state open`, `git worktree list`, ListAgents — no open PR edits `docs/v2/research/t6-realtime-interviewer.md` or adds `docs/v2/research/t6-s6-fixtures/`.
 
 ## Do this (in order)

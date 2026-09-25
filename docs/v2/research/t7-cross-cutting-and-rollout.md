@@ -16,7 +16,7 @@
 
 # T7: cross-cutting, infra-first rollout and the v2 milestone map
 
-Research and design only, 2026-09-24. Nothing in `xlearn` or `../infra` was changed, and nothing was tagged, applied or restarted. Evidence comes from code at `2681862` (v1.5.0 plus docs; the live tag v1.5.1, `fff530e`, adds only F010's coach and onboarding fixes, so the identity, gateway and events citations hold, with `store.go` lines shifted by +2), `../infra` at `d16895f` (`origin/main` is `37c4fe6`, infra#28, which adds the `hack/host-*` scripts), read-only `ssh vps` (get/describe/top, `/varz`, `/jsz`, `sar`), and the web. The four slice reports and the critique are working papers and are not committed. The body cites them in plain text ("ops slice", "critique MAJ-2").
+Research and design only, 2026-09-24. Nothing in `xlearn` or `../infra` was changed, and nothing was tagged, applied or restarted. Evidence comes from code at `2681862` (v1.5.0 plus docs; the live tag v1.5.1, `fff530e`, adds only F010's coach and onboarding fixes, so the identity, gateway and events citations hold, with `store.go` lines shifted by +2), `../infra` at `d16895f` (`origin/main` is `37c4fe6`, infra#28, which adds the `hack/host-*` scripts), read-only `ssh sujaykumar-vps` (get/describe/top, `/varz`, `/jsz`, `sar`), and the web. The four slice reports and the critique are working papers and are not committed. The body cites them in plain text ("ops slice", "critique MAJ-2").
 
 **Notation**
 - Paths: `X/` = this repo (`sujaykumarsuman/xlearn`), `I/` = the sibling `../infra` repo (`sujaykumarsuman/infra`).
@@ -162,7 +162,7 @@ The budgets sum to **3.375 of the 3.75 GiB ceiling**.
   - subscribe only on `_INBOX_<svc>.>`.
 - **Other identities:**
   - **ops** (all of `$JS.API.>`): the seed is kept **offline** with the age-key copies.
-    - **Break-glass only** (m5): an `ssh vps` port-forward plus the `nats` CLI on the owner's machine with the offline seed, recorded in status.md.
+    - **Break-glass only** (m5): an `ssh sujaykumar-vps` port-forward plus the `nats` CLI on the owner's machine with the offline seed, recorded in status.md.
     - It is the only sanctioned manual path. A Job carrying the seed would be a by-hand apply, and D12 has no restore runbook.
   - **opscheck** has **no NATS identity**. It reads `:8222`, fenced by a NetworkPolicy.
 
@@ -215,7 +215,7 @@ The budgets sum to **3.375 of the 3.75 GiB ceiling**.
   - L track: `invite(id, code_sha256 UNIQUE, expires_at, note≤120, intended_email?, tier, region?, redeemed_at, redeemed_account_id ON DELETE SET NULL, revoked_at)` and `admin_audit(at, verb, target, detail)`.
   - M4: `account_consent(account_id, kind, version, granted_at, withdrawn_at)`.
 - **Mint.**
-  - Run `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin invite create --ttl 7d [--tier standard] [--email x] [--region IN] --note "…"'`.
+  - Run `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin invite create --ttl 7d [--tier standard] [--email x] [--region IN] --note "…"'`.
   - It prints `https://projects.sujaykumar.dev/xlearn/auth#invite=<22 chars>` plus the seats (e.g. `5/15`).
   - The owner sends the link over his own channel; **xLearn sends no email**.
   - The code sits in the **fragment**: it never reaches access logs or the Referer header, and it adds no new top-level SPA segment.

@@ -65,10 +65,10 @@ This session executes **ADR-0034 §1.4 steps 3–7 in order**:
   - `v2.0.0-rc.N` is a GitHub prerelease, and its four-phase rehearsal is green;
   - the **rc'd SHA** is in status.md;
   - `hack/ga-preflip-check.sh` and its self-test are green on `main`.
-- [ ] **No active learner:** `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account list --role learner --status active'` → empty. Terminal only (PII).
+- [ ] **No active learner:** `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account list --role learner --status active'` → empty. Terminal only (PII).
 - [ ] **Production settled and healthy:**
   - no host change, reboot or restart-inducing infra PR in the last 24 h (status.md; `git -C ../infra log --since=24.hours origin/main`);
-  - `ssh vps 'k3s kubectl get kustomizations,helmreleases -A'` is all Ready.
+  - `ssh sujaykumar-vps 'k3s kubectl get kustomizations,helmreleases -A'` is all Ready.
 - [ ] **The launch message carries** the snapshot's time or id and the weekly-image date (≤ 7 days). The owner's go-concurrency visibility is set (a before-launch item).
 - [ ] **Parallel sessions:**
   - no peer tag or open PR claims `v2.0.0` or edits `../infra/apps/image-automation.yaml`;
@@ -102,7 +102,7 @@ This session executes **ADR-0034 §1.4 steps 3–7 in order**:
      - no pod restarts in `xlearn`.
 
      If anything moved, **stop**: revert the PR (R-b) and investigate.
-4. **[H] `host-verify`** (plan task 4). `ssh vps 'bash /root/host-verify.sh --cluster --with-runner --nats-stage=n4'` → no FAIL: the memory sum with the runner counted, Flux, pods, CNPG, PVCs/disk, NATS `auth_required`, NetworkPolicies, steal. Save the summary.
+4. **[H] `host-verify`** (plan task 4). `ssh sujaykumar-vps 'bash /root/host-verify.sh --cluster --with-runner --nats-stage=n4'` → no FAIL: the memory sum with the runner counted, Flux, pods, CNPG, PVCs/disk, NATS `auth_required`, NetworkPolicies, steal. Save the summary.
 5. **[O] Snapshot** (plan task 5, `ev-ga`) — **taken before launch**:
    - Record the snapshot's time or id and the **last weekly image date** from the launch message.
    - Go straight on to the tag: it must land the same day (the snapshot has a ~1-day life). If it can't, don't tag on a lapsed snapshot: revert step 3's PR, end the freeze, and record ⛔ "snapshot lapsed; re-take it and relaunch".
@@ -125,7 +125,7 @@ This session executes **ADR-0034 §1.4 steps 3–7 in order**:
 7. **[X] Verify + GA smoke** (plan task 7; step 7).
    - **The ADR-0034 §6 after-tag lines:**
      - healthz → `"version":"v2.0.0"`;
-     - `ssh vps 'k3s kubectl get deploy -n xlearn -o custom-columns=…'` → 8 on `:2.0.0`, ready;
+     - `ssh sujaykumar-vps 'k3s kubectl get deploy -n xlearn -o custom-columns=…'` → 8 on `:2.0.0`, ready;
      - `get imagepolicy -n flux-system` → the 8 fleet at `2.0.0`, **runner and evalpack unchanged**; the runner namespace has no restarts;
      - `get helmreleases -A` → every `xlearn-*` Ready;
      - smoke: login, the dashboard, coach.
@@ -150,7 +150,7 @@ This session executes **ADR-0034 §1.4 steps 3–7 in order**:
 - **GitOps:**
   - the widening is **its own infra PR**, never folded into the tag;
   - never `kubectl apply`/`edit`, never edit an `apps/xlearn-*.yaml` tag line, never suspend the shared IUA;
-  - `ssh vps` stays read-only except the sanctioned `identity admin` CLI (logged).
+  - `ssh sujaykumar-vps` stays read-only except the sanctioned `identity admin` CLI (logged).
 - **Tags:** `v2.0.0` exactly once, on the rehearsed commit (or a docs-only descendant). **Never move or re-push a tag.** From `v2.0.0` on, the minor moves only at a GA flip (`v2.1.0` = interviewer).
 - **No contract:** asserted by `deploy.yml` and the pre-flip check. The floor is unchanged. **No migration or code change in this sprint.**
 - **No ACL PR, no NetworkPolicy PR** (no new caller); **memory-sum** unchanged (no new pod).

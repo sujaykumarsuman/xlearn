@@ -204,7 +204,7 @@ records). Per [t4 §2.6](../research/t4-judge-contract.md#26-evaluation):
 - **`judge admin`** (D34: the on-demand read that replaces opscheck's J1–J5): `cmd/judge/main.go` dispatches
   `judge admin …` before `run()`; code in `internal/judge/admin/`; static Go, `flag` parsing, distroless-safe (the
   [m1-04](sprint-m1-04.md) identity pattern). Run as
-  `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-judge -- judge admin <verb>'`. Every verb, reads included, writes an
+  `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-judge -- judge admin <verb>'`. Every verb, reads included, writes an
   `admin_audit` row; output never contains learner code, hidden data or secrets. `--json` on every verb.
 
 | Verb | Shows / does | Replaces (t7 J checks) |

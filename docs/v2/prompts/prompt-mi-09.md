@@ -68,7 +68,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
   - the merged runbook.
 - Each step below is tagged with the plan task(s) it ticks in the plan's Status table (the order differs from
   the plan's numbering).
-- `ssh vps` is **read-only** for you. You never change the live host.
+- `ssh sujaykumar-vps` is **read-only** for you. You never change the live host.
 - Read-only facts from 2026-09-24, to re-check:
   - kernel 6.8.0-90 (H0 reboots into ≥ 6.8.0-142 on 09-25); k3s `v1.36.4+k3s1`;
   - the rendered `config.toml` already imports `config-v3.toml.d/*.toml`, and that directory is absent;
@@ -80,7 +80,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 ## Entry gates — verify first (stop and report if any is unmet)
 
 - [ ] spk-01 and spk-02 report **GO** (P0–P3 + image volume), and t3 §16.1–16.4 exist. If the spike forced **R1b**, stop: that's a D21 move trigger (R2), and the window's sandbox block moves to the runner VPS.
-- [ ] MI-0 done: `ssh vps uname -r` shows ≥ 6.8.0-142, and `host-verify --cluster` was green after it.
+- [ ] MI-0 done: `ssh sujaykumar-vps uname -r` shows ≥ 6.8.0-142, and `host-verify --cluster` was green after it.
 - [ ] mi-02 merged: `host-verify.sh --help` lists `--cluster`, `--with-runner` and `--nats-stage`.
 - [ ] mi-08's MI-11a is merged, or its branches are pushed (no PRs) and ready to batch into the window. Record which; it gates the window, not this session.
 - [ ] The window date Sat 2026-10-24 is on the calendar (`ev-host-window` in status.md).
@@ -223,7 +223,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 
 ## Constraints
 
-- **You never change the live host.** `ssh vps` is read-only. The window runs in its own session on its date
+- **You never change the live host.** `ssh sujaykumar-vps` is read-only. The window runs in its own session on its date
   (ev-host-window).
 - **GitOps:** never `kubectl apply`. Host state is the one sanctioned manual path, and it stays scripted,
   BOM-hashed and asserted by `host-verify` after every reboot, k3s upgrade or rebuild

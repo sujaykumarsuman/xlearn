@@ -65,7 +65,7 @@ the pilot's items arrive in [p-02](../sprints/sprint-p-02.md) and its pack in [p
   `personality` with `ADDR_NO_RANDOMIZE` (0x0040000), plus the self-`execve` if §16.2 needed it. RuntimeDefault admits
   only 0x0/0x8/0x20000/0x20008/0xffffffff. Check it read-only: compare the heredoc in `../infra/hack/host-bootstrap.sh`
   with §16.2, and confirm the host matches it (`host-verify --cluster --expect-sandbox`'s `sandbox.seccomp` sha256 = BOM,
-  or `ssh vps 'sudo cat /var/lib/kubelet/seccomp/profiles/xlearn-runner.json'`)
+  or `ssh sujaykumar-vps 'sudo cat /var/lib/kubelet/seccomp/profiles/xlearn-runner.json'`)
 - [ ] Parallel sessions: no open peer PR on `internal/runner/`, `deploy/runner.Dockerfile`, `runner-release.yml`, `ci.yml` (the `runner-it` / `runner-image-acceptance` jobs), `internal/judge/grader/`; no `runner-v*` tag in flight
 
 If Q5 recorded **SQL**, stop: p-01 must be re-planned to a `sql-pg` profile first. If status.md marks p-01 ⛔ "needs
@@ -179,7 +179,7 @@ window"), and run **Ship**. Nothing waits. A re-run on the booked date (see **Be
 - **Runner hardening is not negotiable:** the host `vm.mmap_rnd_bits` is never lowered; `personality` is arg-filtered
   at both layers (the image's exec filter and, if it must change, the pod-level host file, which gains exactly
   `ADDR_NO_RANDOMIZE` and nothing broader); never exec into the runner (the VAP denies it; delete the pod instead).
-- **GitOps:** no `kubectl apply`; the runner deploys through the 2nd IUA; `ssh vps` is read-only except the port-forward
+- **GitOps:** no `kubectl apply`; the runner deploys through the 2nd IUA; `ssh sujaykumar-vps` is read-only except the port-forward
   and, on a re-run in a booked host window, step 2's runbook (pre-approved by launching this prompt, D40).
   **Never move or re-push a tag** — fix forward with `runner-v1.1.1`.
 - **Memory-sum rule:** the runner's limits (2 CPU / 3 GiB) don't change; the slot budget or the go-race cap absorbs the

@@ -3,6 +3,10 @@
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
 > **Plan:** [`../sprints/sprint-spk-03.md`](../sprints/sprint-spk-03.md) · **Milestone:** MI (MI-14's WIF item, MI-10 spike week) · **Prereqs:** [spk-01](../sprints/sprint-spk-01.md) (its VM, or any throwaway k3s). Launching this prompt is the WIF go-ahead (D23, D40)
 
+## D41 changes (read first; they override the text below where they conflict)
+
+> **D41 (owner, 2026-09-25): spikes first.** All four spikes run **before any build sprint**, so every design yes/no is answered before M1 starts: spk-01 and spk-02 on Fri 2026-09-25 (agent-only, after the MI-0 reboot), spk-03 and spk-04 on Sat 2026-09-26 (spk-03 after the owner's Console step; spk-04 with the owner present). For this sprint: the calendar line below is superseded (run Sat 2026-09-26). The throwaway VM is **`xlearn-wif`**, created on 2026-09-25 by the build-plan session (2 CPU, 4 GiB, k3s `v1.36.4+k3s1`, issuer `https://kubernetes.default.svc.cluster.local`); its public JWKS was handed to the owner for the Console step. Run `multipass start xlearn-wif` if it's stopped; purge it at teardown.
+
 ## Before you launch (owner)
 
 Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.

@@ -7,6 +7,10 @@
 > **Calendar:** **Fri 2026-10-16** if it fits the spike week (ev-spike-week, after [spk-02](sprint-spk-02.md)); otherwise any day before M4 — it must report before [mi-12](sprint-mi-12.md) (December).
 > **Execute with:** [`../prompts/prompt-spk-03.md`](../prompts/prompt-spk-03.md) — one prompt, one session.
 
+## D41 changes (read first; they override the text below where they conflict)
+
+> **D41 (owner, 2026-09-25): spikes first.** All four spikes run **before any build sprint**, so every design yes/no is answered before M1 starts: spk-01 and spk-02 on Fri 2026-09-25 (agent-only, after the MI-0 reboot), spk-03 and spk-04 on Sat 2026-09-26 (spk-03 after the owner's Console step; spk-04 with the owner present). For this sprint: the calendar line below is superseded (run Sat 2026-09-26). The throwaway VM is **`xlearn-wif`**, created on 2026-09-25 by the build-plan session (2 CPU, 4 GiB, k3s `v1.36.4+k3s1`, issuer `https://kubernetes.default.svc.cluster.local`); its public JWKS was handed to the owner for the Console step. Run `multipass start xlearn-wif` if it's stopped; purge it at teardown.
+
 ## Status
 
 _Overall:_ ⬜ Not started

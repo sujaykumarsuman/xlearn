@@ -225,7 +225,7 @@ log publisher and marks events sent. One PR in `../infra`, **its own task, merge
   Record this ownership in the decisions log.
 - **NetworkPolicy standing rule** ([ADR-0035](../../adr/0035-v2-operations-nats-auth-limits-capacity.md) §2): identity is a new NATS caller.
   - **If MI-5's `messaging` policy ([mi-03](sprint-mi-03.md)) is live:** check that it admits identity on 4222
-    (ADR-0035 §2 forward-declares it) with `ssh vps 'k3s kubectl get networkpolicy -n messaging -o yaml'`. If it
+    (ADR-0035 §2 forward-declares it) with `ssh sujaykumar-vps 'k3s kubectl get networkpolicy -n messaging -o yaml'`. If it
     doesn't, add identity to it in this PR.
   - **If MI-5 isn't live:** there's no policy to change. MI-5 forward-declares identity when it lands.
 - Memory: no new pod; identity's limit (128 Mi) is unchanged — note the post-tag RSS in status.md.

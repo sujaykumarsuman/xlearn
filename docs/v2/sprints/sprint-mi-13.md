@@ -223,7 +223,7 @@ GitHub release title `v2.0.N — v2.1 build · MI-16 voice gates`. Then the MI-1
   and carry on with the credential-free checks below. Expect **404 from coach** — today coach's default mux answers `text/plain` `404 page not found`
   (its handler lands in m6b-01) — **not** the gateway's typed JSON `not_found` (which would mean the cohort gate or the
   route missed). The proof is the read-only coach access log, which tells the two apart even if m6a gave coach a typed
-  404: `ssh vps 'k3s kubectl logs -n xlearn deploy/xlearn-coach --since=5m' | grep '/segments'` shows
+  404: `ssh sujaykumar-vps 'k3s kubectl logs -n xlearn deploy/xlearn-coach --since=5m' | grep '/segments'` shows
   `POST /interviews/<id>/segments` with `status 404`. The `aud=coach` bearer is pinned by task 2's test (an unregistered coach route checks no JWT, so a
   live 404 can't prove it). The agent checks signed out: `curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' https://projects.sujaykumar.dev/xlearn/api/v1/interviews/x/segments` → `401`.
 - **Layered-timeout audit:** Traefik (3.7.8 on 2026-09-24) has no `respondingTimeouts` override — read the live args
@@ -273,7 +273,7 @@ Release checklist ([ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and
 - [ ] (ADR-0035 §2 standing rule, not part of ADR-0034 §6) Every new in-cluster HTTP or NATS caller this tag introduces has its NetworkPolicy (ingress and egress) change in its own infra PR, merged before the tag
 
 **For this tag:** ACL PRs — n/a (no stream or consumer); new service — n/a; contract / erase / GA — n/a, so no
-snapshot; **M6: no live interviews** — `ssh vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin interviews --live'`
+snapshot; **M6: no live interviews** — `ssh sujaykumar-vps 'sudo k3s kubectl exec -n xlearn deploy/xlearn-coach -- coach admin interviews --live'`
 is empty (also before merging task 5's PR); major = `.release-line` = `2`; standing rule — no new caller (gateway → coach
 exists under MI-5a/MI-15; coach → provider 443 is task 6); flags — none new (the route sits behind the existing cohort gate).
 Extra after-tag reads: task 7's MI-16 checks. Rollback: R-c revert + the next patch (default) or R-b narrowing to the

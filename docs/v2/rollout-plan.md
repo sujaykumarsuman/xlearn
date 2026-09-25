@@ -107,7 +107,7 @@ One PR carries the union of every topic's asks, all default-off:
 | **Image before HelmRelease or policy** | A brief crash-loop until the schema exists self-heals, as in v1. |
 | **Verify the host** | Run `host-verify --cluster` (with the MI-8 extension) after every reboot, k3s upgrade, rebuild or restart-inducing infra PR. |
 | **Snapshots** | Check the date of the last Hostinger weekly image before any restart-inducing step. Take a **manual snapshot right before any contract, erase or GA tag**, and only once host changes have settled. |
-| **No hand-applied changes** | Never `kubectl apply` by hand. The sanctioned manual paths are:<ul><li>the admin CLIs via `kubectl exec` (D33);</li><li>the **NATS ops break-glass**: an `ssh vps` port-forward plus the `nats` CLI from the owner's machine with the offline ops seed.</li></ul>Each use is logged in status.md. |
+| **No hand-applied changes** | Never `kubectl apply` by hand. The sanctioned manual paths are:<ul><li>the admin CLIs via `kubectl exec` (D33);</li><li>the **NATS ops break-glass**: an `ssh sujaykumar-vps` port-forward plus the `nats` CLI from the owner's machine with the offline ops seed.</li></ul>Each use is logged in status.md. |
 | **Infra PRs stand alone** | Infra PRs are their own tasks, **never folded into a tag**. |
 | **Flux and tags** | Never edit the tag line. Never suspend the shared IUA: it also freezes airlift, landscape, hub and kubescope. **Never move or re-push a tag:** GHCR is overwritten, and Flux doesn't roll because the tag string is unchanged. |
 | **Parallel sessions** | Check peers' tags, PRs and ADR numbers before tagging or numbering. |
@@ -587,9 +587,9 @@ None of these gates v2.0 GA. All of them gate the first real invitee.
 | **PRD Q5:** the pilot course | P entry | go-concurrency (SQL fallback) |
 | **PRD Q7:** per-problem time budgets | a future research session; not a gate | manifest default of 45 min, hint at 15 (D18) |
 | **Artboard production** | before M1b (AB01–AB03) | ✅ decided (D38, D40): agents draft all boards in `ds-*` sprints, and the boards land on CI green. The merge is the freeze. The owner may review after the fact: D38's review happens asynchronously, per D40. |
-| **Spike go-aheads:** P0–P3 + image volume (D23); WIF | mid-October; before M4 | one spike week, with WIF included if convenient. Launching spk-01 (spk-03 for WIF) is the go-ahead (D40) |
+| **Spike go-aheads:** P0–P3 + image volume (D23); WIF | mid-October; before M4 | one spike week, with WIF included if convenient. Launching spk-01 (spk-03 for WIF) is the go-ahead (D40) **D41:** pulled forward to Fri–Sat 2026-09-25/26, before any build sprint. |
 | **October host-window date** | when the spike is booked | late October, batched with MI-11a |
-| **S6 scheduling** (approved; owner present) | before the M6a design freeze | any time the owner is present; M6a starts after M3 |
+| **S6 scheduling** (approved; owner present) | before the M6a design freeze | any time the owner is present; M6a starts after M3 **D41:** Sat 2026-09-26 with the owner, plus a ≤ 1 h recheck before ds-m6a-01. |
 | **infra#28** | before MI-0 | ✅ merged 2026-09-24; local `../infra` `main` synced. |
 | **MI-2a / MI-2b / MI-2c** | now | ✅ all done 2026-09-24. MI-2b (xlearn#51) and MI-2c (xlearn#52, infra#30) are live in v1.5.2, so signup is closed in production; MI-2a is xlearn#53 + infra#29. The `DEV_AUTH` guard on `open` moves to M1b (§4) |
 | **MI-5b** (DNS, cert, bookmarks) | before the first `tester` (L-E) | weeks 2–4. Testers count as non-owner accounts (ADR-0033 §11). |

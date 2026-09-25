@@ -43,7 +43,7 @@
 ## Entry gates — verify first (stop and report if any is unmet)
 
 - [ ] **AB04 and AB05 frozen**: the DS-M2-01 PR is merged (the merge is the freeze, D40), and the board files exist.
-- [ ] **v1.9.0 live**: healthz and `k3s kubectl get deploy -n xlearn` over read-only `ssh vps`.
+- [ ] **v1.9.0 live**: healthz and `k3s kubectl get deploy -n xlearn` over read-only `ssh sujaykumar-vps`.
 - [ ] **M2-03 merged** on `main` (the gateway and web serialization).
 - [ ] **M2-01's touch endpoints are on `main`** ([M2-01 task 4](../sprints/sprint-m2-01.md#4--touch-endpoints--practice--review-read-x)):
   - `POST /touches/{revision_item_id}/start` (practice checks ownership, pending, due and the lowest level; it resumes an open touch);
@@ -134,7 +134,7 @@
 - **Honesty gating:** every touch route goes through `withhold()` and the enumeration test. Lock-ins never echo correctness.
 - **Frontend:** `theme.css` verbatim, no Tailwind, the dark theme, a match to the frozen boards. Difficulty tokens are Easy=`--ds-ok`, Medium=`--ds-warn`, Hard=`--ds-err`.
 - **No new pod, env var, subject or in-cluster caller**, so there's no NetworkPolicy, ACL or infra PR and the memory sum is unchanged.
-- **GitOps:** no `kubectl apply`. `ssh vps` is read-only here.
+- **GitOps:** no `kubectl apply`. `ssh sujaykumar-vps` is read-only here.
 - **No alerting (D34).**
 - **Parallel sessions:** check peers' PRs, tags and worktrees before merging, and before any ADR number.
 - **No tag in this sprint.**

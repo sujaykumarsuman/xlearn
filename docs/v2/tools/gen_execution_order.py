@@ -82,6 +82,8 @@ w("> each prompt is self-contained in [`prompts/`](prompts/). Dates are **indica
 w("")
 w("**How to read it**")
 w("")
+w("- **D41: the four spikes run first** (W0, Sep 25–26), before prompt 1, so every design yes/no is answered before")
+w("  the build starts; their order numbers are unchanged.")
 w("- **Run prompts in numbered order.** Inside a week, prompts in different **lanes** (infra · product · design ·")
 w("  content/spike) can run as parallel sessions (up to about three), as long as their entry gates pass. Check")
 w("  peers' open PRs first; parallel prompts in the same service collide on migrations.")
@@ -135,7 +137,7 @@ w("")
 
 # ------------------------------------------------------------------ 2. timeline (gantt)
 WDATES = {
- "W1": ("2026-09-25", "2026-10-02"), "W2": ("2026-10-05", "2026-10-09"), "W3": ("2026-10-12", "2026-10-16"),
+ "W0": ("2026-09-25", "2026-09-26"), "W1": ("2026-09-28", "2026-10-02"), "W2": ("2026-10-05", "2026-10-09"), "W3": ("2026-10-12", "2026-10-16"),
  "W4": ("2026-10-17", "2026-10-23"), "W5": ("2026-10-24", "2026-11-01"), "W6": ("2026-11-02", "2026-11-08"),
  "W7": ("2026-11-09", "2026-11-20"), "W8": ("2026-11-21", "2026-11-30"), "W9": ("2026-12-01", "2026-12-23"),
  "W10": ("2026-12-28", "2027-01-15"),
@@ -163,7 +165,7 @@ w("    axisFormat %d %b")
 w("    tickInterval 2week")
 w("    section Owner calendar")
 w("    H0 :milestone, ev0, 2026-09-25, 0d")
-w("    spikes :crit, ev1, 2026-10-12, 5d")
+w("    spikes :crit, ev1, 2026-09-25, 2d")
 w("    window :milestone, ev2, 2026-10-24, 0d")
 k = 0
 for c in CLUBS:

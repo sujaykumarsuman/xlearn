@@ -66,7 +66,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
    - In `host-bootstrap.sh` (no apply): add `jq` **and `sysstat`** to `PKGS` (line 65), and ensure `sysstat.service` + `sysstat-collect.timer` are enabled and active, the way it handles `iscsid`.
 
 2. **[H] Memory sum** (plan task 1):
-   - Create `hack/memory-budget.tsv`, seeded from the 23 limitless containers at their current `top` × 1.2 and marked `provisional`. Read it read-only with `ssh vps 'k3s kubectl top pods -A --containers --no-headers'`.
+   - Create `hack/memory-budget.tsv`, seeded from the 23 limitless containers at their current `top` × 1.2 and marked `provisional`. Read it read-only with `ssh sujaykumar-vps 'k3s kubectl top pods -A --containers --no-headers'`.
    - Embed it between marker lines.
    - Implement the terms:
      - Σ limits (incl. native sidecars);
@@ -108,22 +108,22 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
      - shellcheck on `sample-top.sh`.
    - Implement `--json`: one escaped object per check plus a summary. Every line must parse with `jq -c .`.
    - Update the script header, the usage text, and the README host-scripts section.
-   - Run the script on the node **only** in the piped form, `ssh vps 'bash -s -- --cluster' < hack/host-verify.sh`, which writes nothing. Also run it with `--with-runner`, `--nats-stage=n3`, `--nats-stage=n4` and `--json`.
+   - Run the script on the node **only** in the piped form, `ssh sujaykumar-vps 'bash -s -- --cluster' < hack/host-verify.sh`, which writes nothing. Also run it with `--with-runner`, `--nats-stage=n3`, `--nats-stage=n4` and `--json`.
    - Open the PR with that output and `host-lint.sh` in the body, and merge it. infra has no CI.
-   - **The `/root` copy (pre-approved, D40).** After the merge, run `scp hack/host-verify.sh vps:/root/` once: it's a node write this plan names, so launching this prompt pre-approves it. Then run `ssh vps 'bash /root/host-verify.sh --cluster'` once; it must be green. Record it. If the refresh fails, record "`/root/host-verify.sh` stale" as a pending item.
+   - **The `/root` copy (pre-approved, D40).** After the merge, run `scp hack/host-verify.sh sujaykumar-vps:/root/` once: it's a node write this plan names, so launching this prompt pre-approves it. Then run `ssh sujaykumar-vps 'bash /root/host-verify.sh --cluster'` once; it must be green. Record it. If the refresh fails, record "`/root/host-verify.sh` stale" as a pending item.
 
 9. **[H] Sampler** (plan task 8):
    - It writes on the node: `/root/sample-top.sh`, `/var/tmp/xlearn-top.tsv` and `/var/tmp/xlearn-top.pid`. The plan names these writes, so launching this prompt pre-approves them (D40). Don't ask; build and start it:
      - `hack/sample-top.sh` samples every 5 minutes with a timestamp, stops itself after `SAMPLE_HOURS=168`, and writes a PID file;
-     - start it with `scp hack/sample-top.sh vps:/root/ && ssh vps 'nohup setsid bash /root/sample-top.sh </dev/null >/dev/null 2>&1 &'`;
+     - start it with `scp hack/sample-top.sh sujaykumar-vps:/root/ && ssh sujaykumar-vps 'nohup setsid bash /root/sample-top.sh </dev/null >/dev/null 2>&1 &'`;
      - record the start time and PID.
    - It ships in the same infra PR, or a follow-up.
 
 10. **[H → X] MI-0 follow-up** (plan task 9):
-    - Verify the H0 result yourself, read-only (event `ev-mi0`): `ssh vps uname -r` shows kernel 6.8.0-142, and the piped `--cluster` run is green after the reboot. On 2026-09-25 the node was still on 6.8.0-90.
+    - Verify the H0 result yourself, read-only (event `ev-mi0`): `ssh sujaykumar-vps uname -r` shows kernel 6.8.0-142, and the piped `--cluster` run is green after the reboot. On 2026-09-25 the node was still on 6.8.0-90.
     - The S0 log `/tmp/xlearn-s0-vmstat.log` has a 72 h window that ends **2026-09-27 ≈ 07:52 UTC**. Take the branch that applies:
       - **`ev-mi0` came first:** the reboot emptied `/tmp`. Use the copy the before-launch note names; if it names none, the log is lost.
-      - **The window ended first:** copy the log off yourself (`scp vps:/tmp/xlearn-s0-vmstat.log <scratchpad>/`, a read). Once the copy is verified, delete it from the node yourself (`ssh vps rm /tmp/xlearn-s0-vmstat.log`): a node write the plan names, so launching this prompt pre-approves it (D40). Record the deletion.
+      - **The window ended first:** copy the log off yourself (`scp sujaykumar-vps:/tmp/xlearn-s0-vmstat.log <scratchpad>/`, a read). Once the copy is verified, delete it from the node yourself (`ssh sujaykumar-vps rm /tmp/xlearn-s0-vmstat.log`): a node write the plan names, so launching this prompt pre-approves it (D40). Record the deletion.
     - If a copy exists, compute steal p50, p95 and max from the `st` column and append an S0 row to [t3 §15](../research/t3-sandbox.md). Otherwise record "lost at reboot; sar is the source".
 
 11. **[X] Record** (branch `docs/mi-02-status`):
@@ -134,7 +134,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 ## Constraints
 
 - **`host-verify.sh` is read-only, provably.** It uses `kubectl get` and `top` only; JSON goes through `get --raw` via the API-server proxy. No `exec`, `port-forward`, temp files or network calls outside the node. host-lint enforces this.
-- **`ssh vps` stays read-only** except the three node writes this prompt names, which launching it pre-approves (D40): the `/root/host-verify.sh` refresh, the sampler's files, and deleting the S0 log. Verification always uses the piped form, `bash -s`, which writes nothing.
+- **`ssh sujaykumar-vps` stays read-only** except the three node writes this prompt names, which launching it pre-approves (D40): the `/root/host-verify.sh` refresh, the sampler's files, and deleting the S0 log. Verification always uses the piped form, `bash -s`, which writes nothing.
 - **D34, no alerting:**
   - no timer, CronJob, push channel, Flux `Provider`/`Alert`, healthchecks.io or opscheck;
   - the sampler is a self-terminating one-off, never a monitor;

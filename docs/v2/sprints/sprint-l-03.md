@@ -30,7 +30,7 @@ _Overall:_ ⬜ Not started
 
 - [ ] **`v1.12.0` live** ([l-02](sprint-l-02.md)). identity's erase transaction exists, and so do `erase_request` and `released_username` from `v1.11.0` ([l-01](sprint-l-01.md)).
 - [ ] **`v1.7.0` live** ([m1-04](sprint-m1-04.md), [m1-05](sprint-m1-05.md)). This means `identity admin` (the `account` verbs, `seats`, `admin_audit`), `resolveSignupMode(raw, devAuth)` (L7, `invite` parsed but run as `closed`), the `identity.seats` advisory lock on `reactivate` and `set-role … learner`, and the gateway limiter package `internal/gateway/limit` with L2.
-- [ ] **Production is `SIGNUP_MODE=closed`.** Check it read-only in `../infra/apps/xlearn-identity.yaml` and with `ssh vps 'k3s kubectl -n xlearn get deploy xlearn-identity -o jsonpath="{.spec.template.spec.containers[0].env}"'`. The "inert" release claim depends on it.
+- [ ] **Production is `SIGNUP_MODE=closed`.** Check it read-only in `../infra/apps/xlearn-identity.yaml` and with `ssh sujaykumar-vps 'k3s kubectl -n xlearn get deploy xlearn-identity -o jsonpath="{.spec.template.spec.containers[0].env}"'`. The "inert" release claim depends on it.
 - [ ] **No open peer PR edits `internal/identity/` or the gateway route table** (`internal/gateway/bff.go` `apiRoutes`). M3's gateway sprints ([m3-09](sprint-m3-09.md)) may be in flight: rebase onto them, don't collide. Check with `gh pr list`, `git worktree list` and ListAgents.
 
 ## Goal
@@ -187,7 +187,7 @@ Sources: [ADR-0033 §9](../../adr/0033-invite-only-admission-and-owner-admin.md#
 
 ### 8 · Docs [X]
 
-- `docs/runbooks/identity-admin.md` (m1-04's runbook): add the `invite create|list|revoke` examples through `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin invite …'`, the extended `seats` output, the R0 seat-freeze lever (lower `SEAT_CAP` by infra PR), and the rule **"no invite in production outside the L rehearsal ([l-04](sprint-l-04.md)) until the v3 opening"**. Log each use in `docs/v2/status.md`.
+- `docs/runbooks/identity-admin.md` (m1-04's runbook): add the `invite create|list|revoke` examples through `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin invite …'`, the extended `seats` output, the R0 seat-freeze lever (lower `SEAT_CAP` by infra PR), and the rule **"no invite in production outside the L rehearsal ([l-04](sprint-l-04.md)) until the v3 opening"**. Log each use in `docs/v2/status.md`.
 - `docs/architecture/api.md` + `openapi.yaml`:
   - the two new routes;
   - `invite` on `POST /api/auth/signup`;
@@ -213,7 +213,7 @@ Sources: [ADR-0033 §9](../../adr/0033-invite-only-admission-and-owner-admin.md#
 **Merge only. It ships dark in the next tag** after the merge (indicatively `v1.14.0`, cut by [m3-13](sprint-m3-13.md); `v1.15.0` or `v1.16.0` if it lands later). It adds no NATS subject or consumer (`tier` is a field on an existing subject), no in-cluster caller, no pod and no infra change, so the memory sum is unchanged. Its migration is expand only, so the rollback floor is unchanged.
 **For the tag sprint that carries it:** add three checks to that tag's smoke, and record them in [`../status.md`](../status.md). They prove "nothing visible changes on production":
 - `curl -s https://projects.sujaykumar.dev/xlearn/api/v1/auth/config` → `{"signup":"closed"}` (read-only);
-- `identity admin seats` → `outstanding invites 0`. This runs through `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin seats'`, and m1-04 audits every verb, reads included, so it writes an `admin_audit` row: it is a **sanctioned manual path** ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)), not a read-only check. The **tag sprint's session** runs it itself (approved by that prompt's launch, D40), and it is logged in status.md's CLI-use log;
+- `identity admin seats` → `outstanding invites 0`. This runs through `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin seats'`, and m1-04 audits every verb, reads included, so it writes an `admin_audit` row: it is a **sanctioned manual path** ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)), not a read-only check. The **tag sprint's session** runs it itself (approved by that prompt's launch, D40), and it is logged in status.md's CLI-use log;
 - the auth page looks as it does in `v1.12.0` (read-only).
 
 The carrying tag sprint's plan (indicatively [m3-13](sprint-m3-13.md)) doesn't list these checks, so the handoff is the note this sprint leaves in status.md (Definition of Done). **Every tag sprint's agent must read status.md's pending-smoke notes before tagging** and run any that apply to its tag.

@@ -188,11 +188,11 @@ contract, erase or GA tag).
 By looking (D34), read-only: the release checklist's "after the tag" items, plus **consumers bound and idle**:
 - **Bound, 0 pending** — the NATS monitor through the API-server **pod** proxy (the path `host-verify --cluster` uses
   for `/varz`/`/connz`; `/jsz` is not part of host-verify yet):
-  `ssh vps 'k3s kubectl get --raw "/api/v1/namespaces/messaging/pods/nats-0:8222/proxy/jsz?consumers=true"'` —
+  `ssh sujaykumar-vps 'k3s kubectl get --raw "/api/v1/namespaces/messaging/pods/nats-0:8222/proxy/jsz?consumers=true"'` —
   `account_details[].stream_detail[].consumer_detail[]` lists `review` on `XLEARN_PRACTICE` and `assessment` on
   `XLEARN_PRACTICE` and `XLEARN_REVIEW`, each with `num_pending` 0 and `num_ack_pending` 0 (checked 2026-09-25: this read works).
 - **No producer** — `/jsz` has no per-subject counts, so read the outboxes (kept, never pruned) instead:
-  `ssh vps 'k3s kubectl exec -n databases projects-pgstore-1 -c postgres -- psql -d xlearndb -Atc "select subject, count(*) from practice.outbox group by 1 union all select subject, count(*) from review.outbox group by 1"'`
+  `ssh sujaykumar-vps 'k3s kubectl exec -n databases projects-pgstore-1 -c postgres -- psql -d xlearndb -Atc "select subject, count(*) from practice.outbox group by 1 union all select subject, count(*) from review.outbox group by 1"'`
   lists neither `xlearn.practice.touch_concluded` nor `xlearn.review.touch_scored`. (A stream-side check needs the NATS
   break-glass `nats stream subjects`; if used, log it in `docs/v2/status.md`.)
 

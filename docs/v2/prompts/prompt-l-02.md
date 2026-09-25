@@ -107,7 +107,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
     attempt, a mistake, a scored mock and a coach thread; sign in again; erase from Settings; check row counts 0 in practice, review,
     assessment and coach, 4 acks and `closed_at`, the profile 404, the username unavailable. Paste the transcript into the PR.
 
-11. **[H] `host-verify`, then merge and tag back to back.** `ssh vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` → green; the
+11. **[H] `host-verify`, then merge and tag back to back.** `ssh sujaykumar-vps 'bash -s -- --cluster' < ../infra/hack/host-verify.sh` → green; the
     host has settled. Record **`ev-snap-v1.12.0`** (taken by the owner before launch) from the launch message: its id and time. **Then
     at once:** re-check peers' tags and PRs; squash-merge the PR (still the rehearsed head — if `main` moved, rebase, re-run CI and the
     rehearsal); run the plan's *Release* checklist; tag the merge commit; GitHub release title **`v1.12.0 — v2 build · L-E erase`**,
@@ -116,11 +116,11 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
     Settings shows the owner-refused card (no button).
 
 12. **[H] Prod acceptance with a throwaway tester** (`ev-first-tester`, D40). After checking MI-5b in status.md, mint it:
-    `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account create --role tester --email <an unused @example.test address>'`.
+    `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin account create --role tester --email <an unused @example.test address>'`.
     Keep the one-time password in the terminal only (never in a file, log, PR or status.md). Operate the tester yourself in a private
     window or separate browser profile: sign in → claim a username → create a little data → sign in again → erase from Settings. Then,
     through the sanctioned admin CLI and read-only views only (no raw `psql` into other services' schemas):
-    `ssh vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin erasures --since <today>'`
+    `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-identity -- identity admin erasures --since <today>'`
     → **closed with 4 acks** — each service writes its ack in the same transaction as its deletes, so 4 acks prove all four services
     erased; `/xlearn/u/<username>` → 404; the username unavailable (from the owner's signed-in profile if available); no ERROR on the
     erase paths in the five services' logs (`k3s kubectl logs -n xlearn deploy/xlearn-<svc> --since=30m`, read-only). **Never send

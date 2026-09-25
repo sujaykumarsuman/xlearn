@@ -123,7 +123,7 @@ and you touch none of it. Production has one user (the owner, D35); nothing here
 - **R-FS is absolute:** no capability-holding process opens, chowns, copies or traverses a learner-writable path after learner
   code ran; only the capless front reads learner bytes, and only from pipes.
 - **Never import `go-sandbox/container`**; never create a user namespace anywhere in the pod.
-- **GitOps / production:** no infra PR, no `kubectl`, no host change. Read-only `ssh vps` for facts only. Local VMs are throwaway
+- **GitOps / production:** no infra PR, no `kubectl`, no host change. Read-only `ssh sujaykumar-vps` for facts only. Local VMs are throwaway
   and never touch production credentials.
 - **D34:** no alerting, no timer, no CronJob, no push channel. Failures are ERROR logs and counters read on demand.
 - **Memory-sum rule** (ADR-0035 §5): no new always-on pod here (the runner's 3 GiB is counted in mi-10); keep `runner/` ≤ ~300 MiB

@@ -143,7 +143,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
   - check peers' tags, PRs, worktrees and ListAgents before tagging or claiming an ADR number;
   - never move or re-push a tag;
   - infra PRs (the conditional `coach-interview` bump only) are their own tasks, never folded into the tag.
-- **GitOps only:** no hand `kubectl apply`/`edit`/`rollout`. That is why a mid-call restart isn't tested on prod. `ssh vps` is for reads, `find`, `ufw status` and `host-verify.sh`; `kubectl exec` only runs `coach admin`; `kubectl logs` is a read.
+- **GitOps only:** no hand `kubectl apply`/`edit`/`rollout`. That is why a mid-call restart isn't tested on prod. `ssh sujaykumar-vps` is for reads, `find`, `ufw status` and `host-verify.sh`; `kubectl exec` only runs `coach admin`; `kubectl logs` is a read.
 - **D34:** no alerting, opscheck, interview counters, Flux Alert or push channel. The verification is by looking.
 - **Memory-sum rule:** no new pod, so nothing to re-check beyond `host-verify --cluster` green.
 - **goose/sqlc/outbox:** unchanged (`sqlc diff` clean). Consumers before producers and ACL PRs: n/a.
