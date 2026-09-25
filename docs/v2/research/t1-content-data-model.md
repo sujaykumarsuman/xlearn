@@ -232,7 +232,7 @@ tests.lock                                  # case id → sha256 of materialized
   - (i) mount works;
   - (ii) a pod in another namespace **without** the pull secret cannot mount the cached image (KEP-2535 behaviour; confirm it covers image volumes).
 - **Fallback:** an initContainer that copies the pack into an emptyDir (needs an `initContainers` chart knob, off by default). `EVALPACK_DIR` hides the difference from judge's code.
-- *Result (spk-02, 2026-09-25):* **not run ⛔.** The session was interrupted before the image-volume pods. The kubelet defaults are recorded (`NeverVerifyPreloadedImages`; `KubeletEnsureSecretPulledImages` beta, on), and (i)–(iii) need a re-run. See [t3 §16.3](t3-sandbox.md#163-image-volume-spk-02--not-run-).
+- *Result (spk-02 re-run, 2026-09-25):* **image-volume GO**, with the kubelet defaults (`NeverVerifyPreloadedImages`; `KubeletEnsureSecretPulledImages` beta, on), on env A's k3s v1.36.4 against a password-protected private registry. (i) The read-only image-volume mount works under PSA baseline. (ii) A pod without the pull secret is refused the cached image: `ErrImagePull … no basic auth credentials` with `IfNotPresent`, `ErrImageNeverPull` with `Never`. It stays refused after a k3s restart. (iii) The initContainer fallback (variant A) also works. Caveat for mi-09: the pack credential must exist only as the imagePullSecret, because node-level credentials make the cached image readable by every pod. See [t3 §16.3](t3-sandbox.md#163-image-volume-spk-02).
 
 ### 3.4 Versioning and pinning
 
