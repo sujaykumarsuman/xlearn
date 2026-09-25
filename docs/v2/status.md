@@ -7,9 +7,11 @@ plan is [`build-plan.md`](build-plan.md); the source is the [rollout plan](rollo
 with workstream diagrams is [`execution-order.md`](execution-order.md). Newest decisions at the
 top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 
-- **Build line:** v2 · **Phase:** **build plan scaffolded** (2026-09-24): 89 sprints (86 plan + prompt pairs, 3 M6c
-  outline cards), the ADR sign-off (BP2) and the calendar (BP4). **Next: the MI-0 H0 reboot, Fri 2026-09-25
-  (pending, owner)**, then week 1: [mi-01](sprints/sprint-mi-01.md) (first), [ds-m1-01](sprints/sprint-ds-m1-01.md),
+- **Build line:** v2 · **Phase:** **spikes first (D41)**, after the build-plan scaffold of 2026-09-24 (89 sprints: 86 plan +
+  prompt pairs, 3 M6c outline cards; the ADR sign-off BP2; the calendar BP4). Done 2026-09-25: MI-0 (the H0 reboot),
+  [spk-01](sprints/sprint-spk-01.md), [spk-02](sprints/sprint-spk-02.md) (MI-10 ✅) and [spk-03](sprints/sprint-spk-03.md)
+  (WIF GO). **Next: [spk-04](sprints/sprint-spk-04.md) (S6), Sat 2026-09-26, owner present** (owner prep done, see
+  `ev-s6`), then week 1: [mi-01](sprints/sprint-mi-01.md) (first), [ds-m1-01](sprints/sprint-ds-m1-01.md),
   [mi-02](sprints/sprint-mi-02.md), [m1-01](sprints/sprint-m1-01.md), [mi-07](sprints/sprint-mi-07.md),
   [ds-m2-01](sprints/sprint-ds-m2-01.md), [ds-l-01](sprints/sprint-ds-l-01.md).
 - **Live release:** **v1.5.2** (all seven services; signup closed in production since 2026-09-24, `SIGNUP_MODE=closed`).
@@ -26,7 +28,7 @@ top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 | Area | State |
 |------|-------|
 | v2 PRD | ✅ [drafted](../prd/xlearn-v2-prd.md) |
-| Feasibility (D0–D40; D36–D39 = BP1–BP4; D40 = the sprint merge directive) + research T0–T7 | ✅ [feasibility](feasibility.md), [research/](research/) |
+| Feasibility (D0–D41; D36–D39 = BP1–BP4; D40 = the sprint merge directive; D41 = spikes first) + research T0–T7 | ✅ [feasibility](feasibility.md), [research/](research/) |
 | Rollout plan (the source) | ✅ [rollout-plan.md](rollout-plan.md) |
 | ADRs 0026, 0027, 0028, 0029, 0033, 0034, 0035 | ✅ **Accepted 2026-09-24** (BP2; amendments folded into the ADRs they amend) |
 | ADRs 0030, 0031, 0032 | Proposed until their spikes report (see [ADRs](#adrs)) |
@@ -35,7 +37,7 @@ top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 | Artboards (`design-system/screens/v2/`) | ⬜ 0 / 29 drafted, 0 frozen (AB01–AB30 less the dropped AB23; AB31 is an outline for v2.2) |
 | Application code (v2) | ⬜ not started · live `v1.5.2` |
 | `infra` | ✅ infra#28 (`host-bootstrap` + `host-verify`), ✅ infra#29 (ranges `<2.0.0`), ✅ infra#30 (`SIGNUP_MODE: closed`) · MI-2 onward ⬜ |
-| Host | kernel update pending the **H0 reboot (MI-0, Fri 2026-09-25)**; pre-reboot gate GO (45/45, 2026-09-24) |
+| Host | kernel **6.8.0-142** since the H0 reboot (MI-0 ✅ 2026-09-25, boot 05:59Z); `host-verify --cluster` 46 pass / 0 warn / 0 fail; healthz 200 |
 | Content | ⬜ item schema not frozen · pilot packs **0 / 14** stamped |
 
 ## Sprint board
@@ -152,7 +154,7 @@ owner prerequisite, or "needs owner decision" after a spike). Nothing waits on t
 | ID | Target | Closed by | Tag(s) | State |
 |----|--------|-----------|--------|-------|
 | M0 namespace rule + coach P0 fixes | done | — | v1.5.0, v1.5.1 (+ v1.5.2 stopgaps) | ✅ live |
-| MI cluster safe for untrusted code | Sep 25 → Nov (+ mi-13 Q1 2027) | [mi-12](sprints/sprint-mi-12.md), [mi-13](sprints/sprint-mi-13.md) | infra PRs; runner-v1.0.0 | ⬜ (MI-2a/2b/2c ✅; MI-0 pending) |
+| MI cluster safe for untrusted code | Sep 25 → Nov (+ mi-13 Q1 2027) | [mi-12](sprints/sprint-mi-12.md), [mi-13](sprints/sprint-mi-13.md) | infra PRs; runner-v1.0.0 | ⬜ (MI-0 ✅; MI-2a/2b/2c ✅) |
 | M1 spine (M1a → M1b → M1c) | October | [m1-08](sprints/sprint-m1-08.md) | v1.6.0 → v1.7.0 → v1.8.0 | ⬜ |
 | M2 attempt engine + projections | late October | [m2-05](sprints/sprint-m2-05.md) | v1.9.0 → v1.10.0 | ⬜ |
 | L learner gate (L-E → L-A/L-C → exit rehearsal) | Nov → Dec | [l-04](sprints/sprint-l-04.md) + `ev-l-rehearsal` | v1.11.0 → v1.12.0 → v1.17.0 | ⬜ |
@@ -172,7 +174,7 @@ The **MI table**. Rollout step ids `MI-NN` are **not** sprint ids `mi-NN`; the S
 
 | Step | What | Sprint(s) / event | Risk | State | PRs · date · notes |
 |------|------|-------------------|------|-------|--------------------|
-| **MI-0** | H0 reboot into kernel 6.8.0-142 (copy `/tmp/xlearn-s0-vmstat.log` off first; `host-verify --pre-reboot --cluster`; weekly image date; reboot; `host-verify --cluster`) | `ev-mi0` (recorded in [mi-02](sprints/sprint-mi-02.md)) | ◐ | ⬜ pending Fri 2026-09-25 | pre-reboot gate GO 45/45 (2026-09-24) |
+| **MI-0** | H0 reboot into kernel 6.8.0-142 (copy `/tmp/xlearn-s0-vmstat.log` off first; `host-verify --pre-reboot --cluster`; weekly image date; reboot; `host-verify --cluster`) | `ev-mi0` (recorded in [mi-02](sprints/sprint-mi-02.md)) | ◐ | ✅ 2026-09-25 | pre-reboot gate GO 45/45 (2026-09-24). The owner rebooted on 2026-09-25 (boot 05:59Z): kernel 6.8.0-142, `host-verify --cluster` 46 pass / 0 warn / 0 fail, healthz 200 (read-only check). The S0 log was copied off first. [mi-02](sprints/sprint-mi-02.md) task 9 records the follow-up |
 | MI-1 | Owner hygiene: Hostinger 2FA, 2 offline age-key copies, 2FA on GitHub/Anthropic/OpenAI | `ev-mi1` | ○ | ⬜ | week 1 |
 | ~~MI-1a~~ | host-check timer / dead-man | — | — | dropped (D34) | — |
 | MI-2 | Prune guards (CNPG Cluster, `databases`, `messaging`) | [mi-01](sprints/sprint-mi-01.md) | ○ | ⬜ | week 1, first |
@@ -449,7 +451,7 @@ gap ⛔ here. Events that only froze boards or awaited a sign-off are **automati
 
 | Event | When | What | Prepared by | State |
 |-------|------|------|-------------|-------|
-| `ev-mi0` | Fri 2026-09-25 · before launch of spk-01 | MI-0 H0 reboot into kernel 6.8.0-142 | none (prepared by infra#28, done 2026-09-24; recorded in [mi-02](sprints/sprint-mi-02.md)) | ⬜ |
+| `ev-mi0` | Fri 2026-09-25 · before launch of spk-01 | MI-0 H0 reboot into kernel 6.8.0-142 | none (prepared by infra#28, done 2026-09-24; recorded in [mi-02](sprints/sprint-mi-02.md)) | ✅ 2026-09-25 (boot 05:59Z; `host-verify --cluster` 46/0/0) |
 | `ev-mi1` | week 1 (by 2026-10-02) · at the latest before launch of mi-12 (provider accounts) | MI-1 owner hygiene | none | ⬜ |
 | `ev-mi5b-dns` | weeks 2–4 · before launch of mi-04 (so before the first tester) | DNS record for ops.sujaykumar.dev at the registrar (MI-5b); console bookmarks once mi-04 lands | [mi-04](sprints/sprint-mi-04.md) | ⬜ |
 | `ev-owner-role` | right after the v1.7.0 tag (an `identity admin` step m1-07's prompt can run, D40); at the latest before launch of l-02 | Owner role set once | [m1-04](sprints/sprint-m1-04.md) (runbook) | ⬜ |
@@ -469,7 +471,7 @@ gap ⛔ here. Events that only froze boards or awaited a sign-off are **automati
 | `ev-l-rehearsal` | December (L exit), after the v1.17.0 tag | Tester invite round-trip on production (`invite` → `closed`): **run by l-04's session** (D40). Before launch: a second GitHub account for the GitHub-path redeem; ⛔ if a step needs a human sign-in | [l-04](sprints/sprint-l-04.md) | ⬜ |
 | `ev-strangers` | before the GA PR, in ga-01's session | No active `learner` account | [ga-01](sprints/sprint-ga-01.md) | ⬜ |
 | `ev-ga` | GA day (≈ Dec 2026 – Jan 2027) · before launch of ga-02 | GA snapshot in hPanel; ga-02 then merges the range PR and tags v2.0.0 | [ga-02](sprints/sprint-ga-02.md) | ⬜ |
-| `ev-s6` | **Sat 2026-09-26, owner present (D41)** | S6 voice-shell bake-off (≤ 1 day, $10 hard limit): the owner creates spk-04's two throwaway OpenAI projects and keys before launching it, and stays present for the day | [spk-04](sprints/sprint-spk-04.md) | ⬜ |
+| `ev-s6` | **Sat 2026-09-26, owner present (D41)** | S6 voice-shell bake-off (≤ 1 day, $10 hard limit): the owner creates spk-04's two throwaway OpenAI projects and keys before launching it, and stays present for the day | [spk-04](sprints/sprint-spk-04.md) | 🟡 owner prep ✅ 2026-09-25: both projects exist with **enforced** hard limits ($10 / $1). Each has one project key, restricted to Responses (write) and Realtime (request), with every other endpoint set to none. The expiry is custom 2 days, because 1 day would lapse mid-session, so both keys **expire 2026-09-27**: recreate them if S6 slips. Usage Tier 1; prepaid, auto-reload off. Only the owner holds the keys |
 | `ev-s6-recheck` | before launch of ds-m6a-01 (≈ Q1 2027) | ≤ 1 h S6 recheck: same shells, hard gates + M14 only; note if the winner or its price changed (D41, non-blocking) | [spk-04](sprints/sprint-spk-04.md) | ⬜ |
 | `ev-snap-v2.1.0` | before launch of m6b-04 (≈ Q1 2027, owner present) | Manual Hostinger snapshot in hPanel, 1-day retention (interviewer GA tag) | [m6b-04](sprints/sprint-m6b-04.md) | ⬜ |
 | `ev-pat-expiry` | recurring (date in status.md) | Evalpack PAT expiry manual check (D34); a rotation needs a new PAT (owner) | [mi-07](sprints/sprint-mi-07.md) | ⬜ |
@@ -544,7 +546,7 @@ The L exit ([rollout §4](rollout-plan.md#l-learner-gate--34-sprints-in-parallel
 
 | Spike | Sprint | When | Verdict | Results | Teardown | Consumed by |
 |-------|--------|------|---------|---------|----------|-------------|
-| S0 read-only prod facts | (planning, D23) | 2026-09-24 | done | [t3](research/t3-sandbox.md); the 72 h vmstat sampler writes `/tmp/xlearn-s0-vmstat.log` on the node (copy it off before MI-0; `/tmp` empties at boot) | log copied: ⬜ | ADR-0035 §5 |
+| S0 read-only prod facts | (planning, D23) | 2026-09-24 | done | [t3](research/t3-sandbox.md); the 72 h vmstat sampler writes `/tmp/xlearn-s0-vmstat.log` on the node (copy it off before MI-0; `/tmp` empties at boot) | log copied: ✅ before the reboot (09-24 07:52Z → 09-25 05:36Z, 1,305 one-minute samples, on the owner's Mac). The reboot ended the sampler and it wasn't restarted (`sar` covers the rest); [mi-02](sprints/sprint-mi-02.md) task 9 computes steal | ADR-0035 §5 |
 | Sandbox P0–P2 (multipass arm64) | [spk-01](sprints/sprint-spk-01.md) | Fri 2026-09-25 (D41) | **Q-A GO, Q-B GO** | [t3 §16.1](research/t3-sandbox.md#161-p0p2-spk-01-arm64-multipass) | VM `xl-spike` **purged 2026-09-25** by spk-02; `~/xl-spike/` kept for reference | [m3-03](sprints/sprint-m3-03.md) (ADR-0030), [mi-09](sprints/sprint-mi-09.md) |
 | P3 amd64 replay + image volume (**MI-10 verdict**) | [spk-02](sprints/sprint-spk-02.md) | Fri 2026-09-25 (D41), env A `skriptvalley-vps` (first session interrupted; re-run the same day in three blocks) | **P0–P3 GO; image volume GO.** Q-C GO: TSAN needs no ASLR policy, and the amd64 allowlists (`go` 27, `cpp` 19, `python` 39, `go-race` 40) pass KILL with 0 unexpected SIGSYS. The x86_64-only pod profile is proposed. The AppArmor `remount,` finding is closed with `ro`-only scoped rules. Image volume GO with the kubelet defaults; the GOCACHE seed is measured | [t3 §16.2–16.4](research/t3-sandbox.md#162-p3-amd64-replay-spk-02) | ✅ 2026-09-25, both sessions: env A restored to its baseline. That means `k3s-uninstall.sh`; the registry, images, buildx refs, host files, sysctls and `/root/xl-spike` removed; the packages the spike added purged (the package list equals the pre-spike baseline); and apport and the kernel-meta holds as found. The sysctl, iptables and AppArmor-profile counts match the baseline, and the landing container is still serving (443 → 200). The kernel stays upgraded to 6.8.0-142 (approved). `xl-spike` purged. `~/xl-spike/` (throwaway harness, references, logs; no secrets) is kept on the Mac for the orchestrator; delete it with `rm -rf ~/xl-spike` when no longer needed | [m3-03](sprints/sprint-m3-03.md), [mi-09](sprints/sprint-mi-09.md), [m3-04](sprints/sprint-m3-04.md), [p-01](sprints/sprint-p-01.md), [m3-07](sprints/sprint-m3-07.md) |
 | WIF (≤ ½ day) | [spk-03](sprints/sprint-spk-03.md) | Fri 2026-09-25 (D41; a day ahead of its Sat slot). VM `xlearn-wif` (arm64 multipass, k3s `v1.36.4+k3s1`); org Sujay's Individual Org | **WIF GO, with `check_jti=false`** on the one-rule issuer. `jti` is present. Rotation: 3600 s at 80.0 % of TTL (2881 s); 600 s at 81–91 %. An in-place restart re-presents the used `jti`, which gets an opaque 401 until the next rotation. Exchange p50 0.332 / max 0.473 s; first call p50 1.613 / max 1.824 s; `anthropic-workspace-id` 5/5. The scope is `workspace:developer` (Files and Batches return 200) | [t5 §15](research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25) | ✅ 2026-09-25: namespace `wif-spike` deleted; VM `xlearn-wif` purged (`multipass list`: no instances; `xl-spike` was already gone). The Console objects are an owner follow-up ([Open owner items](#open-owner-items)) | [mi-12](sprints/sprint-mi-12.md) (ADR-0031), [m4-01](sprints/sprint-m4-01.md) |
@@ -639,4 +641,4 @@ Notable calls not (yet) worth a full ADR, newest first. Promote to an ADR if the
 
 ## Blocked / needs input
 
-- Waiting on the owner for the MI-0 H0 reboot, Fri 2026-09-25; [mi-01](sprints/sprint-mi-01.md)'s MI-2 PR may go first if MI-0 slips.
+- [spk-04](sprints/sprint-spk-04.md) (S6) needs the owner present on Sat 2026-09-26 (`ev-s6`). Its two keys expire 2026-09-27; if S6 slips, the owner recreates them before launch. Per D41 the build (week 1, [mi-01](sprints/sprint-mi-01.md) first) starts once spk-04 has landed.

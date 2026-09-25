@@ -20,7 +20,7 @@ _Overall:_ ⬜ Not started
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Accounts: two throwaway OpenAI projects ($10 and $1 hard limits), project-scoped keys | O (before launch) | ⬜ |
+| 1 | Accounts: two throwaway OpenAI projects ($10 and $1 hard limits), project-scoped keys | O (before launch) | ✅ 2026-09-25 (owner prep; keys expire 2026-09-27) |
 | 2 | Harness (1.5 h): SDP brokers, sideband decoder, stub director, JSONL log, proxy, static page | H | ⬜ |
 | 3 | GPT-Live runs: scripted mock, mid-call restart, tamper, 65-min soak, quota, reseed (t6 §10 steps 2–7) | O · H | ⬜ |
 | 4 | mini runs: steps 2 (10 min), 3, 4, 6, 7, plus native push-to-talk, `semantic_vad` low, cache ratio (step 8) | O · H | ⬜ |
