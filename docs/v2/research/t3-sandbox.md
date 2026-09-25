@@ -1010,3 +1010,205 @@ judge also logs and alerts when the **runner lane is unavailable or returning 50
 | Denylist modules | **none loaded** | The module denylist is safe to apply |
 | k3s invocation | systemd unit `k3s server --write-kubeconfig-mode 0644`; no `config.yaml` | Matches T2's host-bootstrap assumptions |
 | Kernel (verified separately) | running **6.8.0-90**; noble candidate **6.8.0-142**; **`linux-image-generic` meta not installed**, so the kernel never auto-updates; Livepatch off; `core_pattern` pipes to apport as host root | **H0 is urgent for v1 today.** It is a separate task (patch the kernel, install the meta-package, fix core dumps) |
+
+---
+
+## 16. Spike results (MI-10)
+
+### 16.1 P0–P2 (spk-01, arm64 multipass)
+
+Run 2026-09-25 on a throwaway `multipass` Ubuntu 24.04 **arm64** VM `xl-spike` on the owner's Mac
+(D41: spikes first; the D23 go-ahead is the launch, D40). Everything below is thrown away except this
+table; the VM, harness, corpus and manifests are never committed. **No timing conclusions (arm64 / HVF).**
+
+**Environment**
+
+| Component | Version | Production (for contrast) |
+|---|---|---|
+| Kernel | `6.8.0-142-generic` aarch64 | `6.8.0-142-generic` amd64 (MI-0 done) |
+| k3s | `v1.36.4+k3s1` | same (pinned) |
+| containerd | `2.3.4-k3s1.36` | `2.3.4-k3s1.36` |
+| runc | `1.4.2` (judge == default runtime) | `1.4.2` |
+| go | `go1.26.8` (checksummed tarball) | — |
+| PostgreSQL | PGDG `18.6` | — |
+| g++ / python3 | `13.3.0` / `3.12.3` | — |
+| AppArmor parser | `4.0.1` | — |
+| **`github.com/criyle/go-sandbox`** | **`v0.13.7`**, commit **`6a60e40be9d0cefb656c4ae12415c5fd040df954`** (tag `v0.13.7`) | m3-03 pins go-sandbox at exactly this version |
+| nsjail (R1-N) | not used — forkexec passed | — |
+
+`apparmor_restrict_unprivileged_userns=1`, cgroup2 (`cgroup2fs`), `/dev/kvm` absent, `vm.mmap_rnd_bits=33`.
+
+**In-pod channel: CRI exec** (`k3s crictl exec <id> /opt/spike/sup …`). `kubectl exec` is denied by the VAP
+by design; CRI bypasses API admission but runc still applies the container's seccomp, AppArmor, caps and
+user namespace to the exec'd process, so the checks stay representative. The VAP was **never relaxed to
+obtain exec**.
+
+**Per-phase results**
+
+| Phase | Step | Measure | Number | Pass | errno / note |
+|---|---|---|---|---|---|
+| P0 | drop-in `judge` handler | `crictl info` lists `judge`; `cgroupWritable:true`; `SystemdCgroup:true` | yes | ✅ | drop-in merges verbatim; **no `.tmpl` fallback needed** |
+| P0 | rendered runc section | `SystemdCgroup = true` still rendered; judge==default runc `1.4.2`; no `BinaryName` | yes | ✅ | — |
+| P0 | k3s restart with a pod running | pod survives (same container id, restartCount 0) | yes | ✅ | restart ~6 s |
+| P0 | VAP dry-run corpus (unmodified VAP) | G1 admit; B1–B14(+variants) deny; Q1 LimitRange; C1(default) admit | 24/24 | ✅ | see VAP diff below |
+| P1 | positive pod Running | `hostUsers:false`; AppArmor label `xlearn-runner`; uid_map `0 1073807360 65536` (non-identity, in the subuid range) | yes | ✅ | — |
+| P1 | `mkdir /sys/fs/cgroup/slots` + `+cpu +memory +pids` | slots controllers `cpu memory pids` | yes | ✅ | cgroupWritable delegation works |
+| P1 | forkexec jail **without CLONE_NEWUSER** (mnt/pid/net/ipc/uts/cgroup) | tmpfs root, nosuid binds, `pivot_root`, procfs `hidepid=invisible,subset=pid`, lo down | hello OK | ✅ | **needs `pivot_root` in seccomp — see below** |
+| P1 | spawn via `CLONE_INTO_CGROUP` | jail OK, accounted in case cgroup | OK | ✅ | clone3 + cgroup fd |
+| P1 | spawn via `cgroup.procs` write + sync pipe | jail OK (kernel 6.8) | OK | ✅ | both paths work on 6.8 |
+| P1 | caps → 0 in the child | `CapEff/CapPrm/CapInh = 0`, `NoNewPrivs=1`; privileged op → EPERM | yes | ✅ | **`CapBnd` stays `0x2001e0` — see SETPCAP** |
+| P1 | `go build` in the jail (+ run) | compiled and ran | OK | ✅ | GOCACHE on the `/work` tmpfs |
+| P1 | D20 smoke: `g++ -std=gnu++20 -O2` + run; `python3` run | both ran | OK | ✅ | functional only |
+| P1 | negative probes from the supervisor | `unshare -U`, `clone3(NEWUSER)`, `fsopen`, `open_tree`, `mount`(outside jail), SCTP, NETLINK, PACKET, raw-inet, ptrace(pid1), keyctl, add_key, userfaultfd, io_uring_setup, bpf, perf_event_open, setns(pid1) | 17/17 denied | ✅ | userns EINVAL(22); clone3(NEWUSER)/mount EACCES(13); rest EPERM(1) |
+| P1 | SIGSYS from the jail on a disallowed syscall | signal `SIGSYS`; `core_pattern` unchanged (`core`, no `|`); no host helper | yes | ✅ | `RLIMIT_CORE=0` |
+| P1 | procfs `hidepid=invisible,subset=pid` | jail sees only its own pids (`[1]`, self is pid 1 in the fresh pidns) | yes | ✅ | host pid1/others not visible (fresh pidns) |
+| P1 | X1/X2 real CONNECT `kubectl exec`/`attach` | denied by `xlearn-runner-no-exec` | denied | ✅ | ran against the widened VAP copy (see below) |
+| P1 | E1 real `kubectl debug` ephemeral container | denied by `xlearn-runner-pod-shape` (R10) | denied | ✅ | report to mi-14 as a corpus row |
+| P1 | delete/recreate the pod × 50 | Running | **50/50** | ✅ | bounded `kubelet` subuid range holds (#139916) |
+| P1b | `go test -c -race` fixture in the jail × 20 | RACE detected | **20/20** | ✅ | glibc `clone3`→ENOSYS→`clone` fallback; threads work |
+| P1b | deadlock fixture in the jail × 20 | classified (timeout/abort) | **20/20** | ✅ | — |
+| P1b | postgres in the jail (unix socket, `listen_addresses=''`, uid 999) | `select 42` returned | OK | ✅ | postmaster boots, query runs |
+| P2 | balloon (1 GiB), case `memory.max` 256Mi, `oom.group=1` | MLE (case `oom_kill`) | ✅ | — | killed by SIGKILL; oom_group_kill=1 |
+| P2 | fork bomb, `pids.max` 32 | RE(pids) / EAGAIN | ✅ | — | `fork: resource temporarily unavailable` at 27 |
+| P2 | thread bomb, `pids.max` 64 | RE(pids) | ✅ | — | go runtime `newosproc errno=11` |
+| P2 | tmpfs fill (256Mi) / inode fill (8192) | ENOSPC, bounded | ✅ | — | `no space left on device` |
+| P2 | stdout flood / orphan double-fork / sleep / spin | bounded, cleaned up | ✅ | — | orphan killed by `cgroup.kill` |
+| P2 | **MLE classification × 100 (balloon)** | 100/100 | **100/100** | ✅ | SQL balloon variant deferred to spk-02 (image-volume harness); classic balloon 100/100 |
+| P2 | **container-level OOM** | `memory.events.local oom_kill` (non-hierarchical) + pod `restartCount` | **0 / 0** | ✅ | hierarchical `memory.events oom_kill=202` = the sum of case-cgroup OOMs, i.e. every OOM landed in a case cgroup (INV-14) |
+| P2 | survivors after each job / leftover case cgroups | 0 / 0 | **0** | ✅ | — |
+| P2 | `slots` memory back to baseline | +2.0 MiB | ✅ (±5 MiB) | — | — |
+| P2 | `nr_dying_descendants` after 1,000 case cgroups | 50 at 1 s → **0 at 6 s** | ✅ (< 60 s) | — | 1,000 jails in 1.49 s |
+
+**Q-A (R1 viability): GO.** The `judge` drop-in, `hostUsers:false` + namespaced caps, Localhost AppArmor
+(no `userns` rule) + Localhost seccomp, per-case cgroups, and a **userns-less `forkexec.Runner` jail** all
+work on this stack, and user-namespace creation and the new mount API are denied to the supervisor.
+
+**Q-B (INV-14): GO.** Every learner OOM lands in a case cgroup, with **0 container-level OOMs** and
+`restartCount 0`; cleanup converges (`nr_dying_descendants`→0 in 6 s, baseline +2 MiB, 0 survivors).
+
+**Jail mechanism chosen: go-sandbox `forkexec.Runner`** (the low-level Runner, not the `container`
+builder), no user namespace, spawned into the case cgroup via `CLONE_INTO_CGROUP`. **nsjail (R1-N) was not
+needed.** No fallback past R1-N; no owner decision required.
+
+**Open points answered**
+
+- **`pivot_root` is NOT in containerd's RuntimeDefault allowlist** (nor its `CAP_SYS_ADMIN` block — only
+  `chroot`, gated on `CAP_SYS_CHROOT`, which the runner does not hold). Without adding it the jail's
+  `pivot_root` returns **EPERM** and R1 fails. **The runner seccomp profile must add `pivot_root`.** This
+  is the single most important host-file delta from t3 §8.7; it reproduced identically under both
+  `hostUsers:false` and `hostUsers:true`, and was not an AppArmor or userns effect (complain mode still
+  EPERM'd). mi-09 and spk-02 must carry it.
+- **`SETPCAP`:** go-sandbox's `DropCaps` zeroes effective/permitted/inheritable (which needs **no**
+  `SETPCAP`); it does **not** drop the bounding set (`CapBnd` stays `0x2001e0` in the child). Dropping the
+  bounding set would need `CAP_SETPCAP` (via `PR_CAPBSET_DROP`), which go-sandbox does not call. So
+  `SETPCAP` is currently **unused** by the jail; `NoNewPrivs=1` plus `CapEff=0` already prevent regaining
+  privilege. Keep `SETPCAP` in the set only if a future bounding-set drop is wanted (defense in depth);
+  otherwise it can be removed. Recorded for m3-03/mi-14.
+- **`CLONE_INTO_CGROUP` vs `cgroup.procs`:** both work on kernel 6.8. `CLONE_INTO_CGROUP` (clone3 with the
+  case cgroup fd) is clean; the `cgroup.procs` write + sync-pipe path also works. Prefer `CLONE_INTO_CGROUP`.
+- **Pod survival on k3s restart:** yes (same container id, `restartCount 0`).
+- **subuid range:** `kubelet:1073741824:7208960` (110 × 65 536, ends 1 080 950 783, well below UINT32_MAX).
+  The × 50 recreate loop was **50/50 Running**; the pod's uid_map is `0 1073807360 65536` (non-identity,
+  inside the range).
+- **`getsubids`:** shipped by noble's **`uidmap`** package.
+- **overlayfs mount under `hostUsers:false` returns EPERM.** An overlay assembled in the pod on the
+  idmapped `/work`/`/jail` tmpfs (lower+upper+work) fails with EACCES/EPERM(13). The GOCACHE-seed overlay
+  therefore cannot be an in-pod overlay mount; the seed must be delivered another way (baked into the
+  image, or a plain read-only bind + a writable tmpfs GOCACHE). The `GOCACHE` mechanism is an A8 item
+  anyway; flagged for spk-02 (amd64 replay) and p-01.
+
+**Final host files**
+
+*containerd drop-in* `/var/lib/rancher/k3s/agent/etc/containerd/config-v3.toml.d/20-judge.toml` (verbatim,
+merges cleanly — no `.tmpl` fallback):
+
+```toml
+version = 3
+[plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.judge]
+  runtime_type = "io.containerd.runc.v2"
+  cgroup_writable = true
+[plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.judge.options]
+  SystemdCgroup = true
+```
+
+*Seccomp* `/var/lib/kubelet/seccomp/profiles/xlearn-runner.json` (arm64; **`SCMP_ARCH_ARM,SCMP_ARCH_AARCH64`**;
+`defaultAction SCMP_ACT_ERRNO`; 385 syscall names). Generated from **containerd v2.3.4 `DefaultProfile`**
+with the 5 runner caps, then:
+- **removed** (from RuntimeDefault): `fsopen fsconfig fsmount fspick move_mount open_tree mount_setattr`,
+  `bpf perf_event_open fanotify_init fanotify_mark`, `lookup_dcookie syslog`, and containerd's broad
+  `socket` rule;
+- `socket()` restricted to **AF_UNIX**, and **AF_INET/AF_INET6 `SOCK_STREAM`** with protocol 0 or TCP
+  (no SCTP/NETLINK/PACKET/ALG/VSOCK/raw);
+- **added `pivot_root`** (the §8.7 delta above — RuntimeDefault omits it);
+- `keyctl add_key request_key io_uring_* userfaultfd` are not in RuntimeDefault at all, so they fall to the
+  default `ERRNO` (EPERM) with no explicit rule — consistent with §8.7's intent.
+- **The arm64 profile above is NOT the one mi-09 ships:** spk-02 replays and regenerates it on amd64. The
+  `pivot_root` addition and the socket restriction carry over unchanged.
+
+*AppArmor* `/etc/apparmor.d/xlearn-runner` (final spike copy; abi 4.0, **no `userns` rule**):
+
+```
+abi <abi/4.0>,
+include <tunables/global>
+profile xlearn-runner flags=(attach_disconnected,mediate_deleted) {
+  include <abstractions/base>
+  capability sys_admin, setuid, setgid, setpcap, kill,
+  network unix, network inet stream, network inet6 stream, unix,
+  file,
+  signal (receive) peer=unconfined, signal (receive) peer=runc,
+  signal (send,receive) peer=xlearn-runner,
+  mount fstype=tmpfs -> /jail/**,
+  mount fstype=overlay -> /jail/**,
+  mount fstype=proc -> /jail/**,
+  mount options=(rw, rbind, nosuid, rprivate) -> /jail/**,
+  mount options=(rw, rprivate) -> /,
+  mount options=(rw, rslave) -> /,
+  remount,           # a remount only re-flags an already path-scoped mount
+  pivot_root,
+  umount,
+  deny ptrace,
+  deny mount fstype=sysfs, deny mount fstype=cgroup, deny mount fstype=cgroup2,
+  deny @{PROC}/sysrq-trigger rwklx, deny @{PROC}/kcore rwklx,
+  deny /sys/firmware/** rwklx, deny /sys/kernel/security/** rwklx,
+}
+```
+
+**AppArmor caveat for mi-09/spk-02.** go-sandbox's read-only bind uses a recursive-bind **remount**
+(`ro, nosuid, remount, rbind, rprivate`) that AppArmor 4.0 mount-flag matching rejects ("failed flags
+match"), even with an exact `options=(…)` rule. For the spike the toolchain binds were made **rw** (they
+sit on the container's **read-only** rootfs, so they stay read-only; `nosuid` is kept via the bind flag and
+`NoNewPrivs` neutralises setuid), and `remount` is allowed broadly (a remount cannot create a new mount).
+The exact ro-bind-remount rule (or making the binds ro another way) must be finalised in spk-02's amd64
+replay before mi-09 ships. Fresh-mount **path confinement to `/jail` is enforced** and proven: the
+`mount_tmpfs_outside` probe (a fresh tmpfs at `/mnt`) is denied EACCES.
+
+**VAP diff (against the t3 §8.2 draft; mi-14 had not run — corpus and guards written here)**
+
+- The spike wrote the guard objects and a 24-case corpus (`G1`, `B1–B14` + b-variants, `Q1`, `C1`) in
+  `~/xl-spike/`. The bindings were applied at **`[Deny]`** on the VM only. Result: G1 admitted (one PSA
+  `baseline` warning for `SYS_ADMIN`; `procMount:Unmasked` drew no PSA warning — the
+  `UserNamespacesPodSecurityStandards` relaxation applies), C1(default) admitted, Q1 denied by the
+  LimitRange, all B-shapes denied by `xlearn-runner-pod-shape`. Both VAPs' `status.typeChecking` empty.
+- **Corpus/order deltas to fold into mi-14** (kube-apiserver rejects some single-violation shapes *before*
+  admission, so those bad shapes never reach the VAP; the corpus needs companion tweaks and rule order):
+  - `privileged:true` is rejected by API validation when `allowPrivilegeEscalation:false` — B1 must also
+    set `allowPrivilegeEscalation:true` to reach the VAP.
+  - `hostPID:true` is rejected by API validation when `hostUsers:false`; and `procMount:Unmasked` is
+    rejected when `hostUsers` is not false — B2 must set `hostUsers:true`+`procMount:Default`, and B9/B9b
+    must set `procMount:Default`.
+  - Put the `privileged` and host-namespace rules **before** the `hostUsers`/`allowPrivilegeEscalation`
+    rules so the denial names the intended rule.
+  - PSA warnings carry `"baseline:latest"` — a classifier that stops at the first `:` misses them.
+- **E1 (extra corpus row for mi-14):** a real `kubectl debug` ephemeral-container attempt (no `-it`) on the
+  positive pod is denied by the pod-shape VAP (R10 / `pods/ephemeralcontainers`). A pod-manifest dry-run
+  can't test this; add it to the corpus.
+- **Image rule / CRI digest:** CRI could not resolve the imported image by digest (an image imported via
+  `ctr images import` has **no RepoDigests**), so `imagePullPolicy: Never` with `@sha256:` gave
+  `ErrImageNeverPull`. The **dry-run set (G1, B1–B14, Q1, C1) ran against the unmodified VAP** (image rule
+  `…xlearn-runner@sha256:…`). The **positive pod, X1/X2 and E1** ran against a spike-only VAP copy
+  (`xlearn-runner-pod-shape-spike`) that differs **only** in the image rule (a tag ref allowed); the
+  `xlearn-runner-no-exec` VAP was unchanged, so the CONNECT proof stands. On production the image is pulled
+  by digest from GHCR (has a RepoDigest), so the unmodified rule is correct there — no change to mi-14's
+  regex is required for the real runner.
+
+**No timing conclusions (arm64 / HVF).**
