@@ -4,6 +4,8 @@
 > - the AI follows the **on-screen answer widgets at a 2–3 s change cadence and on every turn**, and "shares the session like another interviewer" (D29);
 > - no video to the AI; peer video interviews are a future item with TURN deferred;
 > - the public profile shows the **mock count only** (D31).
+>
+> **S6 ran 2026-09-26 ([§16](#16-s6-results-spk-04-2026-09-26)).** Under D28 both shells failed at least one hard gate. The owner then chose **GPT-Live-1 with the fixed design (D42)**, to be confirmed by `ev-s6-recheck` before ds-m6a-01. M7 passes on both shells, so one coach Deployment is enough. Browsers: Chrome/Edge and Safari; Firefox gets text mode. The replay fixtures are in [`t6-s6-fixtures/`](t6-s6-fixtures/).
 
 # T6: Realtime AI mock interviewer (voice + video)
 
@@ -742,6 +744,354 @@ Hostinger's weekly images (D12) can hold erased or expired rows for up to one im
 - content-only assessment with null bands;
 - bounded SSE;
 - a throwaway, owner-approved spike.
+
+## 16. S6 results (spk-04, 2026-09-26)
+
+S6 ran on Sat 2026-09-26 (`ev-s6`, D41), with the owner present (O1 = this launch, D40), on a localhost harness on the owner's Mac.
+Two throwaway OpenAI projects were used, each with an enforced hard limit. Every M-row below was computed from the raw
+harness log by independent analysts, and each group was recomputed by a separate verifier. Every verifier agreed except
+on one mini M6 attribution, which is corrected here. The replay fixtures are scrubbed and live in
+[`t6-s6-fixtures/`](t6-s6-fixtures/) (index: [`index.json`](t6-s6-fixtures/index.json)).
+
+### 16.1 Decision
+
+- **Rule outcome (D28 plus the owner's sole-passer "yes"): both shells fail at least one hard gate → "both fail".**
+  - **GPT-Live-1** fails **M2**, **M3** and **M3b**.
+  - **`gpt-realtime-2.1-mini`** fails **M2**, **M3** (strict reading) and **M12**.
+  - So under the pre-decided rules, **P0 ships text only, voice is revisited in 3 months (2026-12-26), and M6b's sprints go ⛔
+    until then**.
+  - **The owner then decided in session (D42): GPT-Live-1 with the fixed design, confirmed by `ev-s6-recheck` before the
+    M6a design sprint.** See 16.3. ADR-0032 stays Proposed until that re-check passes and ds-m6a-01 accepts it.
+- **Deploy shape (M7):** make-before-break and cold re-attach both pass on **both** shells, with audio uninterrupted.
+  → **One coach Deployment.** No `coach-interview` Deployment is needed.
+- **Browser gate list (M15):**
+  - **Chrome/Edge and Safari**. GPT-Live's Safari leg passed. mini held on Safari but cut itself off mid-sentence.
+  - **Firefox gets text mode**. openai-agents-js #1353 was closed *wontfix* on 2026-09-25. GPT-Live's Firefox run was
+    short (2 exchanges, the owner said "OK"), and mini self-interrupted 3 times.
+- **Delegation:** **not used** for substantive answers.
+  - Client delegation to our director adds its ~2.9 s round trip. Content p95 is 5.4 s on the session timeline and 7.2 s
+    as perceived, which fails even the soft 3.5 s.
+  - Responses delegation is about 2.2 s faster (p95 2.5 s timeline, 4.1 s perceived, n=3), but it still fails the
+    perceived bar.
+- **Shared cause of GPT-Live's three fails.** Every one of its 6 window interjections began 0.90–1.20 s after a director
+  `[editor]` `session.thinking.append` (8 of 8 pushes landed while it was silent). The one push-free silence window had 0.
+  With the director on, it delegated every code question: 0 of 26 stayed push-only. That delegation also drives the
+  M2 and M3b latency.
+- **Exploratory re-test (L25, run with the owner after the verdict; it can't change the rule outcome).** The variant pushed
+  the raw code only when the candidate starts speaking, never while they are silent or typing, and told the model to
+  answer code questions from that context.
+  - **M3b ✅** (1.2 s) and **M12 ✅** (5/5).
+  - **M2 from context: 0.56 s on the timeline, 2.25 s perceived (borderline).**
+  - **Silences: 0 interjections.** The one substantive typing-window onset voiced a director "next question" note: the
+    director was left on.
+  - The owner's impression: "felt natural, fewer interruptions". Details are in the 16.2 **variant** column.
+
+### 16.2 Measurements
+
+Legend: ✅ pass · ❌ fail · — by-design label · n/r not run. H = hard gate, S = soft. "Perceived" = page clock, from the end of
+candidate speech to the first content audio. "Timeline" = the GPT-Live session timeline (it runs about 1.6–1.7 s ahead of
+what the candidate hears). **Variant** = the exploratory L25 re-test (GPT-Live, turn-boundary pushes, answer from context);
+it is not part of the rule outcome.
+
+| # | Threshold | GPT-Live-1 | `gpt-realtime-2.1-mini` | Variant (L25) |
+|---|---|---|---|---|
+| M1 H | SDP broker p95 ≤ 3 s | ✅ p95 1.63 s (n=23; warm p95 0.68 s) | ✅ p95 1.16 s (n=14) | — |
+| M2 H | push-only answer p95 ≤ 2.0 s (delegated ≤ 3.5 s, S) | ❌ **push-only arm untestable**: it client-delegated **every** code question (0/26). Push-only non-code: n=3, perceived p95 7.6 s. Client-delegated content: timeline p95 5.4 s, perceived 7.2 s (S ❌). Responses-delegated (n=3): timeline 2.5 s, perceived 4.1 s (S ❌) | ❌ perceived p95 **2.41 s** (n=13; 6/13 > 2.0 s). semantic_vad `low` waits a median 0.77 s before `speech_stopped`. PTT (n=2): 1.4 / 2.3 s | from context: timeline p95 **0.56 s** (n=5, no fillers); perceived p95 **2.25 s** (n=4; the ~1.7 s offset is constant across sessions): **borderline**. It still delegated 3 of 7 code questions (content p95 3.9 s) |
+| M3 H | ≤ 1 false interjection / 10 min (silences + typing while thinking aloud, no headphones) | ❌ **17.5 / 10 min** (6 in 3.43 min; each 0.9–1.2 s after a director `[editor]` push; 0 in the push-free silence window) | ❌ strict **3.7 / 10 min** (1 in 2.69 min, after a 44-s think-aloud; the lenient reading is 0) | silences: **0 in 89 s**. Typing window, only 28 s: 1 substantive onset (it voiced a director *next question* note; the director was left on) + 2 backchannels. Strict 15.4 / 10 min, substantive-only 5.1 |
+| M3b H | speech while muted = 0; release → response ≤ 2.5 s | ❌ muted 0 ✅; release → first audio 2.2 / 2.3 / 5.2 s. Questions: stall filler at 2.2 s, content at 5.3 / 6.5 s | ✅ muted 0; release → audio 1.0–1.7 s (native) | ✅ release → audio **1.26 / 1.23 s**; muted 0 (n=2; one director follow-up counts as attributed only by a 0.28 s merge margin) |
+| M4 S | barge-in stop ≤ 500 ms | n/r: no marked barge-in. Unmarked: it finished its sentence (2.2–9.6 s) in 5 of 11 overlaps; echo never stopped it | ✅ 0.37 / 0.24 s (Chrome). 7 false self-interruptions on echo (Firefox 3, Safari 2, smoke 2; Chrome mock 0) | — |
+| M5 H | ≥ 60 min, or `expired` + reseed TTFA ≤ 3 s | ✅ `expires_at` **7,200 s**. Soak held 65.0 min (closed by us). `usage_ratio` 0.572 at 60 min, reset at ~60.5 min with a **6.3 s audio stall**. Reseed TTFA 1.68 s (commentary kick) | — / ✅ cap documented and runtime 3,598 s (model page, 2026-09-26) + reseed TTFA **1.72 s**; not soaked by design | — |
+| M6 H | classifiable code ≤ 5 s; closable; fixtures | ✅ 429 `insufficient_quota`/`project_spend_limit_exceeded` in ≤ 1 s on probe/create. The active session got **no signal** and ran 6.8 min past the trip; `session.close` OK; fixtures captured | ✅ same 429 on create; active call: no in-session signal; HTTP hangup 200 while blocked; fixtures captured | — |
+| M7 H | make-before-break or cold re-attach, audio uninterrupted | ✅ both (15 s overlap; cold gap 14.2 s; 47–50 pk/s, lost 0; owner: no glitch) | ✅ both (29.8 s overlap; cold gap 5.7 s; 50 pk/s, concealment 0; owner: no drop) | — |
+| M8 S | ≤ 150 KB/s; harness ≤ 100 MiB; decoder CPU | ✅ mean 124.8 KiB/s (p95 125.7; max 149.4 KiB/s = 153 kB/s, a post-stall burst), ~100% reflected audio; RSS ≤ 26.9 MiB; CPU 0.64% of a core; decoder ~10 ms/s | — not run on this shell by design (no soak). Seen anyway: 1–10 KiB/s, no audio on the Realtime sideband | — |
+| M9 H | cost within ±25% of §8 | ✅ **$2.69 / 45 min, $3.53 / 60 min** vs $3.1 / $4.0 (−13% / −12%) | ✅ like-for-like **$1.78 / $2.51** vs $2.1 / $2.8 (−15% / −10%). The raw mock was far cheaper (2.4 min of candidate speech) | — |
+| M10 S | continuity ≥ 4 | ✅ **5** | ❌ **2** (brief lacked the editor code) | — |
+| M11 S | DSA terms ≥ 90% | ✅ 30/30 = 100% | ✅ 28/30 = 93% (`gpt-4o-transcribe`) | — |
+| M12 H | 0 wrong claims in 5 code probes | ✅ **0 wrong** (owner verdicts; 4 deferred with "let me look", then correct) | ❌ **2 wrong claims** (owner verdicts) | ✅ **5/5 correct**, 0 wrong (Q1/Q3/Q4 from context, Q2/Q5 delegated) |
+| M13 H | browser can't alter the session | ✅ with `allowed_client_events:["session.close"]` (appends → `event_not_allowed`) or with no data channel. Default permissions accept appends | ✅ with no data channel (a data channel accepts the browser's `session.update`) | — |
+| M14 S | naturalness 1–5 (same script) | **5** | **4** (smoke: 2) | owner: "felt natural, fewer interruptions" |
+| M15 S | browsers | Chrome ✅, Safari ✅ (3/5 turns), Firefox 2 exchanges (owner: OK) | Chrome ✅; Safari and Firefox held but **cut themselves off mid-sentence** (2 and 3 self-interruptions) | — |
+| M16 S | screen context at a 2–3 s cadence | +$0.045/min (director); voice flat; context +0.043 `usage_ratio`/min; answer after updates 3.8 s timeline (delegated) | +$0.055/min (director); screen item ≈ 119 tokens | — |
+| M17 S | "current screen" item replaceable | **workaround**: append-only `thinking.append` `[screen vN]` (ack 0.7–1.0 s) | **yes**: `conversation.item.delete` + re-create (ack ~0.2 s) | — |
+
+### 16.3 Owner decision (D42), the fixed design and the re-check
+
+**Owner decision (D42, in session 2026-09-26): GPT-Live-1 with the fixed design, confirmed by a short re-check before
+the M6a design sprint.** The owner accepted that the details will be refined as the build goes on. This overrides the D28
+rule outcome ("both fail → text only"). The owner took into account:
+- M14: 5 vs 4;
+- M12 ✅ and M10 5;
+- GPT-Live's three fails trace to one design cause, and the L25 variant moved M3b and M12 to pass and M2 (from context)
+  to the edge of the bar.
+
+**Options considered:**
+1. The D28 outcome: v2.1.0 = text interviewer only; voice revisited 2026-12-26.
+2. **GPT-Live with the fixed design, re-verified at `ev-s6-recheck` (chosen).**
+3. mini with push-to-talk as the default. This still needed a fix for its code bluffing (M12) and its reseed context
+   (M10), and it self-interrupts on Firefox and Safari.
+
+**The fixed design (what `ev-s6-recheck` tests; the concrete spec that m6b-01/-02 inherit):**
+- **Context goes to the live model only at the candidate's turn start.** It is the raw, numbered current code, as one
+  versioned `[editor vN]` `thinking.append` (≤ 500 tokens). **Nothing is pushed while the candidate is silent or typing, or
+  while the model is speaking.**
+- **The director feeds facts only, never speakable prompts.** L25 voiced all 5 "next question" notes, 2 of them
+  unprompted. The director's analysis stays with the brain or the transcript for review, or reaches the live model only
+  as answers to delegations.
+- **Answer from context.** Delegation is only for explicit deep checks. If GPT-Live keeps delegating (3 of 7 in L25),
+  measure a faster Responses-delegation backend: the Responses arm was ~2.2 s faster than the director.
+- Carried over from S6:
+  - `store:false`;
+  - `client.data_channel.allowed_client_events:["session.close"]`;
+  - coach rejects `m=video`;
+  - a commentary-kick reseed whose brief includes the code snapshot;
+  - rollover before ~55 min;
+  - quota detected from coach's own calls, with an immediate hang-up;
+  - the mandatory per-interview $ cap enforced by coach.
+
+**`ev-s6-recheck` (≤ 1 h, now blocking [ds-m6a-01](../sprints/sprint-ds-m6a-01.md)'s ADR-0032 acceptance):**
+- Owner present, GPT-Live only, with the fixed design.
+- Measures, all with markers:
+  - **M2** (defined on the perceived basis, n ≥ 8);
+  - **M3** (≥ 6 min of marked silence + typing-while-thinking-aloud windows; strict and substantive-only both reported);
+  - **M3b**, **M12** (5 probes), **M4** (≥ 2 marked barge-ins), **M14**;
+  - and a note if the model, its price or the docs changed.
+- **Pass → ds-m6a-01 accepts ADR-0032 with GPT-Live-1.** A fail goes back to the owner: option 1 or 3.
+
+### 16.4 Environment and deltas from t6 §2/§3/§8
+
+- **Setup:**
+  - Machine and browsers: Apple M3 Max, macOS 26.5, Chrome 153.0.8010.54, Firefox 156.0.1, Safari 26.5, Go 1.26.5.
+  - Network: home Wi-Fi in India. The ICE pair was prflx/udp → host/udp, RTT ~205 ms.
+  - OpenAI org: **Tier 1**, prepaid, auto-reload off. **2FA: yes**; sign-in is via Google, and OpenAI's own Security page
+    still offers "Enable MFA" (MI-1).
+- **Key restrictions the UI offers (for AB24):**
+  - owner: You or a Service account;
+  - expiry: 1 d, 7 d, 30 d, Never or Custom days;
+  - permissions: All, Restricted or Read only. Restricted is set per endpoint: Responses (Read/Write/None), Realtime
+    (Request/None), and about 20 others.
+  - Both S6 keys were Restricted to Responses=Write and Realtime=Request, with a custom 2-day expiry.
+- **Models and prices, `as_of` 2026-09-26:**
+  - `gpt-live-1`: $0.05/min, billed per second. **Creating a WebRTC session bills 15 s during initialization, credited
+    once it runs** (new vs t6).
+  - `gpt-realtime-2.1-mini`, per 1M tokens: text $0.60 / $0.06 cached / $2.40; audio $10 / $0.30 / $20; image $0.80 / $0.08.
+  - `gpt-6-sol`: $2.00 in / $0.20 cached / **$2.50 cache write** (new vs t6 §8; usage reports `cache_write_tokens`) /
+    $10 out.
+  - Transcription: `gpt-4o-transcribe` at $0.006/min.
+- **Deltas from t6** (each verified by an independent re-read on the day):
+  - **GPT-Live lifetime is discoverable:** `session.started.expires_at` gives **7,200 s** (23 of 23 sessions). t6 had
+    "unpublished".
+  - **`store`/fork now exist.** `store:true` keeps the full **audio recording for 30 days**, and project storage is off by
+    default. We sent `store:false`; P1 must pin it and must not use fork-based resume.
+  - **Browser event allowlist.** A new startup-only `session.client.data_channel.allowed_client_events` /
+    `allowed_server_events` restricts what the browser can send. It defaults to allow-all (see M13).
+  - `session.update` on GPT-Live changes only the Responses-delegation settings. There is still no response truncation
+    and no end-of-speech event (LiveKit docs).
+  - Server controls moved to `guides/voice-server-controls`, and Realtime WebRTC merged into `guides/voice-webrtc`.
+  - **Firefox:** openai-agents-js #1353 was **closed wontfix 2026-09-25**, unresolved.
+  - **Safari:** a third-party report says it is unaffected, because it sends USE-CANDIDATE.
+  - **Latency benchmark:** AA adds "GPT-Live-1 (Astra, medium)" at 1.34 s. Sol-low is unchanged at 1.24 s.
+  - **Prepaid:** auto-reload is on by default at setup, and balances take "a few minutes" to update.
+  - **Responses `store:false`** still keeps extended prompt-cache state for up to 24 h.
+- **Voices:** `marin` exists on both shells; it's the GPT-Live default and one of 22. mini offers 10 voices, including
+  `marin`.
+
+### 16.5 For [m6b-01](../sprints/sprint-m6b-01.md): adapter, SDP broker, sideband
+
+- **GPT-Live create:**
+  - Request: `POST /v1/live/sessions` with JSON `{session:{model, instructions, store:false, audio.output.voice,
+    delegation:{type}, client?:{data_channel:{allowed_client_events:["session.close"], allowed_server_events:"all"}},
+    input?}, transport:{type:"webrtc", sdp}}`.
+  - Response: **201** `{session:{id}, transport:{sdp}}`.
+  - Sideband: `wss://api.openai.com/v1/live/sessions/{id}/attach` with the standard key. It receives
+    `session.started` if it attaches before the start.
+- **mini create:**
+  - Request: `POST /v1/realtime/calls`, multipart `sdp` (application/sdp) + `session` (JSON: `type:"realtime"`, `model`,
+    `instructions`, `output_modalities`, `reasoning.effort`, `audio.input.{transcription.model, turn_detection}`,
+    `audio.output.voice`).
+  - Response: **201** with the answer SDP as the body. The call id comes from the `Location` header.
+  - Sideband: `wss://api.openai.com/v1/realtime?call_id=…`.
+  - mini does **not** speak first. Send `response.create` after the attach. That opens it in 1.9 s, versus 13 s waiting for
+    the user.
+- **Brokering worked on both shells**, so the `client_secrets` fallback isn't needed.
+  - Broker round-trip p95: 1.6 s (GPT-Live), 1.2 s (mini).
+  - **Answers always carried 3 UDP + 3 TCP-passive candidates on port 443** (37 of 37). ICE-TCP is present for
+    UDP-blocked networks.
+- **Data channel.**
+  - GPT-Live works **with no data channel** (captions come over the sideband) *or* with the allowlist. Default permissions
+    let the browser send `session.instructions.append`, `session.commentary.append` and `session.thinking.append`, and
+    mute/unmute.
+  - mini works with no data channel. With one, the browser's `session.update` (instructions) is accepted.
+  - → **P1: mini with no data channel; GPT-Live with `allowed_client_events:["session.close"]` or with none.**
+- **`m=video` is not refused.**
+  - Both shells answer a video m-line `recvonly` or `sendonly`.
+  - When the browser *sends* video, GPT-Live's session drops ~3 s later, with no `session.closed`. mini keeps the call
+    and accepts the track.
+  - → **Coach must reject any offer with `m=video`** (D29: no video to the AI).
+- **Audio events the decoder drops unparsed:**
+  - GPT-Live sideband: `session.input_audio.append` and `session.output_audio.delta`. These are ~100% of its ~125 KiB/s.
+  - **The Realtime sideband carries no audio** (0 audio bytes on every mini session).
+  - No sideband filter exists or is documented.
+- **Sideband fan-out:** a second sideband on the same session receives every event on **both** shells, which enables
+  make-before-break.
+- **mini's sideband is idle-closed after exactly 300 s** with no events (EOF, and the call keeps running).
+  → Ping/keepalive, or re-attach on EOF.
+- **Sending commands:**
+  - Commands to a closing GPT-Live session return `invalid_request_error` "The session is closing…". Stop director sends
+    once close has started.
+  - Screen-context acks: GPT-Live `thinking.append` → `appended` in 0.7–1.0 s; mini `conversation.item.delete`/`create` in
+    ~0.2 s.
+
+### 16.6 For [m6b-02](../sprints/sprint-m6b-02.md): rollover, reseed, push-to-talk, cache
+
+- **GPT-Live rollover:**
+  - The duration limit is 7,200 s, from `expires_at`.
+  - `usage_ratio` grows ~0.0157/min even in near-silence and reached **0.572 at 60 min**.
+  - At **~60.5 min** it reset to 0.012 (engine replacement). **Remote audio stalled ~6.3 s** there.
+  - With D29 screen pushes the ratio grows +0.043/min, so it hits 90% in ~19 min of continuous updates.
+  - → Roll over (reseed) **before ~55 min, or at a phase boundary**, rather than ride the silent replacement.
+- **Reseed.** Both are primed with a brief plus the last 4 turns.
+  - **GPT-Live stays silent** on a seeded history that ends on an assistant turn. This held even with the cue in its
+    startup instructions (no speech in >90 s) and with `session.instructions.append` (first audio only after the user
+    spoke, 14 s).
+  - **A brain-authored `session.commentary.append` right after start makes it speak: TTFA 1.68 s.** Continuity M10 = 5.
+  - mini: `conversation.item.create` ×6 + `response.create` gives **TTFA 1.72 s**. M10 = 2, because the brief lacked the
+    editor code. → **The reseed brief must carry the code snapshot.**
+- **Push-to-talk.**
+  - GPT-Live's is emulated (`session.input_audio.mute`/`unmute` + `track.enabled`). Speech while muted = 0. But there is no
+    "respond now", so release → content took 5.3–6.5 s: a stall filler at 2.2 s, then the delegated answer.
+  - mini's is native (`turn_detection:null`; clear on press, `commit` + `response.create` on release). **1.0–1.7 s**, with
+    speech while muted = 0.
+- **Cache (mini):** the cached share was 78% on a warm turn and **83% after 16.3 min of silence**. The prompt cache
+  survived the silence. This was on a small (~0.4k-token) context, so the ratios are noisy.
+- **Quota during a live segment:** see 16.7. Coach must hang up itself; the provider doesn't end an active GPT-Live
+  session.
+
+### 16.7 For [m6a-02](../sprints/sprint-m6a-02.md): quota path (spend-limit path), probe, fixtures
+
+- **Codes.**
+  - Every refused call (probe, Responses, and new-session creation on **both** shells) returned **HTTP 429,
+    `type: insufficient_quota`, `code: project_spend_limit_exceeded`**, within ~1 s.
+  - → `ErrQuota`, by `error.code` as t6 §4 says.
+- **Enforcement lag.**
+  - Spend crossed the $1 limit at ~12:10, and the dashboard said "limit reached, requests will fail soon" at ~12:13.
+  - **The first refusal came at 12:26:33 (~16 min later)**, when harness-priced spend was **$2.06 (+106% overshoot)**.
+  - The trip is bounded to a 20 s probe window.
+- **Active sessions get no signal.**
+  - The GPT-Live session through the trip was **not killed**. It kept speaking and billing (+405 s) until the harness brake
+    hung it up 6.8 min later. `session.close` still worked.
+  - mini's active call showed no in-session signal: its sideband loss 14 s after the trip was the 300 s idle timeout
+    (verifier correction). Its HTTP hangup still returned 200 while the key was blocked.
+  - → **Detect quota from coach's own calls (director, probe, create) and hang up at once.** Nothing arrives on the live
+    session.
+- **Recovery:**
+  - The quota project was raised $1 → **$3** in one owner-approved step, because spend had already passed $2.
+  - The first probe **3 s after the save succeeded**. The last refusal seen was 12:27, and there was no probe between then
+    and the raise.
+  - New sessions were then created on both shells.
+- **Probe:** a 16-token `gpt-6-sol` call (`store:false`, effort none) cost ~$0.0001 and returned the same 429 when dry.
+- **Fixtures.** 18 JSONL files plus [`index.json`](t6-s6-fixtures/index.json), each with `observed[]`, `expected_class` and
+  `expected_action`. The quota files are labelled **"spend-limit path"**. Prepaid exhaustion (`credit_balance_exhausted`)
+  was not exercised; step 10 below covers it.
+
+### 16.8 For [ds-m6a-01](../sprints/sprint-ds-m6a-01.md) / AB24 and [ds-m6b-01](../sprints/sprint-ds-m6b-01.md) / AB29
+
+- **Measured cost per interview (M9):**
+  - **GPT-Live + director: $2.69 (45 min) / $3.53 (60 min)** at $0.056 per connected minute (voice $0.050 + director
+    $0.006).
+  - **mini, like-for-like: $1.78 / $2.51.** Measured token mechanics with t6's speech density and brain. The raw S6 mock was
+    far cheaper, with 2.4 min of candidate speech.
+  - **D29 screen context at a 2.55 s cadence:** about **+$0.045/min (GPT-Live)** and **+$0.055/min (mini)** in director calls.
+    The screen item itself is ≈119 tokens.
+  - The brain (text) costs $0.005–0.006 per minute outside D29 windows.
+- **Key restrictions** (AB24 key-hygiene copy): see 16.4. **ICE-TCP/TLS** candidates were always present (443/tcp passive).
+- **AB29 browser list:** Chrome/Edge and Safari; Firefox gets text mode with an explanation.
+- **ADR-0032 amendments to fold in at acceptance.** Nothing was edited here; ADR-0032 stays Proposed.
+  - GPT-Live has no replaceable current-screen item (M17: workaround). mini does (delete + re-create).
+  - The sideband does not carry quota signals (16.7).
+  - The frontend data channel needs the allowlist, or no channel.
+  - Offers with `m=video` are rejected.
+  - Launch browsers include Safari.
+  - If voice goes ahead: context pushes only at the candidate's turn boundaries (16.1/16.3).
+
+### 16.9 For [mi-13](../sprints/sprint-mi-13.md) and the catalog
+
+- **M8 sizing:** harness RSS max **26.9 MiB** across 14 processes, CPU **0.64% of a core** per session, decoder ~10 ms/s.
+  Sideband: GPT-Live ~125 KiB/s per session; mini 1–10 KiB/s. → Coach **500m / 256 Mi is ample** (confirmed; not
+  revised).
+- **CSP / Permissions-Policy.**
+  - `internal/gateway/security.go` is not on `main` yet: m1-04 is unbuilt under D41. So the page carried **m1-04's
+    planned string verbatim** ([sprint-m1-04](../sprints/sprint-m1-04.md) task 6), identical to the plan's quote, plus
+    `Permissions-Policy: camera=(self), microphone=(self)`.
+  - **0 `securitypolicyviolation` events** across all runs, in Chrome, Firefox and Safari.
+  - The page's resource timing shows **only its own origin**, never `openai.com`. `connect-src 'self'` doesn't govern
+    WebRTC, and media flowed.
+- **Catalog (`voice_shell`, m1-10's provisional entries):**
+  - `gpt-live-1`: `billing_shape: per_second` ($0.05/min, 15 s init credit), `session_cap_s: 7200` (runtime `expires_at`),
+    `min_tier: 1`, voices incl. `marin`, `billing_url: https://platform.openai.com/settings/organization/billing`.
+  - `gpt-realtime-2.1-mini`: `billing_shape: tokens`, `session_cap_s: 3600`, `min_tier: 1`, voices incl. `marin`, same
+    `billing_url`.
+
+### 16.10 Spend, teardown, step 10
+
+- **Spend by project (harness tally, conservative):**
+  - **`xlearn-s6` $6.50** (dashboard at 14:34: $6.19). That is under the $8 self-stop and the $10 hard limit.
+    - GPT-Live $5.88 (voice $5.67, director $0.20, Responses backend $0.01). This is over the plan's **$5.50 checkpoint**:
+      the owner moved $0.75 of mini's $2.50 reserve to GPT-Live on the day (checkpoint **$6.25**) after a soak false start.
+      The move happened at GPT-Live $1.84, before the real soak.
+    - mini $0.63.
+  - **`xlearn-s6-quota` $2.41** (dashboard ≈ $2.42, under the $3 cap). The limit went $1 → $3 in one step (16.7); the $2
+    step was skipped because enforcement lag had already taken spend past it.
+  - The org limit was raised to **$12** before the quota leg. Org total at the end: **$8.61** on the dashboard.
+- **Spend by leg:**
+
+  | Leg | Spend |
+  |---|---|
+  | smokes | $0.31 |
+  | GPT-Live mock + restart (L2) | $0.89 |
+  | reseeds (L3–L6) | $0.22 |
+  | tamper / no data channel / video | $0.15 |
+  | soak false start (L12–L14): the owner used the robot window by mistake | $0.27 |
+  | Responses arm (L15) | $0.13 |
+  | soak (L16, 65 min) | $3.25 |
+  | quota legs: 9 burn calls $1.39, live voice $1.01, probes $0.01 | $2.41 |
+  | gap-fill (L22) | $0.42 |
+  | exploratory variant (L25) | $0.29 |
+  | mini mock + restart (M10–M11) | $0.38 |
+  | cache test (M12) | $0.02 |
+  | mini reseed (M13) | $0.02 |
+  | browsers | $0.16 |
+
+- **Teardown 2026-09-26:**
+  - Both keys were **revoked** and both projects **archived** by the owner. The dashboard offers archive, not delete, so
+    provider-side logs follow OpenAI's retention.
+  - The harness directory, raw logs, WAVs and Chrome profiles were deleted afterwards. Key checks are in 16.11.
+- **Step 10 (passive prepaid timing): *pending.* The owner appends the purchase → probe time after the next real top-up.**
+
+### 16.11 Deviations and harness notes (for the record)
+
+- **The keys came from the 1Password CLI (`op run`)** instead of `read -s`, as the owner approved. Each harness start
+  needed one app approval, and no key value was ever printed.
+- **The agent operated the OpenAI dashboard in the built-in browser pane**, at the owner's request, after the owner
+  signed in. This covered reading usage and raising the quota limit; each raise was confirmed in chat. The project
+  deletion stayed with the owner.
+- **Harness bugs found and fixed mid-run:**
+  - Code state was not carried across restarts. That made GPT-Live say "can't see the code" after L2's restart; it
+    affected neither M7 nor M12's verdicts.
+  - A draining process misread its own sideband close on mini. The first mini M7 run (M10) was invalid and was redone on
+    M11.
+  - The reseed box showed a placeholder, not a value. Three fresh starts (L2, L3) instead of reseeds; L2 then served as the
+    mock.
+  - The synthetic soak prompt audio never reached the model (0 mic activity), so **the soak was a near-silent 65 min**. M5
+    and M8 hold for that case; conversation was not exercised.
+- **Coverage gaps:**
+  - The owner ran L2 free-form without step markers. M3 and M12 for GPT-Live come from the marked gap-fill (L22);
+    **GPT-Live M4 is "not run"**.
+  - D29 screen updates were agent-driven (6 revisions at 2.55 s) on both shells, not typed live.
+  - mini M3 rests on 2.7 min of window time: 1 event = 3.7 per 10 min.
+- **Key checks:**
+  - `git diff origin/main...HEAD | rg "^\+.*$KEYRE"`: empty.
+  - `rg -c "$KEYRE"` over the harness directory and `~/.zsh_history`: **5 hits, all `sk-sk…` Slovak TTS voice ids in Chrome's `WasmTtsEngine/voices.json` component file (one copy per throwaway profile), not keys**; 0 hits anywhere else in the harness directory. `~/.zsh_history` holds **2 key-shaped lines**. They were counted only, never printed, and handed to the owner to inspect.
+  - The fixture scrub `rg` (KEYRE, provider ids, SDP, IPs, `@`): empty. One fixture per scenario was skimmed.
 
 ---
 

@@ -16,18 +16,18 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done 2026-09-26: results in [t6 §16](../research/t6-realtime-interviewer.md#16-s6-results-spk-04-2026-09-26). **Both shells fail a hard gate under D28; the owner chose GPT-Live-1 with the fixed design (D42), confirmed at `ev-s6-recheck`**; M7 passes on both (one coach Deployment)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
 | 1 | Accounts: two throwaway OpenAI projects ($10 and $1 hard limits), project-scoped keys | O (before launch) | ✅ 2026-09-25 (owner prep; keys expire 2026-09-27) |
-| 2 | Harness (1.5 h): SDP brokers, sideband decoder, stub director, JSONL log, proxy, static page | H | ⬜ |
-| 3 | GPT-Live runs: scripted mock, mid-call restart, tamper, 65-min soak, quota, reseed (t6 §10 steps 2–7) | O · H | ⬜ |
-| 4 | mini runs: steps 2 (10 min), 3, 4, 6, 7, plus native push-to-talk, `semantic_vad` low, cache ratio (step 8) | O · H | ⬜ |
-| 5 | Browser legs, answer-SDP inspection, sideband filter, CSP/Permissions-Policy check (step 9) | O · H | ⬜ |
-| 6 | Decide: apply the D28 rules; fix the deploy shape (M7) and the browser gate list | X | ⬜ |
-| 7 | Deliver: scrub the fixtures, results note in t6 §16, status rows (docs PR) | X | ⬜ |
-| 8 | Teardown: projects and keys deleted, raw logs and harness directory deleted | O · H | ⬜ |
+| 2 | Harness (1.5 h): SDP brokers, sideband decoder, stub director, JSONL log, proxy, static page | H | ✅ 2026-09-26 (smoke passed on both shells; raw-log `rg` empty) |
+| 3 | GPT-Live runs: scripted mock, mid-call restart, tamper, 65-min soak, quota, reseed (t6 §10 steps 2–7) | O · H | ✅ 2026-09-26 (M2/M3/M3b ❌, M5/M6/M7/M9/M12/M13 ✅; M4 not run) |
+| 4 | mini runs: steps 2 (10 min), 3, 4, 6, 7, plus native push-to-talk, `semantic_vad` low, cache ratio (step 8) | O · H | ✅ 2026-09-26 (M2/M3/M12 ❌; M3b/M5/M6/M7/M9/M13 ✅) |
+| 5 | Browser legs, answer-SDP inspection, sideband filter, CSP/Permissions-Policy check (step 9) | O · H | ✅ 2026-09-26 (Chrome + Safari pass; Firefox → text; ICE-TCP 443 on every answer; no sideband filter; 0 CSP violations, no page-side provider request) |
+| 6 | Decide: apply the D28 rules; fix the deploy shape (M7) and the browser gate list | X | ✅ 2026-09-26: **both fail** under D28 → owner decision **D42: GPT-Live-1 with the fixed design**, confirmed by `ev-s6-recheck` before ds-m6a-01 (t6 §16.3); one coach Deployment; Chrome/Edge + Safari (Firefox → text mode) |
+| 7 | Deliver: scrub the fixtures, results note in t6 §16, status rows (docs PR) | X | ✅ 2026-09-26 (18 fixtures + `index.json`; scrub `rg` empty; one fixture per scenario skimmed) |
+| 8 | Teardown: projects and keys deleted, raw logs and harness directory deleted | O · H | ✅ 2026-09-26 (owner revoked both keys and archived both projects; harness dir deleted; `~/.zsh_history` has 2 key-shaped lines → owner item) |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (say why).
 > A failed hard gate is still ✅ once it's recorded with numbers; the verdict goes in the results. Update the _Overall_ line to

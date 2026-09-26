@@ -1,0 +1,1322 @@
+{
+ "about": "S6 (spk-04) scrubbed replay fixtures for m6a-02's classifier tests and m6b-01/-02. Synthetic ids; no SDP, headers, org/project ids, IPs, emails or names; every text/content field is a placeholder that keeps its length. expected_class uses m6a-02's names (Quota, Auth, ModelAccess, RateLimited, SessionCap, Unavailable, Unknown, none) mapped from t6 section 4; m6a-02 owns the final mapping and may correct entries in its PR.",
+ "date": "2026-09-26",
+ "t_ms": "relative to the first event of each file (harness clock); GPT-Live start_ms/end_ms are session-timeline ms",
+ "files": [
+  {
+   "file": "browsers.jsonl",
+   "shell": "both",
+   "scenario": "Firefox and Safari legs on both shells: turns, closes, CSP, page origins",
+   "path": "normal",
+   "date": "2026-09-26",
+   "models": {
+    "live": "gpt-live-1",
+    "mini": "gpt-realtime-2.1-mini",
+    "brain": "gpt-6-sol"
+   },
+   "api": "both endpoints above",
+   "lines": 67,
+   "observed": [
+    {
+     "t_ms": 40082,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "close_requested",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 40083,
+     "channel": "sideband",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 38,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 40845,
+     "channel": "datachannel",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 38,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 89433,
+     "channel": "sideband",
+     "type": "response.done",
+     "status": "cancelled",
+     "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+     },
+     "expected_class": "none",
+     "expected_action": "none (cancelled by turn detection)"
+    },
+    {
+     "t_ms": 114867,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "hangup",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 222352,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "close_requested",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 222354,
+     "channel": "sideband",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 54,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 223322,
+     "channel": "datachannel",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 54,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 266871,
+     "channel": "sideband",
+     "type": "response.done",
+     "status": "cancelled",
+     "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+     },
+     "expected_class": "none",
+     "expected_action": "none (cancelled by turn detection)"
+    },
+    {
+     "t_ms": 274305,
+     "channel": "sideband",
+     "type": "response.done",
+     "status": "cancelled",
+     "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+     },
+     "expected_class": "none",
+     "expected_action": "none (cancelled by turn detection)"
+    },
+    {
+     "t_ms": 280828,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "hangup",
+     "expected_class": "none",
+     "expected_action": "none"
+    }
+   ],
+   "expected_class": "none",
+   "expected_action": "none"
+  },
+  {
+   "file": "director-store-false.jsonl",
+   "shell": "brain",
+   "scenario": "director and brief request shapes (store:false, reasoning.effort, max_output_tokens); content fields scrubbed",
+   "path": "normal",
+   "date": "2026-09-26",
+   "models": {
+    "brain": "gpt-6-sol"
+   },
+   "api": "POST /v1/responses (store:false)",
+   "lines": 6,
+   "observed": [],
+   "expected_class": "none",
+   "expected_action": "none"
+  },
+  {
+   "file": "live-quota-spend-limit.jsonl",
+   "shell": "live",
+   "scenario": "quota: active GPT-Live session through a project hard-limit trip; post-trip creation; recovery after raise",
+   "path": "spend-limit path",
+   "date": "2026-09-26",
+   "models": {
+    "live": "gpt-live-1",
+    "brain": "gpt-6-sol"
+   },
+   "api": "POST /v1/live/sessions (JSON session + transport{webrtc,sdp}, store:false); sideband wss /v1/live/sessions/{id}/attach",
+   "lines": 243,
+   "observed": [
+    {
+     "t_ms": 47221,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "close_requested",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 47222,
+     "channel": "sideband",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 35,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 48001,
+     "channel": "datachannel",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 35,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 50006,
+     "channel": "sideband",
+     "type": "sideband.closed",
+     "close_code": -1,
+     "expected_class": "none",
+     "expected_action": "none (the sideband ends after the session was closed)"
+    },
+    {
+     "t_ms": 659886,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "close_requested",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 659888,
+     "channel": "sideband",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 458,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 659998,
+     "channel": "datachannel",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 458,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 662809,
+     "channel": "sideband",
+     "type": "sideband.closed",
+     "close_code": -1,
+     "expected_class": "none",
+     "expected_action": "none (the sideband ends after the session was closed)"
+    },
+    {
+     "t_ms": 1017836,
+     "channel": "probe",
+     "type": "probe.call",
+     "error": {
+      "status": 429,
+      "type": "insufficient_quota",
+      "code": "project_spend_limit_exceeded"
+     },
+     "expected_class": "Quota",
+     "expected_action": "interrupt(quota): freeze clock, checkpoint, hang up the provider session, one probe, grace modal"
+    },
+    {
+     "t_ms": 1072823,
+     "channel": "http",
+     "type": "segment.create",
+     "error": {
+      "status": 429,
+      "type": "insufficient_quota",
+      "code": "project_spend_limit_exceeded"
+     },
+     "expected_class": "Quota",
+     "expected_action": "interrupt(quota): freeze clock, checkpoint, hang up the provider session, one probe, grace modal"
+    },
+    {
+     "t_ms": 1424965,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "close_requested",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 1424966,
+     "channel": "sideband",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 709,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 1425016,
+     "channel": "datachannel",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 709,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 1427610,
+     "channel": "sideband",
+     "type": "sideband.closed",
+     "close_code": -1,
+     "expected_class": "none",
+     "expected_action": "none (the sideband ends after the session was closed)"
+    },
+    {
+     "t_ms": 2851673,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "close_requested",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 2851674,
+     "channel": "sideband",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 15,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 2852037,
+     "channel": "datachannel",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 15,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 2854404,
+     "channel": "sideband",
+     "type": "sideband.closed",
+     "close_code": -1,
+     "expected_class": "none",
+     "expected_action": "none (the sideband ends after the session was closed)"
+    }
+   ],
+   "expected_class": "Quota",
+   "expected_action": "interrupt(quota): freeze clock, checkpoint, hang up the provider session, one probe, grace modal"
+  },
+  {
+   "file": "live-reseed.jsonl",
+   "shell": "live",
+   "scenario": "reseed: brief + last 4 turns; instruction-append kick (no speech) vs commentary.append kick (TTFA 1.68 s)",
+   "path": "reseed",
+   "date": "2026-09-26",
+   "models": {
+    "live": "gpt-live-1",
+    "brain": "gpt-6-sol"
+   },
+   "api": "POST /v1/live/sessions (JSON session + transport{webrtc,sdp}, store:false); sideband wss /v1/live/sessions/{id}/attach",
+   "lines": 49,
+   "observed": [
+    {
+     "t_ms": 57898,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "close_requested",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 57898,
+     "channel": "sideband",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 55,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 58127,
+     "channel": "datachannel",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 55,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 226276,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "close_requested",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 226277,
+     "channel": "sideband",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 112,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 227126,
+     "channel": "datachannel",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 112,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 348515,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "close_requested",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 348516,
+     "channel": "sideband",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 61,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 349133,
+     "channel": "datachannel",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 61,
+     "expected_class": "none",
+     "expected_action": "none"
+    }
+   ],
+   "expected_class": "none",
+   "expected_action": "none"
+  },
+  {
+   "file": "live-responses-delegation.jsonl",
+   "shell": "live",
+   "scenario": "Responses delegation arm: session.delegation.created target=responses, nested response.event lifecycle and usage",
+   "path": "normal",
+   "date": "2026-09-26",
+   "models": {
+    "live": "gpt-live-1",
+    "brain": "gpt-6-sol"
+   },
+   "api": "POST /v1/live/sessions (JSON session + transport{webrtc,sdp}, store:false); sideband wss /v1/live/sessions/{id}/attach",
+   "lines": 64,
+   "observed": [
+    {
+     "t_ms": 146905,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "close_requested",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 146906,
+     "channel": "sideband",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 145,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 147430,
+     "channel": "datachannel",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 145,
+     "expected_class": "none",
+     "expected_action": "none"
+    }
+   ],
+   "expected_class": "none",
+   "expected_action": "none"
+  },
+  {
+   "file": "live-restart-m7.jsonl",
+   "shell": "live",
+   "scenario": "M7: second sideband attached before draining the first (make-before-break), then SIGKILL and cold re-attach; page packets keep rising",
+   "path": "restart",
+   "date": "2026-09-26",
+   "models": {
+    "live": "gpt-live-1",
+    "brain": "gpt-6-sol"
+   },
+   "api": "POST /v1/live/sessions (JSON session + transport{webrtc,sdp}, store:false); sideband wss /v1/live/sessions/{id}/attach",
+   "lines": 90,
+   "observed": [
+    {
+     "t_ms": 23062,
+     "channel": "sideband",
+     "type": "sideband.closed",
+     "close_code": -1,
+     "expected_class": "none",
+     "expected_action": "none (our own SIGTERM drain dropped this sideband; the call continued)"
+    },
+    {
+     "t_ms": 185158,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "close_requested",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 185159,
+     "channel": "sideband",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 965,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 186003,
+     "channel": "datachannel",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 965,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 189222,
+     "channel": "sideband",
+     "type": "sideband.closed",
+     "close_code": -1,
+     "expected_class": "none",
+     "expected_action": "none (the sideband ends after the session was closed)"
+    }
+   ],
+   "expected_class": "none",
+   "expected_action": "none"
+  },
+  {
+   "file": "live-session-lifecycle.jsonl",
+   "shell": "live",
+   "scenario": "smoke session: create, attach, started, usage, director notes, graceful close",
+   "path": "normal",
+   "date": "2026-09-26",
+   "models": {
+    "live": "gpt-live-1",
+    "brain": "gpt-6-sol"
+   },
+   "api": "POST /v1/live/sessions (JSON session + transport{webrtc,sdp}, store:false); sideband wss /v1/live/sessions/{id}/attach",
+   "lines": 145,
+   "observed": [
+    {
+     "t_ms": 216229,
+     "channel": "sideband",
+     "type": "error",
+     "error": {
+      "type": "invalid_request_error"
+     },
+     "expected_class": "none",
+     "expected_action": "none (harness command sent while closing)"
+    },
+    {
+     "t_ms": 216634,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "close_requested",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 216636,
+     "channel": "sideband",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 215,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 216957,
+     "channel": "datachannel",
+     "type": "error",
+     "error": {
+      "type": "invalid_request_error"
+     },
+     "expected_class": "none",
+     "expected_action": "none (harness command sent while closing)"
+    },
+    {
+     "t_ms": 216958,
+     "channel": "datachannel",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 215,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 219642,
+     "channel": "sideband",
+     "type": "sideband.closed",
+     "close_code": -1,
+     "expected_class": "none",
+     "expected_action": "none (the sideband ends after the session was closed)"
+    }
+   ],
+   "expected_class": "none",
+   "expected_action": "none"
+  },
+  {
+   "file": "live-soak-close.jsonl",
+   "shell": "live",
+   "scenario": "65-minute soak (near-silent input): usage_ratio trajectory incl. ~60.5 min reset, sideband load, harness RSS/CPU, graceful close",
+   "path": "normal",
+   "date": "2026-09-26",
+   "models": {
+    "live": "gpt-live-1",
+    "brain": "gpt-6-sol"
+   },
+   "api": "POST /v1/live/sessions (JSON session + transport{webrtc,sdp}, store:false); sideband wss /v1/live/sessions/{id}/attach",
+   "lines": 562,
+   "observed": [
+    {
+     "t_ms": 3898789,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "close_requested",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 3898790,
+     "channel": "sideband",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 3897,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 3898935,
+     "channel": "datachannel",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 3897,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 3901826,
+     "channel": "sideband",
+     "type": "sideband.closed",
+     "close_code": -1,
+     "expected_class": "none",
+     "expected_action": "none (the sideband ends after the session was closed)"
+    }
+   ],
+   "expected_class": "none",
+   "expected_action": "none"
+  },
+  {
+   "file": "live-tamper.jsonl",
+   "shell": "live",
+   "scenario": "browser tamper over the data channel: default permissions vs allowed_client_events=[session.close] vs no data channel",
+   "path": "tamper",
+   "date": "2026-09-26",
+   "models": {
+    "live": "gpt-live-1",
+    "brain": "gpt-6-sol"
+   },
+   "api": "POST /v1/live/sessions (JSON session + transport{webrtc,sdp}, store:false); sideband wss /v1/live/sessions/{id}/attach",
+   "lines": 48,
+   "observed": [
+    {
+     "t_ms": 17006,
+     "channel": "sideband",
+     "type": "error",
+     "error": {
+      "type": "invalid_request_error",
+      "code": "unknown_parameter"
+     },
+     "expected_class": "none",
+     "expected_action": "browser-originated event rejected by the provider: log; re-apply config; hang up on a second attempt (t6 s3)"
+    },
+    {
+     "t_ms": 17859,
+     "channel": "datachannel",
+     "type": "error",
+     "error": {
+      "type": "invalid_request_error",
+      "code": "unknown_parameter"
+     },
+     "expected_class": "none",
+     "expected_action": "browser-originated event rejected by the provider: log; re-apply config; hang up on a second attempt (t6 s3)"
+    },
+    {
+     "t_ms": 18509,
+     "channel": "sideband",
+     "type": "error",
+     "error": {
+      "type": "invalid_request_error",
+      "code": "immutable_field_update"
+     },
+     "expected_class": "none",
+     "expected_action": "browser-originated event rejected by the provider: log; re-apply config; hang up on a second attempt (t6 s3)"
+    },
+    {
+     "t_ms": 18858,
+     "channel": "datachannel",
+     "type": "error",
+     "error": {
+      "type": "invalid_request_error",
+      "code": "immutable_field_update"
+     },
+     "expected_class": "none",
+     "expected_action": "browser-originated event rejected by the provider: log; re-apply config; hang up on a second attempt (t6 s3)"
+    },
+    {
+     "t_ms": 47116,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "close_requested",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 47117,
+     "channel": "sideband",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 45,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 47860,
+     "channel": "datachannel",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 45,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 86870,
+     "channel": "sideband",
+     "type": "error",
+     "error": {
+      "type": "invalid_request_error",
+      "code": "unknown_parameter"
+     },
+     "expected_class": "none",
+     "expected_action": "browser-originated event rejected by the provider: log; re-apply config; hang up on a second attempt (t6 s3)"
+    },
+    {
+     "t_ms": 87655,
+     "channel": "datachannel",
+     "type": "error",
+     "error": {
+      "type": "invalid_request_error",
+      "code": "unknown_parameter"
+     },
+     "expected_class": "none",
+     "expected_action": "browser-originated event rejected by the provider: log; re-apply config; hang up on a second attempt (t6 s3)"
+    },
+    {
+     "t_ms": 88656,
+     "channel": "datachannel",
+     "type": "error",
+     "error": {
+      "type": "invalid_request_error",
+      "code": "s6-id-0002"
+     },
+     "expected_class": "none",
+     "expected_action": "none (harness command sent while closing)"
+    },
+    {
+     "t_ms": 90655,
+     "channel": "datachannel",
+     "type": "error",
+     "error": {
+      "type": "invalid_request_error",
+      "code": "s6-id-0002"
+     },
+     "expected_class": "none",
+     "expected_action": "none (harness command sent while closing)"
+    },
+    {
+     "t_ms": 91655,
+     "channel": "datachannel",
+     "type": "error",
+     "error": {
+      "type": "invalid_request_error",
+      "code": "s6-id-0002"
+     },
+     "expected_class": "none",
+     "expected_action": "none (harness command sent while closing)"
+    },
+    {
+     "t_ms": 93656,
+     "channel": "datachannel",
+     "type": "error",
+     "error": {
+      "type": "invalid_request_error",
+      "code": "s6-id-0002"
+     },
+     "expected_class": "none",
+     "expected_action": "none (harness command sent while closing)"
+    },
+    {
+     "t_ms": 94659,
+     "channel": "datachannel",
+     "type": "error",
+     "error": {
+      "type": "invalid_request_error",
+      "code": "s6-id-0002"
+     },
+     "expected_class": "none",
+     "expected_action": "none (harness command sent while closing)"
+    },
+    {
+     "t_ms": 96654,
+     "channel": "datachannel",
+     "type": "error",
+     "error": {
+      "type": "invalid_request_error",
+      "code": "s6-id-0002"
+     },
+     "expected_class": "none",
+     "expected_action": "none (harness command sent while closing)"
+    },
+    {
+     "t_ms": 120504,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "close_requested",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 120505,
+     "channel": "sideband",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 40,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 120657,
+     "channel": "datachannel",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 40,
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 162377,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "close_requested",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 162377,
+     "channel": "sideband",
+     "type": "session.closed",
+     "reason": "close_requested",
+     "usage_seconds": 26,
+     "expected_class": "none",
+     "expected_action": "none"
+    }
+   ],
+   "expected_class": "none",
+   "expected_action": "none"
+  },
+  {
+   "file": "live-video-offer.jsonl",
+   "shell": "live",
+   "scenario": "offer carrying a sent video track: answered recvonly, session torn down ~3 s later without session.closed",
+   "path": "tamper",
+   "date": "2026-09-26",
+   "models": {
+    "live": "gpt-live-1",
+    "brain": "gpt-6-sol"
+   },
+   "api": "POST /v1/live/sessions (JSON session + transport{webrtc,sdp}, store:false); sideband wss /v1/live/sessions/{id}/attach",
+   "lines": 22,
+   "observed": [
+    {
+     "t_ms": 3712,
+     "channel": "sideband",
+     "type": "sideband.closed",
+     "close_code": -1,
+     "expected_class": "Unknown",
+     "expected_action": "re-attach the sideband; <=2 retries, then the same-key probe decides"
+    },
+    {
+     "t_ms": 15695,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "hangup_no_sideband",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 52447,
+     "channel": "sideband",
+     "type": "sideband.closed",
+     "close_code": -1,
+     "expected_class": "Unknown",
+     "expected_action": "re-attach the sideband; <=2 retries, then the same-key probe decides"
+    },
+    {
+     "t_ms": 64335,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "hangup_no_sideband",
+     "expected_class": "none",
+     "expected_action": "none"
+    }
+   ],
+   "expected_class": "Unknown",
+   "expected_action": "re-attach the sideband; <=2 retries, then the same-key probe decides"
+  },
+  {
+   "file": "mini-no-datachannel.jsonl",
+   "shell": "mini",
+   "scenario": "no-data-channel call works; data-channel tamper accepted; m=video offers answered (recvonly/sendonly)",
+   "path": "tamper",
+   "date": "2026-09-26",
+   "models": {
+    "mini": "gpt-realtime-2.1-mini",
+    "brain": "gpt-6-sol"
+   },
+   "api": "POST /v1/realtime/calls (multipart sdp + session); call id from Location; sideband wss /v1/realtime?call_id=",
+   "lines": 61,
+   "observed": [
+    {
+     "t_ms": 28027,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "hangup",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 58012,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "hangup",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 113085,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "hangup",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 192147,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "hangup",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 216128,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "hangup",
+     "expected_class": "none",
+     "expected_action": "none"
+    }
+   ],
+   "expected_class": "none",
+   "expected_action": "none"
+  },
+  {
+   "file": "mini-quota-spend-limit.jsonl",
+   "shell": "mini",
+   "scenario": "quota: active mini call through the same trip; post-trip creation; recovery after raise",
+   "path": "spend-limit path",
+   "date": "2026-09-26",
+   "models": {
+    "mini": "gpt-realtime-2.1-mini",
+    "brain": "gpt-6-sol"
+   },
+   "api": "POST /v1/realtime/calls (multipart sdp + session); call id from Location; sideband wss /v1/realtime?call_id=",
+   "lines": 73,
+   "observed": [
+    {
+     "t_ms": 306791,
+     "channel": "probe",
+     "type": "probe.call",
+     "error": {
+      "status": 429,
+      "type": "insufficient_quota",
+      "code": "project_spend_limit_exceeded"
+     },
+     "expected_class": "Quota",
+     "expected_action": "interrupt(quota): freeze clock, checkpoint, hang up the provider session, one probe, grace modal"
+    },
+    {
+     "t_ms": 320865,
+     "channel": "sideband",
+     "type": "sideband.closed",
+     "close_code": -1,
+     "expected_class": "Unknown",
+     "expected_action": "re-attach the sideband; <=2 retries, then the same-key probe decides"
+    },
+    {
+     "t_ms": 381934,
+     "channel": "http",
+     "type": "segment.create",
+     "error": {
+      "status": 429,
+      "type": "insufficient_quota",
+      "code": "project_spend_limit_exceeded"
+     },
+     "expected_class": "Quota",
+     "expected_action": "interrupt(quota): freeze clock, checkpoint, hang up the provider session, one probe, grace modal"
+    },
+    {
+     "t_ms": 417315,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "hangup",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 2124234,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "hangup",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 2126239,
+     "channel": "sideband",
+     "type": "sideband.closed",
+     "close_code": -1,
+     "expected_class": "none",
+     "expected_action": "none (the sideband ends after the session was closed)"
+    }
+   ],
+   "expected_class": "Quota",
+   "expected_action": "interrupt(quota): freeze clock, checkpoint, hang up the provider session, one probe, grace modal"
+  },
+  {
+   "file": "mini-reseed.jsonl",
+   "shell": "mini",
+   "scenario": "reseed: brief + last 4 turns via conversation.item.create + response.create (TTFA 1.72 s)",
+   "path": "reseed",
+   "date": "2026-09-26",
+   "models": {
+    "mini": "gpt-realtime-2.1-mini",
+    "brain": "gpt-6-sol"
+   },
+   "api": "POST /v1/realtime/calls (multipart sdp + session); call id from Location; sideband wss /v1/realtime?call_id=",
+   "lines": 25,
+   "observed": [
+    {
+     "t_ms": 3734,
+     "channel": "sideband",
+     "type": "response.done",
+     "status": "cancelled",
+     "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+     },
+     "expected_class": "none",
+     "expected_action": "none (cancelled by turn detection)"
+    },
+    {
+     "t_ms": 32205,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "hangup",
+     "expected_class": "none",
+     "expected_action": "none"
+    }
+   ],
+   "expected_class": "none",
+   "expected_action": "none"
+  },
+  {
+   "file": "mini-restart-m7.jsonl",
+   "shell": "mini",
+   "scenario": "M7: make-before-break and cold re-attach on a Realtime call",
+   "path": "restart",
+   "date": "2026-09-26",
+   "models": {
+    "mini": "gpt-realtime-2.1-mini",
+    "brain": "gpt-6-sol"
+   },
+   "api": "POST /v1/realtime/calls (multipart sdp + session); call id from Location; sideband wss /v1/realtime?call_id=",
+   "lines": 36,
+   "observed": [
+    {
+     "t_ms": 42189,
+     "channel": "sideband",
+     "type": "sideband.closed",
+     "close_code": 1001,
+     "expected_class": "none",
+     "expected_action": "none (our own SIGTERM drain dropped this sideband; the call continued)"
+    }
+   ],
+   "expected_class": "none",
+   "expected_action": "none"
+  },
+  {
+   "file": "mini-session-lifecycle.jsonl",
+   "shell": "mini",
+   "scenario": "smoke call: create, attach, VAD turns, responses, HTTP hangup",
+   "path": "normal",
+   "date": "2026-09-26",
+   "models": {
+    "mini": "gpt-realtime-2.1-mini",
+    "brain": "gpt-6-sol"
+   },
+   "api": "POST /v1/realtime/calls (multipart sdp + session); call id from Location; sideband wss /v1/realtime?call_id=",
+   "lines": 264,
+   "observed": [
+    {
+     "t_ms": 62244,
+     "channel": "sideband",
+     "type": "response.done",
+     "status": "cancelled",
+     "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+     },
+     "expected_class": "none",
+     "expected_action": "none (cancelled by turn detection)"
+    },
+    {
+     "t_ms": 62557,
+     "channel": "datachannel",
+     "type": "response.done",
+     "status": "cancelled",
+     "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+     },
+     "expected_class": "none",
+     "expected_action": "none (cancelled by turn detection)"
+    },
+    {
+     "t_ms": 86164,
+     "channel": "sideband",
+     "type": "response.done",
+     "status": "cancelled",
+     "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+     },
+     "expected_class": "none",
+     "expected_action": "none (cancelled by turn detection)"
+    },
+    {
+     "t_ms": 86559,
+     "channel": "datachannel",
+     "type": "response.done",
+     "status": "cancelled",
+     "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+     },
+     "expected_class": "none",
+     "expected_action": "none (cancelled by turn detection)"
+    },
+    {
+     "t_ms": 95380,
+     "channel": "sideband",
+     "type": "response.done",
+     "status": "cancelled",
+     "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+     },
+     "expected_class": "none",
+     "expected_action": "none (cancelled by turn detection)"
+    },
+    {
+     "t_ms": 95568,
+     "channel": "datachannel",
+     "type": "response.done",
+     "status": "cancelled",
+     "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+     },
+     "expected_class": "none",
+     "expected_action": "none (cancelled by turn detection)"
+    },
+    {
+     "t_ms": 166549,
+     "channel": "sideband",
+     "type": "response.done",
+     "status": "cancelled",
+     "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+     },
+     "expected_class": "none",
+     "expected_action": "none (cancelled by turn detection)"
+    },
+    {
+     "t_ms": 166560,
+     "channel": "datachannel",
+     "type": "response.done",
+     "status": "cancelled",
+     "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+     },
+     "expected_class": "none",
+     "expected_action": "none (cancelled by turn detection)"
+    },
+    {
+     "t_ms": 169032,
+     "channel": "sideband",
+     "type": "response.done",
+     "status": "cancelled",
+     "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+     },
+     "expected_class": "none",
+     "expected_action": "none (cancelled by turn detection)"
+    },
+    {
+     "t_ms": 169557,
+     "channel": "datachannel",
+     "type": "response.done",
+     "status": "cancelled",
+     "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+     },
+     "expected_class": "none",
+     "expected_action": "none (cancelled by turn detection)"
+    },
+    {
+     "t_ms": 245396,
+     "channel": "harness",
+     "type": "segment.closed",
+     "reason": "hangup",
+     "expected_class": "none",
+     "expected_action": "none"
+    },
+    {
+     "t_ms": 247399,
+     "channel": "sideband",
+     "type": "sideband.closed",
+     "close_code": -1,
+     "expected_class": "none",
+     "expected_action": "none (the sideband ends after the session was closed)"
+    }
+   ],
+   "expected_class": "none",
+   "expected_action": "none"
+  },
+  {
+   "file": "mini-sideband-idle-close.jsonl",
+   "shell": "mini",
+   "scenario": "silent call: sideband closed by the server (EOF) after ~285 s with no events while media continued; cold re-attach; cache ratio after 16 min",
+   "path": "idle",
+   "date": "2026-09-26",
+   "models": {
+    "mini": "gpt-realtime-2.1-mini",
+    "brain": "gpt-6-sol"
+   },
+   "api": "POST /v1/realtime/calls (multipart sdp + session); call id from Location; sideband wss /v1/realtime?call_id=",
+   "lines": 42,
+   "observed": [
+    {
+     "t_ms": 358727,
+     "channel": "sideband",
+     "type": "sideband.closed",
+     "close_code": -1,
+     "expected_class": "Unknown",
+     "expected_action": "re-attach the sideband; <=2 retries, then the same-key probe decides"
+    }
+   ],
+   "expected_class": "Unknown",
+   "expected_action": "re-attach the sideband; <=2 retries, then the same-key probe decides"
+  },
+  {
+   "file": "probe.jsonl",
+   "shell": "brain",
+   "scenario": "16-token same-key probe on the quota project: before, during and after the trip",
+   "path": "spend-limit path",
+   "date": "2026-09-26",
+   "models": {
+    "brain": "gpt-6-sol"
+   },
+   "api": "POST /v1/responses (store:false)",
+   "lines": 88,
+   "observed": [
+    {
+     "t_ms": 841823,
+     "channel": "probe",
+     "type": "probe.call",
+     "error": {
+      "status": 429,
+      "type": "insufficient_quota",
+      "code": "project_spend_limit_exceeded"
+     },
+     "expected_class": "Quota",
+     "expected_action": "interrupt(quota): freeze clock, checkpoint, hang up the provider session, one probe, grace modal"
+    }
+   ],
+   "expected_class": "Quota",
+   "expected_action": "interrupt(quota): freeze clock, checkpoint, hang up the provider session, one probe, grace modal"
+  },
+  {
+   "file": "screen-context-d29.jsonl",
+   "shell": "both",
+   "scenario": "D29 screen updates at a 2-3 s cadence: mini item.delete + re-create (replace in place); GPT-Live thinking.append (append-only)",
+   "path": "normal",
+   "date": "2026-09-26",
+   "models": {
+    "live": "gpt-live-1",
+    "mini": "gpt-realtime-2.1-mini",
+    "brain": "gpt-6-sol"
+   },
+   "api": "both endpoints above",
+   "lines": 184,
+   "observed": [],
+   "expected_class": "none",
+   "expected_action": "none"
+  }
+ ]
+}
