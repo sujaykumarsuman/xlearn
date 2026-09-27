@@ -20,6 +20,11 @@ top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 - **Audience:** owner only (D35). Testers exercise the non-owner paths; real learners arrive at v3.
 - **Sprint merge rule (D40, 2026-09-25):** launching a sprint prompt is the owner's approval for every change it
   makes; every prompt ends with land-and-sync, and nothing waits on the owner mid-session ([decisions log](#decisions-log)).
+- **Build tooling (D44, 2026-09-26):** the v2 build runs under a manager session that reports to
+  [AI Builder](https://ai-builder.skriptvalley.com) ([ADR-0036](../adr/0036-ai-builder-execution-manager.md),
+  [charter](manager/MANAGER.md)). The repo and this file stay canonical; AI Builder is the live layer. Dispatched
+  sessions also report through `aib` (see [sprints/README.md](sprints/README.md#status-protocol-way-of-working),
+  status protocol).
 - **Last updated:** 2026-09-26 (spk-04 (S6) done: both shells failed a hard gate under D28; **D42**: the owner chose GPT-Live-1 with the fixed design, confirmed by a ≤ 1 h `ev-s6-recheck` that now gates ds-m6a-01's ADR-0032 acceptance; the M6b rows wait on it. One coach Deployment; Chrome/Edge + Safari. Earlier: spk-03 done: **WIF GO**, with `check_jti=false` on the one-rule issuer. The rule scope is `workspace:developer`, because the Console offers no `workspace:inference`, so ADR-0031 amendments are proposed for mi-12 ([t5 §15](research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25)). Earlier: spk-02 done: **MI-10 ✅**, Spike P0–P3 GO and image volume GO. Block 3 narrowed the AppArmor remount rules; block 2 gave Q-C GO, the amd64 allowlists and the x86_64-only proposal; block 1 gave image volume GO and the GOCACHE seed. Earlier: spk-02 partial results, ⛔ rows open; earlier the same day, D40: the sprint merge directive applied to the plan, status and indexes; before
   that, 2026-09-24: the v2 build-plan session with the build plan, status, sprint + prompt scaffolds and ADR sign-off).
 
@@ -28,7 +33,7 @@ top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 | Area | State |
 |------|-------|
 | v2 PRD | ✅ [drafted](../prd/xlearn-v2-prd.md) |
-| Feasibility (D0–D41; D36–D39 = BP1–BP4; D40 = the sprint merge directive; D41 = spikes first) + research T0–T7 | ✅ [feasibility](feasibility.md), [research/](research/) |
+| Feasibility (D0–D42, D44 (D43 reserved); D36–D39 = BP1–BP4; D40 = the sprint merge directive; D41 = spikes first; D44 = AI Builder, build tooling) + research T0–T7 | ✅ [feasibility](feasibility.md), [research/](research/) |
 | Rollout plan (the source) | ✅ [rollout-plan.md](rollout-plan.md) |
 | ADRs 0026, 0027, 0028, 0029, 0033, 0034, 0035 | ✅ **Accepted 2026-09-24** (BP2; amendments folded into the ADRs they amend) |
 | ADRs 0030, 0031, 0032 | Proposed until their spikes report (see [ADRs](#adrs)) |
@@ -50,6 +55,13 @@ top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 | MI-2b | GitHub auto-links only into password-less accounts (pre-account hijack closed; amends ADR-0023 §3) | xlearn#51 (`e915479`) | ✅ Done 2026-09-24 · live in v1.5.2 |
 | MI-2c | `SIGNUP_MODE ∈ {open, closed}`, production `closed` (D13 enforced) | xlearn#52 (`1b90d2b`) · infra#30 | ✅ Done 2026-09-24 · live in v1.5.2 |
 | infra#28 | `host-bootstrap` + `host-verify` merged; local `../infra` `main` synced | infra#28 | ✅ Done 2026-09-24 |
+
+**Build tooling (not sprints, D44):**
+
+| Item | What | Where | State |
+|------|------|-------|-------|
+| AI Builder | Execution-manager dashboard + `/api/v1` + the `aib` CLI; the live layer over this repo (D44, [ADR-0036](../adr/0036-ai-builder-execution-manager.md)). Not a sprint; own repo and release stream, never in the `v*` train | `sujaykumarsuman/ai-builder` · https://ai-builder.skriptvalley.com | ✅ live 2026-09-27 |
+| Manager kit | Charter, launch prompt, AGENT.md delegation, status-protocol addendum | [manager/MANAGER.md](manager/MANAGER.md) · [prompt-manager](prompts/prompt-manager.md) · xlearn#68 | ✅ merged 2026-09-27 |
 
 **Sprints** (recommended order; tracks interleave, only prereqs bind; see [build-plan](build-plan.md#sprint-table-recommended-order)):
 
@@ -437,8 +449,9 @@ Register: [build-plan → Artboard register](build-plan.md#artboard-register).
 | [0033](../adr/0033-invite-only-admission-and-owner-admin.md) | invite-only admission and owner admin | ✅ Accepted | 2026-09-24 (BP2) |
 | [0034](../adr/0034-v2-release-labelling-gating-and-rollback.md) | v2 release labelling, gating and rollback | ✅ Accepted | 2026-09-24 (BP2) |
 | [0035](../adr/0035-v2-operations-nats-auth-limits-capacity.md) | v2 operations: NATS auth, limits, capacity | ✅ Accepted | 2026-09-24 (BP2) |
+| [0036](../adr/0036-ai-builder-execution-manager.md) | AI Builder execution manager (tooling) | ✅ Accepted | 2026-09-26 (D44) |
 
-New ADRs written during the build take the next free number after checking peers (0036 onward).
+New ADRs written during the build take the next free number after checking peers (0037 onward).
 
 ## Owner calendar events
 
@@ -624,6 +637,7 @@ Notable calls not (yet) worth a full ADR, newest first. Promote to an ADR if the
 
 | Date | Decision | Notes |
 |------|----------|-------|
+| 2026-09-26 | **D44: AI Builder + the manager's delegated launches (owner).** The v2 build runs under a manager session that dispatches the sprint prompts and reports to https://ai-builder.skriptvalley.com (build tooling, not a sprint; own repo, CI and release stream; off the xLearn node). Before-you-launch items become `attest` asks; dashboard answers are data; the Hold/Ship brake only reduces authority; the repo stays canonical and the dashboard is the live layer. Owner login reuses projects-secret (infra's `projects-admin` `ADMIN_PASSWORD`; only an argon2id PHC of a PBKDF2 pre-hash in a 0400 file on the box; no second factor; step-up for irreversible actions; accepted risk; re-synced with `make owner-verifier` after every projects-admin rotation). Backups: hourly, age-encrypted, pulled off-host by the Mac and nightly by GitHub Actions over HTTPS with a backup-only token (no SSH key). | [ADR-0036](../adr/0036-ai-builder-execution-manager.md) · [feasibility D44](feasibility.md#decisions-log-newest-first) · [manager](manager/MANAGER.md) · [launch prompt](prompts/prompt-manager.md) · live: https://ai-builder.skriptvalley.com |
 | 2026-09-26 | **D42: GPT-Live-1 with the fixed design (owner), confirmed at `ev-s6-recheck`.** It overrides D28's "both fail → text only". The fixed design: the raw numbered code goes to the live model as one `[editor vN]` push **only at the candidate's turn start**, never while they are silent or typing or while the model speaks. The director feeds facts only, never speakable "next question" prompts. The model answers from context; delegation is for explicit deep checks only. Carried over: `store:false`, `allowed_client_events:["session.close"]`, reject `m=video`, coach self-enforces the $ cap, roll over before 55 min. | The owner's words: "I wish to go with GPT-Live using the fixed design, confirmed by a short re-check before the M6a design sprint. Things can be refined further as we go." `ev-s6-recheck` (GPT-Live only, ≤ 1 h): M2 perceived n ≥ 8, M3 ≥ 6 min of marked windows, M3b, M12, M4 marked, M14. If it fails, the owner re-decides (text only stays the fallback). ADR-0032 stays Proposed; ds-m6a-01 folds in the [§16.8 amendments](research/t6-realtime-interviewer.md#168-for-ds-m6a-01--ab24-and-ds-m6b-01--ab29). [t6 §16.3](research/t6-realtime-interviewer.md#163-owner-decision-d42-the-fixed-design-and-the-re-check) · [feasibility D42](feasibility.md#decisions-log-newest-first) |
 | 2026-09-26 | **spk-04 (S6) done: both shells fail a hard gate under D28.** GPT-Live-1: M1/M5/M6/M7/M9/M12/M13 ✅; **M2 ❌** (it client-delegated every code question; content p95 5.4 s timeline, 7.2 s perceived), **M3 ❌** (17.5 / 10 min, each 0.9–1.2 s after a director push), **M3b ❌** (content 5.3–6.5 s after release); M14 5, M10 5, M11 100%. mini: M1/M3b/M5/M6/M7/M9/M13 ✅; **M2 ❌** (perceived p95 2.41 s), **M3 ❌** (strict), **M12 ❌** (2 wrong claims); M14 4, M10 2, echo self-interruptions on Firefox and Safari. Exploratory L25 (turn-boundary pushes, answer from context): M3b ✅, M12 ✅ 5/5, M2 0.56 s timeline / 2.25 s perceived (borderline), 0 interjections in silences. **M7 passes on both → one coach Deployment. Browsers: Chrome/Edge + Safari; Firefox → text mode.** | Quota path: no in-session signal on either shell; project-limit enforcement lagged ~16 min with +106% overshoot, so coach must self-enforce its $ cap and hang up (ADR-0032 amendment). GPT-Live's ~60-min engine swap left a 6.3 s audio stall. Spend: xlearn-s6 $6.19 (dashboard; GPT-Live checkpoint moved to $6.25 by the owner after a soak false start), quota project $2.41 (raised $1 → $3 once, owner-approved), org $8.61 of $12. Keys revoked and projects archived by the owner the same day; 18 scrubbed fixtures + index in [`research/t6-s6-fixtures/`](research/t6-s6-fixtures/). [t6 §16](research/t6-realtime-interviewer.md#16-s6-results-spk-04-2026-09-26) |
 | 2026-09-25 | **spk-03: WIF GO, with `check_jti=false` on the one-rule issuer** (the pre-decided path). k3s v1.36.4 projected tokens carry a `jti`. The kubelet rotates the file at 80 % of TTL plus up to one pod sync: 2881 s (80.0 %) at 3600 s, and 81–91 % at 600 s. An in-place container restart keeps the file, so judge's boot exchange re-presents a used `jti`. It then gets an opaque 401 `Authentication failed` until the next rotation, and that 401 can't be told apart from a real auth failure. Exchange p50 0.33 s / max 0.47 s; first Messages call p50 1.61 s / max 1.82 s; `anthropic-workspace-id` matched 5/5. **This contradicts ADR-0031 §2, so mi-12 amends it at acceptance:** the Console offers no `workspace:inference` scope, so the rule is `workspace:developer` and the token reaches Files and Batches (200/200). The request builder, not the credential, enforces Messages-only. Further inputs for mi-12: set the rule lifetime to 1 h explicitly (the Console defaults to 10 min); the inline JWKS is the `keys` array; the org's $5 monthly spend limit must be raised before the $15 workspace limit means anything. | [t5 §15](research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25). ADR-0031 stays Proposed, with six amendments proposed. The `check_jti=false` confirming re-run is handed to mi-12. The Console clean-up and the org-limit raise are owner items. MI-1 (Anthropic 2FA) is still not recorded as done. The org UUID was missing from the launch message and was supplied by message. No production change. |

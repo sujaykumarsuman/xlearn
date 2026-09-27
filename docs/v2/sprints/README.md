@@ -16,6 +16,7 @@ docs/v2/
   build-plan.md            the static plan: principles, milestone map, sprint table, graph, calendar, artboards
   status.md                the live tracker (sprint board, MI rows, tags, flags, content, events, logs, decisions)
   feasibility.md · research/t0…t7-*.md   decisions D0–D39 and the deep detail behind every sprint
+  manager/MANAGER.md       the execution manager's charter: loop, envelope, locks, asks (D44, ADR-0036)
   sprints/
     README.md              this index + the status protocol
     sprint-<id>.md         one plan per sprint (89: 86 full plans + 3 M6c outline cards)
@@ -159,6 +160,8 @@ and the cross-sprint tracker ([`../status.md`](../status.md)). Statuses:
 (contract, erase and GA ones included), infra PRs, design-board freezes, ADR acceptances, owner content the agent
 drafts, and the production operations the prompt specifies. **No session stops for owner review or approval**; the
 owner's in-session "hold / don't ship" still overrides.
+A manager dispatch counts as that launch only under [AGENT.md](../../../AGENT.md)'s "Manager delegation (D44)"
+paragraph ([ADR-0036](../../adr/0036-ai-builder-execution-manager.md)).
 
 **Before launch: the owner-only prerequisites.** Actions an agent can't or mustn't do (hPanel or a provider
 console, creating accounts, machine users, PATs or API keys, credentials or payment details, DNS at the registrar,
@@ -166,6 +169,8 @@ a Hostinger manual snapshot, the VNC console, being present for S6, authoring pa
 **`## Before you launch (owner)`** checklist, and launching attests they're done. If one turns out missing (e.g. a
 secret isn't there), **don't wait**: land everything that doesn't depend on it and record the gap as ⛔ in the
 sprint file and status.md.
+Under the manager, the attestation is the owner's acknowledged answer to that prompt's `attest` ask in AI Builder
+(D44, [ADR-0036](../../adr/0036-ai-builder-execution-manager.md)).
 
 **Re-runs instead of waits.** When an owner-only step can only follow the session's own work (e.g. granting a package that only exists after the session's first push), the prompt plans a **re-run** instead of a wait. The first launch lands everything else and marks the dependent tasks ⛔ with the owner action named. Relaunching the same prompt after the owner acts picks up at those tasks. This applies to mi-07 (always two launches), and to mi-04, mi-12, m3-07, m3-15, p-01, m4-07 and m6b-04 when their owner step turns out missing.
 
@@ -193,6 +198,10 @@ The M3 hard checklist and the GA checklist are gates like any other.
    notes**, **hand-offs**, the **spike record**, the **CLI-use** and **NATS break-glass** logs, the **L rehearsal
    record** and **capacity reads**. Add a **Decisions log** line for any notable call (promote it to an ADR, next
    free number after checking peers, if it hardens).
+4. When dispatched by the manager (your envelope carries a run id), also report every state change through `aib`
+   (`aib task <sprint>#<id> …`, heartbeats, remarks, PR/CI and tag facts). The repo stays canonical; `aib` is the
+   live layer (D44, [ADR-0036](../../adr/0036-ai-builder-execution-manager.md); commands in the
+   [manager charter](../manager/MANAGER.md#10-reporting) and your dispatch envelope).
 
 `build-plan.md` is the *static* plan (it doesn't track live status); the sprint files + `status.md` are the single
 source of progress truth. Executing a `prompt-<id>.md` includes these updates: every prompt has an **Update
