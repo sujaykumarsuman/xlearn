@@ -103,6 +103,9 @@ Maintenance note and the Status line; otherwise fold as described.
 - **§4 / §5:** fold §8 into the body — the §5 table reads provider **$15** / app **$12** in owner-only v2 (D25
   dogfood, D35) and $100 / $80 from the v3 opening; the breaker row says in-app badge + the provider's own
   Console alerts and hard limit, **no push channel** (D34); "before M4 opens to learners" → "before the v3 opening".
+- **§5 budget (D43), whether or not §8 was already folded:** the org monthly spend limit is **$20** ($15 prod +
+  `xlearn-calib` $5) until M4 calibration, then about **$45** (`xlearn-calib` $30). The org is the current one unless
+  other API use bills it, in which case the Org row's dedicated-org rule applies. The v3 opening re-sizes it.
 - **Consequences:** "alerts at `retire_not_before`" → "a manual `retire_not_before` check before each model change (D34)".
 - **§8** shrinks to a dated amendment history (three lines, pointing to 0033/0035) now that the body carries the text.
 - `docs/adr/README.md`: row 0031 → `Accepted (2026-12-DD; WIF GO | fallback key)`.

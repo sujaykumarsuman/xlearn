@@ -645,7 +645,7 @@ They were synthesized into one draft, which got two adversarial critiques: escap
 
 ## T5 — Platform AI + two-tier keys
 
-> **Settled 2026-09-24** (D24–D27) · ADR: [0031](../adr/0031-platform-ai-and-two-tier-keys.md) (Proposed; narrows ADR-0007) ·
+> **Settled 2026-09-24** (D24–D27; WIF spike spk-03 **GO** 2026-09-25, [t5 §15](research/t5-platform-ai.md); budget D43) · ADR: [0031](../adr/0031-platform-ai-and-two-tier-keys.md) (Proposed until mi-12 accepts it; narrows ADR-0007) ·
 > Full design: [research/t5-platform-ai.md](research/t5-platform-ai.md). Its §12 overrides the body where they conflict.
 
 **Method.** Four parallel research slices (key architecture and secrets; cost and budgets; quality, safety and privacy; coach and BYO) were synthesized into one draft. It then faced two adversarial critiques: cost, abuse and ops (6/10) and security, privacy and grading quality (7/10). All 14 majors were fixed. Prices, retention terms and features were verified on the web on 2026-09-24.
