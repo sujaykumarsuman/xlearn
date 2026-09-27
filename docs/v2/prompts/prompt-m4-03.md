@@ -8,6 +8,7 @@
 Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
 
 - [ ] Optional here (only step 15's dev-split run needs it; [m4-07](../sprints/sprint-m4-07.md) needs it anyway): a fresh `xlearn-calib` personal key (7–30-day expiry, from the Anthropic Console) exported as `LLM_CALIB_API_KEY` in the shell that launches this session — never pasted into the session.
+- [ ] **Anthropic limits for calibration (D43):** raise `xlearn-calib`'s monthly hard limit to **$30** and the org's to **$45** ($15 + $30), or your own numbers. Only needed if you run step 15's dev-split run here; m4-07 needs it anyway.
 
 ## Read first
 

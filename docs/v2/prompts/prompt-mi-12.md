@@ -10,9 +10,10 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 - [ ] **MI-1** (`ev-mi1`, owner hygiene; it gates the M4 provider accounts): Hostinger 2FA; two offline copies of the age key; 2FA on GitHub, Anthropic and OpenAI.
 - [ ] **Anthropic Console setup** (`ev-provider-runbook`, ~45 min; plan task 3, with the plan's task 2 table as the checklist):
   - a dedicated xLearn org if the current one is shared with Claude Code or other API use, with 2FA on;
+  - the org's monthly spend limit set to **$20** (D43; it is $5 today, and no workspace can spend past it);
   - workspace `xlearn-platform-prod` with a **$15** monthly hard limit, Console spend alerts at **50% and 80%**, low per-model RPM/OTPM, and prepaid credits with **auto-reload off**;
   - WIF: service account `xlearn-judge` (member of `xlearn-platform-prod` only), the issuer and inline JWKS, and the federation rule as the plan's WIF row specifies (`check_jti` per spk-03). Read the issuer URL and the JWKS (public keys) live with `ssh sujaykumar-vps 'sudo k3s kubectl get --raw /.well-known/openid-configuration'` and `… get --raw /openid/v1/jwks`;
-  - workspace `xlearn-calib` with its own ~$50/month limit and alerts; its personal key, if any, never goes in the cluster.
+  - workspace `xlearn-calib` with a **$5** monthly hard limit until M4 (D43) and alerts; its personal key, if any, never goes in the cluster.
 - [ ] At launch, hand the session the non-secret IDs (org, workspace, service account, federation rule), the `LLM_KEY_LABEL` and the JWKS `kid`s you pasted. Never hand over a key or secret.
 
 ## Read first

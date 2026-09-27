@@ -1,6 +1,6 @@
 # ADR-0031 — Platform AI & two-tier keys
 
-- **Status:** Proposed. The WIF spike (≤ ½ day) and judge's egress NetworkPolicy gate M4. **Kept Proposed at the v2 build-plan sign-off (2026-09-24, BP2):** it is accepted after the **WIF spike** (sprint [spk-03](../v2/sprints/sprint-spk-03.md), in the spike week if it fits, else any time before M4), as task 1 of sprint [mi-12](../v2/sprints/sprint-mi-12.md), before M4. **Amended by [ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) and [ADR-0033](0033-invite-only-admission-and-owner-admin.md) (T7, 2026-09-24; both Accepted 2026-09-24):** no push channel in v2 (D34), and the "before learners" items apply at the v3 opening (D35); see §8.
+- **Status:** Proposed. The WIF spike **reported GO on 2026-09-25** ([spk-03](../v2/sprints/sprint-spk-03.md), [t5 §15](../v2/research/t5-platform-ai.md)); judge's egress NetworkPolicy still gates M4. **Budget (D43, 2026-09-26):** the Anthropic org cap is $20 until M4 calibration, then about $45. **Kept Proposed at the v2 build-plan sign-off (2026-09-24, BP2):** it is accepted after the **WIF spike** (sprint [spk-03](../v2/sprints/sprint-spk-03.md), in the spike week if it fits, else any time before M4), as task 1 of sprint [mi-12](../v2/sprints/sprint-mi-12.md), before M4. **Amended by [ADR-0035](0035-v2-operations-nats-auth-limits-capacity.md) and [ADR-0033](0033-invite-only-admission-and-owner-admin.md) (T7, 2026-09-24; both Accepted 2026-09-24):** no push channel in v2 (D34), and the "before learners" items apply at the v3 opening (D35); see §8.
 - **Date:** 2026-09-24
 - **Deciders:** @sujaykumarsuman
 - **Related:** narrows [0007](0007-ai-coach-byo-key-and-secrets.md) to BYO keys; builds on [0029](0029-judge-contract-and-learning-signal.md)
@@ -90,7 +90,7 @@ Four layers:
 - **Circuit breaker:** any spend-cap or billing error from the provider opens a global breaker, shown in-app as a degradation badge. _(T7, D34: no push alert in v2; see §8.)_
 - **Learner view:** the allowance is shown as a **percentage**, never in dollars.
 
-**Expected cost:** DSA-only runs **about $1.3–3.2 per active learner-month**. At 20 active learners that is **about $26–63/month**. The one-off analyzer acceptance run (~$10–30) and calibration (~$20–60 per rubric) are billed to the separate `xlearn-calib` workspace.
+**Expected cost:** DSA-only runs **about $1.3–3.2 per active learner-month**. At 20 active learners that is **about $26–63/month**. The one-off analyzer acceptance run (~$10–30) and calibration (~$20–60 per rubric) are billed to the separate `xlearn-calib` workspace ($5/month until M4, about $30 for M4 bring-up; D43).
 
 ### 6. Scope of AI review of passing solutions (owner: D26, refines D16)
 
