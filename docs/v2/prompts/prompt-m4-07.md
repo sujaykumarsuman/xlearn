@@ -8,6 +8,7 @@
 Launching this prompt attests these are done (D40). If one turns out to be missing, land everything that doesn't depend on it and record the gap as ⛔ in `status.md`; don't wait.
 
 - [ ] A fresh `xlearn-calib` personal key (7–30-day expiry, created in the Anthropic Console for the workspace `ev-provider-runbook` set up) exported as `LLM_CALIB_API_KEY` in the shell that launches this session, on your machine — never pasted into the session. The session runs the acceptance commands (step 5) in that shell, billed to `xlearn-calib` (≈ $10–30).
+- [ ] **Anthropic limits for calibration (D43):** unless done at m4-03, raise `xlearn-calib`'s monthly hard limit to **$30** and the org's to **$45** ($15 + $30), or your own numbers.
 
 ## Read first
 

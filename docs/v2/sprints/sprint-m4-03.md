@@ -364,7 +364,7 @@ and judge/review → NATS already exist). GitOps only; never `kubectl apply`.
 
 ### 10 · Dev-split tuning run [X]
 
-Optional in this sprint, required before m4-07's test-split run. **Before launch (owner):** a fresh `xlearn-calib` key
+Optional in this sprint, required before m4-07's test-split run. **Before launch (owner):** the calibration limits (D43: `xlearn-calib` **$30**, org **$45**) and a fresh `xlearn-calib` key
 exported as `LLM_CALIB_API_KEY` in the shell that launches the session, on his machine (never pasted into a session).
 The session then runs the command itself — a live run on an already-provisioned key within the stated budget, so
 launching the prompt pre-approves it (D40) — and never prints, copies or stores the key:

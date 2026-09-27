@@ -223,7 +223,7 @@ The UI warns before a hint or a coach message caps the grade.
 | Content & data model, private content, authoring, public-dashboard data | T1 | ✅ settled (ADR-0027) |
 | Object storage + off-node backups | T2 | ✅ settled (ADR-0028; backups deferred) |
 | Judge types & the common evaluation contract | T4 | ✅ settled (ADR-0029) |
-| Code sandbox / online-judge engine + cluster hardening | T3 | ✅ settled (ADR-0030; spike pending) |
+| Code sandbox / online-judge engine + cluster hardening | T3 | ✅ settled (ADR-0030; spikes GO 2026-09-25) |
 | Platform AI + two-tier keys | T5 | ✅ settled (ADR-0031) |
 | Live AI mock interviewer | T6 | ✅ settled (ADR-0032; M6 / v2.1) |
 | Rollout, milestones, release labelling, admission, operations | T7 | ✅ settled (ADRs 0033–0035; plan: [rollout-plan.md](../v2/rollout-plan.md)) |
