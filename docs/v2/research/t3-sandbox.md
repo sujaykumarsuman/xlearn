@@ -552,6 +552,11 @@ The runner can never exceed 2 vCPU (50% of the VPS). Hostinger cuts CPU by 25% a
 - probes `httpGet` only; no `exec` lifecycle hooks;
 - no ephemeral containers.
 
+This list is the requirement set, not the validation order. spk-01 (§16.1) found that the `privileged` and
+host-namespace checks must come **before** the `hostUsers` and `allowPrivilegeEscalation` checks, and that some
+corpus shapes need companion fields to reach the VAP. [mi-14](../sprints/sprint-mi-14.md) tasks 1–2 carry the
+ordered rule list and the corpus.
+
 `SETPCAP` is added **(inferred)** to drop the bounding set in children; P1 records whether go-sandbox's `DropCaps` needs it.
 
 **Other objects:**
@@ -1211,6 +1216,10 @@ replay before mi-09 ships. **Resolved in spk-02 re-run block 3 (§16.2):** read-
   `xlearn-runner-no-exec` VAP was unchanged, so the CONNECT proof stands. On production the image is pulled
   by digest from GHCR (has a RepoDigest), so the unmodified rule is correct there — no change to mi-14's
   regex is required for the real runner.
+- **Folded into mi-14 (2026-09-27, doc debt F2-16/F5-15).** [mi-14](../sprints/sprint-mi-14.md) tasks 1–2 and
+  its prompt now carry the rule order, the B1/B2/B9 companion fields, corpus row E1 and the PSA classifier note as
+  hard requirements. mi-14's namespace stays empty, so E1's live proof is handed to
+  [mi-10](../sprints/sprint-mi-10.md), the first sprint with a running runner pod.
 
 **No timing conclusions (arm64 / HVF).**
 
