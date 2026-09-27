@@ -57,6 +57,10 @@ every repo touched. The release action is the only part that differs:
   approval.
 - **M6c:** no prompt yet; v2.2 planning writes `prompt-m6c-0N.md` when it expands each outline card.
 
+**Not a sprint prompt:** [`prompt-manager.md`](prompt-manager.md) starts the execution manager (D44,
+[ADR-0036](../../adr/0036-ai-builder-execution-manager.md)); it is not a sprint prompt. Its charter is
+[`../manager/MANAGER.md`](../manager/MANAGER.md).
+
 ## Index
 
 Grouped by milestone; **Order** is the global recommended execution order ([build plan](../build-plan.md#sprint-table-recommended-order)).

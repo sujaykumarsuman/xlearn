@@ -51,6 +51,7 @@ under [`../v1/`](../v1/) and [`../v2/`](../v2/).
 | [0033](0033-invite-only-admission-and-owner-admin.md) | Invite-only admission, account roles and the owner admin CLI (v2 · T7) | Accepted (2026-09-24; stopgap shipped in v1.5.2: #51 auto-link fix, #52 `SIGNUP_MODE` closed; `DEV_AUTH` guard at M1b) |
 | [0034](0034-v2-release-labelling-gating-and-rollback.md) | v2 release labelling, feature gating and rollback (v2 · T7) | Accepted (2026-09-24; guard shipped: #53, infra#29) |
 | [0035](0035-v2-operations-nats-auth-limits-capacity.md) | v2 operations: NATS auth, limits, capacity triggers (no alerting) (v2 · T7) | Accepted (2026-09-24; NATS auth before M3) |
+| [0036](0036-ai-builder-execution-manager.md) | AI Builder: execution-manager dashboard, agent API and the manager's D40 delegation (v2 · tooling) | Accepted (2026-09-26; D44; hosted off the xLearn node on skriptvalley-vps) |
 
 ## Adding an ADR
 
