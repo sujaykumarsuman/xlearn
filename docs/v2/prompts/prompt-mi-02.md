@@ -53,7 +53,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 
 ## Entry gates — verify first (stop and report if any is unmet)
 
-- [ ] MI-0 done: the H0 reboot into 6.8.0-142 (Fri 2026-09-25), and `host-verify --cluster` green after it. *If it slipped, build tasks 1–8 now and leave task 9's H0 check ⛔ (MI-0 pending); its S0 branch still runs if the window has ended.*
+- [ ] MI-0 done: the H0 reboot into 6.8.0-142 (Fri 2026-09-25), and `host-verify --cluster` green after it. *If it slipped, build tasks 1–8 now and leave task 9's H0 check ⛔ (MI-0 pending). (MI-0 happened on 2026-09-25, see status.md's MI-0 row; step 10's S0 part reads the owner's pre-reboot copy.)*
 - [ ] No open peer PR in `../infra` touches `hack/`. Check `gh pr list -R sujaykumarsuman/infra`, `git worktree list` and ListAgents. If [mi-01](../sprints/sprint-mi-01.md) is open and adds `chart-diff.sh` to `host-lint.sh`, rebase onto it and keep both changes.
 
 ## Do this (in order)
@@ -120,15 +120,16 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
    - It ships in the same infra PR, or a follow-up.
 
 10. **[H → X] MI-0 follow-up** (plan task 9):
-    - Verify the H0 result yourself, read-only (event `ev-mi0`): `ssh sujaykumar-vps uname -r` shows kernel 6.8.0-142, and the piped `--cluster` run is green after the reboot. On 2026-09-25 the node was still on 6.8.0-90.
-    - The S0 log `/tmp/xlearn-s0-vmstat.log` has a 72 h window that ends **2026-09-27 ≈ 07:52 UTC**. Take the branch that applies:
-      - **`ev-mi0` came first:** the reboot emptied `/tmp`. Use the copy the before-launch note names; if it names none, the log is lost.
-      - **The window ended first:** copy the log off yourself (`scp sujaykumar-vps:/tmp/xlearn-s0-vmstat.log <scratchpad>/`, a read). Once the copy is verified, delete it from the node yourself (`ssh sujaykumar-vps rm /tmp/xlearn-s0-vmstat.log`): a node write the plan names, so launching this prompt pre-approves it (D40). Record the deletion.
-    - If a copy exists, compute steal p50, p95 and max from the `st` column and append an S0 row to [t3 §15](../research/t3-sandbox.md). Otherwise record "lost at reboot; sar is the source".
+    - Verify the H0 result yourself, read-only (event `ev-mi0`): `ssh sujaykumar-vps uname -r` shows kernel 6.8.0-142, and the piped `--cluster` run is green after the reboot. The owner rebooted on 2026-09-25 (boot 05:59Z; status.md's MI-0 row).
+    - The S0 log `/tmp/xlearn-s0-vmstat.log` would have run until 2026-09-27 ≈ 07:52 UTC, but `ev-mi0` came first: the reboot ended the sampler and emptied `/tmp`. There is no end-of-window collection.
+      - **Use the owner's pre-reboot copy, `~/xlearn-s0-vmstat-prereboot.log` on the owner's Mac** (2026-09-24 07:52Z → 2026-09-25 05:36Z, 1,305 one-minute samples; status.md's S0 row). Read it in place and never commit it.
+      - Confirm read-only that the node copy is gone (`ssh sujaykumar-vps ls /tmp/xlearn-s0-vmstat.log` fails). If it's somehow still there, delete it (`ssh sujaykumar-vps rm /tmp/xlearn-s0-vmstat.log`): a node write the plan names, so launching this prompt pre-approves it (D40). Record what you found.
+    - Compute steal p50, p95 and max from the copy's `st` column (skip vmstat's repeated header lines) and append an S0 row to [t3 §15](../research/t3-sandbox.md). If the copy is missing or unreadable, record "lost at reboot; sar is the source".
 
 11. **[X] Record** (branch `docs/mi-02-status`):
     - the Status table in [`../sprints/sprint-mi-02.md`](../sprints/sprint-mi-02.md);
     - in [`../status.md`](../status.md): MI-0 ✅ and MI-8 ✅ (PR, dates) and the Sprint board row;
+    - the post-MI-0 row in status.md's **Capacity reads (TR-\*)** table, from your live `--cluster` run (memory sum vs capacity − 0.5 GiB, steal sar p95, CPU busy, disk/PVCs, OOMKills). It replaces the lapsed 2026-09-27 collection point;
     - **Decisions log:** the memory-sum terms and margins (plain and `--with-runner`), the steal baselines, the sampler start/PID or "declined", the S0 result, and the `PIN_NATS_STAGE` convention (mi-06 bumps it at N1 and N3, mi-11 at N4).
 
 ## Constraints

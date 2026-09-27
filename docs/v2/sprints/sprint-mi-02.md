@@ -30,7 +30,7 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] MI-0 done: the H0 reboot into 6.8.0-142 (Fri 2026-09-25) and `host-verify --cluster` green after it. *Tasks 1–8 don't need the reboot. If it slipped, build them now and leave task 9's H0 check ⛔ (MI-0 pending); its S0 branch still runs if the window has ended.*
+- [ ] MI-0 done: the H0 reboot into 6.8.0-142 (Fri 2026-09-25) and `host-verify --cluster` green after it. *Tasks 1–8 don't need the reboot. If it slipped, build them now and leave task 9's H0 check ⛔ (MI-0 pending). (MI-0 happened on 2026-09-25, see status.md's MI-0 row; task 9's S0 step reads the owner's pre-reboot copy.)*
 - [ ] No open peer PR in `../infra` touches `hack/` (parallel sessions: `gh pr list -R sujaykumarsuman/infra`, `git worktree list`, ListAgents)
 
 ## Goal
@@ -60,7 +60,7 @@ for Longhorn's p95 budget, and records the MI-0 outcome.
 - `hack/memory-budget.tsv` and `hack/expected-netpol.tsv` as the reviewed sources, each **embedded byte-identically** in `host-verify.sh`, with `host-lint.sh` checking the copies.
 - `hack/host-lint.sh`: the read-only verb assertion; shellcheck for the new scripts.
 - `hack/sample-top.sh`: a throwaway, self-terminating sampler writing `/var/tmp/xlearn-top.tsv`.
-- The MI-0 follow-up record: the H0 result and the S0 vmstat collection.
+- The MI-0 follow-up record: the H0 result and the S0 steal numbers from the owner's pre-reboot copy.
 - The infra README (host scripts section): the new flags and where each is used.
 
 **Out**
@@ -257,29 +257,30 @@ Together they prove neither check is vacuous. Re-verify the field names on 2.14.
 ### 9 · MI-0 follow-up [H]
 
 The agent verifies the H0 result (event `ev-mi0`) read-only: `ssh sujaykumar-vps uname -r` = 6.8.0-142, and a piped
-`host-verify --cluster` is green after the reboot. On 2026-09-25 the node was still on 6.8.0-90, so the reboot
-hadn't happened yet.
+`host-verify --cluster` is green after the reboot. The owner rebooted on 2026-09-25 (boot 05:59Z); status.md's
+MI-0 row has the owner-side result (46 pass / 0 warn / 0 fail).
 
-The S0 vmstat log is `/tmp/xlearn-s0-vmstat.log`, written by a self-terminating `vmstat -t -w 60 4320` that
-started 2026-09-24 07:52 UTC. Its 72 h window ends **2026-09-27 ≈ 07:52 UTC**. There are two branches:
-- **`ev-mi0` happened before the window ended.** The reboot ended the sampler, and tmpfiles empties `/tmp`
-  at boot. Use the copy taken before the reboot if the owner's before-launch note names one (status.md's S0
-  row, or the launch message); if none is named, the log is lost.
-- **`ev-mi0` hadn't happened by the window's end.** The log is complete and still on the node, so it has to
-  be collected and then removed. Do this before `ev-mi0` if it's still pending.
-  - Copying it off is a read. The agent does it: `scp sujaykumar-vps:/tmp/xlearn-s0-vmstat.log <scratchpad>/`.
-  - **Deleting it is a node write, pre-approved (D40):** this plan names it, so once the copy is verified the agent runs `ssh sujaykumar-vps rm /tmp/xlearn-s0-vmstat.log`.
-  - Record the deletion. It closes the pending S0 owner item.
+The S0 vmstat log was `/tmp/xlearn-s0-vmstat.log`, written by a self-terminating `vmstat -t -w 60 4320` that
+started 2026-09-24 07:52 UTC. `ev-mi0` came before its 72 h window ended, so the reboot ended the sampler and
+tmpfiles emptied `/tmp`. There is no end-of-window collection. The owner copied the log off first:
+- **Use `~/xlearn-s0-vmstat-prereboot.log` on the owner's Mac** (2026-09-24 07:52Z → 2026-09-25 05:36Z, 1,305
+  one-minute samples; status.md's S0 row). Sessions run on that Mac, so read it in place. Never commit it.
+- Confirm read-only that the node copy is gone (`ssh sujaykumar-vps ls /tmp/xlearn-s0-vmstat.log` fails). If it's
+  somehow still there, delete it. **That's a node write, pre-approved (D40)** because this plan names it:
+  `ssh sujaykumar-vps rm /tmp/xlearn-s0-vmstat.log`. Record what you found. It closes the pending S0 owner item.
 
-If a copy exists (either branch), the agent computes steal p50, p95 and max from its `st` column, and appends an
-S0 row to [t3 §15](../research/t3-sandbox.md). If the log was lost, record "lost at reboot; sar (9+ days) is
-the source". sar already holds the history (rollout §2, MI-0).
+The agent computes steal p50, p95 and max from the copy's `st` column (vmstat repeats its header lines; skip
+them), and appends an S0 row to [t3 §15](../research/t3-sandbox.md). If the copy is missing or unreadable,
+record "lost at reboot; sar (9+ days) is the source". sar already holds the history (rollout §2, MI-0).
 
 ### 10 · Record [X]
 
 - In [`../status.md`](../status.md):
   - **MI track:** MI-0 ✅ (date, kernel) and MI-8 ✅ (infra PR, date);
-  - the **Sprint board** row.
+  - the **Sprint board** row;
+  - the post-MI-0 row in **Capacity reads (TR-\*)**, from this sprint's live `--cluster` run: memory sum vs
+    capacity − 0.5 GiB, steal (sar p95), CPU busy, disk and PVCs, OOMKills. It replaces the lapsed 2026-09-27
+    collection point that the 2026-09-24 row mentions.
 - **Decisions log:**
   - the baseline memory sum (each term, margin, `--with-runner` margin);
   - the steal baselines (24 h, 7-day, full-history p95);

@@ -12,7 +12,7 @@
   - **§8.2**: the guard objects, the full VAP rule list and why each rule exists;
   - **§8.3**: the runner values, used to render the positive control;
   - **§8.8**: the rollout order (A7);
-  - **§9** row P0: how the spike applies these objects;
+  - **§16.1**, the "VAP diff": spk-01's corpus and rule-order deltas, which the plan's tasks 1–2 fold in as hard requirements;
   - **§2.4** row A2: the threat each rule answers.
 - [ADR-0030](../../adr/0030-runner-technology-and-host-hardening.md) §5 (Track A: A6 host block, A7 `sandbox-guards`, A8 runner). [ADR-0035](../../adr/0035-v2-operations-nats-auth-limits-capacity.md) §4 L14 (runner hard caps) and §5 (memory limits standing rule).
 - [`../rollout-plan.md`](../rollout-plan.md):
@@ -49,7 +49,7 @@ Live facts (read-only, 2026-09-24):
 
 The infra repo has **no CI**. Validate locally with `helm lint` and `helm template`, and against the live API server with `--dry-run=server`, which persists nothing. Don't use `kubectl kustomize`: infra directories have no `kustomization.yaml` (Flux generates one), and you must not add one.
 
-The spike ([spk-01](../sprints/sprint-spk-01.md), Mon 2026-10-12) applies these manifests on a throwaway cluster, so merge this before then.
+The spike ([spk-01](../sprints/sprint-spk-01.md)) already ran, on 2026-09-25 (D41), against its own copy of the t3 §8.2 draft. Its VAP diff (t3 §16.1) is folded into the plan's tasks 1–2 as **hard requirements**: the rule order, the B1/B2/B9 companion fields, corpus row E1 and the PSA classifier note.
 
 ## Entry gates: verify first
 
@@ -58,7 +58,7 @@ Stop and report if any gate is unmet.
 - [ ] Chart 0.3.0 is merged in `../infra` ([mi-01](../sprints/sprint-mi-01.md)): `grep '^version: 0.3.0' ../infra/charts/project/Chart.yaml`. The runner knobs (`runtimeClassName`, `priorityClassName`, `hostUsers`, `automountServiceAccountToken`, `dnsPolicy`, `image.digest`) exist.
 - [ ] The MI-8 `host-verify --cluster` extension is merged ([mi-02](../sprints/sprint-mi-02.md)): `hack/expected-netpol.tsv` exists and `--cluster` checks NetworkPolicy presence.
 - [ ] `cd ../infra && git checkout main && git pull`. Peer check: `gh pr list --state open` in both repos, `git worktree list`, ListAgents. No open PR touches `infrastructure/sandbox/`, `clusters/vps/sandbox.yaml` or `hack/expected-netpol.tsv`. mi-03 edits the `.tsv` too, so rebase whichever lands second.
-- [ ] *(Soft)* If spk-01 has run, read its results table (VAP diff, `SETPCAP`, `procMount`, exec attempt) and fold it in.
+- [ ] Read t3 §16.1's VAP diff (spk-01, 2026-09-25) next to the plan's tasks 1–2, which fold it in. It's a hard requirement, not a soft input.
 
 ## Do this (in order)
 
@@ -70,7 +70,8 @@ Stop and report if any gate is unmet.
      - `admissionregistration.k8s.io/v1`, `failurePolicy: Fail`;
      - `namespaceSelector` `kubernetes.io/metadata.name In [xlearn-runner]` on both the policy and the binding;
      - `CREATE` and `UPDATE` on `pods` and `pods/ephemeralcontainers`;
-     - the plan's 10 rules as CEL, with `has()` guards and a `variables` entry for all containers;
+     - the plan's 10 rules as CEL, **in the plan's order** (the `privileged` and host-namespace rules before the `hostUsers` and `allowPrivilegeEscalation` rules, so each denial names its intended rule; spk-01), with `has()` guards and a `variables` entry for all containers;
+     - keep the image rule's `@sha256:` digest requirement. spk-01's tag-ref copy was spike-only (its imported image had no RepoDigest);
      - binding `validationActions: [Warn, Audit]`.
    - `vap-no-exec.yaml` and its binding: `CONNECT` on `pods/exec` and `pods/attach` only (**not** `pods/portforward`), validation `request.operation != 'CONNECT'`, binding `[Warn, Audit]`.
    - `runtimeclass.yaml` (`xlearn-judge` → `judge`), `priorityclass.yaml` (`xlearn-sandbox-lowest`, −1000, `preemptionPolicy: Never`), `resourcequota.yaml`, `limitrange.yaml` (values in the plan), and `networkpolicies.yaml` with `default-deny-all` (Ingress+Egress, no rules) and `judge-to-runner` (ns `xlearn` AND instance `xlearn-judge`, TCP 8090).
@@ -81,7 +82,12 @@ Stop and report if any gate is unmet.
 
 3. **Corpus + script [I]** (plan task 2):
    - Add `hack/sandbox-vap-test.sh` (`--expect warn|deny`, server dry-run only, a pass/fail table) and `hack/sandbox-vap-test/`.
-   - The corpus is G1, B1–B14, Q1, X1/X2 and C1, as in the plan. **Every object is a `kind: Pod`**: the VAP matches only pods, so a Deployment dry-run proves nothing.
+   - The corpus is G1, B1–B14, Q1, X1/X2, E1 and C1, as in the plan. **Every manifest is a `kind: Pod`**: the VAP matches only pods, so a Deployment dry-run proves nothing.
+   - **B1, B2 and B9/B9b carry their companion fields** (plan task 2's table; spk-01). Without them the API server rejects the shape before admission and the case never tests the VAP:
+     - B1: `privileged: true` plus `allowPrivilegeEscalation: true`;
+     - B2: `hostPID: true` plus `hostUsers: true` and `procMount: Default`;
+     - B9 (`hostUsers: true`) and B9b (unset): both with `procMount: Default`.
+   - **E1** is a real `kubectl debug` ephemeral-container attempt (no `-it`) on a running pod, expected to be denied by `xlearn-runner-pod-shape` (rule 10). The script runs it only with `--expect deny` and `--pod <name>`. `xlearn-runner` is empty in this sprint, so E1 prints `HANDED (no running pod)`, never PASS, and you record it as handed to mi-10.
    - Build **G1** as in plan task 2:
      1. `helm template xlearn-runner charts/project --namespace xlearn-runner -f <draft runner values>` from chart 0.3.0, with values that mirror mi-10 task 2 and any 64-hex digest;
      2. extract the Deployment's `.spec.template` into a `kind: Pod` named `vap-g1` in `xlearn-runner`;
@@ -91,10 +97,10 @@ Stop and report if any gate is unmet.
    - **Classify every response by source**, as in plan task 2:
      - a VAP warning starts `Validation failed for ValidatingAdmissionPolicy 'xlearn-runner-pod-shape'`;
      - a VAP denial names the policy and says `denied request`;
-     - a PSA warning contains `would violate PodSecurity`, and it's recorded, never counted;
+     - a PSA warning contains `would violate PodSecurity`, and it's recorded, never counted. Match the whole line: PSA warnings carry `"baseline:latest"`, so a classifier that splits at the first `:` misses them (spk-01);
      - Q1 must match the LimitRange message;
      - any other 4xx (ServiceAccount, PSA-enforce, quota, RuntimeClass, PriorityClass) is a **FAIL**.
-   - Extend `hack/host-lint.sh`: shellcheck `sandbox-*.sh`, check each embedded corpus heredoc equals its file, and allow only `apply --dry-run=server` and `create --raw` on the `exec`/`attach` subresource as write verbs in this script. Run it clean.
+   - Extend `hack/host-lint.sh`: shellcheck `sandbox-*.sh`, check each embedded corpus heredoc equals its file, and allow only `apply --dry-run=server`, `create --raw` on the `exec`/`attach` subresource, and E1's `debug` (Deny phase with `--pod` only) as write verbs in this script. Run it clean.
 
 4. **Pre-merge validation [H]:**
    - `cat infrastructure/sandbox/*.yaml | ssh sujaykumar-vps 'sudo k3s kubectl apply --dry-run=server -f -'`. This persists nothing.
@@ -111,8 +117,9 @@ Stop and report if any gate is unmet.
 6. **Prove, Warn phase [H]:**
    - Run `ssh sujaykumar-vps 'bash -s -- --expect warn' < hack/sandbox-vap-test.sh`. The corpus is embedded, so copy nothing to the node.
    - Expect:
-     - every B case admitted with a **VAP** warning naming its rule;
-     - **G1 with no VAP warning**. Its expected PSA baseline warnings are `SYS_ADMIN` in `capabilities.add`, and `procMount: Unmasked` unless the API server relaxes that check for `hostUsers: false`; record which;
+     - every B case admitted with a **VAP** warning naming its rule (B1 and B2 also warn for their companion's rule; count each by its intended rule);
+     - **G1 with no VAP warning**. Its expected PSA baseline warnings are `SYS_ADMIN` in `capabilities.add`, and `procMount: Unmasked` unless the API server relaxes that check for `hostUsers: false`. spk-01 saw it relaxed on k3s `v1.36.4+k3s1`; record which;
+     - E1 `SKIPPED (warn phase)`;
      - C1 with no warning at all;
      - Q1 denied by the LimitRange;
      - no ServiceAccount, quota or other unexpected error.
@@ -122,12 +129,13 @@ Stop and report if any gate is unmet.
 
 8. **Prove, Deny phase [H]:**
    - Run `--expect deny`:
-     - B1–B14 denied **by `xlearn-runner-pod-shape`** (≥ 8 required shapes). A denial from anything else is a FAIL;
+     - B1–B14 denied **by `xlearn-runner-pod-shape`** (≥ 8 required shapes), each naming its intended rule (B1 `privileged`, B2 `hostPID`, not their companions). A denial from anything else, or a rejection before admission, is a FAIL;
      - X1/X2 exec and attach CONNECT denied by `xlearn-runner-no-exec`;
+     - E1 `HANDED (no running pod)`, recorded as handed to mi-10;
      - Q1 denied by the LimitRange;
      - G1 admitted, with only the expected PSA warnings;
      - C1 unaffected.
-   - If X1/X2 return NotFound before admission, record it. Real-exec proof stays with spk-01 (throwaway) and mi-10 (real runner pod).
+   - If X1/X2 return NotFound before admission, record it. spk-01 already proved a real exec on its throwaway cluster; mi-10 re-proves it on the real runner pod.
    - Paste the table into PR 2.
 
 9. **Verify [H]:**
@@ -170,13 +178,15 @@ Stop and report if any gate is unmet.
     - the image regex allowing `:tag@sha256`;
     - `portforward` not denied;
     - the CONNECT dry-run behaviour observed;
-    - any spike diff folded in, or handed to mi-10 as a pre-runner follow-up PR.
+    - the spk-01 diff as folded (rule order, B1/B2/B9 companion fields, E1, the PSA classifier).
+  - **Hand-offs:** a mi-14 → mi-10 row for E1's live proof (re-run the script with `--expect deny --pod <runner pod>`).
 - **ADRs:** none expected. The design is ADR-0030 A7 and t3 §8.2.
 
 ## Done when (acceptance)
 
 - [ ] `sandbox-guards` is Ready and off the `apps` path, and `xlearn-runner` is empty with PSA `privileged`/`baseline`/`baseline`.
-- [ ] The VAP denies ≥ 8/8 required bad shapes (and all of B1–B14) plus exec/attach CONNECT, or records why CONNECT is handed to spk-01/mi-10. Every result is classified by source; none passes on a ServiceAccount, PSA-enforce or quota error.
+- [ ] The VAP denies ≥ 8/8 required bad shapes (and all of B1–B14) plus exec/attach CONNECT, or records why CONNECT is handed to mi-10. Every result is classified by source; none passes on a ServiceAccount, PSA-enforce or quota error.
+- [ ] spk-01's diff is in: the rule order, the B1/B2/B9 companion fields (each case reaches the VAP and is denied under its intended rule), E1 in the corpus and handed to mi-10, and whole-line PSA matching (`"baseline:latest"`).
 - [ ] The chart-0.3.0 runner shape (G1, a Pod) is admitted with no VAP warning (its expected PSA warnings recorded), and a pod in another namespace is unaffected (C1).
 - [ ] Both VAPs show no `status.typeChecking` warnings.
 - [ ] The RuntimeClass, PriorityClass (−1000, `Never`), ResourceQuota and LimitRange are live, and Q1 is denied.
