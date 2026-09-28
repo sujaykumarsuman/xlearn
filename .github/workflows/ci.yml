@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: xlearndb
@@ -72,6 +72,27 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      # Every internal/*/store integration test on the production Postgres major (PG 18),
+      # each under a least-privilege role that owns only its schema (the CNPG model), in
+      # its own database so it never shares state with the e2e below. Catches the next
+      # major bump in CI, not in prod.
+      - name: Store integration tests (PG 18, least-privilege role per schema)
+        env:
+          PGHOST: localhost
+          PGUSER: postgres
+          PGPASSWORD: postgres
+        run: |
+          psql -v ON_ERROR_STOP=1 -d xlearndb -c "CREATE DATABASE xlearn_store"
+          for s in identity curriculum practice review assessment coach; do
+            psql -v ON_ERROR_STOP=1 -d xlearn_store \
+              -c "CREATE ROLE xlearn_$s LOGIN PASSWORD 'pw'" \
+              -c "CREATE SCHEMA $s AUTHORIZATION xlearn_$s" \
+              -c "ALTER ROLE xlearn_$s SET search_path = $s"
+          done
+          for s in identity curriculum practice review assessment coach; do
+            XLEARN_TEST_DATABASE_URL="postgres://xlearn_$s:pw@localhost:5432/xlearn_store?sslmode=disable" \
+              go test -race -count=1 "./internal/$s/store/"
+          done
       - name: Core-loop e2e (real embedded NATS JetStream + outbox)
         env:
           XLEARN_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/xlearndb?sslmode=disable

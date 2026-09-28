@@ -1,0 +1,72 @@
+{
+  "id": "sd-001",
+  "course": "system-design",
+  "week_n": 1,
+  "sort_order": 1,
+  "title": "Shared Photo Album",
+  "difficulty": "med",
+  "pattern": "Read-heavy fan-out",
+  "role": "core",
+  "status": "live",
+  "provenance": { "origin": "original", "authored_by": "owner" },
+  "concepts": ["system-design:concept:caching", "system-design:concept:sharding"],
+  "parts": [
+    {
+      "id": "reqs",
+      "type": "text",
+      "cadence": "final",
+      "grading": "ai",
+      "required": true,
+      "config": {
+        "fields": [
+          { "id": "functional", "label": "Functional requirements", "max_chars": 2000 },
+          { "id": "nonfunctional", "label": "Non-functional requirements", "max_chars": 2000 }
+        ]
+      }
+    },
+    {
+      "id": "est",
+      "type": "blank",
+      "cadence": "final",
+      "grading": "auto",
+      "required": false,
+      "config": {
+        "fields": [{ "id": "write_qps", "label": "Peak uploads per second", "kind": "numeric", "units": ["req/s"] }]
+      }
+    },
+    {
+      "id": "hld",
+      "type": "canvas",
+      "cadence": "final",
+      "grading": "ai",
+      "required": true,
+      "config": { "palette": "system-design/palette@1", "max_nodes": 40 }
+    },
+    {
+      "id": "pick",
+      "type": "choice",
+      "cadence": "final",
+      "grading": "none",
+      "required": false,
+      "config": {
+        "mode": "multi",
+        "options": [
+          { "id": "cdn", "label": "A CDN in front of the image store" },
+          { "id": "queue", "label": "A queue for thumbnail jobs" }
+        ]
+      }
+    }
+  ],
+  "grader": [
+    { "step": "estimates", "kind": "key", "inputs": ["est"], "required": false, "weight": 0.2 },
+    {
+      "step": "design",
+      "kind": "ai_rubric",
+      "inputs": ["reqs", "hld", "est"],
+      "required": true,
+      "weight": 0.8,
+      "rubric": "system-design/hld@1"
+    }
+  ],
+  "assets": ["system-design/palette@1"]
+}

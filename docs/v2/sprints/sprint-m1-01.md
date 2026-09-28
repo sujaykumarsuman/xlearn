@@ -9,15 +9,15 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done 2026-09-28 · [PR #79](https://github.com/sujaykumarsuman/xlearn/pull/79) (merge only; ships dark in `v1.6.0`) · item schema v1 frozen → `ev-schema-freeze` ✅
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Compose + CI parity (`postgres:18`, `nats:2.14`) | X | ⬜ |
-| 2 | `internal/course` manifest package + DSA manifest + two-sided golden test | X | ⬜ |
-| 3 | Freeze the item schema (JSON Schema + Go types, answer-free, ADR-0029 fields, freeze guard) | X | ⬜ |
-| 4 | Verify (tests, PG 18 store tests, e2e unchanged, no API change) | X | ⬜ |
-| 5 | Record the freeze → `ev-schema-freeze`; M1 size note | X | ⬜ |
+| 1 | Compose + CI parity (`postgres:18`, `nats:2.14`) | X | ✅ compose PG 18.6 + NATS 2.14.7; CI e2e on `postgres:18` now also runs every store integration test (least-privilege role per schema); embedded `nats-server` v2.14.7; all 6 store suites + e2e green on PG 18 with no code change |
+| 2 | `internal/course` manifest package + DSA manifest + two-sided golden test | X | ✅ literal v1 table + 6 service mirrors (practice/store, review/store, assessment, assessment/store, coach, gateway); a deliberate break failed both sides, then reverted |
+| 3 | Freeze the item schema (JSON Schema + Go types, answer-free, ADR-0029 fields, freeze guard) | X | ✅ `item.schema.json` v1 frozen (`internal/course/testdata/item.schema.v1.frozen.json`); the six tests + a freeze-guard self-test green |
+| 4 | Verify (tests, PG 18 store tests, e2e unchanged, no API change) | X | ✅ gofmt, vet, `-race`, `sqlc diff`, web green; compose click-through (login, Today, attempt, revision, mistake, mock, coach) on PG 18 + NATS 2.14; no handler, query or route touched |
+| 5 | Record the freeze → `ev-schema-freeze`; M1 size note | X | ✅ status.md: board, M1 row + size note, content status, owner events, decisions log |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row,
@@ -25,9 +25,9 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] MI-2 merged: the prune guard on the CNPG Cluster, `databases` and `messaging` ([mi-01](sprint-mi-01.md) task 1) — the rollout's M1 entry gate ([rollout §3](../rollout-plan.md#3-milestone-map))
-- [ ] MI-2a live ✅ (bounded ranges `>=1.0.0 <2.0.0`, infra#29; `.release-line` guard, xlearn#53)
-- [ ] Parallel sessions: no open PR creates `internal/course/` or edits `docker-compose.yml` / `.github/workflows/ci.yml` in a conflicting way (`gh pr list`, `git worktree list`, ListAgents)
+- [x] MI-2 merged: the prune guard on the CNPG Cluster, `databases` and `messaging` ([mi-01](sprint-mi-01.md) task 1) — the rollout's M1 entry gate ([rollout §3](../rollout-plan.md#3-milestone-map)) — 2026-09-28: `../infra` `main` carries `kustomize.toolkit.fluxcd.io/prune: disabled` at `cluster.yaml:23` and on both namespaces (infra#32)
+- [x] MI-2a live ✅ (bounded ranges `>=1.0.0 <2.0.0`, infra#29; `.release-line` guard, xlearn#53) — 2026-09-28: `.release-line` = `1`; all 7 xlearn ImagePolicies `>=1.0.0 <2.0.0`
+- [x] Parallel sessions (2026-09-28: 0 open PRs; peers mi-07 and ds-m2-01 touch none of these files): no open PR creates `internal/course/` or edits `docker-compose.yml` / `.github/workflows/ci.yml` in a conflicting way (`gh pr list`, `git worktree list`, ListAgents)
 
 ## Goal
 
@@ -204,12 +204,12 @@ the test-only JSON Schema validator). Note for the owner: in-repo `item.json` fi
 
 ## Acceptance criteria
 
-- [ ] DSA manifest golden test green — both the `internal/course` literal table and the service-side mirror tests.
-- [ ] The schema test proves every ADR-0029 / t4 §11.4 #19 content field exists and that no field can hold an answer (denylist + failing fixtures).
-- [ ] Freeze guard in place: frozen snapshot + additive-only test.
-- [ ] Compose runs `postgres:18` + `nats:2.14`; CI e2e runs on PG 18; every store integration test is green on PG 18.
-- [ ] No API behaviour change (no handler, query or route touched; e2e unchanged).
-- [ ] `docs/v2/status.md` records the freeze (date, commit) → `ev-schema-freeze`.
+- [x] DSA manifest golden test green — both the `internal/course` literal table and the service-side mirror tests.
+- [x] The schema test proves every ADR-0029 / t4 §11.4 #19 content field exists and that no field can hold an answer (denylist + failing fixtures).
+- [x] Freeze guard in place: frozen snapshot + additive-only test.
+- [x] Compose runs `postgres:18` + `nats:2.14`; CI e2e runs on PG 18; every store integration test is green on PG 18.
+- [x] No API behaviour change (no handler, query or route touched; e2e unchanged).
+- [x] `docs/v2/status.md` records the freeze (date, commit) → `ev-schema-freeze`.
 
 ## Release
 

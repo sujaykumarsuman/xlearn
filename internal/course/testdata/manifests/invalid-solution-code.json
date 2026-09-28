@@ -1,0 +1,323 @@
+{
+  "format": 1,
+  "slug": "dsa",
+  "title": "Data Structures & Algorithms",
+  "status": "active",
+  "id_prefix": "dsa",
+  "nav": {
+    "item_noun": "problem",
+    "groups": [
+      {
+        "items": [
+          {
+            "screen": "today",
+            "label": "Today"
+          },
+          {
+            "screen": "roadmap",
+            "label": "Roadmap"
+          },
+          {
+            "screen": "problems",
+            "label": "Problems"
+          },
+          {
+            "screen": "progress",
+            "label": "Progress"
+          }
+        ]
+      },
+      {
+        "cap": "Practice loop",
+        "items": [
+          {
+            "screen": "revision",
+            "label": "Revision"
+          },
+          {
+            "screen": "mistakes",
+            "label": "Mistakes"
+          },
+          {
+            "screen": "mock",
+            "label": "Mock interview"
+          }
+        ]
+      }
+    ]
+  },
+  "stages": {
+    "attempt": {
+      "duration_s": 900,
+      "label": "Attempt"
+    },
+    "hint": {
+      "duration_s": 600,
+      "label": "Hint"
+    },
+    "solution": {
+      "label": "Solution",
+      "code": "func pick(xs []int) int { return xs[0] }"
+    },
+    "reimplement": "required",
+    "early_reveal_penalty_days": 3
+  },
+  "grading": {
+    "strategy": "self@1",
+    "self_report": {
+      "outcome": "allowed",
+      "touch": "allowed",
+      "mock": "allowed"
+    },
+    "params": {
+      "self@1": {
+        "cap": "none"
+      },
+      "verdict_timer@1": {
+        "time_limit_s": 2700,
+        "hint_at_s": 900,
+        "clean_within_s": 1200,
+        "max_failed_for_clean": 3,
+        "free_classes": [
+          "CE",
+          "REJECTED"
+        ]
+      }
+    }
+  },
+  "grades": [
+    {
+      "id": "clean",
+      "label": "Clean",
+      "hint": "no help, in time"
+    },
+    {
+      "id": "rough",
+      "label": "Rough",
+      "hint": "solved, ugly"
+    },
+    {
+      "id": "assisted",
+      "label": "Assisted",
+      "hint": "needed a hint"
+    },
+    {
+      "id": "miss",
+      "label": "Miss",
+      "hint": "didn’t get it"
+    }
+  ],
+  "revision": {
+    "ladder_days": [
+      1,
+      3,
+      7,
+      21,
+      45
+    ],
+    "bands": [
+      {
+        "levels": [
+          1,
+          2,
+          3
+        ],
+        "format": "resolve",
+        "label": "Re-solve",
+        "timer_s": 1200,
+        "parts": [
+          "solution"
+        ],
+        "criteria": [
+          {
+            "key": "pattern_named_fast",
+            "threshold_s": 120
+          },
+          {
+            "key": "correct_in_timer"
+          },
+          {
+            "key": "complexity_stated"
+          }
+        ],
+        "mock_mode": false
+      },
+      {
+        "levels": [
+          4,
+          5
+        ],
+        "format": "resolve",
+        "label": "Re-solve",
+        "timer_s": 1200,
+        "parts": [
+          "solution"
+        ],
+        "criteria": [
+          {
+            "key": "pattern_named_fast",
+            "threshold_s": 120
+          },
+          {
+            "key": "correct_in_timer"
+          },
+          {
+            "key": "complexity_stated"
+          }
+        ],
+        "mock_mode": true
+      }
+    ],
+    "drills": false
+  },
+  "mistakes": {
+    "categories": [
+      {
+        "id": "misread",
+        "label": "Misread"
+      },
+      {
+        "id": "wrong_pattern",
+        "label": "Wrong pattern"
+      },
+      {
+        "id": "right_pattern_wrong_state",
+        "label": "Right pattern, wrong state"
+      },
+      {
+        "id": "off_by_one",
+        "label": "Off-by-one / boundary"
+      },
+      {
+        "id": "language_bug",
+        "label": "Language bug"
+      },
+      {
+        "id": "complexity_misjudged",
+        "label": "Complexity misjudged"
+      },
+      {
+        "id": "communication",
+        "label": "Communication"
+      },
+      {
+        "id": "time_management",
+        "label": "Time management"
+      }
+    ],
+    "prefill": []
+  },
+  "mock": {
+    "duration_s": 2700,
+    "rail": [
+      {
+        "label": "Clarify",
+        "start_min": 0,
+        "end_min": 5,
+        "prompt": "Restate the problem and pin the ambiguities out loud — input ranges, duplicates, output order, edge inputs. State your assumptions before you write anything."
+      },
+      {
+        "label": "Brute force",
+        "start_min": 5,
+        "end_min": 10,
+        "prompt": "Describe the naive solution and its cost out loud, and say why it won't pass at the largest input. Naming the brute-force bound first earns real rubric points."
+      },
+      {
+        "label": "Observation → plan",
+        "start_min": 10,
+        "end_min": 18,
+        "prompt": "Find and say the key insight, then name the pattern out loud before you code. Commit to the optimal approach decisively instead of re-litigating brute force."
+      },
+      {
+        "label": "Code",
+        "start_min": 18,
+        "end_min": 33,
+        "prompt": "Implement steadily and keep narrating what each block does. Watch the parts your journal flags as weak spots for this pattern."
+      },
+      {
+        "label": "Trace + edges",
+        "start_min": 33,
+        "end_min": 40,
+        "prompt": "Dry-run your code on a normal case and the tricky edges (empty, single, duplicates, extremes). Talk through each step and fix what the trace reveals."
+      },
+      {
+        "label": "Complexity + follow-ups",
+        "start_min": 40,
+        "end_min": 45,
+        "prompt": "State the final time and space complexity, and offer a follow-up or optimisation before you're asked."
+      }
+    ],
+    "rubric": {
+      "id": "dsa-mock@1",
+      "dims": [
+        {
+          "id": "communication",
+          "label": "Communication"
+        },
+        {
+          "id": "problem_understanding",
+          "label": "Problem understanding"
+        },
+        {
+          "id": "brute_force",
+          "label": "Brute force"
+        },
+        {
+          "id": "optimisation",
+          "label": "Optimisation"
+        },
+        {
+          "id": "code_quality",
+          "label": "Code quality"
+        },
+        {
+          "id": "edge_cases",
+          "label": "Edge cases"
+        },
+        {
+          "id": "complexity",
+          "label": "Complexity"
+        }
+      ],
+      "scale": [
+        1,
+        5
+      ]
+    },
+    "targets": {
+      "w13": 24,
+      "w15": 28,
+      "pre": 30
+    },
+    "pools": [],
+    "evidence_hints": []
+  },
+  "plan": {
+    "est_minutes": {
+      "course_attempt": 45,
+      "touch_resolve": 20,
+      "touch_recall": 5,
+      "mock": 45
+    }
+  },
+  "public_stats": {
+    "default_visible": true,
+    "metrics": [
+      "solved",
+      "streak",
+      "mock_count",
+      "heatmap",
+      "course_completion",
+      "phase_completion",
+      "pattern_mastery"
+    ]
+  },
+  "coach": {
+    "persona": "You are the xLearn coach, an AI mentor inside a guided DSA interview-prep course. You are concise, encouraging, and technically precise. Prefer short paragraphs and, when it helps, small illustrative snippets. Go is the course's primary language.",
+    "primary_language": "go",
+    "off_during": [
+      "touch",
+      "mock"
+    ]
+  }
+}

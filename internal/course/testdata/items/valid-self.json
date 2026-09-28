@@ -1,0 +1,22 @@
+{
+  "id": "1",
+  "course": "dsa",
+  "week_n": 1,
+  "sort_order": 1,
+  "title": "Contains Duplicate",
+  "difficulty": "easy",
+  "pattern": "Hashing",
+  "role": "core",
+  "status": "live",
+  "provenance": {
+    "origin": "original",
+    "inspired_by": ["leetcode:contains-duplicate"],
+    "authored_by": "ai-assisted"
+  },
+  "links": [
+    { "kind": "leetcode", "url": "https://leetcode.com/problems/contains-duplicate/" },
+    { "kind": "neetcode", "url": "https://neetcode.io/problems/duplicate-integer" }
+  ],
+  "review": { "statement": "2026-09-28" },
+  "concepts": ["dsa:concept:hashing"]
+}

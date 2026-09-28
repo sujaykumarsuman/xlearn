@@ -1,0 +1,101 @@
+{
+  "id": "901",
+  "course": "dsa",
+  "week_n": 2,
+  "sort_order": 91,
+  "title": "Paired Readings",
+  "difficulty": "med",
+  "pattern": "Two pointers",
+  "role": "core",
+  "status": "live",
+  "provenance": {
+    "origin": "adapted",
+    "inspired_by": [
+      "textbook:two-pointer-scan"
+    ],
+    "attribution": "Adapted from a classic two-pointer scan; statement and examples are original.",
+    "authored_by": "ai-assisted"
+  },
+  "concepts": [
+    "dsa:concept:two-pointers",
+    "dsa:concept:hashing"
+  ],
+  "solution_facts": {
+    "complexity": {
+      "time": [
+        "O(n log n)"
+      ],
+      "space": [
+        "O(1)",
+        "O(log n)"
+      ]
+    }
+  },
+  "revision": {
+    "probes": [
+      {
+        "id": "p-pattern",
+        "type": "text",
+        "band": "resolve",
+        "grading": "key",
+        "key_source": "public:pattern",
+        "criterion": "pattern_named_fast",
+        "timer_s": 120,
+        "prompt_md": "Name the pattern.",
+        "config": {
+          "max_chars": 80
+        }
+      },
+      {
+        "id": "p-complexity",
+        "type": "blank",
+        "band": "resolve",
+        "grading": "key",
+        "key_source": "public:solution_facts.complexity",
+        "criterion": "complexity_stated",
+        "prompt_md": "State the time and space complexity of your solution.",
+        "config": {
+          "fields": [
+            {
+              "id": "time",
+              "label": "Time",
+              "kind": "big_o"
+            },
+            {
+              "id": "space",
+              "label": "Space",
+              "kind": "big_o"
+            }
+          ]
+        }
+      },
+      {
+        "id": "p-structure",
+        "type": "choice",
+        "band": "resolve",
+        "grading": "key",
+        "key_source": "pack",
+        "criterion": "complexity_stated",
+        "prompt_md": "Which step dominates the running time?",
+        "config": {
+          "mode": "single",
+          "options": [
+            {
+              "id": "a",
+              "label": "The sort",
+              "answer": true
+            },
+            {
+              "id": "b",
+              "label": "The pointer walk"
+            },
+            {
+              "id": "c",
+              "label": "Reading the input"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

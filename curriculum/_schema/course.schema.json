@@ -1,0 +1,368 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://projects.sujaykumar.dev/xlearn/schema/course.schema.json",
+  "title": "xLearn course manifest (format 1)",
+  "description": "curriculum/courses/<slug>/course.json — a course's settings-only manifest (ADR-0026 §1, ADR-0027 §2). Data only: no expressions or scripts. Compiled into every image and validated in CI; nothing reads it at runtime in M1a. Go types: internal/course/manifest.go (schema_test.go keeps them in lockstep). Runtime validation is the Go types plus Manifest.Validate; this schema is for editors and CI.",
+  "$comment": "A coming_soon or retired manifest may omit the method blocks; an active or preview manifest must carry all of them except mock (a course may have no mock). Values under grading.params for a strategy other than grading.strategy are DORMANT.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "slug", "title", "status", "id_prefix", "public_stats"],
+  "properties": {
+    "format": { "const": 1 },
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "title": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["active", "preview", "coming_soon", "retired"] },
+    "id_prefix": { "type": "string", "pattern": "^[a-z]{2,4}$" },
+    "nav": { "$ref": "#/$defs/nav" },
+    "stages": { "$ref": "#/$defs/stages" },
+    "grading": { "$ref": "#/$defs/grading" },
+    "grades": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/grade" }
+    },
+    "revision": { "$ref": "#/$defs/revision" },
+    "mistakes": { "$ref": "#/$defs/mistakes" },
+    "mock": { "$ref": "#/$defs/mock" },
+    "plan": { "$ref": "#/$defs/plan" },
+    "public_stats": { "$ref": "#/$defs/publicStats" },
+    "coach": { "$ref": "#/$defs/coach" }
+  },
+  "if": { "properties": { "status": { "enum": ["active", "preview"] } } },
+  "then": {
+    "required": ["nav", "stages", "grading", "grades", "revision", "mistakes", "plan", "coach"],
+    "properties": { "public_stats": { "required": ["metrics"] } }
+  },
+  "$defs": {
+    "ident": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "signal": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(:[a-z0-9_]+)?$" },
+    "versionedRef": { "type": "string", "pattern": "^[a-z0-9][a-z0-9/_-]*@[1-9][0-9]*$" },
+    "positiveInt": { "type": "integer", "minimum": 1 },
+    "label": { "type": "string", "minLength": 1 },
+    "nav": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["item_noun", "groups"],
+      "properties": {
+        "item_noun": { "$ref": "#/$defs/label" },
+        "groups": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["items"],
+            "properties": {
+              "cap": { "type": "string" },
+              "items": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["screen", "label"],
+                  "properties": {
+                    "screen": { "enum": ["today", "roadmap", "problems", "progress", "revision", "mistakes", "mock"] },
+                    "label": { "$ref": "#/$defs/label" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "timedStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duration_s", "label"],
+      "properties": {
+        "duration_s": { "$ref": "#/$defs/positiveInt" },
+        "label": { "$ref": "#/$defs/label" }
+      }
+    },
+    "stages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt", "hint", "solution", "reimplement", "early_reveal_penalty_days"],
+      "properties": {
+        "attempt": { "$ref": "#/$defs/timedStage" },
+        "hint": { "$ref": "#/$defs/timedStage" },
+        "solution": {
+          "$comment": "The solution stage's CONFIG (its label only) — never solution content.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label"],
+          "properties": { "label": { "$ref": "#/$defs/label" } }
+        },
+        "reimplement": { "enum": ["required", "optional", "off"] },
+        "early_reveal_penalty_days": { "$ref": "#/$defs/positiveInt" }
+      }
+    },
+    "pctParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clean_pct", "pass_pct"],
+      "properties": {
+        "clean_pct": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+        "pass_pct": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+      }
+    },
+    "grading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "self_report", "params"],
+      "properties": {
+        "strategy": { "enum": ["self@1", "verdict_timer@1", "rubric_pct@1", "weighted_gate@1"] },
+        "self_report": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["outcome", "touch", "mock"],
+          "properties": {
+            "outcome": { "enum": ["allowed", "evaluator_only"] },
+            "touch": { "enum": ["allowed", "evaluator_only"] },
+            "mock": { "enum": ["allowed", "evaluator_only"] }
+          }
+        },
+        "params": {
+          "$comment": "Keyed by strategy id (the closed set). Params of a strategy that grading.strategy does not select are dormant.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "self@1": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["cap"],
+              "properties": { "cap": { "enum": ["none", "stage"] } }
+            },
+            "verdict_timer@1": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["time_limit_s", "hint_at_s", "clean_within_s", "max_failed_for_clean", "free_classes"],
+              "properties": {
+                "time_limit_s": { "$ref": "#/$defs/positiveInt" },
+                "hint_at_s": { "$ref": "#/$defs/positiveInt" },
+                "clean_within_s": { "$ref": "#/$defs/positiveInt" },
+                "max_failed_for_clean": { "type": "integer", "minimum": 0 },
+                "free_classes": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": { "enum": ["AC", "WA", "TLE", "MLE", "OLE", "RE", "CE", "REJECTED", "RACE", "DEADLOCK", "LEAK"] }
+                }
+              }
+            },
+            "rubric_pct@1": { "$ref": "#/$defs/pctParams" },
+            "weighted_gate@1": { "$ref": "#/$defs/pctParams" }
+          }
+        }
+      }
+    },
+    "grade": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "hint"],
+      "properties": {
+        "id": { "enum": ["clean", "rough", "assisted", "miss"] },
+        "label": { "$ref": "#/$defs/label" },
+        "hint": { "$ref": "#/$defs/label" }
+      }
+    },
+    "revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ladder_days", "bands", "drills"],
+      "properties": {
+        "ladder_days": { "const": [1, 3, 7, 21, 45] },
+        "bands": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["levels", "format", "label", "timer_s", "parts", "criteria", "mock_mode"],
+            "properties": {
+              "levels": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "type": "integer", "minimum": 1, "maximum": 5 }
+              },
+              "format": { "$ref": "#/$defs/ident" },
+              "label": { "$ref": "#/$defs/label" },
+              "timer_s": { "$ref": "#/$defs/positiveInt" },
+              "parts": {
+                "$comment": "Item part ids whose grader steps a touch in this band runs (t4 §4.4).",
+                "type": "array",
+                "uniqueItems": true,
+                "items": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" }
+              },
+              "criteria": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["key"],
+                  "properties": {
+                    "key": {
+                      "$comment": "A criterion IDENTIFIER (a check name such as pattern_named_fast), never an expected value.",
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]*$"
+                    },
+                    "threshold_s": { "$ref": "#/$defs/positiveInt" }
+                  }
+                }
+              },
+              "mock_mode": { "type": "boolean" }
+            }
+          }
+        },
+        "drills": { "type": "boolean" }
+      }
+    },
+    "mistakes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["categories", "prefill"],
+      "properties": {
+        "categories": {
+          "$comment": "Must include the core {misread, time_management, communication}; ids are append-only.",
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label"],
+            "properties": {
+              "id": { "$ref": "#/$defs/ident" },
+              "label": { "$ref": "#/$defs/label" }
+            }
+          }
+        },
+        "prefill": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["signal", "category", "strength"],
+            "properties": {
+              "signal": { "$ref": "#/$defs/signal" },
+              "category": { "$ref": "#/$defs/ident" },
+              "strength": { "enum": ["strong", "weak"] }
+            }
+          }
+        }
+      }
+    },
+    "mock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duration_s", "rail", "rubric", "targets"],
+      "properties": {
+        "duration_s": { "$ref": "#/$defs/positiveInt" },
+        "rail": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "start_min", "end_min", "prompt"],
+            "properties": {
+              "label": { "$ref": "#/$defs/label" },
+              "start_min": { "type": "integer", "minimum": 0 },
+              "end_min": { "$ref": "#/$defs/positiveInt" },
+              "prompt": { "$ref": "#/$defs/label" }
+            }
+          }
+        },
+        "rubric": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "dims", "scale"],
+          "properties": {
+            "id": { "$ref": "#/$defs/versionedRef" },
+            "dims": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 10,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "label"],
+                "properties": {
+                  "id": { "$ref": "#/$defs/ident" },
+                  "label": { "$ref": "#/$defs/label" }
+                }
+              }
+            },
+            "scale": { "const": [1, 5] }
+          }
+        },
+        "targets": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["w13", "w15", "pre"],
+          "properties": {
+            "w13": { "$ref": "#/$defs/positiveInt" },
+            "w15": { "$ref": "#/$defs/positiveInt" },
+            "pre": { "$ref": "#/$defs/positiveInt" }
+          }
+        },
+        "pools": { "type": "array", "items": { "$ref": "#/$defs/versionedRef" } },
+        "evidence_hints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["signal", "dim", "max"],
+            "properties": {
+              "signal": { "$ref": "#/$defs/signal" },
+              "dim": { "$ref": "#/$defs/ident" },
+              "max": { "type": "integer", "minimum": 1, "maximum": 5 }
+            }
+          }
+        }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["est_minutes"],
+      "properties": {
+        "est_minutes": {
+          "$comment": "The single source of minutes (D4): course_attempt, mock, and touch_<band format>. Bands carry no minutes.",
+          "type": "object",
+          "required": ["course_attempt"],
+          "patternProperties": {
+            "^(course_attempt|mock|touch_[a-z][a-z0-9_]*)$": { "$ref": "#/$defs/positiveInt" }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "publicStats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default_visible"],
+      "properties": {
+        "default_visible": { "type": "boolean" },
+        "metrics": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["solved", "streak", "mock_count", "heatmap", "course_completion", "phase_completion", "pattern_mastery"] }
+        }
+      }
+    },
+    "coach": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["persona", "primary_language", "off_during"],
+      "properties": {
+        "persona": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "primary_language": { "$ref": "#/$defs/ident" },
+        "off_during": { "type": "array", "uniqueItems": true, "items": { "enum": ["touch", "mock"] } }
+      }
+    }
+  }
+}

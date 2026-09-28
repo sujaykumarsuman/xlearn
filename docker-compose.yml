@@ -25,7 +25,8 @@ x-jwt-env: &jwt-env
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # Prod parity: CNPG runs PG 18 (../infra infrastructure/database/cluster/cluster.yaml).
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: xlearn
       POSTGRES_PASSWORD: xlearn
@@ -33,7 +34,10 @@ services:
     ports:
       - "5433:5432" # host 5433 to avoid clashing with a local Postgres on 5432
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # PG 18 images keep data under /var/lib/postgresql/18/docker and refuse a volume at
+      # /var/lib/postgresql/data, so mount the parent. A PG 16 volume is incompatible:
+      # after a major bump, `docker compose down -v` (deploy/local/README.md, Reset).
+      - pgdata:/var/lib/postgresql
       - ./deploy/local/initdb.sql:/docker-entrypoint-initdb.d/00-schemas.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U xlearn -d xlearndb"]
@@ -42,7 +46,8 @@ services:
       retries: 30
 
   nats:
-    image: nats:2.10-alpine
+    # Prod parity: the 2.14 line (../infra infrastructure/messaging/release.yaml).
+    image: nats:2.14-alpine
     command: ["-js", "-sd", "/data", "-m", "8222"]
     volumes:
       - natsdata:/data
