@@ -39,7 +39,7 @@ top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 | ADRs 0030, 0031, 0032 | Proposed; all their spikes have reported (spk-01/02 GO, spk-03 WIF GO, spk-04 → D42). Accepted in m3-03, mi-12 and ds-m6a-01 (after `ev-s6-recheck`); see [ADRs](#adrs) |
 | v2 build plan | ✅ [build-plan.md](build-plan.md) |
 | Sprint plans + prompts | ✅ all scaffolded: 89 plans, 86 prompts (M6c = 3 outline cards) · [sprints](sprints/README.md) · [prompts](prompts/README.md) |
-| Artboards (`design-system/screens/v2/`) | ⬜ 0 / 29 drafted, 0 frozen (AB01–AB30 less the dropped AB23; AB31 is an outline for v2.2) |
+| Artboards (`design-system/screens/v2/`) | 🔄 3 / 29 drafted (AB01–AB03, [PR #73](https://github.com/sujaykumarsuman/xlearn/pull/73) open), 0 frozen (AB01–AB30 less the dropped AB23; AB31 is an outline for v2.2) |
 | Application code (v2) | ⬜ not started · live `v1.5.2` |
 | `infra` | ✅ infra#28 (`host-bootstrap` + `host-verify`), ✅ infra#29 (ranges `<2.0.0`), ✅ infra#30 (`SIGNUP_MODE: closed`), ✅ infra#32 (MI-2 prune guards), ✅ infra#33 (MI-3: chart `project` **0.3.0** + `hack/chart-diff.sh`) · MI-4 onward ⬜ |
 | Host | kernel **6.8.0-142** since the H0 reboot (MI-0 ✅ 2026-09-25, boot 05:59Z); `host-verify --cluster` 46/0/0 on 2026-09-25 → **42 pass / 0 warn / 4 fail on 2026-09-28**, all from airlift's faulted Longhorn volume (pre-existing since 2026-09-26; PG, NATS and CNPG healthy) ⛔ [below](#blocked--needs-input) |
@@ -68,7 +68,7 @@ top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 | # | Sprint | Focus | MS | Track | Release | State |
 |---|--------|-------|----|-------|---------|-------|
 | 1 | [mi-01](sprints/sprint-mi-01.md) | Prune guards + chart 0.3.0 knob union (MI-2, MI-3) | MI | infra | infra PRs only (MI-2 first, then MI-3) | ⛔ MI-2 ✅ infra#32 (2026-09-27), MI-3 ✅ infra#33 (2026-09-28), no pod rolled; task 5 (`host-verify`, 4 FAIL) waits on a pre-existing airlift volume fault (owner) |
-| 2 | [ds-m1-01](sprints/sprint-ds-m1-01.md) | Design M1: coach states, course nav, revision v2 (AB01–AB03) | M1 | design | land-and-sync; the merge is the design freeze | ⬜ Not started |
+| 2 | [ds-m1-01](sprints/sprint-ds-m1-01.md) | Design M1: coach states, course nav, revision v2 (AB01–AB03) | M1 | design | land-and-sync; the merge is the design freeze | ⛔ merge held: board index, `board.css` and AB01–AB03 drafted in [PR #73](https://github.com/sujaykumarsuman/xlearn/pull/73) (open); a manager stop notice (prod incident, 2026-09-28) holds all merges, so nothing is frozen yet |
 | 3 | [mi-02](sprints/sprint-mi-02.md) | host-verify --cluster extension (MI-8) | MI | infra | infra PR only (host script) | ⬜ Not started |
 | 4 | [m1-01](sprints/sprint-m1-01.md) | Curriculum spine part 1: compose parity, course manifest + golden, item schema freeze (M1a) | M1 | product | merge only (ships in v1.6.0) | ⬜ Not started |
 | 5 | [mi-07](sprints/sprint-mi-07.md) | Evalpack plumbing (MI-9) | MI | infra | infra PRs only (+ evalpack repo; `v0.1.0` image, no `>=1.0.0`) | ⬜ Not started |
@@ -403,9 +403,9 @@ Register: [build-plan → Artboard register](build-plan.md#artboard-register).
 
 | Board | Drafted in | Freeze (automatic at the merge) | Frozen before | State |
 |-------|------------|---------------------------------|---------------|-------|
-| AB01 | [ds-m1-01](sprints/sprint-ds-m1-01.md) | `ds-m1-01` merged | M1b | ⬜ not drafted |
-| AB02 | [ds-m1-01](sprints/sprint-ds-m1-01.md), [ds-p-01](sprints/sprint-ds-p-01.md) | `ds-m1-01` merged; `ds-p-01` merged (full fidelity) | M1b (ds-p-01 full fidelity: P) | ⬜ not drafted |
-| AB03 | [ds-m1-01](sprints/sprint-ds-m1-01.md) | `ds-m1-01` merged | M1b | ⬜ not drafted |
+| AB01 | [ds-m1-01](sprints/sprint-ds-m1-01.md) | `ds-m1-01` merged | M1b | 🔄 drafted in PR #73 (open); not frozen (merge held, 2026-09-28) |
+| AB02 | [ds-m1-01](sprints/sprint-ds-m1-01.md), [ds-p-01](sprints/sprint-ds-p-01.md) | `ds-m1-01` merged; `ds-p-01` merged (full fidelity) | M1b (ds-p-01 full fidelity: P) | 🔄 drafted in PR #73 (open); not frozen (merge held, 2026-09-28) |
+| AB03 | [ds-m1-01](sprints/sprint-ds-m1-01.md) | `ds-m1-01` merged | M1b | 🔄 drafted in PR #73 (open); not frozen (merge held, 2026-09-28) |
 | AB04★ | [ds-m2-01](sprints/sprint-ds-m2-01.md) | `ds-m2-01` merged | M2a | ⬜ not drafted |
 | AB05 | [ds-m2-01](sprints/sprint-ds-m2-01.md), [ds-p-01](sprints/sprint-ds-p-01.md) | `ds-m2-01` merged; `ds-p-01` merged (full fidelity) | M2a (ds-p-01 full fidelity: P) | ⬜ not drafted |
 | AB06 | [ds-m2-01](sprints/sprint-ds-m2-01.md) | `ds-m2-01` merged | M2a | ⬜ not drafted |

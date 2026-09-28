@@ -9,17 +9,17 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ⛔ Merge held — everything is drafted and self-reviewed in [PR #73](https://github.com/sujaykumarsuman/xlearn/pull/73); a manager stop notice (prod incident, 2026-09-28) holds all merges, and the merge is the freeze
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Board index for every v2 board (written once) + shared board chrome | X | ⬜ |
-| 2 | Board scaffolding (conventions every board follows) | X | ⬜ |
-| 3 | AB01 coach states | X | ⬜ |
-| 4 | AB02 course nav | X | ⬜ |
-| 5 | AB03 revision v2 | X | ⬜ |
-| 6 | Self-review checklist (run before merging) + screenshots (1440 px, 390 px) | X | ⬜ |
-| 7 | Land the design PR: CI green → squash-merge (the merge is the freeze) → status → sync `main` | X | ⬜ |
+| 1 | Board index for every v2 board (written once) + shared board chrome | X | ✅ |
+| 2 | Board scaffolding (conventions every board follows) | X | ✅ |
+| 3 | AB01 coach states | X | ✅ |
+| 4 | AB02 course nav | X | ✅ |
+| 5 | AB03 revision v2 | X | ✅ |
+| 6 | Self-review checklist (run before merging) + screenshots (1440 px, 390 px) | X | ✅ (ticked in PR #73) |
+| 7 | Land the design PR: CI green → squash-merge (the merge is the freeze) → status → sync `main` | X | ⛔ PR #73 open; merge held by a manager stop notice (2026-09-28) |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly. **Land and sync ([D40](../feasibility.md#decisions-log-newest-first)):** the board PR
