@@ -13,7 +13,7 @@ MODULE  := github.com/sujaykumarsuman/xlearn
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X $(MODULE).Version=$(VERSION)
 
-.PHONY: all web build run test lint go-test go-lint web-test web-lint contentlint clean nats-acl-render nats-acl-test
+.PHONY: all web build run test lint go-test go-lint web-test web-lint contentlint packlint install-hooks uninstall-hooks clean nats-acl-render nats-acl-test
 
 all: build
 
@@ -51,8 +51,10 @@ go-test:
 
 ## ---- public content (curriculum/) ----
 # The public content checks (cmd/contentlint; t1 §7.2): schema + strict decode, id and
-# slug guards vs ids.lock.json and the previous release tag, the Markdown profile,
-# filename rules, the embedded-file allowlist. CI's `content` job also runs the
+# slug guards vs ids.lock.json and the previous release tag, the t4 §5.6 structure lints,
+# the stamp gate and label-edit flag vs the PR base (CONTENTLINT_BASE), the Markdown
+# profile, filename rules, the repo-wide pack-artefact pass, the embed allowlists of
+# every //go:embed package. CI's `content` job also runs the
 # seeded-row snapshot test (TestSeedMatchesV1Snapshot) on Postgres 18. After adding or
 # removing content: go run ./cmd/contentlint -write-allowlist (and review the diff).
 contentlint:
@@ -76,6 +78,25 @@ nats-acl-render:
 # every allowed/denied case and the three legacy stages. Needs docker.
 nats-acl-test:
 	go test -tags natsacl -count=1 -run 'TestNATSACL' -v ./internal/platform/events/
+
+## ---- private eval pack authoring (m3-01; docs/v2/authoring.md) ----
+# packlint sees both halves: the public item here and the private pack in the sibling
+# xlearn-evalpack checkout (PACK=..., default $XLEARN_EVALPACK_DIR or ../xlearn-evalpack).
+# Dev tools only: packlint and the hook never enter an image.
+PACK ?= $(or $(XLEARN_EVALPACK_DIR),../xlearn-evalpack)
+
+packlint:
+	go run ./cmd/packlint check --public . --pack $(PACK)
+
+# The pre-push fingerprint hook (hack/git-hooks/pre-push), per clone: it blocks a push
+# whose commits carry pack data, and is a no-op on a machine without the sibling pack.
+# Install it on every machine that has the xlearn-evalpack checkout.
+install-hooks:
+	git config core.hooksPath hack/git-hooks
+	@echo "installed: core.hooksPath = $$(git config core.hooksPath)"
+
+uninstall-hooks:
+	git config --unset core.hooksPath || true
 
 ## ---- aggregate ----
 lint: go-lint web-lint

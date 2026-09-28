@@ -1,0 +1,54 @@
+{
+  "id": "902",
+  "course": "dsa",
+  "week_n": 3,
+  "sort_order": 92,
+  "title": "Recent Shelf",
+  "difficulty": "med",
+  "pattern": "Linked list + hash map",
+  "role": "core",
+  "status": "live",
+  "provenance": {
+    "origin": "original",
+    "authored_by": "owner"
+  },
+  "concepts": ["dsa:concept:linked-list-design"],
+  "parts": [
+    {
+      "id": "solution",
+      "type": "code",
+      "cadence": "iterate",
+      "grading": "auto",
+      "required": true,
+      "config": {
+        "signature": {
+          "mode": "class",
+          "name": "RecentShelf",
+          "params": [{ "name": "capacity", "type": "int" }],
+          "ops": [
+            { "name": "Place", "params": [{ "name": "key", "type": "int" }, { "name": "value", "type": "int" }] },
+            { "name": "Fetch", "params": [{ "name": "key", "type": "int" }], "returns": "int" }
+          ]
+        },
+        "languages": ["go", "py"],
+        "harness": "class-json@1",
+        "checker": { "name": "exact" },
+        "constraints": [
+          { "arg": "capacity", "range": [1, 3000] },
+          { "arg": "key", "range": [0, 10000] }
+        ],
+        "samples": [
+          {
+            "id": "s1",
+            "ops": ["RecentShelf", "Place", "Place", "Fetch", "Place", "Fetch"],
+            "args": [[2], [1, 10], [2, 20], [1], [3, 30], [2]],
+            "expected": [null, null, null, 10, null, -1]
+          }
+        ],
+        "limits": { "time_ms": 2000, "memory_mb": 256 }
+      }
+    }
+  ],
+  "grader": [{ "step": "tests", "kind": "code", "inputs": ["solution"], "required": true }],
+  "solution_facts": { "complexity": { "time": ["O(1) per op"], "space": ["O(capacity)"] } }
+}

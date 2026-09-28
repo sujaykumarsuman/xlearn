@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/sujaykumarsuman/xlearn/internal/curriculum/store"
@@ -164,6 +165,52 @@ func TestGetProblem(t *testing.T) {
 	// Each section carries its stage (the shape S05 filters on).
 	if sections[0].(map[string]any)["stage"] != "attempt" {
 		t.Fatalf("first section stage = %v, want attempt", sections[0])
+	}
+}
+
+// GET /problems/{id} adds contract_hash_prefix (12 hex, "" on the self path) and
+// grading_summary (m3-01); list and bulk routes stay unchanged.
+func TestGetProblemContractFields(t *testing.T) {
+	f := seededFake()
+	full := "sha256:ab12cd34ef56" + strings.Repeat("0", 52)
+	p := f.problem["16"]
+	p.ContractHash = full
+	p.GradingSummary = json.RawMessage(`{"mode":"auto","parts":[{"id":"solution","type":"code","grading":"auto","cadence":"iterate"}],"grader_kinds":["code"],"languages":["go"]}`)
+	f.problem["16"] = p
+	f.problem["1"] = store.Problem{ID: "1", PathSlug: "dsa", WeekN: 1, Title: "Contains Duplicate", GradingSummary: json.RawMessage(`{"mode":"self"}`)}
+	h := testService(f).Handler()
+
+	_, body := do(t, h, http.MethodGet, "/problems/16")
+	pj := body["problem"].(map[string]any)
+	if pj["contract_hash_prefix"] != "ab12cd34ef56" {
+		t.Fatalf("contract_hash_prefix = %v, want ab12cd34ef56", pj["contract_hash_prefix"])
+	}
+	if gs := pj["grading_summary"].(map[string]any); gs["mode"] != "auto" || len(gs["parts"].([]any)) != 1 {
+		t.Fatalf("grading_summary = %v", pj["grading_summary"])
+	}
+	if _, ok := pj["contract_hash"]; ok {
+		t.Fatal("the full contract hash must not be served (humans see a prefix)")
+	}
+
+	_, body = do(t, h, http.MethodGet, "/problems/1")
+	pj = body["problem"].(map[string]any)
+	if pj["contract_hash_prefix"] != "" || pj["grading_summary"].(map[string]any)["mode"] != "self" {
+		t.Fatalf("self-path problem = %v", pj)
+	}
+
+	// The bulk and list routes keep their shape.
+	for _, path := range []string{"/problems?ids=16,1", "/paths/dsa/problems", "/paths/dsa/weeks/2"} {
+		rec, body := do(t, h, http.MethodGet, path)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s: status %d", path, rec.Code)
+		}
+		for _, raw := range body["problems"].([]any) {
+			for _, k := range []string{"contract_hash_prefix", "grading_summary", "contract_hash"} {
+				if _, ok := raw.(map[string]any)[k]; ok {
+					t.Errorf("%s serves %s", path, k)
+				}
+			}
+		}
 	}
 }
 

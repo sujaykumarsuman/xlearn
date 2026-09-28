@@ -56,6 +56,8 @@ type CurriculumProblem struct {
 	RetiredAt       pgtype.Timestamptz
 	Links           []byte
 	ContentHash     string
+	ContractHash    string
+	GradingSummary  []byte
 }
 
 type CurriculumProblemSection struct {

@@ -60,6 +60,11 @@ milestones ship as `1.x` minors until the `v2.0.0` GA. v1 maintenance and UI/UX 
 - Match the design: use `design-system/theme.css` tokens/components; keep the dark theme.
   Difficulty tokens are Easy=green (`--ds-ok`), Medium=amber (`--ds-warn`), Hard=red (`--ds-err`).
 - Respect service boundaries once defined in `docs/architecture/`; don't collapse back to a monolith.
+- **Never copy content from `../xlearn-evalpack` into this repo** — cases, expected outputs, keys, anchors,
+  exemplars, generators, wrong solutions, timing data — not in code, tests, fixtures, docs, commit messages,
+  PR bodies or issues. Synthetic test packs under `internal/**/testdata/` (each marked by a `SYNTHETIC.md`)
+  are hand-made and unrelated. Install the hook (`make install-hooks`) on any machine with the sibling
+  checkout. How to author both halves: [`docs/v2/authoring.md`](docs/v2/authoring.md).
 - Git: `main` is the default branch. Follow [`docs/git-strategy.md`](docs/git-strategy.md). Commit
   messages are conventional (`feat:`, `fix:`, `docs:`, …), squash-merged via PR. Don't commit or push
   **mid-task** or on a whim — but shipping the finished sprint at end of session (below) is a

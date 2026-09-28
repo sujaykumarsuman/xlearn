@@ -2,7 +2,9 @@ package store_test
 
 import (
 	"context"
+	"encoding/json"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -110,6 +112,27 @@ func TestStoreIntegration(t *testing.T) {
 	if prob.Title != "3Sum" || prob.Difficulty != "med" {
 		t.Fatalf("unexpected problem: %+v", prob)
 	}
+	// 00004 (m3-01): contract_hash and grading_summary round-trip; a seed row without a
+	// summary stores {}.
+	if prob.ContractHash != sampleContract || !jsonEqual(t, prob.GradingSummary, sampleSummary) {
+		t.Fatalf("GetProblem(16) contract fields: %q %s", prob.ContractHash, prob.GradingSummary)
+	}
+	bulk, err := st.GetProblemsByIDs(ctx, []string{"1", "16"})
+	if err != nil || len(bulk) != 2 {
+		t.Fatalf("GetProblemsByIDs: %v %+v", err, bulk)
+	}
+	for _, p := range bulk {
+		switch p.ID {
+		case "1":
+			if p.ContractHash != "" || string(p.GradingSummary) != "{}" {
+				t.Fatalf("problem 1 contract fields: %q %s", p.ContractHash, p.GradingSummary)
+			}
+		case "16":
+			if p.ContractHash != sampleContract || !jsonEqual(t, p.GradingSummary, sampleSummary) {
+				t.Fatalf("problem 16 bulk contract fields: %q %s", p.ContractHash, p.GradingSummary)
+			}
+		}
+	}
 
 	sections, err := st.ListSections(ctx, "16")
 	if err != nil {
@@ -144,6 +167,24 @@ func TestStoreIntegration(t *testing.T) {
 	}
 }
 
+// Synthetic contract fields for problem 16 (not a real canon hash).
+const (
+	sampleContract = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	sampleSummary  = `{"mode": "auto", "parts": [{"id": "solution", "type": "code", "grading": "auto", "cadence": "iterate"}], "grader_kinds": ["code"], "languages": ["go"]}`
+)
+
+func jsonEqual(t *testing.T, a json.RawMessage, b string) bool {
+	t.Helper()
+	var va, vb any
+	if err := json.Unmarshal(a, &va); err != nil {
+		t.Fatalf("decode %s: %v", a, err)
+	}
+	if err := json.Unmarshal([]byte(b), &vb); err != nil {
+		t.Fatal(err)
+	}
+	return reflect.DeepEqual(va, vb)
+}
+
 func sampleContent() store.SeedContent {
 	return store.SeedContent{
 		Courses: []string{"dsa"},
@@ -168,7 +209,7 @@ func sampleContent() store.SeedContent {
 			{ID: "9", PathSlug: "dsa", WeekN: 1, Title: "Subarray Sum", Difficulty: "med", Pattern: "Prefix Sum", SortOrder: 2,
 				Role: "reinforcement", Status: "live"},
 			{ID: "16", PathSlug: "dsa", WeekN: 2, Title: "3Sum", Difficulty: "med", Pattern: "Two Pointers", SortOrder: 1,
-				Role: "core", Status: "live",
+				Role: "core", Status: "live", ContractHash: sampleContract, GradingSummary: json.RawMessage(sampleSummary),
 				Sections: []store.SeedSection{
 					{Stage: "attempt", Kind: "summary", Order: 1, BodyMD: "a"},
 					{Stage: "solution", Kind: "code", Order: 1, Language: "go", Code: "func threeSum() {}"},

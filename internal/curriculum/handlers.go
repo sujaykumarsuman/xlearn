@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course/canon"
 	"github.com/sujaykumarsuman/xlearn/internal/curriculum/store"
 )
 
@@ -63,6 +64,17 @@ type problemJSON struct {
 	LeetcodeURL     string `json:"leetcode_url"`
 	NeetcodeURL     string `json:"neetcode_url"`
 	IsReinforcement bool   `json:"is_reinforcement"`
+}
+
+// problemDetailJSON is GET /problems/{id}'s problem: the list shape plus two additive,
+// answer-free fields (m3-01) that list and bulk routes do not carry. Humans see a
+// contract-hash prefix, never the full hash (t1 §3.4).
+type problemDetailJSON struct {
+	problemJSON
+	// ContractHashPrefix is the first 12 hex chars of contract_hash ("" on the self path).
+	ContractHashPrefix string `json:"contract_hash_prefix"`
+	// GradingSummary is the seed-derived {"mode": "self"|"auto"|"mixed", ...}.
+	GradingSummary json.RawMessage `json:"grading_summary"`
 }
 
 type sectionJSON struct {
@@ -303,8 +315,16 @@ func (s *Service) handleGetProblem(w http.ResponseWriter, r *http.Request) {
 			Stage: sec.Stage, Kind: sec.Kind, Order: sec.Order, BodyMD: sec.BodyMD, Code: sec.Code,
 		})
 	}
+	summary := problem.GradingSummary
+	if len(summary) == 0 {
+		summary = json.RawMessage(`{}`)
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"problem":  toProblemJSON(problem),
+		"problem": problemDetailJSON{
+			problemJSON:        toProblemJSON(problem),
+			ContractHashPrefix: canon.Prefix(problem.ContractHash),
+			GradingSummary:     summary,
+		},
 		"sections": sectionsOut,
 	})
 }

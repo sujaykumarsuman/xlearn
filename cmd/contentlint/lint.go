@@ -34,6 +34,12 @@ type linter struct {
 	root    string // the curriculum/ directory (the embed package)
 	prevTag string // "" = the latest v* tag reachable from HEAD
 	out     io.Writer
+	// base is the PR base the stamp gate and the label-edit flag diff against ("" = the
+	// merge base with origin/main); prBody carries the label-edit-ok confirmations.
+	base   string
+	prBody string
+	// reportUnstamped lists the grandfathered unstamped hint/editorial sections.
+	reportUnstamped bool
 
 	problems []string
 	notes    []string
@@ -57,10 +63,21 @@ func (l *linter) run() bool {
 	l.checkSchemas(fsys)
 	content := l.checkLoad(fsys)
 	l.checkLock(content)
+	l.checkStructure(content)
+	l.checkDiffGates(content)
 	l.checkMarkdown(fsys)
 	l.checkFilenames(fsys)
+	l.checkPackArtefacts()
 	l.checkEmbed()
 
+	if list := unstamped(content); len(list) > 0 {
+		if l.reportUnstamped {
+			for _, u := range list {
+				fmt.Fprintln(l.out, "contentlint: unstamped:", u)
+			}
+		}
+		l.note("stamp gate: %d item(s) carry unstamped hint/editorial sections, grandfathered until they change (-report-unstamped lists them)", len(list))
+	}
 	for _, n := range l.notes {
 		fmt.Fprintln(l.out, "contentlint: note:", n)
 	}
@@ -283,9 +300,11 @@ func (l *linter) previousLock() (*course.IDsLock, string, error) {
 	return &lock, tag, nil
 }
 
-func (l *linter) git(args ...string) (string, error) {
+func (l *linter) git(args ...string) (string, error) { return l.gitIn(l.root, args...) }
+
+func (l *linter) gitIn(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
-	cmd.Dir = l.root
+	cmd.Dir = dir
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
@@ -416,11 +435,16 @@ func svgProblems(b []byte) []string {
 
 // --- 4. filename rules ---------------------------------------------------------------
 
-// deniedNames look like private eval-pack material (ADR-0027 §1); matched on every path
-// segment, case-insensitively.
+// deniedNames look like private eval-pack material (ADR-0027 §1, t1 §3.3); matched on
+// every path segment, case-insensitively. Public keys/*.json alias tables stay allowed.
 var (
-	deniedFileGlobs = []string{"*.ans", "hidden*", "secret*", "expected*", "anchors*", "exemplar*", "calibration*"}
-	deniedDirs      = []string{"submissions", "wrong"}
+	deniedFileGlobs = []string{
+		"*.ans", "hidden*", "secret*", "expected*", "anchors*", "exemplar*", "calibration*",
+		// m3-01: the pack's own file names
+		"pack.json", "tests.lock", "cases.jsonl*", "*.jsonl.zst", "edge.jsonl", "gen-hidden*",
+		"instances.json", "timing.json",
+	}
+	deniedDirs = []string{"submissions", "wrong", "invalid"}
 )
 
 func (l *linter) checkFilenames(fsys fs.FS) {
@@ -493,25 +517,106 @@ func (l *linter) embedFiles() ([]string, error) {
 	return pkg.EmbedFiles, nil
 }
 
+// embedPkg is one module package that embeds files.
+type embedPkg struct {
+	ImportPath string
+	Dir        string
+	EmbedFiles []string
+}
+
+// embedPackages lists every package of the module with a //go:embed (go list -json ./...
+// -> EmbedFiles), not only ./curriculum (m3-01).
+func (l *linter) embedPackages() ([]embedPkg, error) {
+	// The module is the curriculum root's, not the caller's directory's.
+	gomod, err := exec.Command("go", "-C", l.root, "env", "GOMOD").Output()
+	if err != nil {
+		return nil, fmt.Errorf("go env GOMOD: %w", err)
+	}
+	cmd := exec.Command("go", "list", "-json", "./...")
+	cmd.Dir = filepath.Dir(strings.TrimSpace(string(gomod)))
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("go list -json ./...: %w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	var pkgs []embedPkg
+	dec := json.NewDecoder(bytes.NewReader(out))
+	for dec.More() {
+		var p embedPkg
+		if err := dec.Decode(&p); err != nil {
+			return nil, fmt.Errorf("go list -json ./...: %w", err)
+		}
+		if len(p.EmbedFiles) > 0 {
+			sort.Strings(p.EmbedFiles)
+			pkgs = append(pkgs, p)
+		}
+	}
+	return pkgs, nil
+}
+
+// checkEmbed: every package with a //go:embed has an embed.allowlist beside it, and
+// every embedded file matches one of its lines (path.Match patterns), so nothing
+// unexpected — a dotfile, a stray, anything private — ever ships in an image.
+// curriculum/embed.allowlist is the exact, generated list and is also checked the other
+// way (every line is embedded).
 func (l *linter) checkEmbed() {
-	embedded, err := l.embedFiles()
+	pkgs, err := l.embedPackages()
 	if err != nil {
 		l.fail("embed", "%v", err)
 		return
 	}
-	l.stats["embedded"] = len(embedded)
-	allowed, err := readAllowlist(l.allowlistPath())
-	if err != nil {
-		l.fail("embed", "%v", err)
-		return
+	curDir := realDir(l.root)
+	seenCurriculum := false
+	for _, p := range pkgs {
+		exact := realDir(p.Dir) == curDir
+		allowFile := filepath.Join(p.Dir, allowlistFile)
+		allowed, err := readAllowlist(allowFile)
+		if err != nil {
+			l.fail("embed", "%s embeds %d file(s) but has no %s beside it (list the allowed path.Match patterns, one per line): %v", p.ImportPath, len(p.EmbedFiles), allowlistFile, err)
+			continue
+		}
+		if exact {
+			seenCurriculum = true
+			l.stats["embedded"] = len(p.EmbedFiles)
+			extra, missing := diffSets(p.EmbedFiles, allowed)
+			for _, f := range extra {
+				l.fail("embed", "%s is embedded but not in %s (a dotfile or stray? if intended: go run ./cmd/contentlint -write-allowlist)", f, allowlistFile)
+			}
+			for _, f := range missing {
+				l.fail("embed", "%s is in %s but not embedded (refresh it: go run ./cmd/contentlint -write-allowlist)", f, allowlistFile)
+			}
+			continue
+		}
+		for _, f := range p.EmbedFiles {
+			if !matchesAny(allowed, f) {
+				l.fail("embed", "%s: %s is embedded but matches no line of %s", p.ImportPath, f, allowFile)
+			}
+		}
 	}
-	extra, missing := diffSets(embedded, allowed)
-	for _, f := range extra {
-		l.fail("embed", "%s is embedded but not in %s (a dotfile or stray? if intended: go run ./cmd/contentlint -write-allowlist)", f, allowlistFile)
+	if !seenCurriculum {
+		l.fail("embed", "the curriculum package (%s) embeds nothing", l.root)
 	}
-	for _, f := range missing {
-		l.fail("embed", "%s is in %s but not embedded (refresh it: go run ./cmd/contentlint -write-allowlist)", f, allowlistFile)
+}
+
+// realDir is a directory's absolute, symlink-free path (best effort).
+func realDir(d string) string {
+	if abs, err := filepath.Abs(d); err == nil {
+		d = abs
 	}
+	if r, err := filepath.EvalSymlinks(d); err == nil {
+		d = r
+	}
+	return d
+}
+
+func matchesAny(patterns []string, f string) bool {
+	for _, pat := range patterns {
+		if ok, _ := path.Match(pat, f); ok {
+			return true
+		}
+	}
+	return false
 }
 
 const allowlistHeader = `# The exact list of files embedded by curriculum/embed.go (go list -json ./curriculum

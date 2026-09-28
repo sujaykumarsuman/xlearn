@@ -31,6 +31,7 @@ import (
 //	courses/<slug>/items/<id>/item.json                (course.Item + ValidateFor)
 //	courses/<slug>/items/<id>/sections/<stage>/<NN>-<kind>.md
 //	courses/<slug>/items/<id>/_code/<stage>-<NN>.<lang>.snip
+//	courses/<slug>/items/<id>/_code/solution.{go,cpp,py}         reference files (m3-01)
 //
 // Dotfiles (any path segment starting with ".") are ignored; any other unexpected file
 // is an error.
@@ -328,6 +329,13 @@ func loadItem(fsys fs.FS, dir, id string, m *course.Manifest, lock course.IDsLoc
 		if rel == course.ItemFile {
 			return nil
 		}
+		if lang, ok := referenceLang(rel); ok {
+			if ri.References == nil {
+				ri.References = map[string]string{}
+			}
+			ri.References[lang] = body
+			return nil
+		}
 		sec, err := parseSectionFile(rel, body)
 		if err != nil {
 			return fmt.Errorf("%s/%s: %w", dir, rel, err)
@@ -349,6 +357,17 @@ func loadItem(fsys fs.FS, dir, id string, m *course.Manifest, lock course.IDsLoc
 	}
 	sortSections(ri.Sections)
 	return ri, nil
+}
+
+// referenceLang reports whether an item-relative path is a reference file,
+// `_code/solution.<lang>` (course.ReferenceLanguages), and its language.
+func referenceLang(rel string) (string, bool) {
+	for _, lang := range course.ReferenceLanguages {
+		if rel == course.ReferenceFile(lang) {
+			return lang, true
+		}
+	}
+	return "", false
 }
 
 // parseSectionFile maps an item-relative sidecar path to its section.
@@ -373,7 +392,7 @@ func parseSectionFile(rel, body string) (course.Section, error) {
 		order, _ := strconv.Atoi(sm[2])
 		return course.Section{Stage: sm[1], Order: order, Kind: "code", Language: sm[3], Code: body}, nil
 	}
-	return course.Section{}, errors.New("unexpected file (want item.json, sections/<stage>/<NN>-<kind>.md or _code/<stage>-<NN>.<lang>.snip)")
+	return course.Section{}, errors.New("unexpected file (want item.json, sections/<stage>/<NN>-<kind>.md, _code/<stage>-<NN>.<lang>.snip or _code/solution.{go,cpp,py})")
 }
 
 // sortSections puts sections in canonical order: stage, order, language, kind.
@@ -462,7 +481,8 @@ func readStrict(fsys fs.FS, name string, v any) error {
 }
 
 // SeedContent flattens the loaded content to the store's seed rows: path rows with
-// their manifest's id prefix, and every item with its content_hash (canon.ContentHash).
+// their manifest's id prefix, and every item with its content_hash (canon.ContentHash),
+// contract_hash (canon.ContractHash) and grading summary (SummarizeGrading).
 func (c *Content) SeedContent() (store.SeedContent, error) {
 	var out store.SeedContent
 	for _, p := range c.Paths {
@@ -497,10 +517,19 @@ func (c *Content) SeedContent() (store.SeedContent, error) {
 			if err != nil {
 				return store.SeedContent{}, fmt.Errorf("item %s: %w", ri.Item.ID, err)
 			}
+			contract, err := canon.ContractHash(&ri.Item)
+			if err != nil {
+				return store.SeedContent{}, fmt.Errorf("item %s: %w", ri.Item.ID, err)
+			}
+			summary, err := json.Marshal(SummarizeGrading(&ri.Item))
+			if err != nil {
+				return store.SeedContent{}, fmt.Errorf("item %s: grading summary: %w", ri.Item.ID, err)
+			}
 			it := ri.Item
 			sp := store.SeedProblem{
 				ID: it.ID, PathSlug: cc.Slug, WeekN: it.WeekN, Title: it.Title, Difficulty: it.Difficulty,
 				Pattern: it.Pattern, Role: it.Role, Status: it.Status, SortOrder: it.SortOrder, ContentHash: hash,
+				ContractHash: contract, GradingSummary: summary,
 			}
 			for _, l := range it.Links {
 				sp.Links = append(sp.Links, store.SeedLink{Kind: l.Kind, URL: l.URL})

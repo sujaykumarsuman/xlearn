@@ -1128,10 +1128,37 @@ components:
           oneOf:
             - { $ref: "#/components/schemas/Timer" }
             - { type: "null" }
+    ProblemDetail:
+      description: >-
+        GET /problems/{id}'s problem: the Problem shape plus two additive, answer-free fields
+        (m3-01) that list and bulk routes do not carry.
+      allOf:
+        - { $ref: "#/components/schemas/Problem" }
+        - type: object
+          properties:
+            contract_hash_prefix:
+              type: string
+              description: First 12 hex chars of the item's contract_hash (humans see a prefix); empty on the self path.
+            grading_summary:
+              type: object
+              description: How the item is graded, derived at seed. A self-path item is just {"mode":"self"}.
+              properties:
+                mode: { type: string, enum: [self, auto, mixed] }
+                parts:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      type: { type: string }
+                      grading: { type: string, enum: [auto, ai, none] }
+                      cadence: { type: string, enum: [iterate, final] }
+                grader_kinds: { type: array, items: { type: string } }
+                languages: { type: array, items: { type: string } }
     ProblemView:
       type: object
       properties:
-        problem: { $ref: "#/components/schemas/Problem" }
+        problem: { $ref: "#/components/schemas/ProblemDetail" }
         sections:
           type: array
           description: Only the learner's UNLOCKED stage sections (R-PF1).

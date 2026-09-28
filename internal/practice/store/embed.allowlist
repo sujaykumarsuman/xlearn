@@ -1,0 +1,4 @@
+# The files migrate.go may embed (//go:embed migrations/*.sql), as path.Match patterns.
+# cmd/contentlint fails CI on an embedded file no line matches, so nothing unexpected (a
+# dotfile, a stray, anything private) ships in the service image.
+migrations/*.sql
