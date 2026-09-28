@@ -1,0 +1,16 @@
+# Migration files present at v1.5.2 (m1-02): exempt from hack/lint-migrations.sh.
+# Frozen: never add a path here — every newer migration is classified. One path per line.
+internal/assessment/store/migrations/00001_init.sql
+internal/assessment/store/migrations/00002_projections.sql
+internal/coach/store/migrations/00001_init.sql
+internal/coach/store/migrations/00002_key_name.sql
+internal/coach/store/migrations/00003_multi_provider_keys.sql
+internal/curriculum/store/migrations/00001_init.sql
+internal/identity/store/migrations/00001_init.sql
+internal/identity/store/migrations/00002_path_enrollment.sql
+internal/identity/store/migrations/00003_password_and_email_unique.sql
+internal/identity/store/migrations/00004_username.sql
+internal/practice/store/migrations/00001_init.sql
+internal/review/store/migrations/00001_init.sql
+internal/review/store/migrations/00002_mistakes_notifications.sql
+internal/review/store/migrations/00003_perf_indexes.sql

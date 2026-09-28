@@ -55,15 +55,19 @@ const (
 const StreamBudgetBytes = 3*GiB + 3*GiB/4
 
 // Stream is one JetStream stream. Owner is its only publisher; Emits lists every
-// concrete subject Owner can publish (the subject registry's producer side).
+// concrete subject Owner can publish (the subject registry's producer side), and
+// CourseScoped flags which of them are course-scoped (m1-02, envelope v2): a v2
+// envelope on a course-scoped subject must carry path_slug (DecodeEnvelope). Every
+// other emitted subject is account-scoped and carries none.
 type Stream struct {
-	Name     string                  // XLEARN_PRACTICE
-	Owner    string                  // practice (the only publisher; ACL + registry key)
-	Subjects []string                // captured subjects, e.g. xlearn.practice.*
-	Emits    []string                // every concrete subject Owner can publish (registry)
-	MaxBytes int64                   // > 0; Σ ≤ StreamBudgetBytes
-	MaxAge   time.Duration           // 0 = unlimited
-	Discard  jetstream.DiscardPolicy // New | Old
+	Name         string                  // XLEARN_PRACTICE
+	Owner        string                  // practice (the only publisher; ACL + registry key)
+	Subjects     []string                // captured subjects, e.g. xlearn.practice.*
+	Emits        []string                // every concrete subject Owner can publish (registry)
+	CourseScoped []string                // the subset of Emits whose v2 envelope needs path_slug
+	MaxBytes     int64                   // > 0; Σ ≤ StreamBudgetBytes
+	MaxAge       time.Duration           // 0 = unlimited
+	Discard      jetstream.DiscardPolicy // New | Old
 }
 
 // Durable is one live durable pull consumer. Handles ∪ Ignores must cover every
@@ -87,6 +91,11 @@ var streams = []Stream{
 			"xlearn.practice.attempt_logged",
 			"xlearn.practice.solution_revealed_early",
 		},
+		CourseScoped: []string{
+			"xlearn.practice.problem_solved",
+			"xlearn.practice.attempt_logged",
+			"xlearn.practice.solution_revealed_early",
+		},
 		MaxBytes: 1 * GiB,
 		Discard:  jetstream.DiscardNew,
 	},
@@ -100,16 +109,23 @@ var streams = []Stream{
 			"xlearn.review.mistake_opened",
 			"xlearn.review.mistake_closed",
 		},
+		CourseScoped: []string{
+			"xlearn.review.revision_scheduled",
+			"xlearn.review.revision_due",
+			"xlearn.review.mistake_opened",
+			"xlearn.review.mistake_closed",
+		},
 		MaxBytes: 1*GiB + 512*MiB,
 		Discard:  jetstream.DiscardNew,
 	},
 	{
-		Name:     StreamAssessment,
-		Owner:    "assessment",
-		Subjects: []string{"xlearn.assessment.*"},
-		Emits:    []string{"xlearn.assessment.mock_completed"},
-		MaxBytes: 128 * MiB,
-		Discard:  jetstream.DiscardNew,
+		Name:         StreamAssessment,
+		Owner:        "assessment",
+		Subjects:     []string{"xlearn.assessment.*"},
+		Emits:        []string{"xlearn.assessment.mock_completed"},
+		CourseScoped: []string{"xlearn.assessment.mock_completed"},
+		MaxBytes:     128 * MiB,
+		Discard:      jetstream.DiscardNew,
 	},
 	{
 		Name:     StreamJudge,
@@ -125,6 +141,7 @@ var streams = []Stream{
 		Owner:    "identity",
 		Subjects: []string{"xlearn.identity.*"},
 		Emits:    []string{"xlearn.identity.account_created"},
+		// CourseScoped: none — identity's subjects are account-scoped (no path_slug).
 		MaxBytes: 128 * MiB,
 		Discard:  jetstream.DiscardNew,
 	},
@@ -217,6 +234,19 @@ func LookupDurable(stream, name string) (Durable, bool) {
 	return Durable{}, false
 }
 
+// CourseScoped reports whether subject is a course-scoped subject in the registry: one
+// a declared stream's owner emits and lists under CourseScoped. A v2 envelope on it must
+// carry path_slug. Account-scoped and unknown subjects report false (an unknown subject
+// is the consumer's unlisted-subject path, never a decode error).
+func CourseScoped(subject string) bool {
+	for _, s := range streams {
+		if slices.Contains(s.CourseScoped, subject) {
+			return true
+		}
+	}
+	return false
+}
+
 // Handled reports whether the durable named durable lists subject under Handles. The
 // durable is resolved by name and by the filter that captures subject (assessment's
 // durable name is the same on two streams).
@@ -260,6 +290,7 @@ func (s Stream) Config() jetstream.StreamConfig {
 func (s Stream) clone() Stream {
 	s.Subjects = slices.Clone(s.Subjects)
 	s.Emits = slices.Clone(s.Emits)
+	s.CourseScoped = slices.Clone(s.CourseScoped)
 	return s
 }
 

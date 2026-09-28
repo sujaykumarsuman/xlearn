@@ -11,7 +11,9 @@ import (
 )
 
 type Querier interface {
-	CreateAttempt(ctx context.Context, userProblemStateID pgtype.UUID) (PracticeAttempt, error)
+	// account_id / path_slug / problem_id denormalise the owning problem state (m1-02,
+	// M1a): v1.6.0 writes all three on insert.
+	CreateAttempt(ctx context.Context, arg CreateAttemptParams) (PracticeAttempt, error)
 	CreateOutcome(ctx context.Context, arg CreateOutcomeParams) error
 	CreateStageEvent(ctx context.Context, arg CreateStageEventParams) error
 	CreateTimer(ctx context.Context, arg CreateTimerParams) (PracticeTimer, error)
@@ -22,6 +24,7 @@ type Querier interface {
 	// The latest timer of a kind for an attempt (attempt = 15m, hint = 10m).
 	GetTimer(ctx context.Context, arg GetTimerParams) (PracticeTimer, error)
 	GetUserProblemState(ctx context.Context, arg GetUserProblemStateParams) (PracticeUserProblemState, error)
+	// account_id is erase prep (m1-02, ADR-0027 §6): the envelope's account, as a column.
 	InsertOutbox(ctx context.Context, arg InsertOutboxParams) error
 	// The stages entered for an attempt; the distinct content stages here are the
 	// authoritative "unlocked stages" for the problem (R-PF1).
@@ -38,6 +41,7 @@ type Querier interface {
 	SetStateSolved(ctx context.Context, arg SetStateSolvedParams) (PracticeUserProblemState, error)
 	// Get-or-create the (account, problem) state row, touching updated_at so the row is
 	// always returned (ON CONFLICT DO NOTHING would return nothing on the resume path).
+	// path_slug is written explicitly (m1-02, M1a); a resume keeps the row's own value.
 	UpsertUserProblemState(ctx context.Context, arg UpsertUserProblemStateParams) (PracticeUserProblemState, error)
 }
 

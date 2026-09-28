@@ -20,7 +20,7 @@ type CoachApiKeyConfig struct {
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
 	Name         string
-	IsDefault    bool
+	IsDefault    pgtype.Bool
 }
 
 type CoachCoachMessage struct {
@@ -30,6 +30,7 @@ type CoachCoachMessage struct {
 	Role      string
 	Content   string
 	CreatedAt pgtype.Timestamptz
+	PathSlug  pgtype.Text
 }
 
 type CoachCoachThread struct {
@@ -37,4 +38,13 @@ type CoachCoachThread struct {
 	AccountID   pgtype.UUID
 	PageContext string
 	CreatedAt   pgtype.Timestamptz
+	PathSlug    pgtype.Text
+}
+
+type CoachKeyDefault struct {
+	AccountID pgtype.UUID
+	Feature   string
+	KeyID     pgtype.UUID
+	Model     string
+	UpdatedAt pgtype.Timestamptz
 }

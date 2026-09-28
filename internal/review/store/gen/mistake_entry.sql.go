@@ -57,9 +57,9 @@ func (q *Queries) CountOpenMistakesByCategoryInRange(ctx context.Context, arg Co
 
 const createMistake = `-- name: CreateMistake :one
 INSERT INTO review.mistake_entry (
-    account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at
+    account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, path_slug
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at, path_slug
 `
 
 type CreateMistakeParams struct {
@@ -73,6 +73,7 @@ type CreateMistakeParams struct {
 	RevisitDate  pgtype.Timestamptz
 	Status       string
 	RevisitCount int32
+	PathSlug     string
 }
 
 // Manually create a journal entry (POST /mistakes). A plain insert: if the learner
@@ -90,6 +91,7 @@ func (q *Queries) CreateMistake(ctx context.Context, arg CreateMistakeParams) (R
 		arg.RevisitDate,
 		arg.Status,
 		arg.RevisitCount,
+		arg.PathSlug,
 	)
 	var i ReviewMistakeEntry
 	err := row.Scan(
@@ -106,12 +108,13 @@ func (q *Queries) CreateMistake(ctx context.Context, arg CreateMistakeParams) (R
 		&i.RevisitCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }
 
 const getLatestMistake = `-- name: GetLatestMistake :one
-SELECT id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at FROM review.mistake_entry
+SELECT id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at, path_slug FROM review.mistake_entry
 WHERE account_id = $1 AND problem_id = $2
 ORDER BY created_at DESC
 LIMIT 1
@@ -141,12 +144,13 @@ func (q *Queries) GetLatestMistake(ctx context.Context, arg GetLatestMistakePara
 		&i.RevisitCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }
 
 const getMistake = `-- name: GetMistake :one
-SELECT id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at FROM review.mistake_entry
+SELECT id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at, path_slug FROM review.mistake_entry
 WHERE id = $1 AND account_id = $2
 `
 
@@ -173,6 +177,7 @@ func (q *Queries) GetMistake(ctx context.Context, arg GetMistakeParams) (ReviewM
 		&i.RevisitCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }
@@ -241,7 +246,7 @@ func (q *Queries) ListAccountsWithMistakes(ctx context.Context) ([]pgtype.UUID, 
 }
 
 const listMistakes = `-- name: ListMistakes :many
-SELECT id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at FROM review.mistake_entry
+SELECT id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at, path_slug FROM review.mistake_entry
 WHERE account_id = $1
 ORDER BY created_at DESC
 `
@@ -270,6 +275,7 @@ func (q *Queries) ListMistakes(ctx context.Context, accountID pgtype.UUID) ([]Re
 			&i.RevisitCount,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PathSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -282,7 +288,7 @@ func (q *Queries) ListMistakes(ctx context.Context, accountID pgtype.UUID) ([]Re
 }
 
 const listMistakesByStatus = `-- name: ListMistakesByStatus :many
-SELECT id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at FROM review.mistake_entry
+SELECT id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at, path_slug FROM review.mistake_entry
 WHERE account_id = $1 AND status = $2
 ORDER BY created_at DESC
 `
@@ -316,6 +322,7 @@ func (q *Queries) ListMistakesByStatus(ctx context.Context, arg ListMistakesBySt
 			&i.RevisitCount,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PathSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -328,7 +335,7 @@ func (q *Queries) ListMistakesByStatus(ctx context.Context, arg ListMistakesBySt
 }
 
 const listOpenMistakesByCategory = `-- name: ListOpenMistakesByCategory :many
-SELECT id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at FROM review.mistake_entry
+SELECT id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at, path_slug FROM review.mistake_entry
 WHERE account_id = $1 AND status = 'open' AND category = $2
 ORDER BY created_at DESC
 `
@@ -363,6 +370,7 @@ func (q *Queries) ListOpenMistakesByCategory(ctx context.Context, arg ListOpenMi
 			&i.RevisitCount,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PathSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -395,11 +403,11 @@ func (q *Queries) LockMistakeJournal(ctx context.Context, arg LockMistakeJournal
 }
 
 const openMistake = `-- name: OpenMistake :one
-INSERT INTO review.mistake_entry (account_id, problem_id, pattern, category, revisit_date, status, revisit_count)
-VALUES ($1, $2, $3, $4, $5, 'open', 0)
+INSERT INTO review.mistake_entry (account_id, problem_id, pattern, category, revisit_date, status, revisit_count, path_slug)
+VALUES ($1, $2, $3, $4, $5, 'open', 0, $6)
 ON CONFLICT (account_id, problem_id) WHERE status = 'open'
 DO NOTHING
-RETURNING id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at
+RETURNING id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at, path_slug
 `
 
 type OpenMistakeParams struct {
@@ -408,6 +416,7 @@ type OpenMistakeParams struct {
 	Pattern     string
 	Category    pgtype.Text
 	RevisitDate pgtype.Timestamptz
+	PathSlug    string
 }
 
 // Open a mistake for (account, problem). ON CONFLICT on the partial unique index
@@ -415,7 +424,7 @@ type OpenMistakeParams struct {
 // redelivered event never opens a duplicate: on conflict it returns no row
 // (pgx.ErrNoRows), which the caller reads as "already open — don't re-emit
 // mistake_opened". A closed prior entry does not conflict, so a recurring problem
-// opens a fresh entry.
+// opens a fresh entry. path_slug is the course (m1-02, M1a).
 func (q *Queries) OpenMistake(ctx context.Context, arg OpenMistakeParams) (ReviewMistakeEntry, error) {
 	row := q.db.QueryRow(ctx, openMistake,
 		arg.AccountID,
@@ -423,6 +432,7 @@ func (q *Queries) OpenMistake(ctx context.Context, arg OpenMistakeParams) (Revie
 		arg.Pattern,
 		arg.Category,
 		arg.RevisitDate,
+		arg.PathSlug,
 	)
 	var i ReviewMistakeEntry
 	err := row.Scan(
@@ -439,6 +449,7 @@ func (q *Queries) OpenMistake(ctx context.Context, arg OpenMistakeParams) (Revie
 		&i.RevisitCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }
@@ -447,7 +458,7 @@ const reopenMistake = `-- name: ReopenMistake :one
 UPDATE review.mistake_entry
 SET status = 'open', revisit_count = 0, revisit_date = $2, updated_at = now()
 WHERE id = $1
-RETURNING id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at
+RETURNING id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at, path_slug
 `
 
 type ReopenMistakeParams struct {
@@ -476,6 +487,7 @@ func (q *Queries) ReopenMistake(ctx context.Context, arg ReopenMistakeParams) (R
 		&i.RevisitCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }
@@ -484,7 +496,7 @@ const resetCleanRevisitCount = `-- name: ResetCleanRevisitCount :one
 UPDATE review.mistake_entry
 SET revisit_count = 0, revisit_date = $3, updated_at = now()
 WHERE account_id = $1 AND problem_id = $2 AND status = 'open'
-RETURNING id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at
+RETURNING id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at, path_slug
 `
 
 type ResetCleanRevisitCountParams struct {
@@ -512,6 +524,7 @@ func (q *Queries) ResetCleanRevisitCount(ctx context.Context, arg ResetCleanRevi
 		&i.RevisitCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }
@@ -522,7 +535,7 @@ SET pattern = $3, mistake = $4, root_cause = $5, insight = $6,
     category = $7, status = $8, revisit_count = $9, revisit_date = $10,
     updated_at = now()
 WHERE id = $1 AND account_id = $2
-RETURNING id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at
+RETURNING id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at, path_slug
 `
 
 type UpdateMistakeParams struct {
@@ -569,6 +582,7 @@ func (q *Queries) UpdateMistake(ctx context.Context, arg UpdateMistakeParams) (R
 		&i.RevisitCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }

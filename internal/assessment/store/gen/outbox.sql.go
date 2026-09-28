@@ -12,23 +12,30 @@ import (
 )
 
 const insertOutbox = `-- name: InsertOutbox :exec
-INSERT INTO assessment.outbox (event_id, subject, payload_json)
-VALUES ($1, $2, $3)
+INSERT INTO assessment.outbox (event_id, subject, payload_json, account_id)
+VALUES ($1, $2, $3, $4)
 `
 
 type InsertOutboxParams struct {
 	EventID     pgtype.UUID
 	Subject     string
 	PayloadJson []byte
+	AccountID   pgtype.UUID
 }
 
+// account_id is erase prep (m1-02, ADR-0027 §6): the envelope's account, as a column.
 func (q *Queries) InsertOutbox(ctx context.Context, arg InsertOutboxParams) error {
-	_, err := q.db.Exec(ctx, insertOutbox, arg.EventID, arg.Subject, arg.PayloadJson)
+	_, err := q.db.Exec(ctx, insertOutbox,
+		arg.EventID,
+		arg.Subject,
+		arg.PayloadJson,
+		arg.AccountID,
+	)
 	return err
 }
 
 const listUnsentOutbox = `-- name: ListUnsentOutbox :many
-SELECT event_id, subject, payload_json, created_at, sent_at FROM assessment.outbox
+SELECT event_id, subject, payload_json, created_at, sent_at, account_id FROM assessment.outbox
 WHERE sent_at IS NULL
 ORDER BY created_at
 LIMIT $1
@@ -49,6 +56,7 @@ func (q *Queries) ListUnsentOutbox(ctx context.Context, limit int32) ([]Assessme
 			&i.PayloadJson,
 			&i.CreatedAt,
 			&i.SentAt,
+			&i.AccountID,
 		); err != nil {
 			return nil, err
 		}

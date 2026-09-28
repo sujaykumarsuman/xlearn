@@ -18,6 +18,8 @@ type Querier interface {
 	// rolling deploy's old pods (whose generated queries still name it) keep working; a later
 	// migration can drop it.
 	CompleteOnboarding(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error)
+	// admitted_via records how the account got in (m1-02, M1a; ADR-0033 §4): v1.6.0 only
+	// creates accounts through dev login and open-mode signup, which write 'dev'.
 	CreateAccount(ctx context.Context, arg CreateAccountParams) (IdentityAccount, error)
 	// Create an account from an email sign-up (ADR-0023): email is required + case-insensitively
 	// unique (partial index), and password_hash is the pre-computed bcrypt hash.
@@ -38,7 +40,12 @@ type Querier interface {
 	GetAccountByUsername(ctx context.Context, lower string) (IdentityAccount, error)
 	GetOnboarding(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error)
 	GetValidSession(ctx context.Context, id string) (IdentitySession, error)
+	// identity.admin_audit (m1-02, M1a expand; ADR-0033 §8): the owner admin CLI's audit
+	// log. m1-04's CLI is the writer; v1.6.0 only creates the table.
+	InsertAdminAudit(ctx context.Context, arg InsertAdminAuditParams) (IdentityAdminAudit, error)
 	InsertOutbox(ctx context.Context, arg InsertOutboxParams) error
+	// Newest first, capped (the CLI's `audit` read).
+	ListAdminAudit(ctx context.Context, limit int32) ([]IdentityAdminAudit, error)
 	ListEnrollments(ctx context.Context, accountID pgtype.UUID) ([]IdentityPathEnrollment, error)
 	// The providers linked to an account (Settings shows what's connected).
 	ListOauthProviders(ctx context.Context, accountID pgtype.UUID) ([]string, error)
@@ -58,7 +65,9 @@ type Querier interface {
 	SetUsername(ctx context.Context, arg SetUsernameParams) (IdentityAccount, error)
 	// Idempotent: the first call records started_at (default now()); re-starting only
 	// re-activates the row and keeps the ORIGINAL started_at (it is not in the SET),
-	// so a learner's "current day" never resets on a repeat Start.
+	// so a learner's "current day" never resets on a repeat Start. public_visible is the
+	// course manifest's public_stats.default_visible (m1-02, M1a; D7), written on insert
+	// only: a re-start never overwrites the learner's own choice (m2-03's toggle).
 	StartEnrollment(ctx context.Context, arg StartEnrollmentParams) (IdentityPathEnrollment, error)
 	// Partial update of the caller's own account (PATCH /me, S10). A NULL narg leaves
 	// the column unchanged (COALESCE), so profile / budget / timezone / reminders can be

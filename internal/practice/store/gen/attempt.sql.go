@@ -12,13 +12,27 @@ import (
 )
 
 const createAttempt = `-- name: CreateAttempt :one
-INSERT INTO practice.attempt (user_problem_state_id)
-VALUES ($1)
-RETURNING id, user_problem_state_id, stage_reached, revealed_early, started_at, ended_at
+INSERT INTO practice.attempt (user_problem_state_id, account_id, path_slug, problem_id)
+VALUES ($1, $2, $3, $4)
+RETURNING id, user_problem_state_id, stage_reached, revealed_early, started_at, ended_at, account_id, path_slug, problem_id
 `
 
-func (q *Queries) CreateAttempt(ctx context.Context, userProblemStateID pgtype.UUID) (PracticeAttempt, error) {
-	row := q.db.QueryRow(ctx, createAttempt, userProblemStateID)
+type CreateAttemptParams struct {
+	UserProblemStateID pgtype.UUID
+	AccountID          pgtype.UUID
+	PathSlug           pgtype.Text
+	ProblemID          pgtype.Text
+}
+
+// account_id / path_slug / problem_id denormalise the owning problem state (m1-02,
+// M1a): v1.6.0 writes all three on insert.
+func (q *Queries) CreateAttempt(ctx context.Context, arg CreateAttemptParams) (PracticeAttempt, error) {
+	row := q.db.QueryRow(ctx, createAttempt,
+		arg.UserProblemStateID,
+		arg.AccountID,
+		arg.PathSlug,
+		arg.ProblemID,
+	)
 	var i PracticeAttempt
 	err := row.Scan(
 		&i.ID,
@@ -27,6 +41,9 @@ func (q *Queries) CreateAttempt(ctx context.Context, userProblemStateID pgtype.U
 		&i.RevealedEarly,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.AccountID,
+		&i.PathSlug,
+		&i.ProblemID,
 	)
 	return i, err
 }
@@ -43,7 +60,7 @@ func (q *Queries) EndAttempt(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getLatestAttempt = `-- name: GetLatestAttempt :one
-SELECT id, user_problem_state_id, stage_reached, revealed_early, started_at, ended_at FROM practice.attempt
+SELECT id, user_problem_state_id, stage_reached, revealed_early, started_at, ended_at, account_id, path_slug, problem_id FROM practice.attempt
 WHERE user_problem_state_id = $1
 ORDER BY started_at DESC
 LIMIT 1
@@ -59,12 +76,15 @@ func (q *Queries) GetLatestAttempt(ctx context.Context, userProblemStateID pgtyp
 		&i.RevealedEarly,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.AccountID,
+		&i.PathSlug,
+		&i.ProblemID,
 	)
 	return i, err
 }
 
 const getOpenAttempt = `-- name: GetOpenAttempt :one
-SELECT id, user_problem_state_id, stage_reached, revealed_early, started_at, ended_at FROM practice.attempt
+SELECT id, user_problem_state_id, stage_reached, revealed_early, started_at, ended_at, account_id, path_slug, problem_id FROM practice.attempt
 WHERE user_problem_state_id = $1 AND ended_at IS NULL
 ORDER BY started_at DESC
 LIMIT 1
@@ -81,6 +101,9 @@ func (q *Queries) GetOpenAttempt(ctx context.Context, userProblemStateID pgtype.
 		&i.RevealedEarly,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.AccountID,
+		&i.PathSlug,
+		&i.ProblemID,
 	)
 	return i, err
 }

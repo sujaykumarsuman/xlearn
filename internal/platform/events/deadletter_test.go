@@ -235,3 +235,29 @@ func TestWithMaxDeliverShortensBackoff(t *testing.T) {
 		t.Fatalf("testBackoff %s must be shorter than the production first backoff", testBackoff)
 	}
 }
+
+// An ErrInvalidEnvelope (m1-02: a v2 course-scoped event without path_slug, or
+// undecodable JSON) dead-letters on its FIRST delivery: no redelivery can fix it.
+func TestDispatchDeadLettersInvalidEnvelopeAtOnce(t *testing.T) {
+	log, buf := bufLogger()
+	c := &NatsConsumer{log: log, stream: StreamPractice}
+	sink := &fakeSink{}
+	sub := subscription{durable: "review", maxDeliver: maxDeliver, backoff: redeliveryBackoff, sink: sink}
+	msg := envelopeMsg("xlearn.practice.problem_solved", "evt-v2", 1)
+
+	c.dispatch(msg, handlerFunc(func(context.Context, Event) error {
+		_, err := DecodeEnvelope([]byte(`{"event_id":"evt-v2","subject":"xlearn.practice.problem_solved","version":2,"data":{}}`))
+		return fmt.Errorf("review consumer: %w", err)
+	}), sub)
+
+	if !msg.termed || msg.naked || msg.acked {
+		t.Fatalf("termed=%v naked=%v acked=%v, want term on the first delivery", msg.termed, msg.naked, msg.acked)
+	}
+	got := sink.letters()
+	if len(got) != 1 || got[0].EventID != "evt-v2" || got[0].ErrClass != ErrClassDecode || got[0].Durable != "review" {
+		t.Fatalf("dead letters = %+v", got)
+	}
+	if !strings.Contains(buf.String(), "event dead-lettered: invalid envelope") {
+		t.Fatalf("no ERROR dead-letter log: %s", buf.String())
+	}
+}

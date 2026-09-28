@@ -68,15 +68,17 @@ func TestProjectionHandlerDuplicateIsAck(t *testing.T) {
 	}
 }
 
-func TestProjectionHandlerDropsMalformedEnvelope(t *testing.T) {
+// A malformed envelope can never succeed: the handler returns events.ErrInvalidEnvelope,
+// which the consumer dead-letters on this delivery (m1-02; v1 logged and acked it).
+func TestProjectionHandlerDeadLettersMalformedEnvelope(t *testing.T) {
 	fs := &fakeStore{applyProjection: func(context.Context, store.ProjectionEvent) (bool, error) {
 		t.Fatal("store must not be called for a malformed envelope")
 		return false, nil
 	}}
 	h := &projectionHandler{store: fs, log: testLogger()}
 	err := h.Handle(context.Background(), events.Event{ID: "x", Subject: "xlearn.practice.attempt_logged", Data: []byte("not json")})
-	if err != nil {
-		t.Fatalf("malformed envelope must ack (drop), got %v", err)
+	if !errors.Is(err, events.ErrInvalidEnvelope) {
+		t.Fatalf("malformed envelope = %v, want ErrInvalidEnvelope (dead-letter)", err)
 	}
 }
 

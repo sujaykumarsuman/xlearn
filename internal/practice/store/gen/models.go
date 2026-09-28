@@ -15,6 +15,9 @@ type PracticeAttempt struct {
 	RevealedEarly      bool
 	StartedAt          pgtype.Timestamptz
 	EndedAt            pgtype.Timestamptz
+	AccountID          pgtype.UUID
+	PathSlug           pgtype.Text
+	ProblemID          pgtype.Text
 }
 
 type PracticeOutbox struct {
@@ -23,6 +26,7 @@ type PracticeOutbox struct {
 	PayloadJson []byte
 	CreatedAt   pgtype.Timestamptz
 	SentAt      pgtype.Timestamptz
+	AccountID   pgtype.UUID
 }
 
 type PracticeOutcome struct {
@@ -60,4 +64,5 @@ type PracticeUserProblemState struct {
 	LastOutcome   pgtype.Text
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
+	PathSlug      string
 }

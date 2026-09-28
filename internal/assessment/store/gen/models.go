@@ -23,19 +23,33 @@ type AssessmentInbox struct {
 }
 
 type AssessmentMockSession struct {
-	ID         pgtype.UUID
-	AccountID  pgtype.UUID
-	SetID      string
-	ProblemID  string
-	Difficulty string
-	Date       pgtype.Date
-	Status     string
-	Total35    pgtype.Int4
-	Notes      string
-	StartedAt  pgtype.Timestamptz
-	DeadlineAt pgtype.Timestamptz
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	ID             pgtype.UUID
+	AccountID      pgtype.UUID
+	SetID          string
+	ProblemID      string
+	Difficulty     pgtype.Text
+	Date           pgtype.Date
+	Status         string
+	Total35        pgtype.Int4
+	Notes          string
+	StartedAt      pgtype.Timestamptz
+	DeadlineAt     pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	PathSlug       string
+	RubricID       pgtype.Text
+	RubricSnapshot []byte
+	Total          pgtype.Int4
+	MaxTotal       pgtype.Int4
+	ScoredBy       pgtype.Text
+}
+
+type AssessmentMockSessionItem struct {
+	SessionID    pgtype.UUID
+	Ordinal      int32
+	ItemID       pgtype.Text
+	PathSlug     string
+	ContractHash pgtype.Text
 }
 
 type AssessmentOutbox struct {
@@ -44,6 +58,7 @@ type AssessmentOutbox struct {
 	PayloadJson []byte
 	CreatedAt   pgtype.Timestamptz
 	SentAt      pgtype.Timestamptz
+	AccountID   pgtype.UUID
 }
 
 type AssessmentProjCoverage struct {

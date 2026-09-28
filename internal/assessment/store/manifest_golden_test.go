@@ -1,7 +1,9 @@
 package store
 
 import (
+	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,6 +39,30 @@ func TestManifestGoldenMirror(t *testing.T) {
 	lo, hi := coursetest.CheckBetween(t, migrationsFS, initSQL, "total_35")
 	if wantLo := rb.Scale[0] * len(rb.Dims); lo != wantLo || hi != rb.MaxTotal() {
 		t.Errorf("mock_session.total_35 CHECK [%d, %d], manifest rubric [%d, %d]", lo, hi, wantLo, rb.MaxTotal())
+	}
+
+	// m1-02 (M1a): the rubric id, snapshot and max total the store writes — and the
+	// literal migration 00004 backfills — are the manifest's mock.rubric.
+	if RubricID != rb.ID {
+		t.Errorf("RubricID = %q, manifest rubric id %q", RubricID, rb.ID)
+	}
+	if MaxTotal != rb.MaxTotal() {
+		t.Errorf("MaxTotal = %d, manifest rubric max %d", MaxTotal, rb.MaxTotal())
+	}
+	var snap course.Rubric
+	if err := json.Unmarshal([]byte(RubricSnapshot), &snap); err != nil {
+		t.Fatalf("RubricSnapshot: %v", err)
+	}
+	if !reflect.DeepEqual(snap, rb) {
+		t.Errorf("RubricSnapshot %+v, manifest rubric %+v", snap, rb)
+	}
+	m1a, err := migrationsFS.ReadFile("migrations/00004_m1a_totals_items.sql")
+	if err != nil {
+		t.Fatalf("read 00004: %v", err)
+	}
+	if !strings.Contains(string(m1a), "rubric_snapshot = '"+RubricSnapshot+"'::jsonb") ||
+		!strings.Contains(string(m1a), "rubric_id       = '"+RubricID+"'") {
+		t.Error("migration 00004's rubric backfill literal differs from RubricID / RubricSnapshot")
 	}
 
 	if MockDuration != time.Duration(m.Mock.DurationS)*time.Second {

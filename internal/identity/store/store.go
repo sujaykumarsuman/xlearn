@@ -246,6 +246,7 @@ func (s *PgStore) FindOrCreateAccount(ctx context.Context, in OAuthUpsert) (Acco
 	acctRow, err := qtx.CreateAccount(ctx, gen.CreateAccountParams{
 		DisplayName: in.DisplayName,
 		Email:       textOrNull(in.Email),
+		AdmittedVia: textOrNull(AdmittedViaDev),
 	})
 	if err != nil {
 		return Account{}, false, fmt.Errorf("create account: %w", err)
@@ -358,6 +359,7 @@ func (s *PgStore) CreateEmailAccount(ctx context.Context, email, passwordHash, d
 		DisplayName:  displayName,
 		Email:        textOrNull(email),
 		PasswordHash: textOrNull(passwordHash),
+		AdmittedVia:  textOrNull(AdmittedViaDev),
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -540,7 +542,11 @@ func (s *PgStore) StartEnrollment(ctx context.Context, accountID, pathSlug strin
 	if err != nil {
 		return Enrollment{}, ErrNotFound
 	}
-	row, err := s.q.StartEnrollment(ctx, gen.StartEnrollmentParams{AccountID: uid, PathSlug: pathSlug})
+	row, err := s.q.StartEnrollment(ctx, gen.StartEnrollmentParams{
+		AccountID:     uid,
+		PathSlug:      pathSlug,
+		PublicVisible: PublicVisibleDefault(pathSlug),
+	})
 	if err != nil {
 		return Enrollment{}, mapErr(err)
 	}

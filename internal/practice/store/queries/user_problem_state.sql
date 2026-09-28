@@ -10,8 +10,9 @@ WHERE account_id = sqlc.arg(account_id)
 -- name: UpsertUserProblemState :one
 -- Get-or-create the (account, problem) state row, touching updated_at so the row is
 -- always returned (ON CONFLICT DO NOTHING would return nothing on the resume path).
-INSERT INTO practice.user_problem_state (account_id, problem_id, status)
-VALUES ($1, $2, 'available')
+-- path_slug is written explicitly (m1-02, M1a); a resume keeps the row's own value.
+INSERT INTO practice.user_problem_state (account_id, problem_id, status, path_slug)
+VALUES ($1, $2, 'available', $3)
 ON CONFLICT (account_id, problem_id)
 DO UPDATE SET updated_at = now()
 RETURNING *;

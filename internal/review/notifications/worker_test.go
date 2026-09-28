@@ -19,12 +19,12 @@ type fakeReminderStore struct {
 }
 
 type reminderCall struct {
-	eventID, accountID, kind string
-	dueAt                    time.Time
+	eventID, accountID, pathSlug, kind string
+	dueAt                              time.Time
 }
 
-func (f *fakeReminderStore) HandleRevisionDue(_ context.Context, eventID, accountID, kind string, dueAt time.Time) (bool, error) {
-	f.calls = append(f.calls, reminderCall{eventID, accountID, kind, dueAt})
+func (f *fakeReminderStore) HandleRevisionDue(_ context.Context, eventID, accountID, pathSlug, kind string, dueAt time.Time) (bool, error) {
+	f.calls = append(f.calls, reminderCall{eventID, accountID, pathSlug, kind, dueAt})
 	if f.err != nil {
 		return false, f.err
 	}
@@ -124,11 +124,14 @@ func TestWorkerResolveFailureNaks(t *testing.T) {
 	}
 }
 
-func TestWorkerDropsMalformed(t *testing.T) {
+// A malformed envelope can never succeed: the worker returns events.ErrInvalidEnvelope,
+// which the consumer dead-letters on this delivery (m1-02; v1 logged and acked it).
+func TestWorkerDeadLettersMalformed(t *testing.T) {
 	st := &fakeReminderStore{}
 	h := testWorker(st, stubResolver{tz: "UTC"})
-	if err := h.Handle(context.Background(), events.Event{Subject: "xlearn.review.revision_due", Data: []byte("not json")}); err != nil {
-		t.Fatalf("malformed envelope should be dropped (nil), got %v", err)
+	err := h.Handle(context.Background(), events.Event{Subject: "xlearn.review.revision_due", Data: []byte("not json")})
+	if !errors.Is(err, events.ErrInvalidEnvelope) {
+		t.Fatalf("malformed envelope = %v, want ErrInvalidEnvelope (dead-letter)", err)
 	}
 	if len(st.calls) != 0 {
 		t.Fatalf("store called %d times for malformed event, want 0", len(st.calls))

@@ -60,7 +60,7 @@ const (
 
 // ErrClass maps a handler error to a coarse, data-free class for the dead-letter row:
 // timeout (a deadline or network timeout), db (a Postgres error or connect failure),
-// decode (malformed JSON) or other.
+// decode (malformed JSON or an ErrInvalidEnvelope) or other.
 func ErrClass(err error) string {
 	if err == nil {
 		return ErrClassOther
@@ -76,7 +76,7 @@ func ErrClass(err error) string {
 	}
 	var syntaxErr *json.SyntaxError
 	var typeErr *json.UnmarshalTypeError
-	if errors.As(err, &syntaxErr) || errors.As(err, &typeErr) {
+	if errors.Is(err, ErrInvalidEnvelope) || errors.As(err, &syntaxErr) || errors.As(err, &typeErr) {
 		return ErrClassDecode
 	}
 	return ErrClassOther

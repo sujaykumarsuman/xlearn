@@ -29,7 +29,14 @@ type Querier interface {
 	// Start a live mock session with the server clock (started_at / deadline_at are
 	// computed by the caller so the 45-minute window is server-authoritative). status
 	// defaults to 'live', total_35 stays NULL until scoring, date defaults to today.
+	// m1-02 (M1a) also writes the course, the rubric the session is scored against (id +
+	// snapshot) and its max total; the ordinal-1 mock_session_item row goes in the same tx.
 	InsertMockSession(ctx context.Context, arg InsertMockSessionParams) (AssessmentMockSession, error)
+	// One ordered item of a session (m1-02, M1a; supersedes problem_id / set_id at M1c).
+	// v1 sessions have exactly one row, ordinal 1; item_id is NULL for a mixed set
+	// (problem_id '').
+	InsertMockSessionItem(ctx context.Context, arg InsertMockSessionItemParams) error
+	// account_id is erase prep (m1-02, ADR-0027 §6): the envelope's account, as a column.
 	InsertOutbox(ctx context.Context, arg InsertOutboxParams) error
 	// Record one dimension's score (1..5) for a session. Called once per dimension inside
 	// the scoring transaction; the UNIQUE (mock_session_id, dimension) is the backstop.
@@ -38,11 +45,14 @@ type Querier interface {
 	ListDeadLetters(ctx context.Context, limit int32) ([]AssessmentEventDeadLetter, error)
 	// The per-day revision-activity rows on/after `since` (the heatmap window + the streak).
 	ListHeatmap(ctx context.Context, arg ListHeatmapParams) ([]ListHeatmapRow, error)
+	// A session's ordered items (tests and the M1b readers).
+	ListMockSessionItems(ctx context.Context, sessionID pgtype.UUID) ([]AssessmentMockSessionItem, error)
 	// The first-solve outcome mix (Clean/Rough/Assisted/Miss counts).
 	ListOutcomeMix(ctx context.Context, accountID pgtype.UUID) ([]ListOutcomeMixRow, error)
 	// All rubric rows for a session (the results radar + per-dimension meters).
 	ListRubricScores(ctx context.Context, mockSessionID pgtype.UUID) ([]ListRubricScoresRow, error)
-	// An account's scored mocks oldest-first — the trend series (R-MK3).
+	// An account's scored mocks oldest-first — the trend series (R-MK3). The total is read
+	// as COALESCE(total, total_35) (m1-02, M1a).
 	ListScoredMocks(ctx context.Context, accountID pgtype.UUID) ([]ListScoredMocksRow, error)
 	// Every solved problem with its solve quality — the gateway groups these by curriculum
 	// pattern (mastery bars) and by week -> phase (completion table). Coverage is the solved
@@ -50,11 +60,14 @@ type Querier interface {
 	ListSolvedMastery(ctx context.Context, accountID pgtype.UUID) ([]ListSolvedMasteryRow, error)
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]AssessmentOutbox, error)
 	// Latch a live session to scored with its /35 total + notes. The status='live' guard
-	// makes a double-submit idempotent at the SQL level (no row -> already scored).
+	// makes a double-submit idempotent at the SQL level (no row -> already scored). m1-02
+	// (M1a) dual-writes total / max_total / scored_by beside total_35.
 	MarkMockScored(ctx context.Context, arg MarkMockScoredParams) (pgtype.UUID, error)
 	MarkOutboxSent(ctx context.Context, eventID pgtype.UUID) error
 	// Scored-mock roll-up for the Progress + Dashboard tiles: how many, the average /35, and
-	// the best /35. `last`/`delta` come from the ordered trend in Go.
+	// the best /35. `last`/`delta` come from the ordered trend in Go. The total is read as
+	// COALESCE(total, total_35) (m1-02, M1a: total is dual-written beside total_35, which
+	// M1c drops).
 	MockAggregate(ctx context.Context, accountID pgtype.UUID) (MockAggregateRow, error)
 	// Day-7 retention inputs: `ladders` is problems that started a spaced-repetition ladder
 	// (a Day-1 anchor), `resets` is how many times a ladder was reset by a failed re-solve.

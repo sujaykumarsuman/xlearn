@@ -55,11 +55,11 @@ func TestPracticeConsumerSubjectRegistry(t *testing.T) {
 	d, _ := events.LookupDurable(StreamPractice, DurableName)
 	var calls []string
 	st := &fakeStore{
-		problemSolved: func(_ context.Context, _, _, _, _ string, _ bool, _ time.Time) (int, error) {
+		problemSolved: func(_ context.Context, _, _, _, _, _ string, _ bool, _ time.Time) (int, error) {
 			calls = append(calls, store.SubjectProblemSolved)
 			return 0, nil
 		},
-		revealedEarly: func(_ context.Context, _, _, _ string, _ time.Time) (int, error) {
+		revealedEarly: func(_ context.Context, _, _, _, _ string, _ time.Time) (int, error) {
 			calls = append(calls, store.SubjectSolutionRevealedEarly)
 			return 0, nil
 		},

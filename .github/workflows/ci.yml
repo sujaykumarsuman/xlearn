@@ -37,6 +37,12 @@ jobs:
       - run: npm --prefix web ci && npm --prefix web run build
       - run: test -z "$(gofmt -l .)"
       - run: go vet ./...
+      # The contract-header migration lint (m1-02, ADR-0034 §3): its self-tests, then every
+      # goose migration newer than v1.5.2 (hack/migrations-baseline.txt). POSIX sh + awk.
+      - name: Migration lint (xlearn:contract / xlearn:relax)
+        run: |
+          sh hack/lint-migrations.sh --self-test
+          sh hack/lint-migrations.sh
       # The default lane (no build tag) runs unit tests + the OpenAPI drift check
       # (internal/gateway/openapi_drift_test.go), which keeps openapi.yaml in sync with
       # the gateway route table. The real-broker e2e is tagged `e2e` and runs separately.

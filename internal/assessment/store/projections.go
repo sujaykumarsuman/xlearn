@@ -78,9 +78,13 @@ func validOutcome(o string) bool {
 // model. The handler fills only the fields its subject uses; OccurredAt anchors the
 // heatmap day (UTC). It carries no wall-clock-derived state so replay is deterministic.
 type ProjectionEvent struct {
-	EventID    string
-	Subject    string
-	AccountID  string
+	EventID   string
+	Subject   string
+	AccountID string
+	// PathSlug is the event's course (the envelope's path_slug; "dsa" for every v1
+	// event). m1-02 carries it; the v1 projection tables have no course column, so it
+	// is not persisted until the projections are redefined and replayed (M2b).
+	PathSlug   string
 	ProblemID  string
 	Outcome    string
 	FirstSolve bool

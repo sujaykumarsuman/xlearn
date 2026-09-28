@@ -12,7 +12,7 @@ import (
 )
 
 const getRevisionItem = `-- name: GetRevisionItem :one
-SELECT id, account_id, problem_id, touch_level, due_date, surfaced_at, status, created_at, updated_at FROM review.revision_item
+SELECT id, account_id, problem_id, touch_level, due_date, surfaced_at, status, created_at, updated_at, path_slug FROM review.revision_item
 WHERE id = $1 AND account_id = $2
 `
 
@@ -35,12 +35,13 @@ func (q *Queries) GetRevisionItem(ctx context.Context, arg GetRevisionItemParams
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }
 
 const getTouch = `-- name: GetTouch :one
-SELECT id, account_id, problem_id, touch_level, due_date, surfaced_at, status, created_at, updated_at FROM review.revision_item
+SELECT id, account_id, problem_id, touch_level, due_date, surfaced_at, status, created_at, updated_at, path_slug FROM review.revision_item
 WHERE account_id = $1 AND problem_id = $2 AND touch_level = $3
 `
 
@@ -63,12 +64,13 @@ func (q *Queries) GetTouch(ctx context.Context, arg GetTouchParams) (ReviewRevis
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }
 
 const listActiveTouches = `-- name: ListActiveTouches :many
-SELECT id, account_id, problem_id, touch_level, due_date, surfaced_at, status, created_at, updated_at FROM review.revision_item
+SELECT id, account_id, problem_id, touch_level, due_date, surfaced_at, status, created_at, updated_at, path_slug FROM review.revision_item
 WHERE account_id = $1 AND status <> 'passed'
 ORDER BY due_date ASC, touch_level ASC
 LIMIT $2
@@ -101,6 +103,7 @@ func (q *Queries) ListActiveTouches(ctx context.Context, arg ListActiveTouchesPa
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PathSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -140,7 +143,7 @@ const markTouchPassed = `-- name: MarkTouchPassed :one
 UPDATE review.revision_item
 SET status = 'passed', updated_at = now()
 WHERE id = $1
-RETURNING id, account_id, problem_id, touch_level, due_date, surfaced_at, status, created_at, updated_at
+RETURNING id, account_id, problem_id, touch_level, due_date, surfaced_at, status, created_at, updated_at, path_slug
 `
 
 func (q *Queries) MarkTouchPassed(ctx context.Context, id pgtype.UUID) (ReviewRevisionItem, error) {
@@ -156,19 +159,20 @@ func (q *Queries) MarkTouchPassed(ctx context.Context, id pgtype.UUID) (ReviewRe
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }
 
 const reanchorTouch = `-- name: ReanchorTouch :one
-INSERT INTO review.revision_item (account_id, problem_id, touch_level, due_date, status)
-VALUES ($1, $2, $3, $4, 'pending')
+INSERT INTO review.revision_item (account_id, problem_id, touch_level, due_date, status, path_slug)
+VALUES ($1, $2, $3, $4, 'pending', $5)
 ON CONFLICT (account_id, problem_id, touch_level)
 DO UPDATE SET due_date = EXCLUDED.due_date,
              status = 'pending',
              surfaced_at = NULL,
              updated_at = now()
-RETURNING id, account_id, problem_id, touch_level, due_date, surfaced_at, status, created_at, updated_at
+RETURNING id, account_id, problem_id, touch_level, due_date, surfaced_at, status, created_at, updated_at, path_slug
 `
 
 type ReanchorTouchParams struct {
@@ -176,17 +180,20 @@ type ReanchorTouchParams struct {
 	ProblemID  string
 	TouchLevel int32
 	DueDate    pgtype.Timestamptz
+	PathSlug   string
 }
 
 // Re-anchor one touch to a fresh schedule (the fail → reset-to-Day-1 path, R-SR3):
 // create it if missing, else overwrite due_date, re-open it to pending, and clear
-// surfaced_at so the sweep re-surfaces it when due.
+// surfaced_at so the sweep re-surfaces it when due. path_slug is written on insert only
+// (a re-anchored row keeps its course).
 func (q *Queries) ReanchorTouch(ctx context.Context, arg ReanchorTouchParams) (ReviewRevisionItem, error) {
 	row := q.db.QueryRow(ctx, reanchorTouch,
 		arg.AccountID,
 		arg.ProblemID,
 		arg.TouchLevel,
 		arg.DueDate,
+		arg.PathSlug,
 	)
 	var i ReviewRevisionItem
 	err := row.Scan(
@@ -199,15 +206,16 @@ func (q *Queries) ReanchorTouch(ctx context.Context, arg ReanchorTouchParams) (R
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }
 
 const scheduleTouch = `-- name: ScheduleTouch :one
-INSERT INTO review.revision_item (account_id, problem_id, touch_level, due_date, status)
-VALUES ($1, $2, $3, $4, 'pending')
+INSERT INTO review.revision_item (account_id, problem_id, touch_level, due_date, status, path_slug)
+VALUES ($1, $2, $3, $4, 'pending', $5)
 ON CONFLICT (account_id, problem_id, touch_level) DO NOTHING
-RETURNING id, account_id, problem_id, touch_level, due_date, surfaced_at, status, created_at, updated_at
+RETURNING id, account_id, problem_id, touch_level, due_date, surfaced_at, status, created_at, updated_at, path_slug
 `
 
 type ScheduleTouchParams struct {
@@ -215,18 +223,21 @@ type ScheduleTouchParams struct {
 	ProblemID  string
 	TouchLevel int32
 	DueDate    pgtype.Timestamptz
+	PathSlug   string
 }
 
 // Idempotently schedule one touch. ON CONFLICT DO NOTHING so a re-delivered or
 // out-of-order practice event never double-schedules or clobbers a touch already
 // scored: on conflict the query returns no row (pgx.ErrNoRows), which the caller
-// reads as "already scheduled — do not re-emit revision_scheduled".
+// reads as "already scheduled — do not re-emit revision_scheduled". path_slug is the
+// event's course (m1-02, M1a; 'dsa' for every v1 event).
 func (q *Queries) ScheduleTouch(ctx context.Context, arg ScheduleTouchParams) (ReviewRevisionItem, error) {
 	row := q.db.QueryRow(ctx, scheduleTouch,
 		arg.AccountID,
 		arg.ProblemID,
 		arg.TouchLevel,
 		arg.DueDate,
+		arg.PathSlug,
 	)
 	var i ReviewRevisionItem
 	err := row.Scan(
@@ -239,12 +250,13 @@ func (q *Queries) ScheduleTouch(ctx context.Context, arg ScheduleTouchParams) (R
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }
 
 const sweepDueCandidates = `-- name: SweepDueCandidates :many
-SELECT id, account_id, problem_id, touch_level, due_date, surfaced_at, status, created_at, updated_at FROM review.revision_item
+SELECT id, account_id, problem_id, touch_level, due_date, surfaced_at, status, created_at, updated_at, path_slug FROM review.revision_item
 WHERE due_date <= now() AND surfaced_at IS NULL AND status = 'pending'
 ORDER BY due_date ASC
 LIMIT $1
@@ -274,6 +286,7 @@ func (q *Queries) SweepDueCandidates(ctx context.Context, limit int32) ([]Review
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PathSlug,
 		); err != nil {
 			return nil, err
 		}

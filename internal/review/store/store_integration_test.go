@@ -53,7 +53,7 @@ func TestStoreIntegration(t *testing.T) {
 		const problem = "16"
 		solvedAt := time.Now()
 
-		n, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "clean", true, solvedAt)
+		n, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", problem, "clean", true, solvedAt)
 		if err != nil {
 			t.Fatalf("handle problem_solved: %v", err)
 		}
@@ -70,10 +70,10 @@ func TestStoreIntegration(t *testing.T) {
 		// Re-delivery of the SAME event id: deduped by the inbox → no new touches/events.
 		// (Use the same event id via a second call — model a redelivery.)
 		evtID := newTestUUID()
-		if _, err := st.HandleProblemSolved(ctx, evtID, acct, "17", "clean", true, solvedAt); err != nil {
+		if _, err := st.HandleProblemSolved(ctx, evtID, acct, "dsa", "17", "clean", true, solvedAt); err != nil {
 			t.Fatalf("schedule 17: %v", err)
 		}
-		n2, err := st.HandleProblemSolved(ctx, evtID, acct, "17", "clean", true, solvedAt)
+		n2, err := st.HandleProblemSolved(ctx, evtID, acct, "dsa", "17", "clean", true, solvedAt)
 		if err != nil {
 			t.Fatalf("redeliver 17: %v", err)
 		}
@@ -87,7 +87,7 @@ func TestStoreIntegration(t *testing.T) {
 
 	t.Run("below-clean first solve schedules nothing", func(t *testing.T) {
 		acct := newTestUUID()
-		n, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "16", "miss", true, time.Now())
+		n, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", "16", "miss", true, time.Now())
 		if err != nil {
 			t.Fatalf("handle problem_solved (miss): %v", err)
 		}
@@ -101,7 +101,7 @@ func TestStoreIntegration(t *testing.T) {
 
 	t.Run("solution_revealed_early schedules the owed 3-day touch", func(t *testing.T) {
 		acct := newTestUUID()
-		n, err := st.HandleSolutionRevealedEarly(ctx, newTestUUID(), acct, "42", time.Now())
+		n, err := st.HandleSolutionRevealedEarly(ctx, newTestUUID(), acct, "dsa", "42", time.Now())
 		if err != nil {
 			t.Fatalf("handle solution_revealed_early: %v", err)
 		}
@@ -120,7 +120,7 @@ func TestStoreIntegration(t *testing.T) {
 	t.Run("auto-score: pass advances, miss resets to Day 1", func(t *testing.T) {
 		acct := newTestUUID()
 		const problem = "88"
-		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "clean", true, time.Now()); err != nil {
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", problem, "clean", true, time.Now()); err != nil {
 			t.Fatalf("schedule: %v", err)
 		}
 		day1 := touchByLevel(ctx, t, st, acct, 1)
@@ -160,7 +160,7 @@ func TestStoreIntegration(t *testing.T) {
 	t.Run("re-scoring a passed touch is idempotent (no duplicate result/event)", func(t *testing.T) {
 		acct := newTestUUID()
 		const problem = "321"
-		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "clean", true, time.Now()); err != nil {
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", problem, "clean", true, time.Now()); err != nil {
 			t.Fatalf("schedule: %v", err)
 		}
 		day1 := touchByLevel(ctx, t, st, acct, 1)
@@ -187,7 +187,7 @@ func TestStoreIntegration(t *testing.T) {
 		acct := newTestUUID()
 		const problem = "654"
 		// Overdue ladder (solved 60 days ago) → all five touches are due.
-		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "clean", true, time.Now().AddDate(0, 0, -60)); err != nil {
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", problem, "clean", true, time.Now().AddDate(0, 0, -60)); err != nil {
 			t.Fatalf("schedule overdue: %v", err)
 		}
 		// The learner passes the Day-1 touch BEFORE the sweep runs (surfaced_at NULL).
@@ -207,7 +207,7 @@ func TestStoreIntegration(t *testing.T) {
 
 	t.Run("scoring another account's item is not found", func(t *testing.T) {
 		acct := newTestUUID()
-		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "5", "clean", true, time.Now()); err != nil {
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", "5", "clean", true, time.Now()); err != nil {
 			t.Fatalf("schedule: %v", err)
 		}
 		item := touchByLevel(ctx, t, st, acct, 1)
@@ -221,7 +221,7 @@ func TestStoreIntegration(t *testing.T) {
 		acct := newTestUUID()
 		const problem = "77"
 		// Anchor the solve 60 days ago so every touch (Day 1..45) is overdue.
-		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "clean", true, time.Now().AddDate(0, 0, -60)); err != nil {
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", problem, "clean", true, time.Now().AddDate(0, 0, -60)); err != nil {
 			t.Fatalf("schedule overdue: %v", err)
 		}
 		n, err := st.Sweep(ctx, 100)
@@ -244,7 +244,7 @@ func TestStoreIntegration(t *testing.T) {
 
 	t.Run("due queue prioritises soonest-due first", func(t *testing.T) {
 		acct := newTestUUID()
-		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "100", "clean", true, time.Now()); err != nil {
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", "100", "clean", true, time.Now()); err != nil {
 			t.Fatalf("schedule: %v", err)
 		}
 		items, err := st.DueQueue(ctx, acct, 10)
@@ -263,7 +263,7 @@ func TestStoreIntegration(t *testing.T) {
 
 	t.Run("outbox relay list + mark sent", func(t *testing.T) {
 		acct := newTestUUID()
-		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "200", "clean", true, time.Now()); err != nil {
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", "200", "clean", true, time.Now()); err != nil {
 			t.Fatalf("schedule: %v", err)
 		}
 		rows, err := st.ListUnsentOutbox(ctx, 1000)
@@ -381,7 +381,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 	t.Run("below-clean solve opens a mistake (deduped, uncategorised) + emits mistake_opened", func(t *testing.T) {
 		acct := newTestUUID()
 		const problem = "bc-1"
-		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "miss", true, time.Now()); err != nil {
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", problem, "miss", true, time.Now()); err != nil {
 			t.Fatalf("problem_solved miss: %v", err)
 		}
 		open, err := st.ListMistakes(ctx, acct, "open")
@@ -395,7 +395,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 			t.Fatalf("mistake_opened events = %d, want 1", c)
 		}
 		// A second below-clean solve of the same problem must not open a duplicate.
-		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "rough", true, time.Now()); err != nil {
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", problem, "rough", true, time.Now()); err != nil {
 			t.Fatalf("second below-clean: %v", err)
 		}
 		open, _ = st.ListMistakes(ctx, acct, "open")
@@ -408,7 +408,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 		acct := newTestUUID()
 		const problem = "sm-1"
 		// Clean first solve → 5 touches, no mistake yet.
-		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "clean", true, time.Now()); err != nil {
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", problem, "clean", true, time.Now()); err != nil {
 			t.Fatalf("clean solve: %v", err)
 		}
 		if ms, _ := st.ListMistakes(ctx, acct, ""); len(ms) != 0 {
@@ -467,7 +467,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 	t.Run("a fail mid-streak resets the clean-revisit count (fails never count)", func(t *testing.T) {
 		acct := newTestUUID()
 		const problem = "sm-2"
-		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "clean", true, time.Now()); err != nil {
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", problem, "clean", true, time.Now()); err != nil {
 			t.Fatalf("clean solve: %v", err)
 		}
 		// Fail once to open the entry, then one clean revisit (count 1), then a fail.
@@ -490,7 +490,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 
 	t.Run("clean re-solve of a never-missed problem touches no journal", func(t *testing.T) {
 		acct := newTestUUID()
-		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "nm-1", "clean", true, time.Now()); err != nil {
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", "nm-1", "clean", true, time.Now()); err != nil {
 			t.Fatalf("clean solve: %v", err)
 		}
 		if _, err := st.Score(ctx, acct, touchByLevel(ctx, t, st, acct, 1).ItemID, pass); err != nil {
@@ -503,7 +503,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 
 	t.Run("weak-area: count in range, classify, snapshot upsert idempotent, current banner", func(t *testing.T) {
 		acct := newTestUUID()
-		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "wa-1", "miss", true, time.Now()); err != nil {
+		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", "wa-1", "miss", true, time.Now()); err != nil {
 			t.Fatalf("open mistake: %v", err)
 		}
 		open := onlyOpen(ctx, t, st, acct)
@@ -544,7 +544,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 		for i := 0; i < 12; i++ {
 			acct := newTestUUID()
 			problem := fmt.Sprintf("race-%d", i)
-			if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "clean", true, time.Now()); err != nil {
+			if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", problem, "clean", true, time.Now()); err != nil {
 				t.Fatalf("iter %d: clean solve: %v", i, err)
 			}
 			if _, err := st.CreateMistake(ctx, acct, store.MistakeInput{ProblemID: problem, Category: "off_by_one", Status: "closed"}); err != nil {
@@ -557,7 +557,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 			wg.Add(2)
 			go func() {
 				defer wg.Done()
-				_, errOpen = st.HandleProblemSolved(ctx, newTestUUID(), acct, problem, "miss", false, time.Now())
+				_, errOpen = st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", problem, "miss", false, time.Now())
 			}()
 			go func() {
 				defer wg.Done()
@@ -586,11 +586,11 @@ func TestMistakeJournalIntegration(t *testing.T) {
 	t.Run("reminder: revision_due writes once (deduped) and lists as due", func(t *testing.T) {
 		acct := newTestUUID()
 		evt := newTestUUID()
-		wrote, err := st.HandleRevisionDue(ctx, evt, acct, "revision_due", time.Now().Add(-time.Minute))
+		wrote, err := st.HandleRevisionDue(ctx, evt, acct, "dsa", "revision_due", time.Now().Add(-time.Minute))
 		if err != nil || !wrote {
 			t.Fatalf("first revision_due: wrote=%v err=%v", wrote, err)
 		}
-		wrote2, err := st.HandleRevisionDue(ctx, evt, acct, "revision_due", time.Now().Add(-time.Minute))
+		wrote2, err := st.HandleRevisionDue(ctx, evt, acct, "dsa", "revision_due", time.Now().Add(-time.Minute))
 		if err != nil {
 			t.Fatalf("dup revision_due: %v", err)
 		}

@@ -24,15 +24,23 @@ var (
 // DSA returns the embedded DSA manifest, loaded and validated by course.Load.
 func DSA(t testing.TB) *course.Manifest {
 	t.Helper()
-	loadOnce.Do(func() { loaded, loadErr = course.Load(curriculum.FS) })
-	if loadErr != nil {
-		t.Fatalf("course.Load(curriculum.FS): %v", loadErr)
-	}
-	m := loaded[course.DSASlug]
+	m := All(t)[course.DSASlug]
 	if m == nil {
 		t.Fatal("no dsa manifest")
 	}
 	return m
+}
+
+// All returns every embedded course manifest keyed by slug, loaded and validated by
+// course.Load (m1-02: identity mirrors each course's public_stats.default_visible). The
+// map is shared: callers must not modify it.
+func All(t testing.TB) map[string]*course.Manifest {
+	t.Helper()
+	loadOnce.Do(func() { loaded, loadErr = course.Load(curriculum.FS) })
+	if loadErr != nil {
+		t.Fatalf("course.Load(curriculum.FS): %v", loadErr)
+	}
+	return loaded
 }
 
 var quoted = regexp.MustCompile(`'([^']*)'`)
