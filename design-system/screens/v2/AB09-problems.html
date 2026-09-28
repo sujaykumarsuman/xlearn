@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB09 · A4 Problems (dual markers) — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB09 board-local layout (prefix ab09-). Tokens only; never restyles a ds- or xl- class. */
+  .ab09-flex { flex: 1; }
+  .ab09-top { position: relative; z-index: 20; }
+  .ab09-topsw { display: inline-flex; align-items: center; gap: 9px; height: 34px; padding: 0 10px; background: var(--ds-panel-2);
+    border: 1px solid var(--ds-line-2); border-radius: 8px; color: var(--ds-text); font-size: 12.5px; }
+  .ab09-ok { color: var(--ds-ok); } .ab09-err { color: var(--ds-err); } .ab09-warn { color: var(--ds-warn); }
+  .ab09-info { color: var(--ds-info); } .ab09-teal { color: var(--ds-teal); } .ab09-dim { color: var(--ds-dim); } .ab09-text { color: var(--ds-text); }
+  .ab09-ic { display: inline-flex; flex: none; }
+  .ab09-i12 { width: 12px; height: 12px; }
+  .ab09-hrow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .ab09-col { display: flex; flex-direction: column; gap: 10px; }
+  .ab09-help { font-size: 12px; line-height: 1.55; color: var(--ds-dim); }
+  .ab09-help b { color: var(--ds-text); font-weight: 600; }
+  .ab09-cap { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab09-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .ab09-gap { margin-bottom: 22px; }
+  .ab09-btn { cursor: pointer; font-family: var(--ds-font-sans); }
+
+  /* page */
+  .ab09-sum { font-size: 13px; color: var(--ds-dim); margin-top: 5px; }
+  .ab09-sum b { color: var(--ds-text); font-weight: 600; font-family: var(--ds-font-mono); }
+  .ab09-legend { display: flex; flex-direction: column; gap: 5px; padding: 10px 14px; margin-bottom: 14px; border: 1px solid var(--ds-line);
+    border-radius: var(--ds-radius); background: var(--ds-panel); font-size: 12.5px; line-height: 1.5; color: var(--ds-dim); }
+  .ab09-legend > span { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .ab09-legend b { color: var(--ds-text); font-weight: 600; }
+  .ab09-note { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ds-dim); margin: -8px 0 14px; }
+
+  /* filters */
+  .ab09-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 18px; }
+  .ab09-fgrp { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .ab09-fchip { cursor: pointer; font-family: var(--ds-font-sans); }
+  .ab09-fchip--on { color: var(--ds-teal); border-color: var(--ds-teal); background: rgba(53,208,192,.12); }
+  .ab09-sel { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--ds-line-2);
+    background: var(--ds-input-bg); color: var(--ds-text); font-size: 12.5px; }
+  .ab09-search { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 11px; min-width: 230px; border-radius: 7px;
+    border: 1px solid var(--ds-line-2); background: var(--ds-input-bg); color: var(--ds-muted); font-size: 12.5px; }
+  .ab09-search--on { color: var(--ds-text); }
+  .ab09-result { display: flex; align-items: center; gap: 10px; margin: -6px 0 14px; font-size: 12.5px; color: var(--ds-dim); }
+  .ab09-result b { color: var(--ds-text); font-weight: 600; }
+  .ab09-url { font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-dim); padding: 6px 10px; border-radius: 7px; border: 1px dashed var(--ds-line-2); background: var(--ds-inset); overflow-wrap: anywhere; }
+  .ab09-url b { color: var(--ds-teal); font-weight: 500; }
+
+  /* list */
+  .ab09-colh, .ab09-r { display: grid; grid-template-columns: 40px minmax(0, 1fr) 176px 244px 214px 16px; gap: 0 14px; align-items: center; }
+  .ab09-colh { padding: 0 16px 7px; font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab09-colh--off, .ab09-r--off { grid-template-columns: 40px minmax(0, 1fr) 176px 244px 16px; }
+  .ab09-wk { display: flex; align-items: center; gap: 10px; margin: 20px 0 10px; }
+  .ab09-wk:first-of-type { margin-top: 4px; }
+  .ab09-wk h2 { font-size: 14px; font-weight: 700; }
+  .ab09-list { list-style: none; margin: 0; padding: 0; }
+  .ab09-r { padding: 11px 16px; border-top: 1px solid var(--ds-line); font-size: 13px; min-height: 48px; }
+  .ab09-list > li:first-child { border-top: none; }
+  .ab09-id { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-dim); }
+  .ab09-t { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 9px; min-width: 0; }
+  .ab09-title { font-size: 13.5px; font-weight: 600; color: var(--ds-text); }
+  .ab09-dg, .ab09-c { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .ab09-a { display: inline-flex; align-items: center; gap: 7px; color: var(--ds-dim); font-size: 12px; min-width: 0; }
+  .ab09-go { color: var(--ds-dim); }
+  .ab09-none { color: var(--ds-dim); font-family: var(--ds-font-mono); }
+  .ab09-chev { color: var(--ds-dim); }
+  .ab09-due { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ds-teal); font-weight: 600; }
+  .ab09-crop { padding: 10px 16px; border-top: 1px dashed var(--ds-line-2); font-family: var(--ds-font-mono); font-size: 10.5px; color: var(--ds-dim); }
+
+  /* gallery */
+  .ab09-g { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px 0; border-top: 1px solid var(--ds-line); }
+  .ab09-g:first-child { border-top: none; padding-top: 0; }
+  .ab09-let { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--ds-inset); border: 1px solid var(--ds-line-2);
+    font-family: var(--ds-font-mono); font-size: 11.5px; font-weight: 600; color: var(--ds-text); margin-top: 12px; }
+  .ab09-gcap { margin: 7px 0 0 2px; font-size: 12px; line-height: 1.5; color: var(--ds-dim); }
+  .ab09-gcap b { color: var(--ds-text); font-weight: 600; }
+
+  /* degradation surfaces (AB11 copy) */
+  .ab09-surface { background: var(--ds-bg); border: 1px solid var(--ds-line); border-radius: var(--ds-radius-lg); overflow: hidden; }
+  .ab09-spage { padding: 16px 20px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .ab09-spage h3 { font-size: 20px; font-weight: 700; letter-spacing: -.2px; }
+  .ab09-banner { display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px; border-radius: var(--ds-radius); font-size: 13px; line-height: 1.5; color: var(--ds-text);
+    border: 1px solid rgba(242,109,109,.35); background: rgba(242,109,109,.08); }
+  .ab09-banner > .ab09-ic { margin-top: 2px; color: var(--ds-err); }
+  .ab09-anchor { position: relative; display: inline-flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+  .ab09-pop { position: relative; width: 300px; padding: 12px 14px; background: var(--ds-panel); border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius);
+    box-shadow: 0 18px 40px rgba(0,0,0,.45); font-size: 13px; line-height: 1.55; color: var(--ds-text); }
+  .ab09-pop::before { content: ""; position: absolute; top: -6px; left: 22px; width: 10px; height: 10px; background: var(--ds-panel);
+    border-left: 1px solid var(--ds-line-2); border-top: 1px solid var(--ds-line-2); transform: rotate(45deg); }
+  .ab09-pop--r::before { left: auto; right: 22px; }
+  .ab09-pop__h { display: flex; align-items: center; gap: 7px; font-weight: 600; margin-bottom: 4px; }
+
+  /* empty / loading / error */
+  .ab09-state { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 20px; text-align: center; color: var(--ds-dim); font-size: 13px; }
+  .ab09-state__t { font-size: 15px; font-weight: 600; color: var(--ds-text); }
+  .ab09-state p { max-width: 440px; margin: 0; line-height: 1.5; }
+  .ab09-err-p { padding: 20px; display: flex; align-items: center; gap: 12px; }
+  .ab09-skel { display: block; border-radius: 8px; background: var(--ds-panel-2); border: 1px solid var(--ds-line); }
+  .ab09-gate { padding: 22px 24px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+  .ab09-gate h2 { font-size: 18px; font-weight: 700; }
+  .ab09-gate p { font-size: 13px; line-height: 1.55; color: var(--ds-dim); max-width: 620px; }
+  .ab09-gate p b { color: var(--ds-text); }
+
+  /* narrow */
+  .ab09-nbody { padding: 14px 12px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .ab09-nhead h1 { font-size: 21px; font-weight: 700; letter-spacing: -.3px; margin-top: 4px; }
+  .ab09-ntools { display: flex; align-items: center; gap: 8px; }
+  .ab09-nr { display: flex; flex-direction: column; gap: 7px; padding: 11px 12px; border-top: 1px solid var(--ds-line); }
+  .ab09-nr:first-child { border-top: none; }
+  .ab09-nr__t { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .ab09-nr__m { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; font-size: 12px; }
+  .ab09-nr__k { font-family: var(--ds-font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--ds-dim); }
+  .ab09-nstage { position: relative; min-height: 700px; background: var(--ds-bg); overflow: hidden; }
+  .ab09-scrim { position: absolute; inset: 0; background: rgba(6,9,13,.66); }
+  .ab09-sheet { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 16px 18px; background: var(--ds-panel); border-top: 1px solid var(--ds-line-2);
+    border-radius: 14px 14px 0 0; box-shadow: 0 -18px 40px rgba(0,0,0,.45); display: flex; flex-direction: column; gap: 12px; }
+  .ab09-grab { width: 40px; height: 4px; border-radius: 2px; background: var(--ds-line-2); align-self: center; }
+  .ab09-sheet__h { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; }
+  .ab09-radios { display: flex; flex-direction: column; border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); overflow: hidden; }
+  .ab09-radio { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-top: 1px solid var(--ds-line); font-size: 13.5px; color: var(--ds-text); background: var(--ds-inset); }
+  .ab09-radio:first-child { border-top: none; }
+  .ab09-radio__o { width: 16px; height: 16px; border-radius: 50%; border: 1.6px solid var(--ds-line-2); flex: none; }
+  .ab09-radio--on { background: rgba(53,208,192,.1); }
+  .ab09-radio--on .ab09-radio__o { border-color: var(--ds-teal); box-shadow: inset 0 0 0 3.5px var(--ds-bg); background: var(--ds-teal); }
+  .ab09-sheet__f { display: flex; gap: 8px; }
+  .ab09-sheet__f > * { flex: 1; }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5" /><path d="M6 10.2V19h12v-8.8" /></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7 9 5z" /><path d="M9 5v12M15 7v12" /></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4" /></symbol>
+  <symbol id="i-journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 3v18M12.5 8h3.5M12.5 12h3.5" /></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.4" /><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" /></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V11M10 19V5M16 19v-6" /><path d="M3 21h18" /></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A2 2 0 0 1 7 3h12v15H7a2 2 0 0 0-2 2z" /><path d="M5 4.5V19" /></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6" /><path d="M10 20a2 2 0 0 0 4 0" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></symbol>
+  <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" /></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" /></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z" /><path d="M12 10v4M12 17h.01" /></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" /></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5z" /><path d="M3 12.5 12 17l9-4.5M3 17 12 21.5 21 17" /></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2" /><rect x="3" y="14" width="18" height="7" rx="2" /><path d="M7 7.5h.01M7 17.5h.01" /></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4" /></symbol>
+  <symbol id="i-spinner" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 1-9 9" /></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9" /><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z" /></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></symbol>
+  <symbol id="i-flagx" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" /><path d="M14 16l5 5M19 16l-5 5" /></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" /></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" /></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 16a8 8 0 1 1 16 0" /><path d="M12 16l4-5" /></symbol>
+  <symbol id="i-off" viewBox="0 0 24 24"><path d="M12 3v8" /><path d="M6.4 7.4a8 8 0 1 0 11.2 0" /></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5h16l-6 7.5V19l-4 2v-8.5z" /></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z" /><path d="M14 3v5h5" /></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14" /></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+  <symbol id="i-list2" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" /></symbol>
+  <symbol id="i-diff" viewBox="0 0 24 24"><path d="M6 3v12M6 9h6M18 21V9M12 15h6" /><circle cx="6" cy="18" r="2.4" /><circle cx="18" cy="6" r="2.4" /></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 1.5M9.5 2.5h5" /></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-3.8 2.5-5 .3 1.6 1.2 2.6 2.5 3 .2-2.8-.8-5.5 0-8z" /></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.6 3 8.3 7 10 4-1.7 7-5.4 7-10V6z" /></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></symbol>
+  <symbol id="i-dash" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" /></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M18 5l2 2M15 8l2 2" /></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 11V5.5a1.5 1.5 0 0 1 3 0V11M11 10V4a1.5 1.5 0 0 1 3 0v6M14 10V5.5a1.5 1.5 0 0 1 3 0V13c0 4-2.5 8-7 8-3 0-4.5-1.5-6-4l-1.5-3a1.5 1.5 0 0 1 2.6-1.5L8 14" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · M3 board</div>
+  <h1>AB09 · A4 Problems (dual markers)</h1>
+  <p class="bd-lede">
+    <code class="ds-mono">/xlearn/dsa/problems</code> — the course's full item list, now with <b>two independent done markers</b>: the
+    <b>Course</b> marker (counted attempts: graded, scheduled for revision) and the <b>Arena</b> marker (free practice that never counts,
+    D10). Items ahead of the learner's week route to the arena instead of v1's <code class="ds-mono">counted:false</code> attempt. Filters live in the
+    URL; there is <b>no pattern filter</b>, because it would reveal the pattern of live items. Supersedes v1 <code class="ds-mono">web/src/screens/Problems.tsx</code>
+    (no v1 board existed). The workspace behind a row is <a href="AB07-workspace-code.html">AB07</a> (course) or <a href="AB10-arena.html">AB10</a> (arena);
+    badges are <a href="AB11-degradation-badges.html">AB11</a>'s, placed here and never redefined.
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-m3-02.md">ds-m3-02</a></span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-m3-12.md">m3-12</a> task 2 (Problems: markers, filters)</span>
+    <span><b>Frozen before</b>the M3 UI sprint</span>
+    <span><b>Sources</b>D10 · <a href="../../../docs/adr/0027-content-evalpack-and-user-data-model.md#1-the-publicprivate-rule">ADR-0027 §1</a> ·
+      <a href="../../../docs/adr/0027-content-evalpack-and-user-data-model.md#4-problems-arena">§4</a> ·
+      <a href="../../../docs/adr/0029-judge-contract-and-learning-signal.md#3-conclusion-practice-the-single-writer">ADR-0029 §3</a> (D15, D18 grades) ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#8-learner-flows-and-v2-artboards-needed">t4 §8</a> ·
+      PRD §5.5 R-AR1 · <a href="../../../docs/v2/sprints/sprint-m3-09.md">m3-09</a> (routes) · <a href="../../../docs/v2/sprints/sprint-m1-06.md">m1-06</a> (<code class="ds-mono">withhold()</code>)</span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB09-F1">F1 default list</a><a href="#AB09-F2">F2 filters</a><a href="#AB09-F3">F3 row states a–l</a><a href="#AB09-F4">F4 degradation</a>
+    <a href="#AB09-F5">F5 empty + edge</a><a href="#AB09-F6">F6 loading / error</a><a href="#AB09-F7">F7 judge off</a><a href="#AB09-F8">F8 390 px</a>
+  </nav>
+</header>
+
+<!-- ======================================================== rules -->
+<section class="bd-section" aria-labelledby="sec-rules">
+  <h2 class="bd-section__h" id="sec-rules">Board-wide rules <small>D10 · ADR-0027 §1 · ADR-0034 §2</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <div class="bd-strip" style="align-items:flex-start">
+      <div class="ab09-col" style="gap:6px">
+        <span><b>Two markers, two sources, never mixed (D10).</b> The <b>Course</b> marker comes from practice's per-item state (counted work only:
+          <code class="ds-mono">status</code>, <code class="ds-mono">attemptState</code>, <code class="ds-mono">deadlineAt</code>, <code class="ds-mono">lastOutcome{grade, gradedBy, trust}</code>, the due touch).
+          The <b>Arena</b> marker comes from judge's <code class="ds-mono">arena_progress</code> through one batched <code class="ds-mono">GET /api/paths/dsa/arena/progress</code>
+          (<code class="ds-mono">firstPassedAt</code> → "Solved in arena · Oct 12"; <code class="ds-mono">source=manual</code> → "Studied · Oct 10"), both via the BFF (m3-09).</span>
+        <span><b>Arena activity never moves a course number:</b> not the course marker, not the week rollup (AB12-W4), not the summary's "done in the course" count, not Progress.</span>
+        <span><b>Grades carry words and an icon</b> (Clean ✓ green · Rough amber · Assisted blue · Miss ⚑ red, AB07's outlook tones) plus a provenance mini-chip in AB06's
+          vocabulary: <span class="ds-chip ds-chip--xs">judge ✓</span> passed on hidden tests · <span class="ds-chip ds-chip--xs">judge</span> concluded by the judge without a pass (time limit or give-up) ·
+          <span class="ds-chip ds-chip--xs">self · honour</span> self-reported.</span>
+      </div>
+    </div>
+    <div class="bd-strip" style="align-items:flex-start">
+      <div class="ab09-col" style="gap:6px">
+        <span><b>Withheld while live (ADR-0027 §1, m1-06 lists rule).</b> An item with an open counted attempt (including <code class="ds-mono">awaiting_evaluation</code> and
+          <code class="ds-mono">self_grade_pending</code>) or a due or live touch shows <span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while live</span>
+          (or AB04's "… while due") instead of its <span class="xl-pat">pattern</span> chip. Every other row keeps v1's pattern chip. <b>No pattern filter</b>, and search matches title and number only.</span>
+        <span><b>Presence by config (ADR-0034 §2).</b> The arena marker, the legend's Arena line, the "Arena done" filter, the grading chips and the summary's arena count exist only when
+          <code class="ds-mono">arena/progress</code> and <code class="ds-mono">/api/judge/status</code> answer 200 (judge configured <b>and</b> the account in the owner/tester cohort). A 404 renders F7.</span>
+        <span><b>Grading chip</b> sits right after the difficulty chip (AB11-F2): <span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg> Judge</span> for
+          <code class="ds-mono">items[id] = evaluable</code>, otherwise AB11's row badge <span class="ds-badge ds-badge--info"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-info"/></svg> Self-report</span>
+          (<code class="ds-mono">contract_mismatch | unsupported | invalid | no_pack</code>).</span>
+      </div>
+    </div>
+  </div>
+  <div class="bd-strip" style="margin-top:14px"><span><b>A11y on every frame.</b> Text <code class="ds-mono">--ds-text</code> 15:1 and <code class="ds-mono">--ds-dim</code> 7.2:1 on the panels; <code class="ds-mono">--ds-muted</code> only for non-essential meta; badge and chip text ≥ 5.5:1 on its tint. Every tone travels with a word or an icon, never colour alone.
+    The drawn focus ring (<code class="ds-mono">bd-focus</code>, the app's <code class="ds-mono">:focus-visible</code>) marks where focus lands first in a frame; each frame's notes give its focus order. Status changes are <code class="ds-mono">aria-live="polite"</code>; nothing steals focus; <code class="ds-mono">ds-spin</code> becomes a static icon under reduced motion. Touch targets ≥ 24 px with 8 px spacing (WCAG 2.5.8); 44 px rows in the 390 px sheets.</span></div>
+</section>
+
+<!-- ======================================================== A · the list -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · The list <small>F1–F2 · owner / tester cohort, judge on · Wed, Oct 14 · the learner is in Week 2</small></h2>
+
+  <!-- F1 -->
+  <article class="bd-frame" id="AB09-F1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB09-F1</span><span class="bd-frame__title">· Default list</span><span class="bd-frame__state">· judge on · no filters · Weeks 1–4 shown, the rest cropped</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--change">replaces v1 Problems.tsx</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" aria-label="Collapse sidebar"><aside class="xl-side"><div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div><nav class="xl-nav"><a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a><a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a><a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a></nav><div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div></aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab09-top"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><b>problems</b></div><span class="ab09-flex"></span><span class="ab09-topsw"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span><span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span><span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span></div>
+            <div class="xl-content">
+              <div class="xl-page-h" style="margin-bottom:14px">
+                <div>
+                  <div class="xl-eyebrow">Data Structures &amp; Algorithms</div>
+                  <h1 style="margin-top:6px">Problems</h1>
+                  <p class="ab09-sum"><b>151</b> problems · <b>48</b> done in the course · <b>12</b> solved in the arena</p>
+                </div>
+              </div>
+              <div class="ab09-legend" role="note" aria-label="What the two markers mean">
+                <span><svg class="xl-ico xl-ico--sm ab09-ok" aria-hidden="true"><use href="#i-flag"/></svg><span><b>Course</b> — counted attempts: graded, scheduled for revision</span></span>
+                <span><svg class="xl-ico xl-ico--sm ab09-teal" aria-hidden="true"><use href="#i-target"/></svg><span><b>Arena</b> — free practice: never counts toward your course</span></span>
+              </div>
+              <div class="ab09-filters" role="search" aria-label="Filter problems">
+                <div class="ds-seg" role="radiogroup" aria-label="Status"><button type="button" class="ds-seg__btn ds-seg__btn--on" role="radio" aria-checked="true">All</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Not started</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Course done</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Arena done</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Review due</button></div>
+                <div class="ab09-fgrp" role="group" aria-label="Difficulty"><button type="button" class="ds-chip ds-chip--sm ab09-fchip" aria-pressed="false"><span class="ds-dot ds-dot--ok"></span>Easy</button><button type="button" class="ds-chip ds-chip--sm ab09-fchip" aria-pressed="false"><span class="ds-dot ds-dot--progressing"></span>Medium</button><button type="button" class="ds-chip ds-chip--sm ab09-fchip" aria-pressed="false"><span class="ds-dot ds-dot--failed"></span>Hard</button></div>
+                <div class="ab09-fgrp" role="group" aria-label="Grading"><button type="button" class="ds-chip ds-chip--sm ab09-fchip" aria-pressed="false"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge-graded</button><button type="button" class="ds-chip ds-chip--sm ab09-fchip" aria-pressed="false"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-info"/></svg>Self-report</button></div>
+                <span class="ab09-sel" role="combobox" aria-expanded="false" aria-label="Week">All weeks <svg class="xl-ico xl-ico--sm ab09-dim" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+                <span class="ab09-search" role="searchbox" aria-label="Search by title or #"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-search"/></svg>Search by title or #</span>
+              </div>
+
+              <div class="ab09-colh" aria-hidden="true"><span>#</span><span>Problem</span><span>Difficulty · grading</span><span>Course</span><span>Arena</span><span></span></div>
+
+              <div class="ab09-wk"><h2>Week 1</h2><span class="ab09-help">6 of 6 done</span></div>
+              <ul class="xl-panel ab09-list" aria-label="Week 1 problems">
+                <li class="ab09-r"><span class="ab09-id">#1</span><span class="ab09-t"><a class="ab09-title">Contains Duplicate</a><span class="xl-pat">Hashing</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--easy">Easy</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ds-badge ds-badge--ok"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-check"/></svg>Clean</span><span class="ds-chip ds-chip--xs">judge ✓</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-r"><span class="ab09-id">#2</span><span class="ab09-t"><a class="ab09-title">Valid Anagram</a><span class="xl-pat">Hashing</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--easy">Easy</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ds-badge ds-badge--ok"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-check"/></svg>Clean</span><span class="ds-chip ds-chip--xs">judge ✓</span></span><a class="ab09-a"><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12 ab09-teal" aria-hidden="true"><use href="#i-check"/></svg>Solved in arena · Oct 2</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-r"><span class="ab09-id">#3</span><span class="ab09-t"><a class="ab09-title">Two Sum</a><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--easy">Easy</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ab09-due"><span class="xl-touch__d xl-touch__d--due" aria-hidden="true"></span>Review due · Day 7</span></span><a class="ab09-a"><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12 ab09-teal" aria-hidden="true"><use href="#i-check"/></svg>Solved in arena · Oct 13</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-r"><span class="ab09-id">#5</span><span class="ab09-t"><a class="ab09-title">Group Anagrams</a><span class="xl-pat">Hashing</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs">judge ✓</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-r"><span class="ab09-id">#7</span><span class="ab09-t"><a class="ab09-title">Top K Frequent Elements</a><span class="xl-pat">Heap / Bucket Sort</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ds-badge ds-badge--err"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-flagx"/></svg>Miss</span><span class="ds-chip ds-chip--xs">judge</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-r"><span class="ab09-id">#9</span><span class="ab09-t"><a class="ab09-title">Subarray Sum Equals K</a><span class="xl-pat">Prefix Sum</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ds-badge ds-badge--info">Assisted</span><span class="ds-chip ds-chip--xs">judge ✓</span></span><a class="ab09-a"><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12 ab09-teal" aria-hidden="true"><use href="#i-check"/></svg>Solved in arena · Oct 8</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+              </ul>
+
+              <div class="ab09-wk"><h2>Week 2</h2><span class="ds-badge ds-badge--ok ds-mono">Current</span><span class="ab09-help">1 of 6 done</span></div>
+              <ul class="xl-panel ab09-list" aria-label="Week 2 problems">
+                <li class="ab09-r"><span class="ab09-id">#12</span><span class="ab09-t"><a class="ab09-title">Longest Substring Without Repeating Characters</a><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while live</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ds-badge ds-badge--warn"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-alert"/></svg>Needs your grade</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-r"><span class="ab09-id">#14</span><span class="ab09-t"><a class="ab09-title">Valid Palindrome</a><span class="xl-pat">Two Pointers</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--easy">Easy</span><button type="button" class="ds-badge ds-badge--info ab09-btn" aria-expanded="false" aria-label="Grading pending · self-report"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-info"/></svg> Self-report</button></span><span class="ab09-c"><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs">self · honour</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-r"><span class="ab09-id">#15</span><span class="ab09-t"><a class="ab09-title">Two Sum II</a><span class="xl-pat">Two Pointers</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><button type="button" class="ds-badge ds-badge--info ab09-btn" aria-expanded="false" aria-label="Grading pending · self-report"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-info"/></svg> Self-report</button></span><span class="ab09-c"><span class="ab09-none" aria-label="Course: not started">—</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-r"><span class="ab09-id">#16</span><span class="ab09-t"><a class="ab09-title">3Sum</a><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while live</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ds-badge ds-badge--info" role="timer" aria-live="off" aria-label="In progress, 31 minutes 12 seconds left"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-clock"/></svg>In progress · 31:12 left</span></span><a class="ab09-a"><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12 ab09-teal" aria-hidden="true"><use href="#i-check"/></svg>Solved in arena · Oct 12</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-r"><span class="ab09-id">#17</span><span class="ab09-t"><a class="ab09-title">Container With Most Water</a><span class="xl-pat">Two Pointers</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><button type="button" class="ds-badge ds-badge--info ab09-btn" aria-expanded="false" aria-label="Grading pending · self-report"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-info"/></svg> Self-report</button></span><span class="ab09-c"><span class="ab09-none" aria-label="Course: not started">—</span></span><a class="ab09-a"><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12 ab09-teal" aria-hidden="true"><use href="#i-book"/></svg>Studied · Oct 10</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-r"><span class="ab09-id">#18</span><span class="ab09-t"><a class="ab09-title">Minimum Window Substring</a><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while live</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--hard">Hard</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ds-badge ds-badge--info"><svg class="xl-ico ab09-i12 ds-spin" aria-hidden="true"><use href="#i-spinner"/></svg>Grading…</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+              </ul>
+
+              <div class="ab09-wk"><h2>Week 3</h2><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Ahead · arena only</span></div>
+              <ul class="xl-panel ab09-list" aria-label="Week 3 problems">
+                <li class="ab09-r"><span class="ab09-id">#23</span><span class="ab09-t"><a class="ab09-title">Largest Rectangle in Histogram</a><span class="xl-pat">Monotonic Stack</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--hard">Hard</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Ahead · arena only</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+              </ul>
+              <div class="ab09-wk"><h2>Week 4</h2><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Ahead · arena only</span></div>
+              <ul class="xl-panel ab09-list" aria-label="Week 4 problems">
+                <li class="ab09-r"><span class="ab09-id">#40</span><span class="ab09-t"><a class="ab09-title">LRU Cache</a><span class="xl-pat">Design / Hashmap + DLL</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Ahead · arena only</span></span><a class="ab09-a"><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12 ab09-teal" aria-hidden="true"><use href="#i-check"/></svg>Solved in arena · Oct 11</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-crop">frame cropped · Weeks 5–16 continue the same way (Week 8 #78, Week 9 #92, Week 10 #104 are the other seeded items)</li>
+              </ul>
+            </div>
+          </div>
+          <span class="xl-fab" aria-label="Open Your AI coach (your key)"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-spark"/></svg></span>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Data</h4>
+        <ul><li><code>GET /api/paths/dsa/problems</code> (curriculum list; <code>withhold()</code> strips <code>pattern</code> on live items, m1-06) + practice's per-item state (the course marker) + <b>one</b> batched
+            <code>GET /api/paths/dsa/arena/progress</code> → <code>{&lt;itemId&gt;: {done, source, firstPassedAt, submits}}</code> + <code>GET /api/judge/status?path=dsa</code> (grading chips). Never N calls.</li>
+          <li>Summary: <b>151</b> = list length; <b>48 done in the course</b> = items with a concluded counted attempt (any grade — a Miss is concluded and continues as a review); <b>12 solved in the arena</b> = <code>firstPassedAt ≠ null</code>
+            (Studied isn't "solved"). Week subtitle "N of M done" counts course conclusions only.</li>
+          <li>Sample data: the 14 seeded DSA items (ids, titles, difficulties, weeks, patterns) plus AB11's sample rows #14, #15, #17 as unpacked items; counts, grades and dates are samples.</li></ul></section>
+      <section><h4>Rows and routes</h4>
+        <ul><li>Two links per row. The <b>title</b> opens the course destination: not started → AB07-F1 cover; open → AB07-F10 resume; <code>self_grade_pending</code> → AB07-F11; concluded → the concluded view; a due touch → the touch (AB04). <b>Ahead</b> rows' titles open the arena (AB10).</li>
+          <li>The <b>arena cell</b> is its own link, "Open #16 in the arena" (<code>/xlearn/dsa/problem/16?practice=1</code>, m3-12 may rename it), on every row.</li>
+          <li>"In progress · 31:12 left" renders from <code>deadlineAt</code> (D15 server clock, 45:00, no pause); it ticks per second visually but is <code>aria-live="off"</code>.</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>D10 (own arena marker; never counts) · ADR-0027 §4 · D15 / D18 grades · t4 §8 (ahead → arena) · PRD R-AR1.</li>
+          <li>The list is a <code>&lt;ul&gt;</code> per week under an <code>h2</code>; the column header is visual only. Title link name: "#16 3Sum, Medium, judge-graded, course: in progress, 31 minutes left"; arena link: "Open #16 in the arena, solved in arena on Oct 12".
+            Focus order: legend → status → difficulty → grading → week → search → rows (title, then arena). Text 15:1, dim 7.2:1, badge text ≥ 5.5:1; every tone travels with a word.</li>
+          <li>&lt; 1024 px: F8.</li></ul></section>
+    </aside>
+  </article>
+
+  <!-- F2 -->
+  <article class="bd-frame" id="AB09-F2">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB09-F2</span><span class="bd-frame__title">· Filters</span><span class="bd-frame__state">· Arena done + Medium · state in the URL</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad" style="min-width:1120px">
+        <div class="ab09-url" style="margin-bottom:14px">/xlearn/dsa/problems<b>?status=arena&amp;diff=med</b></div>
+        <div class="ab09-filters" role="search" aria-label="Filter problems">
+          <div class="ds-seg" role="radiogroup" aria-label="Status"><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">All</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Not started</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Course done</button><button type="button" class="ds-seg__btn ds-seg__btn--on bd-focus" role="radio" aria-checked="true">Arena done</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Review due</button></div>
+          <div class="ab09-fgrp" role="group" aria-label="Difficulty"><button type="button" class="ds-chip ds-chip--sm ab09-fchip" aria-pressed="false"><span class="ds-dot ds-dot--ok"></span>Easy</button><button type="button" class="ds-chip ds-chip--sm ab09-fchip ab09-fchip--on" aria-pressed="true"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-check"/></svg><span class="ds-dot ds-dot--progressing"></span>Medium</button><button type="button" class="ds-chip ds-chip--sm ab09-fchip" aria-pressed="false"><span class="ds-dot ds-dot--failed"></span>Hard</button></div>
+          <div class="ab09-fgrp" role="group" aria-label="Grading"><button type="button" class="ds-chip ds-chip--sm ab09-fchip" aria-pressed="false"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge-graded</button><button type="button" class="ds-chip ds-chip--sm ab09-fchip" aria-pressed="false"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-info"/></svg>Self-report</button></div>
+          <span class="ab09-sel" role="combobox" aria-expanded="false" aria-label="Week">All weeks <svg class="xl-ico xl-ico--sm ab09-dim" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+          <span class="ab09-search" role="searchbox" aria-label="Search by title or #"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-search"/></svg>Search by title or #</span>
+        </div>
+        <div class="ab09-result" role="status"><span><b>4 problems</b> · Arena done · Medium</span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg> Clear filters</span></div>
+        <div class="ab09-colh" aria-hidden="true"><span>#</span><span>Problem</span><span>Difficulty · grading</span><span>Course</span><span>Arena</span><span></span></div>
+        <div class="ab09-wk"><h2>Week 1</h2></div>
+        <ul class="xl-panel ab09-list">
+          <li class="ab09-r"><span class="ab09-id">#9</span><span class="ab09-t"><a class="ab09-title">Subarray Sum Equals K</a><span class="xl-pat">Prefix Sum</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ds-badge ds-badge--info">Assisted</span><span class="ds-chip ds-chip--xs">judge ✓</span></span><a class="ab09-a"><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12 ab09-teal" aria-hidden="true"><use href="#i-check"/></svg>Solved in arena · Oct 8</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+        </ul>
+        <div class="ab09-wk"><h2>Week 2</h2><span class="ds-badge ds-badge--ok ds-mono">Current</span></div>
+        <ul class="xl-panel ab09-list">
+          <li class="ab09-r"><span class="ab09-id">#16</span><span class="ab09-t"><a class="ab09-title">3Sum</a><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while live</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ds-badge ds-badge--info"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-clock"/></svg>In progress · 31:12 left</span></span><a class="ab09-a"><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12 ab09-teal" aria-hidden="true"><use href="#i-check"/></svg>Solved in arena · Oct 12</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+          <li class="ab09-r"><span class="ab09-id">#17</span><span class="ab09-t"><a class="ab09-title">Container With Most Water</a><span class="xl-pat">Two Pointers</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><button type="button" class="ds-badge ds-badge--info ab09-btn" aria-expanded="false" aria-label="Grading pending · self-report"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-info"/></svg> Self-report</button></span><span class="ab09-c"><span class="ab09-none">—</span></span><a class="ab09-a"><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12 ab09-teal" aria-hidden="true"><use href="#i-book"/></svg>Studied · Oct 10</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+        </ul>
+        <div class="ab09-wk"><h2>Week 4</h2><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Ahead · arena only</span></div>
+        <ul class="xl-panel ab09-list">
+          <li class="ab09-r"><span class="ab09-id">#40</span><span class="ab09-t"><a class="ab09-title">LRU Cache</a><span class="xl-pat">Design / Hashmap + DLL</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Ahead · arena only</span></span><a class="ab09-a"><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12 ab09-teal" aria-hidden="true"><use href="#i-check"/></svg>Solved in arena · Oct 11</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+        </ul>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Controls → URL</h4>
+        <ul><li>Status <code>ds-seg</code> (one value): All · Not started (<code>status=new</code>) · Course done (<code>course</code>: a concluded counted attempt) · Arena done (<code>arena</code>: <code>arena_progress.done</code>, solved <b>or</b> studied) · Review due (<code>due</code>: a touch due today or overdue).</li>
+          <li>Difficulty chips (multi, <code>diff=easy,med,hard</code>), grading chips (multi, <code>grading=judge,self</code>), week select (<code>week=2</code>), search (<code>q=</code>, title or <code>#</code> number). Every change <b>replaces</b> the query with <code>history.replaceState</code>, so Back leaves the page and a reload restores the view.</li>
+          <li>Filtering is client-side over the one list response; groups with no match are dropped; the week heading and its "Current" / "Ahead" chip stay on the ones that remain.</li></ul></section>
+      <section><h4>No pattern filter</h4>
+        <ul><li>A pattern (or concept) filter is <b>left out on purpose</b>: filtering by "Two Pointers" would sort a live item into its pattern even while its chip is withheld — a withhold leak (ADR-0027 §1). Search matches title and number, never pattern.</li>
+          <li>"Self-report" matches every item whose grading chip is AB11's row badge (not evaluable right now).</li></ul></section>
+      <section><h4>A11y · narrow</h4>
+        <ul><li>The seg is a <code>radiogroup</code> (arrow keys); chips are toggle buttons (<code>aria-pressed</code>) with a check icon when on — never colour alone. The result line is <code>role="status"</code> ("4 problems · Arena done · Medium") and announces politely after each change. <b>Clear filters</b> resets the query and returns focus to "All".</li>
+          <li>&lt; 1024 px: one <b>"Filters (2)"</b> button opens a bottom sheet (F8-N2); search stays inline.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ======================================================== B · row states -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · Row states <small>F3 · a–l · each row drawn at desktop width with its route</small></h2>
+  <article class="bd-frame" id="AB09-F3">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB09-F3</span><span class="bd-frame__title">· Row-state gallery</span><span class="bd-frame__state">· 12 states · course marker × arena marker</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad" style="min-width:1160px">
+        <div class="ab09-colh" style="margin-left:38px" aria-hidden="true"><span>#</span><span>Problem</span><span>Difficulty · grading</span><span>Course</span><span>Arena</span><span></span></div>
+
+        <div class="ab09-g"><span class="ab09-let">a</span><div>
+          <ul class="xl-panel ab09-list"><li class="ab09-r"><span class="ab09-id">#16</span><span class="ab09-t"><a class="ab09-title">3Sum</a><span class="xl-pat">Two Pointers</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ab09-none">—</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li></ul>
+          <p class="ab09-gcap"><b>Current week, not started.</b> Course "—" (screen readers: "course: not started"). The title opens the <b>AB07 cover</b> (<code class="ds-mono">GET /api/problems/16</code> returns the cover only, D10); the pattern chip shows (not live).</p></div></div>
+
+        <div class="ab09-g"><span class="ab09-let">b</span><div>
+          <ul class="xl-panel ab09-list"><li class="ab09-r"><span class="ab09-id">#23</span><span class="ab09-t"><a class="ab09-title">Largest Rectangle in Histogram</a><span class="xl-pat">Monotonic Stack</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--hard">Hard</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Ahead · arena only</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li></ul>
+          <p class="ab09-gcap"><b>Ahead of schedule</b> (Week 3 while the learner is in Week 2). The lock is on the <b>course</b> slot only — the schedule hasn't reached it; the arena is open. The whole row opens the <b>arena</b> (AB10), replacing v1's <code class="ds-mono">counted:false</code> attempt (t4 §8 behaviour change); the server's <code class="ds-mono">409 ahead_of_schedule</code> is never reached from here.</p></div></div>
+
+        <div class="ab09-g"><span class="ab09-let">c</span><div>
+          <ul class="xl-panel ab09-list"><li class="ab09-r"><span class="ab09-id">#16</span><span class="ab09-t"><a class="ab09-title">3Sum</a><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while live</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ds-badge ds-badge--info"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-clock"/></svg>In progress · 31:12 left</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li></ul>
+          <p class="ab09-gcap"><b>Open attempt.</b> "In progress · 31:12 left" from the server's <code class="ds-mono">deadlineAt</code> (D15: 45:00, no pause); the pattern is withheld. Opens the attempt (AB07-F10 resume). Under 5:00 the badge turns <code class="ds-mono">ds-badge--warn</code> with the same words.</p></div></div>
+
+        <div class="ab09-g"><span class="ab09-let">d</span><div>
+          <ul class="xl-panel ab09-list"><li class="ab09-r"><span class="ab09-id">#18</span><span class="ab09-t"><a class="ab09-title">Minimum Window Substring</a><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while live</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--hard">Hard</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ds-badge ds-badge--info"><svg class="xl-ico ab09-i12 ds-spin" aria-hidden="true"><use href="#i-spinner"/></svg>Grading…</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li></ul>
+          <p class="ab09-gcap"><b><code class="ds-mono">awaiting_evaluation</code></b>: the attempt closed (deadline or final submit) and its grade isn't locked yet. "Grading…" with <code class="ds-mono">ds-spin</code> (a static clock icon under reduced motion). Still live, so the pattern stays hidden. The list refetches on the next cache epoch; it doesn't poll.</p></div></div>
+
+        <div class="ab09-g"><span class="ab09-let">e</span><div>
+          <ul class="xl-panel ab09-list"><li class="ab09-r"><span class="ab09-id">#12</span><span class="ab09-t"><a class="ab09-title">Longest Substring Without Repeating Characters</a><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while live</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ds-badge ds-badge--warn"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-alert"/></svg>Needs your grade</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li></ul>
+          <p class="ab09-gcap"><b><code class="ds-mono">self_grade_pending</code></b> (auto-grading couldn't finish: unreliable results, the problem changed, or grading went off). <code class="ds-mono">ds-badge--warn</code> "Needs your grade"; opens AB07-F11 (the picker, capped at <code class="ds-mono">ceiling</code>). Also counted in Today's "grades waiting" (AB16-F14).</p></div></div>
+
+        <div class="ab09-g"><span class="ab09-let">f</span><div>
+          <ul class="xl-panel ab09-list"><li class="ab09-r"><span class="ab09-id">#1</span><span class="ab09-t"><a class="ab09-title">Contains Duplicate</a><span class="xl-pat">Hashing</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--easy">Easy</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ds-badge ds-badge--ok"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-check"/></svg>Clean</span><span class="ds-chip ds-chip--xs">judge ✓</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li></ul>
+          <p class="ab09-gcap"><b>Concluded Clean</b>, <code class="ds-mono">graded_by=auto ∧ trust=checked</code> with a passing submit → <span class="ds-chip ds-chip--xs">judge ✓</span>. Counts toward judge-checked % (AB12-P1). Opens the concluded view (AB07-F8 card, read-only editor).</p></div></div>
+
+        <div class="ab09-g"><span class="ab09-let">g</span><div>
+          <ul class="xl-panel ab09-list"><li class="ab09-r"><span class="ab09-id">#7</span><span class="ab09-t"><a class="ab09-title">Top K Frequent Elements</a><span class="xl-pat">Heap / Bucket Sort</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ds-badge ds-badge--err"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-flagx"/></svg>Miss</span><span class="ds-chip ds-chip--xs">judge</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li></ul>
+          <p class="ab09-gcap"><b>Concluded Miss</b> on the judged path — no pass by 45:00, or a give-up (D15). <span class="ds-chip ds-chip--xs">judge</span> without ✓: concluded by the judge's clock and verdicts, with no passing submit. It still counts as judge-checked. Its Day-1 review is the re-attempt (D16).</p></div></div>
+
+        <div class="ab09-g"><span class="ab09-let">h</span><div>
+          <ul class="xl-panel ab09-list"><li class="ab09-r"><span class="ab09-id">#14</span><span class="ab09-t"><a class="ab09-title">Valid Palindrome</a><span class="xl-pat">Two Pointers</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--easy">Easy</span><button type="button" class="ds-badge ds-badge--info ab09-btn" aria-expanded="false" aria-label="Grading pending · self-report"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-info"/></svg> Self-report</button></span><span class="ab09-c"><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs">self · honour</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li></ul>
+          <p class="ab09-gcap"><b>Self-report item</b> (no pack yet): the learner picked Rough on the self path (AB07-F12a) → <code class="ds-mono">graded_by=self, trust=honor</code> → <span class="ds-chip ds-chip--xs">self · honour</span> (AB04's chip). Not judge-checked.</p></div></div>
+
+        <div class="ab09-g"><span class="ab09-let">i</span><div>
+          <ul class="xl-panel ab09-list"><li class="ab09-r"><span class="ab09-id">#3</span><span class="ab09-t"><a class="ab09-title">Two Sum</a><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--easy">Easy</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ab09-due"><span class="xl-touch__d xl-touch__d--due" aria-hidden="true"></span>Review due · Day 7</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li></ul>
+          <p class="ab09-gcap"><b>Due touch.</b> <code class="ds-mono">xl-touch__d--due</code> + "Review due · Day 7" (teal, with the words); the concluded grade moves to the title link's accessible name. Pattern withheld while due (AB04 wording). Opens the touch (AB04). The row returns to its grade after the touch concludes.</p></div></div>
+
+        <div class="ab09-g"><span class="ab09-let">j</span><div>
+          <ul class="xl-panel ab09-list"><li class="ab09-r"><span class="ab09-id">#16</span><span class="ab09-t"><a class="ab09-title">3Sum</a><span class="xl-pat">Two Pointers</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ab09-none">—</span></span><a class="ab09-a"><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12 ab09-teal" aria-hidden="true"><use href="#i-check"/></svg>Solved in arena · Oct 12</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li></ul>
+          <p class="ab09-gcap"><b>Arena only.</b> Solved in the arena on Oct 12 (AB10-F3), never started in the course: the course marker stays <b>"—"</b> and the item still counts as <i>not started</i> for the course, the week and the summary (D10). An arena pass is not a course pass.</p></div></div>
+
+        <div class="ab09-g"><span class="ab09-let">k</span><div>
+          <ul class="xl-panel ab09-list"><li class="ab09-r"><span class="ab09-id">#2</span><span class="ab09-t"><a class="ab09-title">Valid Anagram</a><span class="xl-pat">Hashing</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--easy">Easy</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span></span><span class="ab09-c"><span class="ds-badge ds-badge--ok"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-check"/></svg>Clean</span><span class="ds-chip ds-chip--xs">judge ✓</span></span><a class="ab09-a"><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12 ab09-teal" aria-hidden="true"><use href="#i-check"/></svg>Solved in arena · Oct 2</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li></ul>
+          <p class="ab09-gcap"><b>Both markers</b>, independent: the course Clean came from a counted attempt; the arena date is the first arena pass (<code class="ds-mono">first_passed_at</code>, kept on later passes).</p></div></div>
+
+        <div class="ab09-g"><span class="ab09-let">l</span><div>
+          <ul class="xl-panel ab09-list"><li class="ab09-r"><span class="ab09-id">#17</span><span class="ab09-t"><a class="ab09-title">Container With Most Water</a><span class="xl-pat">Two Pointers</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span><button type="button" class="ds-badge ds-badge--info ab09-btn" aria-expanded="false" aria-label="Grading pending · self-report"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-info"/></svg> Self-report</button></span><span class="ab09-c"><span class="ab09-none">—</span></span><a class="ab09-a"><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12 ab09-teal" aria-hidden="true"><use href="#i-book"/></svg>Studied · Oct 10</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li></ul>
+          <p class="ab09-gcap"><b>Studied</b> — the manual marker (<code class="ds-mono">source=manual</code>) from <b>[Mark studied]</b> in the arena's study mode (AB10-F8): an item with no evaluator for this account (no pack yet, or a quiz / canvas item). Book icon, not a check, so it never reads as "solved".</p></div></div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Course marker (practice, counted)</h4>
+        <ul><li>— · "Ahead · arena only" (<code>xl-lock</code>) · "In progress · mm:ss left" (<code>ds-badge--info</code>, clock) · "Grading…" (<code>ds-badge--info</code>, spinner) · "Needs your grade" (<code>ds-badge--warn</code>, alert) · Clean / Rough / Assisted / Miss badge + provenance chip · "Review due · Day N" (due dot, teal).</li>
+          <li>Precedence when several apply: open attempt &gt; <code>awaiting_evaluation</code> &gt; <code>self_grade_pending</code> &gt; due touch &gt; grade &gt; not started; "Ahead" only when nothing counted exists yet.</li></ul></section>
+      <section><h4>Arena marker (judge, never counts)</h4>
+        <ul><li>— · "Solved in arena · Oct 12" (<code>first_passed_at</code>, teal check) · "Studied · Oct 10" (<code>source=manual</code>, book). Date only, in the learner's zone; never a time, a submit count or a grade.</li>
+          <li>A later arena pass on a Studied item flips it to "Solved in arena" and keeps <code>first_passed_at</code> (m3-14 upsert rule).</li></ul></section>
+      <section><h4>Decisions · a11y</h4>
+        <ul><li>D10 (a–l) · D15 (c) · D18 grades (f–h) · t4 §8 (b) · ADR-0027 §1 (c, d, e, i). The "judge ✓" / "judge" split is drafted here (see "Decisions to confirm").</li>
+          <li>Every state is words + icon; the due dot and the spinner are <code>aria-hidden</code> beside their text. Sample rows and dates.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ======================================================== C · degradation -->
+<section class="bd-section" aria-labelledby="sec-c">
+  <h2 class="bd-section__h" id="sec-c">C · Degradation placement <small>F4 · AB11's badges, copied — never redefined</small></h2>
+  <article class="bd-frame" id="AB09-F4">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB09-F4</span><span class="bd-frame__title">· Degradation (AB11 reference)</span><span class="bd-frame__state">· (a) grader busy · (b) auto-grading off · (c) one item mismatched</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">AB11 placement</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad ab09-col" style="gap:18px;min-width:1120px">
+        <div class="ab09-surface">
+          <div class="ab09-spage">
+            <div class="ab09-hrow" style="align-items:flex-start"><div><h3>Problems</h3><p class="ab09-sum"><b>151</b> problems · <b>48</b> done in the course · <b>12</b> solved in the arena</p></div><span class="ab09-flex"></span>
+              <div class="ab09-anchor" style="align-items:flex-end"><span role="status"><button type="button" class="ds-badge ds-badge--warn ab09-btn" aria-expanded="true" aria-controls="f4-p1"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gauge"/></svg> Grader busy</button></span>
+                <div class="ab09-pop ab09-pop--r" id="f4-p1" role="dialog" aria-label="Grader busy"><div class="ab09-pop__h"><svg class="xl-ico xl-ico--sm ab09-warn" aria-hidden="true"><use href="#i-gauge"/></svg> Grader busy</div>Lots of code is running. Runs may be slower or limited; submits still count and are graded in order.</div></div>
+            </div>
+            <span class="ab09-cap">(a) state = saturated | breaker · the list itself is unchanged</span>
+          </div>
+        </div>
+        <div class="ab09-surface">
+          <div class="ab09-spage">
+            <div><h3>Problems</h3><p class="ab09-sum"><b>151</b> problems · <b>48</b> done in the course · <b>12</b> solved in the arena</p></div>
+            <div class="ab09-banner" role="status"><span class="ab09-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-off"/></svg></span><span><b>Auto-grading is off right now — problems use self-report until it's back.</b></span></div>
+            <ul class="xl-panel ab09-list" style="margin-top:4px">
+              <li class="ab09-r"><span class="ab09-id">#16</span><span class="ab09-t"><a class="ab09-title">3Sum</a><span class="xl-pat">Two Pointers</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span></span><span class="ab09-c"><span class="ab09-none">—</span></span><a class="ab09-a"><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12 ab09-teal" aria-hidden="true"><use href="#i-check"/></svg>Solved in arena · Oct 12</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+              <li class="ab09-r"><span class="ab09-id">#18</span><span class="ab09-t"><a class="ab09-title">Minimum Window Substring</a><span class="xl-pat">Sliding Window</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--hard">Hard</span></span><span class="ab09-c"><span class="ds-badge ds-badge--err"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-flagx"/></svg>Miss</span><span class="ds-chip ds-chip--xs">judge</span></span><a class="ab09-a"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+            </ul>
+            <span class="ab09-cap">(b) state = off, evaluable = 0 · banner instead of a chip on every row</span>
+          </div>
+        </div>
+        <div class="ab09-surface">
+          <div class="ab09-spage">
+            <span class="ab09-cap">(c) items[16] = contract_mismatch · popover open</span>
+            <ul class="xl-panel ab09-list">
+              <li class="ab09-r" style="align-items:start"><span class="ab09-id" style="padding-top:3px">#16</span><span class="ab09-t" style="padding-top:1px"><a class="ab09-title">3Sum</a><span class="xl-pat">Two Pointers</span></span><span class="ab09-dg" style="align-items:flex-start"><span class="xl-diff xl-diff--med">Medium</span>
+                  <span class="ab09-anchor"><span role="status"><button type="button" class="ds-badge ds-badge--info ab09-btn bd-focus" aria-expanded="true" aria-controls="f4-p2" aria-label="Grading pending · self-report"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-info"/></svg> Self-report</button></span>
+                    <span class="ab09-pop" id="f4-p2" role="dialog" aria-label="Grading pending" style="display:block"><span class="ab09-pop__h"><svg class="xl-ico xl-ico--sm ab09-info" aria-hidden="true"><use href="#i-info"/></svg> Grading pending · self-report</span>This problem isn't auto-graded right now, so you'll pick your own grade when you finish. Nothing you've done is lost.</span></span></span>
+                <span class="ab09-c" style="padding-top:1px"><span class="ab09-none">—</span></span><a class="ab09-a" style="padding-top:1px"><span class="ab09-none">—</span><svg class="xl-ico ab09-i12 ab09-go" aria-hidden="true"><use href="#i-arrow"/></svg></a><svg class="xl-ico xl-ico--sm ab09-chev" style="margin-top:3px" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Source · mapping (AB11)</h4>
+        <ul><li><code>GET /api/judge/status?path=dsa</code>, read on load, every 30 s while the page is open and after any 429/503; 15 s gateway cache. <a href="AB11-degradation-badges.html">AB11</a> owns every badge name, tone, icon and popover line used here — this frame only places them.</li>
+          <li>(a) <code>saturated | breaker</code> → <b>Grader busy</b> beside the page title (a placement drafted here; AB11 draws it in the dock and on Today). Rows don't change: course submits still work (L13 sheds only Runs and arena work).</li>
+          <li>(b) <code>off</code> with <code>evaluable = 0</code> → AB11-F2(b)'s banner, and every row's grading chip is hidden. Course markers and arena markers keep their values (reads still work).</li></ul></section>
+      <section><h4>(c) one item</h4>
+        <ul><li><code>items[16] = contract_mismatch</code> (judge's <code>spec_mismatch</code>, m3-09) → the row's grading chip becomes AB11's short badge <b>Self-report</b>, right after the difficulty chip, with F1's popover. <code>unsupported</code>, <code>invalid</code> and <code>no_pack</code> render the same (m3-09: "AB11 renders all three as 'Grading pending · self-report'").</li>
+          <li>An attempt started now pins <code>grading_mode=self</code> and opens AB07-F12a; an attempt already open stays judged (AB11-F5).</li></ul></section>
+      <section><h4>A11y</h4>
+        <ul><li>Page-level badges and the banner sit in a <code>role="status"</code> wrapper, announced once. Row chips render with the list and aren't live regions (a status region per row would flood a screen reader); only a change after load is announced (AB11-F5).</li>
+          <li>Badge = <code>button</code> + <code>aria-expanded</code>; <span class="xl-kbd">Esc</span> closes the popover; focus stays on the badge.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ======================================================== D · empty / loading / error -->
+<section class="bd-section" aria-labelledby="sec-d">
+  <h2 class="bd-section__h" id="sec-d">D · Empty, edge, loading and error <small>F5–F6 · v1 States.tsx parity</small></h2>
+  <div class="bd-grid">
+    <article class="bd-frame" id="AB09-F5">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB09-F5a</span><span class="bd-frame__title">· No problems yet</span><span class="bd-frame__state">· list is empty</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">parity · EmptyState</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <div class="xl-panel ab09-state" role="status"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-list"/></svg><div class="ab09-state__t">No problems yet</div><p>Problems appear here as the curriculum is seeded.</p></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>v1's <code>EmptyState icon="list"</code> (<code>Problems.tsx:45</code>; live class <code>xl-state</code> from <code>app.css</code>, drawn here as <code>ab09-state</code>). No legend, no filters, no summary: nothing to explain yet. <code>role="status"</code>.</li></ul></aside>
+    </article>
+    <article class="bd-frame" id="AB09-F5b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB09-F5b</span><span class="bd-frame__title">· Filters match nothing</span><span class="bd-frame__state">· ?status=due&amp;diff=hard</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab09-col">
+        <div class="ab09-hrow"><span class="ds-chip ds-chip--sm ab09-fchip ab09-fchip--on"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-check"/></svg>Review due</span><span class="ds-chip ds-chip--sm ab09-fchip ab09-fchip--on"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-check"/></svg><span class="ds-dot ds-dot--failed"></span>Hard</span></div>
+        <div class="xl-panel ab09-state" role="status"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-filter"/></svg><div class="ab09-state__t">No problems match these filters.</div><span class="ds-btn ds-btn--secondary ds-btn--sm bd-focus" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg> Clear filters</span></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Drawn with the active filters above for context (the full bar is F2). <b>Clear filters</b> drops the query and focuses "All". The summary line keeps the unfiltered counts.</li></ul></aside>
+    </article>
+    <article class="bd-frame" id="AB09-F5c">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB09-F5c</span><span class="bd-frame__title">· Not enrolled</span><span class="bd-frame__state">· active course, not started</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">AB02-F5 CTA</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <div class="xl-panel ab09-gate">
+          <h2>Start the path to begin</h2>
+          <p>Solving counts toward your curriculum once you start <b>Data Structures &amp; Algorithms</b>. Start it to unlock the guided flow and your daily schedule — or browse the problems freely first.</p>
+          <div class="ab09-hrow"><span class="ds-btn ds-btn--primary bd-focus" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start path</span></div>
+        </div>
+        <ul class="xl-panel ab09-list">
+          <li class="ab09-r" style="grid-template-columns:36px minmax(0,1fr) auto;"><span class="ab09-id">#1</span><span class="ab09-t"><a class="ab09-title">Contains Duplicate</a><span class="xl-pat">Hashing</span></span><span class="xl-diff xl-diff--easy">Easy</span></li>
+          <li class="ab09-r" style="grid-template-columns:36px minmax(0,1fr) auto;"><span class="ab09-id">#2</span><span class="ab09-t"><a class="ab09-title">Valid Anagram</a><span class="xl-pat">Hashing</span></span><span class="xl-diff xl-diff--easy">Easy</span></li>
+        </ul>
+      </div></div>
+      <aside class="bd-notes"><ul><li>AB02-F5's gate copy, verbatim, above the list (its "Browse problems" button is dropped: the learner is already browsing). No markers, no summary counts, no legend: there's no counted work yet. A row's Start → <code>403 not_enrolled</code> → the same gate. <b>Start path</b> → <code>POST /api/paths/dsa/start</code>.</li></ul></aside>
+    </article>
+  </div>
+  <div class="bd-grid" style="margin-top:22px">
+    <article class="bd-frame" id="AB09-F6">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB09-F6a</span><span class="bd-frame__title">· Loading</span><span class="bd-frame__state">· skeleton rows</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--change">skeleton replaces v1's spinner</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab09-col" aria-busy="true" aria-label="Loading problems">
+        <span class="ab09-skel" style="height:16px;width:46%"></span>
+        <span class="ab09-skel" style="height:52px"></span>
+        <span class="ab09-skel" style="height:30px;width:80%"></span>
+        <div class="xl-panel" style="padding:6px 0">
+          <div style="display:grid;grid-template-columns:36px 1fr 90px 90px;gap:12px;padding:10px 14px"><span class="ab09-skel" style="height:14px"></span><span class="ab09-skel" style="height:14px"></span><span class="ab09-skel" style="height:14px"></span><span class="ab09-skel" style="height:14px"></span></div>
+          <div style="display:grid;grid-template-columns:36px 1fr 90px 90px;gap:12px;padding:10px 14px"><span class="ab09-skel" style="height:14px"></span><span class="ab09-skel" style="height:14px;width:70%"></span><span class="ab09-skel" style="height:14px"></span><span class="ab09-skel" style="height:14px"></span></div>
+          <div style="display:grid;grid-template-columns:36px 1fr 90px 90px;gap:12px;padding:10px 14px"><span class="ab09-skel" style="height:14px"></span><span class="ab09-skel" style="height:14px;width:85%"></span><span class="ab09-skel" style="height:14px"></span><span class="ab09-skel" style="height:14px"></span></div>
+          <div style="display:grid;grid-template-columns:36px 1fr 90px 90px;gap:12px;padding:10px 14px"><span class="ab09-skel" style="height:14px"></span><span class="ab09-skel" style="height:14px;width:60%"></span><span class="ab09-skel" style="height:14px"></span><span class="ab09-skel" style="height:14px"></span></div>
+        </div>
+        <span class="ab09-sr" role="status">Loading problems…</span>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Skeleton in the list's shape (live class <code>xl-skel</code>, as Week and Mistakes already use), with v1's "Loading problems…" kept as the <code>role="status"</code> text. The arena and status reads load in parallel: the list renders when the curriculum list arrives, and markers fill in without moving rows (fixed column widths).</li></ul></aside>
+    </article>
+    <article class="bd-frame" id="AB09-F6b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB09-F6b</span><span class="bd-frame__title">· Error</span><span class="bd-frame__state">· list request failed</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">parity · ErrorState</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab09-col">
+        <div class="xl-panel ab09-err-p" role="alert"><svg class="xl-ico" aria-hidden="true"><use href="#i-alert"/></svg><span class="ab09-dim" style="flex:1">Couldn't load the problem list.</span><span class="ds-btn ds-btn--secondary ds-btn--sm bd-focus" role="button">Retry</span></div>
+        <span class="ab09-cap" style="margin-top:6px">arena progress failed, list loaded</span>
+        <div class="ab09-hrow ab09-help"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg>Arena markers couldn't load. Course markers are up to date. <a>Retry</a></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>v1's <code>ErrorState</code> (<code>States.tsx</code>), <code>role="alert"</code>, message verbatim. If only <code>arena/progress</code> fails (5xx, not 404), the list renders with arena cells "—" and one dim line under the legend (drafted copy); a 404 means judge is absent → F7, not an error.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<!-- ======================================================== E · judge off -->
+<section class="bd-section" aria-labelledby="sec-e">
+  <h2 class="bd-section__h" id="sec-e">E · Judge off for this account <small>F7 · JUDGE_BASE_URL unset, or not in the owner/tester cohort before GA</small></h2>
+  <article class="bd-frame" id="AB09-F7">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB09-F7</span><span class="bd-frame__title">· Judge off</span><span class="bd-frame__state">· arena-progress and judge-status routes 404 · no arena marker at all</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--variant">presence by config</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app" style="min-height:0">
+          <input type="checkbox" class="xl-collapse-cb" aria-label="Collapse sidebar"><aside class="xl-side"><div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div><nav class="xl-nav"><a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a><a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a><a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a></nav><div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div></aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab09-top"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><b>problems</b></div><span class="ab09-flex"></span><span class="ab09-topsw"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span><span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span><span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span></div>
+            <div class="xl-content">
+              <div class="xl-page-h" style="margin-bottom:14px"><div><div class="xl-eyebrow">Data Structures &amp; Algorithms</div><h1 style="margin-top:6px">Problems</h1><p class="ab09-sum"><b>151</b> problems · <b>48</b> done in the course</p></div></div>
+              <div class="ab09-legend" role="note"><span><svg class="xl-ico xl-ico--sm ab09-ok" aria-hidden="true"><use href="#i-flag"/></svg><span><b>Course</b> — counted attempts: graded, scheduled for revision</span></span></div>
+              <div class="ab09-note" style="margin:0 0 14px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg>Code checking isn't on for your account yet.</div>
+              <div class="ab09-filters" role="search" aria-label="Filter problems">
+                <div class="ds-seg" role="radiogroup" aria-label="Status"><button type="button" class="ds-seg__btn ds-seg__btn--on" role="radio" aria-checked="true">All</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Not started</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Course done</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Review due</button></div>
+                <div class="ab09-fgrp" role="group" aria-label="Difficulty"><button type="button" class="ds-chip ds-chip--sm ab09-fchip" aria-pressed="false"><span class="ds-dot ds-dot--ok"></span>Easy</button><button type="button" class="ds-chip ds-chip--sm ab09-fchip" aria-pressed="false"><span class="ds-dot ds-dot--progressing"></span>Medium</button><button type="button" class="ds-chip ds-chip--sm ab09-fchip" aria-pressed="false"><span class="ds-dot ds-dot--failed"></span>Hard</button></div>
+                <span class="ab09-sel" role="combobox" aria-expanded="false" aria-label="Week">All weeks <svg class="xl-ico xl-ico--sm ab09-dim" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+                <span class="ab09-search" role="searchbox" aria-label="Search by title or #"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-search"/></svg>Search by title or #</span>
+              </div>
+              <div class="ab09-colh ab09-colh--off" aria-hidden="true"><span>#</span><span>Problem</span><span>Difficulty</span><span>Course</span><span></span></div>
+              <div class="ab09-wk"><h2>Week 1</h2><span class="ab09-help">6 of 6 done</span></div>
+              <ul class="xl-panel ab09-list">
+                <li class="ab09-r ab09-r--off"><span class="ab09-id">#1</span><span class="ab09-t"><a class="ab09-title">Contains Duplicate</a><span class="xl-pat">Hashing</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--easy">Easy</span></span><span class="ab09-c"><span class="ds-badge ds-badge--ok"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-check"/></svg>Clean</span><span class="ds-chip ds-chip--xs">self · honour</span></span><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-r ab09-r--off"><span class="ab09-id">#3</span><span class="ab09-t"><a class="ab09-title">Two Sum</a><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--easy">Easy</span></span><span class="ab09-c"><span class="ab09-due"><span class="xl-touch__d xl-touch__d--due" aria-hidden="true"></span>Review due · Day 7</span></span><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-r ab09-r--off"><span class="ab09-id">#7</span><span class="ab09-t"><a class="ab09-title">Top K Frequent Elements</a><span class="xl-pat">Heap / Bucket Sort</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span></span><span class="ab09-c"><span class="ds-badge ds-badge--err"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-flagx"/></svg>Miss</span><span class="ds-chip ds-chip--xs">self · honour</span></span><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-crop">cropped · #2, #5, #9 as above, all "self · honour"</li>
+              </ul>
+              <div class="ab09-wk"><h2>Week 2</h2><span class="ds-badge ds-badge--ok ds-mono">Current</span><span class="ab09-help">1 of 6 done</span></div>
+              <ul class="xl-panel ab09-list">
+                <li class="ab09-r ab09-r--off"><span class="ab09-id">#12</span><span class="ab09-t"><a class="ab09-title">Longest Substring Without Repeating Characters</a><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while live</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span></span><span class="ab09-c"><span class="ds-badge ds-badge--info"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-clock"/></svg>In progress</span></span><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-r ab09-r--off"><span class="ab09-id">#14</span><span class="ab09-t"><a class="ab09-title">Valid Palindrome</a><span class="xl-pat">Two Pointers</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--easy">Easy</span></span><span class="ab09-c"><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs">self · honour</span></span><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-r ab09-r--off"><span class="ab09-id">#16</span><span class="ab09-t"><a class="ab09-title">3Sum</a><span class="xl-pat">Two Pointers</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--med">Medium</span></span><span class="ab09-c"><span class="ab09-none">—</span></span><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+              </ul>
+              <div class="ab09-wk"><h2>Week 3</h2><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Ahead · arena only</span></div>
+              <ul class="xl-panel ab09-list">
+                <li class="ab09-r ab09-r--off"><span class="ab09-id">#23</span><span class="ab09-t"><a class="ab09-title">Largest Rectangle in Histogram</a><span class="xl-pat">Monotonic Stack</span></span><span class="ab09-dg"><span class="xl-diff xl-diff--hard">Hard</span></span><span class="ab09-c"><span class="xl-lock"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Ahead · arena only</span></span><svg class="xl-ico xl-ico--sm ab09-chev" aria-hidden="true"><use href="#i-chevron"/></svg></li>
+                <li class="ab09-crop">frame cropped</li>
+              </ul>
+            </div>
+          </div>
+          <span class="xl-fab" aria-label="Open Your AI coach (your key)"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-spark"/></svg></span>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>What's absent (not greyed)</h4>
+        <ul><li><code>arena_progress</code> and every arena route are <b>judge's</b>, and every judge route 404s while judge is off (m3-09 presence by config). So: <b>no arena marker column at all</b>, no legend Arena line, no "Arena done" filter, no "solved in the arena" count, no grading chips or grading filter, no AB11 badge (AB11-F6: judge is absent, not degraded).</li>
+          <li>One dim line under the legend: "Code checking isn't on for your account yet." — <code>role="note"</code>, not a banner (nothing is broken).</li></ul></section>
+      <section><h4>What stays</h4>
+        <ul><li>The <b>course marker</b>: practice's state doesn't need judge. Grades read <span class="ds-chip ds-chip--xs">self · honour</span> (drawn: an account outside the cohort, so every grade is self-reported). After a <b>kill switch</b> on an account that had judged results, those keep <span class="ds-chip ds-chip--xs">judge ✓</span> — nothing is re-graded (m3-13 exit test).</li>
+          <li>"In progress" shows no countdown: the attempt runs on v1's stage timers (AB07-F12b), not the 45:00 server clock.</li>
+          <li>Routes: titles open v1's Problem page (AB07-F12b); ahead rows open v1's practice view — the arena of AB10-F9.</li></ul></section>
+      <section><h4>Decision · a11y</h4>
+        <ul><li>ADR-0034 §2 · m3-09 presence by config · D10. m3-12 task 2 says "render exactly today's v1 list" on a 404; this frame keeps the v2 course marker and the one-line note (see "Decisions to confirm").</li>
+          <li>Same a11y as F1, minus the arena link per row (each row has one link).</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ======================================================== F8 narrow -->
+<section class="bd-section" id="AB09-F8" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">AB09-F8 · &lt; 1024 px (390 px shown) <small>row = title line + markers line · "Filters (2)" sheet · legend in an ⓘ popover</small></h2>
+  <p class="bd-section__p">Below 1024 px the column header goes away and each row becomes two lines: <b>#id · title · difficulty · grading</b>, then <b>Course</b> and <b>Arena</b> markers with their labels.
+    The filter bar collapses to a <b>"Filters (2)"</b> button (the count is the number of active filters) that opens a bottom sheet; search stays inline. The two-line legend moves into an <b>ⓘ</b> popover beside the title.
+    Below 720 px the sidebar starts collapsed (AB02-F9).</p>
+  <div class="bd-narrow-row">
+    <article class="bd-frame bd-narrow" id="AB09-N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1 · AB09-F1</span><span class="bd-frame__state">· list · Week 2</span></header>
+      <div class="bd-frame__body">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar"><aside class="xl-side"><div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div><nav class="xl-nav"><a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a><a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a><a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a></nav><div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div></aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab09-top" style="padding:0 12px;gap:8px"><div class="xl-crumb"><a>dsa</a><span class="xl-crumb__sep">/</span><b>problems</b></div><span class="ab09-flex"></span><span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span></div>
+            <div class="ab09-nbody">
+              <div class="ab09-nhead"><div class="xl-eyebrow">Data Structures &amp; Algorithms</div><div class="ab09-hrow"><h1>Problems</h1><span class="ds-iconbtn" role="button" aria-label="What the two markers mean" aria-expanded="false"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span></div>
+                <p class="ab09-sum" style="font-size:12.5px"><b>151</b> problems · <b>48</b> done in the course · <b>12</b> solved in the arena</p></div>
+              <div class="ab09-ntools"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-filter"/></svg> Filters (2)</span><span class="ab09-search" style="min-width:0;flex:1"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-search"/></svg>Search</span></div>
+              <div class="ab09-wk" style="margin:4px 0 0"><h2>Week 2</h2><span class="ds-badge ds-badge--ok ds-mono">Current</span></div>
+              <ul class="xl-panel ab09-list">
+                <li class="ab09-nr"><span class="ab09-nr__t"><span class="ab09-id">#12</span><a class="ab09-title" style="font-size:13px">Longest Substring Without Repeating Characters</a></span><span class="ab09-nr__t"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span><span class="xl-lock" style="padding:3px 8px"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden</span></span>
+                  <span class="ab09-nr__m"><span class="ab09-nr__k">Course</span><span class="ds-badge ds-badge--warn"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-alert"/></svg>Needs your grade</span><span class="ab09-nr__k">Arena</span><span class="ab09-none">—</span></span></li>
+                <li class="ab09-nr"><span class="ab09-nr__t"><span class="ab09-id">#14</span><a class="ab09-title" style="font-size:13px">Valid Palindrome</a></span><span class="ab09-nr__t"><span class="xl-diff xl-diff--easy">Easy</span><span class="ds-badge ds-badge--info"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-info"/></svg> Self-report</span><span class="xl-pat">Two Pointers</span></span>
+                  <span class="ab09-nr__m"><span class="ab09-nr__k">Course</span><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs">self · honour</span><span class="ab09-nr__k">Arena</span><span class="ab09-none">—</span></span></li>
+                <li class="ab09-nr"><span class="ab09-nr__t"><span class="ab09-id">#16</span><a class="ab09-title" style="font-size:13px">3Sum</a></span><span class="ab09-nr__t"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span><span class="xl-lock" style="padding:3px 8px"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden</span></span>
+                  <span class="ab09-nr__m"><span class="ab09-nr__k">Course</span><span class="ds-badge ds-badge--info"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-clock"/></svg>31:12 left</span></span>
+                  <span class="ab09-nr__m"><span class="ab09-nr__k">Arena</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12 ab09-teal" aria-hidden="true"><use href="#i-check"/></svg>Solved in arena · Oct 12</span></span></li>
+                <li class="ab09-nr"><span class="ab09-nr__t"><span class="ab09-id">#17</span><a class="ab09-title" style="font-size:13px">Container With Most Water</a></span><span class="ab09-nr__t"><span class="xl-diff xl-diff--med">Medium</span><span class="ds-badge ds-badge--info"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-info"/></svg> Self-report</span></span>
+                  <span class="ab09-nr__m"><span class="ab09-nr__k">Course</span><span class="ab09-none">—</span><span class="ab09-nr__k">Arena</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico ab09-i12 ab09-teal" aria-hidden="true"><use href="#i-book"/></svg>Studied · Oct 10</span></span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Markers wrap onto a third line when both are long (#16). "In progress · 31:12 left" shortens to "31:12 left" with the full phrase as its accessible name; "Pattern hidden while live" shortens to "Pattern hidden". The arena marker row is the arena link (44 px tall target).</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB09-N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2 · AB09-F2</span><span class="bd-frame__state">· "Filters (2)" sheet</span></header>
+      <div class="bd-frame__body">
+        <div class="ab09-nstage">
+          <div class="ab09-nbody" aria-hidden="true"><div class="ab09-nhead"><h1>Problems</h1></div><span class="ab09-skel" style="height:300px"></span></div>
+          <div class="ab09-scrim" aria-hidden="true"></div>
+          <div class="ab09-sheet" role="dialog" aria-modal="true" aria-labelledby="n2-h">
+            <span class="ab09-grab" aria-hidden="true"></span>
+            <div class="ab09-sheet__h" id="n2-h"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-filter"/></svg> Filters<span class="ab09-flex"></span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button">Clear</span></div>
+            <span class="ab09-cap">Status</span>
+            <div class="ab09-radios" role="radiogroup" aria-label="Status">
+              <span class="ab09-radio" role="radio" aria-checked="false"><span class="ab09-radio__o"></span>All</span>
+              <span class="ab09-radio" role="radio" aria-checked="false"><span class="ab09-radio__o"></span>Not started</span>
+              <span class="ab09-radio" role="radio" aria-checked="false"><span class="ab09-radio__o"></span>Course done</span>
+              <span class="ab09-radio ab09-radio--on bd-focus" role="radio" aria-checked="true"><span class="ab09-radio__o"></span>Arena done</span>
+              <span class="ab09-radio" role="radio" aria-checked="false"><span class="ab09-radio__o"></span>Review due</span>
+            </div>
+            <span class="ab09-cap">Difficulty</span>
+            <div class="ab09-fgrp"><span class="ds-chip ab09-fchip" role="button" aria-pressed="false"><span class="ds-dot ds-dot--ok"></span>Easy</span><span class="ds-chip ab09-fchip ab09-fchip--on" role="button" aria-pressed="true"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-check"/></svg><span class="ds-dot ds-dot--progressing"></span>Medium</span><span class="ds-chip ab09-fchip" role="button" aria-pressed="false"><span class="ds-dot ds-dot--failed"></span>Hard</span></div>
+            <span class="ab09-cap">Grading</span>
+            <div class="ab09-fgrp"><span class="ds-chip ab09-fchip" role="button" aria-pressed="false"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge-graded</span><span class="ds-chip ab09-fchip" role="button" aria-pressed="false"><svg class="xl-ico ab09-i12" aria-hidden="true"><use href="#i-info"/></svg>Self-report</span></div>
+            <span class="ab09-sel" style="justify-content:space-between">All weeks <svg class="xl-ico xl-ico--sm ab09-dim" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+            <div class="ab09-sheet__f"><span class="ds-btn ds-btn--primary ds-btn--lg" role="button">Show 4 problems</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Modal bottom sheet; the status seg becomes a radio list (44 px rows), chips use the 26 px size. Changes apply live to the URL; <b>Show 4 problems</b> closes the sheet and returns focus to "Filters (2)". <span class="xl-kbd">Esc</span>, the scrim or a swipe down close it.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB09-N3">
+      <header class="bd-frame__label"><span class="bd-frame__id">N3 · AB09-F1</span><span class="bd-frame__state">· legend ⓘ popover open</span></header>
+      <div class="bd-frame__body">
+        <div class="ab09-nbody">
+          <div class="ab09-nhead"><div class="xl-eyebrow">Data Structures &amp; Algorithms</div><div class="ab09-hrow"><h1>Problems</h1><span class="ds-iconbtn bd-focus" role="button" aria-label="What the two markers mean" aria-expanded="true" aria-controls="n3-pop"><svg class="xl-ico xl-ico--sm ab09-text" aria-hidden="true"><use href="#i-info"/></svg></span></div></div>
+          <div class="ab09-pop" id="n3-pop" role="dialog" aria-label="What the two markers mean" style="width:auto">
+            <div class="ab09-col" style="gap:9px">
+              <span class="ab09-hrow" style="align-items:flex-start;flex-wrap:nowrap"><svg class="xl-ico xl-ico--sm ab09-ok" style="margin-top:3px" aria-hidden="true"><use href="#i-flag"/></svg><span><b>Course</b> — counted attempts: graded, scheduled for revision</span></span>
+              <span class="ab09-hrow" style="align-items:flex-start;flex-wrap:nowrap"><svg class="xl-ico xl-ico--sm ab09-teal" style="margin-top:3px" aria-hidden="true"><use href="#i-target"/></svg><span><b>Arena</b> — free practice: never counts toward your course</span></span>
+            </div>
+          </div>
+          <p class="ab09-sum" style="font-size:12.5px"><b>151</b> problems · <b>48</b> done in the course · <b>12</b> solved in the arena</p>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>The legend's two lines, verbatim, in a non-modal popover under the ⓘ (<code>aria-expanded</code>). <span class="xl-kbd">Esc</span> or a tap outside closes it; focus stays on ⓘ. Judge off (F7): only the Course line.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB09-N4">
+      <header class="bd-frame__label"><span class="bd-frame__id">N4 · AB09-F7</span><span class="bd-frame__state">· judge off</span></header>
+      <div class="bd-frame__body">
+        <div class="ab09-nbody">
+          <div class="ab09-nhead"><div class="xl-eyebrow">Data Structures &amp; Algorithms</div><div class="ab09-hrow"><h1>Problems</h1><span class="ds-iconbtn" role="button" aria-label="What the course marker means"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span></div>
+            <p class="ab09-sum" style="font-size:12.5px"><b>151</b> problems · <b>48</b> done in the course</p></div>
+          <div class="ab09-note" style="margin:0"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg>Code checking isn't on for your account yet.</div>
+          <div class="ab09-ntools"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-filter"/></svg> Filters</span><span class="ab09-search" style="min-width:0;flex:1"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-search"/></svg>Search</span></div>
+          <ul class="xl-panel ab09-list">
+            <li class="ab09-nr"><span class="ab09-nr__t"><span class="ab09-id">#14</span><a class="ab09-title" style="font-size:13px">Valid Palindrome</a><span class="xl-diff xl-diff--easy">Easy</span></span><span class="ab09-nr__m"><span class="ab09-nr__k">Course</span><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs">self · honour</span></span></li>
+            <li class="ab09-nr"><span class="ab09-nr__t"><span class="ab09-id">#16</span><a class="ab09-title" style="font-size:13px">3Sum</a><span class="xl-diff xl-diff--med">Medium</span></span><span class="ab09-nr__m"><span class="ab09-nr__k">Course</span><span class="ab09-none">—</span></span></li>
+          </ul>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>One marker line; no arena label, no grading chip. "Filters" carries no count until one is active.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB09 · A4 Problems (dual markers) · drafted in ds-m3-02 · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only, never imported by <code class="ds-mono">web/</code>.
+  Badges and their popover copy are AB11's; the not-enrolled gate is AB02-F5's; empty and error lines are v1's. Everything else is drafted here; judgement calls are listed under "Decisions to confirm" in the PR.
+  Sample data: the 14 seeded DSA items plus AB11's sample rows #14, #15, #17; counts, grades and dates are samples.
+</footer>
+</main>
+</body>
+</html>

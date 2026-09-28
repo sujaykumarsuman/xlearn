@@ -39,7 +39,7 @@ top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 | ADRs 0030, 0031, 0032 | Proposed; all their spikes have reported (spk-01/02 GO, spk-03 WIF GO, spk-04 → D42). Accepted in m3-03, mi-12 and ds-m6a-01 (after `ev-s6-recheck`); see [ADRs](#adrs) |
 | v2 build plan | ✅ [build-plan.md](build-plan.md) |
 | Sprint plans + prompts | ✅ all scaffolded: 89 plans, 86 prompts (M6c = 3 outline cards) · [sprints](sprints/README.md) · [prompts](prompts/README.md) |
-| Artboards (`design-system/screens/v2/`) | 🔄 18 / 29 drafted, 18 frozen (AB01–AB03, [PR #73](https://github.com/sujaykumarsuman/xlearn/pull/73); AB04★, AB05, AB06, AB22, [PR #78](https://github.com/sujaykumarsuman/xlearn/pull/78); AB19★, AB20, AB21, [PR #82](https://github.com/sujaykumarsuman/xlearn/pull/82); AB16★, AB17, AB18, [PR #88](https://github.com/sujaykumarsuman/xlearn/pull/88); AB07★, AB08, AB11, [PR #89](https://github.com/sujaykumarsuman/xlearn/pull/89); AB14, AB15 + AB02/AB05 full fidelity, [PR #92](https://github.com/sujaykumarsuman/xlearn/pull/92)); board index + `board.css` on `main` (AB01–AB30 less the dropped AB23; AB31 is an outline for v2.2) |
+| Artboards (`design-system/screens/v2/`) | 🔄 21 / 29 drafted, 21 frozen (AB01–AB03, [PR #73](https://github.com/sujaykumarsuman/xlearn/pull/73); AB04★, AB05, AB06, AB22, [PR #78](https://github.com/sujaykumarsuman/xlearn/pull/78); AB19★, AB20, AB21, [PR #82](https://github.com/sujaykumarsuman/xlearn/pull/82); AB16★, AB17, AB18, [PR #88](https://github.com/sujaykumarsuman/xlearn/pull/88); AB07★, AB08, AB11, [PR #89](https://github.com/sujaykumarsuman/xlearn/pull/89); AB14, AB15 + AB02/AB05 full fidelity, [PR #92](https://github.com/sujaykumarsuman/xlearn/pull/92); AB09, AB10, AB12, [PR #94](https://github.com/sujaykumarsuman/xlearn/pull/94)); board index + `board.css` on `main` (AB01–AB30 less the dropped AB23; AB31 is an outline for v2.2) |
 | Application code (v2) | ⬜ not started · live `v1.5.2` |
 | `infra` | ✅ infra#28 (`host-bootstrap` + `host-verify`), ✅ infra#29 (ranges `<2.0.0`), ✅ infra#30 (`SIGNUP_MODE: closed`), ✅ infra#32 (MI-2 prune guards), ✅ infra#33 (MI-3: chart `project` **0.3.0** + `hack/chart-diff.sh`), ✅ infra#36 + infra#37 (MI-8: `host-verify --cluster` checks, embedded tables, read-only lint, `sample-top.sh`), ✅ infra#34 + infra#35 (MI-5b: `ops-tls`, consoles on `ops.sujaykumar.dev`; 🔄 until 4b), ✅ infra#39 + infra#40 + infra#41 (MI-4: `sandbox-guards`, VAP `[Deny]`, `hack/sandbox-vap-test.sh`, `cluster.vap`), ✅ infra#42 + infra#43 + infra#44 (MI-5 `databases`/`messaging` ingress, the review restart, MI-5a `xlearn` ingress) · MI-6 onward ⬜ |
 | Host | kernel **6.8.0-142** since the H0 reboot (MI-0 ✅ 2026-09-25, boot 05:59Z); `host-verify --cluster` 46/0/0 on 2026-09-25 → 42/0/4 on 2026-09-28 at 05:40Z (airlift's Longhorn volume, faulted since 2026-09-26) → **46 pass / 0 warn / 0 fail at 06:17Z** after the owner's recovery. With the MI-8 extension (mi-02), 63 pass / 1 warn (TR-STEAL) / 0 fail at 06:30Z; 64 / 1 / 0 at 07:34Z after MI-4 (mi-14 adds `cluster.vap`); 64 / 1 / 0 at 08:08Z after MI-5 + MI-5a (mi-03; `cluster.netpol` 12/12) |
@@ -101,7 +101,7 @@ top of the log. v1's tracker is [`../v1/status.md`](../v1/status.md).
 | 32 | [m3-15](sprints/sprint-m3-15.md) | Runner release: reproducible image, runner-release.yml, acceptance suite, TL baselines → runner-v1.0.0 | M3 | product | **runner-v1.0.0** | ⬜ Not started |
 | 33 | [m2-01](sprints/sprint-m2-01.md) | M2a touch-attempt engine + `touch_concluded` consumer | M2 | product | merge only (ships in v1.9.0) + own infra PR | ⬜ Not started |
 | 34 | [m2-02](sprints/sprint-m2-02.md) | M2b consumers + projections v2 → v1.9.0 | M2 | product | **tag v1.9.0** (+ ACL PR before) | ⬜ Not started |
-| 35 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | Design M3 part 2: Problems, Arena, Week/Mistakes/Progress deltas (AB09, AB10, AB12) | M3 | design | land-and-sync; the merge is the design freeze | ⬜ Not started |
+| 35 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | Design M3 part 2: Problems, Arena, Week/Mistakes/Progress deltas (AB09, AB10, AB12) | M3 | design | land-and-sync; the merge is the design freeze | ✅ Done — AB09, AB10, AB12 frozen (merged, [PR #94](https://github.com/sujaykumarsuman/xlearn/pull/94), 2026-09-28) |
 | 36 | [m2-03](sprints/sprint-m2-03.md) | `public-read`, `/public/stats`, visibility toggles, profile v2 (P3, P5, P6, P7, P9; AB06, AB22) | M2 | product | merge only (ships in v1.10.0) | ⬜ Not started |
 | 37 | [m2-04](sprints/sprint-m2-04.md) | Touch UI (AB04★) + catalog/agenda + Today in minutes (D4) (AB05) | M2 | product | merge only (ships in v1.10.0) | ⬜ Not started |
 | 38 | [m2-05](sprints/sprint-m2-05.md) | Producers on + `touch_scored` backfill + reader switch + replay + D2 (M2c) → v1.10.0 | M2 | product | **tag v1.10.0** | ⬜ Not started |
@@ -238,7 +238,7 @@ blocks the M3 UI sprint ([m3-11](sprints/sprint-m3-11.md)).
 - [ ] **14 pilot packs stamped** (Go, C++ and Python references; about 28–41 owner hours)
 - [ ] `account.role` live (M1a), so the owner and tester cohort gates judge features
 - [ ] TR-STEAL not firing (sar p95 read by `host-verify`), or R2 planned. As of 2026-09-28 it is firing on the 7-day window, driven by the Longhorn incident; see [capacity reads](#capacity-reads-tr-)
-- [ ] AB07–AB12 frozen
+- [x] AB07–AB12 frozen. ✅ 2026-09-28: ds-m3-01, PR #89 + ds-m3-02, PR #94
 - [ ] The last Hostinger weekly image is ≤ 7 days old
 
 *Key:* MI-4 = mi-14 · MI-5/5a = mi-03 · MI-7 (N3) = mi-06 (+ l-01 re-check) · MI-8 = mi-02 · MI-9 = mi-07 (+ m3-07) ·
@@ -414,10 +414,10 @@ Register: [build-plan → Artboard register](build-plan.md#artboard-register).
 | AB06 | [ds-m2-01](sprints/sprint-ds-m2-01.md) | `ds-m2-01` merged | M2a | ✅ frozen (merged, PR #78, 2026-09-28) |
 | AB07★ | [ds-m3-01](sprints/sprint-ds-m3-01.md) | `ds-m3-01` merged | the M3 UI sprint | ✅ frozen (merged, PR #89, 2026-09-28) |
 | AB08 | [ds-m3-01](sprints/sprint-ds-m3-01.md) | `ds-m3-01` merged | the M3 UI sprint | ✅ frozen (merged, PR #89, 2026-09-28) |
-| AB09 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | `ds-m3-02` merged | the M3 UI sprint | ⬜ not drafted |
-| AB10 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | `ds-m3-02` merged | the M3 UI sprint | ⬜ not drafted |
+| AB09 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | `ds-m3-02` merged | the M3 UI sprint | ✅ frozen (merged, PR #94, 2026-09-28) |
+| AB10 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | `ds-m3-02` merged | the M3 UI sprint | ✅ frozen (merged, PR #94, 2026-09-28) |
 | AB11 | [ds-m3-01](sprints/sprint-ds-m3-01.md) | `ds-m3-01` merged | the M3 UI sprint | ✅ frozen (merged, PR #89, 2026-09-28) |
-| AB12 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | `ds-m3-02` merged | the M3 UI sprint | ⬜ not drafted |
+| AB12 | [ds-m3-02](sprints/sprint-ds-m3-02.md) | `ds-m3-02` merged | the M3 UI sprint | ✅ frozen (merged, PR #94, 2026-09-28) |
 | AB13 | [ds-m6a-01](sprints/sprint-ds-m6a-01.md) | `ds-m6a-01` merged | M6a | ⬜ not drafted |
 | AB14 | [ds-p-01](sprints/sprint-ds-p-01.md) | `ds-p-01` merged | P | ✅ frozen (merged, PR #92, 2026-09-28) |
 | AB15 | [ds-p-01](sprints/sprint-ds-p-01.md) | `ds-p-01` merged | P | ✅ frozen (merged, PR #92, 2026-09-28) · go-concurrency (PRD Q5) |
@@ -657,6 +657,7 @@ Notable calls not (yet) worth a full ADR, newest first. Promote to an ADR if the
 
 | Date | Decision | Notes |
 |------|----------|-------|
+| 2026-09-28 | **ds-m3-02: AB09, AB10, AB12 frozen as drawn** (m3-12, m3-13 build to them). Arena unrestricted (D17): no lock, the reveal records `arena_revealed_at` and never caps; withheld chips render absent in the arena. Judge-off frames keep the v2 course marker + one note (m3-12 says exact v1). Provenance `judge ✓` / `judge` / `self · honour`; `tle_perf_only` pre-fill is a **Judge** (strong) chip, so AB07-F9's "suggested" label needs a follow-up design PR. | [PR #94](https://github.com/sujaykumarsuman/xlearn/pull/94) lists 13 "Decisions to confirm" with their frozen defaults. Judge stats stay signed-in only (owner, rm-6 / ask-2 option a). Four screenshots are 622–705 KB (32 colours grey the states). |
 | 2026-09-28 | **ds-p-01: AB14, AB15 and AB02/AB05 full fidelity frozen as drawn** (p-01, p-02, p-03 build to them). Arena quiz reveal follows D17 (spoiler confirm, recorded, uncapped) over t4 §4.3; a quiz at the deadline grades the saved draft; quizzes have no hint stage; the pilot drills get no revision line or mistake entry (I8); dumps and race reports show learner-editable files only; AB02 keeps "Browse all paths"; the Preview badge is violet everywhere. Full list in the PR. | Owner may revisit via a follow-up design PR. AB14/AB15 screenshots exceed the ≲ 500 KB guide (state colours grey out at lower palette quality). |
 | 2026-09-28 | **PRD Q5 resolved: the pilot course is go-concurrency** (`ev-q5`, confirmed by the owner before launch of ds-p-01). Input: spk-02's P3 (t3 §16.2 block 2) — go-race / TSAN runs in the jail under `mmap_rnd_bits=32` with no ASLR policy, so `setarch -R` isn't needed and the SQL fallback didn't apply. p-01 stays on the go-race profile. | Recorded by ds-p-01 (Q5 record PR). AB15 is drawn as the go-concurrency race board. |
 | 2026-09-28 | **ds-m3-01: AB07★, AB08, AB11 frozen as drawn** (m3-11, m3-12 build to them). Self path keeps v1 timing and re-implement; perf-TLE line uses the item's own bound; no badge when `JUDGE_BASE_URL` is unset; solution offered after a Clean pass. Full list in PR #89. | Owner may revisit via a follow-up design PR. |

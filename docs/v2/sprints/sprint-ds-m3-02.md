@@ -9,17 +9,17 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done — AB09, AB10, AB12 frozen (merged, [PR #94](https://github.com/sujaykumarsuman/xlearn/pull/94), 2026-09-28)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Board scaffolding (own files only; never `index.html` or `board.css`) | X | ⬜ |
-| 2 | AB09 A4 Problems (dual markers, filters) | X | ⬜ |
-| 3 | AB10 A5 Arena (never counts, manual timer, History + Diff, spoiler confirm, study mode) | X | ⬜ |
-| 4 | AB12 Week / Mistakes / Progress deltas (provisional + touch dots, source chip + concepts, provenance + judge-checked %) | X | ⬜ |
-| 5 | Self-review checklist (run before merging) + screenshots (1440 px, 390 px) | X | ⬜ |
-| 6 | Open the design PR (screenshots, frame lists, the ticked self-review checklist, "Decisions to confirm") | X | ⬜ |
-| 7 | Freeze: squash-merge on CI green (the merge is the freeze) → status → sync `main` | X | ⬜ |
+| 1 | Board scaffolding (own files only; never `index.html` or `board.css`) | X | ✅ |
+| 2 | AB09 A4 Problems (dual markers, filters) | X | ✅ |
+| 3 | AB10 A5 Arena (never counts, manual timer, History + Diff, spoiler confirm, study mode) | X | ✅ |
+| 4 | AB12 Week / Mistakes / Progress deltas (provisional + touch dots, source chip + concepts, provenance + judge-checked %) | X | ✅ |
+| 5 | Self-review checklist (run before merging) + screenshots (1440 px, 390 px) | X | ✅ |
+| 6 | Open the design PR (screenshots, frame lists, the ticked self-review checklist, "Decisions to confirm") | X | ✅ PR #94 |
+| 7 | Freeze: squash-merge on CI green (the merge is the freeze) → status → sync `main` | X | ✅ frozen: merged in PR #94, 2026-09-28 |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly. **Land and sync ([D40](../feasibility.md#decisions-log-newest-first)):** the board PR
