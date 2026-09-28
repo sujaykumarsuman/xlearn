@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB11 · Degradation badges — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB11 board-local layout (prefix ab11-). Tokens only; never restyles a ds- or xl- class. */
+  .ab11-flex { flex: 1; }
+  .ab11-ic { display: inline-flex; flex: none; }
+  .ab11-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .ab11-col { display: flex; flex-direction: column; gap: 10px; }
+  .ab11-gap { margin-bottom: 22px; }
+  .ab11-help { font-size: 12px; line-height: 1.55; color: var(--ds-dim); }
+  .ab11-help b { color: var(--ds-text); font-weight: 600; }
+  .ab11-cap { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab11-id { font-family: var(--ds-font-mono); font-size: 12.5px; color: var(--ds-dim); }
+  .ab11-dim { color: var(--ds-dim); } .ab11-ok { color: var(--ds-ok); } .ab11-teal { color: var(--ds-teal); }
+  .ab11-nowrap { white-space: nowrap; }
+
+  /* badges are buttons (they open a popover); ds-badge supplies the look */
+  .ab11-btn { cursor: pointer; font-family: var(--ds-font-sans); }
+  .ab11-badge--muted { background: var(--ds-inset); border: 1px solid var(--ds-line-2); color: var(--ds-dim); }
+
+  /* popover */
+  .ab11-anchor { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+  .ab11-pop { position: relative; width: 300px; padding: 12px 14px; background: var(--ds-panel); border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius);
+    box-shadow: 0 18px 40px rgba(0,0,0,.45); font-size: 13px; line-height: 1.55; color: var(--ds-text); }
+  .ab11-pop::before { content: ""; position: absolute; top: -6px; left: 22px; width: 10px; height: 10px; background: var(--ds-panel);
+    border-left: 1px solid var(--ds-line-2); border-top: 1px solid var(--ds-line-2); transform: rotate(45deg); }
+  .ab11-pop__h { display: flex; align-items: center; gap: 7px; font-weight: 600; margin-bottom: 4px; }
+  .ab11-set { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px 22px; }
+
+  /* mini app surfaces */
+  .ab11-surface { background: var(--ds-bg); border: 1px solid var(--ds-line); border-radius: var(--ds-radius-lg); overflow: hidden; }
+  .ab11-hud { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 9px; padding: 11px 16px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab11-title { font-size: 16px; font-weight: 700; }
+  .ab11-banner { display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px; border-radius: var(--ds-radius); font-size: 13px; line-height: 1.5; color: var(--ds-text);
+    border: 1px solid rgba(242,109,109,.35); background: rgba(242,109,109,.08); }
+  .ab11-banner--info { border-color: rgba(106,166,255,.35); background: rgba(106,166,255,.1); }
+  .ab11-banner > .ab11-ic { margin-top: 2px; }
+  .ab11-page { padding: 18px 20px 22px; display: flex; flex-direction: column; gap: 14px; }
+  .ab11-page h3 { font-size: 20px; font-weight: 700; letter-spacing: -.2px; }
+  .ab11-resume { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; padding: 14px 16px; }
+  .ab11-resume__t { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .ab11-resume__t b { font-size: 14px; }
+  .ab11-dockh { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab11-dockb { padding: 12px 14px; font-size: 13px; background: var(--ds-panel); }
+  .ab11-verdict { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--ds-radius); border: 1px solid var(--ds-line-2); background: var(--ds-panel-2); font-size: 13px; line-height: 1.5; }
+  .ab11-cover { margin: 16px; padding: 14px 16px; }
+
+  /* transitions */
+  .ab11-arrow { display: grid; place-items: center; color: var(--ds-dim); }
+  .ab11-live { font-family: var(--ds-font-mono); font-size: 11px; color: var(--ds-info); border: 1px dashed rgba(106,166,255,.35); border-radius: 6px; padding: 5px 8px; }
+
+  /* narrow */
+  .ab11-nstage { position: relative; min-height: 640px; background: var(--ds-bg); overflow: hidden; }
+  .ab11-scrim { position: absolute; inset: 0; background: rgba(6,9,13,.66); }
+  .ab11-sheet { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 16px 20px; background: var(--ds-panel); border-top: 1px solid var(--ds-line-2);
+    border-radius: 14px 14px 0 0; box-shadow: 0 -18px 40px rgba(0,0,0,.45); display: flex; flex-direction: column; gap: 10px; }
+  .ab11-grab { width: 40px; height: 4px; border-radius: 2px; background: var(--ds-line-2); align-self: center; margin-bottom: 4px; }
+  .ab11-ntop { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 16a8 8 0 1 1 16 0" /><path d="M12 16l4-5" /></symbol>
+  <symbol id="i-off" viewBox="0 0 24 24"><path d="M12 3v8" /><path d="M6.4 7.4a8 8 0 1 0 11.2 0" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" /></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2" /><rect x="3" y="14" width="18" height="7" rx="2" /><path d="M7 7.5h.01M7 17.5h.01" /></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" /></symbol>
+  <symbol id="i-close-sm" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · M3 board</div>
+  <h1>AB11 · Degradation badges</h1>
+  <p class="bd-lede">
+    v2 has <b>no alerting</b> (D34): nothing pages the owner when grading degrades. These in-app badges are how the owner — and the
+    tester cohort — notice it. Four badges, each an icon <b>and</b> words, each opening a popover that says what still works:
+    <b>Grading pending · self-report</b>, <b>Grader busy</b>, <b>Auto-grading off</b>, and the M4 placeholder <b>xLearn AI paused</b>.
+    They appear on Problems, in the Workspace (AB07 / AB08) and on Today, only when judge is configured and the viewer is in the cohort.
+    They never expose internals: no pack version, token, error string or host detail.
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-m3-01.md">ds-m3-01</a></span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-m3-12.md">m3-12</a> (badges on Problems, Workspace, Today)</span>
+    <span><b>Frozen before</b>the M3 UI sprint</span>
+    <span><b>Sources</b>D34 · <a href="../../../docs/adr/0035-v2-operations-nats-auth-limits-capacity.md#3-no-alerting-in-v2-owner-d34">ADR-0035 §3</a> ·
+      <a href="../../../docs/adr/0034-v2-release-labelling-gating-and-rollback.md#2-feature-gating-three-tiers-no-flag-service">ADR-0034 §2</a> (presence by config, cohort) ·
+      <a href="../../../docs/v2/sprints/sprint-m3-09.md">m3-09</a> task 7 (<code class="ds-mono">GET /api/judge/status</code>) · L13 · L15</span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB11-F1">F1 badge set</a><a href="#AB11-F2">F2 Problems</a><a href="#AB11-F3">F3 Workspace</a><a href="#AB11-F4">F4 Today</a>
+    <a href="#AB11-F5">F5 transitions</a><a href="#AB11-F6">F6 cohort + kill switch</a><a href="#AB11-F7">F7 390 px</a>
+  </nav>
+</header>
+
+<!-- ======================================================== rules -->
+<section class="bd-section" aria-labelledby="sec-rules">
+  <h2 class="bd-section__h" id="sec-rules">Board-wide rules <small>D34 · ADR-0034 §2 · m3-09 task 7</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <div class="bd-strip" style="align-items:flex-start">
+      <div class="ab11-col" style="gap:6px">
+        <span><b>One source.</b> <code class="ds-mono">GET /api/judge/status[?path=dsa]</code> → <code class="ds-mono">{state: ok | saturated | breaker | off, breakerLevel?, evaluable, items?{&lt;id&gt;: evaluable | contract_mismatch | unsupported | invalid | no_pack}}</code>, cached 15 s at the gateway. The SPA reads it on page load, every 30 s while a judge surface is open, and right after any 429 or 503.</span>
+        <span><b>Mapping.</b> An item not <code class="ds-mono">evaluable</code> (any of the four other values) → <b>Grading pending · self-report</b> on that item only · <code class="ds-mono">saturated</code> or <code class="ds-mono">breaker</code> → <b>Grader busy</b> · <code class="ds-mono">off</code> (L15 admission closed, or judge unreachable) → <b>Auto-grading off</b> · <code class="ds-mono">evaluable = 0</code> → a page banner on Problems and Today. <b>xLearn AI paused</b> is an M4 placeholder with no M3 source.</span>
+      </div>
+    </div>
+    <div class="bd-strip" style="align-items:flex-start">
+      <div class="ab11-col" style="gap:6px">
+        <span><b>Presence by config (ADR-0034 §2).</b> Badges render only when judge is configured <b>and</b> the viewer is in the owner/tester cohort (before GA). Otherwise there is no judge on the page and nothing to badge (F6).</span>
+        <span><b>Never internals.</b> No pack version, contract hash, PAT, error string, queue depth, host or pod name. The popover says what still works, in plain words.</span>
+        <span><b>A11y.</b> Every badge is icon + text (never colour alone), text ≥ 4.5:1 on its tint, and it never sits beside a same-coloured difficulty chip without its label. The badge is a <code class="ds-mono">button</code> (<code class="ds-mono">aria-expanded</code>) inside a <code class="ds-mono">role="status"</code> wrapper, so its arrival is announced once, politely. No toasts, nothing steals focus.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== F1 -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · The badge set <small>F1 · each with its popover</small></h2>
+  <article class="bd-frame" id="AB11-F1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB11-F1</span><span class="bd-frame__title">· Four badges + popovers</span><span class="bd-frame__state">· popovers shown open</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad">
+        <div class="ab11-set">
+          <div class="ab11-anchor">
+            <span role="status"><button type="button" class="ds-badge ds-badge--info ab11-btn" aria-expanded="true" aria-controls="p1"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg> Grading pending · self-report</button></span>
+            <div class="ab11-pop" id="p1" role="dialog" aria-label="Grading pending"><div class="ab11-pop__h"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-info)" aria-hidden="true"><use href="#i-info"/></svg> Grading pending · self-report</div>This problem isn't auto-graded right now, so you'll pick your own grade when you finish. Nothing you've done is lost.</div>
+            <span class="ab11-help"><code class="ds-mono">ds-badge--info</code> · per item · <code class="ds-mono">contract_mismatch | unsupported | invalid | no_pack</code></span>
+          </div>
+          <div class="ab11-anchor">
+            <span role="status"><button type="button" class="ds-badge ds-badge--warn ab11-btn" aria-expanded="true" aria-controls="p2"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gauge"/></svg> Grader busy</button></span>
+            <div class="ab11-pop" id="p2" role="dialog" aria-label="Grader busy"><div class="ab11-pop__h"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-warn)" aria-hidden="true"><use href="#i-gauge"/></svg> Grader busy</div>Lots of code is running. Runs may be slower or limited; submits still count and are graded in order.</div>
+            <span class="ab11-help"><code class="ds-mono">ds-badge--warn</code> · <code class="ds-mono">state = saturated | breaker</code> (L13 level 1 or 2)</span>
+          </div>
+          <div class="ab11-anchor">
+            <span role="status"><button type="button" class="ds-badge ds-badge--err ab11-btn" aria-expanded="true" aria-controls="p3"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-off"/></svg> Auto-grading off</button></span>
+            <div class="ab11-pop" id="p3" role="dialog" aria-label="Auto-grading off"><div class="ab11-pop__h"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-err)" aria-hidden="true"><use href="#i-off"/></svg> Auto-grading off</div>Auto-grading is unavailable. You can still solve problems and pick your own grade.</div>
+            <span class="ab11-help"><code class="ds-mono">ds-badge--err</code> · <code class="ds-mono">state = off</code> (L15 admission closed, or judge unreachable)</span>
+          </div>
+          <div class="ab11-anchor">
+            <div class="ab11-row"><span role="status"><button type="button" class="ds-badge ab11-badge--muted ab11-btn" aria-expanded="true" aria-controls="p4"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg> xLearn AI paused</button></span><span class="bd-tag">M4 placeholder</span></div>
+            <div class="ab11-pop" id="p4" role="dialog" aria-label="xLearn AI paused"><div class="ab11-pop__h"><svg class="xl-ico xl-ico--sm ab11-dim" aria-hidden="true"><use href="#i-spark"/></svg> xLearn AI paused</div>xLearn AI is paused. You can grade manually — nothing is blocked.</div>
+            <span class="ab11-help">muted (inset + <code class="ds-mono">--ds-dim</code>) · no M3 source; wired by M4 (AB18)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Behaviour</h4>
+        <ul><li>Click / <span class="xl-kbd">Enter</span> / <span class="xl-kbd">Space</span> opens the popover under the badge; <span class="xl-kbd">Esc</span>, a click outside or the badge again closes it. It is non-modal and holds text only: focus stays on the badge, and the same text is the badge's accessible description.</li>
+          <li>At most one popover open at a time. Popovers never open on their own.</li></ul></section>
+      <section><h4>Tone and contrast</h4>
+        <ul><li>info (blue) = your grade is still yours to give · warn (amber) = slower, still working · err (red) = auto-grading unavailable · muted = placeholder. Badge text on its tint, over the page surfaces: info ≥ 6.3:1, warn ≥ 8.2:1, err ≥ 5.5:1; muted uses <code>--ds-dim</code> on inset (7.4:1).</li>
+          <li>Badge text always carries the state; the icon is decorative (<code>aria-hidden</code>).</li></ul></section>
+      <section><h4>Decision</h4>
+        <ul><li>D34: no alerting in v2, so the in-app badge is the signal (ADR-0035 §3). Data from m3-09's status route; the learner-facing name for <code>spec_mismatch</code> is <code>contract_mismatch</code>.</li>
+          <li>"xLearn AI paused" is drawn now so M4 slots into the same set; it is labelled a placeholder and has no M3 behaviour.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ======================================================== F2–F4 -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · Placements <small>F2 Problems · F3 Workspace · F4 Today</small></h2>
+
+  <article class="bd-frame ab11-gap" id="AB11-F2">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB11-F2</span><span class="bd-frame__title">· Problems</span><span class="bd-frame__state">· (a) one item not evaluable · (b) evaluable = 0</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad ab11-col" style="gap:18px">
+        <div class="ab11-surface">
+          <div class="ab11-page" style="padding-bottom:10px"><div class="ab11-row"><h3>Problems</h3><span class="ab11-cap">(a) item #16 has a contract mismatch</span></div></div>
+          <div class="bd-scroll">
+            <table class="xl-table">
+              <thead><tr><th>#</th><th>Problem</th><th>Difficulty</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td class="ds-mono">14</td><td><b>Valid Palindrome</b></td><td><span class="xl-diff xl-diff--easy">Easy</span></td><td><span class="ab11-ok">✓ Solved</span></td></tr>
+                <tr><td class="ds-mono">15</td><td><b>Two Sum II</b></td><td><span class="xl-diff xl-diff--med">Medium</span></td><td><span class="ab11-ok">✓ Solved</span></td></tr>
+                <tr><td class="ds-mono">16</td><td><b>3Sum</b></td><td><span class="ab11-row" style="gap:6px"><span class="xl-diff xl-diff--med">Medium</span><span role="status"><button type="button" class="ds-badge ds-badge--info ab11-btn" aria-expanded="false"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-info"/></svg> Self-report</button></span></span></td><td>Not started</td></tr>
+                <tr><td class="ds-mono">17</td><td><b>Container With Most Water</b></td><td><span class="xl-diff xl-diff--med">Medium</span></td><td>Not started</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="ab11-surface">
+          <div class="ab11-page">
+            <div class="ab11-row"><h3>Problems</h3><span class="ab11-cap">(b) evaluable = 0</span></div>
+            <div class="ab11-banner" role="status"><span class="ab11-ic" style="color:var(--ds-err)"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-off"/></svg></span><span><b>Auto-grading is off right now — problems use self-report until it's back.</b></span></div>
+            <p class="ab11-help">Row chips are hidden while the banner shows: every row would carry one.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes">
+      <ul><li><b>(a)</b> The row chip "Self-report" (the short label of <b>Grading pending · self-report</b>) sits <b>right after the difficulty chip</b>, with its label, so it never reads as colour next to colour. It opens F1's popover. Only the affected item carries it (<code>items[16] = contract_mismatch</code>). AB09 (ds-m3-02) owns the rest of the row, including the dual markers; this frame fixes only where the chip goes.</li>
+        <li><b>(b)</b> <code>evaluable = 0</code>: one page banner (<code>role="status"</code>) instead of a chip on every row. The same banner copy is Today's (F4). Sample rows.</li></ul>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide">
+    <article class="bd-frame" id="AB11-F3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB11-F3</span><span class="bd-frame__title">· Workspace</span><span class="bd-frame__state">· HUD chip · cover note · dock header</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab11-col" style="gap:14px">
+          <span class="ab11-cap">HUD (AB07) · item not auto-graded</span>
+          <div class="ab11-surface">
+            <div class="ab11-hud"><span class="ab11-id">#16</span><span class="ab11-title">3Sum</span><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs">Core</span><span role="status"><button type="button" class="ds-badge ds-badge--info ab11-btn" aria-expanded="false"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg> Grading pending · self-report</button></span></div>
+            <div class="ds-card ab11-cover"><div class="ab11-row" style="align-items:flex-start;gap:9px;flex-wrap:nowrap"><span class="ab11-ic" style="color:var(--ds-info);margin-top:2px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span style="font-size:13px;line-height:1.5">This problem isn't auto-graded yet. You'll pick your own grade when you finish, using the usual stages.</span></div></div>
+          </div>
+          <span class="ab11-cap">Dock header (AB08-F15) · breaker level 1</span>
+          <div class="ab11-surface">
+            <div class="ab11-dockh"><div class="ds-tabs" role="tablist"><span class="ds-tab" role="tab">Samples</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Submission</span></div><span class="ab11-flex"></span><span role="status"><button type="button" class="ds-badge ds-badge--warn ab11-btn" aria-expanded="false"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gauge"/></svg> Grader busy</button></span></div>
+            <div class="ab11-dockb"><div class="ab11-verdict"><span class="ab11-ic" style="color:var(--ds-warn);margin-top:2px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gauge"/></svg></span><span>Runs are limited to one every 30 s while the grader is busy. Course submits aren't affected.</span></div></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>HUD: the badge follows the role chip (AB07-F12a). The cover note replaces AB07-F1's rules card for a self-path item (drafted copy). Dock: "Grader busy" sits at the right of the tab row, above AB08's limit lines. "Auto-grading off" takes the same HUD slot.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame" id="AB11-F4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB11-F4</span><span class="bd-frame__title">· Today (Dashboard)</span><span class="bd-frame__state">· evaluable = 0 banner · busy on the Resume card</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="ab11-surface">
+            <div class="ab11-page">
+              <div class="xl-eyebrow">Today</div>
+              <div class="ab11-banner" role="status"><span class="ab11-ic" style="color:var(--ds-err)"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-off"/></svg></span><span><b>Auto-grading is off right now — problems use self-report until it's back.</b></span></div>
+              <div class="xl-panel ab11-resume">
+                <span class="ab11-ic ab11-teal"><svg class="xl-ico" aria-hidden="true"><use href="#i-clock"/></svg></span>
+                <div class="ab11-resume__t"><span class="ab11-cap">Resume</span><b>#16 3Sum · 18:20 left</b></div>
+                <span role="status"><button type="button" class="ds-badge ds-badge--warn ab11-btn" aria-expanded="false"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gauge"/></svg> Grader busy</button></span>
+                <span class="ab11-flex"></span>
+                <span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Resume</span>
+              </div>
+              <p class="ab11-help">Drawn together to show both slots; in practice "off" and "busy" don't co-occur.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>The banner leads Today when <code>evaluable = 0</code>. "Grader busy" sits inline on the Resume card (the open attempt), before its button. The Resume card itself is AB05's; only the badge slot is added here.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<!-- ======================================================== F5–F6 -->
+<section class="bd-section" aria-labelledby="sec-c">
+  <h2 class="bd-section__h" id="sec-c">C · Changes and who sees them <small>F5 transitions · F6 cohort and kill switch</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <article class="bd-frame" id="AB11-F5">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB11-F5</span><span class="bd-frame__title">· Transitions</span><span class="bd-frame__state">· busy → normal · off → on</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab11-col" style="gap:16px">
+          <div class="ab11-row" style="flex-wrap:nowrap;gap:10px;align-items:center">
+            <div class="ab11-surface" style="flex:1"><div class="ab11-dockh"><div class="ds-tabs"><span class="ds-tab ds-tab--active">Submission</span></div><span class="ab11-flex"></span><span class="ds-badge ds-badge--warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gauge"/></svg> Grader busy</span></div></div>
+            <span class="ab11-arrow"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+            <div class="ab11-surface" style="flex:1"><div class="ab11-dockh"><div class="ds-tabs"><span class="ds-tab ds-tab--active">Submission</span></div><span class="ab11-flex"></span><span class="ab11-help">(no badge)</span></div></div>
+          </div>
+          <span class="ab11-live" style="align-self:flex-start">aria-live="polite" · "The grader is back to normal."</span>
+          <div class="ab11-row" style="flex-wrap:nowrap;gap:10px;align-items:center">
+            <div class="ab11-surface" style="flex:1"><div class="ab11-hud" style="padding:8px 12px"><span class="ab11-id">#16</span><span class="ds-badge ds-badge--err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-off"/></svg> Auto-grading off</span></div></div>
+            <span class="ab11-arrow"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+            <div class="ab11-surface" style="flex:1"><div class="ab11-hud" style="padding:8px 12px"><span class="ab11-id">#16</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-server"/></svg> Auto-graded · hidden tests</span></div></div>
+          </div>
+          <span class="ab11-live" style="align-self:flex-start">aria-live="polite" · "Auto-grading is back on."</span>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>When the status read clears a state, the badge disappears and one polite line is announced ("The grader is back to normal." / "Auto-grading is back on."). <b>No toasts</b> and nothing takes focus. The page banner (F2b, F4) goes with it.</li>
+        <li>An attempt that started in self mode <b>stays</b> self-graded (its <code>grading_mode</code> was pinned at start); only new attempts pick up the judge again. Its HUD keeps "Grading pending · self-report".</li>
+        <li>A badge appearing is announced once by its <code>role="status"</code> wrapper (the badge text). Flapping is damped by the 15 s cache: a state must hold across two reads before the badge changes.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame" id="AB11-F6">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB11-F6</span><span class="bd-frame__title">· Cohort and kill switch</span><span class="bd-frame__state">· who sees a badge at all</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--flag">decision to confirm</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="bd-scroll">
+            <table class="xl-table">
+              <thead><tr><th>Viewer / config</th><th>Judge on the page</th><th>Badges</th><th>A result reads</th></tr></thead>
+              <tbody>
+                <tr><td><b>Owner / tester</b>, judge configured</td><td>yes (AB07, AB08)</td><td>F1–F5 as drawn</td><td class="ab11-nowrap"><span class="ds-chip ds-chip--xs">Auto-graded · judge-checked · Go</span></td></tr>
+                <tr><td><b>Not in the cohort</b> (before GA)</td><td>no — v1 page (AB07-F12b)</td><td><b>none</b></td><td>v1: "Logged as Rough"</td></tr>
+                <tr><td><b>Kill switch</b>: <code class="ds-mono">JUDGE_BASE_URL</code> unset</td><td>no — judge is absent</td><td><b>none</b></td><td><span class="ds-chip ds-chip--xs">Self-graded</span></td></tr>
+                <tr><td>Judge present, <code class="ds-mono">state = off</code> (L15 admission closed, or unreachable)</td><td>yes, degraded</td><td class="ab11-nowrap"><span class="ds-badge ds-badge--err"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-off"/></svg> Auto-grading off</span></td><td><span class="ds-chip ds-chip--xs">Self-graded</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Presence by config (ADR-0034 §2): a capability exists only if its upstream is configured <b>and</b> its gate passes. So with <code>JUDGE_BASE_URL</code> unset there is <b>nothing to degrade</b> — no badge; results just read "Self-graded". The <b>Auto-grading off</b> badge is for a judge that is configured but closed or unreachable. (Listed under "Decisions to confirm": the alternative would show "Auto-grading off" to the cohort in both cases.)</li>
+        <li>Non-cohort accounts before GA never see a judge badge: their page is v1's.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<!-- ======================================================== F7 -->
+<section class="bd-section" id="AB11-F7" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">AB11-F7 · &lt; 1024 px (390 px shown) <small>icon + short label · popover → bottom sheet</small></h2>
+  <p class="bd-section__p">Badges collapse to <b>icon + short label</b>: "Self-report", "Grader busy", "Grading off", "AI paused" — the full name stays the accessible name. Tapping one opens a <b>bottom sheet</b> with the popover copy and a <b>Got it</b> button; the scrim or a swipe down closes it and focus returns to the badge.</p>
+  <div class="bd-narrow-row">
+    <article class="bd-frame bd-narrow" id="AB11-N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1 · AB11-F1/F3</span><span class="bd-frame__state">· short badges in the pinned HUD</span></header>
+      <div class="bd-frame__body">
+        <div class="ab11-ntop"><span class="ab11-id">#16</span><b>3Sum</b><span class="xl-diff xl-diff--med">Medium</span></div>
+        <div class="ab11-col" style="padding:14px 12px;gap:12px">
+          <div class="ab11-row"><button type="button" class="ds-badge ds-badge--info ab11-btn" aria-label="Grading pending · self-report"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg> Self-report</button>
+            <button type="button" class="ds-badge ds-badge--warn ab11-btn" aria-label="Grader busy"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gauge"/></svg> Grader busy</button></div>
+          <div class="ab11-row"><button type="button" class="ds-badge ds-badge--err ab11-btn" aria-label="Auto-grading off"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-off"/></svg> Grading off</button>
+            <button type="button" class="ds-badge ab11-badge--muted ab11-btn" aria-label="xLearn AI paused"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg> AI paused</button><span class="bd-tag">M4</span></div>
+          <div class="ab11-banner" role="status" style="font-size:12.5px"><span class="ab11-ic" style="color:var(--ds-err)"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-off"/></svg></span><span>Auto-grading is off right now — problems use self-report until it's back.</span></div>
+          <p class="ab11-help">All four drawn for reference; a page shows only the ones that apply. Badges are 22 px tall with 8 px between them, which meets WCAG 2.5.8 target spacing.</p>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Short labels keep the word that carries the state; icons alone are never used.</li></ul></aside>
+    </article>
+    <article class="bd-frame bd-narrow" id="AB11-N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2 · AB11-F1</span><span class="bd-frame__state">· bottom sheet open</span></header>
+      <div class="bd-frame__body">
+        <div class="ab11-nstage">
+          <div class="ab11-ntop"><span class="ab11-id">#16</span><b>3Sum</b><span class="xl-diff xl-diff--med">Medium</span><span class="ds-badge ds-badge--warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gauge"/></svg> Grader busy</span></div>
+          <div class="ab11-scrim" aria-hidden="true"></div>
+          <div class="ab11-sheet" role="dialog" aria-modal="true" aria-labelledby="n2-h">
+            <span class="ab11-grab" aria-hidden="true"></span>
+            <div class="ab11-row" id="n2-h" style="font-size:15px;font-weight:600"><svg class="xl-ico xl-ico--sm" style="color:var(--ds-warn)" aria-hidden="true"><use href="#i-gauge"/></svg> Grader busy</div>
+            <p style="font-size:14px;line-height:1.55">Lots of code is running. Runs may be slower or limited; submits still count and are graded in order.</p>
+            <span class="ds-btn ds-btn--secondary ds-btn--block ds-btn--lg bd-focus" role="button">Got it</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Modal sheet: focus goes to <b>Got it</b>; <span class="xl-kbd">Esc</span>, the scrim or a swipe down close it; focus returns to the badge. Reduced motion: no slide, it appears in place.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB11 · Degradation badges · drafted in ds-m3-01 · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only, never imported by <code class="ds-mono">web/</code>.
+  All copy is drafted here (the badge names and popover lines come from the ds-m3-01 plan) and listed under "Decisions to confirm" where it's a judgement call. Sample rows and times.
+</footer>
+</main>
+</body>
+</html>

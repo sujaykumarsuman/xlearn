@@ -1,0 +1,1534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB07 ★ · A1 Workspace-Code — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB07 board-local layout (prefix ab07-). Tokens only; never restyles a ds- or xl- class. */
+  .ab07-flex { flex: 1; }
+  .ab07-top { position: relative; z-index: 20; }
+  .ab07-topsw { display: inline-flex; align-items: center; gap: 9px; height: 34px; padding: 0 10px; background: var(--ds-panel-2);
+    border: 1px solid var(--ds-line-2); border-radius: 8px; color: var(--ds-text); font-size: 12.5px; }
+  .ab07-ok { color: var(--ds-ok); } .ab07-err { color: var(--ds-err); } .ab07-warn { color: var(--ds-warn); }
+  .ab07-info { color: var(--ds-info); } .ab07-teal { color: var(--ds-teal); } .ab07-dim { color: var(--ds-dim); }
+  .ab07-violet { color: var(--ds-violet); } .ab07-text { color: var(--ds-text); }
+  .ab07-ic { display: inline-flex; flex: none; }
+  .ab07-b { font-weight: 600; color: var(--ds-text); }
+  .ab07-gap { margin-bottom: 22px; }
+  .ab07-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .ab07-col { display: flex; flex-direction: column; gap: 10px; }
+  .ab07-iline { display: flex; align-items: flex-start; gap: 8px; }
+  .ab07-iline > .ab07-ic { margin-top: 2px; }
+  .ab07-nowrap { white-space: nowrap; }
+  .ab07-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* HUD strip under the top bar (t4 §8 shell) */
+  .ab07-hud { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; padding: 10px 22px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab07-hud__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 9px; min-width: 0; }
+  .ab07-id { font-family: var(--ds-font-mono); font-size: 13px; color: var(--ds-dim); }
+  .ab07-title { font-size: 18px; font-weight: 700; letter-spacing: -.2px; color: var(--ds-text); }
+  .ab07-aff { font-size: 11px; color: var(--ds-dim); }
+  .ab07-stages { display: inline-flex; gap: 2px; padding: 3px; background: var(--ds-inset); border: 1px solid var(--ds-line-2); border-radius: 9px; }
+  .ab07-stab { gap: 6px; }
+  .ab07-clock { display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 6px; border: 1px solid var(--ds-line-2);
+    border-radius: var(--ds-radius); background: var(--ds-inset); }
+  .ab07-clock--warn { border-color: rgba(240,180,41,.35); }
+  .ab07-clock--err { border-color: rgba(242,109,109,.35); }
+  .ab07-clock--idle { padding: 8px 12px; }
+  .ab07-ring { width: 44px; height: 44px; transform: rotate(-90deg); flex: none; display: block; }
+  .ab07-ring--sm { width: 34px; height: 34px; }
+  .ab07-t { font-size: 20px; line-height: 1.1; color: var(--ds-text); }
+  .ab07-t--warn { color: var(--ds-warn); } .ab07-t--err { color: var(--ds-err); } .ab07-t--dim { color: var(--ds-dim); }
+  .ab07-t--sm { font-size: 16px; }
+  .ab07-clock__s { font-family: var(--ds-font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--ds-dim); margin-top: 2px; }
+
+  /* three-column work area */
+  .ab07-work { display: grid; grid-template-columns: 292px minmax(0, 1fr) 290px; gap: 16px; padding: 16px 22px 90px; align-items: start; }
+  .ab07-pane__h { display: flex; align-items: center; gap: 8px; padding: 11px 14px; border-bottom: 1px solid var(--ds-line); }
+  .ab07-pane__h h3 { font-size: 13px; font-weight: 600; }
+  .ab07-parts { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-bottom: 1px solid var(--ds-line); }
+  .ab07-stmt { padding: 13px 14px 14px; font-size: 13px; line-height: 1.6; color: var(--ds-text); display: flex; flex-direction: column; gap: 9px; }
+  .ab07-cd { font-family: var(--ds-font-mono); font-size: 12px; padding: 0 5px; border-radius: 4px; background: var(--ds-inset); border: 1px solid var(--ds-line-2); }
+  .ab07-cap { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab07-ex { font-family: var(--ds-font-mono); font-size: 11.5px; line-height: 1.6; padding: 8px 10px; border-radius: 8px; background: var(--ds-input-bg);
+    border: 1px solid var(--ds-line-2); color: var(--ds-text); overflow-wrap: anywhere; }
+  .ab07-ex i { font-style: normal; color: var(--ds-dim); }
+  .ab07-locks { display: flex; flex-direction: column; gap: 8px; padding: 0 14px 14px; }
+  .ab07-sec { border-top: 1px solid var(--ds-line); }
+  .ab07-sec__h { display: flex; align-items: center; gap: 8px; padding: 11px 14px 0; font-size: 13px; font-weight: 600; }
+
+  /* editor (CodeMirror look-alike; the live class names are m3-11's) */
+  .ab07-ed__bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 9px 12px; border-bottom: 1px solid var(--ds-line); }
+  .ab07-file { display: inline-flex; align-items: center; gap: 6px; font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-text); }
+  .ab07-saved { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--ds-dim); }
+  .ab07-ed__body { padding: 10px 12px 6px; }
+  .ab07-ln { display: inline-block; width: 22px; margin-right: 12px; text-align: right; color: var(--ds-muted); user-select: none; }
+  .ab07-ed__foot { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; padding: 2px 12px 10px; font-size: 11.5px; color: var(--ds-dim); }
+  .ab07-ro { display: flex; align-items: flex-start; gap: 9px; margin: 10px 12px 0; padding: 10px 12px; border-radius: var(--ds-radius);
+    border: 1px dashed var(--ds-line-2); background: var(--ds-inset); font-size: 12.5px; color: var(--ds-text); line-height: 1.5; }
+  .ab07-squig { text-decoration: underline wavy var(--ds-err); text-underline-offset: 3px; }
+  .ab07-ln--err { color: var(--ds-err); font-weight: 600; }
+
+  /* results dock (AB08 is the full state set) */
+  .ab07-dock { border-top: 1px solid var(--ds-line); background: var(--ds-panel); border-radius: 0 0 var(--ds-radius-lg) var(--ds-radius-lg); }
+  .ab07-dock__h { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--ds-line); }
+  .ab07-dock__meta { font-size: 11.5px; color: var(--ds-dim); font-family: var(--ds-font-mono); }
+  .ab07-dock__b { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 9px; font-size: 13px; }
+  .ab07-case { border: 1px solid var(--ds-line-2); border-radius: 8px; background: var(--ds-inset); overflow: hidden; }
+  .ab07-case__h { display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: 12.5px; }
+  .ab07-case__id { font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-dim); }
+  .ab07-case__b { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 4px 10px; padding: 0 10px 9px 36px; font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-text); }
+  .ab07-case__b span:nth-child(odd) { color: var(--ds-dim); }
+  .ab07-custom { border: 1px dashed var(--ds-line-2); border-radius: 8px; padding: 9px 10px; display: flex; flex-direction: column; gap: 7px; }
+  .ab07-custom__in { font-family: var(--ds-font-mono); font-size: 11.5px; padding: 7px 9px; border-radius: 6px; background: var(--ds-input-bg); border: 1px solid var(--ds-line-2); color: var(--ds-text); }
+  .ab07-verdict { display: flex; gap: 10px; align-items: flex-start; padding: 11px 13px; border-radius: var(--ds-radius); border: 1px solid var(--ds-line-2);
+    background: var(--ds-panel-2); font-size: 13px; line-height: 1.5; color: var(--ds-text); }
+  .ab07-verdict--ok { border-color: rgba(87,211,154,.35); background: rgba(87,211,154,.08); }
+  .ab07-verdict--err { border-color: rgba(242,109,109,.35); background: rgba(242,109,109,.08); }
+  .ab07-verdict--warn { border-color: rgba(240,180,41,.35); background: rgba(240,180,41,.08); }
+  .ab07-verdict--info { border-color: rgba(106,166,255,.35); background: rgba(106,166,255,.1); }
+  .ab07-verdict__sub { display: block; font-size: 12px; color: var(--ds-dim); margin-top: 3px; }
+  .ab07-usage { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  /* right rail */
+  .ab07-rail { display: flex; flex-direction: column; gap: 14px; }
+  .ab07-steps { list-style: none; margin: 0; padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+  .ab07-steps li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 8px; }
+  .ab07-steps b { display: block; font-size: 13px; font-weight: 600; color: var(--ds-text); }
+  .ab07-steps__s { display: block; font-size: 11.5px; color: var(--ds-dim); margin-top: 2px; line-height: 1.4; }
+  .ab07-steps__n { width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; font-family: var(--ds-font-mono);
+    font-size: 11px; font-weight: 600; border: 1px solid var(--ds-line-2); color: var(--ds-dim); }
+  .ab07-steps__on { background: rgba(53,208,192,.1); }
+  .ab07-steps__on .ab07-steps__n { border-color: var(--ds-teal); color: var(--ds-teal); }
+  .ab07-steps__ok .ab07-steps__n { color: var(--ds-ok); border-color: rgba(87,211,154,.35); }
+  .ab07-steps__lk .ab07-steps__n { background: var(--ds-inset); }
+  .ab07-out { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .ab07-out__v { font-size: 15px; font-weight: 700; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 6px; }
+  .ab07-out__m { font-size: 12.5px; font-weight: 500; color: var(--ds-dim); font-family: var(--ds-font-mono); }
+  .ab07-out__s { font-size: 12px; line-height: 1.5; color: var(--ds-dim); }
+  .ab07-out__s b { color: var(--ds-text); font-weight: 600; }
+  .ab07-ladder { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .ab07-lad { text-align: center; font-size: 11px; padding: 4px 0; border-radius: 6px; border: 1px solid var(--ds-line-2); background: var(--ds-inset); color: var(--ds-dim); }
+  .ab07-lad--gone { text-decoration: line-through; border-style: dashed; background: transparent; }
+  .ab07-lad--ok { color: var(--ds-ok); border-color: rgba(87,211,154,.35); background: rgba(87,211,154,.1); font-weight: 600; }
+  .ab07-lad--warn { color: var(--ds-warn); border-color: rgba(240,180,41,.35); background: rgba(240,180,41,.1); font-weight: 600; }
+  .ab07-lad--info { color: var(--ds-info); border-color: rgba(106,166,255,.35); background: rgba(106,166,255,.1); font-weight: 600; }
+  .ab07-lad--err { color: var(--ds-err); border-color: rgba(242,109,109,.35); background: rgba(242,109,109,.1); font-weight: 600; }
+  .ab07-railtxt { padding: 12px 14px; font-size: 12px; line-height: 1.55; color: var(--ds-dim); display: flex; flex-direction: column; gap: 8px; }
+  .ab07-railtxt b { color: var(--ds-text); font-weight: 600; }
+  .ab07-hint { padding: 13px 14px; display: flex; flex-direction: column; gap: 9px; }
+  .ab07-hint__h { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ds-text); }
+  .ab07-hint p { font-size: 12px; line-height: 1.5; color: var(--ds-dim); }
+
+  /* notes and banners */
+  .ab07-note { display: flex; gap: 10px; align-items: flex-start; padding: 11px 13px; border-radius: var(--ds-radius); border: 1px solid var(--ds-line-2);
+    background: var(--ds-panel-2); font-size: 13px; color: var(--ds-text); line-height: 1.5; }
+  .ab07-note b { font-weight: 600; }
+  .ab07-note--info { border-color: rgba(106,166,255,.35); background: rgba(106,166,255,.1); }
+  .ab07-note--warn { border-color: rgba(240,180,41,.35); background: rgba(240,180,41,.08); }
+  .ab07-note--err { border-color: rgba(242,109,109,.35); background: rgba(242,109,109,.08); }
+  .ab07-note--ok { border-color: rgba(87,211,154,.35); background: rgba(87,211,154,.08); }
+  .ab07-note--violet { border-color: rgba(155,140,240,.35); background: rgba(155,140,240,.1); }
+  .ab07-note__sub { display: block; font-size: 12px; color: var(--ds-dim); margin-top: 3px; line-height: 1.5; }
+  .ab07-note__act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+
+  /* cover */
+  .ab07-cover { max-width: 640px; margin: 28px auto 40px; }
+  .ab07-cover__b { padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; }
+  .ab07-cover__t { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .ab07-cover__t h2 { font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+  .ab07-rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); background: var(--ds-inset); }
+  .ab07-rules li { display: flex; gap: 11px; align-items: flex-start; padding: 11px 14px; border-top: 1px solid var(--ds-line); font-size: 13.5px; line-height: 1.5; color: var(--ds-text); }
+  .ab07-rules li:first-child { border-top: none; }
+  .ab07-rules li > .ab07-ic { margin-top: 2px; }
+  .ab07-lang { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+  .ab07-help { font-size: 12px; line-height: 1.55; color: var(--ds-dim); }
+  .ab07-help b { color: var(--ds-text); font-weight: 600; }
+
+  /* conclusion */
+  .ab07-concl { padding: 14px 15px; display: flex; flex-direction: column; gap: 10px; }
+  .ab07-card--err { border-color: rgba(242,109,109,.35); }
+  .ab07-card--warn { border-color: rgba(240,180,41,.35); }
+  .ab07-concl__k { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab07-grade { display: flex; align-items: center; gap: 9px; font-size: 24px; font-weight: 700; letter-spacing: -.3px; }
+  .ab07-grade small { font-size: 13px; font-weight: 500; color: var(--ds-text); letter-spacing: 0; }
+  .ab07-prov { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ab07-facts { font-family: var(--ds-font-mono); font-size: 12px; line-height: 1.6; color: var(--ds-text); }
+  .ab07-facts span { color: var(--ds-dim); }
+  .ab07-due { display: flex; flex-direction: column; gap: 5px; }
+  .ab07-links { display: flex; flex-direction: column; gap: 7px; font-size: 13px; }
+  .ab07-sep { height: 1px; background: var(--ds-line); }
+  .ab07-mk { display: flex; flex-direction: column; gap: 9px; }
+  .ab07-mk__h { display: flex; align-items: center; gap: 7px; font-family: var(--ds-font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--ds-violet); }
+  .ab07-lab { font-size: 12px; color: var(--ds-dim); }
+  .ab07-ta { width: 100%; min-height: 58px; resize: none; background: var(--ds-input-bg); border: 1px solid var(--ds-line-2); border-radius: 8px; color: var(--ds-text);
+    font-family: var(--ds-font-sans); font-size: 12.5px; padding: 8px 10px; display: block; }
+  .ab07-ta::placeholder { color: var(--ds-dim); }
+  .ab07-sugg { font-family: var(--ds-font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--ds-dim);
+    border: 1px dashed var(--ds-line-2); border-radius: 5px; padding: 1px 6px; }
+  .ab07-cats { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ab07-cat--on { color: var(--ds-teal); border-color: var(--ds-teal); background: rgba(53,208,192,.12); }
+
+  /* grade picker */
+  .ab07-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .ab07-pick__o { padding: 9px 11px; border-radius: 9px; border: 1px solid var(--ds-line-2); background: var(--ds-panel-2); text-align: left; }
+  .ab07-pick__o b { display: block; font-size: 13px; font-weight: 700; }
+  .ab07-pick__o span { display: block; font-size: 11px; color: var(--ds-dim); margin-top: 1px; line-height: 1.35; }
+  .ab07-pick__o--on { border-color: var(--ds-teal); background: #101a1c; }
+  .ab07-pick__o--off { border-style: dashed; background: var(--ds-inset); }
+  .ab07-pick__o--off b { color: var(--ds-dim); text-decoration: line-through; }
+
+  /* danger buttons (theme.css has none; same look as AB21) */
+  .ab07-danger { background: var(--ds-err); border-color: var(--ds-err); color: var(--ds-bg); }
+  .ab07-danger-o { background: rgba(242,109,109,.08); border-color: rgba(242,109,109,.35); color: var(--ds-err); }
+
+  /* panel-sized frames and modal stages */
+  .ab07-railw { width: 290px; margin: 0 auto; }
+  .ab07-wide { max-width: 560px; margin: 0 auto; }
+  .ab07-mini__hud { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab07-stage { position: relative; min-height: 470px; overflow: hidden; }
+  .ab07-ghost { padding: 14px; display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 12px; }
+  .ab07-ghost span { display: block; height: 380px; border-radius: var(--ds-radius-lg); border: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab07-modal-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 7px; font-size: 13.5px; line-height: 1.5; color: var(--ds-text); }
+
+  /* narrow */
+  .ab07-nhud { padding: 9px 12px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); display: flex; flex-direction: column; gap: 8px; }
+  .ab07-nrow { display: flex; align-items: center; gap: 8px; }
+  .ab07-nclock { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: center; }
+  .ab07-nout { display: flex; flex-direction: column; justify-content: center; min-height: 40px; padding: 4px 10px; border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); background: var(--ds-inset); font-size: 12.5px; font-weight: 700; }
+  .ab07-nout span { font-size: 11px; font-weight: 500; color: var(--ds-dim); font-family: var(--ds-font-mono); }
+  .ab07-ntabs { padding: 6px 12px 0; border-bottom: 1px solid var(--ds-line); }
+  .ab07-nbody { padding: 12px 12px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .ab07-nbar { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab07-nbar > * { flex: 1; }
+  .ab07-pinned { font-family: var(--ds-font-mono); font-size: 10px; color: var(--ds-dim); text-transform: uppercase; letter-spacing: .6px; }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5" /><path d="M6 10.2V19h12v-8.8" /></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7 9 5z" /><path d="M9 5v12M15 7v12" /></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4" /></symbol>
+  <symbol id="i-journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 3v18M12.5 8h3.5M12.5 12h3.5" /></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.4" /><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" /></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V11M10 19V5M16 19v-6" /><path d="M3 21h18" /></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A2 2 0 0 1 7 3h12v15H7a2 2 0 0 0-2 2z" /><path d="M5 4.5V19" /></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6" /><path d="M10 20a2 2 0 0 0 4 0" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></symbol>
+  <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" /></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></symbol>
+  <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 7.7-1.5" /></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" /></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z" /><path d="M12 10v4M12 17h.01" /></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" /></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5z" /><path d="M3 12.5 12 17l9-4.5M3 17 12 21.5 21 17" /></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2" /><rect x="3" y="14" width="18" height="7" rx="2" /><path d="M7 7.5h.01M7 17.5h.01" /></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4" /></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9" /><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z" /></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M18 5l2 2M15 8l2 2" /></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" /></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></symbol>
+  <symbol id="i-flagx" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" /><path d="M14 16l5 5M19 16l-5 5" /></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · M3 board · hero ★</div>
+  <h1>AB07 ★ · A1 Workspace-Code</h1>
+  <p class="bd-lede">
+    A course attempt on a code problem becomes <b>execution-graded</b>. One server clock with a <b>45:00 hard limit that never pauses</b>
+    (D15); the <b>hint unlocks at 15:00 and caps the attempt at Assisted</b> (D18); <b>Clean</b> is a pass within 20:00 with no hint, no coach
+    and at most 3 failed submits; <b>giving up or running out of time is a Miss</b>, and the solution then unlocks for study. <b>A pass finishes the
+    attempt — there is no re-implement step</b> on this judged path (D16): after a Miss, the Day-1 review is the from-memory re-attempt.
+    A live <b>grade outlook</b> tells the learner, at every moment, the best grade still in reach. Run / Submit and the results dock are drawn
+    in context here; <a href="AB08-results-dock.html">AB08</a> is the dock's full state set and <a href="AB11-degradation-badges.html">AB11</a> the badges.
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-m3-01.md">ds-m3-01</a></span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-m3-11.md">m3-11</a> (Workspace + CodeMirror, every frame) · <a href="../../../docs/v2/sprints/sprint-m5-01.md">m5-01</a> (the evaluator-only variant, derived from this board)</span>
+    <span><b>Frozen before</b>the M3 UI sprint</span>
+    <span><b>Sources</b><a href="../../../docs/v2/research/t4-judge-contract.md#8-learner-flows-and-v2-artboards-needed">t4 §8</a> ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#24-close-give-up-and-dispute-fixes-both-critics-blockers">§2.4</a> ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#26-evaluation">§2.6</a> ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#33-transitions">§3.3–§3.4</a> ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#63-mistake-pre-fill-two-tiers-data-only">§6.3–§6.4</a> ·
+      <a href="../../../docs/adr/0029-judge-contract-and-learning-signal.md#3-conclusion-practice-the-single-writer">ADR-0029 §3–§4</a> ·
+      <a href="../../../docs/adr/0034-v2-release-labelling-gating-and-rollback.md#2-feature-gating-three-tiers-no-flag-service">ADR-0034 §2</a> · D10 · D15 · D16 · D18 · D20 · D27</span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB07-F1">F1 cover</a><a href="#AB07-F2">F2 solving</a><a href="#AB07-F3">F3 WA</a><a href="#AB07-F4">F4 TLE</a><a href="#AB07-F5">F5 over time / hinted</a>
+    <a href="#AB07-F6">F6 give up</a><a href="#AB07-F7">F7 solution</a><a href="#AB07-F8">F8 Clean</a><a href="#AB07-F9">F9 Miss</a><a href="#AB07-F10">F10 resume</a>
+    <a href="#AB07-F11">F11 self_grade_pending</a><a href="#AB07-F12">F12 self path</a><a href="#AB07-F13">F13 language</a><a href="#AB07-F14">F14 &lt; 1024 px</a>
+  </nav>
+</header>
+
+<!-- ======================================================== rules -->
+<section class="bd-section" aria-labelledby="sec-rules">
+  <h2 class="bd-section__h" id="sec-rules">Board-wide rules <small>D15 · D16 · D18 · D27 · ADR-0027 §5 · ADR-0034 §2</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <div class="bd-strip" style="align-items:flex-start">
+      <div class="ab07-col" style="gap:6px">
+        <span><b>One server clock, no pause.</b> Start stamps <code class="ds-mono">started_at</code>; the deadline is <code class="ds-mono">started_at + 45:00</code> (the D18 manifest default; per-item overrides allowed). The ring renders from those two instants, so leaving the page never stops it. There is <b>no pause control anywhere</b> (v1's pause button, <code class="ds-mono">Problem.dc.html:126</code>, is gone).</span>
+        <span><b>Grade outlook (D18)</b> — the best grade still in reach, recomputed on every tick and verdict:
+          <b class="ab07-ok">Clean</b> pass ≤ 20:00, no hint, no coach, ≤ 3 failed submits ·
+          <b class="ab07-warn">Rough</b> pass ≤ 45:00 without hint or coach (past 20:00, or more than 3 failed) ·
+          <b class="ab07-info">Assisted</b> pass after the hint or with coach help on this problem (D27) ·
+          <b class="ab07-err">Miss</b> no pass by 45:00, or give-up.
+          A failed submit is WA, TLE, RE or MLE; <b>CE and REJECTED are free</b>; <code class="ds-mono">inconclusive</code> never counts.</span>
+        <span><b>A pass finishes the attempt</b> (D16). No Re-implement stage, frame, CTA or modal line exists on the judged path. The only re-implement on this board is inside F12(a), the <b>unjudged</b> self path (see "Decisions to confirm").</span>
+      </div>
+    </div>
+    <div class="bd-strip" style="align-items:flex-start">
+      <div class="ab07-col" style="gap:6px">
+        <span><b>Withheld (ADR-0027 §1, §5; t4 §2.6).</b> No pattern chip before the hint is opened or the attempt concludes (v1's <code class="ds-mono">Problem.dc.html:104</code> chip is gone). Hidden tests show only the <b>passed count</b>, the <b>perf bit</b>, the <b>first failure class</b> and <b>bucketed usage</b> — never inputs, expected outputs, case ids, ordinals, stderr or per-case timing. Concepts to revise appear only after conclusion.</span>
+        <span><b>Screen readers.</b> The ring is <code class="ds-mono">role="timer"</code> with <code class="ds-mono">aria-live="off"</code> ("32 minutes 10 seconds left of 45"). One hidden <code class="ds-mono">aria-live="polite"</code> region announces at <b>15:00</b> "Hint unlocked. Using it caps this attempt at Assisted.", at <b>20:00</b> "Clean is no longer possible.", at <b>40:00</b> "5 minutes left." and at <b>44:00</b> "1 minute left." Dock status lines are polite too. Nothing ticks aloud.</span>
+        <span><b>Keyboard.</b> <span class="xl-kbd">⌘↵</span> Run · <span class="xl-kbd">⌘⇧↵</span> Submit (<span class="xl-kbd">Ctrl</span> on Windows and Linux) · <span class="xl-kbd">Tab</span> indents inside the editor · <span class="xl-kbd">Esc</span> then <span class="xl-kbd">Tab</span> leaves it (stated under the editor). Give up is never focused first and never bound to a key.</span>
+        <span><b>Cohort (ADR-0034 §2).</b> Run, Submit, the dock and the outlook exist only when judge is configured (<code class="ds-mono">JUDGE_BASE_URL</code>) <b>and</b> the account is in the owner/tester cohort before GA; otherwise the page is F12(b).</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================== A · cover -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · Before the start <small>F1 · D10 · D15 · D18</small></h2>
+
+  <!-- F1 -->
+  <article class="bd-frame" id="AB07-F1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB07-F1</span><span class="bd-frame__title">· Cover</span><span class="bd-frame__state">· /xlearn/dsa/problem/16 · no attempt yet · nothing timed</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--change">replaces the 15:00 cover</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav">
+              <a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a>
+              <a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a>
+              <a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a>
+              <a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a>
+              <div class="xl-nav__cap">Practice loop</div>
+              <a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a>
+              <a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a>
+              <a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a>
+            </nav>
+            <div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab07-top">
+              <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><a>problems</a><span class="xl-crumb__sep">/</span><b>#16</b></div>
+              <span class="ab07-flex"></span>
+              <span class="ab07-topsw"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="ab07-hud" role="region" aria-label="Attempt status">
+              <div class="ab07-hud__meta">
+                <span class="ab07-id">#16</span><span class="ab07-title">3Sum</span><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs">Core</span>
+                <a class="ds-chip ds-chip--xs">Original · inspired by LeetCode 15 <svg class="xl-ico" style="width:11px;height:11px" aria-hidden="true"><use href="#i-ext"/></svg></a><span class="ab07-aff">Not affiliated with LeetCode</span>
+              </div>
+              <span class="ab07-flex"></span>
+              <div class="ab07-clock ab07-clock--idle" role="timer" aria-label="45 minutes, not started"><span class="xl-timer"><svg class="xl-ico xl-ico--sm ab07-dim" aria-hidden="true"><use href="#i-clock"/></svg><span class="xl-timer__t ab07-t ab07-t--dim ab07-t--sm">45:00</span></span><span class="ab07-clock__s" style="margin:0">not started</span></div>
+            </div>
+            <div class="ab07-cover">
+              <section class="xl-panel" aria-labelledby="f1-h">
+                <div class="ab07-cover__b">
+                  <div class="ab07-cover__t"><h2 id="f1-h"><span class="ab07-id" style="font-size:18px">#16</span> 3Sum</h2><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--sm">Core</span><span class="ds-chip ds-chip--sm"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-server"/></svg> Auto-graded · hidden tests</span></div>
+                  <p class="ab07-help" style="font-size:13px">The statement appears when you start. Read the rules first — they decide your grade.</p>
+                  <ul class="ab07-rules" aria-label="Rules for this attempt">
+                    <li><span class="ab07-ic ab07-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span><span><b>45:00</b> · the timer starts when you start and doesn't pause</span></li>
+                    <li><span class="ab07-ic ab07-info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-bulb"/></svg></span><span>The hint unlocks at 15:00 — opening it caps this attempt at <b>Assisted</b></span></li>
+                    <li><span class="ab07-ic ab07-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span><b>Clean:</b> pass within 20:00, no hint, no coach, ≤ 3 failed submits</span></li>
+                    <li><span class="ab07-ic ab07-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-flagx"/></svg></span><span>No pass by 45:00, or giving up, is a <b>Miss</b> — it comes back as a Day-1 review</span></li>
+                  </ul>
+                  <div class="ab07-lang">
+                    <span class="ab07-lab" id="f1-lang">Language</span>
+                    <div class="ds-seg" role="radiogroup" aria-labelledby="f1-lang"><button type="button" class="ds-seg__btn ds-seg__btn--on" role="radio" aria-checked="true">Go</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">C++</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Python</button></div>
+                    <span class="ab07-help">You can switch after you start; each language keeps its own draft.</span>
+                  </div>
+                  <span class="ds-btn ds-btn--primary ds-btn--lg ds-btn--block bd-focus" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start attempt · 45:00</span>
+                </div>
+              </section>
+            </div>
+          </div>
+          <span class="xl-fab" aria-label="Open Your AI coach (your key)"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-spark"/></svg></span>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li><code>GET /api/problems/16</code> for a problem with no open attempt returns the <b>cover only</b>: title, difficulty, role, provenance, the rules from the pinned policy and the languages the item lists. <b>No statement, no pattern chip, no hint text</b> (D10: the statement shows on Start).</li>
+          <li><b>[Start attempt · 45:00]</b> → <code>POST /api/problems/16/attempt/start</code> (the gateway adds <code>{"judge": true}</code> only after the cohort check, m3-09). practice pins <code>policy_version</code>, <code>stage_params</code>, <code>contract_hash</code> and <code>grading_mode</code> from judge's <code>/internal/evaluable</code>, stamps <code>started_at</code>, then the page becomes F2 (t4 §3.3). The "45:00" on the button comes from the pinned limit.</li>
+          <li>An open attempt already exists → no cover: the page resumes it (F10).</li>
+          <li>The language picker lists only the item's languages (D20: Go · C++ · Python at M3). Go is preselected; the choice sets the starter from the signature (F13).</li></ul></section>
+      <section><h4>Variants and errors</h4>
+        <ul><li>Item not auto-graded (<code>grading_mode = self</code>: no pack, contract mismatch): the "Auto-graded · hidden tests" chip becomes the AB11 badge <b>Grading pending · self-report</b> and the rules card becomes the v1 one (F12a).</li>
+          <li>Judge off for this account (kill switch, or not in the cohort): the v1 cover, unchanged (F12b).</li>
+          <li>An item ahead of the learner's week: <code>409 ahead_of_schedule</code> → the page offers the arena instead (AB10).</li>
+          <li>Start fails (network, 5xx): inline under the button, <code>role="alert"</code>: "Couldn't start the attempt — nothing was timed. Try again." The clock never starts client-side.</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>D10 · D15 (hard limit, no pause) · D18 (45:00 / 15:00 / Clean rule) · t4 §8 cover · rollout §9 "Fix before briefing": the v1 "Start attempt · 15 min" cover (<code>Problem.tsx:553-557</code>) is replaced.</li>
+          <li>Focus lands on <b>Start attempt</b>; order: Language → Start → coach button. The rules list is a <code>&lt;ul&gt;</code>; each icon is decorative and every rule carries its grade as text. Text 15:1, dim 7.2:1.</li>
+          <li>&lt; 1024 px: the cover card goes full width; Start is <code>ds-btn--lg</code> (N1).</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- =================================================== B · solving -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · Solving <small>F2–F4 · Run ⌘↵ · Submit ⌘⇧↵ · the outlook moves with every verdict</small></h2>
+
+  <!-- F2 -->
+  <article class="bd-frame" id="AB07-F2">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB07-F2</span><span class="bd-frame__title">· Solving + Run</span><span class="bd-frame__state">· 12:50 in · 32:10 left · sample Run just returned</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav">
+              <a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a>
+              <a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a>
+              <a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a>
+              <a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a>
+              <div class="xl-nav__cap">Practice loop</div>
+              <a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a>
+              <a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a>
+              <a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a>
+            </nav>
+            <div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab07-top">
+              <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><a>problems</a><span class="xl-crumb__sep">/</span><b>#16</b></div>
+              <span class="ab07-flex"></span>
+              <span class="ab07-topsw"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="ab07-hud" role="region" aria-label="Attempt status">
+              <div class="ab07-hud__meta">
+                <span class="ab07-id">#16</span><span class="ab07-title">3Sum</span><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs">Core</span>
+                <span class="ds-chip ds-chip--xs"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-server"/></svg> Auto-graded · hidden tests</span>
+                <a class="ds-chip ds-chip--xs">Original · inspired by LeetCode 15 <svg class="xl-ico" style="width:11px;height:11px" aria-hidden="true"><use href="#i-ext"/></svg></a><span class="ab07-aff">Not affiliated with LeetCode</span>
+              </div>
+              <span class="ab07-flex"></span>
+              <div class="ab07-stages" role="list" aria-label="Stages">
+                <span class="ds-tab ds-tab--active ab07-stab" role="listitem" aria-current="step">Attempt</span>
+                <span class="ds-tab ab07-stab" role="listitem"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Hint · 15:00</span>
+                <span class="ds-tab ab07-stab" role="listitem"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Solution</span>
+              </div>
+              <div class="ab07-clock" role="timer" aria-live="off" aria-label="32 minutes 10 seconds left of 45">
+                <svg class="ab07-ring" viewBox="0 0 44 44" aria-hidden="true"><circle class="xl-ring-track" cx="22" cy="22" r="19" fill="none" stroke-width="4"/><circle cx="22" cy="22" r="19" fill="none" stroke-width="4" stroke-linecap="round" style="stroke:var(--ds-teal)" stroke-dasharray="85.3 119.4"/></svg>
+                <div><div class="xl-timer__t ab07-t">32:10</div><div class="ab07-clock__s">left of 45:00</div></div>
+              </div>
+            </div>
+            <div class="ab07-work">
+              <!-- left -->
+              <section class="xl-panel" aria-label="Problem">
+                <nav class="ab07-parts" aria-label="Parts"><span class="ab07-cap">Part</span><span class="ds-chip ds-chip--xs" aria-current="true"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-code"/></svg> 1 of 1 · Code</span></nav>
+                <div class="ab07-pane__h"><svg class="xl-ico xl-ico--sm ab07-teal" aria-hidden="true"><use href="#i-book"/></svg><h3>Statement</h3></div>
+                <div class="ab07-stmt">
+                  <p>You're given an integer array <span class="ab07-cd">nums</span>. Return every distinct triple of values that adds up to 0, where the three values sit at three different indices.</p>
+                  <p>List each distinct triple once. The triples can come in any order, and so can the values inside a triple.</p>
+                  <div class="ab07-cap">Sample 1</div>
+                  <div class="ab07-ex">nums = [3, -1, -2, 0, 1, -3]<br><i>→</i> [[-3, 0, 3], [-2, -1, 3], [-1, 0, 1]]</div>
+                  <div class="ab07-cap">Sample 2</div>
+                  <div class="ab07-ex">nums = [-2, 0, 0, 2, 2]<br><i>→</i> [[-2, 0, 2]]</div>
+                  <div class="ab07-cap">Constraints</div>
+                  <div class="ab07-ex">3 ≤ nums.length ≤ 3000<br>−10⁵ ≤ nums[i] ≤ 10⁵</div>
+                  <div class="ab07-cap">Signature · Go</div>
+                  <div class="ab07-ex">func threeSum(nums []int) [][]int</div>
+                </div>
+                <div class="ab07-locks">
+                  <div class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Hint · unlocks at 15:00</div>
+                  <div class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Solution · after a pass, a give-up or 45:00</div>
+                </div>
+              </section>
+              <!-- centre -->
+              <section class="xl-panel" aria-label="Your solution">
+                <div class="ab07-ed__bar">
+                  <span class="ab07-file"><svg class="xl-ico xl-ico--sm ab07-dim" aria-hidden="true"><use href="#i-code"/></svg> solution.go</span>
+                  <div class="ds-seg" role="radiogroup" aria-label="Language"><button type="button" class="ds-seg__btn ds-seg__btn--on" role="radio" aria-checked="true">Go</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">C++</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Python</button></div>
+                  <span class="ab07-flex"></span>
+                  <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Run <span class="xl-kbd">⌘↵</span></span>
+                  <span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-send"/></svg> Submit <span class="xl-kbd">⌘⇧↵</span></span>
+                </div>
+                <div class="ab07-ed__body">
+<pre class="xl-code" aria-label="Code editor, Go"><span class="ab07-ln">1</span><span class="k">func</span> <span class="fn">threeSum</span>(nums []<span class="t">int</span>) [][]<span class="t">int</span> {
+<span class="ab07-ln">2</span>    out := [][]<span class="t">int</span>{}
+<span class="ab07-ln">3</span>    n := <span class="fn">len</span>(nums)
+<span class="ab07-ln">4</span>    <span class="k">for</span> i := <span class="n">0</span>; i &lt; n; i++ {
+<span class="ab07-ln">5</span>        <span class="k">for</span> j := i + <span class="n">1</span>; j &lt; n; j++ {
+<span class="ab07-ln">6</span>            <span class="k">for</span> k := j + <span class="n">1</span>; k &lt; n; k++ {
+<span class="ab07-ln">7</span>                <span class="k">if</span> nums[i]+nums[j]+nums[k] == <span class="n">0</span> {
+<span class="ab07-ln">8</span>                    t := []<span class="t">int</span>{nums[i], nums[j], nums[k]}
+<span class="ab07-ln">9</span>                    sort.<span class="fn">Ints</span>(t)
+<span class="ab07-ln">10</span>                    out = <span class="fn">append</span>(out, t)
+<span class="ab07-ln">11</span>                }
+<span class="ab07-ln">12</span>            }
+<span class="ab07-ln">13</span>        }
+<span class="ab07-ln">14</span>    }
+<span class="ab07-ln">15</span>    <span class="k">return</span> out
+<span class="ab07-ln">16</span>}</pre>
+                </div>
+                <div class="ab07-ed__foot"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-keyboard"/></svg><span class="xl-kbd">Tab</span> indents · <span class="xl-kbd">Esc</span> then <span class="xl-kbd">Tab</span> leaves the editor · Ctrl instead of ⌘ on Windows and Linux<span class="ab07-flex"></span><span class="ab07-saved" role="status"><svg class="xl-ico xl-ico--sm ab07-ok" aria-hidden="true"><use href="#i-check"/></svg> Saved · 10 s ago</span></div>
+                <section class="ab07-dock" aria-label="Results">
+                  <div class="ab07-dock__h">
+                    <div class="ds-tabs" role="tablist" aria-label="Results"><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Samples</span><span class="ds-tab" role="tab" aria-selected="false">Submission</span><span class="ds-tab" role="tab" aria-selected="false">History</span><span class="ds-tab" role="tab" aria-selected="false">Feedback</span></div>
+                    <span class="ab07-flex"></span><span class="ab07-dock__meta">Run at 12:40 · 1 of 2 passed</span>
+                  </div>
+                  <div class="ab07-dock__b" aria-live="polite">
+                    <div class="ab07-case">
+                      <div class="ab07-case__h"><span class="ab07-ic ab07-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab07-case__id">s1</span><span class="ab07-ok ab07-b" style="color:var(--ds-ok)">Passed</span><span class="ab07-help ds-mono">nums = [3, -1, -2, 0, 1, -3]</span></div>
+                    </div>
+                    <div class="ab07-case">
+                      <div class="ab07-case__h"><span class="ab07-ic ab07-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><span class="ab07-case__id">s2</span><span class="ab07-b" style="color:var(--ds-err)">Wrong answer</span></div>
+                      <div class="ab07-case__b"><span>nums</span><span>[-2, 0, 0, 2, 2]</span><span>got</span><span>[[-2, 0, 2], [-2, 0, 2], [-2, 0, 2], [-2, 0, 2]]</span><span>expected</span><span>[[-2, 0, 2]]</span></div>
+                    </div>
+                    <div class="ab07-custom">
+                      <div class="ab07-row" style="gap:8px"><span class="ab07-b" style="font-size:12.5px">Custom input</span><span class="ab07-help">≤ 64 KiB</span><span class="ab07-flex"></span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Run custom</span></div>
+                      <div class="ab07-custom__in">nums = [0, 0, 0, 0]</div>
+                      <span class="ab07-help">Custom input — you'll see only your own output; there's no reference to compare against.</span>
+                    </div>
+                  </div>
+                </section>
+              </section>
+              <!-- right -->
+              <aside class="ab07-rail" aria-label="Method">
+                <div class="xl-panel">
+                  <ol class="ab07-steps" aria-label="Stages">
+                    <li class="ab07-steps__on" aria-current="step"><span class="ab07-steps__n">1</span><span><b>Attempt</b><span class="ab07-steps__s">Solve it · 45:00 limit, no pause</span></span></li>
+                    <li class="ab07-steps__lk"><span class="ab07-steps__n"><svg class="xl-ico" style="width:11px;height:11px" aria-hidden="true"><use href="#i-lock"/></svg></span><span><b>Hint</b><span class="ab07-steps__s">Unlocks at 15:00 · caps at Assisted</span></span></li>
+                    <li class="ab07-steps__lk"><span class="ab07-steps__n"><svg class="xl-ico" style="width:11px;height:11px" aria-hidden="true"><use href="#i-lock"/></svg></span><span><b>Solution</b><span class="ab07-steps__s">After a pass, a give-up or 45:00</span></span></li>
+                  </ol>
+                </div>
+                <section class="xl-panel ab07-out" aria-labelledby="f2-out" role="status">
+                  <div class="ab07-cap" id="f2-out">Grade outlook</div>
+                  <div class="ab07-out__v"><span class="ab07-ok">Clean possible</span><span class="ab07-out__m">· failed 0/3</span></div>
+                  <div class="ab07-ladder" aria-hidden="true"><span class="ab07-lad ab07-lad--ok">Clean</span><span class="ab07-lad">Rough</span><span class="ab07-lad">Assisted</span><span class="ab07-lad">Miss</span></div>
+                  <p class="ab07-out__s">Clean needs a pass by 20:00 — <b>7:10</b> to go.</p>
+                </section>
+                <section class="ds-card ab07-hint" aria-labelledby="f2-hint">
+                  <div class="ab07-hint__h" id="f2-hint"><svg class="xl-ico xl-ico--sm ab07-dim" aria-hidden="true"><use href="#i-lock"/></svg> Hint · in 2:10</div>
+                  <p>Hint unlocks at 15:00; using it caps this attempt at Assisted.</p>
+                  <button type="button" class="ds-btn ds-btn--secondary ds-btn--sm ds-btn--block" disabled><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-bulb"/></svg> Open hint</button>
+                </section>
+                <div class="ab07-col" style="gap:6px">
+                  <span class="ds-btn ds-btn--ghost ds-btn--sm" role="button" style="align-self:flex-start"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-flagx"/></svg> Give up…</span>
+                  <span class="ab07-help">Ends the attempt as a Miss and unlocks the solution.</span>
+                </div>
+              </aside>
+            </div>
+          </div>
+          <span class="xl-fab" aria-label="Open Your AI coach (your key)"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-spark"/></svg></span>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li>The statement, samples, constraints and the signature (in the chosen language) appear on Start (D10). Hints and the solution stay locked rows until their stage; the pattern chip is absent.</li>
+          <li><b>Run</b> (<span class="xl-kbd">⌘↵</span>) → <code>POST /api/problems/16/runs {context, language, parts[], runInput?}</code> → <code>202 {runId, state, pollAfterMs, queuePosition, quota}</code>; the dock polls <code>GET /api/runs/{id}</code> at the server's <code>pollAfterMs</code>. A new Run cancels this account's queued Runs in this context. Runs are <b>never counted</b> and never touch the outlook.</li>
+          <li><b>Submit</b> (<span class="xl-kbd">⌘⇧↵</span>) → <code>POST /api/problems/16/submissions {context: course, action: submit, parts[]}</code> with an <code>Idempotency-Key</code>: counted; the dock switches to <b>Submission</b> (F3, AB08-F2–F4).</li>
+          <li>Drafts autosave (debounced ~2 s, per language, keyed by attempt) — "Saved · 10 s ago"; offline: "Not saved — retrying".</li></ul></section>
+      <section><h4>Dock and outlook</h4>
+        <ul><li><b>Samples</b> are public: full detail — args, got, expected. Custom input shows only the learner's own output and never a reference (≤ 64 KiB, typed 413 above it; AB08-F1, F14).</li>
+          <li>The outlook headline is the best grade still reachable: here <b>Clean possible · failed 0/3</b> (no hint, no coach, 12:50 &lt; 20:00, 0 of the 3 failed submits Clean allows). The ladder under it strikes grades that are gone; it is <code>aria-hidden</code> — the headline carries the meaning.</li>
+          <li>Hint card is locked with a countdown ("in 2:10") until 15:00; its copy is the t4 §8 fix of <code>Problem.tsx:566</code>.</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>D10 (statement on Start) · D15 (ring, no pause) · D18 (outlook) · D20 (Go · C++ · Python) · t4 §2.6 (sample detail public, hidden detail withheld).</li>
+          <li>Focus order: Language → Run → Submit → editor → dock tabs → rail (outlook, hint, Give up) → coach. Give up is a ghost button, never focused first. Dock result lines are <code>aria-live="polite"</code>; ✓/✗ always travel with "Passed" / "Wrong answer".</li>
+          <li>&lt; 1024 px: Statement / Work / Results tabs, ring + outlook pinned, Run / Submit in a bottom bar (F14, N2–N3).</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide">
+    <!-- F3 -->
+    <article class="bd-frame" id="AB07-F3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F3</span><span class="bd-frame__title">· Submit → Wrong answer</span><span class="bd-frame__state">· submit #1 at 14:19 · counted</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab07-col" style="gap:14px">
+          <section class="xl-panel" aria-label="Results">
+            <div class="ab07-dock__h"><div class="ds-tabs" role="tablist" aria-label="Results"><span class="ds-tab" role="tab" aria-selected="false">Samples</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Submission</span><span class="ds-tab" role="tab" aria-selected="false">History</span><span class="ds-tab" role="tab" aria-selected="false">Feedback</span></div><span class="ab07-flex"></span><span class="ab07-dock__meta">#1 · 14:19 · Go</span></div>
+            <div class="ab07-dock__b" aria-live="polite">
+              <div class="ab07-verdict ab07-verdict--err" role="status"><span class="ab07-ic ab07-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><span><b>Wrong answer:</b> 37/40 hidden passed. Hidden inputs aren't shown; try edge cases with a custom Run.</span></div>
+              <div class="ab07-row" style="gap:6px"><span class="ds-chip ds-chip--xs"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-check"/></svg> Samples 2/2</span><span class="ds-chip ds-chip--xs">Hidden 37/40</span><span class="ds-chip ds-chip--xs">Performance · not run</span><span class="ds-chip ds-chip--xs">Counted</span></div>
+            </div>
+          </section>
+          <section class="xl-panel ab07-out ab07-railw" style="margin:0" role="status" aria-label="Grade outlook">
+            <div class="ab07-cap">Grade outlook</div>
+            <div class="ab07-out__v"><span class="ab07-ok">Clean possible</span><span class="ab07-out__m">· failed 1/3</span></div>
+            <div class="ab07-ladder" aria-hidden="true"><span class="ab07-lad ab07-lad--ok">Clean</span><span class="ab07-lad">Rough</span><span class="ab07-lad">Assisted</span><span class="ab07-lad">Miss</span></div>
+            <p class="ab07-out__s">Clean needs a pass by 20:00 — <b>5:41</b> to go.</p>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Copy is t4 §8's WA row <b>verbatim</b>. The hidden set reports only <code>hidden {passed, total}</code>, <code>perf</code> and <code>first_failure.class</code>: no failing input, no case number, no stderr. Performance is <code>not_run</code> because perf runs only after every correctness case passes (t4 §2.6).</li>
+          <li>WA is a counted failure: <b>failed 1/3</b>. Red = a counted failure; the icon and the words "Wrong answer" carry it, never the colour alone.</li>
+          <li>The verdict line is <code>role="status"</code> inside the polite dock region; focus stays in the editor. D18 · ADR-0027 §5.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F4 -->
+    <article class="bd-frame" id="AB07-F4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F4</span><span class="bd-frame__title">· Submit → Too slow (perf TLE)</span><span class="bd-frame__state">· submit #3 at 17:24 · counted · hint now available</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab07-col" style="gap:14px">
+          <section class="xl-panel" aria-label="Results">
+            <div class="ab07-dock__h"><div class="ds-tabs" role="tablist" aria-label="Results"><span class="ds-tab" role="tab" aria-selected="false">Samples</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Submission</span><span class="ds-tab" role="tab" aria-selected="false">History</span><span class="ds-tab" role="tab" aria-selected="false">Feedback</span></div><span class="ab07-flex"></span><span class="ab07-dock__meta">#3 · 17:24 · Go</span></div>
+            <div class="ab07-dock__b" aria-live="polite">
+              <div class="ab07-verdict ab07-verdict--err" role="status"><span class="ab07-ic ab07-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span><span><b>Too slow on large inputs:</b> correctness 40/40, performance failed. Check your complexity against n ≤ 3000.</span></div>
+              <div class="ab07-row" style="gap:6px"><span class="ds-chip ds-chip--xs"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-check"/></svg> Samples 2/2</span><span class="ds-chip ds-chip--xs">Hidden 40/40</span><span class="ds-chip ds-chip--xs">Performance ✗ failed</span><span class="ds-chip ds-chip--xs">Counted</span></div>
+            </div>
+          </section>
+          <div class="ab07-row" style="align-items:flex-start;gap:14px">
+            <section class="xl-panel ab07-out" style="width:290px" role="status" aria-label="Grade outlook">
+              <div class="ab07-cap">Grade outlook</div>
+              <div class="ab07-out__v"><span class="ab07-ok">Clean possible</span><span class="ab07-out__m">· failed 2/3</span></div>
+              <div class="ab07-ladder" aria-hidden="true"><span class="ab07-lad ab07-lad--ok">Clean</span><span class="ab07-lad">Rough</span><span class="ab07-lad">Assisted</span><span class="ab07-lad">Miss</span></div>
+              <p class="ab07-out__s">TLE counts as a failed submit; compile errors don't. <b>2:36</b> left for Clean.</p>
+            </section>
+            <section class="ds-card ab07-hint" style="width:240px" aria-label="Hint">
+              <div class="ab07-hint__h"><svg class="xl-ico xl-ico--sm ab07-info" aria-hidden="true"><use href="#i-bulb"/></svg> Hint available</div>
+              <p>Opening it caps this attempt at <b class="ab07-text">Assisted</b>.</p>
+              <span class="ds-btn ds-btn--secondary ds-btn--sm ds-btn--block" role="button">Open hint…</span>
+            </section>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Copy is t4 §8's perf-TLE row with <b>the item's own largest-input bound</b> filled in: 3Sum's constraints say <code>nums.length ≤ 3000</code>, so the line reads "n ≤ 3000" (t4's example reads "n ≤ 1e5"; see "Decisions to confirm"). One perf <b>bit</b>, never which large case (ADR-0027 §5).</li>
+          <li><b>failed 2/3</b>: submit #2 was a compile error — free, not counted (<code>free_classes</code> = CE, REJECTED). A 4th counted failure would drop the headline to "Rough at best · 4 failed submits".</li>
+          <li>Past 15:00 the hint card turns on (F5b); the polite region announced "Hint unlocked. Using it caps this attempt at Assisted." at 15:00.</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- =================================================== C · over time / hinted -->
+<section class="bd-section" id="AB07-F5" aria-labelledby="sec-c">
+  <h2 class="bd-section__h" id="sec-c">C · Over time or hinted <small>F5 · four variants side by side · D18 · D27</small></h2>
+  <p class="bd-section__p">Each variant is the part of the page that changes: the clock, the outlook and — for the hint — the left pane. <b>The outlook never goes back up</b>: a cap, once applied, holds to the end of the attempt.</p>
+  <div class="bd-grid">
+    <!-- F5a -->
+    <article class="bd-frame" id="AB07-F5a">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F5a</span><span class="bd-frame__title">· Past 20:00</span><span class="bd-frame__state">· 20:50 in · 24:10 left</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--variant">variant</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab07-col" style="gap:12px;align-items:center">
+          <div class="ab07-clock" role="timer" aria-label="24 minutes 10 seconds left of 45">
+            <svg class="ab07-ring" viewBox="0 0 44 44" aria-hidden="true"><circle class="xl-ring-track" cx="22" cy="22" r="19" fill="none" stroke-width="4"/><circle cx="22" cy="22" r="19" fill="none" stroke-width="4" stroke-linecap="round" style="stroke:var(--ds-teal)" stroke-dasharray="64.1 119.4"/></svg>
+            <div><div class="xl-timer__t ab07-t">24:10</div><div class="ab07-clock__s">left of 45:00</div></div>
+          </div>
+          <section class="xl-panel ab07-out ab07-railw" role="status" aria-label="Grade outlook">
+            <div class="ab07-cap">Grade outlook</div>
+            <div class="ab07-out__v"><span class="ab07-warn">Rough at best</span><span class="ab07-out__m">· past 20:00</span></div>
+            <div class="ab07-ladder" aria-hidden="true"><span class="ab07-lad ab07-lad--gone">Clean</span><span class="ab07-lad ab07-lad--warn">Rough</span><span class="ab07-lad">Assisted</span><span class="ab07-lad">Miss</span></div>
+            <p class="ab07-out__s">A pass by 45:00 without the hint or coach is <b>Rough</b>.</p>
+          </section>
+          <span class="bd-tag bd-tag--flag">announced at 20:00 · "Clean is no longer possible."</span>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>D18: Clean needs a pass ≤ 20:00. The ring keeps its colour (teal) — only the outlook changes. "Rough at best" is also what a 4th counted failure shows, with "· 4 failed submits" in place of "· past 20:00".</li></ul></aside>
+    </article>
+
+    <!-- F5b -->
+    <article class="bd-frame" id="AB07-F5b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F5b</span><span class="bd-frame__title">· Hint confirm</span><span class="bd-frame__state">· 17:05 in · ds-modal--sm</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--variant">variant</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage ab07-stage" style="min-height:360px">
+          <div class="ab07-ghost" aria-hidden="true" style="grid-template-columns:1fr 1fr"><span style="height:320px"></span><span style="height:320px"></span></div>
+          <div class="ds-modal__backdrop">
+            <div class="ds-modal__panel ds-modal--sm" role="dialog" aria-modal="true" aria-labelledby="f5b-t" aria-describedby="f5b-d">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="f5b-t">Open the hint?</span><span class="ds-iconbtn" aria-label="Close"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+              <div class="ds-modal__body"><p id="f5b-d" style="font-size:13.5px;line-height:1.55">This caps this attempt at <b>Assisted</b>.</p></div>
+              <div class="ds-modal__footer"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Open hint</span><span class="ds-btn ds-btn--primary ds-btn--sm bd-focus" role="button">Not yet</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Only reachable at ≥ 15:00 (the card is disabled before). Default focus <b>Not yet</b>; <span class="xl-kbd">Esc</span> = Not yet. <b>[Open hint]</b> → <code>POST /api/problems/{id}/reveal</code> (before 15:00 it answers <code>409 hint_locked{availableAt}</code>), then F5b′. D18.</li></ul></aside>
+    </article>
+
+    <!-- F5b2 -->
+    <article class="bd-frame" id="AB07-F5b2">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F5b′</span><span class="bd-frame__title">· Hint opened</span><span class="bd-frame__state">· 17:06 in · capped at Assisted</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--variant">variant</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab07-col" style="gap:12px">
+          <div class="ab07-stages" role="list" aria-label="Stages" style="align-self:flex-start"><span class="ds-tab ab07-stab" role="listitem">Attempt</span><span class="ds-tab ds-tab--active ab07-stab" role="listitem" aria-current="step">Hint</span><span class="ds-tab ab07-stab" role="listitem"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Solution</span></div>
+          <section class="xl-panel" aria-label="Hint">
+            <div class="ab07-pane__h"><svg class="xl-ico xl-ico--sm ab07-info" aria-hidden="true"><use href="#i-bulb"/></svg><h3>Hint</h3><span class="ab07-flex"></span><span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Two pointers</span></div>
+            <div class="ab07-stmt"><p>Sort first. Fix the smallest value of the triple, then walk two indices toward each other over the rest; skip equal neighbours so each triple is listed once.</p></div>
+          </section>
+          <section class="xl-panel ab07-out" role="status" aria-label="Grade outlook">
+            <div class="ab07-cap">Grade outlook</div>
+            <div class="ab07-out__v"><span class="ab07-info">Assisted at best</span><span class="ab07-out__m">· hint used</span></div>
+            <div class="ab07-ladder" aria-hidden="true"><span class="ab07-lad ab07-lad--gone">Clean</span><span class="ab07-lad ab07-lad--gone">Rough</span><span class="ab07-lad ab07-lad--info">Assisted</span><span class="ab07-lad">Miss</span></div>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>The hint stage is the first place the <b>pattern chip</b> may appear (ADR-0027 §1). Hint text is the item's authored hint (sample wording here). The Solution stage stays locked. D18 · t4 §8 step 3.</li></ul></aside>
+    </article>
+
+    <!-- F5c -->
+    <article class="bd-frame" id="AB07-F5c">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F5c</span><span class="bd-frame__title">· Coach used on this problem</span><span class="bd-frame__state">· after the AB01 assist confirm</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--variant">variant</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab07-col" style="gap:12px">
+          <span class="ds-badge ds-badge--warn" role="status" style="align-self:flex-start"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg> Coach used · capped at Assisted</span>
+          <section class="xl-panel ab07-out" role="status" aria-label="Grade outlook">
+            <div class="ab07-cap">Grade outlook</div>
+            <div class="ab07-out__v"><span class="ab07-info">Assisted at best</span><span class="ab07-out__m">· coach used on this problem</span></div>
+            <div class="ab07-ladder" aria-hidden="true"><span class="ab07-lad ab07-lad--gone">Clean</span><span class="ab07-lad ab07-lad--gone">Rough</span><span class="ab07-lad ab07-lad--info">Assisted</span><span class="ab07-lad">Miss</span></div>
+            <p class="ab07-out__s">The hint is still locked until 15:00 and <b>doesn't</b> unlock early; the pattern stays hidden.</p>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li><b>D27</b>: only a coach chat about <b>this</b> problem during its open attempt asks first (AB01-F2, "Ask — cap at Assisted") and caps. The HUD badge is AB01-F3's. Coach use never unlocks the hint or the pattern chip.</li></ul></aside>
+    </article>
+
+    <!-- F5d -->
+    <article class="bd-frame" id="AB07-F5d">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F5d</span><span class="bd-frame__title">· Last five minutes</span><span class="bd-frame__state">· ≤ 5:00 amber · ≤ 1:00 red</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--variant">variant</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab07-col" style="gap:12px">
+          <div class="ab07-row" style="gap:12px">
+            <div class="ab07-clock ab07-clock--warn" role="timer" aria-label="4 minutes 52 seconds left of 45">
+              <svg class="ab07-ring" viewBox="0 0 44 44" aria-hidden="true"><circle class="xl-ring-track" cx="22" cy="22" r="19" fill="none" stroke-width="4"/><circle cx="22" cy="22" r="19" fill="none" stroke-width="4" stroke-linecap="round" style="stroke:var(--ds-warn)" stroke-dasharray="12.9 119.4"/></svg>
+              <div><div class="xl-timer__t ab07-t ab07-t--warn">4:52</div><div class="ab07-clock__s">left of 45:00</div></div>
+            </div>
+            <div class="ab07-clock ab07-clock--err" role="timer" aria-label="48 seconds left of 45 minutes">
+              <svg class="ab07-ring" viewBox="0 0 44 44" aria-hidden="true"><circle class="xl-ring-track" cx="22" cy="22" r="19" fill="none" stroke-width="4"/><circle cx="22" cy="22" r="19" fill="none" stroke-width="4" stroke-linecap="round" style="stroke:var(--ds-err)" stroke-dasharray="2.1 119.4"/></svg>
+              <div><div class="xl-timer__t ab07-t ab07-t--err">0:48</div><div class="ab07-clock__s">left of 45:00</div></div>
+            </div>
+          </div>
+          <div class="ab07-row" style="gap:6px"><span class="bd-tag bd-tag--flag">40:00 · "5 minutes left."</span><span class="bd-tag bd-tag--flag">44:00 · "1 minute left."</span></div>
+          <p class="ab07-help">A submit made before 45:00 is still graded after the deadline, and a pass counts: timing uses when you submitted, not when grading finished.</p>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Ring and digits turn <code>--ds-warn</code> at ≤ 5:00 and <code>--ds-err</code> at ≤ 1:00; the border follows. The spoken announcements carry the meaning; colour is a second cue. <code>prefers-reduced-motion</code>: the ring steps once a second with no easing.</li>
+          <li>At 45:00 with no pass the ticker concludes <b>Miss</b> at the deadline (D15) → F7 / F9. A counted submit after the deadline (+ 2 s) gets <code>409 attempt_expired</code> — the button is disabled at 0:00.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<!-- =================================================== D · ending without a pass -->
+<section class="bd-section" aria-labelledby="sec-d">
+  <h2 class="bd-section__h" id="sec-d">D · Ending without a pass <small>F6–F7 · give-up = Miss · timeout = Miss · no re-implement (D15 · D16)</small></h2>
+
+  <div class="bd-grid bd-grid--wide ab07-gap">
+    <!-- F6 -->
+    <article class="bd-frame" id="AB07-F6">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F6</span><span class="bd-frame__title">· Give up · Miss</span><span class="bd-frame__state">· 31:20 in · ds-modal--md over the workspace</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--change">replaces v1 "Reveal full solution"</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage ab07-stage">
+          <div class="ab07-ghost" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div class="ds-modal__backdrop">
+            <div class="ds-modal__panel ds-modal--md" role="alertdialog" aria-modal="true" aria-labelledby="f6-t" aria-describedby="f6-d">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="f6-t">Give up and see the solution?</span><span class="ds-iconbtn" aria-label="Close"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+              <div class="ds-modal__body">
+                <ul class="ab07-modal-list" id="f6-d">
+                  <li>Your draft is sent for feedback.</li>
+                  <li>The solution unlocks now.</li>
+                  <li>This attempt is graded <b>Miss</b> — unless a submit that's still running passes.</li>
+                  <li>It comes back as a Day-1 review tomorrow, and a mistake entry opens.</li>
+                </ul>
+              </div>
+              <div class="ds-modal__footer"><span class="ds-btn ds-btn--sm ab07-danger" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-flagx"/></svg> Give up · Miss</span><span class="ds-btn ds-btn--primary ds-btn--sm bd-focus" role="button">Keep going</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>Opened from <b>Give up…</b> in the rail (never bound to a key). Default focus <b>Keep going</b>; <span class="xl-kbd">Esc</span> and the × are Keep going.</li>
+          <li><b>[Give up · Miss]</b> → <code>POST /api/attempts/{id}/close {action: give_up, parts[]}</code> with an Idempotency-Key. practice records <code>gave_up_at</code> synchronously, the solution unlocks at once (whether or not the runner is up) and the page becomes F7. The closing snapshot is evidence only — the "feedback" (t4 §3.4); give-ups are exempt from every quota row (t4 §2.3 row 6).</li>
+          <li>A submit already in flight (lower seq) that passes wins: the grade becomes that pass's grade, never Miss (t4 §3.4 lock rule).</li></ul>
+        <h4>Decision · a11y</h4>
+        <ul><li>D15 (give-up = Miss) · D16 — <b>no re-implement line</b>: v1's "Revealing the full solution now means you owe #16 another attempt in 3 days" and the re-implement CTA are gone from the judged path. <code>role="alertdialog"</code>; focus is trapped; the danger button is filled <code>--ds-err</code> with dark text (6.7:1) and an icon.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F7 placeholder text frame: see below for the full frame -->
+    <article class="bd-frame" id="AB07-F6n">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F6 · states</span><span class="bd-frame__title">· What the rail shows around it</span><span class="bd-frame__state">· before · after</span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab07-row" style="align-items:flex-start;gap:16px">
+          <div class="ab07-col" style="width:250px;gap:8px">
+            <span class="ab07-cap">Before · in the rail</span>
+            <span class="ds-btn ds-btn--ghost ds-btn--sm" role="button" style="align-self:flex-start"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-flagx"/></svg> Give up…</span>
+            <span class="ab07-help">Ends the attempt as a Miss and unlocks the solution.</span>
+          </div>
+          <div class="ab07-col" style="width:260px;gap:8px">
+            <span class="ab07-cap">After · while the close records</span>
+            <div class="ab07-verdict ab07-verdict--info" role="status"><span class="ab07-ic"><svg class="xl-ico xl-ico--sm ds-spin" aria-hidden="true"><use href="#i-retry"/></svg></span><span>Recording your result…<span class="ab07-verdict__sub">The solution is already open.</span></span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>"Recording your result…" is the dock's settling line (AB08-F4) and lasts only while practice waits for facts below the close (seq gap). If a running submit then passes, the result card shows that grade instead of Miss.</li></ul></aside>
+    </article>
+  </div>
+
+  <!-- F7 -->
+  <article class="bd-frame" id="AB07-F7">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB07-F7</span><span class="bd-frame__title">· Solution (after give-up or timeout)</span><span class="bd-frame__state">· gave up at 31:20 · concluded Miss · study mode</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag bd-tag--change">no re-implement editor</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav">
+              <a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a>
+              <a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a>
+              <a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a>
+              <a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a>
+              <div class="xl-nav__cap">Practice loop</div>
+              <a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a>
+              <a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a>
+              <a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a>
+            </nav>
+            <div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab07-top">
+              <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><a>problems</a><span class="xl-crumb__sep">/</span><b>#16</b></div>
+              <span class="ab07-flex"></span>
+              <span class="ab07-topsw"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="ab07-hud" role="region" aria-label="Attempt status">
+              <div class="ab07-hud__meta">
+                <span class="ab07-id">#16</span><span class="ab07-title">3Sum</span><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs">Core</span>
+                <span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Two pointers</span>
+                <a class="ds-chip ds-chip--xs">Original · inspired by LeetCode 15 <svg class="xl-ico" style="width:11px;height:11px" aria-hidden="true"><use href="#i-ext"/></svg></a><span class="ab07-aff">Not affiliated with LeetCode</span>
+              </div>
+              <span class="ab07-flex"></span>
+              <div class="ab07-stages" role="list" aria-label="Stages">
+                <span class="ds-tab ab07-stab" role="listitem">Attempt</span>
+                <span class="ds-tab ab07-stab" role="listitem">Hint</span>
+                <span class="ds-tab ds-tab--active ab07-stab" role="listitem" aria-current="step">Solution</span>
+              </div>
+              <div class="ab07-clock ab07-clock--idle" role="timer" aria-label="Attempt ended, gave up at 31 minutes 20 seconds"><span class="xl-timer"><svg class="xl-ico xl-ico--sm ab07-err" aria-hidden="true"><use href="#i-flagx"/></svg><span class="xl-timer__t ab07-t ab07-t--sm">31:20</span></span><span class="ab07-clock__s" style="margin:0">gave up · ended</span></div>
+            </div>
+            <div class="ab07-work" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr) 290px">
+              <!-- left: solution -->
+              <section class="xl-panel" aria-label="Solution">
+                <div class="ab07-pane__h"><svg class="xl-ico xl-ico--sm ab07-dim" aria-hidden="true"><use href="#i-book"/></svg><h3 class="ab07-dim">Statement</h3><span class="ab07-flex"></span><svg class="xl-ico xl-ico--sm ab07-dim" aria-hidden="true"><use href="#i-chevron"/></svg></div>
+                <div class="ab07-pane__h"><svg class="xl-ico xl-ico--sm ab07-dim" aria-hidden="true"><use href="#i-bulb"/></svg><h3 class="ab07-dim">Hint</h3><span class="ab07-flex"></span><svg class="xl-ico xl-ico--sm ab07-dim" aria-hidden="true"><use href="#i-chevron"/></svg></div>
+                <div class="ab07-pane__h"><svg class="xl-ico xl-ico--sm ab07-ok" aria-hidden="true"><use href="#i-check"/></svg><h3>Solution</h3><span class="ab07-flex"></span><span class="ds-chip ds-chip--xs ds-mono">O(n²) time · O(1) extra space</span></div>
+                <div class="ab07-stmt">
+                  <p>Sorting lets you fix the smallest value of a triple and find the other two in one linear pass. For each first value <span class="ab07-cd">nums[i]</span> — skipping repeats — start one index just after it and one at the end. If the sum is below zero, move the left index right; above zero, move the right index left; at zero, record the triple and step past equal values.</p>
+                  <p>Each first value costs O(n), so the search is O(n²) overall. Sorting in place needs no extra space beyond the answer itself.</p>
+                  <div class="ds-tabs" role="tablist" aria-label="Reference language"><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Go</span><span class="ds-tab" role="tab" aria-selected="false">C++</span><span class="ds-tab" role="tab" aria-selected="false">Python</span></div>
+<pre class="xl-code" aria-label="Reference solution, Go"><span class="k">func</span> <span class="fn">threeSum</span>(nums []<span class="t">int</span>) [][]<span class="t">int</span> {
+    sort.<span class="fn">Ints</span>(nums)
+    res := [][]<span class="t">int</span>{}
+    <span class="k">for</span> i := <span class="n">0</span>; i+<span class="n">2</span> &lt; <span class="fn">len</span>(nums); i++ {
+        <span class="k">if</span> i &gt; <span class="n">0</span> &amp;&amp; nums[i] == nums[i-<span class="n">1</span>] {
+            <span class="k">continue</span> <span class="c">// same first value</span>
+        }
+        lo, hi := i+<span class="n">1</span>, <span class="fn">len</span>(nums)-<span class="n">1</span>
+        <span class="k">for</span> lo &lt; hi {
+            s := nums[i] + nums[lo] + nums[hi]
+            <span class="k">if</span> s &lt; <span class="n">0</span> {
+                lo++
+            } <span class="k">else if</span> s &gt; <span class="n">0</span> {
+                hi--
+            } <span class="k">else</span> {
+                v := nums[lo]
+                res = <span class="fn">append</span>(res, []<span class="t">int</span>{nums[i],
+                    v, nums[hi]})
+                <span class="k">for</span> lo &lt; hi &amp;&amp; nums[lo] == v {
+                    lo++
+                }
+                hi--
+            }
+        }
+    }
+    <span class="k">return</span> res
+}</pre>
+                </div>
+              </section>
+              <!-- centre: read-only editor -->
+              <section class="xl-panel" aria-label="Your solution, read-only">
+                <div class="ab07-ed__bar">
+                  <span class="ab07-file"><svg class="xl-ico xl-ico--sm ab07-dim" aria-hidden="true"><use href="#i-code"/></svg> solution.go</span>
+                  <span class="ds-chip ds-chip--xs"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-lock"/></svg> Read-only</span>
+                  <span class="ab07-flex"></span>
+                  <span class="ab07-saved">Your last draft · 31:20</span>
+                </div>
+                <div class="ab07-ro" role="note"><span class="ab07-ic ab07-info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span>Attempt ended — study the solution. You'll re-solve it from memory on Day 1.</span></div>
+                <div class="ab07-ed__body">
+<pre class="xl-code" aria-label="Your code, read-only"><span class="ab07-ln">1</span><span class="k">func</span> <span class="fn">threeSum</span>(nums []<span class="t">int</span>) [][]<span class="t">int</span> {
+<span class="ab07-ln">2</span>    seen := <span class="k">map</span>[[<span class="n">3</span>]<span class="t">int</span>]<span class="t">bool</span>{}
+<span class="ab07-ln">3</span>    out := [][]<span class="t">int</span>{}
+<span class="ab07-ln">4</span>    n := <span class="fn">len</span>(nums)
+<span class="ab07-ln">5</span>    <span class="k">for</span> i, a := <span class="k">range</span> nums {
+<span class="ab07-ln">6</span>        <span class="k">for</span> j := i + <span class="n">1</span>; j &lt; n; j++ {
+<span class="ab07-ln">7</span>            b := nums[j]
+<span class="ab07-ln">8</span>            <span class="k">for</span> _, c := <span class="k">range</span> nums[j+<span class="n">1</span>:] {
+<span class="ab07-ln">9</span>                <span class="k">if</span> a+b+c != <span class="n">0</span> {
+<span class="ab07-ln">10</span>                    <span class="k">continue</span>
+<span class="ab07-ln">11</span>                }
+<span class="ab07-ln">12</span>                t := []<span class="t">int</span>{a, b, c}
+<span class="ab07-ln">13</span>                sort.<span class="fn">Ints</span>(t)
+<span class="ab07-ln">14</span>                key := [<span class="n">3</span>]<span class="t">int</span>{t[<span class="n">0</span>], t[<span class="n">1</span>], t[<span class="n">2</span>]}</pre>
+                </div>
+                <div class="bd-crop">frame cropped · the draft continues (23 lines)</div>
+                <section class="ab07-dock" aria-label="Results">
+                  <div class="ab07-dock__h"><div class="ds-tabs" role="tablist" aria-label="Results"><span class="ds-tab" role="tab" aria-selected="false">Samples</span><span class="ds-tab" role="tab" aria-selected="false">Submission</span><span class="ds-tab" role="tab" aria-selected="false">History</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Feedback</span></div></div>
+                  <div class="ab07-dock__b">
+                    <div class="ab07-verdict"><span class="ab07-ic ab07-dim"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-list"/></svg></span><span>Samples ✓ · hidden 40/40 · first failure: Too slow<span class="ab07-verdict__sub"><a>See the suggested mistake →</a></span></span></div>
+                  </div>
+                </section>
+              </section>
+              <!-- right -->
+              <aside class="ab07-rail" aria-label="Method">
+                <div class="xl-panel">
+                  <ol class="ab07-steps" aria-label="Stages">
+                    <li class="ab07-steps__ok"><span class="ab07-steps__n"><svg class="xl-ico" style="width:11px;height:11px" aria-hidden="true"><use href="#i-check"/></svg></span><span><b>Attempt</b><span class="ab07-steps__s">Ended at 31:20 · gave up</span></span></li>
+                    <li class="ab07-steps__ok"><span class="ab07-steps__n"><svg class="xl-ico" style="width:11px;height:11px" aria-hidden="true"><use href="#i-check"/></svg></span><span><b>Hint</b><span class="ab07-steps__s">Open with the solution</span></span></li>
+                    <li class="ab07-steps__on" aria-current="step"><span class="ab07-steps__n">3</span><span><b>Solution</b><span class="ab07-steps__s">Study it · re-solve on Day 1</span></span></li>
+                  </ol>
+                </div>
+                <section class="ds-card ab07-concl ab07-card--err" role="status" aria-label="Result">
+                  <div class="ab07-concl__k">Result</div>
+                  <div class="ab07-grade ab07-err"><svg class="xl-ico" aria-hidden="true"><use href="#i-flagx"/></svg> Miss <small>· gave up at 31:20</small></div>
+                  <div class="ab07-prov"><span class="ds-chip ds-chip--xs"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-server"/></svg> Auto-graded · judge-checked · Go</span></div>
+                  <div class="ab07-facts"><span>Best submit</span> 40/40 correct · too slow</div>
+                  <div class="ab07-due"><div class="xl-touch" aria-hidden="true"><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div><div class="xl-touch__lab" aria-hidden="true"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div><span class="ab07-help">Day-1 review tomorrow · Solution unlocked</span></div>
+                </section>
+                <div class="bd-crop" style="border:1px dashed var(--ds-line-2);border-radius:var(--ds-radius)">continues as AB07-F9: the mistake entry and concepts to revise</div>
+              </aside>
+            </div>
+          </div>
+          <span class="xl-fab" aria-label="Open Your AI coach (your key)"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-spark"/></svg></span>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li>Reached by <b>Give up · Miss</b> (F6) or by the deadline: at 45:00 with no pass the ticker concludes <b>Miss</b> dated at the deadline and the clock reads "45:00 · time's up" (D15). Same frame either way; only the clock label and the result line differ.</li>
+          <li>The Solution stage unlocks: the editorial, the reference in every language the item lists (<code>xl-code</code> in <code>ds-tabs</code>), and the solution facts. The hint opens with it. At this stage the left pane widens to half the work area.</li>
+          <li>The editor is <b>read-only</b> (no caret, a "Read-only" chip; colours stay at full contrast), with the note "Attempt ended — study the solution. You'll re-solve it from memory on Day 1." Run and Submit are gone. <b>There is no re-implement editor, stage or CTA</b> (D16): the Day-1 review is the from-memory re-attempt.</li></ul></section>
+      <section><h4>Withheld → shown</h4>
+        <ul><li>The pattern chip appears in the HUD now: the attempt has concluded (ADR-0027 §1).</li>
+          <li>Feedback still shows counts and classes only: "Samples ✓ · hidden 40/40 · first failure: Too slow" (AB08-F17). No hidden inputs even after the conclusion.</li>
+          <li>The editorial, reference code and hint text here are sample wording, written for this board.</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>D15 · D16 · t4 §3.4 (give-up unlocks the solution) · t4 §8 steps 4–5.</li>
+          <li>The result card is <code>role="status"</code>; on arrival focus moves to the Solution heading. Reference tabs are a <code>tablist</code> (arrow keys). The read-only code is not dimmed, so syntax colours keep their contrast.</li>
+          <li>&lt; 1024 px: the Statement tab becomes <b>Solution</b>; Work shows the read-only draft; Results shows the result card (N4).</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- =================================================== E · concluded -->
+<section class="bd-section" aria-labelledby="sec-e">
+  <h2 class="bd-section__h" id="sec-e">E · Concluded <small>F8–F9 · the result card replaces the action card at the top of the rail</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <!-- F8 -->
+    <article class="bd-frame" id="AB07-F8">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F8</span><span class="bd-frame__title">· Concluded Clean</span><span class="bd-frame__state">· passed at 12:48 · Wed, Oct 21</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab07-row" style="align-items:flex-start;gap:16px">
+          <div class="ab07-col" style="flex:1;min-width:230px;gap:12px">
+            <span class="ab07-cap">Dock · Submission</span>
+            <div class="ab07-verdict ab07-verdict--ok" role="status"><span class="ab07-ic ab07-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span>All hidden tests passed · 40/40 · performance ✓<span class="ab07-verdict__sub">Time ≤ 0.5 s · Memory ≤ 64 MB</span></span></div>
+            <span class="ab07-cap">Editor</span>
+            <div class="ab07-ro" style="margin:0" role="note"><span class="ab07-ic ab07-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span>A pass finishes the attempt. Your solution is kept with it, read-only.</span></div>
+          </div>
+          <section class="ds-card ds-card--teal ab07-concl" style="width:290px;flex:none" role="status" aria-label="Result">
+            <div class="ab07-concl__k">Result</div>
+            <div class="ab07-grade ab07-ok"><svg class="xl-ico" aria-hidden="true"><use href="#i-check"/></svg> Clean</div>
+            <div class="ab07-prov"><span class="ds-chip ds-chip--xs"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-server"/></svg> Auto-graded · judge-checked · Go</span></div>
+            <div class="ab07-facts">Passed 40/40 hidden · performance ✓ · 12:48 · 1 failed submit</div>
+            <div class="ab07-due"><div class="xl-touch" aria-hidden="true"><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div><div class="xl-touch__lab" aria-hidden="true"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div><span class="ab07-help"><b>Day 1 review · Thu, Oct 22</b></span></div>
+            <div class="ab07-links"><a>Compare with the reference <svg class="xl-ico xl-ico--sm" style="display:inline;vertical-align:-3px" aria-hidden="true"><use href="#i-arrow"/></svg></a></div>
+            <span class="ds-btn ds-btn--primary ds-btn--block" role="button">Next problem</span>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li><b>A pass finishes the attempt</b> (D16): no re-implement, no outcome picker — the grade comes from <code>verdict_timer@1</code> (pass at 12:48 ≤ 20:00, attempt stage, 1 failed ≤ 3 → Clean, D18). The result card replaces the action card at the top of the rail; the stepper above it shows all three stages done.</li>
+          <li>Provenance chip names the grader and language. Usage is <b>bucketed</b> ("Time ≤ 0.5 s · Memory ≤ 64 MB"), never per case.</li>
+          <li>Five-touch dots: L1 anchored at the pass (<code>anchor_at</code>), labelled with its date. <b>Compare with the reference</b> opens the Solution stage beside the read-only editor (F7 layout) for study — drafted as offered after a Clean pass (see "Decisions to confirm").</li>
+          <li><code>role="status"</code>; focus moves to the "Result" heading; <b>Next problem</b> is the primary action. The pattern chip appears in the HUD now (concluded).</li></ul>
+      </aside>
+    </article>
+
+    <!-- F9 -->
+    <article class="bd-frame" id="AB07-F9">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F9</span><span class="bd-frame__title">· Concluded Miss + pre-fill</span><span class="bd-frame__state">· time limit reached · (ii) gave up, category picker open</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab07-row" style="align-items:flex-start;gap:16px">
+          <!-- (i) -->
+          <section class="ds-card ab07-concl ab07-card--err" style="width:290px;flex:none" aria-label="Result">
+            <div class="ab07-concl__k">Result · (i)</div>
+            <div class="ab07-grade ab07-err" role="status"><svg class="xl-ico" aria-hidden="true"><use href="#i-flagx"/></svg> Miss <small>· time limit reached (45:00)</small></div>
+            <div class="ab07-prov"><span class="ds-chip ds-chip--xs"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-server"/></svg> Auto-graded · judge-checked · Go</span></div>
+            <div class="ab07-facts"><span>Best submit</span> 40/40 correct · too slow</div>
+            <div class="ab07-due"><div class="xl-touch" aria-hidden="true"><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div><div class="xl-touch__lab" aria-hidden="true"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div><span class="ab07-help"><b>Day-1 review tomorrow</b> · <a>Solution unlocked</a></span></div>
+            <div class="ab07-sep"></div>
+            <div class="ab07-mk">
+              <div class="ab07-mk__h"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-journal"/></svg> Mistake entry</div>
+              <div class="ab07-row" style="gap:6px"><span class="ab07-lab">Category</span><span class="ab07-flex"></span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button">Change</span></div>
+              <div class="ab07-row" style="gap:6px"><span class="ds-chip ds-chip--sm ab07-text">Complexity misjudged</span><span class="ab07-sugg">suggested</span></div>
+              <span class="ab07-help">— suggested from your result (correct, but too slow)</span>
+              <label class="ab07-lab" for="f9-rc">Root cause</label>
+              <textarea class="ab07-ta" id="f9-rc" placeholder="What actually went wrong?"></textarea>
+              <label class="ab07-lab" for="f9-in">Insight</label>
+              <textarea class="ab07-ta" id="f9-in" placeholder="What will you do differently next time?"></textarea>
+              <span class="ds-btn ds-btn--secondary ds-btn--sm ds-btn--block" role="button">Save to journal</span>
+            </div>
+            <div class="ab07-sep"></div>
+            <span class="ab07-lab">Concepts to revise</span>
+            <div class="ab07-row" style="gap:6px"><span class="ds-chip ds-chip--sm">Two pointers</span><span class="ds-chip ds-chip--sm">Sorting to skip duplicates</span><span class="ds-chip ds-chip--sm">Complexity from constraints</span></div>
+            <span class="ds-btn ds-btn--primary ds-btn--block" role="button">Next problem</span>
+          </section>
+          <!-- (ii) -->
+          <section class="ds-card ab07-concl ab07-card--err" style="width:290px;flex:none" aria-label="Result, gave-up variant">
+            <div class="ab07-concl__k">Result · (ii)</div>
+            <div class="ab07-grade ab07-err"><svg class="xl-ico" aria-hidden="true"><use href="#i-flagx"/></svg> Miss <small>· gave up at 31:20</small></div>
+            <div class="ab07-facts"><span>Best submit</span> 40/40 correct · too slow</div>
+            <div class="ab07-sep"></div>
+            <div class="ab07-mk">
+              <div class="ab07-mk__h"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-journal"/></svg> Mistake entry · Change category</div>
+              <div class="ab07-cats" role="radiogroup" aria-label="Mistake category">
+                <span class="ds-chip ds-chip--sm bd-focus" role="radio" aria-checked="false">Misread</span>
+                <span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Wrong pattern</span>
+                <span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Right pattern, wrong state</span>
+                <span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Off-by-one / boundary</span>
+                <span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Language bug</span>
+                <span class="ds-chip ds-chip--sm ab07-cat--on" role="radio" aria-checked="true"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-check"/></svg> Complexity misjudged · suggested</span>
+                <span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Communication</span>
+                <span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Time management</span>
+              </div>
+              <span class="ab07-help">Your pick replaces the suggestion and stays.</span>
+            </div>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li><b>(i)</b> D15: no pass by 45:00 → Miss at the deadline. The Day-1 review is the re-attempt (D16); the solution unlocks for study (F7). A mistake entry opens because the item is revisable (t4 §6.3, I8).</li>
+          <li><b>Pre-fill</b> (t4 §6.3): judge's <code>tle_perf_only</code> signal maps to <code>complexity_misjudged</code>. The chip is labelled <b>suggested</b> with its reason in words; <b>[Change]</b> opens the category picker (ii) — the eight v1 categories (<code>web/src/lib/mistakes.ts</code>). The learner's pick wins and locks the field (learner &gt; rule). Root cause and insight are the learner's own, empty.</li>
+          <li><b>Concepts to revise</b>: ≤ 3 chips, only after conclusion (t4 §6.4); each links to its concept page. Here the item's concepts, sample names.</li>
+          <li>Variant "Time ran out while you were away." sits under the grade line when the deadline passed with the page closed (F10). A11y: the picker is a <code>radiogroup</code> (arrow keys); the selected chip has a check icon, not colour alone.</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- =================================================== F · away and degraded -->
+<section class="bd-section" aria-labelledby="sec-f">
+  <h2 class="bd-section__h" id="sec-f">F · Away, degraded and self-graded <small>F10–F11 · D15 · t4 §2.4 · t4 §3.3</small></h2>
+  <div class="bd-grid bd-grid--wide ab07-gap">
+    <!-- F10 -->
+    <article class="bd-frame" id="AB07-F10">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F10</span><span class="bd-frame__title">· Resume</span><span class="bd-frame__state">· reopened 26:40 in · 18:20 left · (ii) back after 45:00</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab07-col" style="gap:14px">
+          <div class="ab07-row" style="gap:12px;align-items:stretch">
+            <div class="ab07-clock" role="timer" aria-label="18 minutes 20 seconds left of 45">
+              <svg class="ab07-ring" viewBox="0 0 44 44" aria-hidden="true"><circle class="xl-ring-track" cx="22" cy="22" r="19" fill="none" stroke-width="4"/><circle cx="22" cy="22" r="19" fill="none" stroke-width="4" stroke-linecap="round" style="stroke:var(--ds-teal)" stroke-dasharray="48.6 119.4"/></svg>
+              <div><div class="xl-timer__t ab07-t">18:20</div><div class="ab07-clock__s">left of 45:00</div></div>
+            </div>
+            <div class="ab07-note ab07-note--info" role="status" style="flex:1;min-width:250px"><span class="ab07-ic ab07-info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span><span><b>Welcome back — 18:20 left. The timer kept running while you were away.</b><span class="ab07-note__sub">Draft restored (Go, saved 3 min ago)</span></span></div>
+          </div>
+          <section class="xl-panel ab07-out ab07-railw" style="margin:0" role="status" aria-label="Grade outlook">
+            <div class="ab07-cap">Grade outlook</div>
+            <div class="ab07-out__v"><span class="ab07-warn">Rough at best</span><span class="ab07-out__m">· past 20:00</span></div>
+            <div class="ab07-ladder" aria-hidden="true"><span class="ab07-lad ab07-lad--gone">Clean</span><span class="ab07-lad ab07-lad--warn">Rough</span><span class="ab07-lad">Assisted</span><span class="ab07-lad">Miss</span></div>
+            <p class="ab07-out__s">26:40 elapsed. A pass by 45:00 without the hint or coach is <b>Rough</b>.</p>
+          </section>
+          <div class="ab07-sep"></div>
+          <span class="ab07-cap">(ii) Back after 45:00 → F9</span>
+          <section class="ds-card ab07-concl ab07-card--err ab07-railw" style="margin:0" role="status" aria-label="Result">
+            <div class="ab07-grade ab07-err"><svg class="xl-ico" aria-hidden="true"><use href="#i-flagx"/></svg> Miss <small>· time limit reached (45:00)</small></div>
+            <span class="ab07-help"><b>Time ran out while you were away.</b></span>
+            <div class="ab07-facts"><span>Best submit</span> 37/40 correct</div>
+          </section>
+          <div class="bd-crop">continues as AB07-F9 (i): Day-1 review, mistake entry, concepts to revise</div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Opening the problem with an open attempt skips the cover: <code>GET /api/problems/16</code> returns the attempt; the state read carries <code>deadlineAt</code>, <code>hintAvailableAt</code>, <code>failedSubmits</code> and the facts so far (m3-09 poll composition). The ring and the outlook are recomputed from the server's instants — <b>the clock never paused</b> (D15). The banner is <code>role="status"</code>, dismissible, and doesn't take focus; focus goes to the editor.</li>
+          <li>The draft comes back from <code>GET /api/problems/16/drafts?context=course&amp;language=go</code> with its save time; a newer local draft than the server's is offered, never silently applied.</li>
+          <li><b>(ii)</b> D15: no resume past the deadline. The ticker already concluded Miss at 45:00; the page opens straight on F9 with "Time ran out while you were away." A submit made before the deadline and still grading is waited for first (F5d).</li></ul>
+      </aside>
+    </article>
+
+    <!-- F11 -->
+    <article class="bd-frame" id="AB07-F11">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F11</span><span class="bd-frame__title">· self_grade_pending</span><span class="bd-frame__state">· closed at 27:12 · grader couldn't decide · capped picker</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab07-col" style="gap:14px">
+          <section class="xl-panel ab07-wide" style="margin:0;max-width:none" aria-labelledby="f11-h">
+            <div class="ab07-pane__h"><svg class="xl-ico xl-ico--sm ab07-warn" aria-hidden="true"><use href="#i-flag"/></svg><h3 id="f11-h">Pick your grade</h3><span class="ab07-flex"></span><span class="ds-badge ds-badge--info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg> Self-graded</span></div>
+            <div class="ab07-stmt">
+              <div class="ab07-note ab07-note--warn" role="status"><span class="ab07-ic ab07-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span><b>We couldn't grade this attempt automatically.</b><span class="ab07-note__sub">This problem was updated while you worked.</span></span></div>
+              <p id="f11-cap">Pick your grade — up to <b>Rough</b> (you finished after 20:00).</p>
+              <div class="ab07-pick" role="radiogroup" aria-labelledby="f11-cap">
+                <div class="ab07-pick__o ab07-pick__o--off" role="radio" aria-checked="false" aria-disabled="true"><b class="ab07-dim">Clean</b><span>Not available — you finished after 20:00</span></div>
+                <div class="ab07-pick__o ab07-pick__o--on" role="radio" aria-checked="true"><b class="ab07-warn">Rough</b><span>Solved, but after 20:00 or with more than 3 failed submits</span></div>
+                <div class="ab07-pick__o" role="radio" aria-checked="false"><b class="ab07-info">Assisted</b><span>Solved with the hint or the coach</span></div>
+                <div class="ab07-pick__o" role="radio" aria-checked="false"><b class="ab07-err">Miss</b><span>Didn't solve it</span></div>
+              </div>
+              <div class="ab07-row" style="gap:8px"><span class="ds-btn ds-btn--primary ds-btn--sm" role="button">Save grade</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-retry"/></svg> Retry grading</span><span class="ab07-help">One retry. It re-sends your last submit.</span></div>
+              <div class="ab07-row" style="gap:8px"><span class="ab07-cap">after a retry that still can't decide</span><button type="button" class="ds-btn ds-btn--secondary ds-btn--sm" disabled>Retry used</button></div>
+            </div>
+          </section>
+          <div class="bd-strip" style="flex-direction:column;align-items:flex-start;gap:6px">
+            <b>Cause line, by <code class="ds-mono">pendingReason</code> (m3-09)</b>
+            <span><code class="ds-mono">contract_changed</code> — "This problem was updated while you worked."</span>
+            <span><code class="ds-mono">unreliable</code> (third released close) — "The grader couldn't get a reliable result three times."</span>
+            <span><code class="ds-mono">grading_off</code> (kill-switch sweep) — "Auto-grading is paused."</span>
+            <span><code class="ds-mono">other</code> (e.g. <code class="ds-mono">budget_exhausted</code>) — "Auto-grading couldn't finish for this attempt."</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Entered from <code>awaiting_evaluation</code> on <code>contract_changed</code> with counted evaluations, <code>budget_exhausted</code>, the kill switch, or the <b>3rd</b> released close (t4 §2.4 step 6, §3.3). Never auto-concluded.</li>
+          <li><b>The ceiling is the server's</b> <code>self@1{cap:stage}</code>, from the stage and the clock only: hint or coach → Assisted, past 20:00 → Rough, otherwise Clean. It never comes from a pass: here there is no authoritative result (t4 §3.3). Grades above the ceiling are disabled <b>with the reason in words</b> (dashed, struck, <code>aria-disabled</code>), never hidden. This is not the self path's picker: that one is uncapped (F12a).</li>
+          <li><b>[Retry grading]</b> → <code>POST /api/attempts/{id}/close {action: final}</code>, accepted once from <code>self_grade_pending</code> (then <code>409 retry_used</code>); it then reads "Retry used". With <code>pendingReason = grading_off</code> the retry is hidden (judge is closed; it would <code>503</code>).</li>
+          <li>Save → <code>POST /api/problems/{id}/outcome</code>, bounded by the attempt's <code>ceiling</code> in practice (m3-08/m3-09); the result card reads "Rough · Self-graded". A non-Clean pick opens the mistake entry (F9) before the card. <code>radiogroup</code>; the default selection is the ceiling itself.</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- =================================================== G · self path -->
+<section class="bd-section" id="AB07-F12" aria-labelledby="sec-g">
+  <h2 class="bd-section__h" id="sec-g">G · Self-path variants <small>F12 · items not auto-graded yet, and judge off · t4 §3.4 · ADR-0034 §2</small></h2>
+  <p class="bd-section__p"><b>(a)</b> An item with no evaluator (no pack yet, or its pack is pending) runs on the <b>v2 shell with v1 semantics</b>: attempt 15:00 → hint 10:00 → solution, the early-reveal penalty, <b>re-implement from memory</b> and the <b>uncapped</b> four-grade picker — the only place on this board where either appears, because nothing here is judged (see "Decisions to confirm"). <b>(b)</b> With judge off for the account the page is v1's, unchanged.</p>
+
+  <!-- F12a -->
+  <article class="bd-frame ab07-gap" id="AB07-F12a">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB07-F12a</span><span class="bd-frame__title">· Not auto-graded yet (self path)</span><span class="bd-frame__state">· solution revealed early · re-implementing · logging the outcome</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--variant">self path</span><span class="bd-tag bd-tag--flag">re-implement: decision to confirm</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav">
+              <a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a>
+              <a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a>
+              <a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a>
+              <a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a>
+              <div class="xl-nav__cap">Practice loop</div>
+              <a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a>
+              <a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a>
+              <a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a>
+            </nav>
+            <div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab07-top">
+              <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><a>problems</a><span class="xl-crumb__sep">/</span><b>#16</b></div>
+              <span class="ab07-flex"></span>
+              <span class="ab07-topsw"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="ab07-hud" role="region" aria-label="Attempt status">
+              <div class="ab07-hud__meta">
+                <span class="ab07-id">#16</span><span class="ab07-title">3Sum</span><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs">Core</span>
+                <span class="ds-badge ds-badge--info" role="status"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg> Grading pending · self-report</span>
+                <span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Two pointers</span>
+                <a class="ds-chip ds-chip--xs">Original · inspired by LeetCode 15 <svg class="xl-ico" style="width:11px;height:11px" aria-hidden="true"><use href="#i-ext"/></svg></a>
+              </div>
+              <span class="ab07-flex"></span>
+              <div class="ab07-stages" role="list" aria-label="Stages">
+                <span class="ds-tab ab07-stab" role="listitem">0 · Attempt</span>
+                <span class="ds-tab ab07-stab" role="listitem">1 · Hint</span>
+                <span class="ds-tab ds-tab--active ab07-stab" role="listitem" aria-current="step">2 · Solution</span>
+              </div>
+              <div class="ab07-clock ab07-clock--idle" role="timer" aria-label="Untimed"><span class="xl-timer"><svg class="xl-ico xl-ico--sm ab07-dim" aria-hidden="true"><use href="#i-clock"/></svg><span class="xl-timer__t ab07-t ab07-t--dim ab07-t--sm">untimed</span></span></div>
+            </div>
+            <div class="ab07-work">
+              <section class="xl-panel" aria-label="Problem">
+                <div class="ab07-pane__h"><svg class="xl-ico xl-ico--sm ab07-teal" aria-hidden="true"><use href="#i-book"/></svg><h3>Statement</h3></div>
+                <div class="ab07-stmt">
+                  <p>You're given an integer array <span class="ab07-cd">nums</span>. Return every distinct triple of values that adds up to 0, where the three values sit at three different indices.</p>
+                  <div class="ab07-cap">Sample 1</div>
+                  <div class="ab07-ex">nums = [3, -1, -2, 0, 1, -3]<br><i>→</i> [[-3, 0, 3], [-2, -1, 3], [-1, 0, 1]]</div>
+                </div>
+                <div class="ab07-locks"><div class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eye"/></svg> Hint and solution closed while you re-implement</div></div>
+              </section>
+              <section class="xl-panel" aria-label="Re-implement">
+                <div class="ab07-ed__bar">
+                  <span class="ab07-file"><svg class="xl-ico xl-ico--sm ab07-dim" aria-hidden="true"><use href="#i-code"/></svg> solution.go</span>
+                  <div class="ds-seg" role="radiogroup" aria-label="Language"><button type="button" class="ds-seg__btn ds-seg__btn--on" role="radio" aria-checked="true">Go</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">C++</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Python</button></div>
+                  <span class="ab07-flex"></span>
+                  <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Run samples <span class="xl-kbd">⌘↵</span></span>
+                </div>
+                <div class="ab07-ed__body">
+<pre class="xl-code" aria-label="Code editor, Go, empty"><span class="ab07-ln">1</span><span class="c">func threeSum(nums []int) [][]int {</span>
+<span class="ab07-ln">2</span><span class="c">    // re-implement from memory — no peeking at the solution</span>
+<span class="ab07-ln">3</span>
+<span class="ab07-ln">4</span>
+<span class="ab07-ln">5</span><span class="c">}</span></pre>
+                </div>
+                <div class="ab07-ed__foot">Blank on purpose — re-implement from memory. This problem isn't auto-graded yet: Run checks the samples only.</div>
+                <section class="ab07-dock" aria-label="Results">
+                  <div class="ab07-dock__h"><div class="ds-tabs" role="tablist" aria-label="Results"><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Samples</span></div><span class="ab07-flex"></span><span class="ab07-dock__meta">no Submit · self-graded</span></div>
+                  <div class="ab07-dock__b"><div class="ab07-verdict"><span class="ab07-ic ab07-dim"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg></span><span>Run the samples to check your re-implementation.</span></div></div>
+                </section>
+              </section>
+              <aside class="ab07-rail" aria-label="Method">
+                <div class="xl-panel">
+                  <ol class="ab07-steps" aria-label="Stages">
+                    <li class="ab07-steps__ok"><span class="ab07-steps__n"><svg class="xl-ico" style="width:11px;height:11px" aria-hidden="true"><use href="#i-check"/></svg></span><span><b>Stage 0 · Attempt</b><span class="ab07-steps__s">Solve blind · 15 min</span></span></li>
+                    <li class="ab07-steps__ok"><span class="ab07-steps__n"><svg class="xl-ico" style="width:11px;height:11px" aria-hidden="true"><use href="#i-check"/></svg></span><span><b>Stage 1 · Hint</b><span class="ab07-steps__s">Nudge + pattern · 10 min</span></span></li>
+                    <li class="ab07-steps__on" aria-current="step"><span class="ab07-steps__n">2</span><span><b>Stage 2 · Solution</b><span class="ab07-steps__s">Full walkthrough → re-implement</span></span></li>
+                  </ol>
+                </div>
+                <section class="xl-panel" aria-labelledby="f12-log">
+                  <div class="ab07-pane__h"><svg class="xl-ico xl-ico--sm ab07-teal" aria-hidden="true"><use href="#i-flag"/></svg><h3 id="f12-log">Log your outcome</h3></div>
+                  <div class="ab07-stmt">
+                    <div class="ab07-pick" role="radiogroup" aria-labelledby="f12-log">
+                      <div class="ab07-pick__o" role="radio" aria-checked="false"><b class="ab07-ok">Clean</b><span>no help, in time</span></div>
+                      <div class="ab07-pick__o" role="radio" aria-checked="false"><b class="ab07-warn">Rough</b><span>solved, ugly</span></div>
+                      <div class="ab07-pick__o ab07-pick__o--on" role="radio" aria-checked="true"><b class="ab07-info">Assisted</b><span>needed a hint</span></div>
+                      <div class="ab07-pick__o" role="radio" aria-checked="false"><b class="ab07-err">Miss</b><span>didn't get it</span></div>
+                    </div>
+                    <div class="ab07-iline ab07-warn" style="font-size:11.5px"><span class="ab07-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span>You revealed the solution early — an extra re-attempt will be queued.</span></div>
+                    <span class="ds-btn ds-btn--primary ds-btn--sm ds-btn--block" role="button">Mark solved &amp; schedule revision</span>
+                  </div>
+                </section>
+              </aside>
+            </div>
+          </div>
+          <span class="xl-fab" aria-label="Open Your AI coach (your key)"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-spark"/></svg></span>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li><code>grading_mode = self</code> was pinned at start (no pack, or a contract mismatch): <code>self@1{cap:none}</code>, v1's <code>POST /problems/{id}/outcome</code> (t4 §6.2). The HUD shows AB11's <b>Grading pending · self-report</b> badge; there is <b>no Submit</b>, no outlook and no dock Submission / History / Feedback tabs.</li>
+          <li><b>Run on samples when available</b>: the item's public samples run through judge's Run (never counted); without samples in its pack, the Run button is absent too.</li>
+          <li>Timers are v1's (attempt 15:00, hint 10:00, then untimed); the hint may be opened early and an early full reveal "owes another attempt in 3 days" (F12a′).</li></ul></section>
+      <section><h4>Re-implement (self path only)</h4>
+        <ul><li>Kept here as v1 has it: after the solution, "Re-implement from memory" opens a blank editor (the placeholder is v1's <code>REIMPL_PLACEHOLDER</code>). m3-08 keeps <code>stages.reimplement</code> for self items and m3-11 builds it.</li>
+          <li>This is the <b>only</b> re-implement on the board and the <b>only uncapped picker</b>. Listed under "Decisions to confirm" (alternative: drop it everywhere — a follow-up design PR plus an m3-11 change).</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>t4 §3.4 ("the self path keeps v1's reveal semantics") · t4 §8 "Changed v1 artboards" (the <code>:349-383</code> picker survives only here) · AB11-F3.</li>
+          <li>The pattern chip is visible because the hint stage has been reached (v1 rule, still ADR-0027 §1-safe). Picker descriptors are v1's (<code>Problem.tsx:21-26</code>).</li>
+          <li>&lt; 1024 px: same tabs as F14, with Run only in the bottom bar.</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide">
+    <!-- F12a2 -->
+    <article class="bd-frame" id="AB07-F12a2">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F12a′</span><span class="bd-frame__title">· Self path · rail cards before it</span><span class="bd-frame__state">· attempt stage · hint stage · solution stage</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--variant">self path</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab07-row" style="align-items:flex-start;gap:12px">
+          <div class="ds-card ab07-hint" style="width:250px">
+            <div class="ab07-hint__h"><svg class="xl-ico xl-ico--sm ab07-dim" aria-hidden="true"><use href="#i-lock"/></svg> Hints &amp; solution locked</div>
+            <p>The hint opens at 15:00. Stuck sooner? You can open it now.</p>
+            <span class="ds-btn ds-btn--secondary ds-btn--sm ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-key"/></svg> I'm stuck — show a hint</span>
+          </div>
+          <div class="ds-card ab07-hint" style="width:250px">
+            <div class="ab07-hint__h"><svg class="xl-ico xl-ico--sm ab07-dim" aria-hidden="true"><use href="#i-lock"/></svg> Solution locked</div>
+            <p class="ab07-warn" style="display:flex;gap:6px"><svg class="xl-ico xl-ico--sm" style="flex:none;margin-top:1px" aria-hidden="true"><use href="#i-alert"/></svg><span>Revealing the full solution now means you owe #16 another attempt in 3 days.</span></p>
+            <span class="ds-btn ds-btn--secondary ds-btn--sm ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-key"/></svg> Reveal full solution</span>
+          </div>
+          <div class="ds-card ds-card--teal ab07-hint" style="width:250px">
+            <div class="ab07-hint__h">Studied it? Prove it.</div>
+            <p>Close the solution and re-implement #16 from a blank editor. This is where it actually sticks.</p>
+            <span class="ds-btn ds-btn--primary ds-btn--sm ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> Re-implement from memory</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>v1 copy (<code>Problem.tsx:562-587</code>), with one change: v1's "Unlocks when the timer ends — or tap below." (<code>Problem.dc.html:332</code>) is replaced by "The hint opens at 15:00. Stuck sooner? You can open it now." — same early-reveal behaviour, clearer. Warning text is <code>--ds-warn</code> with an icon (9.3:1 on the card).</li></ul></aside>
+    </article>
+
+    <!-- F12b -->
+    <article class="bd-frame" id="AB07-F12b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F12b</span><span class="bd-frame__title">· Judge off for this account</span><span class="bd-frame__state">· kill switch, or not in the owner/tester cohort before GA</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">parity · v1 Problem</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab07-col" style="gap:12px">
+          <div class="ab07-mini__hud xl-panel" style="border-radius:var(--ds-radius)"><span class="ab07-id">#16</span><b>3Sum</b><span class="xl-diff xl-diff--med">Medium</span><span class="ab07-flex"></span>
+            <div class="ds-tabs" role="group" aria-label="Stage"><span class="ds-tab ds-tab--active">0 · Attempt</span><span class="ds-tab">1 · Hint</span><span class="ds-tab">2 · Solution</span></div>
+            <div class="ab07-clock" role="timer" aria-label="attempt timer — 11:02 remaining"><svg class="ab07-ring ab07-ring--sm" viewBox="0 0 44 44" aria-hidden="true"><circle class="xl-ring-track" cx="22" cy="22" r="19" fill="none" stroke-width="4"/><circle cx="22" cy="22" r="19" fill="none" stroke-width="4" stroke-linecap="round" style="stroke:var(--ds-teal)" stroke-dasharray="87.8 119.4"/></svg><div><div class="xl-timer__t ab07-t ab07-t--sm">11:02</div><div class="ab07-clock__s">attempt</div></div></div>
+          </div>
+          <section class="xl-panel">
+            <div class="ab07-ed__bar"><span class="ab07-file"><svg class="xl-ico xl-ico--sm ab07-dim" aria-hidden="true"><use href="#i-code"/></svg> solution.go</span><span class="ab07-flex"></span><div class="ds-seg" role="group" aria-label="Editor language"><button type="button" class="ds-seg__btn ds-seg__btn--on">Go</button><button type="button" class="ds-seg__btn" disabled title="Go-first curriculum — a C++ editor comes later">C++</button></div></div>
+            <div class="ab07-ed__foot" style="padding-top:10px">Sketch your approach here. Reveal a hint or the solution from the method rail when you're stuck.</div>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Presence by config (ADR-0034 §2): judge features exist only when <code>JUDGE_BASE_URL</code> is set <b>and</b> the account is in the cohort. Otherwise the page is <b>v1's Problem page, unchanged</b> (<code>Problem.tsx</code>): v1 timers and stages, no Run, no Submit, no dock, no outlook — and <b>no badge</b> (AB11-F6: judge is absent, not degraded). Drawn from the live v1 strings.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<!-- =================================================== H · language -->
+<section class="bd-section" id="AB07-F13" aria-labelledby="sec-h">
+  <h2 class="bd-section__h" id="sec-h">H · Language picker <small>F13 · D20 · Go · C++ · Python</small></h2>
+  <div class="bd-grid">
+    <article class="bd-frame" id="AB07-F13a">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F13a</span><span class="bd-frame__title">· Switched to C++</span><span class="bd-frame__state">· starter from the signature</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <section class="xl-panel">
+            <div class="ab07-ed__bar"><span class="ab07-file"><svg class="xl-ico xl-ico--sm ab07-dim" aria-hidden="true"><use href="#i-code"/></svg> solution.cpp</span><div class="ds-seg" role="radiogroup" aria-label="Language"><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Go</button><button type="button" class="ds-seg__btn ds-seg__btn--on bd-focus" role="radio" aria-checked="true">C++</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Python</button></div></div>
+            <div class="ab07-ro" role="status"><span class="ab07-ic ab07-info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span>Switched to C++ — your Go draft is kept</span></div>
+            <div class="ab07-ed__body">
+<pre class="xl-code" aria-label="Code editor, C++"><span class="ab07-ln">1</span><span class="k">#include</span> <span class="s">&lt;vector&gt;</span>
+<span class="ab07-ln">2</span><span class="k">using namespace</span> std;
+<span class="ab07-ln">3</span>
+<span class="ab07-ln">4</span><span class="t">vector</span>&lt;<span class="t">vector</span>&lt;<span class="t">int</span>&gt;&gt; <span class="fn">threeSum</span>(
+<span class="ab07-ln">5</span>        <span class="t">vector</span>&lt;<span class="t">int</span>&gt;&amp; nums) {
+<span class="ab07-ln">6</span>
+<span class="ab07-ln">7</span>}</pre>
+            </div>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li><code>ds-seg</code> in the editor header lists only the item's languages. Switching keeps each language's draft (per attempt, per language) and loads the starter generated from the item's signature. The clock and outlook don't change. The status line is polite and fades after 6 s.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame" id="AB07-F13b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F13b</span><span class="bd-frame__title">· Compile error in your file</span><span class="bd-frame__state">· free · not counted</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab07-col" style="gap:12px">
+<pre class="xl-code" aria-label="Code editor, C++, lines 10 to 13"><span class="ab07-ln">10</span>    <span class="k">for</span> (<span class="t">int</span> i = <span class="n">0</span>; i &lt; n; i++) {
+<span class="ab07-ln">11</span>        <span class="t">int</span> want = -nums[i];
+<span class="ab07-ln ab07-ln--err">12</span>        <span class="k">if</span> (<span class="ab07-squig">seen</span>.<span class="fn">count</span>(want)) {
+<span class="ab07-ln">13</span>            pairs++;</pre>
+          <div class="ab07-verdict ab07-verdict--warn" role="status"><span class="ab07-ic ab07-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span><b>Compile error (not counted)</b> · line 12: 'seen' was not declared in this scope</span></div>
+          <p class="ab07-help">Outlook unchanged: <b>Clean possible · failed 0/3</b>.</p>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Diagnostics only at <b>learner-file</b> positions (t4 §2.6); line 12's number turns red and <code>seen</code> gets a wavy underline, and the message names the line in words — never colour alone. CE is a free class: not a failed submit (D18 counting). A compile error in hidden test files is AB08-F9's fixed text instead.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame" id="AB07-F13c">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB07-F13c</span><span class="bd-frame__title">· An item without C++</span><span class="bd-frame__state">· absent, not disabled</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--variant">variant</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab07-col" style="gap:12px">
+          <div class="ab07-ed__bar xl-panel" style="border-radius:var(--ds-radius)"><span class="ab07-file"><svg class="xl-ico xl-ico--sm ab07-dim" aria-hidden="true"><use href="#i-code"/></svg> solution.py</span><div class="ds-seg" role="radiogroup" aria-label="Language"><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Go</button><button type="button" class="ds-seg__btn ds-seg__btn--on" role="radio" aria-checked="true">Python</button></div></div>
+          <p class="ab07-help">A language the item doesn't list is simply not offered — no greyed-out button, no tooltip.</p>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>v1 showed a disabled C++ with "a C++ editor comes later"; v2 lists only the item's languages (D20). The cover (F1) uses the same list.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<!-- =================================================== narrow -->
+<section class="bd-section" id="AB07-F14" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">AB07-F14 · &lt; 1024 px (390 px shown) <small>Statement / Work / Results tabs · ring + outlook pinned · Run / Submit in a bottom bar</small></h2>
+  <p class="bd-section__p">Below 1024 px the three columns become <b>Statement · Work · Results</b> tabs (<code class="ds-mono">ds-tabs</code>). The ring and the outlook headline stay pinned in one sticky HUD row under the top bar; the stage stepper folds into the Statement tab. <b>Run / Submit sit in a bottom bar</b> on Work and Results (<code class="ds-mono">ds-btn--lg</code>, 42 px); Give up moves to the end of the Work tab, still a ghost button. Below 720 px the sidebar starts collapsed (AB02-F9) and the editor wraps long lines with no gutter. A new verdict marks the Results tab with a dot and announces politely; it never switches tabs by itself.</p>
+  <div class="bd-narrow-row">
+
+    <!-- N1 -->
+    <article class="bd-frame bd-narrow" id="AB07-N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1 · AB07-F1</span><span class="bd-frame__state">· cover</span></header>
+      <div class="bd-frame__body">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav"><a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a><a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a><a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a></nav>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab07-top" style="padding:0 12px;gap:8px"><div class="xl-crumb"><a>problems</a><span class="xl-crumb__sep">/</span><b>#16</b></div><span class="ab07-flex"></span><span class="ds-avatar xl-topbar__avatar">S</span></div>
+            <div class="ab07-nbody">
+              <div class="ab07-row" style="gap:8px"><span class="ab07-id">#16</span><b style="font-size:17px">3Sum</b><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs">Core</span></div>
+              <span class="ds-chip ds-chip--sm" style="align-self:flex-start"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-server"/></svg> Auto-graded · hidden tests</span>
+              <ul class="ab07-rules" aria-label="Rules for this attempt">
+                <li style="font-size:13px;padding:10px 12px"><span class="ab07-ic ab07-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span><span><b>45:00</b> · the timer starts when you start and doesn't pause</span></li>
+                <li style="font-size:13px;padding:10px 12px"><span class="ab07-ic ab07-info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-bulb"/></svg></span><span>The hint unlocks at 15:00 — opening it caps this attempt at <b>Assisted</b></span></li>
+                <li style="font-size:13px;padding:10px 12px"><span class="ab07-ic ab07-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span><b>Clean:</b> pass within 20:00, no hint, no coach, ≤ 3 failed submits</span></li>
+                <li style="font-size:13px;padding:10px 12px"><span class="ab07-ic ab07-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-flagx"/></svg></span><span>No pass by 45:00, or giving up, is a <b>Miss</b> — it comes back as a Day-1 review</span></li>
+              </ul>
+              <div class="ab07-lang"><span class="ab07-lab">Language</span><div class="ds-seg" role="radiogroup" aria-label="Language"><button type="button" class="ds-seg__btn ds-seg__btn--on" role="radio" aria-checked="true">Go</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">C++</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Python</button></div></div>
+              <span class="ds-btn ds-btn--primary ds-btn--lg ds-btn--block bd-focus" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start attempt · 45:00</span>
+              <span class="ab07-help">The statement appears when you start.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>No HUD row before Start: the clock hasn't started. Provenance ("Original · inspired by LeetCode 15 ↗") moves to the Statement tab's footer on phones.</li></ul></aside>
+    </article>
+
+    <!-- N2 -->
+    <article class="bd-frame bd-narrow" id="AB07-N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2 · AB07-F2</span><span class="bd-frame__state">· Work tab</span></header>
+      <div class="bd-frame__body">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav"><a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a><a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a><a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a></nav>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab07-top" style="padding:0 12px;gap:8px"><div class="xl-crumb"><a>problems</a><span class="xl-crumb__sep">/</span><b>#16</b></div><span class="ab07-flex"></span><span class="ds-avatar xl-topbar__avatar">S</span></div>
+            <div class="ab07-nhud">
+              <div class="ab07-nrow"><span class="ab07-id">#16</span><b style="font-size:14px">3Sum</b><span class="xl-diff xl-diff--med">Medium</span><span class="ab07-pinned" style="margin-left:auto">pinned</span></div>
+              <div class="ab07-nclock">
+                <div class="ab07-clock" role="timer" aria-label="32 minutes 10 seconds left of 45"><svg class="ab07-ring ab07-ring--sm" viewBox="0 0 44 44" aria-hidden="true"><circle class="xl-ring-track" cx="22" cy="22" r="19" fill="none" stroke-width="4"/><circle cx="22" cy="22" r="19" fill="none" stroke-width="4" stroke-linecap="round" style="stroke:var(--ds-teal)" stroke-dasharray="85.3 119.4"/></svg><div><div class="xl-timer__t ab07-t ab07-t--sm">32:10</div><div class="ab07-clock__s">left</div></div></div>
+                <div class="ab07-nout" role="status"><span class="ab07-ok" style="font-family:var(--ds-font-sans);font-size:12.5px;font-weight:700">Clean possible</span><span>failed 0/3</span></div>
+              </div>
+            </div>
+            <div class="ab07-ntabs"><div class="ds-tabs" role="tablist"><span class="ds-tab" role="tab" aria-selected="false">Statement</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Work</span><span class="ds-tab" role="tab" aria-selected="false">Results</span></div></div>
+            <div class="ab07-nbody" style="padding:10px">
+              <div class="ab07-row" style="gap:8px"><span class="ab07-file">solution.go</span><div class="ds-seg" role="radiogroup" aria-label="Language"><button type="button" class="ds-seg__btn ds-seg__btn--on" role="radio" aria-checked="true">Go</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">C++</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Py</button></div></div>
+              <span class="ab07-saved"><svg class="xl-ico xl-ico--sm ab07-ok" aria-hidden="true"><use href="#i-check"/></svg> Saved · 10 s ago</span>
+<pre class="xl-code" aria-label="Code editor, Go"><span class="k">func</span> <span class="fn">threeSum</span>(nums []<span class="t">int</span>)
+  [][]<span class="t">int</span> {
+  out := [][]<span class="t">int</span>{}
+  n := <span class="fn">len</span>(nums)
+  <span class="k">for</span> i := <span class="n">0</span>; i &lt; n; i++ {
+    <span class="k">for</span> j := i+<span class="n">1</span>; j &lt; n; j++ {
+      <span class="k">for</span> k := j+<span class="n">1</span>; k &lt; n;
+        k++ {</pre>
+              <span class="ab07-help"><span class="xl-kbd">Tab</span> indents · <span class="xl-kbd">Esc</span> then <span class="xl-kbd">Tab</span> leaves the editor</span>
+              <span class="ds-btn ds-btn--ghost ds-btn--sm" role="button" style="align-self:flex-start"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-flagx"/></svg> Give up…</span>
+            </div>
+            <div class="ab07-nbar"><span class="ds-btn ds-btn--secondary ds-btn--lg" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Run</span><span class="ds-btn ds-btn--primary ds-btn--lg" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-send"/></svg> Submit</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Pinned row: ring + outlook headline (the ladder is dropped). The seg label shortens Python to "Py" with <code>aria-label="Python"</code>. Keyboard shortcuts still work with a hardware keyboard.</li></ul></aside>
+    </article>
+
+    <!-- N3 -->
+    <article class="bd-frame bd-narrow" id="AB07-N3">
+      <header class="bd-frame__label"><span class="bd-frame__id">N3 · AB07-F2</span><span class="bd-frame__state">· Results tab after a Run</span></header>
+      <div class="bd-frame__body">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav"><a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a><a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a><a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a></nav>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab07-top" style="padding:0 12px;gap:8px"><div class="xl-crumb"><a>problems</a><span class="xl-crumb__sep">/</span><b>#16</b></div><span class="ab07-flex"></span><span class="ds-avatar xl-topbar__avatar">S</span></div>
+            <div class="ab07-nhud">
+              <div class="ab07-nclock">
+                <div class="ab07-clock" role="timer" aria-label="32 minutes 10 seconds left of 45"><svg class="ab07-ring ab07-ring--sm" viewBox="0 0 44 44" aria-hidden="true"><circle class="xl-ring-track" cx="22" cy="22" r="19" fill="none" stroke-width="4"/><circle cx="22" cy="22" r="19" fill="none" stroke-width="4" stroke-linecap="round" style="stroke:var(--ds-teal)" stroke-dasharray="85.3 119.4"/></svg><div><div class="xl-timer__t ab07-t ab07-t--sm">32:10</div><div class="ab07-clock__s">left</div></div></div>
+                <div class="ab07-nout" role="status"><span class="ab07-ok" style="font-family:var(--ds-font-sans);font-size:12.5px;font-weight:700">Clean possible</span><span>failed 0/3</span></div>
+              </div>
+            </div>
+            <div class="ab07-ntabs"><div class="ds-tabs" role="tablist"><span class="ds-tab" role="tab" aria-selected="false">Statement</span><span class="ds-tab" role="tab" aria-selected="false">Work</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Results</span></div></div>
+            <div class="ab07-nbody" style="padding:10px;gap:9px" aria-live="polite">
+              <div class="ds-seg" role="tablist" aria-label="Results" style="align-self:flex-start"><button type="button" class="ds-seg__btn ds-seg__btn--on" role="tab" aria-selected="true">Samples</button><button type="button" class="ds-seg__btn" role="tab" aria-selected="false">Submit</button><button type="button" class="ds-seg__btn" role="tab" aria-selected="false">History</button><button type="button" class="ds-seg__btn" role="tab" aria-selected="false">Feedback</button></div>
+              <div class="ab07-case"><div class="ab07-case__h"><span class="ab07-ic ab07-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab07-case__id">s1</span><span class="ab07-b" style="color:var(--ds-ok)">Passed</span></div></div>
+              <div class="ab07-case"><div class="ab07-case__h"><span class="ab07-ic ab07-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><span class="ab07-case__id">s2</span><span class="ab07-b" style="color:var(--ds-err)">Wrong answer</span></div>
+                <div class="ab07-case__b" style="grid-template-columns:62px minmax(0,1fr);padding-left:12px"><span>nums</span><span>[-2, 0, 0, 2, 2]</span><span>got</span><span>[[-2, 0, 2], [-2, 0, 2], [-2, 0, 2], [-2, 0, 2]]</span><span>expected</span><span>[[-2, 0, 2]]</span></div></div>
+              <div class="ab07-custom"><span class="ab07-b" style="font-size:12.5px">Custom input <span class="ab07-help">≤ 64 KiB</span></span><div class="ab07-custom__in">nums = [0, 0, 0, 0]</div><span class="ab07-help">Custom input — you'll see only your own output; there's no reference to compare against.</span></div>
+            </div>
+            <div class="ab07-nbar"><span class="ds-btn ds-btn--secondary ds-btn--lg" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Run</span><span class="ds-btn ds-btn--primary ds-btn--lg" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-send"/></svg> Submit</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>The dock's four tabs become a <code>ds-seg</code> inside the Results tab ("Submission" shortens to "Submit" with its full name as the accessible label). This is AB08-F18.</li></ul></aside>
+    </article>
+
+    <!-- N4 -->
+    <article class="bd-frame bd-narrow" id="AB07-N4">
+      <header class="bd-frame__label"><span class="bd-frame__id">N4 · AB07-F6</span><span class="bd-frame__state">· give-up modal</span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage ab07-stage" style="min-height:600px">
+          <div class="ab07-ghost" aria-hidden="true" style="grid-template-columns:1fr"><span style="height:560px"></span></div>
+          <div class="ds-modal__backdrop" style="padding:14px">
+            <div class="ds-modal__panel ds-modal--md" role="alertdialog" aria-modal="true" aria-labelledby="n4-t">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="n4-t">Give up and see the solution?</span></div>
+              <div class="ds-modal__body">
+                <ul class="ab07-modal-list" style="font-size:13.5px">
+                  <li>Your draft is sent for feedback.</li>
+                  <li>The solution unlocks now.</li>
+                  <li>This attempt is graded <b>Miss</b> — unless a submit that's still running passes.</li>
+                  <li>It comes back as a Day-1 review tomorrow, and a mistake entry opens.</li>
+                </ul>
+              </div>
+              <div class="ds-modal__footer" style="flex-direction:column-reverse;align-items:stretch"><span class="ds-btn ds-btn--lg ab07-danger" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-flagx"/></svg> Give up · Miss</span><span class="ds-btn ds-btn--primary ds-btn--lg bd-focus" role="button">Keep going</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Buttons stack full width; <b>Keep going</b> is on top and focused. Same copy as F6.</li></ul></aside>
+    </article>
+
+    <!-- N5 -->
+    <article class="bd-frame bd-narrow" id="AB07-N5">
+      <header class="bd-frame__label"><span class="bd-frame__id">N5 · AB07-F9</span><span class="bd-frame__state">· Results tab after a Miss</span></header>
+      <div class="bd-frame__body">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav"><a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a><a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a><a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a></nav>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab07-top" style="padding:0 12px;gap:8px"><div class="xl-crumb"><a>problems</a><span class="xl-crumb__sep">/</span><b>#16</b></div><span class="ab07-flex"></span><span class="ds-avatar xl-topbar__avatar">S</span></div>
+            <div class="ab07-nhud">
+              <div class="ab07-nrow"><span class="ab07-id">#16</span><b style="font-size:14px">3Sum</b><span class="xl-diff xl-diff--med">Medium</span><span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Two pointers</span></div>
+              <div class="ab07-clock ab07-clock--idle" role="timer" aria-label="Time's up at 45 minutes"><span class="xl-timer"><svg class="xl-ico xl-ico--sm ab07-err" aria-hidden="true"><use href="#i-flagx"/></svg><span class="xl-timer__t ab07-t ab07-t--sm">45:00</span></span><span class="ab07-clock__s" style="margin:0">time's up · ended</span></div>
+            </div>
+            <div class="ab07-ntabs"><div class="ds-tabs" role="tablist"><span class="ds-tab" role="tab" aria-selected="false">Solution</span><span class="ds-tab" role="tab" aria-selected="false">Work</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Results</span></div></div>
+            <div class="ab07-nbody" style="padding:10px">
+              <section class="ds-card ab07-concl ab07-card--err" role="status" aria-label="Result">
+                <div class="ab07-grade ab07-err" style="font-size:21px"><svg class="xl-ico" aria-hidden="true"><use href="#i-flagx"/></svg> Miss</div>
+                <span class="ab07-text" style="font-size:13px">time limit reached (45:00)</span>
+                <div class="ab07-prov"><span class="ds-chip ds-chip--xs"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-server"/></svg> Auto-graded · judge-checked · Go</span></div>
+                <div class="ab07-facts"><span>Best submit</span> 40/40 correct · too slow</div>
+                <span class="ab07-help"><b>Day-1 review tomorrow</b> · <a>Solution unlocked</a></span>
+                <div class="ab07-sep"></div>
+                <div class="ab07-mk">
+                  <div class="ab07-mk__h"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-journal"/></svg> Mistake entry</div>
+                  <div class="ab07-row" style="gap:6px"><span class="ds-chip ds-chip--sm ab07-text">Complexity misjudged</span><span class="ab07-sugg">suggested</span></div>
+                  <span class="ds-btn ds-btn--ghost ds-btn--sm" role="button" style="align-self:flex-start">Change category</span>
+                  <span class="ab07-help">— suggested from your result (correct, but too slow)</span>
+                  <textarea class="ab07-ta" aria-label="Root cause" placeholder="Root cause — what actually went wrong?"></textarea>
+                  <textarea class="ab07-ta" aria-label="Insight" placeholder="Insight — what will you do differently next time?"></textarea>
+                  <span class="ds-btn ds-btn--secondary ds-btn--block ds-btn--lg" role="button">Save to journal</span>
+                </div>
+                <span class="ab07-lab">Concepts to revise</span>
+                <div class="ab07-row" style="gap:6px"><span class="ds-chip ds-chip--sm">Two pointers</span><span class="ds-chip ds-chip--sm">Sorting to skip duplicates</span></div>
+                <span class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg" role="button">Next problem</span>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>After conclusion the Statement tab becomes <b>Solution</b> and the bottom bar is gone. The result card fills the Results tab; root cause and insight keep their accessible names (<code>aria-label</code>) while the placeholder carries the visible prompt.</li></ul></aside>
+    </article>
+
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB07 ★ · A1 Workspace-Code · drafted in ds-m3-01 · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only, never imported by <code class="ds-mono">web/</code>.
+  Sample data: #16 3Sum (the title only; the statement, samples, hint, editorial and reference code are written fresh for this board), the times, counts, dates and drafts. The pattern chip appears only from the hint stage or after conclusion (F5b′, F7, F12a, N5).
+  Re-implement appears only in the self-path variant F12a; the uncapped picker only there too.
+</footer>
+</main>
+</body>
+</html>
