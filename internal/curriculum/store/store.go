@@ -8,6 +8,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -87,6 +88,11 @@ type Problem struct {
 	LeetcodeURL     string
 	NeetcodeURL     string
 	IsReinforcement bool
+	// ContractHash and GradingSummary are read by GetProblem and GetProblemsByIDs only
+	// (m3-01): canon.ContractHash ("" on the self path) and the derived, answer-free
+	// grading summary (a JSON object).
+	ContractHash   string
+	GradingSummary json.RawMessage
 }
 
 // Section is one stage-scoped content section of a problem.
@@ -292,6 +298,8 @@ func (s *PgStore) GetProblem(ctx context.Context, id string) (Problem, error) {
 		LeetcodeURL:     r.LeetcodeUrl,
 		NeetcodeURL:     r.NeetcodeUrl,
 		IsReinforcement: r.IsReinforcement,
+		ContractHash:    r.ContractHash,
+		GradingSummary:  json.RawMessage(r.GradingSummary),
 	}, nil
 }
 
@@ -319,6 +327,8 @@ func (s *PgStore) GetProblemsByIDs(ctx context.Context, ids []string) ([]Problem
 			LeetcodeURL:     r.LeetcodeUrl,
 			NeetcodeURL:     r.NeetcodeUrl,
 			IsReinforcement: r.IsReinforcement,
+			ContractHash:    r.ContractHash,
+			GradingSummary:  json.RawMessage(r.GradingSummary),
 		})
 	}
 	return out, nil

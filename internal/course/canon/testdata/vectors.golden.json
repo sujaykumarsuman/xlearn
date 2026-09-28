@@ -1,0 +1,29 @@
+{
+  "item:valid-class.json": {
+    "content_hash": "sha256:4e627fbee9cee7df9b891e95ac33b4b35ea60e7f21a4a9902be9159b11ef5b8e",
+    "contract_hash": "sha256:e974594bbec221f77380415fdd489a320c2311bea0891a23698938b031596fd4",
+    "contract_bytes": "{\"parts\":[{\"id\":\"solution\",\"type\":\"code\",\"signature\":{\"mode\":\"class\",\"name\":\"RecentShelf\",\"params\":[\"int\"],\"ops\":[{\"name\":\"Fetch\",\"params\":[\"int\"],\"returns\":\"int\"},{\"name\":\"Place\",\"params\":[\"int\",\"int\"]}]},\"harness\":\"class-json@1\",\"checker\":{\"name\":\"exact\"}}],\"grader\":[{\"step\":\"tests\",\"kind\":\"code\",\"inputs\":[\"solution\"]}]}"
+  },
+  "item:valid-code.json": {
+    "content_hash": "sha256:6f90d9d1c006c5e70abe5f32b9c252fe8068a37842544cf177474d597fdbe7da",
+    "contract_hash": "sha256:6c07600adbd0daaa0bc4c7123a8e8b62a63d7821c7cbac5edbf80cc88135296a",
+    "contract_bytes": "{\"parts\":[{\"id\":\"solution\",\"type\":\"code\",\"signature\":{\"mode\":\"function\",\"name\":\"ballotLeader\",\"params\":[\"string[]\"],\"returns\":\"string\"},\"harness\":\"func-json@1\",\"checker\":{\"name\":\"exact\"}}],\"grader\":[{\"step\":\"tests\",\"kind\":\"code\",\"inputs\":[\"solution\"]}]}"
+  },
+  "item:valid-probes.json": {
+    "content_hash": "sha256:c6d71313f94d63645fbf136048b4330e0d39ddc183b898e96eebd6bf52fffcd1",
+    "contract_hash": "sha256:206b94b42f95b419e98c2727a3fbfb79a2e9a01bd5beff1121b7cfc1df424ed4",
+    "contract_bytes": "{\"probes\":[{\"id\":\"p-complexity\",\"type\":\"blank\",\"key_source\":\"public:solution_facts.complexity\",\"fields\":[{\"id\":\"space\",\"kind\":\"big_o\"},{\"id\":\"time\",\"kind\":\"big_o\"}]},{\"id\":\"p-pattern\",\"type\":\"text\",\"key_source\":\"public:pattern\"},{\"id\":\"p-structure\",\"type\":\"choice\",\"key_source\":\"pack\",\"mode\":\"single\",\"options\":[\"a\",\"b\",\"c\"]}]}"
+  },
+  "item:valid-self.json": {
+    "content_hash": "sha256:5ed12e8c205b8a24aae1c1fee022727b231ff238b69b78a68e1f08df47d02571",
+    "contract_hash": ""
+  },
+  "item:valid-structured.json": {
+    "content_hash": "sha256:9552cda7e4d9be98f18a3ee4999ff3e2c28fb715ae56dc5588f3fb4fda646a14",
+    "contract_hash": "sha256:cd8c6d598683ca9f7f8f991a7ec1b45410a92dac8950efd6bebea24f95185b27",
+    "contract_bytes": "{\"parts\":[{\"id\":\"est\",\"type\":\"blank\",\"fields\":[{\"id\":\"write_qps\",\"kind\":\"numeric\"}]},{\"id\":\"hld\",\"type\":\"canvas\",\"palette\":\"system-design/palette@1\"},{\"id\":\"pick\",\"type\":\"choice\",\"mode\":\"multi\",\"options\":[\"cdn\",\"queue\"]},{\"id\":\"reqs\",\"type\":\"text\",\"fields\":[{\"id\":\"functional\"},{\"id\":\"nonfunctional\"}]}],\"grader\":[{\"step\":\"design\",\"kind\":\"ai_rubric\",\"inputs\":[\"est\",\"hld\",\"reqs\"],\"rubric\":\"system-design/hld@1\"},{\"step\":\"estimates\",\"kind\":\"key\",\"inputs\":[\"est\"]}],\"assets\":[\"system-design/palette@1\"]}"
+  },
+  "manifest:dsa": {
+    "policy_version": "sha256:2dfa748702f5cb0e085de86754ae3842e0a7cedc2c9b159b31dd8e89c82beb3d"
+  }
+}

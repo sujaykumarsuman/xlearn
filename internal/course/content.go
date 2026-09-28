@@ -91,12 +91,26 @@ type Section struct {
 }
 
 // ResolvedItem is an item with its sidecars inlined: item.json plus every section, in
-// canonical order (stage attempt → hint → solution, then order, then language). It is
-// what the seed writes and what canon.ContentHash hashes.
+// canonical order (stage attempt → hint → solution, then order, then language), plus its
+// reference files. It is what the seed writes and what canon.ContentHash hashes.
 type ResolvedItem struct {
 	Item     Item      `json:"item"`
 	Sections []Section `json:"sections"`
+	// References are the item's public reference solutions, `_code/solution.<lang>`
+	// (whole, compilable files; m3-01), keyed by language = the file extension, as for
+	// code sections. They are not sections: nothing serves them yet, and packlint lock
+	// (m3-02) computes expected outputs from the Go one only. canon.ContentHash covers
+	// them.
+	References map[string]string `json:"references,omitempty"`
 }
+
+// ReferenceLanguages are the reference file extensions, `_code/solution.<lang>`. The
+// names are reserved for M3 references; converted section fragments are
+// `_code/<stage>-<NN>.<lang>.snip` and are never references.
+var ReferenceLanguages = []string{"go", "cpp", "py"}
+
+// ReferenceFile is the item-relative path of a language's reference file.
+func ReferenceFile(lang string) string { return "_code/solution." + lang }
 
 // StageRank orders stages for serving and hashing; an unknown stage sorts last.
 func StageRank(stage string) int {

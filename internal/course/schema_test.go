@@ -669,7 +669,7 @@ func superset(big, small []any) bool {
 // --- 5. fixtures ----------------------------------------------------------------------
 
 // validItemFixtures must decode, validate, and validate against their course manifest.
-var validItemFixtures = []string{"valid-self.json", "valid-code.json", "valid-probes.json", "valid-structured.json"}
+var validItemFixtures = []string{"valid-self.json", "valid-code.json", "valid-probes.json", "valid-structured.json", "valid-class.json"}
 
 // invalidItemFixtures must fail, for the stated reason.
 var invalidItemFixtures = map[string]string{

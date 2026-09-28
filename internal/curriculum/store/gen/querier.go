@@ -29,12 +29,15 @@ type Querier interface {
 	GetConcept(ctx context.Context, slug string) (GetConceptRow, error)
 	GetPath(ctx context.Context, slug string) (GetPathRow, error)
 	// Resolves any item by id, whatever its status (a retired item stays reachable).
+	// contract_hash and grading_summary (m3-01) are answer-free and served on this route only.
 	GetProblem(ctx context.Context, id string) (GetProblemRow, error)
 	// Bulk problem-metadata read: resolve many bare problem ids in ONE round-trip so the
 	// gateway can enrich the Revision due queue / mistake journal without N per-id GETs
 	// (ADR-0005: the gateway composes cross-context state; this keeps it a single query).
 	// Ordered by the same (week_n, sort_order, id) key as the path index for stability.
 	// Any status resolves (a retired item may still be on a learner's ladder).
+	// contract_hash and grading_summary are selected for internal callers; the bulk route
+	// does not serve them (m3-09/m3-12 decide list exposure).
 	GetProblemsByIDs(ctx context.Context, ids []string) ([]GetProblemsByIDsRow, error)
 	GetWeek(ctx context.Context, arg GetWeekParams) (GetWeekRow, error)
 	InsertSection(ctx context.Context, arg InsertSectionParams) error
@@ -75,7 +78,8 @@ type Querier interface {
 	// The id guard (t1 §4): an id is never re-parented. The DO UPDATE applies only when the
 	// stored row is in the same course, so a move affects 0 rows and the seed aborts unless
 	// exactly 1 row is affected. Writes the v2 columns and dual-writes the v1 ones
-	// (is_reinforcement, leetcode_url, neetcode_url) from them until M1c.
+	// (is_reinforcement, leetcode_url, neetcode_url) from them until M1c. contract_hash and
+	// grading_summary (00004, m3-01) come from canon and the item's parts.
 	UpsertProblem(ctx context.Context, arg UpsertProblemParams) (int64, error)
 	UpsertWeek(ctx context.Context, arg UpsertWeekParams) (pgtype.UUID, error)
 }

@@ -47,13 +47,18 @@ jobs:
           sqlc-version: "1.31.1"
       - run: sqlc diff
 
-  # Public content checks (m1-09; t1 §7.2): cmd/contentlint over curriculum/ (schema +
-  # strict decode, id/slug guards vs ids.lock.json and the previous release tag — hence
-  # fetch-depth 0 —, the Markdown profile, filename rules, the embedded-file allowlist),
-  # then the seeded-row snapshot and the loader/re-seed/migration tests on PG 18 under
-  # the least-privilege curriculum role.
+  # Public content checks (m1-09, m3-01; t1 §7.2): cmd/contentlint over curriculum/
+  # (schema + strict decode, id/slug guards vs ids.lock.json and the previous release tag —
+  # hence fetch-depth 0 —, the t4 §5.6 structure lints, the hints/editorial stamp gate and
+  # the label-edit flag against the PR base, the Markdown profile, filename rules, the
+  # repo-wide pack-artefact pass, the embedded-file allowlists), then the seeded-row
+  # snapshot and the loader/re-seed/migration tests on PG 18 under the least-privilege
+  # curriculum role. packlint's fingerprint scan never runs here (it needs the private pack).
   content:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     services:
       postgres:
         image: postgres:18
@@ -74,8 +79,21 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      # The diff gates compare against the PR's base (HEAD^1 of the merge ref) or the
+      # push's previous head. The PR body (label-edit-ok: <item>/<part>/<id>) is read at
+      # run time, so re-running the job after editing the body picks the edit up.
       - name: contentlint
-        run: make contentlint
+        env:
+          CONTENTLINT_BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || github.event.before }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if [ -n "$PR_NUMBER" ]; then
+            CONTENTLINT_PR_BODY=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.body // ""') || CONTENTLINT_PR_BODY=$EVENT_PR_BODY
+            export CONTENTLINT_PR_BODY
+          fi
+          make contentlint
       - name: Curriculum role + schema (least privilege, the CNPG model)
         env:
           PGHOST: localhost
@@ -94,7 +112,7 @@ jobs:
       - name: Curriculum loader, re-seed and migration tests
         env:
           XLEARN_TEST_DATABASE_URL: postgres://xlearn_curriculum:pw@localhost:5432/xlearndb?sslmode=disable
-        run: go test -race -count=1 -p 1 ./internal/curriculum/... ./internal/course/... ./cmd/contentlint/
+        run: go test -race -count=1 -p 1 ./internal/curriculum/... ./internal/course/... ./internal/packspec/... ./cmd/contentlint/ ./cmd/packlint/
 
   # NATS-auth integration test (mi-05, ADR-0035 §2 "Verification before any seed is
   # mounted"): boots the prod minor (nats:2.14, deploy/local/nats-acl.compose.yml) with

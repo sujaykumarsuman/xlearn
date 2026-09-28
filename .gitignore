@@ -8,6 +8,12 @@ web/node_modules/
 web/dist/*
 !web/dist/.gitkeep
 
+# The private eval pack is a SIBLING checkout, never nested here (ADR-0027 §1, t1 §3.2):
+# a directory of either name, at any depth, is never committed. (Hence internal/packspec,
+# never internal/evalpack.)
+evalpack/
+xlearn-evalpack/
+
 # Local artefacts
 *.local
 *.env

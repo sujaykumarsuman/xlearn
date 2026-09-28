@@ -87,7 +87,11 @@ type SeedProblem struct {
 	Links       []SeedLink
 	SortOrder   int
 	ContentHash string
-	Sections    []SeedSection
+	// ContractHash is canon.ContractHash ("" on the self path); GradingSummary is the
+	// derived, answer-free JSON object ({"mode":"self"} on the self path). m3-01.
+	ContractHash   string
+	GradingSummary json.RawMessage
+	Sections       []SeedSection
 }
 
 // SeedLink is one outbound link ({kind, url}), stored in problem.links.
@@ -255,6 +259,10 @@ func (s *PgStore) SeedAll(ctx context.Context, content SeedContent) (SeedReport,
 		if err != nil {
 			return report, fmt.Errorf("problem %q links: %w", pr.ID, err)
 		}
+		summary := []byte(pr.GradingSummary)
+		if len(summary) == 0 {
+			summary = []byte("{}")
+		}
 		n, err := q.UpsertProblem(ctx, gen.UpsertProblemParams{
 			ID:              pr.ID,
 			PathSlug:        pr.PathSlug,
@@ -270,6 +278,8 @@ func (s *PgStore) SeedAll(ctx context.Context, content SeedContent) (SeedReport,
 			Status:          pr.Status,
 			Links:           links,
 			ContentHash:     pr.ContentHash,
+			ContractHash:    pr.ContractHash,
+			GradingSummary:  summary,
 		})
 		if err != nil {
 			return report, fmt.Errorf("upsert problem %q: %w", pr.ID, err)

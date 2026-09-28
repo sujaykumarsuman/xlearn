@@ -7,3 +7,7 @@ web/dist/
 docs/
 design-system/
 .github/
+# A nested private eval-pack clone must never reach a build context (t1 §10; Docker
+# patterns are not recursive without **).
+**/evalpack
+**/xlearn-evalpack

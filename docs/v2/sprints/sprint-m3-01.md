@@ -9,18 +9,18 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done 2026-09-28 ([PR #87](https://github.com/sujaykumarsuman/xlearn/pull/87), run r-21; merge only — ships dark in the next app tag). Decisions: [status.md decisions log](../status.md#decisions-log). Post-ship owner event `ev-hook-install` ⬜ (not a task; [status.md](../status.md#owner-calendar-events)).
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Canonical hash package `internal/course/canon` (+ field classification, golden vectors) | X | ⬜ |
-| 2 | `internal/packspec` source types + `cmd/packlint` (`check`, `hash`) | X | ⬜ |
-| 3 | Public content gates deferred from m1-09: stamp gate, label-edit flag, t4 §5.6 structure lints | X | ⬜ |
-| 4 | Pre-push fingerprint hook (`packlint fingerprint`) + `make install-hooks` | X | ⬜ |
-| 5 | Repo hygiene: `.gitignore` / `.dockerignore`, AGENT.md rule, leak-lint extensions | X | ⬜ |
-| 6 | Authoring guide `docs/v2/authoring.md` | X | ⬜ |
-| 7 | curriculum `contract_hash` + `grading_summary` (migration `00004`, seed, `GET /problems/{id}`) | X | ⬜ |
-| 8 | Verify + record | X | ⬜ |
+| 1 | Canonical hash package `internal/course/canon` (+ field classification, golden vectors) | X | ✅ |
+| 2 | `internal/packspec` source types + `cmd/packlint` (`check`, `hash`) | X | ✅ |
+| 3 | Public content gates deferred from m1-09: stamp gate, label-edit flag, t4 §5.6 structure lints | X | ✅ |
+| 4 | Pre-push fingerprint hook (`packlint fingerprint`) + `make install-hooks` | X | ✅ |
+| 5 | Repo hygiene: `.gitignore` / `.dockerignore`, AGENT.md rule, leak-lint extensions | X | ✅ |
+| 6 | Authoring guide `docs/v2/authoring.md` | X | ✅ |
+| 7 | curriculum `contract_hash` + `grading_summary` (migration `00004`, seed, `GET /problems/{id}`) | X | ✅ |
+| 8 | Verify + record | X | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row,
@@ -28,13 +28,13 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] Item schema frozen: [m1-01](sprint-m1-01.md) merged (`internal/course` item + manifest types, `curriculum/_schema/*.schema.json`,
+- [x] Item schema frozen: [m1-01](sprint-m1-01.md) merged (`internal/course` item + manifest types, `curriculum/_schema/*.schema.json`,
       the freeze guard) and `ev-schema-freeze` recorded in [`../status.md`](../status.md)
-- [ ] [m1-09](sprint-m1-09.md) merged — **a gate for the whole sprint**, not only task 7: it creates the loader's resolved item type
+- [x] [m1-09](sprint-m1-09.md) merged — **a gate for the whole sprint**, not only task 7: it creates the loader's resolved item type
       and `canon.ContentHash` (task 1 extends them), `cmd/contentlint` and the `content` CI job (tasks 3, 5 and 8 extend them),
       `curriculum/README.md` (task 6 links from it) and curriculum `00002` + `00003` with `problem.content_hash` (task 7 takes the
       next free number, `00004`). Never take `00002`/`00003`.
-- [ ] Parallel sessions: no open PR creates `internal/course/canon` (beyond m1-09's `ContentHash`), `internal/packspec`, `cmd/packlint`,
+- [x] Parallel sessions: no open PR creates `internal/course/canon` (beyond m1-09's `ContentHash`), `internal/packspec`, `cmd/packlint`,
       `hack/git-hooks/` or a curriculum migration (`gh pr list`, `git worktree list`, ListAgents) — one definition.
 
 _Informational, not a gate:_ `internal/course/canon` normally exists on `main` (m1-09 created `ContentHash`), so task 1 **extends** it.
@@ -48,7 +48,7 @@ delivers the **T25/T26** line.
 - [ ] Spike P0–P3 **GO** and the image-volume spike **GO** (MI-10)
 - [ ] MI-4, MI-5, **MI-5a**, **MI-7 (N3)**, MI-9, MI-11, **MI-11a**, MI-12 and MI-13 done
 - [ ] **MI-8: `host-verify --cluster` (extended) green.** The memory sum, *with the runner's 3 GiB counted*, is ≤ capacity − 0.5 GiB; no OOMKills; PVCs < 60%; NATS `auth_required`; the NetworkPolicies are present
-- [ ] T25/T26 tooling (pre-push fingerprint hook, packlint, `contract_hash`)
+- [x] T25/T26 tooling (pre-push fingerprint hook, packlint, `contract_hash`) — this sprint
 - [ ] **14 pilot packs stamped** (Go, C++ and Python references; about 28–41 owner hours)
 - [ ] `account.role` live (M1a), so the owner and tester cohort gates judge features
 - [ ] TR-STEAL not firing (sar p95 read by `host-verify`), or R2 planned
@@ -336,14 +336,14 @@ Add a one-line pointer from `curriculum/README.md` (m1-09) to the guide.
 
 ## Acceptance criteria
 
-- [ ] Hash golden vectors stable (committed vectors + round-trip test); the classification test covers every `course.Item` field.
-- [ ] A prompt edit changes `content_hash` only; a signature, harness, checker-param or option-id edit changes `contract_hash` (mutation table); reformatting or respelling a number (`1e-6` ↔ `0.000001`) moves neither.
-- [ ] `packlint check` flags a stale contract hash (exit 1, naming the live and the accepted hashes).
-- [ ] The hook blocks a planted hidden-case string (test + manual push to a local bare remote) without printing it; with no pack dir it is a no-op.
-- [ ] The stamp gate, the label-edit flag and the t4 §5.6 structure lints run in the public `content` job.
-- [ ] `.gitignore`/`.dockerignore` list both pack directory names; AGENT.md carries the never-copy rule; `docs/v2/authoring.md` exists.
-- [ ] The repo-wide pack-artefact pass fails on a `tests.lock` / `cases.jsonl*` / `*.jsonl.zst` outside a `SYNTHETIC.md`-marked `internal/**/testdata/` tree and passes inside one (test).
-- [ ] `problem.contract_hash` + `grading_summary` are seeded (migration `00004`) and `GET /problems/{id}` shows the prefix; `sqlc diff` clean; every v1 e2e green.
+- [x] Hash golden vectors stable (committed vectors + round-trip test); the classification test covers every `course.Item` field.
+- [x] A prompt edit changes `content_hash` only; a signature, harness, checker-param or option-id edit changes `contract_hash` (mutation table); reformatting or respelling a number (`1e-6` ↔ `0.000001`) moves neither.
+- [x] `packlint check` flags a stale contract hash (exit 1, naming the live and the accepted hashes).
+- [x] The hook blocks a planted hidden-case string (test + manual push to a local bare remote) without printing it; with no pack dir it is a no-op.
+- [x] The stamp gate, the label-edit flag and the t4 §5.6 structure lints run in the public `content` job.
+- [x] `.gitignore`/`.dockerignore` list both pack directory names; AGENT.md carries the never-copy rule; `docs/v2/authoring.md` exists.
+- [x] The repo-wide pack-artefact pass fails on a `tests.lock` / `cases.jsonl*` / `*.jsonl.zst` outside a `SYNTHETIC.md`-marked `internal/**/testdata/` tree and passes inside one (test).
+- [x] `problem.contract_hash` + `grading_summary` are seeded (migration `00004`) and `GET /problems/{id}` shows the prefix; `sqlc diff` clean; every v1 e2e green.
 
 ## Release
 

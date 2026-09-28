@@ -1,0 +1,47 @@
+#!/bin/sh
+# pre-push — the private eval-pack fingerprint scan (sprint m3-01; t1 §7.2, §10).
+#
+# The only check that sees both repos BEFORE anything is public: a slip into the public
+# repo is permanent (PR refs, forks, SHA reachability). Installed per clone with
+# `make install-hooks` (git config core.hooksPath hack/git-hooks).
+#
+# The pack is $XLEARN_EVALPACK_DIR, else the xlearn-evalpack sibling of the MAIN checkout
+# (so every worktree of the clone finds it). No pack directory -> exit 0 silently (CI,
+# other machines, clones without the sibling). Otherwise `packlint fingerprint --pre-push`
+# scans every outgoing commit's added lines and messages; a hit blocks the push and names
+# the file, the line and the pack file, never the data.
+#
+# Never bypass it with `git push --no-verify` without the owner's explicit decision; the
+# private CI's tree scan is the backstop, not a substitute.
+set -u
+
+common=$(cd "$(git rev-parse --git-common-dir 2>/dev/null)" 2>/dev/null && pwd -P) || exit 0
+pack=${XLEARN_EVALPACK_DIR:-$(dirname "$common")/../xlearn-evalpack}
+[ -d "$pack" ] || exit 0
+
+root=$(git rev-parse --show-toplevel) || exit 1
+input=$(cat)
+
+run_packlint() {
+	printf '%s\n' "$input" | "$@" fingerprint --pre-push --pack "$pack" --repo "$root"
+}
+
+if [ -n "${XLEARN_PACKLINT:-}" ]; then
+	run_packlint "$XLEARN_PACKLINT"
+	exit $?
+fi
+
+bin="$root/bin/packlint"
+if [ ! -x "$bin" ] || [ -n "$(find "$root/cmd/packlint" "$root/internal/packspec" "$root/internal/course" -newer "$bin" -type f 2>/dev/null | head -n 1)" ]; then
+	if ! (cd "$root" && go build -o bin/packlint ./cmd/packlint) >&2; then
+		echo "pre-push: cannot build bin/packlint; trying go run" >&2
+		(cd "$root" && run_packlint go run ./cmd/packlint)
+		status=$?
+		[ "$status" -eq 0 ] || echo "pre-push: the fingerprint scan failed or found pack data; the push is blocked" >&2
+		exit "$status"
+	fi
+fi
+run_packlint "$bin"
+status=$?
+[ "$status" -eq 0 ] || echo "pre-push: the push is blocked (see above)" >&2
+exit "$status"

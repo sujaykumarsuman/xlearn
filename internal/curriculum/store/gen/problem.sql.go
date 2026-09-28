@@ -26,7 +26,8 @@ const getProblem = `-- name: GetProblem :one
 SELECT id, path_slug, week_n, title, difficulty, pattern,
        COALESCE(leetcode_url, '')::text AS leetcode_url,
        COALESCE(neetcode_url, '')::text AS neetcode_url,
-       COALESCE(is_reinforcement, role = 'reinforcement')::boolean AS is_reinforcement
+       COALESCE(is_reinforcement, role = 'reinforcement')::boolean AS is_reinforcement,
+       contract_hash, grading_summary
 FROM curriculum.problem
 WHERE id = $1
 `
@@ -41,9 +42,12 @@ type GetProblemRow struct {
 	LeetcodeUrl     string
 	NeetcodeUrl     string
 	IsReinforcement bool
+	ContractHash    string
+	GradingSummary  []byte
 }
 
 // Resolves any item by id, whatever its status (a retired item stays reachable).
+// contract_hash and grading_summary (m3-01) are answer-free and served on this route only.
 func (q *Queries) GetProblem(ctx context.Context, id string) (GetProblemRow, error) {
 	row := q.db.QueryRow(ctx, getProblem, id)
 	var i GetProblemRow
@@ -57,6 +61,8 @@ func (q *Queries) GetProblem(ctx context.Context, id string) (GetProblemRow, err
 		&i.LeetcodeUrl,
 		&i.NeetcodeUrl,
 		&i.IsReinforcement,
+		&i.ContractHash,
+		&i.GradingSummary,
 	)
 	return i, err
 }
@@ -65,7 +71,8 @@ const getProblemsByIDs = `-- name: GetProblemsByIDs :many
 SELECT id, path_slug, week_n, title, difficulty, pattern,
        COALESCE(leetcode_url, '')::text AS leetcode_url,
        COALESCE(neetcode_url, '')::text AS neetcode_url,
-       COALESCE(is_reinforcement, role = 'reinforcement')::boolean AS is_reinforcement
+       COALESCE(is_reinforcement, role = 'reinforcement')::boolean AS is_reinforcement,
+       contract_hash, grading_summary
 FROM curriculum.problem
 WHERE id = ANY($1::text[])
 ORDER BY week_n, sort_order, id
@@ -81,6 +88,8 @@ type GetProblemsByIDsRow struct {
 	LeetcodeUrl     string
 	NeetcodeUrl     string
 	IsReinforcement bool
+	ContractHash    string
+	GradingSummary  []byte
 }
 
 // Bulk problem-metadata read: resolve many bare problem ids in ONE round-trip so the
@@ -88,6 +97,8 @@ type GetProblemsByIDsRow struct {
 // (ADR-0005: the gateway composes cross-context state; this keeps it a single query).
 // Ordered by the same (week_n, sort_order, id) key as the path index for stability.
 // Any status resolves (a retired item may still be on a learner's ladder).
+// contract_hash and grading_summary are selected for internal callers; the bulk route
+// does not serve them (m3-09/m3-12 decide list exposure).
 func (q *Queries) GetProblemsByIDs(ctx context.Context, ids []string) ([]GetProblemsByIDsRow, error) {
 	rows, err := q.db.Query(ctx, getProblemsByIDs, ids)
 	if err != nil {
@@ -107,6 +118,8 @@ func (q *Queries) GetProblemsByIDs(ctx context.Context, ids []string) ([]GetProb
 			&i.LeetcodeUrl,
 			&i.NeetcodeUrl,
 			&i.IsReinforcement,
+			&i.ContractHash,
+			&i.GradingSummary,
 		); err != nil {
 			return nil, err
 		}
@@ -276,14 +289,14 @@ const upsertProblem = `-- name: UpsertProblem :execrows
 INSERT INTO curriculum.problem (
     id, path_slug, week_n, title, difficulty, pattern,
     leetcode_url, neetcode_url, is_reinforcement, sort_order,
-    role, status, retired_at, links, content_hash
+    role, status, retired_at, links, content_hash, contract_hash, grading_summary
 )
 VALUES (
     $1, $2, $3, $4, $5, $6,
     $7, $8, $9, $10,
     $11, $12,
     CASE WHEN $12::text = 'live' THEN NULL ELSE now() END,
-    $13, $14
+    $13, $14, $15, $16
 )
 ON CONFLICT (id) DO UPDATE SET
     week_n           = EXCLUDED.week_n,
@@ -300,7 +313,9 @@ ON CONFLICT (id) DO UPDATE SET
     retired_at       = CASE WHEN EXCLUDED.status = 'live' THEN NULL
                             ELSE COALESCE(curriculum.problem.retired_at, now()) END,
     links            = EXCLUDED.links,
-    content_hash     = EXCLUDED.content_hash
+    content_hash     = EXCLUDED.content_hash,
+    contract_hash    = EXCLUDED.contract_hash,
+    grading_summary  = EXCLUDED.grading_summary
 WHERE curriculum.problem.path_slug = EXCLUDED.path_slug
 `
 
@@ -319,12 +334,15 @@ type UpsertProblemParams struct {
 	Status          string
 	Links           []byte
 	ContentHash     string
+	ContractHash    string
+	GradingSummary  []byte
 }
 
 // The id guard (t1 §4): an id is never re-parented. The DO UPDATE applies only when the
 // stored row is in the same course, so a move affects 0 rows and the seed aborts unless
 // exactly 1 row is affected. Writes the v2 columns and dual-writes the v1 ones
-// (is_reinforcement, leetcode_url, neetcode_url) from them until M1c.
+// (is_reinforcement, leetcode_url, neetcode_url) from them until M1c. contract_hash and
+// grading_summary (00004, m3-01) come from canon and the item's parts.
 func (q *Queries) UpsertProblem(ctx context.Context, arg UpsertProblemParams) (int64, error) {
 	result, err := q.db.Exec(ctx, upsertProblem,
 		arg.ID,
@@ -341,6 +359,8 @@ func (q *Queries) UpsertProblem(ctx context.Context, arg UpsertProblemParams) (i
 		arg.Status,
 		arg.Links,
 		arg.ContentHash,
+		arg.ContractHash,
+		arg.GradingSummary,
 	)
 	if err != nil {
 		return 0, err

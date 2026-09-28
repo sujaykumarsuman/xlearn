@@ -46,7 +46,8 @@ var fullSnapshotQueries = []struct {
 		JOIN curriculum.concept c ON c.id = wc.concept_id
 		ORDER BY w.path_slug COLLATE "C", w.n, c.slug COLLATE "C"`},
 	{"problem", `SELECT id, path_slug, week_n, title, difficulty, pattern, leetcode_url, neetcode_url,
-			is_reinforcement, sort_order, role, status, retired_at IS NOT NULL AS retired, links, content_hash
+			is_reinforcement, sort_order, role, status, retired_at IS NOT NULL AS retired, links, content_hash,
+			contract_hash, grading_summary
 		FROM curriculum.problem ORDER BY path_slug COLLATE "C", id COLLATE "C"`},
 	{"problem_section", `SELECT problem_id, stage, "order", language, kind, body_md, code
 		FROM curriculum.problem_section
@@ -142,6 +143,9 @@ func TestSeedV2Columns(t *testing.T) {
 			(CASE WHEN leetcode_url <> '' THEN jsonb_build_array(jsonb_build_object('kind','leetcode','url',leetcode_url)) ELSE '[]'::jsonb END)
 			|| (CASE WHEN neetcode_url <> '' THEN jsonb_build_array(jsonb_build_object('kind','neetcode','url',neetcode_url)) ELSE '[]'::jsonb END)`},
 		{"content_hash is set", `SELECT count(*) FROM curriculum.problem WHERE content_hash NOT LIKE 'sha256:%'`},
+		// 00004 (m3-01): every v1 item is on the self path.
+		{"self-path items have no contract_hash", `SELECT count(*) FROM curriculum.problem WHERE contract_hash <> ''`},
+		{"self-path items summarize as self", `SELECT count(*) FROM curriculum.problem WHERE grading_summary <> '{"mode": "self"}'::jsonb`},
 		{"code sections are go, prose none", `SELECT count(*) FROM curriculum.problem_section
 			WHERE language <> CASE WHEN kind = 'code' THEN 'go' ELSE '' END`},
 		{"templates mirror code_template", `SELECT count(*) FROM curriculum.concept
@@ -174,19 +178,130 @@ func TestSeedV2Columns(t *testing.T) {
 			t.Errorf("path %s: id_prefix %v, want %q", cc.Slug, prefix, content.Manifests[cc.Slug].IDPrefix)
 		}
 		for i := range cc.Items {
-			want, err := canon.ContentHash(&cc.Items[i])
-			if err != nil {
-				t.Fatal(err)
-			}
-			var got string
-			if err := pool.QueryRow(ctx, `SELECT content_hash FROM curriculum.problem WHERE id = $1`, cc.Items[i].Item.ID).Scan(&got); err != nil {
-				t.Fatal(err)
-			}
-			if got != want {
-				t.Errorf("item %s: content_hash %s, want %s", cc.Items[i].Item.ID, got, want)
-			}
+			assertStoredHashes(t, pool, &cc.Items[i])
 		}
 	}
+}
+
+// assertStoredHashes checks one item's content_hash, contract_hash and grading_summary
+// against canon and SummarizeGrading over the loaded item.
+func assertStoredHashes(t *testing.T, pool *pgxpool.Pool, ri *course.ResolvedItem) {
+	t.Helper()
+	wantContent, err := canon.ContentHash(ri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantContract, err := canon.ContractHash(&ri.Item)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantSummary, err := json.Marshal(SummarizeGrading(&ri.Item))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var content, contract, summary string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT content_hash, contract_hash, grading_summary::text FROM curriculum.problem WHERE id = $1`, ri.Item.ID).
+		Scan(&content, &contract, &summary); err != nil {
+		t.Fatal(err)
+	}
+	if content != wantContent {
+		t.Errorf("item %s: content_hash %s, want %s", ri.Item.ID, content, wantContent)
+	}
+	if contract != wantContract {
+		t.Errorf("item %s: contract_hash %q, want %q", ri.Item.ID, contract, wantContract)
+	}
+	var got, want any
+	_ = json.Unmarshal([]byte(summary), &got)
+	_ = json.Unmarshal(wantSummary, &want)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("item %s: grading_summary %s, want %s", ri.Item.ID, summary, wantSummary)
+	}
+}
+
+// m3-01 task 7: an item that gains a graded part is seeded with canon's contract_hash
+// and an auto summary; a content-only edit then moves content_hash only; re-seeding
+// changes nothing; a contract edit moves both.
+func TestReseedContractHash(t *testing.T) {
+	pool := freshSeeded(t)
+	ctx := context.Background()
+	code := codeFixture(t)
+
+	m := contentFS(t)
+	editJSON(t, m, "courses/dsa/items/1/item.json", func(it *course.Item) {
+		it.Parts, it.Grader, it.SolutionFacts = code.Parts, code.Grader, code.SolutionFacts
+	})
+	mustSeed(t, pool, m)
+	c1, err := LoadContent(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	item1 := func(c *Content) *course.ResolvedItem {
+		for _, cc := range c.Courses {
+			for i := range cc.Items {
+				if cc.Items[i].Item.ID == "1" {
+					return &cc.Items[i]
+				}
+			}
+		}
+		t.Fatal("item 1 missing")
+		return nil
+	}
+	assertStoredHashes(t, pool, item1(c1))
+	read := func() (content, contract, mode string) {
+		t.Helper()
+		if err := pool.QueryRow(ctx, `SELECT content_hash, contract_hash, grading_summary->>'mode' FROM curriculum.problem WHERE id = '1'`).
+			Scan(&content, &contract, &mode); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	content1, contract1, mode := read()
+	if !strings.HasPrefix(contract1, "sha256:") || mode != ModeAuto {
+		t.Fatalf("item 1 with a graded code part: contract %q, mode %q", contract1, mode)
+	}
+
+	// Re-seed: idempotent.
+	before := fullRows(t, pool)
+	mustSeed(t, pool, m)
+	if d := diffFull(before, fullRows(t, pool)); len(d) > 0 {
+		t.Fatalf("re-seeding changed rows:\n%s", strings.Join(d, "\n"))
+	}
+
+	// A content-only edit (the time limit) moves content_hash only.
+	editJSON(t, m, "courses/dsa/items/1/item.json", func(it *course.Item) { it.Parts[0].Config.Limits.TimeMS = 3000 })
+	mustSeed(t, pool, m)
+	content2, contract2, _ := read()
+	if content2 == content1 || contract2 != contract1 {
+		t.Fatalf("limits edit: content %v moved, contract %v moved (want true, false)", content2 != content1, contract2 != contract1)
+	}
+
+	// A contract edit (the harness version) moves both.
+	editJSON(t, m, "courses/dsa/items/1/item.json", func(it *course.Item) { it.Parts[0].Config.Harness = "func-json@2" })
+	mustSeed(t, pool, m)
+	content3, contract3, _ := read()
+	if content3 == content2 || contract3 == contract2 {
+		t.Fatal("a harness bump must move both hashes")
+	}
+	c3, err := LoadContent(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertStoredHashes(t, pool, item1(c3))
+}
+
+// codeFixture is m1-01's valid-code.json fixture item.
+func codeFixture(t *testing.T) *course.Item {
+	t.Helper()
+	b, err := os.ReadFile("../course/testdata/items/valid-code.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	it, err := course.DecodeItem(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return it
 }
 
 func TestReseedIsIdempotent(t *testing.T) {
@@ -611,7 +726,8 @@ END $$`); err != nil {
 	}
 	backfilled := fullRows(t, pool)
 	for _, r := range backfilled["problem"] {
-		if r["role"] != "core" || r["status"] != "live" || r["retired"] != false || r["content_hash"] != "" {
+		if r["role"] != "core" || r["status"] != "live" || r["retired"] != false || r["content_hash"] != "" ||
+			r["contract_hash"] != "" || fmt.Sprint(r["grading_summary"]) != "map[]" {
 			t.Errorf("backfilled problem %v", r)
 		}
 	}

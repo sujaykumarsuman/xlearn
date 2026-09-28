@@ -263,6 +263,53 @@ func TestLoadSecondLanguageAtSameOrder(t *testing.T) {
 	}
 }
 
+// Reference files `_code/solution.{go,cpp,py}` load as the item's References (not
+// sections), move content_hash, and are the only whole-file names under _code/.
+func TestLoadReferenceFiles(t *testing.T) {
+	m := contentFS(t)
+	goRef := "package solution\n\nfunc containsDuplicate(nums []int) bool { return false }\n"
+	m["courses/dsa/items/1/_code/solution.go"] = &fstest.MapFile{Data: []byte(goRef)}
+	m["courses/dsa/items/1/_code/solution.py"] = &fstest.MapFile{Data: []byte("def f():\n    pass\n")}
+	c, err := LoadContent(m)
+	if err != nil {
+		t.Fatalf("reference files must load: %v", err)
+	}
+	base, err := LoadContent(seeddata.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	find := func(c *Content) *course.ResolvedItem {
+		for _, cc := range c.Courses {
+			for i := range cc.Items {
+				if cc.Items[i].Item.ID == "1" {
+					return &cc.Items[i]
+				}
+			}
+		}
+		t.Fatal("item 1 not loaded")
+		return nil
+	}
+	ri, bi := find(c), find(base)
+	if ri.References["go"] != goRef || ri.References["py"] == "" || len(ri.References) != 2 {
+		t.Fatalf("References = %v", ri.References)
+	}
+	if len(ri.Sections) != len(bi.Sections) {
+		t.Fatalf("a reference file became a section: %d sections, want %d", len(ri.Sections), len(bi.Sections))
+	}
+	h1, _ := canon.ContentHash(ri)
+	h0, _ := canon.ContentHash(bi)
+	if h1 == h0 {
+		t.Fatal("adding a reference file did not move content_hash")
+	}
+	for _, bad := range []string{"_code/solution.java", "_code/reference.go", "_code/solution-1.go"} {
+		m := contentFS(t)
+		m["courses/dsa/items/1/"+bad] = &fstest.MapFile{Data: []byte("x")}
+		if _, err := LoadContent(m); err == nil {
+			t.Errorf("%s loaded; want an unexpected-file error", bad)
+		}
+	}
+}
+
 // The content hash is computed over the resolved item and moves with any edit.
 func TestSeedContentHashes(t *testing.T) {
 	base, err := LoadContent(seeddata.FS)
