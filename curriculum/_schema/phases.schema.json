@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://projects.sujaykumar.dev/xlearn/schema/phases.schema.json",
+  "title": "xLearn course phases",
+  "description": "curriculum/courses/<slug>/phases.json — the course's phases, each a contiguous week range (m1-09). The course is the directory, so rows carry no course field. Go type: internal/course/content.go Phase.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["order", "name", "theme", "week_from", "week_to"],
+    "properties": {
+      "order": { "type": "integer", "minimum": 1 },
+      "name": { "type": "string", "minLength": 1 },
+      "theme": { "type": "string" },
+      "week_from": { "type": "integer", "minimum": 1 },
+      "week_to": { "type": "integer", "minimum": 1 }
+    }
+  }
+}

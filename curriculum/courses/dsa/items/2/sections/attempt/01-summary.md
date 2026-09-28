@@ -1,0 +1,1 @@
+Return true if two strings are anagrams. Count characters with a frequency map (or a fixed 26-int array) and compare.

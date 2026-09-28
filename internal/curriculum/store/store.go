@@ -114,10 +114,10 @@ type Store interface {
 	ListSections(ctx context.Context, problemID string) ([]Section, error)
 	GetConcept(ctx context.Context, slug string) (Concept, error)
 	CountProblems(ctx context.Context, pathSlug string) (int, error)
-	// SeedAll upserts the entire versioned seed in one transaction, idempotently
-	// (ON CONFLICT ... DO UPDATE on natural keys) so re-running on every boot never
-	// duplicates rows.
-	SeedAll(ctx context.Context, content SeedContent) error
+	// SeedAll applies the entire versioned seed in one transaction, idempotently
+	// (natural-key upserts, delete-missing per course, sections rewritten, the id guard)
+	// so re-running on every boot never duplicates rows. See PgStore.SeedAll.
+	SeedAll(ctx context.Context, content SeedContent) (SeedReport, error)
 	Ping(ctx context.Context) error
 }
 

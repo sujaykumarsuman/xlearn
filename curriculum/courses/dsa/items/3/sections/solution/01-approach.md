@@ -1,0 +1,1 @@
+One pass. Keep a map of value → index. For each element, look up its complement; if present, return the stored index and the current one. Otherwise record the current value.

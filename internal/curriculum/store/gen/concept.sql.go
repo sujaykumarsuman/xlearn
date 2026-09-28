@@ -11,8 +11,37 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteMissingConcepts = `-- name: DeleteMissingConcepts :exec
+DELETE FROM curriculum.concept
+WHERE path_slug = $1 AND NOT (slug = ANY($2::text[]))
+`
+
+type DeleteMissingConceptsParams struct {
+	PathSlug string
+	Keep     []string
+}
+
+// Delete-missing per course (content-only table; week_concept rows cascade).
+func (q *Queries) DeleteMissingConcepts(ctx context.Context, arg DeleteMissingConceptsParams) error {
+	_, err := q.db.Exec(ctx, deleteMissingConcepts, arg.PathSlug, arg.Keep)
+	return err
+}
+
+const deleteWeekConceptsByPath = `-- name: DeleteWeekConceptsByPath :exec
+DELETE FROM curriculum.week_concept wc
+USING curriculum.week w
+WHERE wc.week_id = w.id AND w.path_slug = $1
+`
+
+// The seed relinks a course's week <-> concept pairs from scratch on every run.
+func (q *Queries) DeleteWeekConceptsByPath(ctx context.Context, pathSlug string) error {
+	_, err := q.db.Exec(ctx, deleteWeekConceptsByPath, pathSlug)
+	return err
+}
+
 const getConcept = `-- name: GetConcept :one
-SELECT slug, path_slug, title, body_md, when_to_use_md, code_template
+SELECT slug, path_slug, title, body_md, when_to_use_md,
+       COALESCE(code_template, templates ->> 'go', '')::text AS code_template
 FROM curriculum.concept
 WHERE slug = $1
 `
@@ -26,6 +55,7 @@ type GetConceptRow struct {
 	CodeTemplate string
 }
 
+// code_template is nullable since 00002 but dual-written from templates.go by the seed.
 func (q *Queries) GetConcept(ctx context.Context, slug string) (GetConceptRow, error) {
 	row := q.db.QueryRow(ctx, getConcept, slug)
 	var i GetConceptRow
@@ -96,14 +126,14 @@ func (q *Queries) ListConceptsByWeek(ctx context.Context, arg ListConceptsByWeek
 }
 
 const upsertConcept = `-- name: UpsertConcept :one
-INSERT INTO curriculum.concept (path_slug, slug, title, body_md, when_to_use_md, code_template)
-VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (slug) DO UPDATE SET
-    path_slug      = EXCLUDED.path_slug,
+INSERT INTO curriculum.concept (path_slug, slug, title, body_md, when_to_use_md, code_template, templates)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (path_slug, slug) DO UPDATE SET
     title          = EXCLUDED.title,
     body_md        = EXCLUDED.body_md,
     when_to_use_md = EXCLUDED.when_to_use_md,
-    code_template  = EXCLUDED.code_template
+    code_template  = EXCLUDED.code_template,
+    templates      = EXCLUDED.templates
 RETURNING id
 `
 
@@ -113,9 +143,13 @@ type UpsertConceptParams struct {
 	Title        string
 	BodyMd       string
 	WhenToUseMd  string
-	CodeTemplate string
+	CodeTemplate pgtype.Text
+	Templates    []byte
 }
 
+// Keyed on (path_slug, slug) (00003's unique), so a concept is never re-parented. The v1
+// UNIQUE(slug) stays until M1c, so a slug is still global until then. Dual-writes
+// code_template from templates.go.
 func (q *Queries) UpsertConcept(ctx context.Context, arg UpsertConceptParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, upsertConcept,
 		arg.PathSlug,
@@ -124,6 +158,7 @@ func (q *Queries) UpsertConcept(ctx context.Context, arg UpsertConceptParams) (p
 		arg.BodyMd,
 		arg.WhenToUseMd,
 		arg.CodeTemplate,
+		arg.Templates,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)

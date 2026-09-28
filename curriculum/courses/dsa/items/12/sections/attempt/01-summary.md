@@ -1,0 +1,1 @@
+Find the length of the longest substring with all-distinct characters. Grow a window on the right; when a duplicate appears, shrink from the left until it is gone.

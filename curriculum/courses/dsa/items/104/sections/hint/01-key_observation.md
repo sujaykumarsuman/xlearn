@@ -1,0 +1,1 @@
+dp[a] = fewest coins to make amount a = 1 + min over coins c of dp[a - c]. Build dp from 0 up to amount; seed dp[0] = 0 and treat unreachable amounts as a sentinel bigger than any valid answer.

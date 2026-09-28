@@ -1,0 +1,1 @@
+Pattern: **fix one, two-pointer the rest**. Reducing a k-sum to a (k-1)-sum by fixing an index and sweeping two pointers is the reusable idea here.

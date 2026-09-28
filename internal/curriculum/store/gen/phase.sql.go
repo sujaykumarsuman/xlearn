@@ -9,6 +9,22 @@ import (
 	"context"
 )
 
+const deleteMissingPhases = `-- name: DeleteMissingPhases :exec
+DELETE FROM curriculum.phase
+WHERE path_slug = $1 AND NOT ("order" = ANY($2::int[]))
+`
+
+type DeleteMissingPhasesParams struct {
+	PathSlug string
+	Keep     []int32
+}
+
+// Delete-missing per course (content-only table).
+func (q *Queries) DeleteMissingPhases(ctx context.Context, arg DeleteMissingPhasesParams) error {
+	_, err := q.db.Exec(ctx, deleteMissingPhases, arg.PathSlug, arg.Keep)
+	return err
+}
+
 const listPhasesByPath = `-- name: ListPhasesByPath :many
 SELECT "order", name, theme, week_from, week_to
 FROM curriculum.phase

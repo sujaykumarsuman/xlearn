@@ -1,0 +1,1 @@
+Use a sliding window for 'longest / shortest / count of contiguous substring-or-subarray satisfying a property' — no duplicates, at most k distinct, sum ≤ target, contains all of T. If the brute force is 'try every subarray', a window usually collapses it to one pass.

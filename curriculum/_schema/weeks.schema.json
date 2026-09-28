@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://projects.sujaykumar.dev/xlearn/schema/weeks.schema.json",
+  "title": "xLearn course weeks",
+  "description": "curriculum/courses/<slug>/weeks.json — the course's weeks (m1-09). The course is the directory, so rows carry no course field. Go type: internal/course/content.go Week.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["n", "title", "thesis"],
+    "properties": {
+      "n": { "type": "integer", "minimum": 1 },
+      "title": { "type": "string", "minLength": 1 },
+      "thesis": { "type": "string" }
+    }
+  }
+}

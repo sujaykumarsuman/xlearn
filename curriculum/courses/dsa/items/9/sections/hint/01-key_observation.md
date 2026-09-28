@@ -1,0 +1,1 @@
+A subarray (l, r] sums to k exactly when pre[r] - pre[l] = k, i.e. pre[l] = pre[r] - k. So at each r, add how many times the prefix `pre[r] - k` has already occurred.

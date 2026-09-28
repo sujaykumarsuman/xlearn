@@ -1,0 +1,1 @@
+Sort. For each index i (skipping duplicate anchors), run two pointers l = i+1 and r = n-1 toward each other. If the triple sums to zero, record it and advance both pointers past any duplicates; if the sum is too small move l right, if too big move r left.

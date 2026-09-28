@@ -53,6 +53,13 @@ func courseSchema(t *testing.T) map[string]any {
 	return readJSONFile(t, curriculum.FS, courseSchemaPath)
 }
 
+// contentSchemas are the m1-09 schemas of the per-course content files and the lock.
+var contentSchemas = []string{"phases", "weeks", "concepts", "ids-lock", "paths"}
+
+func contentSchema(t *testing.T, name string) map[string]any {
+	return readJSONFile(t, curriculum.FS, "_schema/"+name+".schema.json")
+}
+
 // resolve follows local `#/$defs/<name>` refs.
 func resolve(t *testing.T, doc, node map[string]any) map[string]any {
 	t.Helper()
@@ -191,6 +198,12 @@ func TestTypesSchemaParity(t *testing.T) {
 	}{
 		{"item", itemSchema(t), itemType},
 		{"manifest", courseSchema(t), manifestType},
+		// m1-09 content files.
+		{"phases", contentSchema(t, "phases"), reflect.TypeOf([]course.Phase{})},
+		{"weeks", contentSchema(t, "weeks"), reflect.TypeOf([]course.Week{})},
+		{"concepts", contentSchema(t, "concepts"), reflect.TypeOf([]course.Concept{})},
+		{"ids-lock", contentSchema(t, "ids-lock"), reflect.TypeOf(course.IDsLock{})},
+		{"paths", contentSchema(t, "paths"), reflect.TypeOf([]course.PathRow{})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			sp := schemaPaths(t, tc.doc)
@@ -288,7 +301,11 @@ func jsonKind(v any) string {
 // Every object shape in both schemas is closed: additionalProperties false. Conditional
 // blocks (if/then/else) only add requirements, so they are exempt.
 func TestSchemasCloseEveryObject(t *testing.T) {
-	for name, doc := range map[string]map[string]any{"item": itemSchema(t), "course": courseSchema(t)} {
+	docs := map[string]map[string]any{"item": itemSchema(t), "course": courseSchema(t)}
+	for _, name := range contentSchemas {
+		docs[name] = contentSchema(t, name)
+	}
+	for name, doc := range docs {
 		var visit func(node map[string]any, at string)
 		visit = func(node map[string]any, at string) {
 			_, hasProps := node["properties"]

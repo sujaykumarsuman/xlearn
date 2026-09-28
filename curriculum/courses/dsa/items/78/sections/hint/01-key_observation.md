@@ -1,0 +1,1 @@
+Build the dependency graph and run Kahn's algorithm: repeatedly remove zero-in-degree nodes. If you can remove all N courses, there is no cycle and the schedule is completable; if some remain, a prerequisite cycle exists.

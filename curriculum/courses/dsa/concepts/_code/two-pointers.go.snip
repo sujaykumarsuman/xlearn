@@ -1,0 +1,15 @@
+sort.Ints(nums)
+l, r := 0, len(nums)-1
+for l < r {
+    sum := nums[l] + nums[r]
+    switch {
+    case sum == target:
+        // record the pair, then move both inward
+        l++
+        r--
+    case sum < target:
+        l++
+    default:
+        r--
+    }
+}

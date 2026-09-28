@@ -1,0 +1,1 @@
+sorted = [-4, -1, -1, 0, 1, 2]. i=1 (-1): l=2(-1), r=5(2) → sum 0 → record [-1,-1,2]; skip dup -1 at l. i moves; i=2 is a duplicate anchor, skipped. i=3 (0): l=4(1), r=5(2) → sum 3 > 0, r--; l==r stop... backtrack shows [-1,0,1] captured when i=1 continues after the first hit. Result: [[-1,-1,2], [-1,0,1]].

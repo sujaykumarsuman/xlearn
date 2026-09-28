@@ -1,0 +1,1 @@
+Given an integer array, return true if any value appears at least twice. The warm-up that establishes the seen-set reflex.

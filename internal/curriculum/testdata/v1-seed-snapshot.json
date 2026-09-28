@@ -1,0 +1,851 @@
+{
+  "path": [
+    {
+      "problem_total": 20,
+      "slug": "behavioral",
+      "sort_order": 50,
+      "status": "coming_soon",
+      "summary": "STAR stories, leadership signals, and the retro loop — rehearsed and scored like a technical mock.",
+      "title": "Behavioral & Storytelling",
+      "week_total": 4
+    },
+    {
+      "problem_total": 151,
+      "slug": "dsa",
+      "sort_order": 0,
+      "status": "active",
+      "summary": "From arrays to graphs and DP, built to make you interview-ready — and to keep it retained.",
+      "title": "Data Structures & Algorithms",
+      "week_total": 16
+    },
+    {
+      "problem_total": 60,
+      "slug": "go-concurrency",
+      "sort_order": 20,
+      "status": "coming_soon",
+      "summary": "Goroutines, channels, and the race detector as muscle memory — from worker pools to context cancellation.",
+      "title": "Go Concurrency Patterns",
+      "week_total": 8
+    },
+    {
+      "problem_total": 24,
+      "slug": "lld-ood",
+      "sort_order": 30,
+      "status": "coming_soon",
+      "summary": "Object modeling and design patterns under interview pressure: parking lots, rate limiters, and more.",
+      "title": "Low-Level / OOD",
+      "week_total": 6
+    },
+    {
+      "problem_total": 50,
+      "slug": "sql",
+      "sort_order": 40,
+      "status": "coming_soon",
+      "summary": "Query optimization, indexing, and schema design with a spaced-repetition drill set.",
+      "title": "SQL & Data Modeling",
+      "week_total": 6
+    },
+    {
+      "problem_total": 40,
+      "slug": "system-design",
+      "sort_order": 10,
+      "status": "coming_soon",
+      "summary": "Scalable systems, trade-offs, and the whiteboard narrative — timed design rounds with rubric scoring.",
+      "title": "System Design Interviews",
+      "week_total": 12
+    }
+  ],
+  "phase": [
+    {
+      "name": "Fundamentals",
+      "order": 1,
+      "path_slug": "dsa",
+      "theme": "Arrays, hashing, and the two-pointer mind.",
+      "week_from": 1,
+      "week_to": 3
+    },
+    {
+      "name": "Core Data Structures",
+      "order": 2,
+      "path_slug": "dsa",
+      "theme": "The structures interviewers reach for by default.",
+      "week_from": 4,
+      "week_to": 8
+    },
+    {
+      "name": "Advanced Patterns",
+      "order": 3,
+      "path_slug": "dsa",
+      "theme": "Where medium becomes hard — DP, graphs, greedy.",
+      "week_from": 9,
+      "week_to": 12
+    },
+    {
+      "name": "Interview Mastery",
+      "order": 4,
+      "path_slug": "dsa",
+      "theme": "Perform under real interview conditions.",
+      "week_from": 13,
+      "week_to": 16
+    }
+  ],
+  "week": [
+    {
+      "n": 1,
+      "path_slug": "dsa",
+      "thesis": "Turn linear scans into O(1) lookups: hashing and prefix sums are the bedrock every later pattern builds on.",
+      "title": "Arrays, Strings, Hashing, Prefix Sums"
+    },
+    {
+      "n": 2,
+      "path_slug": "dsa",
+      "thesis": "Collapse nested loops into a single moving window — the mindset behind most array and string interview questions.",
+      "title": "Two Pointers & Sliding Window"
+    },
+    {
+      "n": 3,
+      "path_slug": "dsa",
+      "thesis": "Keep a stack sorted to answer 'next greater / smaller' in one pass — the key to histogram and span problems.",
+      "title": "Stacks & Monotonic Stack"
+    },
+    {
+      "n": 4,
+      "path_slug": "dsa",
+      "thesis": "Pointer surgery and cache design: reverse, detect cycles, and build an O(1) LRU from a hashmap plus a doubly-linked list.",
+      "title": "Linked Lists & Design"
+    },
+    {
+      "n": 5,
+      "path_slug": "dsa",
+      "thesis": "Recursion over structure — traversals, invariants, and the ordered guarantees of a binary search tree.",
+      "title": "Trees & BST"
+    },
+    {
+      "n": 6,
+      "path_slug": "dsa",
+      "thesis": "Keep the top-k live with a heap, and reason about overlaps by sorting intervals on the right key.",
+      "title": "Heaps & Intervals"
+    },
+    {
+      "n": 7,
+      "path_slug": "dsa",
+      "thesis": "Prefix trees for word problems, and disciplined backtracking that prunes the search space instead of brute-forcing it.",
+      "title": "Tries & Backtracking"
+    },
+    {
+      "n": 8,
+      "path_slug": "dsa",
+      "thesis": "Model dependencies as a graph; BFS/DFS, cycle detection, and topological order unlock scheduling problems like Course Schedule.",
+      "title": "Graphs & Topological Sort"
+    },
+    {
+      "n": 9,
+      "path_slug": "dsa",
+      "thesis": "Dijkstra, Bellman-Ford, and BFS-on-weights — pick the right shortest-path tool for the constraints you're given.",
+      "title": "Shortest Paths"
+    },
+    {
+      "n": 10,
+      "path_slug": "dsa",
+      "thesis": "Find the recurrence, then remember it: 1-D DP over choices, from Coin Change to classic knapsack shapes.",
+      "title": "Dynamic Programming I"
+    },
+    {
+      "n": 11,
+      "path_slug": "dsa",
+      "thesis": "2-D and interval DP — grids, subsequences, and partitions where the state needs two dimensions.",
+      "title": "Dynamic Programming II"
+    },
+    {
+      "n": 12,
+      "path_slug": "dsa",
+      "thesis": "Prove the local choice is globally optimal, and wield bit tricks for set-state and constant-space wins.",
+      "title": "Greedy & Bit Manipulation"
+    },
+    {
+      "n": 13,
+      "path_slug": "dsa",
+      "thesis": "Interleave patterns under time pressure and take your first scored mocks; target ≥ 24 / 35.",
+      "title": "Mixed sets + first mocks"
+    },
+    {
+      "n": 14,
+      "path_slug": "dsa",
+      "thesis": "Company-style problem sets on the clock — build speed and pattern recall; target ≥ 28 / 35.",
+      "title": "Timed company sets"
+    },
+    {
+      "n": 15,
+      "path_slug": "dsa",
+      "thesis": "Back-to-back full mocks under real conditions; tighten communication and edge-case coverage; target ≥ 30 / 35.",
+      "title": "Mock intensives"
+    },
+    {
+      "n": 16,
+      "path_slug": "dsa",
+      "thesis": "Simulate final onsite rounds, close mistake-journal loops, and retro your weak areas — interview-ready.",
+      "title": "Final rounds & retro"
+    }
+  ],
+  "concept": [
+    {
+      "body_md": "Dynamic programming is careful recursion with memory. First find the recurrence: express the answer for a state in terms of smaller states (the choices you can make). Then remember each sub-answer so you never recompute it — top-down with a memo, or bottom-up by filling a table. Coin Change is the canonical 1-D DP: `dp[a]` = fewest coins to make amount `a` = 1 + min over coins of `dp[a - coin]`.",
+      "code_template": "// Coin Change: fewest coins to make `amount`.\ndp := make([]int, amount+1)\nfor a := 1; a <= amount; a++ {\n    dp[a] = amount + 1 // sentinel = impossible\n    for _, c := range coins {\n        if c <= a && dp[a-c]+1 < dp[a] {\n            dp[a] = dp[a-c] + 1\n        }\n    }\n}\nif dp[amount] > amount {\n    return -1\n}\nreturn dp[amount]",
+      "path_slug": "dsa",
+      "slug": "dynamic-programming",
+      "title": "Dynamic Programming",
+      "when_to_use_md": "Reach for DP when a problem asks for an optimum (min/max/count) over a sequence of choices AND the same sub-problems recur (overlapping subproblems + optimal substructure). If your brute-force recursion re-solves the same arguments, add a memo and you have DP."
+    },
+    {
+      "body_md": "A hash map trades space for time: it turns an O(n) membership scan into an O(1) average lookup. Most 'have I seen this?' and 'how many of each?' questions reduce to one pass that builds a `map[T]int` (a frequency map) or a `map[T]struct{}` (a set), then a second glance at the map.\n\nThe three moves you reuse constantly:\n- **Seen-set**: add as you go, check before adding (duplicate detection).\n- **Frequency map**: count occurrences, then reason over the counts.\n- **Complement lookup**: for each element, ask whether the value you still need is already in the map (Two Sum).",
+      "code_template": "// Frequency map over a slice.\nfreq := make(map[int]int, len(nums))\nfor _, n := range nums {\n    freq[n]++\n}\n\n// Complement lookup (Two Sum shape).\nseen := make(map[int]int, len(nums)) // value -> index\nfor i, n := range nums {\n    if j, ok := seen[target-n]; ok {\n        return []int{j, i}\n    }\n    seen[n] = i\n}",
+      "path_slug": "dsa",
+      "slug": "hashing",
+      "title": "Hashing & Frequency Maps",
+      "when_to_use_md": "Reach for hashing when you catch yourself writing a nested loop to ask 'is X somewhere in this array?' or 'how many times does X appear?'. If order does not matter and you only need membership or counts, a map collapses the inner loop to O(1)."
+    },
+    {
+      "body_md": "Linked-list problems are pointer discipline: keep a dummy head to avoid special-casing the first node, advance with care, and reconnect in the right order. The design payoff is the LRU cache — a hash map from key to node gives O(1) lookup, and a doubly-linked list ordered by recency gives O(1) move-to-front and evict-from-back. Together they make every `get`/`put` O(1).",
+      "code_template": "type node struct {\n    key, val   int\n    prev, next *node\n}\n\ntype LRUCache struct {\n    cap        int\n    m          map[int]*node\n    head, tail *node // sentinels: head.next = most recent\n}\n\nfunc (c *LRUCache) remove(n *node) { n.prev.next = n.next; n.next.prev = n.prev }\nfunc (c *LRUCache) pushFront(n *node) {\n    n.prev, n.next = c.head, c.head.next\n    c.head.next.prev, c.head.next = n, n\n}",
+      "path_slug": "dsa",
+      "slug": "linked-list-design",
+      "title": "Linked Lists & O(1) Design",
+      "when_to_use_md": "Use a dummy node whenever the head can change (insert/delete at front). Reach for hashmap + doubly-linked list whenever you need O(1) access AND O(1) ordering updates — LRU/LFU caches, browser history with jumps, any 'most-recently-used' structure."
+    },
+    {
+      "body_md": "A monotonic stack keeps its elements in sorted order (increasing or decreasing) by popping anything that would break the order before pushing the new element. The moment you pop an element, the element about to be pushed is its 'next greater/smaller' neighbour — so a single left-to-right pass answers next-greater-element, daily-temperatures, and histogram-area questions in O(n) total, since each index is pushed and popped at most once.",
+      "code_template": "// Indices of a strictly increasing stack; pop on a smaller bar.\nstack := []int{}\nfor i := 0; i <= len(heights); i++ {\n    h := 0\n    if i < len(heights) {\n        h = heights[i]\n    }\n    for len(stack) > 0 && heights[stack[len(stack)-1]] > h {\n        top := stack[len(stack)-1]\n        stack = stack[:len(stack)-1]\n        width := i\n        if len(stack) > 0 {\n            width = i - stack[len(stack)-1] - 1\n        }\n        // area := heights[top] * width\n        _ = top\n        _ = width\n    }\n    stack = append(stack, i)\n}",
+      "path_slug": "dsa",
+      "slug": "monotonic-stack",
+      "title": "Monotonic Stack",
+      "when_to_use_md": "Reach for a monotonic stack when a problem asks for the nearest larger/smaller element on either side, or spans/areas bounded by such elements (Largest Rectangle in Histogram, Trapping Rain Water). The tell is 'for each element, find the next one that is bigger/smaller'."
+    },
+    {
+      "body_md": "A prefix sum array `pre` where `pre[i]` is the sum of the first `i` elements lets you get the sum of any range `[l, r)` in O(1) as `pre[r] - pre[l]`. Combine it with a hash map of previously-seen prefix sums and you can count subarrays with a given sum in a single pass: at index `i`, the number of subarrays ending here that sum to `k` equals how many times `pre[i] - k` has appeared.",
+      "code_template": "// Count subarrays summing to k.\ncount, sum := 0, 0\nseen := map[int]int{0: 1} // prefix sum -> frequency\nfor _, n := range nums {\n    sum += n\n    count += seen[sum-k]\n    seen[sum]++\n}\nreturn count",
+      "path_slug": "dsa",
+      "slug": "prefix-sums",
+      "title": "Prefix Sums",
+      "when_to_use_md": "Use prefix sums when the question is about the sum (or count, or XOR) of contiguous subarrays, especially with many range queries or a target subarray sum. The running-prefix-plus-hashmap trick is the go-to for 'number of subarrays that sum to k'."
+    },
+    {
+      "body_md": "Pick the shortest-path algorithm by the graph's constraints. Unweighted edges: plain BFS. Non-negative weights: Dijkstra with a min-heap. Negative weights, or a hard cap on the number of edges used: Bellman-Ford, which relaxes every edge repeatedly. 'Cheapest flight within K stops' is Bellman-Ford limited to K+1 relaxation rounds — the round count is exactly the edge budget.",
+      "code_template": "// Bellman-Ford bounded to k stops (k+1 edges).\ndist := make([]int, n)\nfor i := range dist {\n    dist[i] = math.MaxInt32\n}\ndist[src] = 0\nfor i := 0; i <= k; i++ {\n    tmp := append([]int(nil), dist...)\n    for _, f := range flights { // f = [from, to, price]\n        if dist[f[0]] != math.MaxInt32 && dist[f[0]]+f[2] < tmp[f[1]] {\n            tmp[f[1]] = dist[f[0]] + f[2]\n        }\n    }\n    dist = tmp\n}",
+      "path_slug": "dsa",
+      "slug": "shortest-paths",
+      "title": "Shortest Paths",
+      "when_to_use_md": "BFS for fewest edges on an unweighted graph. Dijkstra for cheapest cost with non-negative weights. Bellman-Ford when weights can be negative or when the answer is bounded by a number of hops/stops (relax K+1 times over a copy of the distances)."
+    },
+    {
+      "body_md": "A sliding window maintains a contiguous range `[left, right]` and a small amount of state about what is inside it (a count, a frequency map, a running sum). You expand `right` to include new elements and contract `left` when the window violates its constraint. Each index enters and leaves the window at most once, so the whole scan is O(n) even though the window is 'nested'.",
+      "code_template": "window := make(map[byte]int)\nleft, best := 0, 0\nfor right := 0; right < len(s); right++ {\n    window[s[right]]++\n    for windowInvalid(window) { // e.g. a char count > 1\n        window[s[left]]--\n        if window[s[left]] == 0 {\n            delete(window, s[left])\n        }\n        left++\n    }\n    if right-left+1 > best {\n        best = right - left + 1\n    }\n}\nreturn best",
+      "path_slug": "dsa",
+      "slug": "sliding-window",
+      "title": "Sliding Window",
+      "when_to_use_md": "Use a sliding window for 'longest / shortest / count of contiguous substring-or-subarray satisfying a property' — no duplicates, at most k distinct, sum ≤ target, contains all of T. If the brute force is 'try every subarray', a window usually collapses it to one pass."
+    },
+    {
+      "body_md": "A topological sort orders the nodes of a directed acyclic graph so every edge points forward — exactly what you need for 'do prerequisites before dependents'. Kahn's algorithm computes in-degrees, starts a queue with the zero-in-degree nodes, and repeatedly removes a node and decrements its neighbours. If you emit all N nodes, the graph is acyclic (a valid schedule exists); if fewer, there is a cycle.",
+      "code_template": "indeg := make([]int, n)\nadj := make([][]int, n)\nfor _, e := range edges { // e = [dependent, prereq]\n    adj[e[1]] = append(adj[e[1]], e[0])\n    indeg[e[0]]++\n}\nq := []int{}\nfor i := 0; i < n; i++ {\n    if indeg[i] == 0 {\n        q = append(q, i)\n    }\n}\nseen := 0\nfor len(q) > 0 {\n    u := q[0]\n    q = q[1:]\n    seen++\n    for _, v := range adj[u] {\n        indeg[v]--\n        if indeg[v] == 0 {\n            q = append(q, v)\n        }\n    }\n}\nreturn seen == n // false => a cycle",
+      "path_slug": "dsa",
+      "slug": "topological-sort",
+      "title": "Graphs & Topological Sort",
+      "when_to_use_md": "Reach for topological sort whenever tasks have ordering constraints: course prerequisites, build systems, package installs. It also doubles as cycle detection on a directed graph — 'can this schedule be completed?' is a topological-sort feasibility check (Course Schedule)."
+    },
+    {
+      "body_md": "Two pointers walk a (usually sorted) sequence from opposite ends or in tandem, using the ordering to discard whole regions of the search space without checking them. On a sorted array, if the sum of the two ends is too big you move the right pointer in; too small, move the left pointer out. That single comparison replaces an entire inner loop, taking a naive O(n^2) pair search down to O(n).",
+      "code_template": "sort.Ints(nums)\nl, r := 0, len(nums)-1\nfor l < r {\n    sum := nums[l] + nums[r]\n    switch {\n    case sum == target:\n        // record the pair, then move both inward\n        l++\n        r--\n    case sum < target:\n        l++\n    default:\n        r--\n    }\n}",
+      "path_slug": "dsa",
+      "slug": "two-pointers",
+      "title": "Two Pointers",
+      "when_to_use_md": "Reach for two pointers when the input is sorted (or you can afford to sort it) and you are looking for a pair/triple that meets a numeric condition, or when you need to partition/dedupe in place. If you sorted specifically to unlock the pointer sweep, that O(n log n) sort is almost always worth it."
+    }
+  ],
+  "week_concept": [
+    {
+      "concept_slug": "hashing",
+      "path_slug": "dsa",
+      "week_n": 1
+    },
+    {
+      "concept_slug": "prefix-sums",
+      "path_slug": "dsa",
+      "week_n": 1
+    },
+    {
+      "concept_slug": "sliding-window",
+      "path_slug": "dsa",
+      "week_n": 2
+    },
+    {
+      "concept_slug": "two-pointers",
+      "path_slug": "dsa",
+      "week_n": 2
+    },
+    {
+      "concept_slug": "monotonic-stack",
+      "path_slug": "dsa",
+      "week_n": 3
+    },
+    {
+      "concept_slug": "linked-list-design",
+      "path_slug": "dsa",
+      "week_n": 4
+    },
+    {
+      "concept_slug": "topological-sort",
+      "path_slug": "dsa",
+      "week_n": 8
+    },
+    {
+      "concept_slug": "shortest-paths",
+      "path_slug": "dsa",
+      "week_n": 9
+    },
+    {
+      "concept_slug": "dynamic-programming",
+      "path_slug": "dsa",
+      "week_n": 10
+    }
+  ],
+  "problem": [
+    {
+      "difficulty": "easy",
+      "id": "1",
+      "is_reinforcement": false,
+      "leetcode_url": "https://leetcode.com/problems/contains-duplicate/",
+      "neetcode_url": "https://neetcode.io/problems/duplicate-integer",
+      "path_slug": "dsa",
+      "pattern": "Hashing",
+      "sort_order": 1,
+      "title": "Contains Duplicate",
+      "week_n": 1
+    },
+    {
+      "difficulty": "med",
+      "id": "104",
+      "is_reinforcement": false,
+      "leetcode_url": "https://leetcode.com/problems/coin-change/",
+      "neetcode_url": "https://neetcode.io/problems/coin-change",
+      "path_slug": "dsa",
+      "pattern": "Dynamic Programming",
+      "sort_order": 1,
+      "title": "Coin Change",
+      "week_n": 10
+    },
+    {
+      "difficulty": "med",
+      "id": "12",
+      "is_reinforcement": false,
+      "leetcode_url": "https://leetcode.com/problems/longest-substring-without-repeating-characters/",
+      "neetcode_url": "https://neetcode.io/problems/longest-substring-without-duplicates",
+      "path_slug": "dsa",
+      "pattern": "Sliding Window",
+      "sort_order": 1,
+      "title": "Longest Substring Without Repeating Characters",
+      "week_n": 2
+    },
+    {
+      "difficulty": "med",
+      "id": "16",
+      "is_reinforcement": false,
+      "leetcode_url": "https://leetcode.com/problems/3sum/",
+      "neetcode_url": "https://neetcode.io/problems/three-integer-sum",
+      "path_slug": "dsa",
+      "pattern": "Two Pointers",
+      "sort_order": 2,
+      "title": "3Sum",
+      "week_n": 2
+    },
+    {
+      "difficulty": "hard",
+      "id": "18",
+      "is_reinforcement": false,
+      "leetcode_url": "https://leetcode.com/problems/minimum-window-substring/",
+      "neetcode_url": "https://neetcode.io/problems/minimum-window-with-characters",
+      "path_slug": "dsa",
+      "pattern": "Sliding Window",
+      "sort_order": 3,
+      "title": "Minimum Window Substring",
+      "week_n": 2
+    },
+    {
+      "difficulty": "easy",
+      "id": "2",
+      "is_reinforcement": false,
+      "leetcode_url": "https://leetcode.com/problems/valid-anagram/",
+      "neetcode_url": "https://neetcode.io/problems/is-anagram",
+      "path_slug": "dsa",
+      "pattern": "Hashing",
+      "sort_order": 2,
+      "title": "Valid Anagram",
+      "week_n": 1
+    },
+    {
+      "difficulty": "hard",
+      "id": "23",
+      "is_reinforcement": false,
+      "leetcode_url": "https://leetcode.com/problems/largest-rectangle-in-histogram/",
+      "neetcode_url": "https://neetcode.io/problems/largest-rectangle-in-histogram",
+      "path_slug": "dsa",
+      "pattern": "Monotonic Stack",
+      "sort_order": 1,
+      "title": "Largest Rectangle in Histogram",
+      "week_n": 3
+    },
+    {
+      "difficulty": "easy",
+      "id": "3",
+      "is_reinforcement": false,
+      "leetcode_url": "https://leetcode.com/problems/two-sum/",
+      "neetcode_url": "https://neetcode.io/problems/two-integer-sum",
+      "path_slug": "dsa",
+      "pattern": "Hashing",
+      "sort_order": 3,
+      "title": "Two Sum",
+      "week_n": 1
+    },
+    {
+      "difficulty": "med",
+      "id": "40",
+      "is_reinforcement": false,
+      "leetcode_url": "https://leetcode.com/problems/lru-cache/",
+      "neetcode_url": "https://neetcode.io/problems/lru-cache",
+      "path_slug": "dsa",
+      "pattern": "Design / Hashmap + DLL",
+      "sort_order": 1,
+      "title": "LRU Cache",
+      "week_n": 4
+    },
+    {
+      "difficulty": "med",
+      "id": "5",
+      "is_reinforcement": false,
+      "leetcode_url": "https://leetcode.com/problems/group-anagrams/",
+      "neetcode_url": "https://neetcode.io/problems/anagram-groups",
+      "path_slug": "dsa",
+      "pattern": "Hashing",
+      "sort_order": 4,
+      "title": "Group Anagrams",
+      "week_n": 1
+    },
+    {
+      "difficulty": "med",
+      "id": "7",
+      "is_reinforcement": false,
+      "leetcode_url": "https://leetcode.com/problems/top-k-frequent-elements/",
+      "neetcode_url": "https://neetcode.io/problems/top-k-elements-in-list",
+      "path_slug": "dsa",
+      "pattern": "Heap / Bucket Sort",
+      "sort_order": 5,
+      "title": "Top K Frequent Elements",
+      "week_n": 1
+    },
+    {
+      "difficulty": "med",
+      "id": "78",
+      "is_reinforcement": false,
+      "leetcode_url": "https://leetcode.com/problems/course-schedule/",
+      "neetcode_url": "https://neetcode.io/problems/course-schedule",
+      "path_slug": "dsa",
+      "pattern": "Topological Sort",
+      "sort_order": 1,
+      "title": "Course Schedule",
+      "week_n": 8
+    },
+    {
+      "difficulty": "med",
+      "id": "9",
+      "is_reinforcement": false,
+      "leetcode_url": "https://leetcode.com/problems/subarray-sum-equals-k/",
+      "neetcode_url": "",
+      "path_slug": "dsa",
+      "pattern": "Prefix Sum",
+      "sort_order": 6,
+      "title": "Subarray Sum Equals K",
+      "week_n": 1
+    },
+    {
+      "difficulty": "med",
+      "id": "92",
+      "is_reinforcement": false,
+      "leetcode_url": "https://leetcode.com/problems/cheapest-flights-within-k-stops/",
+      "neetcode_url": "",
+      "path_slug": "dsa",
+      "pattern": "Shortest Paths (Bellman-Ford)",
+      "sort_order": 1,
+      "title": "Cheapest Flights Within K Stops",
+      "week_n": 9
+    }
+  ],
+  "problem_section": [
+    {
+      "body_md": "Given an integer array, return true if any value appears at least twice. The warm-up that establishes the seen-set reflex.",
+      "code": "",
+      "kind": "summary",
+      "order": 1,
+      "problem_id": "1",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "Scan once, keeping a set of values seen so far. If the current value is already in the set, you found a duplicate; otherwise add it.",
+      "code": "",
+      "kind": "approach",
+      "order": 1,
+      "problem_id": "1",
+      "stage": "solution"
+    },
+    {
+      "body_md": "",
+      "code": "func containsDuplicate(nums []int) bool {\n    seen := make(map[int]struct{}, len(nums))\n    for _, n := range nums {\n        if _, ok := seen[n]; ok {\n            return true\n        }\n        seen[n] = struct{}{}\n    }\n    return false\n}",
+      "kind": "code",
+      "order": 2,
+      "problem_id": "1",
+      "stage": "solution"
+    },
+    {
+      "body_md": "Time O(n), space O(n).",
+      "code": "",
+      "kind": "complexity",
+      "order": 3,
+      "problem_id": "1",
+      "stage": "solution"
+    },
+    {
+      "body_md": "Return the fewest coins that make up `amount`, or -1 if impossible. The canonical 1-D dynamic-programming recurrence.",
+      "code": "",
+      "kind": "summary",
+      "order": 1,
+      "problem_id": "104",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "dp[a] = fewest coins to make amount a = 1 + min over coins c of dp[a - c]. Build dp from 0 up to amount; seed dp[0] = 0 and treat unreachable amounts as a sentinel bigger than any valid answer.",
+      "code": "",
+      "kind": "key_observation",
+      "order": 1,
+      "problem_id": "104",
+      "stage": "hint"
+    },
+    {
+      "body_md": "",
+      "code": "func coinChange(coins []int, amount int) int {\n    dp := make([]int, amount+1)\n    for a := 1; a <= amount; a++ {\n        dp[a] = amount + 1\n        for _, c := range coins {\n            if c <= a && dp[a-c]+1 < dp[a] {\n                dp[a] = dp[a-c] + 1\n            }\n        }\n    }\n    if dp[amount] > amount {\n        return -1\n    }\n    return dp[amount]\n}",
+      "kind": "code",
+      "order": 1,
+      "problem_id": "104",
+      "stage": "solution"
+    },
+    {
+      "body_md": "Time O(amount × len(coins)), space O(amount).",
+      "code": "",
+      "kind": "complexity",
+      "order": 2,
+      "problem_id": "104",
+      "stage": "solution"
+    },
+    {
+      "body_md": "Find the length of the longest substring with all-distinct characters. Grow a window on the right; when a duplicate appears, shrink from the left until it is gone.",
+      "code": "",
+      "kind": "summary",
+      "order": 1,
+      "problem_id": "12",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "Two Pointers · Sorting · Arrays. Medium. The signature Week-2 problem — the one that makes the two-pointer sweep click.",
+      "code": "",
+      "kind": "tags",
+      "order": 1,
+      "problem_id": "16",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "3Sum is the bridge from the O(1) complement trick (Two Sum) to reducing a k-sum problem by one dimension: fix one element and two-pointer the rest. That fix-and-sweep move reappears in 4Sum, 3Sum Closest, and countless interview variants.",
+      "code": "",
+      "kind": "why",
+      "order": 2,
+      "problem_id": "16",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "Given an integer array, return all unique triplets [a, b, c] with a + b + c = 0. No triplet may be duplicated in the output.",
+      "code": "",
+      "kind": "summary",
+      "order": 3,
+      "problem_id": "16",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "nums = [5, -8, 3, 3, -6, 5, 12, -4] → [[-8, -4, 12], [-8, 3, 5], [-6, 3, 3]]. The repeated 3s and 5s still give [-8, 3, 5] only once, while [-6, 3, 3] uses both 3s.",
+      "code": "",
+      "kind": "example",
+      "order": 4,
+      "problem_id": "16",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "Practice on LeetCode #15 and NeetCode before revealing the hint.",
+      "code": "",
+      "kind": "links",
+      "order": 5,
+      "problem_id": "16",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "The obvious approach is three nested loops over every triple — O(n^3) time — plus a set to dedupe. It works but times out on large inputs and wastes the structure you could get from sorting.",
+      "code": "",
+      "kind": "brute_force",
+      "order": 1,
+      "problem_id": "16",
+      "stage": "hint"
+    },
+    {
+      "body_md": "Sort the array first. Fix the leftmost element `nums[i]`; the rest reduces to Two Sum on a sorted subarray for target `-nums[i]`, which two pointers solve in O(n). Sorting also makes duplicates adjacent, so skipping repeats is trivial.",
+      "code": "",
+      "kind": "key_observation",
+      "order": 2,
+      "problem_id": "16",
+      "stage": "hint"
+    },
+    {
+      "body_md": "Pattern: **fix one, two-pointer the rest**. Reducing a k-sum to a (k-1)-sum by fixing an index and sweeping two pointers is the reusable idea here.",
+      "code": "",
+      "kind": "pattern",
+      "order": 3,
+      "problem_id": "16",
+      "stage": "hint"
+    },
+    {
+      "body_md": "Sort. For each index i (skipping duplicate anchors), run two pointers l = i+1 and r = n-1 toward each other. If the triple sums to zero, record it and advance both pointers past any duplicates; if the sum is too small move l right, if too big move r left.",
+      "code": "",
+      "kind": "approach",
+      "order": 1,
+      "problem_id": "16",
+      "stage": "solution"
+    },
+    {
+      "body_md": "1) Sort nums.\n2) Loop i from 0 to n-3; if nums[i] == nums[i-1], skip (duplicate anchor).\n3) Early exit: once nums[i] > 0, no triple can sum to zero.\n4) Two-pointer l, r inward on target -nums[i].\n5) On a hit, append the triplet, then skip equal values at l and r before moving on.",
+      "code": "",
+      "kind": "steps",
+      "order": 2,
+      "problem_id": "16",
+      "stage": "solution"
+    },
+    {
+      "body_md": "sorted = [-4, -1, -1, 0, 1, 2]. i=1 (-1): l=2(-1), r=5(2) → sum 0 → record [-1,-1,2]; skip dup -1 at l. i moves; i=2 is a duplicate anchor, skipped. i=3 (0): l=4(1), r=5(2) → sum 3 > 0, r--; l==r stop... backtrack shows [-1,0,1] captured when i=1 continues after the first hit. Result: [[-1,-1,2], [-1,0,1]].",
+      "code": "",
+      "kind": "dry_run",
+      "order": 3,
+      "problem_id": "16",
+      "stage": "solution"
+    },
+    {
+      "body_md": "",
+      "code": "func threeSum(nums []int) [][]int {\n    sort.Ints(nums)\n    res := [][]int{}\n    for i := 0; i < len(nums)-2; i++ {\n        if nums[i] > 0 {\n            break // smallest is positive: no zero-sum triple remains\n        }\n        if i > 0 && nums[i] == nums[i-1] {\n            continue // skip duplicate anchor\n        }\n        l, r := i+1, len(nums)-1\n        for l < r {\n            sum := nums[i] + nums[l] + nums[r]\n            switch {\n            case sum == 0:\n                res = append(res, []int{nums[i], nums[l], nums[r]})\n                l++\n                r--\n                for l < r && nums[l] == nums[l-1] {\n                    l++\n                }\n                for l < r && nums[r] == nums[r+1] {\n                    r--\n                }\n            case sum < 0:\n                l++\n            default:\n                r--\n            }\n        }\n    }\n    return res\n}",
+      "kind": "code",
+      "order": 4,
+      "problem_id": "16",
+      "stage": "solution"
+    },
+    {
+      "body_md": "Time O(n^2): the sort is O(n log n) and each anchor drives an O(n) two-pointer sweep. Space O(1) beyond the output (or O(n) counting the sort).",
+      "code": "",
+      "kind": "complexity",
+      "order": 5,
+      "problem_id": "16",
+      "stage": "solution"
+    },
+    {
+      "body_md": "- Forgetting to skip duplicate anchors AND duplicate l/r values → duplicate triplets.\n- Advancing only one pointer after a hit (you must move both).\n- Off-by-one in the dedupe loops (compare against the value you just moved past).",
+      "code": "",
+      "kind": "mistakes",
+      "order": 6,
+      "problem_id": "16",
+      "stage": "solution"
+    },
+    {
+      "body_md": "4Sum (fix two, two-pointer the rest), 3Sum Closest (track the best sum instead of exact zero), 3Sum Smaller (count triples below a target).",
+      "code": "",
+      "kind": "variations",
+      "order": 7,
+      "problem_id": "16",
+      "stage": "solution"
+    },
+    {
+      "body_md": "Find the smallest substring of s that contains every character of t (with multiplicity). A variable-size sliding window with a 'need' counter that tracks how many required characters are still missing.",
+      "code": "",
+      "kind": "summary",
+      "order": 1,
+      "problem_id": "18",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "Return true if two strings are anagrams. Count characters with a frequency map (or a fixed 26-int array) and compare.",
+      "code": "",
+      "kind": "summary",
+      "order": 1,
+      "problem_id": "2",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "Given bar heights, find the largest axis-aligned rectangle in the histogram. The problem that finally makes the monotonic-stack pattern click.",
+      "code": "",
+      "kind": "summary",
+      "order": 1,
+      "problem_id": "23",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "Keep a stack of indices with increasing heights. When a shorter bar arrives, pop taller bars — each popped bar's rectangle extends from the new bar back to the element below it on the stack. A sentinel zero-height bar at the end flushes the stack.",
+      "code": "",
+      "kind": "key_observation",
+      "order": 1,
+      "problem_id": "23",
+      "stage": "hint"
+    },
+    {
+      "body_md": "Return the indices of the two numbers that add up to `target`. The complement-lookup archetype.",
+      "code": "",
+      "kind": "summary",
+      "order": 1,
+      "problem_id": "3",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "nums = [14,-9,31,-22,5,48,-3], target = -17 → [3,4] because -22 + 5 = -17.",
+      "code": "",
+      "kind": "example",
+      "order": 2,
+      "problem_id": "3",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "For each number `n`, the number you still need is `target - n`. If you have already seen it, you are done — so check the map before inserting.",
+      "code": "",
+      "kind": "key_observation",
+      "order": 1,
+      "problem_id": "3",
+      "stage": "hint"
+    },
+    {
+      "body_md": "One pass. Keep a map of value → index. For each element, look up its complement; if present, return the stored index and the current one. Otherwise record the current value.",
+      "code": "",
+      "kind": "approach",
+      "order": 1,
+      "problem_id": "3",
+      "stage": "solution"
+    },
+    {
+      "body_md": "",
+      "code": "func twoSum(nums []int, target int) []int {\n    seen := make(map[int]int, len(nums))\n    for i, n := range nums {\n        if j, ok := seen[target-n]; ok {\n            return []int{j, i}\n        }\n        seen[n] = i\n    }\n    return nil\n}",
+      "kind": "code",
+      "order": 2,
+      "problem_id": "3",
+      "stage": "solution"
+    },
+    {
+      "body_md": "Time O(n), space O(n). Beats the O(n^2) nested-loop brute force by trading memory for the complement lookup.",
+      "code": "",
+      "kind": "complexity",
+      "order": 3,
+      "problem_id": "3",
+      "stage": "solution"
+    },
+    {
+      "body_md": "Design a cache with O(1) get and put that evicts the least-recently-used key at capacity. The canonical hashmap + doubly-linked-list design problem.",
+      "code": "",
+      "kind": "summary",
+      "order": 1,
+      "problem_id": "40",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "LRU forces you to combine two structures for their complementary strengths: a hash map for O(1) key lookup and a doubly-linked list for O(1) recency reordering and eviction. Recognising 'I need O(1) access AND O(1) ordering' is the transferable skill.",
+      "code": "",
+      "kind": "why",
+      "order": 2,
+      "problem_id": "40",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "Map key → list node. On get, move the node to the front (most recent) and return its value. On put, upsert and move to front; if over capacity, evict the tail node and delete its key. Use head/tail sentinel nodes so no operation special-cases the ends.",
+      "code": "",
+      "kind": "approach",
+      "order": 1,
+      "problem_id": "40",
+      "stage": "solution"
+    },
+    {
+      "body_md": "Every operation is O(1) time; O(capacity) space.",
+      "code": "",
+      "kind": "complexity",
+      "order": 2,
+      "problem_id": "40",
+      "stage": "solution"
+    },
+    {
+      "body_md": "Group strings that are anagrams of each other. Key each group by a canonical signature — the sorted string, or a 26-length count tuple.",
+      "code": "",
+      "kind": "summary",
+      "order": 1,
+      "problem_id": "5",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "Return the k most frequent elements. Count with a frequency map, then either a heap of size k (O(n log k)) or bucket sort by frequency (O(n)).",
+      "code": "",
+      "kind": "summary",
+      "order": 1,
+      "problem_id": "7",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "Given courses and prerequisite pairs, decide whether you can finish all of them. This is cycle detection on a directed graph — a topological-sort feasibility check.",
+      "code": "",
+      "kind": "summary",
+      "order": 1,
+      "problem_id": "78",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "Build the dependency graph and run Kahn's algorithm: repeatedly remove zero-in-degree nodes. If you can remove all N courses, there is no cycle and the schedule is completable; if some remain, a prerequisite cycle exists.",
+      "code": "",
+      "kind": "key_observation",
+      "order": 1,
+      "problem_id": "78",
+      "stage": "hint"
+    },
+    {
+      "body_md": "Count the contiguous subarrays that sum to k. The running-prefix-sum + hashmap-of-seen-prefixes trick counts them in one pass.",
+      "code": "",
+      "kind": "summary",
+      "order": 1,
+      "problem_id": "9",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "A subarray (l, r] sums to k exactly when pre[r] - pre[l] = k, i.e. pre[l] = pre[r] - k. So at each r, add how many times the prefix `pre[r] - k` has already occurred.",
+      "code": "",
+      "kind": "key_observation",
+      "order": 1,
+      "problem_id": "9",
+      "stage": "hint"
+    },
+    {
+      "body_md": "Find the cheapest price from src to dst using at most K stops. The stop cap turns this into Bellman-Ford limited to K+1 relaxation rounds over a snapshot of the distances.",
+      "code": "",
+      "kind": "summary",
+      "order": 1,
+      "problem_id": "92",
+      "stage": "attempt"
+    },
+    {
+      "body_md": "Relax all edges K+1 times, but each round must read from the previous round's distances (a copy) so a single round cannot chain multiple edges — that is what enforces the stop limit.",
+      "code": "",
+      "kind": "key_observation",
+      "order": 1,
+      "problem_id": "92",
+      "stage": "hint"
+    }
+  ]
+}

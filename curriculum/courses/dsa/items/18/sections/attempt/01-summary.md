@@ -1,0 +1,1 @@
+Find the smallest substring of s that contains every character of t (with multiplicity). A variable-size sliding window with a 'need' counter that tracks how many required characters are still missing.

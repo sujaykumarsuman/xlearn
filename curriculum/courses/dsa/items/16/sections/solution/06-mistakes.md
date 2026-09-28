@@ -1,0 +1,3 @@
+- Forgetting to skip duplicate anchors AND duplicate l/r values → duplicate triplets.
+- Advancing only one pointer after a hit (you must move both).
+- Off-by-one in the dedupe loops (compare against the value you just moved past).

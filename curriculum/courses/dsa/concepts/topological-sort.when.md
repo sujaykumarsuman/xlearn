@@ -1,0 +1,1 @@
+Reach for topological sort whenever tasks have ordering constraints: course prerequisites, build systems, package installs. It also doubles as cycle detection on a directed graph — 'can this schedule be completed?' is a topological-sort feasibility check (Course Schedule).

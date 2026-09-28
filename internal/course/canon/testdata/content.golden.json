@@ -1,0 +1,6 @@
+{
+  "valid-code.json": "sha256:6f90d9d1c006c5e70abe5f32b9c252fe8068a37842544cf177474d597fdbe7da",
+  "valid-probes.json": "sha256:c6d71313f94d63645fbf136048b4330e0d39ddc183b898e96eebd6bf52fffcd1",
+  "valid-self.json": "sha256:5ed12e8c205b8a24aae1c1fee022727b231ff238b69b78a68e1f08df47d02571",
+  "valid-structured.json": "sha256:9552cda7e4d9be98f18a3ee4999ff3e2c28fb715ae56dc5588f3fb4fda646a14"
+}

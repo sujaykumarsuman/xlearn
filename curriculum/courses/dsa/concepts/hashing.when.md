@@ -1,0 +1,1 @@
+Reach for hashing when you catch yourself writing a nested loop to ask 'is X somewhere in this array?' or 'how many times does X appear?'. If order does not matter and you only need membership or counts, a map collapses the inner loop to O(1).

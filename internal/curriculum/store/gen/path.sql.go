@@ -7,6 +7,8 @@ package gen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getPath = `-- name: GetPath :one
@@ -15,9 +17,19 @@ FROM curriculum.path
 WHERE slug = $1
 `
 
-func (q *Queries) GetPath(ctx context.Context, slug string) (CurriculumPath, error) {
+type GetPathRow struct {
+	Slug         string
+	Title        string
+	Status       string
+	Summary      string
+	ProblemTotal int32
+	WeekTotal    int32
+	SortOrder    int32
+}
+
+func (q *Queries) GetPath(ctx context.Context, slug string) (GetPathRow, error) {
 	row := q.db.QueryRow(ctx, getPath, slug)
-	var i CurriculumPath
+	var i GetPathRow
 	err := row.Scan(
 		&i.Slug,
 		&i.Title,
@@ -36,15 +48,25 @@ FROM curriculum.path
 ORDER BY sort_order, slug
 `
 
-func (q *Queries) ListPaths(ctx context.Context) ([]CurriculumPath, error) {
+type ListPathsRow struct {
+	Slug         string
+	Title        string
+	Status       string
+	Summary      string
+	ProblemTotal int32
+	WeekTotal    int32
+	SortOrder    int32
+}
+
+func (q *Queries) ListPaths(ctx context.Context) ([]ListPathsRow, error) {
 	rows, err := q.db.Query(ctx, listPaths)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []CurriculumPath{}
+	items := []ListPathsRow{}
 	for rows.Next() {
-		var i CurriculumPath
+		var i ListPathsRow
 		if err := rows.Scan(
 			&i.Slug,
 			&i.Title,
@@ -65,15 +87,16 @@ func (q *Queries) ListPaths(ctx context.Context) ([]CurriculumPath, error) {
 }
 
 const upsertPath = `-- name: UpsertPath :exec
-INSERT INTO curriculum.path (slug, title, status, summary, problem_total, week_total, sort_order)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO curriculum.path (slug, title, status, summary, problem_total, week_total, sort_order, id_prefix)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (slug) DO UPDATE SET
     title         = EXCLUDED.title,
     status        = EXCLUDED.status,
     summary       = EXCLUDED.summary,
     problem_total = EXCLUDED.problem_total,
     week_total    = EXCLUDED.week_total,
-    sort_order    = EXCLUDED.sort_order
+    sort_order    = EXCLUDED.sort_order,
+    id_prefix     = EXCLUDED.id_prefix
 `
 
 type UpsertPathParams struct {
@@ -84,8 +107,10 @@ type UpsertPathParams struct {
 	ProblemTotal int32
 	WeekTotal    int32
 	SortOrder    int32
+	IDPrefix     pgtype.Text
 }
 
+// id_prefix comes from the course manifest (00002; unique since 00003).
 func (q *Queries) UpsertPath(ctx context.Context, arg UpsertPathParams) error {
 	_, err := q.db.Exec(ctx, upsertPath,
 		arg.Slug,
@@ -95,6 +120,7 @@ func (q *Queries) UpsertPath(ctx context.Context, arg UpsertPathParams) error {
 		arg.ProblemTotal,
 		arg.WeekTotal,
 		arg.SortOrder,
+		arg.IDPrefix,
 	)
 	return err
 }

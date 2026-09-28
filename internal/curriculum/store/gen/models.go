@@ -15,7 +15,8 @@ type CurriculumConcept struct {
 	Title        string
 	BodyMd       string
 	WhenToUseMd  string
-	CodeTemplate string
+	CodeTemplate pgtype.Text
+	Templates    []byte
 }
 
 type CurriculumPath struct {
@@ -26,6 +27,7 @@ type CurriculumPath struct {
 	ProblemTotal int32
 	WeekTotal    int32
 	SortOrder    int32
+	IDPrefix     pgtype.Text
 }
 
 type CurriculumPhase struct {
@@ -45,10 +47,15 @@ type CurriculumProblem struct {
 	Title           string
 	Difficulty      string
 	Pattern         string
-	LeetcodeUrl     string
-	NeetcodeUrl     string
-	IsReinforcement bool
+	LeetcodeUrl     pgtype.Text
+	NeetcodeUrl     pgtype.Text
+	IsReinforcement pgtype.Bool
 	SortOrder       int32
+	Role            string
+	Status          string
+	RetiredAt       pgtype.Timestamptz
+	Links           []byte
+	ContentHash     string
 }
 
 type CurriculumProblemSection struct {
@@ -59,6 +66,7 @@ type CurriculumProblemSection struct {
 	Order     int32
 	BodyMd    string
 	Code      string
+	Language  string
 }
 
 type CurriculumWeek struct {

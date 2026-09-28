@@ -1,0 +1,16 @@
+type node struct {
+    key, val   int
+    prev, next *node
+}
+
+type LRUCache struct {
+    cap        int
+    m          map[int]*node
+    head, tail *node // sentinels: head.next = most recent
+}
+
+func (c *LRUCache) remove(n *node) { n.prev.next = n.next; n.next.prev = n.prev }
+func (c *LRUCache) pushFront(n *node) {
+    n.prev, n.next = c.head, c.head.next
+    c.head.next.prev, c.head.next = n, n
+}

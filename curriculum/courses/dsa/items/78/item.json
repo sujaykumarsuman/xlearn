@@ -1,0 +1,28 @@
+{
+  "id": "78",
+  "course": "dsa",
+  "week_n": 8,
+  "sort_order": 1,
+  "title": "Course Schedule",
+  "difficulty": "med",
+  "pattern": "Topological Sort",
+  "role": "core",
+  "status": "live",
+  "provenance": {
+    "origin": "original",
+    "inspired_by": [
+      "leetcode:course-schedule"
+    ],
+    "authored_by": "ai-assisted"
+  },
+  "links": [
+    {
+      "kind": "leetcode",
+      "url": "https://leetcode.com/problems/course-schedule/"
+    },
+    {
+      "kind": "neetcode",
+      "url": "https://neetcode.io/problems/course-schedule"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+BFS for fewest edges on an unweighted graph. Dijkstra for cheapest cost with non-negative weights. Bellman-Ford when weights can be negative or when the answer is bounded by a number of hops/stops (relax K+1 times over a copy of the distances).

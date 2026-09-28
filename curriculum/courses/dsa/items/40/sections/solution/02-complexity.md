@@ -1,0 +1,1 @@
+Every operation is O(1) time; O(capacity) space.

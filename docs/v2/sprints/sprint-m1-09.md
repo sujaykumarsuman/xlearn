@@ -9,17 +9,17 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done 2026-09-28 · [PR #83](https://github.com/sujaykumarsuman/xlearn/pull/83) (run r-18, merge only; ships dark in `v1.6.0`)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | v1 row snapshot, one-shot converter, new layout, `ids.lock.json`, old loader deleted | X | ⬜ |
-| 2 | Glob loader + guards (id `:execrows`, retire/withdrawn, course-slug guard) | X | ⬜ |
-| 3 | curriculum expand migrations (`00002`, `00003`) + seed semantics + sqlc | X | ⬜ |
-| 4 | Public `content` CI job (`cmd/contentlint`) | X | ⬜ |
-| 5 | Replace the two copied Example-1s — agent draft, landing as drafted (`ev-m1-statements` automatic, D40) | X | ⬜ |
-| 6 | Verify (row snapshot, re-seed cases, R-b smoke on `1.5.2`, e2e, no API change) | X | ⬜ |
-| 7 | Record | X | ⬜ |
+| 1 | v1 row snapshot, one-shot converter, new layout, `ids.lock.json`, old loader deleted | X | ✅ |
+| 2 | Glob loader + guards (id `:execrows`, retire/withdrawn, course-slug guard) | X | ✅ |
+| 3 | curriculum expand migrations (`00002`, `00003`) + seed semantics + sqlc | X | ✅ |
+| 4 | Public `content` CI job (`cmd/contentlint`) | X | ✅ |
+| 5 | Replace the two copied Example-1s — agent draft, landing as drafted (`ev-m1-statements` automatic, D40) | X | ✅ |
+| 6 | Verify (row snapshot, re-seed cases, R-b smoke on `1.5.2`, e2e, no API change) | X | ✅ |
+| 7 | Record | X | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row,

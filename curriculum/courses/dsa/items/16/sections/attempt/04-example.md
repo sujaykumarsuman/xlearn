@@ -1,0 +1,1 @@
+nums = [5, -8, 3, 3, -6, 5, 12, -4] → [[-8, -4, 12], [-8, 3, 5], [-6, 3, 3]]. The repeated 3s and 5s still give [-8, 3, 5] only once, while [-6, 3, 3] uses both 3s.

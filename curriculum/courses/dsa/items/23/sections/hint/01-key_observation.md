@@ -1,0 +1,1 @@
+Keep a stack of indices with increasing heights. When a shorter bar arrives, pop taller bars — each popped bar's rectangle extends from the new bar back to the element below it on the stack. A sentinel zero-height bar at the end flushes the stack.

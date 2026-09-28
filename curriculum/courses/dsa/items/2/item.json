@@ -1,0 +1,28 @@
+{
+  "id": "2",
+  "course": "dsa",
+  "week_n": 1,
+  "sort_order": 2,
+  "title": "Valid Anagram",
+  "difficulty": "easy",
+  "pattern": "Hashing",
+  "role": "core",
+  "status": "live",
+  "provenance": {
+    "origin": "original",
+    "inspired_by": [
+      "leetcode:valid-anagram"
+    ],
+    "authored_by": "ai-assisted"
+  },
+  "links": [
+    {
+      "kind": "leetcode",
+      "url": "https://leetcode.com/problems/valid-anagram/"
+    },
+    {
+      "kind": "neetcode",
+      "url": "https://neetcode.io/problems/is-anagram"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+A sliding window maintains a contiguous range `[left, right]` and a small amount of state about what is inside it (a count, a frequency map, a running sum). You expand `right` to include new elements and contract `left` when the window violates its constraint. Each index enters and leaves the window at most once, so the whole scan is O(n) even though the window is 'nested'.

@@ -31,6 +31,21 @@ const migrationTable = "curriculum.goose_db_version"
 // database/sql handle (goose's API), runs migrations, and closes it; the service
 // then uses a pgxpool for queries. The caller refuses to serve on a non-nil error.
 func Migrate(ctx context.Context, dsn string, logger *slog.Logger) error {
+	return migrate(ctx, dsn, 0, logger)
+}
+
+// MigrateTo applies pending migrations up to and including version, under the same
+// advisory lock. The service always runs Migrate; tests use MigrateTo to build a schema
+// as an older release left it (e.g. v1's 00001) and then upgrade it.
+func MigrateTo(ctx context.Context, dsn string, version int64, logger *slog.Logger) error {
+	if version < 1 {
+		return fmt.Errorf("migrate to version %d: want >= 1", version)
+	}
+	return migrate(ctx, dsn, version, logger)
+}
+
+// migrate runs goose Up (version 0) or UpTo(version).
+func migrate(ctx context.Context, dsn string, version int64, logger *slog.Logger) error {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return fmt.Errorf("open migration db: %w", err)
@@ -56,7 +71,12 @@ func Migrate(ctx context.Context, dsn string, logger *slog.Logger) error {
 		return fmt.Errorf("new goose provider: %w", err)
 	}
 
-	results, err := provider.Up(ctx)
+	var results []*goose.MigrationResult
+	if version == 0 {
+		results, err = provider.Up(ctx)
+	} else {
+		results, err = provider.UpTo(ctx, version)
+	}
 	if err != nil {
 		return fmt.Errorf("apply migrations: %w", err)
 	}

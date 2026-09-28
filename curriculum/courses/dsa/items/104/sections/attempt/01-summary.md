@@ -1,0 +1,1 @@
+Return the fewest coins that make up `amount`, or -1 if impossible. The canonical 1-D dynamic-programming recurrence.

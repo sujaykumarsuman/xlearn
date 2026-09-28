@@ -7,10 +7,12 @@ package gen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const countProblemsByPath = `-- name: CountProblemsByPath :one
-SELECT COUNT(*) FROM curriculum.problem WHERE path_slug = $1
+SELECT COUNT(*) FROM curriculum.problem WHERE path_slug = $1 AND status = 'live'
 `
 
 func (q *Queries) CountProblemsByPath(ctx context.Context, pathSlug string) (int64, error) {
@@ -21,7 +23,10 @@ func (q *Queries) CountProblemsByPath(ctx context.Context, pathSlug string) (int
 }
 
 const getProblem = `-- name: GetProblem :one
-SELECT id, path_slug, week_n, title, difficulty, pattern, leetcode_url, neetcode_url, is_reinforcement
+SELECT id, path_slug, week_n, title, difficulty, pattern,
+       COALESCE(leetcode_url, '')::text AS leetcode_url,
+       COALESCE(neetcode_url, '')::text AS neetcode_url,
+       COALESCE(is_reinforcement, role = 'reinforcement')::boolean AS is_reinforcement
 FROM curriculum.problem
 WHERE id = $1
 `
@@ -38,6 +43,7 @@ type GetProblemRow struct {
 	IsReinforcement bool
 }
 
+// Resolves any item by id, whatever its status (a retired item stays reachable).
 func (q *Queries) GetProblem(ctx context.Context, id string) (GetProblemRow, error) {
 	row := q.db.QueryRow(ctx, getProblem, id)
 	var i GetProblemRow
@@ -56,7 +62,10 @@ func (q *Queries) GetProblem(ctx context.Context, id string) (GetProblemRow, err
 }
 
 const getProblemsByIDs = `-- name: GetProblemsByIDs :many
-SELECT id, path_slug, week_n, title, difficulty, pattern, leetcode_url, neetcode_url, is_reinforcement
+SELECT id, path_slug, week_n, title, difficulty, pattern,
+       COALESCE(leetcode_url, '')::text AS leetcode_url,
+       COALESCE(neetcode_url, '')::text AS neetcode_url,
+       COALESCE(is_reinforcement, role = 'reinforcement')::boolean AS is_reinforcement
 FROM curriculum.problem
 WHERE id = ANY($1::text[])
 ORDER BY week_n, sort_order, id
@@ -78,6 +87,7 @@ type GetProblemsByIDsRow struct {
 // gateway can enrich the Revision due queue / mistake journal without N per-id GETs
 // (ADR-0005: the gateway composes cross-context state; this keeps it a single query).
 // Ordered by the same (week_n, sort_order, id) key as the path index for stability.
+// Any status resolves (a retired item may still be on a learner's ladder).
 func (q *Queries) GetProblemsByIDs(ctx context.Context, ids []string) ([]GetProblemsByIDsRow, error) {
 	rows, err := q.db.Query(ctx, getProblemsByIDs, ids)
 	if err != nil {
@@ -109,9 +119,12 @@ func (q *Queries) GetProblemsByIDs(ctx context.Context, ids []string) ([]GetProb
 }
 
 const listProblemsByPath = `-- name: ListProblemsByPath :many
-SELECT id, path_slug, week_n, title, difficulty, pattern, leetcode_url, neetcode_url, is_reinforcement
+SELECT id, path_slug, week_n, title, difficulty, pattern,
+       COALESCE(leetcode_url, '')::text AS leetcode_url,
+       COALESCE(neetcode_url, '')::text AS neetcode_url,
+       COALESCE(is_reinforcement, role = 'reinforcement')::boolean AS is_reinforcement
 FROM curriculum.problem
-WHERE path_slug = $1
+WHERE path_slug = $1 AND status = 'live'
 ORDER BY week_n, sort_order, id
 `
 
@@ -127,7 +140,7 @@ type ListProblemsByPathRow struct {
 	IsReinforcement bool
 }
 
-// The whole problem index for a path (id -> week_n / pattern / difficulty /
+// The whole live problem index for a path (id -> week_n / pattern / difficulty /
 // reinforcement). The gateway reads this once to compose the Progress + Dashboard
 // roll-ups (by-phase completion, by-pattern mastery) without N per-problem calls.
 func (q *Queries) ListProblemsByPath(ctx context.Context, pathSlug string) ([]ListProblemsByPathRow, error) {
@@ -161,9 +174,13 @@ func (q *Queries) ListProblemsByPath(ctx context.Context, pathSlug string) ([]Li
 }
 
 const listProblemsByWeek = `-- name: ListProblemsByWeek :many
-SELECT id, path_slug, week_n, title, difficulty, pattern, leetcode_url, neetcode_url, is_reinforcement
+
+SELECT id, path_slug, week_n, title, difficulty, pattern,
+       COALESCE(leetcode_url, '')::text AS leetcode_url,
+       COALESCE(neetcode_url, '')::text AS neetcode_url,
+       COALESCE(is_reinforcement, role = 'reinforcement')::boolean AS is_reinforcement
 FROM curriculum.problem
-WHERE path_slug = $1 AND week_n = $2
+WHERE path_slug = $1 AND week_n = $2 AND status = 'live'
 ORDER BY sort_order, id
 `
 
@@ -184,6 +201,12 @@ type ListProblemsByWeekRow struct {
 	IsReinforcement bool
 }
 
+// Readers keep the v1 response shape (m1-09 is M1a expand; m1-03 switches readers to the
+// new columns). The M1c-drop columns are nullable since 00002 but dual-written by the
+// seed, so the COALESCEs only guard a row some future writer left NULL.
+//
+// Retire semantics (t1 §4): only `live` items are in the index and the counts; retired
+// and withdrawn items stay resolvable by id (GetProblem, GetProblemsByIDs).
 func (q *Queries) ListProblemsByWeek(ctx context.Context, arg ListProblemsByWeekParams) ([]ListProblemsByWeekRow, error) {
 	rows, err := q.db.Query(ctx, listProblemsByWeek, arg.PathSlug, arg.WeekN)
 	if err != nil {
@@ -214,14 +237,55 @@ func (q *Queries) ListProblemsByWeek(ctx context.Context, arg ListProblemsByWeek
 	return items, nil
 }
 
-const upsertProblem = `-- name: UpsertProblem :exec
+const retireMissingProblems = `-- name: RetireMissingProblems :many
+UPDATE curriculum.problem
+SET status = 'retired', retired_at = now()
+WHERE status = 'live' AND NOT (id = ANY($1::text[]))
+RETURNING id, path_slug
+`
+
+type RetireMissingProblemsRow struct {
+	ID       string
+	PathSlug string
+}
+
+// Defensive retire (t1 §4): a live item in the DB that the seed no longer carries is
+// retired, never deleted (ids.lock.json should make this impossible; the caller logs a
+// WARN per id).
+func (q *Queries) RetireMissingProblems(ctx context.Context, seededIds []string) ([]RetireMissingProblemsRow, error) {
+	rows, err := q.db.Query(ctx, retireMissingProblems, seededIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []RetireMissingProblemsRow{}
+	for rows.Next() {
+		var i RetireMissingProblemsRow
+		if err := rows.Scan(&i.ID, &i.PathSlug); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const upsertProblem = `-- name: UpsertProblem :execrows
 INSERT INTO curriculum.problem (
     id, path_slug, week_n, title, difficulty, pattern,
-    leetcode_url, neetcode_url, is_reinforcement, sort_order
+    leetcode_url, neetcode_url, is_reinforcement, sort_order,
+    role, status, retired_at, links, content_hash
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+VALUES (
+    $1, $2, $3, $4, $5, $6,
+    $7, $8, $9, $10,
+    $11, $12,
+    CASE WHEN $12::text = 'live' THEN NULL ELSE now() END,
+    $13, $14
+)
 ON CONFLICT (id) DO UPDATE SET
-    path_slug        = EXCLUDED.path_slug,
     week_n           = EXCLUDED.week_n,
     title            = EXCLUDED.title,
     difficulty       = EXCLUDED.difficulty,
@@ -229,7 +293,15 @@ ON CONFLICT (id) DO UPDATE SET
     leetcode_url     = EXCLUDED.leetcode_url,
     neetcode_url     = EXCLUDED.neetcode_url,
     is_reinforcement = EXCLUDED.is_reinforcement,
-    sort_order       = EXCLUDED.sort_order
+    sort_order       = EXCLUDED.sort_order,
+    role             = EXCLUDED.role,
+    status           = EXCLUDED.status,
+    -- The first time an item leaves ` + "`" + `live` + "`" + ` is kept across re-seeds.
+    retired_at       = CASE WHEN EXCLUDED.status = 'live' THEN NULL
+                            ELSE COALESCE(curriculum.problem.retired_at, now()) END,
+    links            = EXCLUDED.links,
+    content_hash     = EXCLUDED.content_hash
+WHERE curriculum.problem.path_slug = EXCLUDED.path_slug
 `
 
 type UpsertProblemParams struct {
@@ -239,14 +311,22 @@ type UpsertProblemParams struct {
 	Title           string
 	Difficulty      string
 	Pattern         string
-	LeetcodeUrl     string
-	NeetcodeUrl     string
-	IsReinforcement bool
+	LeetcodeUrl     pgtype.Text
+	NeetcodeUrl     pgtype.Text
+	IsReinforcement pgtype.Bool
 	SortOrder       int32
+	Role            string
+	Status          string
+	Links           []byte
+	ContentHash     string
 }
 
-func (q *Queries) UpsertProblem(ctx context.Context, arg UpsertProblemParams) error {
-	_, err := q.db.Exec(ctx, upsertProblem,
+// The id guard (t1 §4): an id is never re-parented. The DO UPDATE applies only when the
+// stored row is in the same course, so a move affects 0 rows and the seed aborts unless
+// exactly 1 row is affected. Writes the v2 columns and dual-writes the v1 ones
+// (is_reinforcement, leetcode_url, neetcode_url) from them until M1c.
+func (q *Queries) UpsertProblem(ctx context.Context, arg UpsertProblemParams) (int64, error) {
+	result, err := q.db.Exec(ctx, upsertProblem,
 		arg.ID,
 		arg.PathSlug,
 		arg.WeekN,
@@ -257,6 +337,13 @@ func (q *Queries) UpsertProblem(ctx context.Context, arg UpsertProblemParams) er
 		arg.NeetcodeUrl,
 		arg.IsReinforcement,
 		arg.SortOrder,
+		arg.Role,
+		arg.Status,
+		arg.Links,
+		arg.ContentHash,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

@@ -1,0 +1,28 @@
+{
+  "id": "7",
+  "course": "dsa",
+  "week_n": 1,
+  "sort_order": 5,
+  "title": "Top K Frequent Elements",
+  "difficulty": "med",
+  "pattern": "Heap / Bucket Sort",
+  "role": "core",
+  "status": "live",
+  "provenance": {
+    "origin": "original",
+    "inspired_by": [
+      "leetcode:top-k-frequent-elements"
+    ],
+    "authored_by": "ai-assisted"
+  },
+  "links": [
+    {
+      "kind": "leetcode",
+      "url": "https://leetcode.com/problems/top-k-frequent-elements/"
+    },
+    {
+      "kind": "neetcode",
+      "url": "https://neetcode.io/problems/top-k-elements-in-list"
+    }
+  ]
+}

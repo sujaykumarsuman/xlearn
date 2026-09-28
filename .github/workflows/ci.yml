@@ -47,6 +47,55 @@ jobs:
           sqlc-version: "1.31.1"
       - run: sqlc diff
 
+  # Public content checks (m1-09; t1 §7.2): cmd/contentlint over curriculum/ (schema +
+  # strict decode, id/slug guards vs ids.lock.json and the previous release tag — hence
+  # fetch-depth 0 —, the Markdown profile, filename rules, the embedded-file allowlist),
+  # then the seeded-row snapshot and the loader/re-seed/migration tests on PG 18 under
+  # the least-privilege curriculum role.
+  content:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: xlearndb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: contentlint
+        run: make contentlint
+      - name: Curriculum role + schema (least privilege, the CNPG model)
+        env:
+          PGHOST: localhost
+          PGUSER: postgres
+          PGPASSWORD: postgres
+        run: |
+          psql -v ON_ERROR_STOP=1 -d xlearndb \
+            -c "CREATE ROLE xlearn_curriculum LOGIN PASSWORD 'pw'" \
+            -c "CREATE SCHEMA curriculum AUTHORIZATION xlearn_curriculum" \
+            -c "ALTER ROLE xlearn_curriculum SET search_path = curriculum"
+      - name: Seeded-row snapshot (TestSeedMatchesV1Snapshot)
+        env:
+          XLEARN_TEST_DATABASE_URL: postgres://xlearn_curriculum:pw@localhost:5432/xlearndb?sslmode=disable
+        run: go test -race -count=1 -run TestSeedMatchesV1Snapshot -v ./internal/curriculum/
+      # -p 1: every curriculum DB test starts from a fresh schema in the same database.
+      - name: Curriculum loader, re-seed and migration tests
+        env:
+          XLEARN_TEST_DATABASE_URL: postgres://xlearn_curriculum:pw@localhost:5432/xlearndb?sslmode=disable
+        run: go test -race -count=1 -p 1 ./internal/curriculum/... ./internal/course/... ./cmd/contentlint/
+
   # Core-loop e2e over REAL JetStream + the transactional outbox (events.md Flows 1-4).
   # NATS runs IN-PROCESS (an embedded nats-server with JetStream), so the job needs only
   # a Postgres — the outbox → relay → JetStream → durable-consumer path is the production

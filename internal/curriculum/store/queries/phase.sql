@@ -12,3 +12,8 @@ ON CONFLICT (path_slug, "order") DO UPDATE SET
     theme     = EXCLUDED.theme,
     week_from = EXCLUDED.week_from,
     week_to   = EXCLUDED.week_to;
+
+-- name: DeleteMissingPhases :exec
+-- Delete-missing per course (content-only table).
+DELETE FROM curriculum.phase
+WHERE path_slug = sqlc.arg(path_slug) AND NOT ("order" = ANY(sqlc.arg(keep)::int[]));

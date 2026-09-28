@@ -1,0 +1,1 @@
+Sort the array first. Fix the leftmost element `nums[i]`; the rest reduces to Two Sum on a sorted subarray for target `-nums[i]`, which two pointers solve in O(n). Sorting also makes duplicates adjacent, so skipping repeats is trivial.

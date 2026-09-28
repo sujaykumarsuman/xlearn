@@ -9,13 +9,56 @@ import (
 	"context"
 )
 
+const deleteSectionsByProblem = `-- name: DeleteSectionsByProblem :exec
+DELETE FROM curriculum.problem_section WHERE problem_id = $1
+`
+
+// Every seed rewrites every item's sections (delete, then re-insert), inside the seed
+// transaction. content_hash is NOT a skip key: the v1.5.2 image (a valid R-b target
+// while the floor is "none") rewrites section bodies without touching content_hash, so
+// a hash skip would keep its text after a roll-forward.
+func (q *Queries) DeleteSectionsByProblem(ctx context.Context, problemID string) error {
+	_, err := q.db.Exec(ctx, deleteSectionsByProblem, problemID)
+	return err
+}
+
+const insertSection = `-- name: InsertSection :exec
+INSERT INTO curriculum.problem_section (problem_id, stage, kind, "order", language, body_md, code)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+`
+
+type InsertSectionParams struct {
+	ProblemID string
+	Stage     string
+	Kind      string
+	Order     int32
+	Language  string
+	BodyMd    string
+	Code      string
+}
+
+func (q *Queries) InsertSection(ctx context.Context, arg InsertSectionParams) error {
+	_, err := q.db.Exec(ctx, insertSection,
+		arg.ProblemID,
+		arg.Stage,
+		arg.Kind,
+		arg.Order,
+		arg.Language,
+		arg.BodyMd,
+		arg.Code,
+	)
+	return err
+}
+
 const listSectionsByProblem = `-- name: ListSectionsByProblem :many
-SELECT stage, kind, "order", body_md, code
-FROM curriculum.problem_section
-WHERE problem_id = $1
+SELECT s.stage, s.kind, s."order", s.body_md, s.code
+FROM curriculum.problem_section s
+JOIN curriculum.problem p ON p.id = s.problem_id
+WHERE s.problem_id = $1 AND p.status <> 'withdrawn'
 ORDER BY
-    CASE stage WHEN 'attempt' THEN 0 WHEN 'hint' THEN 1 WHEN 'solution' THEN 2 ELSE 3 END,
-    "order"
+    CASE s.stage WHEN 'attempt' THEN 0 WHEN 'hint' THEN 1 WHEN 'solution' THEN 2 ELSE 3 END,
+    s."order",
+    s.language
 `
 
 type ListSectionsByProblemRow struct {
@@ -27,8 +70,8 @@ type ListSectionsByProblemRow struct {
 }
 
 // All content sections for a problem, ordered by stage (attempt -> hint -> solution)
-// then position. S05 will filter to only the user's unlocked stages; this sprint
-// returns the full content set (the shape is already stage-keyed).
+// then position. A withdrawn item (a takedown) serves no sections: its prose is
+// blanked while its title stays resolvable.
 func (q *Queries) ListSectionsByProblem(ctx context.Context, problemID string) ([]ListSectionsByProblemRow, error) {
 	rows, err := q.db.Query(ctx, listSectionsByProblem, problemID)
 	if err != nil {
@@ -53,34 +96,4 @@ func (q *Queries) ListSectionsByProblem(ctx context.Context, problemID string) (
 		return nil, err
 	}
 	return items, nil
-}
-
-const upsertSection = `-- name: UpsertSection :exec
-INSERT INTO curriculum.problem_section (problem_id, stage, kind, "order", body_md, code)
-VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (problem_id, stage, "order") DO UPDATE SET
-    kind    = EXCLUDED.kind,
-    body_md = EXCLUDED.body_md,
-    code    = EXCLUDED.code
-`
-
-type UpsertSectionParams struct {
-	ProblemID string
-	Stage     string
-	Kind      string
-	Order     int32
-	BodyMd    string
-	Code      string
-}
-
-func (q *Queries) UpsertSection(ctx context.Context, arg UpsertSectionParams) error {
-	_, err := q.db.Exec(ctx, upsertSection,
-		arg.ProblemID,
-		arg.Stage,
-		arg.Kind,
-		arg.Order,
-		arg.BodyMd,
-		arg.Code,
-	)
-	return err
 }
