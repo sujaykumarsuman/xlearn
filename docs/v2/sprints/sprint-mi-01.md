@@ -9,16 +9,16 @@
 
 ## Status
 
-_Overall:_ ⛔ MI-2 and MI-3 landed (infra#32, infra#33), no pod rolled; task 5 blocked by a **pre-existing** fault: airlift's Longhorn volume, faulted since 2026-09-26 (owner decision)
+_Overall:_ ✅ Done 2026-09-28. MI-2 (infra#32) and MI-3 (infra#33) landed and no pod rolled. Task 5 closed in attempt 2 after the owner recovered airlift's Longhorn volume (ask-10, option a)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
 | 1 | MI-2 prune-guard PR (merged first) | I | ✅ infra#32 (`17a48d3`), 2026-09-27; annotation live on all three, `databases`/`messaging` Ready, PG and NATS not restarted |
 | 2 | `hack/chart-diff.sh` | I | ✅ in infra#33; 11/11 identical on the untouched 0.2.2 chart; `--self-test` exits 1 (mutation caught in 11/11) |
 | 3 | Chart 0.3.0 knob union (§2.1), all default-off | I | ✅ in infra#33; 11/11 identical vs `origin/main` 0.2.2 |
-| 4 | Knob renders + byte-identical proof, merge MI-3 | I | ✅ infra#33 (`77334fd`), 2026-09-28; 20 fixtures pass `--knobs`; 11 Deployments on `project-0.3.0` with generations unchanged; 39/40 pods identical (the 40th is airlift's pre-existing churn, below). 14/15 HelmReleases Ready: `airlift` `UpgradeFailed` because Helm's wait hit its faulted volume |
-| 5 | Verify the host | H | ⛔ `host-verify --cluster` 42 pass / 0 warn / **4 fail**, all from airlift's Longhorn volume `pvc-3b8149c5…`, faulted since 2026-09-26T09:33Z (before this sprint): `cluster.pods` (airlift), `cluster.longhorn`, `cluster.flux-ks` (`apps`), `cluster.flux-hr` (airlift). PG, NATS and CNPG healthy. Recovering the volume and clearing the stalled HelmRelease is an owner decision |
-| 6 | Record | X | ✅ this file + [`../status.md`](../status.md) (docs PR `docs/mi-01-status`) |
+| 4 | Knob renders + byte-identical proof, merge MI-3 | I | ✅ infra#33 (`77334fd`), 2026-09-28; 20 fixtures pass `--knobs`; 11 Deployments on `project-0.3.0` with generations unchanged; 39/40 pods identical (the 40th was airlift's pre-existing churn, task 5). At first 14/15 HelmReleases were Ready: `airlift`'s upgrade failed on its faulted volume. After the owner's recovery and a forced reconcile, all **15/15** were Ready (06:17Z) |
+| 5 | Verify the host | H | ✅ 2026-09-28T06:17Z (attempt 2): `host-verify --cluster` **46 pass / 0 warn / 0 fail** (39 pods ready, 3 Longhorn volumes attached and healthy, 8 Kustomizations and 15 HelmReleases Ready). Attempt 1 got 42/0/4, all from airlift's Longhorn volume `pvc-3b8149c5…`, faulted since 2026-09-26T09:33Z (before this sprint). The owner chose to recover it (ask-10, option a) at 06:13–06:14Z: a stale tgt target, then an instance-manager restart after a tgtd crash. They then forced the stalled `airlift` HelmRelease to reconcile |
+| 6 | Record | X | ✅ this file + [`../status.md`](../status.md) (xlearn#72; close-out PR `docs/mi-01-close`) |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + MI track rows MI-2, MI-3).
@@ -196,8 +196,8 @@ refreshes the node copy. Expect no FAIL. If [mi-02](sprint-mi-02.md) has merged 
 - [x] The prune annotation is live on `Cluster databases/projects-pgstore`, `Namespace databases` and `Namespace messaging`. The `databases` and `messaging` Kustomizations are Ready, and `projects-pgstore-1` and `nats-0` weren't restarted.
 - [x] `hack/chart-diff.sh` reports **11/11 identical** against `origin/main` (only `helm.sh/chart` masked; projects-hub rendered with its printed `valuesFrom` placeholder), and `--self-test` exits 1.
 - [x] Every §2.1 knob renders **only when set**: each `ci/knob-*.yaml` puts its field at the asserted path, the default render omits it, and `helm lint --strict` is clean.
-- [ ] After the MI-3 merge, all 15 HelmReleases are Ready, the 11 chart releases are on `project-0.3.0`, and **no pod restarted** (pod start times unchanged). *2026-09-28: 11/11 on `project-0.3.0` ✅; no pod rolled ✅ (Deployment generations unchanged; the only changed pod is airlift's, recreated every ~2 min since before the merge); **14/15 Ready** ⛔: `airlift` `UpgradeFailed`/`Stalled` because Helm waited on a Deployment its faulted volume keeps down.*
-- [ ] `host-verify --cluster` shows no FAIL after both merges. *⛔ 4 FAIL, all airlift (see task 5).*
+- [x] After the MI-3 merge, all 15 HelmReleases are Ready, the 11 chart releases are on `project-0.3.0`, and **no pod restarted** (pod start times unchanged). *2026-09-28: 11/11 on `project-0.3.0` ✅. No pod rolled ✅: Deployment generations were unchanged, and the only changed pod was airlift's, which had been recreated every ~2 min since before the merge. **15/15 Ready** ✅ at 06:17Z, after the owner recovered airlift's volume; at first `airlift` was `UpgradeFailed` on it. The PG and NATS pods restarted at 06:13Z during that recovery, when the Longhorn instance-manager restarted; the chart didn't cause it.*
+- [x] `host-verify --cluster` shows no FAIL after both merges. *46/0/0 at 2026-09-28T06:17Z (attempt 2). Attempt 1 had 4 FAIL, all airlift; see task 5.*
 - [x] `docs/v2/status.md` shows MI-2 and MI-3 ✅ with their PR numbers.
 
 ## Release
