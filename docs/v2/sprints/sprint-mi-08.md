@@ -9,11 +9,14 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ⛔ Blocked 2026-09-28 (run r-22): entry gate 3 unmet. The `top` sampler held 1 h 45 m of the ≥ 48 h
+(started 2026-09-28T06:36:49Z); it is readable from **2026-09-30T06:37Z**. The run stopped at the gates and changed
+nothing in `../infra` or on the node; the sampler is still running. Re-run this prompt after that time (the planned
+calendar slot is week 4).
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Read ≥ 48 h of top samples → p95 per container; stop the sampler if alive, delete its files | H | ⬜ |
+| 1 | Read ≥ 48 h of top samples → p95 per container; stop the sampler if alive, delete its files | H | ⛔ gate 3: 1 h 45 m of samples at 2026-09-28T08:22Z (968 rows, PID 1569254 alive, not declined); readable from 2026-09-30T06:37Z |
 | 2 | Flux controllers 1 GiB → 512 Mi (`flux-system/kustomization.yaml` patch) | I | ⬜ |
 | 3 | Traefik + cert-manager limits; metrics-server budget entry | I | ⬜ |
 | 4 | Longhorn (and other limitless) budget rows; drop now-limited rows; re-embed in `host-verify.sh` (host-lint); UI limit if exposed | I | ⬜ |
@@ -28,9 +31,9 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] MI-3 merged ([mi-01](sprint-mi-01.md)): chart `0.3.0` with the `automountServiceAccountToken` knob, and `hack/chart-diff.sh`
-- [ ] MI-8 memory-sum check available ([mi-02](sprint-mi-02.md)): `host-verify --cluster [--with-runner]`, `hack/memory-budget.tsv` and its embedded copy in `hack/host-verify.sh` (checked by `hack/host-lint.sh`)
-- [ ] ≥ 48 h of samples exist in `/var/tmp/xlearn-top.tsv` (mi-02 started the sampler after the H0 reboot; it self-stops after `SAMPLE_HOURS`, default 168 h, so by now it has normally finished) — **or** mi-02 recorded the sampler as declined (its Decisions-log line) → keep the provisional `top × 1.2` budgets and say so (task 1)
+- [x] MI-3 merged ([mi-01](sprint-mi-01.md)): chart `0.3.0` with the `automountServiceAccountToken` knob, and `hack/chart-diff.sh` — infra `origin/main` `15de23c`, 2026-09-28
+- [x] MI-8 memory-sum check available ([mi-02](sprint-mi-02.md)): `host-verify --cluster [--with-runner]`, `hack/memory-budget.tsv` and its embedded copy in `hack/host-verify.sh` (checked by `hack/host-lint.sh`) — `--cluster --with-runner` ran 2026-09-28 08:22Z: 64 pass / 1 warn / 1 fail (the FAIL is the expected pre-MI-11a `TR-MEM` with the runner, −1,175 Mi; without it +1,897 Mi)
+- [ ] ≥ 48 h of samples exist in `/var/tmp/xlearn-top.tsv` (mi-02 started the sampler after the H0 reboot; it self-stops after `SAMPLE_HOURS`, default 168 h, so by now it has normally finished) — **or** mi-02 recorded the sampler as declined (its Decisions-log line) → keep the provisional `top × 1.2` budgets and say so (task 1) — ⛔ **unmet 2026-09-28 08:22Z** (r-22): 06:36:49Z → 08:21:51Z, 1 h 45 m; met from 2026-09-30T06:37Z
 - [ ] Hostinger weekly image date checked (≤ 7 days): the owner reads hPanel **before launch** (the prompt's before-launch item; launching attests it, D40) — the controller restarts are a restart-inducing step ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag))
 - [ ] Parallel sessions: no `xlearn` tag rolling out and no peer PR open on the files below (a fleet rollout during the 24 h watch muddles it)
 
