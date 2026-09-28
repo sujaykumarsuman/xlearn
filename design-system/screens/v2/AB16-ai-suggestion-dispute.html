@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB16 ★ · A3 AI suggestion / dispute — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB16 board-local layout (prefix ab16-). Tokens only; never restyles a ds-, xl- or bd- class. */
+  .ab16-flex { flex: 1; }
+  .ab16-gap { margin-bottom: 22px; }
+  .ab16-ok { color: var(--ds-ok); } .ab16-err { color: var(--ds-err); } .ab16-warn { color: var(--ds-warn); }
+  .ab16-info { color: var(--ds-info); } .ab16-teal { color: var(--ds-teal); } .ab16-violet { color: var(--ds-violet); } .ab16-dimc { color: var(--ds-dim); }
+  .ab16-ic { display: inline-flex; flex: none; }
+  .ab16-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
+  .ab16-col { display: flex; flex-direction: column; gap: 12px; }
+  .ab16-id { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-dim); }
+  .ab16-title { font-size: 14px; font-weight: 600; color: var(--ds-text); }
+  .ab16-mono { font-family: var(--ds-font-mono); }
+  .ab16-cap { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab16-p { font-size: 13px; line-height: 1.6; color: var(--ds-text); }
+  .ab16-small { font-size: 12px; line-height: 1.5; color: var(--ds-dim); }
+  .ab16-small b { color: var(--ds-text); font-weight: 600; }
+  /* result panel pieces (the concluded card of the Workspace / Touch result) */
+  .ab16-hud { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 10px 14px; border-bottom: 1px solid var(--ds-line); }
+  .ab16-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .ab16-head { display: flex; align-items: flex-start; gap: 10px; font-size: 18px; font-weight: 700; letter-spacing: -.2px; }
+  .ab16-head > svg { margin-top: 4px; }
+  .ab16-sub { font-size: 13px; color: var(--ds-dim); margin-top: -6px; }
+  .ab16-steps { display: flex; flex-direction: column; border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); background: var(--ds-inset); overflow: hidden; }
+  .ab16-step { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 9px 12px; border-top: 1px solid var(--ds-line); font-size: 12.5px; color: var(--ds-dim); }
+  .ab16-step:first-child { border-top: none; }
+  .ab16-step b { color: var(--ds-text); font-weight: 600; }
+  /* countdown */
+  .ab16-cd { font-size: 12.5px; color: var(--ds-dim); gap: 6px; }
+  .ab16-cd b { color: var(--ds-warn); font-size: 13px; }
+  .ab16-cd--calm b { color: var(--ds-text); }
+  /* criteria (rubric) */
+  .ab16-crit { display: flex; flex-direction: column; border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); background: var(--ds-inset); overflow: hidden; }
+  .ab16-crit__r { display: grid; grid-template-columns: 170px 118px minmax(0, 1fr); gap: 12px; align-items: start; padding: 11px 14px; border-top: 1px solid var(--ds-line); font-size: 13px; }
+  .ab16-crit__r:first-child { border-top: none; }
+  .ab16-crit__k { font-weight: 600; color: var(--ds-text); }
+  .ab16-crit__k small { display: block; font-weight: 400; font-size: 11.5px; color: var(--ds-dim); margin-top: 2px; }
+  .ab16-crit__ev { color: var(--ds-dim); font-size: 12.5px; line-height: 1.55; min-width: 0; }
+  .ab16-crit__ev .ab16-quote { color: var(--ds-text); font-style: normal; }
+  .ab16-crit__imp { display: block; margin-top: 4px; }
+  .ab16-crit__imp b { color: var(--ds-text); font-weight: 600; }
+  .ab16-band { display: inline-flex; align-items: center; gap: 4px; }
+  .ab16-band i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--ds-line-2); display: block; }
+  .ab16-band i.ab16-band__on { background: var(--ds-teal); border-color: var(--ds-teal); }
+  .ab16-band span { font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-dim); margin-left: 5px; }
+  .ab16-delta { font-family: var(--ds-font-mono); font-size: 11px; font-weight: 600; }
+  /* AI suggestion block */
+  .ab16-sugg { display: flex; flex-direction: column; gap: 10px; padding: 13px 14px; border-radius: var(--ds-radius); border: 1px solid rgba(155,140,240,.35); background: rgba(155,140,240,.08); }
+  .ab16-sugg__h { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ds-violet); }
+  .ab16-kv { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 7px 12px; font-size: 12.5px; align-items: baseline; }
+  .ab16-kv dt { color: var(--ds-dim); }
+  .ab16-kv dd { margin: 0; color: var(--ds-text); line-height: 1.5; }
+  .ab16-concept { font-family: var(--ds-font-mono); }
+  .ab16-reason { font-size: 13px; line-height: 1.62; color: var(--ds-text); padding: 12px 14px; border-radius: var(--ds-radius); background: var(--ds-panel-2); border: 1px solid var(--ds-line-2); }
+  .ab16-foot { font-size: 12px; color: var(--ds-dim); line-height: 1.5; }
+  /* banners */
+  .ab16-note { display: flex; gap: 10px; align-items: flex-start; padding: 11px 13px; border-radius: var(--ds-radius); border: 1px solid var(--ds-line-2); background: var(--ds-panel-2); font-size: 13px; color: var(--ds-text); line-height: 1.5; }
+  .ab16-note .ab16-ic { margin-top: 2px; }
+  .ab16-note b { font-weight: 600; }
+  .ab16-note--info { border-color: rgba(106,166,255,.35); background: rgba(106,166,255,.1); }
+  .ab16-note--warn { border-color: rgba(240,180,41,.35); background: rgba(240,180,41,.08); }
+  .ab16-note--err { border-color: rgba(242,109,109,.35); background: rgba(242,109,109,.1); }
+  .ab16-note--violet { border-color: rgba(155,140,240,.35); background: rgba(155,140,240,.1); }
+  .ab16-note--muted { color: var(--ds-dim); }
+  .ab16-note__sub { display: block; font-size: 12px; color: var(--ds-dim); margin-top: 3px; }
+  /* touch result criteria (AB04 F10 vocabulary) */
+  .ab16-tc { display: flex; flex-direction: column; border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); overflow: hidden; background: var(--ds-inset); }
+  .ab16-tc__r { display: grid; grid-template-columns: 20px 132px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 14px; border-top: 1px solid var(--ds-line); font-size: 13px; }
+  .ab16-tc__r:first-child { border-top: none; }
+  .ab16-tc__k { font-weight: 600; color: var(--ds-text); }
+  .ab16-tc__v { font-family: var(--ds-font-mono); font-size: 12.5px; color: var(--ds-text); min-width: 0; }
+  .ab16-tc__v small { display: block; margin-top: 3px; font-family: var(--ds-font-sans); font-size: 12px; color: var(--ds-dim); }
+  .ab16-tc__s { font-size: 12px; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+  .ab16-tc--narrow .ab16-tc__r { grid-template-columns: 18px minmax(0, 1fr) auto; }
+  .ab16-tc--narrow .ab16-tc__v { grid-column: 2 / 4; }
+  .ab16-claim { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: var(--ds-radius); border: 1px solid rgba(53,208,192,.45); background: rgba(53,208,192,.1); }
+  .ab16-claim__acc { font-size: 13.5px; color: var(--ds-text); }
+  .ab16-claim__acc b { font-weight: 700; }
+  .ab16-links { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; font-size: 13px; }
+  .ab16-dots { display: flex; flex-direction: column; gap: 4px; }
+  /* edit + pickers */
+  .ab16-field { display: flex; flex-direction: column; gap: 6px; }
+  .ab16-lab { font-size: 12px; color: var(--ds-dim); }
+  .ab16-segoff { opacity: .45; cursor: not-allowed; text-decoration: line-through; }
+  .ab16-sugmark { font-family: var(--ds-font-mono); font-size: 10.5px; color: var(--ds-violet); }
+  .ab16-why { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; line-height: 1.5; color: var(--ds-text); }
+  .ab16-why .ab16-ic { margin-top: 1px; color: var(--ds-warn); }
+  .ab16-sel { display: flex; align-items: center; justify-content: space-between; height: 38px; padding: 0 12px; border-radius: var(--ds-radius); border: 1px solid var(--ds-line-2); background: var(--ds-input-bg); font-size: 13.5px; color: var(--ds-text); }
+  .ab16-ta { width: 100%; min-height: 76px; resize: none; display: block; padding: 10px 12px; border-radius: var(--ds-radius); border: 1px solid var(--ds-line-2); background: var(--ds-input-bg); color: var(--ds-text); font-family: var(--ds-font-sans); font-size: 13px; line-height: 1.5; }
+  .ab16-count { font-family: var(--ds-font-mono); font-size: 11px; color: var(--ds-dim); text-align: right; }
+  .ab16-chipx { display: inline-flex; align-items: center; gap: 5px; }
+  .ab16-hr { height: 1px; background: var(--ds-line); border: none; margin: 0; }
+  /* dispute checklist */
+  .ab16-fs { border: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .ab16-fs legend { font-size: 12.5px; font-weight: 600; color: var(--ds-text); margin-bottom: 6px; padding: 0; }
+  .ab16-check { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--ds-line-2); background: var(--ds-inset); font-size: 13px; color: var(--ds-text); }
+  .ab16-check input { accent-color: var(--ds-teal); width: 15px; height: 15px; margin: 2px 0 0; flex: none; }
+  .ab16-check small { color: var(--ds-dim); font-family: var(--ds-font-mono); font-size: 11px; margin-left: auto; white-space: nowrap; }
+  .ab16-check--on { border-color: rgba(53,208,192,.45); background: rgba(53,208,192,.1); }
+  .ab16-reasons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  /* modal + sheet stages */
+  .ab16-stage { position: relative; min-height: 700px; overflow: hidden; }
+  .ab16-stage--sm { min-height: 470px; }
+  .ab16-behind { padding: 22px; opacity: .45; }
+  .ab16-mbody { display: flex; flex-direction: column; gap: 14px; font-size: 13.5px; line-height: 1.6; color: var(--ds-text); }
+  .ab16-mbody b { font-weight: 600; }
+  /* compare */
+  .ab16-cmp { display: grid; grid-template-columns: 170px minmax(0, 1fr) minmax(0, 1fr); border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); overflow: hidden; background: var(--ds-inset); font-size: 13px; }
+  .ab16-cmp > div { padding: 10px 14px; border-top: 1px solid var(--ds-line); }
+  .ab16-cmp > .ab16-cmp__h { border-top: none; background: var(--ds-panel-2); font-weight: 600; color: var(--ds-text); display: flex; align-items: center; gap: 8px; }
+  .ab16-cmp__k { font-weight: 600; color: var(--ds-text); }
+  .ab16-cmp__chg { background: rgba(240,180,41,.08); }
+  /* choices (AI unavailable) */
+  .ab16-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .ab16-choice { display: flex; flex-direction: column; gap: 8px; padding: 13px 14px; border-radius: var(--ds-radius); border: 1px solid var(--ds-line-2); background: var(--ds-panel-2); }
+  .ab16-choice b { font-size: 13.5px; }
+  .ab16-choice span { font-size: 12px; color: var(--ds-dim); line-height: 1.5; }
+  /* Today card (AB05 F8 at full fidelity) */
+  .ab16-today { max-width: 860px; }
+  .ab16-crop { font-family: var(--ds-font-mono); font-size: 10.5px; color: var(--ds-dim); padding: 7px 0; }
+  .ab16-gw__h { display: flex; align-items: center; gap: 10px; }
+  .ab16-gw__rows { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid rgba(155,140,240,.25); }
+  .ab16-gw__row { display: grid; grid-template-columns: minmax(0, 1fr) 190px 112px auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--ds-line); font-size: 13px; }
+  .ab16-gw__row:last-child { border-bottom: none; }
+  .ab16-gw__t b { color: var(--ds-text); font-weight: 600; }
+  .ab16-gw__t span { display: block; font-size: 11.5px; color: var(--ds-dim); margin-top: 2px; }
+  .ab16-due { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-dim); white-space: nowrap; }
+  .ab16-due b { color: var(--ds-warn); }
+  .ab16-sect { display: flex; align-items: baseline; gap: 10px; margin: 18px 0 10px; }
+  .ab16-sect h2 { font-size: 12px; font-weight: 600; color: var(--ds-dim); text-transform: uppercase; letter-spacing: .6px; }
+  /* legend popover */
+  .ab16-pop { max-width: 470px; background: var(--ds-panel); border: 1px solid var(--ds-line); border-radius: 12px; overflow: hidden; }
+  .ab16-pop__h { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--ds-line); font-size: 13.5px; font-weight: 600; }
+  .ab16-leg { list-style: none; margin: 0; padding: 6px 14px; }
+  .ab16-leg li { display: grid; grid-template-columns: 118px minmax(0, 1fr) 82px; gap: 10px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--ds-line); font-size: 12.5px; line-height: 1.5; color: var(--ds-dim); }
+  .ab16-leg li:last-child { border-bottom: none; }
+  .ab16-leg__c { font-size: 11.5px; font-weight: 600; text-align: right; white-space: nowrap; }
+  .ab16-pop__f { padding: 10px 14px; border-top: 1px solid var(--ds-line); font-size: 12px; color: var(--ds-dim); background: var(--ds-panel-2); }
+  /* narrow (390 px) */
+  .ab16-m { display: flex; flex-direction: column; min-height: 720px; background: var(--ds-bg); }
+  .ab16-mbar { display: flex; align-items: center; gap: 10px; height: 50px; padding: 0 14px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab16-mbar b { font-size: 14px; }
+  .ab16-mpad { padding: 14px 12px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .ab16-acc { border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); background: var(--ds-inset); overflow: hidden; }
+  .ab16-acc__h { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--ds-line); font-size: 13px; font-weight: 600; color: var(--ds-text); }
+  .ab16-acc__h:first-child { border-top: none; }
+  .ab16-acc__b { padding: 0 12px 11px 12px; font-size: 12.5px; line-height: 1.55; color: var(--ds-dim); }
+  .ab16-acc__b .ab16-quote { color: var(--ds-text); font-style: normal; }
+  .ab16-sheet { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; background: var(--ds-panel); }
+  .ab16-sheet__h { display: flex; align-items: center; gap: 10px; padding: 14px 14px; border-bottom: 1px solid var(--ds-line); font-size: 15px; font-weight: 600; }
+  .ab16-sheet__b { flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; font-size: 13px; line-height: 1.55; color: var(--ds-text); }
+  .ab16-sheet__f { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px 16px; border-top: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab16-mstage { position: relative; height: 760px; overflow: hidden; }
+  .ab16-tabs { padding: 8px 12px 0; border-bottom: 1px solid var(--ds-line); }
+  .ab16-mcmp { display: flex; flex-direction: column; border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); background: var(--ds-inset); overflow: hidden; }
+  .ab16-mcmp > div { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--ds-line); font-size: 13px; }
+  .ab16-mcmp > div:first-child { border-top: none; }
+  .ab16-wrap { overflow-wrap: anywhere; }
+  /* frame-body splits */
+  .ab16-split { display: grid; gap: 22px; align-items: start; }
+  .ab16-split--a { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+  .ab16-split--b { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+  .ab16-split--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* the board itself viewed narrow: desktop frames reflow instead of squashing */
+  @media (max-width: 720px) {
+    .ab16-split--a, .ab16-split--b, .ab16-split--2, .ab16-choices, .ab16-reasons { grid-template-columns: minmax(0, 1fr); }
+    .ab16-crit__r { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+    .ab16-tc__r { grid-template-columns: 18px minmax(0, 1fr) auto; }
+    .ab16-tc__k { grid-column: 2; grid-row: 1; }
+    .ab16-tc__s { grid-column: 3; grid-row: 1; }
+    .ab16-tc__v { grid-column: 2 / 4; grid-row: 2; }
+    .ab16-gw__row { grid-template-columns: minmax(0, 1fr) auto; }
+    .ab16-cmp { grid-template-columns: 104px minmax(0, 1fr) minmax(0, 1fr); }
+    .ab16-leg li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .ab16-leg__c { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5" /><path d="M6 10.2V19h12v-8.8" /></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4" /></symbol>
+  <symbol id="i-journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 3v18M12.5 8h3.5M12.5 12h3.5" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></symbol>
+  <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" /></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6" /></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z" /><path d="M12 10v4M12 17h.01" /></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.5h.01" /></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5z" /><path d="M3 12.5 12 17l9-4.5M3 17 12 21.5 21 17" /></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="m13.5 6.5 4 4" /></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 3.5L16 11H5" /></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14" /></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4" /></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v6c0 4.5 3.2 7.8 7.5 9 4.3-1.2 7.5-4.5 7.5-9V6z" /><path d="m9 12 2 2 4-4" /></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · M4 board · hero ★</div>
+  <h1>AB16 ★ · A3 AI suggestion / dispute</h1>
+  <p class="bd-lede">
+    An AI-produced result is a <b>suggestion, not a verdict</b> (D14). The learner <b>accepts</b> it, <b>edits</b> it within the deterministic
+    ceilings (a changed grade is labelled <b>self-set</b>), <b>disputes</b> it once for a blind re-grade that can go up or down, or — for an
+    honor-grade probe on a touch — <b>claims</b> an accepted answer once. An untouched suggestion <b>auto-accepts after 24 h</b> from a server
+    deadline, unless it is flagged. <b>Manual entry is reachable from every AI state</b>, and nothing ever waits on AI.
+    <b>Live in v2.0:</b> F2, F3–F4, F13, F14, F15 (drawn first). <b>Rubric items — contract built in M4, first used by a rubric course:</b> F1, F5–F12,
+    drawn on an illustrative rubric item, because no v2.0 course item carries an <code class="ds-mono">ai_rubric</code> step.
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-m4-01.md">ds-m4-01</a></span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-m4-06.md">m4-06</a> (task 1: the live frames; task 2: the provisional contract) · <a href="../../../docs/v2/sprints/sprint-m4-04.md">m4-04</a> (fields, routes, error codes) · <a href="../../../docs/v2/sprints/sprint-m4-03.md">m4-03</a> (the analysis DTO behind F2)</span>
+    <span><b>Frozen before</b>M4 (<a href="../../../docs/v2/sprints/sprint-m4-01.md">m4-01</a> entry gate)</span>
+    <span><b>Sources</b><a href="../../../docs/adr/0029-judge-contract-and-learning-signal.md#3-conclusion-practice-the-single-writer">ADR-0029 §3</a> (D14) ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#35-parked-q1-resolved-who-finalizes-a-non-authoritative-grade">t4 §3.5</a> ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#24-close-give-up-and-dispute-fixes-both-critics-blockers">t4 §2.4</a> step 8 (as t5 §3 amends it) ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#63-mistake-pre-fill-two-tiers-data-only">t4 §6.3</a> ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#7-structured-feedback-shape-for-t5">t4 §7</a> ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#8-learner-flows-and-v2-artboards-needed">t4 §8</a> ·
+      <a href="../../../docs/v2/research/t5-platform-ai.md#2-two-tiers-when-each-key-is-used">t5 §2</a> ·
+      <a href="../../../docs/v2/research/t5-platform-ai.md#7-quality-calibration-regression-and-injection-defences">t5 §7</a> item 5 ·
+      PRD §5.6 R-AI1–R-AI2 · D18 · D27 · P7</span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB16-F2">F2 · live</a><a href="#AB16-F3">F3 · live</a><a href="#AB16-F4">F4 · live</a><a href="#AB16-F13">F13 · live</a><a href="#AB16-F14">F14 · live</a><a href="#AB16-F15">F15 · live</a>
+    <a href="#AB16-F1">F1 · rubric</a><a href="#AB16-F5">F5 · rubric</a><a href="#AB16-F6">F6 · rubric</a><a href="#AB16-F7">F7 · rubric</a><a href="#AB16-F8">F8 · rubric</a>
+    <a href="#AB16-F9">F9 · rubric</a><a href="#AB16-F10">F10 · rubric</a><a href="#AB16-F11">F11 · rubric</a><a href="#AB16-F12">F12 · rubric</a><a href="#AB16-F16">F16 · 390 px</a>
+  </nav>
+</header>
+
+<!-- ======================================================== rules -->
+<section class="bd-section" aria-labelledby="sec-rules">
+  <h2 class="bd-section__h" id="sec-rules">Board-wide rules <small>D14 · t4 §3.5 · t5 §7 item 5 · m4-04 · m4-06 task 1</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <div class="bd-strip" style="align-items:flex-start">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span><b>Countdowns come from the server.</b> Every "auto-accepts in …" renders from <code class="ds-mono">accept_deadline_at</code> (the BFF serves <code class="ds-mono">acceptDeadlineAt</code>) corrected by <code class="ds-mono">server_now</code>, never from a client timer. At 0 the SPA <b>refetches</b>; it never concludes anything locally. A null deadline (flagged, or a dispute pending) shows <b>no countdown and no "auto-accepts" text</b>.</span>
+        <span><b>Format:</b> 10 h or more <span class="ds-mono">H:MM</span> ("23:41"); 1–10 h <span class="ds-mono">H:MM:SS</span> ("3:12:40"); under 1 h <span class="ds-mono">M:SS</span>. The visible text stays compact; <code class="ds-mono">aria-label</code> and <code class="ds-mono">title</code> carry the long form ("auto-accepts in 23 hours 41 minutes · Thu, Dec 10, 14:05").</span>
+        <span><b>Screen readers:</b> the countdown is <code class="ds-mono">role="timer"</code> with <code class="ds-mono">aria-live="off"</code>. One <code class="ds-mono">aria-live="polite"</code> region announces "1 hour left to review this grade" and "5 minutes left to review this grade", and nothing else.</span>
+      </div>
+    </div>
+    <div class="bd-strip" style="align-items:flex-start">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span><b>Suggestions, not verdicts (D14).</b> Accept, edit (bounded by the ceiling), dispute once, or leave it: 24 h later it is accepted as it stands. <b>Submitting</b> triggers the downstream actions: the schedule dates from <code class="ds-mono">anchor_at</code> (the lock), and a mistake entry opens when one applies.</span>
+        <span><b>Code verdicts are never editable;</b> mistake category, notes and concepts always are. <b>Manual paths:</b> Change… (F2), Keep as not passed (F3), Edit… (F1, F7, F10), Set my own grade… (F8), Grade it myself (F11), manual entry (F12).</span>
+        <span><b>Never shown:</b> rubric anchors, must-cover lists, exemplars, hidden inputs, the dispute text after it is sent, or why a grade was flagged. Accepted probe answers appear only after the touch locks.</span>
+        <span><b>Keyboard:</b> <span class="xl-kbd">Esc</span> closes a modal; labelled or spending choices (<b>Request re-grade</b>, <b>Set grade</b>) are never the default button.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============================================== A · live in v2.0 -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · Live in v2.0 <small>F2 · F3 · F4 · F13 · F14 · F15 — what the owner meets; m4-06 task 1 builds these</small></h2>
+  <p class="bd-section__p">DSA and go-concurrency are code- or key-graded, so in v2.0 xLearn AI never decides a <b>grade</b>. It suggests a <b>mistake category and concepts</b> after a below-Clean conclusion (F2), and an honor-grade probe miss on a touch becomes a <b>claim</b> (F3–F4). F13–F15 show how settled results read.</p>
+
+  <!-- F2 -->
+  <article class="bd-frame ab16-gap" id="AB16-F2">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB16-F2</span><span class="bd-frame__title">· Analyzer suggestion on a deterministic grade</span><span class="bd-frame__state">· DSA course conclusion below Clean · Workspace concluded card</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">live in v2.0</span><span class="bd-tag">D14 · t4 §6.3</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad ab16-split ab16-split--a">
+        <div class="xl-panel">
+          <div class="ab16-hud"><span class="ab16-id">#16</span><span class="ab16-title">3Sum</span><span class="xl-diff xl-diff--med">Medium</span><span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Two Pointers</span><span class="ab16-flex"></span><span class="ds-badge ds-badge--ok">Concluded</span></div>
+          <div class="ab16-body">
+            <div class="ab16-row"><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs ds-chip--ok">judge-checked</span><span class="ab16-small">Hidden tests <b>40/40</b> · passed at 18:05 after <b>4 failed submits</b></span><span class="ab16-flex"></span><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Code verdicts aren't editable</span></div>
+            <div class="ab16-row ab16-small"><svg class="xl-ico xl-ico--sm ab16-teal" aria-hidden="true"><use href="#i-refresh"/></svg> Enters revision · Day 1 review <b>Thu, Dec 10</b><span class="ab16-flex"></span><a>Mistake entry opened <span class="ab16-ic" style="vertical-align:-3px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></span></a></div>
+            <section class="ab16-sugg" aria-labelledby="f2-h">
+              <div class="ab16-sugg__h" id="f2-h"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg> xLearn AI suggests</div>
+              <dl class="ab16-kv">
+                <dt>Mistake</dt><dd class="ab16-row" style="gap:8px"><span class="ds-badge ds-badge--warn">Off-by-one / boundary</span><span class="ab16-small">medium confidence</span></dd>
+                <dt>Concepts</dt><dd class="ab16-row" style="gap:6px"><span class="ds-chip ds-chip--xs ab16-concept">two-pointers</span><span class="ds-chip ds-chip--xs ab16-concept">sorting</span></dd>
+                <dt>Summary</dt><dd>After a match you skip duplicates on the left pointer only, so the right end can repeat the last triple.</dd>
+                <dt>Next step</dt><dd>Re-read: two pointers on sorted input</dd>
+              </dl>
+              <div class="ab16-row"><span class="ds-btn ds-btn--primary ds-btn--sm" role="button">Use this</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Change…</span><span class="ab16-flex"></span><span class="ab16-small">Your choice always wins over a suggestion.</span></div>
+            </section>
+          </div>
+        </div>
+        <div class="ab16-col">
+          <div class="ab16-cap">Variants of the suggestion block (same slot)</div>
+          <div class="ab16-note ab16-note--violet" role="status"><span class="ab16-ic ab16-violet"><svg class="xl-ico xl-ico--sm ds-spin" aria-hidden="true"><use href="#i-retry"/></svg></span><span><b>xLearn AI is reviewing…</b><span class="ab16-note__sub">Pending: no analysis row yet, or <code class="ds-mono">status=queued</code>. You can pick a category now.</span></span></div>
+          <div class="ab16-note ab16-note--muted"><span class="ab16-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span>xLearn AI couldn't review this one. Pick a category yourself.<span class="ab16-note__sub"><code class="ds-mono">unavailable</code> (breaker, <code class="ds-mono">no_acceptance</code>), or pending for 5 min</span></span></div>
+          <div class="ab16-note ab16-note--muted"><span class="ab16-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span>Too large for an xLearn AI review. Pick a category yourself.<span class="ab16-note__sub"><code class="ds-mono">skipped(too_large)</code> · over 16 KiB</span></span></div>
+          <div class="ab16-note ab16-note--muted"><span class="ab16-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg></span><span>xLearn AI is paused for now — pick a category yourself.<span class="ab16-note__sub"><code class="ds-mono">budget_exhausted</code> · the AB18-F10 badge sits in the card header</span></span></div>
+          <div class="ab16-note ab16-note--muted"><span class="ab16-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span>xLearn AI reviews are off · <a>Settings</a><span class="ab16-note__sub"><code class="ds-mono">no_consent</code> → AB18-F7</span></span></div>
+          <div class="ab16-row"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Pick a category</span><span class="ab16-small">in every variant — the 8 categories</span></div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li>A DSA <b>course</b> conclusion below Clean whose signals the manifest rules don't cover (<code>wa</code>, <code>tle_small</code>, <code>re_other</code>) → m4-03's analyzer, once per conclusion, <b>after</b> the grade is final. Data: <code>GET /api/attempts/{id}/analysis</code> → <code>{status: queued|done|skipped|unavailable, reason, category, confidence, concept_keys[], summary, next_step}</code>.</li>
+          <li><b>No countdown, no Accept or Dispute:</b> the grade is a code verdict, <code>judge-checked</code> and final. Only the mistake category, concepts and notes are open, as always (D14).</li>
+          <li>Pending: while the route has no row or <code>status=queued</code>, refetch every 5 s, then 15 s, and stop after 5 min → "couldn't review this one".</li></ul></section>
+      <section><h4>Actions</h4>
+        <ul><li><b>Use this</b> → <code>PATCH /mistakes/{id} {category}</code>: the learner's pick locks the field. Precedence (t4 §6.3): learner &gt; strong rule &gt; analyzer at <code>medium</code>/<code>high</code> &gt; weak rule &gt; empty, so a <code>low</code> suggestion is shown here but never pre-fills the entry.</li>
+          <li><b>Change…</b> opens the 8-category picker (<code>MISTAKE_CATEGORIES</code>, same badge colours). Every variant keeps a picker: manual entry never waits on AI.</li>
+          <li><b>Concepts</b> come only from the post-conclusion DTO. If a touch on this item becomes due, the primary concept is <b>absent</b>, never greyed (t4 §6.4); the pattern chip hides too (AB03).</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>D14 ("mistake and notes always editable") · t4 §6.3 · t5 §7 item 2 (<code>confidence</code> is <code>low|medium|high</code>) · m4-03 · m4-06 task 1.</li>
+          <li>The block is a <code>&lt;section&gt;</code> named by its heading; focus order: Mistake entry → Use this → Change…. Pending is <code>role="status"</code>; the spinner stops under <code>prefers-reduced-motion</code>. Violet heading 6.4:1, warn badge 9.6:1 on its tint; the lock text is theme-muted (known debt, 3.4:1) and the grade row reads in words.</li>
+          <li>&lt; 1024 px: the block stacks under the grade, buttons full width (N-frames follow F16's pattern).</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide ab16-gap">
+    <!-- F3 -->
+    <article class="bd-frame" id="AB16-F3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB16-F3</span><span class="bd-frame__title">· Touch result · honor-probe miss → provisional</span><span class="bd-frame__state">· DSA re-solve, Day 7</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">live in v2.0</span><span class="bd-tag bd-tag--new">evolves AB04-F10</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="xl-panel">
+            <div class="ab16-hud"><span class="ab16-id">#209</span><span class="ab16-title">Minimum Size Subarray Sum</span><span class="xl-diff xl-diff--med">Medium</span><span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Sliding Window</span><span class="ab16-flex"></span><span class="ds-badge ds-badge--warn">Provisional</span></div>
+            <div class="ab16-body" role="status">
+              <div class="ab16-note ab16-note--warn"><span class="ab16-ic ab16-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span><span>Provisional · auto-accepts as not passed in <b class="xl-timer__t" role="timer" aria-live="off" aria-label="23 hours 41 minutes" title="Auto-accepts Thu, Dec 10, 14:05">23:41</b></span></div>
+              <div class="ab16-head ab16-err" tabindex="-1"><svg class="xl-ico" aria-hidden="true"><use href="#i-alert"/></svg> Not passed — unless you meant it</div>
+              <div class="ab16-tc" role="list" aria-label="Criteria">
+                <div class="ab16-tc__r" role="listitem"><span class="ab16-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><span class="ab16-tc__k">Pattern named</span><span class="ab16-tc__v">0:48 · 'slidng window'<small>(checked on your honour)</small></span><span class="ab16-tc__s ab16-err">✗ Not met</span></div>
+                <div class="ab16-tc__r" role="listitem"><span class="ab16-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab16-tc__k">Solved in time</span><span class="ab16-tc__v">13:20 <span class="ds-chip ds-chip--xs ds-chip--ok">judge-checked</span></span><span class="ab16-tc__s ab16-ok">✓ Met</span></div>
+                <div class="ab16-tc__r" role="listitem"><span class="ab16-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab16-tc__k">Complexity</span><span class="ab16-tc__v">O(n) / O(1)</span><span class="ab16-tc__s ab16-ok">✓ Met</span></div>
+              </div>
+              <div class="ab16-claim">
+                <div class="ab16-claim__acc">Accepted answers: <b>Sliding window</b> · Two pointers (variable window)</div>
+                <div class="ab16-small">You wrote <b>'slidng window'</b>. If you meant an accepted answer, claim it — once per review. A claim counts on your honour.</div>
+                <div class="ab16-row"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> I meant this</span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button">Keep as not passed</span></div>
+              </div>
+              <div class="ab16-row"><div class="ab16-dots"><div class="xl-touch"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div><div class="xl-touch__lab"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div></div><span class="ab16-small">The dots move when this is settled.</span></div>
+            </div>
+          </div>
+          <div class="ab16-note ab16-note--muted" style="margin-top:12px"><span class="ab16-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span><b>Variant · claim already used</b> (<code class="ds-mono">409 claim_used</code>): <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button" aria-disabled="true" style="opacity:.5;margin:0 6px">I meant this</span> "You've used your claim for this review."</span></div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li><code>purpose=touch</code>, <code>state=provisional</code>, <code>provisional_reason=honor_key</code>: the touch fails <b>only</b> because an honor-grade public key (<code>key_source: public:*</code>) missed, and flipping it would pass (t4 §3.5 item 1). Cohort-only until GA (<code>stage_params.honor_claims</code>); outside the cohort the touch concludes as AB04-F10, with no claim card.</li>
+          <li>The accepted answers exist only in the <b>post-lock</b> touch view (<code>GET /api/touches/{attemptId}</code> → <code>claimAllowed</code>, <code>acceptDeadlineAt</code>, <code>serverNow</code>), canonical name first. The pattern chip in the HUD appears at the same moment (AB04-F10).</li>
+          <li>Both probes missed → one card lists both, and one claim covers both.</li></ul>
+        <h4>Actions</h4>
+        <ul><li><b>I meant this</b> → <code>POST /api/attempts/{id}/claim {probe_ids}</code>, one action per attempt → F4. <code>409 claim_used</code> disables it with the variant line; <code>422 not_claimable</code> → refetch.</li>
+          <li><b>Keep as not passed</b> → <code>POST /api/attempts/{id}/accept {}</code>: the fail concludes now ("resets to Day 1"). Untouched, the ticker accepts the fail at the deadline, dated <code>anchor_at</code> (F13 c).</li></ul>
+        <h4>Decision · a11y</h4>
+        <ul><li>t4 §3.5 items 1, 4, 5 · m4-04 task 3 · AB04-F10 (its "Accepted:" line becomes this claim card). Neither button is the default: focus lands on the headline (<code>tabindex="-1"</code>). "✗ Not met" and "✓ Met" are words, never colour alone; err 6.2:1, ok 9.5:1 on the inset.</li>
+          <li>&lt; 1024 px: N5.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F4 -->
+    <article class="bd-frame" id="AB16-F4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB16-F4</span><span class="bd-frame__title">· Claim applied</span><span class="bd-frame__state">· passed on the claim · concluded</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">live in v2.0</span><span class="bd-tag">P7</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="xl-panel">
+            <div class="ab16-hud"><span class="ab16-id">#209</span><span class="ab16-title">Minimum Size Subarray Sum</span><span class="xl-diff xl-diff--med">Medium</span><span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Sliding Window</span><span class="ab16-flex"></span><span class="ds-badge ds-badge--ok">Concluded</span></div>
+            <div class="ab16-body" role="status">
+              <div class="ab16-head ab16-ok" tabindex="-1"><svg class="xl-ico" aria-hidden="true"><use href="#i-check"/></svg> Passed — advances to Day 21</div>
+              <div class="ab16-row"><span class="ds-chip ds-chip--sm">claimed</span><span class="ds-chip ds-chip--sm">honor</span><span class="ab16-small">Counted on your honour — not included in your judge-checked %.</span></div>
+              <div class="ab16-tc" role="list" aria-label="Criteria">
+                <div class="ab16-tc__r" role="listitem"><span class="ab16-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab16-tc__k">Pattern named</span><span class="ab16-tc__v">0:48 · 'slidng window'<small>Claimed: <b style="color:var(--ds-text)">Sliding window</b></small></span><span class="ab16-tc__s ab16-ok">✓ Claimed</span></div>
+                <div class="ab16-tc__r" role="listitem"><span class="ab16-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab16-tc__k">Solved in time</span><span class="ab16-tc__v">13:20 <span class="ds-chip ds-chip--xs ds-chip--ok">judge-checked</span></span><span class="ab16-tc__s ab16-ok">✓ Met</span></div>
+                <div class="ab16-tc__r" role="listitem"><span class="ab16-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab16-tc__k">Complexity</span><span class="ab16-tc__v">O(n) / O(1)</span><span class="ab16-tc__s ab16-ok">✓ Met</span></div>
+              </div>
+              <div class="ab16-row"><div class="ab16-dots"><div class="xl-touch"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div><div class="xl-touch__lab"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div></div><span class="ab16-small">Day 21 review · Thu, Dec 24</span></div>
+              <div class="ab16-links"><span class="ab16-flex"></span><span class="ds-btn ds-btn--primary ds-btn--sm" role="button">Next review</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Back to Revision</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>After the claim the named criteria are met (<code>source=claim</code>) and <code>concludeTouch()</code> passes the touch: <code>resolution=claimed</code>, <code>trust=honor</code>, <code>graded_by</code> unchanged, <code>anchor_at</code> unchanged (the lock time), so Day 21 counts from the lock, not the claim.</li>
+          <li><code>claimed</code> + <code>honor</code> chips (F15). P7: judge-checked % is <code>auto ∧ trust=checked</code>, so this pass is left out, and the line says so.</li>
+          <li>A materially different passing solution may still get pointer notes, shown collapsed under the result (AB17-F4).</li></ul>
+        <h4>Decision · a11y</h4>
+        <ul><li>t4 §3.5 item 4 · t4 §11.4 item 17 · P7 (rollout §10). Result region <code>role="status"</code>; focus → the headline, then Next review (default, non-destructive).</li></ul>
+      </aside>
+    </article>
+  </div>
+
+  <div class="bd-grid bd-grid--wide ab16-gap">
+    <!-- F13 -->
+    <article class="bd-frame" id="AB16-F13">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB16-F13</span><span class="bd-frame__title">· Accepted / auto-accepted</span><span class="bd-frame__state">· concluded card · three variants</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">live in v2.0</span><span class="bd-tag">D14</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab16-col">
+          <div class="ab16-cap">a · accepted by you <span class="bd-tag" style="margin-left:6px">rubric item</span></div>
+          <div class="ds-card" style="padding:13px 14px">
+            <div class="ab16-row"><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs">xLearn AI</span><span class="ab16-small">accepted</span></div>
+            <div class="ab16-links" style="margin-top:10px"><a>Mistake entry opened <span class="ab16-ic" style="vertical-align:-3px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></span></a><span class="ab16-small"><svg class="xl-ico xl-ico--sm ab16-teal" aria-hidden="true" style="display:inline;vertical-align:-3px"><use href="#i-refresh"/></svg> Day 1 review: <b>Thu, Dec 10</b></span></div>
+          </div>
+          <div class="ab16-cap">b · accepted automatically <span class="bd-tag" style="margin-left:6px">rubric item</span></div>
+          <div class="ds-card" style="padding:13px 14px">
+            <div class="ab16-row"><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs">xLearn AI</span><span class="ab16-small">accepted automatically after 24 h</span></div>
+            <div class="ab16-links" style="margin-top:10px"><a>Mistake entry opened <span class="ab16-ic" style="vertical-align:-3px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></span></a><span class="ab16-small"><svg class="xl-ico xl-ico--sm ab16-teal" aria-hidden="true" style="display:inline;vertical-align:-3px"><use href="#i-refresh"/></svg> Day 1 review: <b>Thu, Dec 10</b></span></div>
+          </div>
+          <div class="ab16-cap">c · the v2.0 path — an honor-probe touch left untouched</div>
+          <div class="ds-card" style="padding:13px 14px">
+            <div class="ab16-row"><span class="ds-badge ds-badge--err">Not passed</span><span class="ds-chip ds-chip--xs">honor</span><span class="ab16-small">accepted automatically after 24 h</span></div>
+            <div class="ab16-links" style="margin-top:10px"><a>Mistake entry opened <span class="ab16-ic" style="vertical-align:-3px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></span></a><span class="ab16-small">Resets to Day 1 · <b>Thu, Dec 10</b></span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li><code>resolution</code> ∈ <code>accepted | regraded | auto_accepted</code> (m4-04 task 7). (a) the learner's Accept; (b) the ticker at <code>settle_deadline</code>, which reads "accepted automatically after 24 h"; (c) the honor-key fail auto-accepted (the only way (b)'s wording is reached in v2.0).</li>
+          <li><b>Day 1 date from <code>anchor_at</code></b> (the lock), so it never slips while the window was open (t4 §3.5 item 6): a lock on Wed, Dec 9 gives Thu, Dec 10 in every variant.</li>
+          <li><b>Mistake entry opened</b> → the Mistakes journal focused on this entry, where category, notes and concepts stay editable.</li></ul>
+        <h4>Decision · a11y</h4>
+        <ul><li>D14 ("submitting triggers the downstream actions") · t4 §3.5 items 5–6. The provenance chip opens F15. Grade badges carry the word; warn 9.6:1, err 6.4:1 on their tints.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F15 -->
+    <article class="bd-frame" id="AB16-F15">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB16-F15</span><span class="bd-frame__title">· Provenance legend</span><span class="bd-frame__state">· popover from any provenance chip</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">live in v2.0</span><span class="bd-tag">P7 · M4 adds ai</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="ab16-pop" role="dialog" aria-labelledby="f15-h">
+            <div class="ab16-pop__h" id="f15-h"><svg class="xl-ico xl-ico--sm ab16-teal" aria-hidden="true"><use href="#i-shield"/></svg> What the labels mean<span class="ab16-flex"></span><span class="ds-iconbtn" role="button" aria-label="Close"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+            <ul class="ab16-leg">
+              <li><span><span class="ds-chip ds-chip--xs ds-chip--ok">judge-checked</span></span><span>Decided by hidden tests or a checked answer key.</span><span class="ab16-leg__c ab16-ok">Counts ✓</span></li>
+              <li><span><span class="ds-chip ds-chip--xs">ai</span></span><span>Graded by xLearn AI on a rubric; you accepted it, or it was accepted after 24 h.</span><span class="ab16-leg__c ab16-dimc">Doesn't count</span></li>
+              <li><span><span class="ds-chip ds-chip--xs">self-set</span></span><span>You chose this grade: manual entry, or a change to an xLearn AI grade.</span><span class="ab16-leg__c ab16-dimc">Doesn't count</span></li>
+              <li><span><span class="ds-chip ds-chip--xs">claimed</span></span><span>You said you meant an accepted answer ("I meant this").</span><span class="ab16-leg__c ab16-dimc">Doesn't count</span></li>
+              <li><span><span class="ds-chip ds-chip--xs">honor</span></span><span>Checked on your honour: a step you attested, a probe answer, or a grade we couldn't verify automatically.</span><span class="ab16-leg__c ab16-dimc">Doesn't count</span></li>
+            </ul>
+            <div class="ab16-pop__f">Your judge-checked % counts only <b>judge-checked</b> results.</div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li><code>ProvenanceLegend.tsx</code>: a popover opened from the provenance chip on concluded cards, Mistakes and Progress. Chip ↔ data: <code>judge-checked</code> = <code>auto ∧ trust=checked</code>; <code>ai</code> = <code>graded_by=ai</code>; <code>self-set</code> = <code>graded_by ∈ {self, override}</code>; <code>claimed</code> = <code>resolution=claimed</code>; <code>honor</code> = <code>trust=honor</code> otherwise (attested steps, public-key probes, <code>review_flag</code>).</li>
+          <li><code>override</code>, <code>claimed</code> and <code>review_flag</code> all imply <code>trust=honor</code> (t4 §11.4 item 17). A flagged AI grade reads <code>honor</code>, never <code>self-set</code>.</li></ul>
+        <h4>Decision · a11y</h4>
+        <ul><li>P7 (M4 adds <code>ai</code>) · t4 §11.4 item 17. <code>role="dialog"</code>, Esc closes, focus returns to the chip. "Counts ✓" / "Doesn't count" are words beside the colour; ok 9.4:1, dim 6.8:1 on panel.</li></ul>
+      </aside>
+    </article>
+  </div>
+
+  <!-- F14 -->
+  <article class="bd-frame ab16-gap" id="AB16-F14">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB16-F14</span><span class="bd-frame__title">· Today "grades waiting"</span><span class="bd-frame__state">· /xlearn · top of the plan · full fidelity of AB05-F8</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">live in v2.0</span><span class="bd-tag bd-tag--new">fills AB05-F8</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad">
+        <div class="ab16-today">
+          <div class="xl-eyebrow">Wednesday, Dec 9</div>
+          <h2 style="font-size:22px;font-weight:700;letter-spacing:-.3px;margin:6px 0 16px">Today</h2>
+          <section class="ds-card ds-card--violet" style="padding:14px 16px" aria-labelledby="f14-h">
+            <div class="ab16-gw__h">
+              <span class="ab16-ic ab16-violet"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg></span>
+              <span class="ab16-flex"><b id="f14-h" style="font-size:14px">2 grades waiting</b> <span class="ab16-due" style="margin-left:6px">· the first auto-accepts in <b role="timer" aria-live="off" aria-label="3 hours 12 minutes 40 seconds" title="Auto-accepts today, 20:24">3:12:40</b></span></span>
+            </div>
+            <ul class="ab16-gw__rows">
+              <li class="ab16-gw__row"><span class="ab16-gw__t"><b>#209 Minimum Size Subarray Sum</b><span>Day 7 review · honor probe</span></span><span class="ab16-row" style="gap:6px"><span class="ds-badge ds-badge--err">Not passed</span><span class="ab16-small">provisional</span></span><span class="ab16-due"><b role="timer" aria-live="off" aria-label="3 hours 12 minutes 40 seconds">3:12:40</b></span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Review</span></li>
+              <li class="ab16-gw__row"><span class="ab16-gw__t"><b>#146 LRU Cache</b><span>Course attempt · couldn't be graded automatically</span></span><span class="ab16-row" style="gap:6px"><span class="ds-chip ds-chip--xs">Needs your grade</span></span><span class="ab16-due">no deadline</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Review</span></li>
+            </ul>
+          </section>
+          <div class="ab16-sect"><h2>Reviews first</h2><span class="ab16-small">3 due</span></div>
+          <div class="ab16-crop">— cropped: the rest of the plan (AB05-F2) is unchanged —</div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li><code>gradesWaiting: {count, firstDeadlineAt, items[≤5]}</code> on <code>GET /api/dashboard</code>, from practice <code>GET /attempts/waiting</code> (<code>provisional</code> and <code>self_grade_pending</code> attempts). Hidden at 0 (AB05-F8's slot, above Reviews first).</li>
+          <li>Rows: item title, context ("Day 7 review" / "Course attempt"), the candidate grade and the row's own countdown from its <code>accept_deadline_at</code>. A null deadline reads <b>"no deadline"</b>: <code>self_grade_pending</code> ("Needs your grade") or a flagged suggestion ("Won't auto-accept", F10).</li>
+          <li>One item: AB05-F8's copy, "1 grade waiting · auto-accepts in 23:41". No deadline anywhere: "2 grades waiting" with no countdown. Over 5: the rows stop at 5 and the heading keeps the full count.</li></ul></section>
+      <section><h4>Actions</h4>
+        <ul><li><b>Review</b> opens the attempt where it settles: the Workspace concluded area (F1, F12) or the Touch result (F3). m3-13's Week "Provisional" chip links to the same place.</li>
+          <li>The header countdown is <code>firstDeadlineAt</code>; at 0 the dashboard refetches (the ticker has settled that row), never removes it locally.</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>D14 · AB05-F8 (slot and copy) · m4-04 task 5–6 · m4-06 task 1.</li>
+          <li>A <code>&lt;section&gt;</code> with its heading; rows are a list; timers <code>role="timer"</code>, <code>aria-live="off"</code>; the 1 h / 5 min announcement is for the first row only. Focus: Review buttons in row order.</li>
+          <li>&lt; 1024 px: each row stacks — title, then grade + countdown + Review on one line.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- =============================================== B · rubric items -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · Rubric items — contract built in M4, first used by a rubric course <small>F1 · F5–F12 · m4-06 task 2</small></h2>
+  <p class="bd-section__p">Drawn on an <b>illustrative rubric item</b> ("LLD · Rate limiter": a code step graded by hidden tests plus a design write-up graded by xLearn AI). m4-04 builds the whole contract, but in v2.0 it is reachable only in the e2e harness on a fixture rubric item — F10–F12 need <code>Score</code>, which no v2.0 item calls. m4-06 builds these as generic components and never mounts them in a mock.</p>
+
+  <!-- F1 -->
+  <article class="bd-frame ab16-gap" id="AB16-F1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB16-F1</span><span class="bd-frame__title">· Provisional suggestion card</span><span class="bd-frame__state">· rubric item · <code class="ds-mono">state=provisional</code>, <code class="ds-mono">provisional_reason=ai</code></span><span class="bd-frame__tags"><span class="bd-tag bd-tag--flag">rubric items — contract built in M4, first used by a rubric course</span><span class="bd-tag">D14 · R-AI1</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad ab16-split ab16-split--b">
+        <div class="xl-panel">
+          <div class="ab16-hud"><span class="ab16-id">lld</span><span class="ab16-title">Rate limiter</span><span class="xl-diff xl-diff--med">Medium</span><span class="bd-tag">illustrative rubric item</span><span class="ab16-flex"></span><span class="xl-timer ab16-cd" role="timer" aria-live="off" aria-label="Auto-accepts in 23 hours 41 minutes" title="Auto-accepts Thu, Dec 10, 14:05"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> auto-accepts in <b class="xl-timer__t">23:41</b></span></div>
+          <div class="ab16-body">
+            <div class="ab16-row"><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs">xLearn AI</span><span class="ds-chip ds-chip--xs ds-chip--warn">provisional</span><span class="ab16-flex"></span><span class="ab16-small">Graded on <b>Wed, Dec 9, 14:05</b></span></div>
+            <div class="ab16-steps">
+              <div class="ab16-step"><span class="ab16-ok ab16-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><b>1 · Implementation</b> Hidden tests 40/40 <span class="ds-chip ds-chip--xs ds-chip--ok">judge-checked</span><span class="ab16-flex"></span><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> locked</span></div>
+              <div class="ab16-step"><span class="ab16-violet ab16-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg></span><b>2 · Design write-up</b> xLearn AI · 3 criteria</div>
+            </div>
+            <div class="ab16-crit" role="list" aria-label="Design write-up criteria">
+              <div class="ab16-crit__r" role="listitem"><span class="ab16-crit__k">Algorithm choice</span><span class="ab16-band" aria-label="Band 4 of 5"><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i></i><span>4/5</span></span><span class="ab16-crit__ev">You wrote: <span class="ab16-quote">'a token bucket per client, refilled lazily when a request arrives'</span></span></div>
+              <div class="ab16-crit__r" role="listitem"><span class="ab16-crit__k">Concurrency safety</span><span class="ab16-band" aria-label="Band 2 of 5"><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i></i><i></i><i></i><span>2/5</span></span><span class="ab16-crit__ev">You wrote: <span class="ab16-quote">'the handler reads the bucket, then writes the new count'</span><span class="ab16-crit__imp"><b>To improve:</b> say how two requests for the same client are kept from both spending the last token.</span></span></div>
+              <div class="ab16-crit__r" role="listitem"><span class="ab16-crit__k">Trade-offs explained</span><span class="ab16-band" aria-label="Band 3 of 5"><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i></i><i></i><span>3/5</span></span><span class="ab16-crit__ev">You wrote: <span class="ab16-quote">'fixed windows are simpler but let bursts through at the edges'</span><span class="ab16-crit__imp"><b>To improve:</b> compare memory per client for the token bucket and a sliding log.</span></span></div>
+            </div>
+            <dl class="ab16-kv">
+              <dt>Mistake</dt><dd class="ab16-row" style="gap:8px"><span class="ds-badge ds-badge--violet">Right pattern, wrong state</span><span class="ab16-small">suggested</span></dd>
+              <dt>Concepts</dt><dd class="ab16-row" style="gap:6px"><span class="ds-chip ds-chip--xs ab16-concept">token-bucket</span><span class="ds-chip ds-chip--xs ab16-concept">atomic-updates</span><span class="ds-chip ds-chip--xs ab16-concept">sliding-log</span></dd>
+            </dl>
+            <div class="ab16-reason">The token bucket is a sound choice and you explain lazy refill clearly. The write-up doesn't say how concurrent requests for one client are serialised, so two requests can both spend the last token — that holds concurrency safety at 2. The trade-off section names the edge-burst problem of fixed windows but doesn't compare memory or precision with a sliding log.</div>
+            <div class="ab16-row"><span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Accept</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pen"/></svg> Edit…</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg> Dispute…</span></div>
+            <div class="ab16-foot">Accepting starts your revision schedule and opens a mistake entry if one applies.</div>
+          </div>
+        </div>
+        <div class="ab16-col">
+          <div class="bd-strip" style="align-items:flex-start"><div style="display:flex;flex-direction:column;gap:6px">
+            <span><b>What the card never shows:</b> rubric anchors, must-cover lists, exemplars, the reference answer before conclusion, or the scorer's samples. Criterion names are the public descriptors.</span>
+            <span><b>Evidence before band:</b> each row leads with the learner's own verified words (t4 §7).</span>
+            <span><b>One paragraph of reasoning</b>, 480 characters at most, rendered as plain text.</span>
+          </div></div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li><code>state=provisional</code>, <code>provisional_reason=ai</code>: an <code>ai_rubric</code> step contributed, and D14 makes every AI grade provisional (m4-04 task 1; this overrides t4 §3.5's could-gain rule for AI). Submission poll fields: <code>candidateGrade</code>, <code>provisionalReason</code>, <code>acceptDeadlineAt</code>, <code>serverNow</code>, <code>disputeAllowed</code>, <code>flagged</code>, <code>regradeMissing</code>.</li>
+          <li>Rows come from Feedback (<code>xlearn.feedback@1</code>): <code>dims[].evidence[].quote</code> (verified, ≤ 160), <code>improve</code> (≤ 240, every band ≤ 3), <code>summary</code> (≤ 480), <code>suggested_category</code>, <code>concepts[≤3]</code>. Score's quotes stay internal. <code>feedback_unavailable</code> → bands, the public descriptors and no quote lines.</li></ul></section>
+      <section><h4>Actions</h4>
+        <ul><li><b>Accept</b> → <code>POST /api/attempts/{id}/accept {}</code> (<code>resolution=accepted</code>) → F13 a. <code>409 not_provisional</code> → refetch (the ticker got there first).</li>
+          <li><b>Edit…</b> → F5. <b>Dispute…</b> → F6; hidden when <code>disputeAllowed=false</code>, where the "Dispute used" chip shows instead.</li>
+          <li>The window is 24 h from the lock (<code>settle_deadline</code>); F7 pauses it and F8 restarts it.</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>D14 · R-AI1 · t4 §7 (evidence before band) · t4 §3.5 items 2–5 · m4-04 tasks 1–2.</li>
+          <li>Focus order: countdown (read-only) → criteria rows → Accept (default: it keeps the suggestion as it is) → Edit… → Dispute…. Band dots carry <code>aria-label="Band 2 of 5"</code> and the visible "2/5". Quotes 15:1, dim 6.8:1, warn chip 9.6:1.</li>
+          <li>&lt; 1024 px: N1, criteria as an accordion.</li></ul></section>
+    </aside>
+  </article>
+
+  <!-- F5 -->
+  <article class="bd-frame ab16-gap" id="AB16-F5">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB16-F5</span><span class="bd-frame__title">· Edit (bounded)</span><span class="bd-frame__state">· two ceilings: late → Rough · hint → Assisted</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--flag">rubric items — contract built in M4, first used by a rubric course</span><span class="bd-tag">D14 · D18 · D27</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad ab16-split ab16-split--2">
+        <div class="xl-panel">
+          <div class="ab16-hud"><span class="ab16-title">Edit this result</span><span class="bd-tag">a · late</span><span class="ab16-flex"></span><span class="ds-iconbtn" role="button" aria-label="Close edit"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+          <div class="ab16-body">
+            <div class="ab16-field">
+              <span class="ab16-lab" id="f5a-g">Grade</span>
+              <div class="ab16-row"><div class="ds-seg" role="radiogroup" aria-labelledby="f5a-g"><span class="ds-seg__btn" role="radio" aria-checked="false">Miss</span><span class="ds-seg__btn" role="radio" aria-checked="false">Assisted</span><span class="ds-seg__btn ds-seg__btn--on" role="radio" aria-checked="true">Rough</span><span class="ds-seg__btn ab16-segoff" role="radio" aria-checked="false" aria-disabled="true" aria-describedby="f5a-why">Clean</span></div><span class="ab16-sugmark">xLearn AI: Rough</span></div>
+              <div class="ab16-why" id="f5a-why"><span class="ab16-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span><span>Your time caps this attempt at Rough (submitted at 27:40, after the 20-minute Clean window)</span></div>
+            </div>
+            <div class="ab16-steps"><div class="ab16-step"><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Hidden tests · 40/40 · locked</span></div></div>
+            <div class="ab16-field"><span class="ab16-lab">Mistake category</span><div class="ab16-sel" role="button" aria-haspopup="listbox"><span class="ab16-row" style="gap:8px"><span class="ds-badge ds-badge--violet">Right pattern, wrong state</span></span><svg class="xl-ico xl-ico--sm ab16-dimc" aria-hidden="true"><use href="#i-chevdown"/></svg></div></div>
+            <div class="ab16-field"><label class="ab16-lab" for="f5a-n">Notes</label><textarea id="f5a-n" class="ab16-ta" rows="3">Lock per client bucket — I had it in my head but never wrote it down.</textarea><span class="ab16-count">70 / 240</span></div>
+            <div class="ab16-field"><span class="ab16-lab">Concepts</span><div class="ab16-row" style="gap:6px"><span class="ds-chip ds-chip--xs ab16-concept ab16-chipx">token-bucket <svg class="xl-ico xl-ico--sm" aria-label="Remove token-bucket"><use href="#i-close"/></svg></span><span class="ds-chip ds-chip--xs ab16-concept ab16-chipx">atomic-updates <svg class="xl-ico xl-ico--sm" aria-label="Remove atomic-updates"><use href="#i-close"/></svg></span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-plus"/></svg> Add concept</span></div></div>
+            <hr class="ab16-hr">
+            <div class="ab16-row"><span class="ab16-small">Changing the grade labels it <b>self-set</b>; you'll confirm first.</span><span class="ab16-flex"></span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button">Cancel</span><span class="ds-btn ds-btn--primary ds-btn--sm" role="button">Save</span></div>
+          </div>
+        </div>
+        <div class="xl-panel">
+          <div class="ab16-hud"><span class="ab16-title">Edit this result</span><span class="bd-tag bd-tag--variant">b · after a hint</span><span class="ab16-flex"></span><span class="ds-iconbtn" role="button" aria-label="Close edit"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+          <div class="ab16-body">
+            <div class="ab16-field">
+              <span class="ab16-lab" id="f5b-g">Grade</span>
+              <div class="ab16-row"><div class="ds-seg" role="radiogroup" aria-labelledby="f5b-g"><span class="ds-seg__btn" role="radio" aria-checked="false">Miss</span><span class="ds-seg__btn ds-seg__btn--on" role="radio" aria-checked="true">Assisted</span><span class="ds-seg__btn ab16-segoff" role="radio" aria-checked="false" aria-disabled="true" aria-describedby="f5b-why">Rough</span><span class="ds-seg__btn ab16-segoff" role="radio" aria-checked="false" aria-disabled="true" aria-describedby="f5b-why">Clean</span></div><span class="ab16-sugmark">xLearn AI: Assisted</span></div>
+              <div class="ab16-why" id="f5b-why"><span class="ab16-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span>Your hint caps this attempt at Assisted (hint opened at 17:02)</span></div>
+              <div class="ab16-why"><span class="ab16-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg></span><span><span class="bd-tag" style="margin-right:6px">coach variant</span>Coach help on this problem caps this attempt at Assisted</span></div>
+            </div>
+            <div class="ab16-steps"><div class="ab16-step"><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Hidden tests · 40/40 · locked</span></div></div>
+            <div class="ab16-field"><span class="ab16-lab">Mistake category</span><div class="ab16-sel" role="button" aria-haspopup="listbox"><span class="ab16-row" style="gap:8px"><span class="ds-badge ds-badge--violet">Right pattern, wrong state</span></span><svg class="xl-ico xl-ico--sm ab16-dimc" aria-hidden="true"><use href="#i-chevdown"/></svg></div></div>
+            <div class="ab16-field"><label class="ab16-lab" for="f5b-n">Notes</label><textarea id="f5b-n" class="ab16-ta" rows="3" placeholder="What would you do differently? (optional)"></textarea><span class="ab16-count">0 / 240</span></div>
+            <hr class="ab16-hr">
+            <div class="ab16-row"><span class="ab16-small">Grades above your cap can't be picked.</span><span class="ab16-flex"></span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button">Cancel</span><span class="ds-btn ds-btn--primary ds-btn--sm" role="button">Save</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li>The picker is built from the DTO's <code>ceiling</code> and allowed grades; everything above the ceiling is disabled with the <b>server's</b> reason: <code>late</code> "submitted at 27:40, after the 20-minute Clean window" · <code>many_failed</code> "4 failed submits — Clean allows 3" (both cap at Rough) · <code>hint</code> "hint opened at 17:02" · <code>coach</code> "Coach help on this problem caps this attempt at Assisted" (both cap at Assisted, so Clean <b>and</b> Rough are disabled).</li>
+          <li>Deterministic steps are listed locked, never editable. The AI's grade is marked ("xLearn AI: Rough") so the learner sees what a change moves away from.</li></ul></section>
+      <section><h4>Save (two calls, in order)</h4>
+        <ul><li>1 · <code>POST /api/attempts/{id}/accept {grade?, category?}</code>. Same grade → <code>resolution=accepted</code>. A <b>different grade goes through F9 first</b>, then concludes <code>graded_by=override</code>, <code>trust=honor</code>, <code>resolution=override</code>. <code>422 above_ceiling</code> → refetch (the picker mirrors the server); <code>409 grade_not_editable</code> when a deterministic gate fixed the grade.</li>
+          <li>2 · Once the conclusion has opened the mistake entry (refetch until it exists), notes and concepts go to <code>PATCH /mistakes/{id}</code>, which locks them. No prose rides the accept body or any event.</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>D14 (edits bounded by the deterministic ceilings, labelled self-set; editing straight from the card — Decisions to confirm #1) · D18 (late or &gt; 3 failed submits → Rough; hint → Assisted) · D27 (coach help on that problem → Assisted) · t4 §3.5 item 3 (<code>[miss, ceiling]</code>).</li>
+          <li>The picker is a <code>radiogroup</code>; disabled options keep focus with <code>aria-disabled</code> and <code>aria-describedby</code> pointing at the reason, so a screen reader hears why. Notes counter announces only at 220+. Save is the default only after a change.</li>
+          <li>&lt; 1024 px: a full-width panel under the result; the picker wraps to two rows.</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide ab16-gap">
+    <!-- F6 -->
+    <article class="bd-frame" id="AB16-F6">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB16-F6</span><span class="bd-frame__title">· Dispute modal</span><span class="bd-frame__state">· <code class="ds-mono">ds-modal--md</code> · one per attempt</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--flag">rubric items — contract built in M4, first used by a rubric course</span><span class="bd-tag">t4 §3.5 item 2 · t5 §7 item 5</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab16-stage">
+          <div class="ab16-behind" aria-hidden="true"><div class="xl-panel"><div class="ab16-hud"><span class="ab16-title">Rate limiter</span><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs">xLearn AI</span></div><div class="ab16-body" style="min-height:560px"></div></div></div>
+          <div class="ds-modal__backdrop">
+            <div class="ds-modal__panel ds-modal--md" role="dialog" aria-modal="true" aria-labelledby="f6-t">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="f6-t">Ask for a re-grade</span><span class="ds-iconbtn" role="button" aria-label="Close"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+              <div class="ds-modal__body ab16-mbody">
+                <p>One re-grade per attempt. An independent reviewer grades your answer again from scratch — the grade can go up or down.</p>
+                <fieldset class="ab16-fs"><legend>Which criteria were misjudged?</legend>
+                  <label class="ab16-check ab16-check--on"><input type="checkbox" checked> Concurrency safety <small>band 2</small></label>
+                  <label class="ab16-check"><input type="checkbox"> Trade-offs explained <small>band 3</small></label>
+                  <label class="ab16-check"><input type="checkbox"> Algorithm choice <small>band 4</small></label>
+                  <span class="xl-lock" style="align-self:flex-start"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Implementation · Hidden tests 40/40 · judge-checked — not re-graded</span>
+                </fieldset>
+                <fieldset class="ab16-fs"><legend>What went wrong?</legend>
+                  <div class="ab16-reasons">
+                    <label class="ab16-check ab16-check--on"><input type="checkbox" checked> Missed evidence I gave</label>
+                    <label class="ab16-check"><input type="checkbox"> Misread my answer</label>
+                    <label class="ab16-check"><input type="checkbox"> Unfair to my approach</label>
+                    <label class="ab16-check"><input type="checkbox"> Other</label>
+                  </div>
+                </fieldset>
+                <div class="ab16-field"><label class="ab16-lab" for="f6-x">Anything to add? (optional)</label>
+                  <textarea id="f6-x" class="ab16-ta" rows="3" aria-describedby="f6-h">The second paragraph says each bucket has its own lock, so two requests can't both take the last token.</textarea>
+                  <div class="ab16-row"><span class="ab16-small" id="f6-h">Shown to the course author for calibration; the re-grade doesn't read it.</span><span class="ab16-flex"></span><span class="ab16-count">104 / 500</span></div>
+                </div>
+              </div>
+              <div class="ds-modal__footer"><span class="ds-btn ds-btn--secondary bd-focus" role="button">Cancel</span><span class="ds-btn ds-btn--primary" role="button">Request re-grade</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>Request</h4>
+        <ul><li><code>POST /api/evaluations/{id}/dispute {attempt_id, criteria[], reason_codes[], text?}</code> with an Idempotency-Key. Reason codes: <code>missed_evidence</code> · <code>misread_answer</code> · <code>unfair_to_approach</code> · <code>other</code>. Enabled once one criterion and one reason are ticked; text ≤ 500 (counter; <code>422</code> above).</li>
+          <li>Deterministic steps are shown <b>locked</b>, never tickable: a code verdict isn't re-graded.</li></ul>
+        <h4>Responses</h4>
+        <ul><li><code>202</code> → F7. <code>409 dispute_used</code> → close; the card shows "Dispute used" and Dispute… disappears. <code>409 not_provisional</code> → close and refetch (already accepted). <code>503 ai_unavailable</code> or <code>budget_exhausted{resets_at}</code> → the authorization is released, <b>the dispute isn't spent</b>, and the card offers F11 with Edit… still there.</li>
+          <li>The text is stored in <code>judge.evaluation_dispute</code> for calibration, <b>never sent to the model</b> (canary-tested) and erased with the account. Re-grades are exempt from submit quotas.</li></ul>
+        <h4>A11y · narrow</h4>
+        <ul><li><code>role="dialog"</code>, <code>aria-modal</code>; focus starts on <b>Cancel</b> (default); Tab: criteria → reasons → text → Cancel → Request; <span class="xl-kbd">Esc</span> = Cancel. Native checkboxes with labels. &lt; 1024 px: a full-screen sheet (N2).</li></ul>
+      </aside>
+    </article>
+
+    <!-- F9 -->
+    <article class="bd-frame" id="AB16-F9">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB16-F9</span><span class="bd-frame__title">· Override confirm</span><span class="bd-frame__state">· <code class="ds-mono">ds-modal--sm</code> · from F5 or F8</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--flag">rubric items — contract built in M4, first used by a rubric course</span><span class="bd-tag">D14 · P7 · D18</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab16-stage ab16-stage--sm">
+          <div class="ab16-behind" aria-hidden="true"><div class="xl-panel"><div class="ab16-hud"><span class="ab16-title">Rate limiter</span><span class="ds-badge ds-badge--info">Assisted</span><span class="ds-chip ds-chip--xs">xLearn AI</span></div><div class="ab16-body" style="min-height:360px"></div></div></div>
+          <div class="ds-modal__backdrop">
+            <div class="ds-modal__panel ds-modal--sm" role="alertdialog" aria-modal="true" aria-labelledby="f9-t" aria-describedby="f9-d">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="f9-t">Set your own grade?</span><span class="ds-iconbtn" role="button" aria-label="Close"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+              <div class="ds-modal__body ab16-mbody">
+                <p id="f9-d">It will be labelled <b>self-set</b> everywhere and <b>won't count toward your judge-checked %</b>. You can choose between Miss and Rough — your time caps this attempt at Rough.</p>
+                <div><div class="ds-seg" role="radiogroup" aria-label="Your grade"><span class="ds-seg__btn" role="radio" aria-checked="false">Miss</span><span class="ds-seg__btn" role="radio" aria-checked="false">Assisted</span><span class="ds-seg__btn ds-seg__btn--on" role="radio" aria-checked="true">Rough</span><span class="ds-seg__btn ab16-segoff" role="radio" aria-checked="false" aria-disabled="true">Clean</span></div></div>
+              </div>
+              <div class="ds-modal__footer"><span class="ds-btn ds-btn--secondary" role="button">Set grade</span><span class="ds-btn ds-btn--primary bd-focus" role="button">Keep the AI grade</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>Opens from F5 (a changed grade, pre-selected) or from F8's <b>Set my own grade…</b> (the re-grade pre-selected). The range and the reason are the server's ceiling — the same words as F5 ("your time caps this attempt at Rough"; after a hint: "Miss and Assisted — your hint caps this attempt at Assisted").</li>
+          <li><b>Set grade</b> → <code>POST /api/attempts/{id}/accept {grade}</code> with <code>grade ≠ candidate_grade</code>: <code>graded_by=override</code>, <code>trust=honor</code>, excluded from judge-checked % (P7), labelled <code>self-set</code> everywhere (F15). Then the F5 notes save, if any.</li></ul>
+        <h4>Decision · a11y</h4>
+        <ul><li>D14 · t4 §3.5 item 3 · P7 · D18 (the F5 ceiling). <code>role="alertdialog"</code>; default focus and Enter = <b>Keep the AI grade</b>; the labelled choice is never the default. <span class="xl-kbd">Esc</span> = keep. &lt; 1024 px: a full-screen sheet (N3).</li></ul>
+      </aside>
+    </article>
+  </div>
+
+  <div class="bd-grid bd-grid--wide ab16-gap">
+    <!-- F7 -->
+    <article class="bd-frame" id="AB16-F7">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB16-F7</span><span class="bd-frame__title">· Re-grade running</span><span class="bd-frame__state">· window paused · <code class="ds-mono">accept_deadline_at: null</code></span><span class="bd-frame__tags"><span class="bd-tag bd-tag--flag">rubric items — contract built in M4, first used by a rubric course</span><span class="bd-tag">t4 §3.5 item 2</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab16-col">
+          <div class="xl-panel">
+            <div class="ab16-hud"><span class="ab16-title">Rate limiter</span><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs">xLearn AI</span><span class="ab16-flex"></span><span class="ds-chip ds-chip--xs">Dispute used</span></div>
+            <div class="ab16-body" aria-busy="true">
+              <div class="ab16-note ab16-note--violet" role="status"><span class="ab16-ic ab16-violet"><svg class="xl-ico ds-spin" aria-hidden="true"><use href="#i-retry"/></svg></span><span><b>Re-grading · independent reviewer · usually under 2 minutes</b><span class="ab16-note__sub">Your 24 h window restarts when the re-grade lands.</span></span></div>
+              <div class="ab16-crit" style="opacity:.55" aria-hidden="true">
+                <div class="ab16-crit__r"><span class="ab16-crit__k">Algorithm choice</span><span class="ab16-band"><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i></i><span>4/5</span></span><span class="ab16-crit__ev">first grade</span></div>
+                <div class="ab16-crit__r"><span class="ab16-crit__k">Concurrency safety</span><span class="ab16-band"><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i></i><i></i><i></i><span>2/5</span></span><span class="ab16-crit__ev">first grade · you disputed this</span></div>
+              </div>
+              <div class="ab16-row"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pen"/></svg> Edit…</span><span class="ab16-small">You can still set it yourself; the re-grade then isn't used.</span></div>
+            </div>
+          </div>
+          <div class="ab16-cap">Variant · the re-grade didn't come back (<code class="ds-mono">regradeMissing</code>)</div>
+          <div class="ab16-note ab16-note--muted"><span class="ab16-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span>The re-grade didn't come back. You can accept the first grade or edit it — auto-accepts in <b class="xl-timer__t" style="color:var(--ds-text)">23:59</b><span class="ab16-note__sub">Your dispute stays used.</span></span></div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>After <code>202</code>: <code>dispute_used</code>, window paused (<code>settle_deadline = NULL</code>), so no countdown. Poll <code>GET /api/submissions/{id}</code> at <code>pollAfterMs</code> (m3-09). The re-grade is a new evaluation with <code>regrade_of</code>, k = 5 on an independent calibrated configuration; practice re-applies the strategy → F8 with a <b>new</b> 24 h window.</li>
+          <li><code>inconclusive</code> re-grade, or 30 min with no fact (the ticker backstop) → <code>regradeMissing</code>: the first grade stands, a new window opens, accept or edit.</li>
+          <li><b>Edit…</b> stays reachable (manual path). A conclusion while the re-grade runs is final; the late re-grade fact is stored and changes nothing.</li></ul>
+        <h4>Decision · a11y</h4>
+        <ul><li>t4 §3.5 item 2 · m4-04 task 4 steps 5–6. <code>aria-busy</code> on the card, the status line <code>role="status"</code>; under reduced motion the spinner is a static icon and the words carry the state.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F8 -->
+    <article class="bd-frame" id="AB16-F8">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB16-F8</span><span class="bd-frame__title">· Re-grade compare</span><span class="bd-frame__state">· re-grade landed · new window</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--flag">rubric items — contract built in M4, first used by a rubric course</span><span class="bd-tag">t4 §3.5 items 2–3 · t4 §8</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="xl-panel">
+            <div class="ab16-hud"><span class="ab16-title">Rate limiter</span><span class="ds-chip ds-chip--xs">xLearn AI</span><span class="ds-chip ds-chip--xs">Dispute used</span><span class="ab16-flex"></span><span class="xl-timer ab16-cd" role="timer" aria-live="off" aria-label="Auto-accepts in 23 hours 59 minutes" title="Auto-accepts Thu, Dec 10, 14:58"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> auto-accepts in <b class="xl-timer__t">23:59</b></span></div>
+            <div class="ab16-body">
+              <div class="ab16-cmp" role="table" aria-label="First grade compared with the re-grade">
+                <div class="ab16-cmp__h" role="columnheader">Criterion</div>
+                <div class="ab16-cmp__h" role="columnheader">First grade · <span class="ds-badge ds-badge--warn">Rough</span></div>
+                <div class="ab16-cmp__h" role="columnheader">Re-grade · <span class="ds-badge ds-badge--info">Assisted</span></div>
+                <div class="ab16-cmp__k" role="cell">Algorithm choice</div>
+                <div role="cell"><span class="ab16-band" aria-label="Band 4 of 5"><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i></i><span>4/5</span></span></div>
+                <div role="cell"><span class="ab16-band" aria-label="Band 4 of 5, unchanged"><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i></i><span>4/5</span></span> <span class="ab16-delta ab16-dimc">same</span></div>
+                <div class="ab16-cmp__k ab16-cmp__chg" role="cell">Concurrency safety</div>
+                <div class="ab16-cmp__chg" role="cell"><span class="ab16-band" aria-label="Band 2 of 5"><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i></i><i></i><i></i><span>2/5</span></span></div>
+                <div class="ab16-cmp__chg" role="cell"><span class="ab16-band" aria-label="Band 1 of 5, down 1"><i class="ab16-band__on"></i><i></i><i></i><i></i><i></i><span>1/5</span></span> <span class="ab16-delta ab16-err">↓ 1</span></div>
+                <div class="ab16-cmp__k ab16-cmp__chg" role="cell">Trade-offs explained</div>
+                <div class="ab16-cmp__chg" role="cell"><span class="ab16-band" aria-label="Band 3 of 5"><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i></i><i></i><span>3/5</span></span></div>
+                <div class="ab16-cmp__chg" role="cell"><span class="ab16-band" aria-label="Band 4 of 5, up 1"><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i></i><span>4/5</span></span> <span class="ab16-delta ab16-ok">↑ 1</span></div>
+              </div>
+              <div class="ab16-small">The re-grade is what auto-accepts. Its evidence and "to improve" lines replace the first grade's.</div>
+              <div class="ab16-row"><span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Accept re-grade</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pen"/></svg> Set my own grade…</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>Columns from the original evaluation and <code>regrade_evaluation_id</code>. Changed rows are tinted and carry "↑ 1" / "↓ 1" in words for the reader ("down 1"). The re-grade replaced <code>candidate_grade</code>; a new 24 h window (<code>accept_deadline_at</code>), null again if the re-grade is flagged (then F10's banner joins this card).</li>
+          <li><b>Accept re-grade</b> → <code>accept {}</code>, <code>resolution=regraded</code>. <b>Set my own grade…</b> → F9 with the re-grade pre-selected. No second dispute: <code>disputeAllowed=false</code>.</li></ul>
+        <h4>Decision · a11y · narrow</h4>
+        <ul><li>t4 §3.5 items 2–3 · t4 §8 ("a re-grade compare view, then [Accept] [Set my own grade…]"). A real table (<code>role="table"</code> in the build: <code>&lt;table&gt;</code>). &lt; 1024 px: two tabs, "First grade / Re-grade" (N4).</li></ul>
+      </aside>
+    </article>
+  </div>
+
+  <!-- F10 -->
+  <article class="bd-frame ab16-gap" id="AB16-F10">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB16-F10</span><span class="bd-frame__title">· Flagged — no auto-accept</span><span class="bd-frame__state">· <code class="ds-mono">low_confidence</code> · <code class="ds-mono">review_flag</code></span><span class="bd-frame__tags"><span class="bd-tag bd-tag--flag">rubric items — contract built in M4, first used by a rubric course</span><span class="bd-tag">t5 §7 item 5 · t4 §11.4 item 17</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad ab16-split ab16-split--2">
+        <div class="xl-panel">
+          <div class="ab16-hud"><span class="ab16-title">Rate limiter</span><span class="bd-tag">a · low_confidence</span><span class="ab16-flex"></span></div>
+          <div class="ab16-body">
+            <div class="ab16-row"><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs">xLearn AI</span><span class="ds-chip ds-chip--xs ds-chip--warn">provisional</span></div>
+            <div class="ab16-note ab16-note--info"><span class="ab16-ic ab16-info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span>The reviewer wasn't sure about this one, so it won't be accepted automatically. You can accept it, edit it or ask for a re-grade.</span></div>
+            <div class="ab16-small">Criteria, mistake, concepts and reasoning as in F1.</div>
+            <div class="ab16-row"><span class="ds-btn ds-btn--primary ds-btn--sm" role="button">Accept</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Edit…</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Dispute…</span></div>
+          </div>
+        </div>
+        <div class="xl-panel">
+          <div class="ab16-hud"><span class="ab16-title">Rate limiter</span><span class="bd-tag bd-tag--variant">b · review_flag</span><span class="ab16-flex"></span></div>
+          <div class="ab16-body">
+            <div class="ab16-row"><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs">xLearn AI</span><span class="ds-chip ds-chip--xs">honor</span></div>
+            <div class="ab16-note ab16-note--info"><span class="ab16-ic ab16-info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span>We couldn't verify this grade automatically, so it counts on your honour (not judge-checked) and won't be accepted automatically.</span></div>
+            <div class="ab16-small">Criteria, mistake, concepts and reasoning as in F1.</div>
+            <div class="ab16-row"><span class="ds-btn ds-btn--primary ds-btn--sm" role="button">Accept</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Edit…</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Dispute…</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li><code>flagged: true</code> from <code>suggestion.low_confidence</code> (a band spread that k = 5 couldn't settle) or <code>suggestion.review_flag</code>. <code>acceptDeadlineAt: null</code>: <b>no countdown and no "auto-accepts" text</b> in either variant; the item stays in grades waiting as "no deadline".</li>
+          <li><code>review_flag</code> → <code>trust=honor</code> (t4 §11.4 item 17), so its chip is <code>honor</code>, never <code>self-set</code> (that label is a learner's own grade). Accepting keeps <code>honor</code>.</li></ul></section>
+      <section><h4>Copy rules</h4>
+        <ul><li>The copy never names why it was flagged or what was checked. No copy says anyone was told: a flagged grade joins the owner's audit list, which the owner reads on demand (D34, no alerting).</li>
+          <li>Manual path: <b>Edit…</b> in both; the low-confidence copy invites the re-grade (t4 §7's "dispute nudge").</li></ul></section>
+      <section><h4>Decision · a11y</h4>
+        <ul><li>t5 §7 item 5 (no auto-submit when flagged) · t4 §7 · t4 §11.4 item 17 · Decisions to confirm #4. The banner is static text read before the buttons; info 7.1:1 on its tint.</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide ab16-gap">
+    <!-- F11 -->
+    <article class="bd-frame" id="AB16-F11">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB16-F11</span><span class="bd-frame__title">· AI unavailable on a final</span><span class="bd-frame__state">· <code class="ds-mono">inconclusive(budget_exhausted | ai_unavailable)</code></span><span class="bd-frame__tags"><span class="bd-tag bd-tag--flag">rubric items — contract built in M4, first used by a rubric course</span><span class="bd-tag">D14 · t5 §2 · R-AI2</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab16-col">
+          <div class="xl-panel">
+            <div class="ab16-hud"><span class="ab16-title">Rate limiter</span><span class="bd-tag">a · budget_exhausted</span><span class="ab16-flex"></span><span class="ds-chip ds-chip--xs">Needs your grade</span></div>
+            <div class="ab16-body">
+              <div class="ab16-head" style="font-size:16px"><svg class="xl-ico ab16-dimc" aria-hidden="true"><use href="#i-pause"/></svg> xLearn AI can't grade this right now.</div>
+              <div class="ab16-choices">
+                <div class="ab16-choice"><b>Wait for xLearn AI</b><span>resets Dec 1</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button" style="align-self:flex-start">Wait for xLearn AI</span></div>
+                <div class="ab16-choice"><b>Grade it myself</b><span>Pick your grade now. It's labelled self-set.</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button" style="align-self:flex-start">Grade it myself</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="ab16-note"><span class="bd-tag" style="margin-right:4px">b · ai_unavailable</span><span>Wait for xLearn AI — <b>usually back within the hour</b></span></div>
+          <div class="ab16-note"><span class="bd-tag" style="margin-right:4px">c · touch</span><span>xLearn AI can't grade this right now. This review falls back to self-scoring. <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button" style="margin-left:6px">Score it myself</span></span></div>
+          <div class="ab16-note ab16-note--muted" style="align-items:center"><span class="bd-tag">d · after Wait</span><span class="ab16-flex">Waiting for xLearn AI · resets Dec 1</span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-retry"/></svg> Retry grading</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Grade it myself</span></div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>A required <code>ai_rubric</code> step ended <code>inconclusive(budget_exhausted | ai_unavailable)</code> (breaker open, kill switch, provider down, no passed calibration, or no consent) → course attempt <code>self_grade_pending</code>; never auto-concluded. The DTO carries <code>resets_at</code> for <code>budget_exhausted</code>, shown in the account timezone ("resets Dec 1"; a daily cap reads "resets at 05:30 tomorrow").</li>
+          <li><b>Wait</b> keeps it pending (d), with m3-11's single <b>Retry grading</b> (<code>retry_used</code>). <b>Grade it myself</b> → F12. A dispute that meets <code>503 ai_unavailable</code> lands here too, with the dispute unspent.</li>
+          <li>Touch (c): the AI criterion opens for attestation (v1 self-scoring, <code>graded_by=self</code>, <code>trust=honor</code>).</li></ul>
+        <h4>Decision · a11y</h4>
+        <ul><li>D14 · t5 §2 (Score row: "Wait for xLearn AI (resets &lt;date&gt;)" or "Grade it myself") · R-AI2 · m4-04 task 5. Two equal choices, neither default; the heading is focused on arrival. No copy says why or names a provider.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F12 -->
+    <article class="bd-frame" id="AB16-F12">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB16-F12</span><span class="bd-frame__title">· Manual entry</span><span class="bd-frame__state">· <code class="ds-mono">self_grade_pending</code> · no countdown</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--flag">rubric items — contract built in M4, first used by a rubric course</span><span class="bd-tag">D14 · t4 §2.4 step 6</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="xl-panel">
+            <div class="ab16-hud"><span class="ab16-title">Rate limiter</span><span class="ab16-flex"></span><span class="ds-chip ds-chip--xs">self-set</span></div>
+            <div class="ab16-body">
+              <div class="ab16-head" style="font-size:16px"><svg class="xl-ico ab16-teal" aria-hidden="true"><use href="#i-pen"/></svg> Graded by you — xLearn AI is off for this one</div>
+              <div class="ab16-steps"><div class="ab16-step"><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Hidden tests · 40/40 · locked</span></div></div>
+              <div class="ab16-field">
+                <span class="ab16-lab" id="f12-g">Your grade</span>
+                <div><div class="ds-seg" role="radiogroup" aria-labelledby="f12-g"><span class="ds-seg__btn" role="radio" aria-checked="false">Miss</span><span class="ds-seg__btn" role="radio" aria-checked="false">Assisted</span><span class="ds-seg__btn" role="radio" aria-checked="false">Rough</span><span class="ds-seg__btn ab16-segoff" role="radio" aria-checked="false" aria-disabled="true" aria-describedby="f12-why">Clean</span></div></div>
+                <div class="ab16-why" id="f12-why"><span class="ab16-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span><span>Your time caps this attempt at Rough (submitted at 27:40, after the 20-minute Clean window)</span></div>
+              </div>
+              <div class="ab16-field"><span class="ab16-lab">Mistake category</span><div class="ab16-sel" role="button" aria-haspopup="listbox"><span class="ab16-dimc">Pick a category</span><svg class="xl-ico xl-ico--sm ab16-dimc" aria-hidden="true"><use href="#i-chevdown"/></svg></div></div>
+              <div class="ab16-field"><label class="ab16-lab" for="f12-n">Notes</label><textarea id="f12-n" class="ab16-ta" rows="2" placeholder="What would you do differently? (optional)"></textarea><span class="ab16-count">0 / 240</span></div>
+              <div class="ab16-row"><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-retry"/></svg> Retry grading</span><span class="ab16-flex"></span><span class="ds-btn ds-btn--primary ds-btn--sm" role="button" aria-disabled="true" style="opacity:.5">Save grade</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>m3-11's bounded picker gets this header and the <code>self-set</code> label; nothing is pre-selected; <b>Save grade</b> enables once a grade is picked. No countdown: <code>self_grade_pending</code> never auto-concludes.</li>
+          <li>Save → the v1 outcome route (INV-9) with the grade ≤ ceiling: <code>graded_by=self</code>, <code>trust=honor</code>. Notes then go to <code>PATCH /mistakes/{id}</code>. <b>Retry grading</b> once (<code>retry_used</code>), hidden after use.</li></ul>
+        <h4>Decision · a11y</h4>
+        <ul><li>D14 (manual entry is the fallback) · t4 §2.4 step 6 · m4-04 task 5. Focus → the heading, then the picker. Same picker a11y as F5.</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- =================================================== narrow -->
+<section class="bd-section" id="AB16-F16" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">AB16-F16 · &lt; 1024 px / 390 px <small>t4 §8 shell · m4-06 task 2</small></h2>
+  <p class="bd-section__p">Below 1024 px the concluded card is full width under the result. <b>N1</b> F1 stacked, criteria as an accordion · <b>N2</b> F6 as a full-screen sheet · <b>N3</b> F9 as a sheet · <b>N4</b> F8 as two tabs · <b>N5</b> F3's claim (live in v2.0). Sheets keep the modal's focus rules; the page never scrolls sideways.</p>
+  <div class="bd-narrow-row">
+    <!-- N1 -->
+    <article class="bd-frame bd-narrow" aria-label="N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1</span><span class="bd-frame__title">· F1 stacked</span></header>
+      <div class="bd-frame__body">
+        <div class="ab16-m">
+          <div class="ab16-mbar"><span class="ds-iconbtn" aria-label="Back"><svg class="xl-ico" aria-hidden="true"><use href="#i-back"/></svg></span><b>Rate limiter</b></div>
+          <div class="ab16-mpad">
+            <div class="ab16-row"><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs">xLearn AI</span><span class="ds-chip ds-chip--xs ds-chip--warn">provisional</span></div>
+            <span class="xl-timer ab16-cd" role="timer" aria-live="off" aria-label="Auto-accepts in 23 hours 41 minutes"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> auto-accepts in <b class="xl-timer__t">23:41</b></span>
+            <div class="ab16-steps"><div class="ab16-step"><b>Implementation</b> 40/40 <span class="ds-chip ds-chip--xs ds-chip--ok">judge-checked</span></div></div>
+            <div class="ab16-acc">
+              <div class="ab16-acc__h" aria-expanded="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg>Concurrency safety<span class="ab16-flex"></span><span class="ab16-band" aria-label="Band 2 of 5"><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i></i><i></i><i></i></span></div>
+              <div class="ab16-acc__b">You wrote: <span class="ab16-quote">'the handler reads the bucket, then writes the new count'</span><br><b style="color:var(--ds-text)">To improve:</b> say how two requests for the same client are kept from both spending the last token.</div>
+              <div class="ab16-acc__h" aria-expanded="false"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevron"/></svg>Trade-offs explained<span class="ab16-flex"></span><span class="ab16-band" aria-label="Band 3 of 5"><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i></i><i></i></span></div>
+              <div class="ab16-acc__h" aria-expanded="false"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevron"/></svg>Algorithm choice<span class="ab16-flex"></span><span class="ab16-band" aria-label="Band 4 of 5"><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i></i></span></div>
+            </div>
+            <div class="ab16-row"><span class="ds-badge ds-badge--violet">Right pattern, wrong state</span><span class="ab16-small">suggested</span></div>
+            <div class="ab16-reason" style="font-size:12.5px">The token bucket is a sound choice and you explain lazy refill clearly. The write-up doesn't say how concurrent requests for one client are serialised…</div>
+            <span class="ds-btn ds-btn--primary ds-btn--block" role="button">Accept</span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><span class="ds-btn ds-btn--secondary" role="button">Edit…</span><span class="ds-btn ds-btn--secondary" role="button">Dispute…</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Criteria are an accordion, lowest band first, the first open. The reasoning clamps to 3 lines with "More" (<code>aria-expanded</code>). Buttons full width.</li></ul></aside>
+    </article>
+
+    <!-- N2 -->
+    <article class="bd-frame bd-narrow" aria-label="N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2</span><span class="bd-frame__title">· F6 as a sheet</span></header>
+      <div class="bd-frame__body">
+        <div class="ab16-mstage">
+          <div class="ab16-sheet" role="dialog" aria-modal="true" aria-labelledby="n2-t">
+            <div class="ab16-sheet__h"><span class="ds-iconbtn" aria-label="Close"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span><span id="n2-t">Ask for a re-grade</span></div>
+            <div class="ab16-sheet__b">
+              <p>One re-grade per attempt. An independent reviewer grades your answer again from scratch — the grade can go up or down.</p>
+              <fieldset class="ab16-fs"><legend>Which criteria were misjudged?</legend>
+                <label class="ab16-check ab16-check--on"><input type="checkbox" checked> Concurrency safety <small>2</small></label>
+                <label class="ab16-check"><input type="checkbox"> Trade-offs explained <small>3</small></label>
+                <label class="ab16-check"><input type="checkbox"> Algorithm choice <small>4</small></label>
+              </fieldset>
+              <span class="xl-lock" style="align-self:flex-start"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Implementation · not re-graded</span>
+              <fieldset class="ab16-fs"><legend>What went wrong?</legend>
+                <label class="ab16-check ab16-check--on"><input type="checkbox" checked> Missed evidence I gave</label>
+                <label class="ab16-check"><input type="checkbox"> Misread my answer</label>
+              </fieldset>
+              <span class="ab16-small">+ 2 more reasons, then the optional text (≤ 500) — "Shown to the course author for calibration; the re-grade doesn't read it."</span>
+            </div>
+            <div class="ab16-sheet__f"><span class="ds-btn ds-btn--primary ds-btn--block" role="button">Request re-grade</span><span class="ds-btn ds-btn--secondary ds-btn--block bd-focus" role="button">Cancel</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Full-screen sheet; the body scrolls, the footer stays pinned. Focus starts on <b>Cancel</b>; the close icon and <span class="xl-kbd">Esc</span> cancel.</li></ul></aside>
+    </article>
+
+    <!-- N3 -->
+    <article class="bd-frame bd-narrow" aria-label="N3">
+      <header class="bd-frame__label"><span class="bd-frame__id">N3</span><span class="bd-frame__title">· F9 as a sheet</span></header>
+      <div class="bd-frame__body">
+        <div class="ab16-mstage" style="height:520px">
+          <div class="ab16-sheet" role="alertdialog" aria-modal="true" aria-labelledby="n3-t">
+            <div class="ab16-sheet__h"><span class="ds-iconbtn" aria-label="Close"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span><span id="n3-t">Set your own grade?</span></div>
+            <div class="ab16-sheet__b">
+              <p>It will be labelled <b>self-set</b> everywhere and <b>won't count toward your judge-checked %</b>. You can choose between Miss and Rough — your time caps this attempt at Rough.</p>
+              <div><div class="ds-seg" role="radiogroup" aria-label="Your grade"><span class="ds-seg__btn" role="radio" aria-checked="false">Miss</span><span class="ds-seg__btn" role="radio" aria-checked="false">Assisted</span><span class="ds-seg__btn ds-seg__btn--on" role="radio" aria-checked="true">Rough</span><span class="ds-seg__btn ab16-segoff" role="radio" aria-checked="false" aria-disabled="true">Clean</span></div></div>
+            </div>
+            <div class="ab16-sheet__f"><span class="ds-btn ds-btn--primary ds-btn--block bd-focus" role="button">Keep the AI grade</span><span class="ds-btn ds-btn--secondary ds-btn--block" role="button">Set grade</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Same default as F9: <b>Keep the AI grade</b> is first and focused.</li></ul></aside>
+    </article>
+
+    <!-- N4 -->
+    <article class="bd-frame bd-narrow" aria-label="N4">
+      <header class="bd-frame__label"><span class="bd-frame__id">N4</span><span class="bd-frame__title">· F8 as two tabs</span></header>
+      <div class="bd-frame__body">
+        <div class="ab16-m" style="min-height:560px">
+          <div class="ab16-mbar"><span class="ds-iconbtn" aria-label="Back"><svg class="xl-ico" aria-hidden="true"><use href="#i-back"/></svg></span><b>Rate limiter</b><span class="ab16-flex"></span><span class="ds-chip ds-chip--xs">Dispute used</span></div>
+          <div class="ab16-tabs"><div class="ds-tabs" role="tablist"><span class="ds-tab" role="tab" aria-selected="false">First grade · Rough</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Re-grade · Assisted</span></div></div>
+          <div class="ab16-mpad">
+            <span class="xl-timer ab16-cd" role="timer" aria-live="off" aria-label="Auto-accepts in 23 hours 59 minutes"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> auto-accepts in <b class="xl-timer__t">23:59</b></span>
+            <div class="ab16-mcmp">
+              <div><span class="ab16-flex">Algorithm choice</span><span class="ab16-band" aria-label="Band 4 of 5, unchanged"><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i></i></span><span class="ab16-delta ab16-dimc">same</span></div>
+              <div class="ab16-cmp__chg"><span class="ab16-flex">Concurrency safety</span><span class="ab16-band" aria-label="Band 1 of 5, down 1"><i class="ab16-band__on"></i><i></i><i></i><i></i><i></i></span><span class="ab16-delta ab16-err">↓ 1</span></div>
+              <div class="ab16-cmp__chg"><span class="ab16-flex">Trade-offs explained</span><span class="ab16-band" aria-label="Band 4 of 5, up 1"><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i class="ab16-band__on"></i><i></i></span><span class="ab16-delta ab16-ok">↑ 1</span></div>
+            </div>
+            <span class="ds-btn ds-btn--primary ds-btn--block" role="button">Accept re-grade</span>
+            <span class="ds-btn ds-btn--secondary ds-btn--block" role="button">Set my own grade…</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>The Re-grade tab opens first; its changed rows keep the "↑ 1" / "↓ 1" marks against the first grade.</li></ul></aside>
+    </article>
+
+    <!-- N5 -->
+    <article class="bd-frame bd-narrow" aria-label="N5">
+      <header class="bd-frame__label"><span class="bd-frame__id">N5</span><span class="bd-frame__title">· F3 claim · live in v2.0</span></header>
+      <div class="bd-frame__body">
+        <div class="ab16-m" style="min-height:640px">
+          <div class="ab16-mbar"><span class="ds-iconbtn" aria-label="Back"><svg class="xl-ico" aria-hidden="true"><use href="#i-back"/></svg></span><b>#209 · Day 7 review</b><span class="ab16-flex"></span><span class="ds-badge ds-badge--warn">Provisional</span></div>
+          <div class="ab16-mpad">
+            <div class="ab16-note ab16-note--warn" style="font-size:12.5px"><span class="ab16-ic ab16-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span><span>Provisional · auto-accepts as not passed in <b class="xl-timer__t">23:41</b></span></div>
+            <div class="ab16-head ab16-err" style="font-size:16px"><svg class="xl-ico" aria-hidden="true"><use href="#i-alert"/></svg> Not passed — unless you meant it</div>
+            <div class="ab16-tc ab16-tc--narrow">
+              <div class="ab16-tc__r"><span class="ab16-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><span class="ab16-tc__k">Pattern named</span><span class="ab16-tc__s ab16-err">✗</span><span class="ab16-tc__v">0:48 · 'slidng window'<small>(checked on your honour)</small></span></div>
+              <div class="ab16-tc__r"><span class="ab16-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab16-tc__k">Solved in time</span><span class="ab16-tc__s ab16-ok">✓</span><span class="ab16-tc__v">13:20 · judge-checked</span></div>
+              <div class="ab16-tc__r"><span class="ab16-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab16-tc__k">Complexity</span><span class="ab16-tc__s ab16-ok">✓</span><span class="ab16-tc__v">O(n) / O(1)</span></div>
+            </div>
+            <div class="ab16-claim">
+              <div class="ab16-claim__acc">Accepted answers: <b>Sliding window</b> · Two pointers (variable window)</div>
+              <span class="ds-btn ds-btn--secondary ds-btn--block" role="button">I meant this</span>
+              <span class="ds-btn ds-btn--ghost ds-btn--block" role="button">Keep as not passed</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Criteria rows wrap the value under the name (AB04's narrow pattern). The claim card's buttons stack; neither is focused first.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB16 ★ · drafted in ds-m4-01 on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> (linked, never copied). Static HTML, no JS runtime; preview-only — never imported by <code class="ds-mono">web/</code>.
+  Sample data: #16 3Sum and #209 Minimum Size Subarray Sum (DSA), the "LLD · Rate limiter" rubric item is illustrative; dates are December 2026.
+  The merge of ds-m4-01 is the freeze (D40); any change is a follow-up design PR.
+</footer>
+</main>
+</body>
+</html>

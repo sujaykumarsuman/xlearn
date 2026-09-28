@@ -9,17 +9,17 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done — AB16★, AB17, AB18 frozen (merged in [PR #88](https://github.com/sujaykumarsuman/xlearn/pull/88), 2026-09-28)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Board scaffolding (own files only; never `index.html` or `board.css`) | X | ⬜ |
-| 2 | AB16 ★ A3 AI suggestion / dispute (hero) | X | ⬜ |
-| 3 | AB17 pointer notes + "correct, with improvements" | X | ⬜ |
-| 4 | AB18 AI allowance meter + Settings AI consents | X | ⬜ |
-| 5 | Self-review checklist (run before merging) + screenshots (1440 px, 390 px) | X | ⬜ |
-| 6 | Open the design PR (screenshots, frame lists, the ticked self-review checklist, "Decisions to confirm") | X | ⬜ |
-| 7 | Freeze: squash-merge on CI green (the merge is the freeze) → status → sync `main` | X | ⬜ |
+| 1 | Board scaffolding (own files only; never `index.html` or `board.css`) | X | ✅ |
+| 2 | AB16 ★ A3 AI suggestion / dispute (hero) | X | ✅ |
+| 3 | AB17 pointer notes + "correct, with improvements" | X | ✅ |
+| 4 | AB18 AI allowance meter + Settings AI consents | X | ✅ |
+| 5 | Self-review checklist (run before merging) + screenshots (1440 px, 390 px) | X | ✅ (ticked in PR #88) |
+| 6 | Open the design PR (screenshots, frame lists, the ticked self-review checklist, "Decisions to confirm") | X | ✅ (PR #88) |
+| 7 | Freeze: squash-merge on CI green (the merge is the freeze) → status → sync `main` | X | ✅ frozen: merged in PR #88, 2026-09-28 |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly. **Land and sync ([D40](../feasibility.md#decisions-log-newest-first)):** the board PR
@@ -32,8 +32,8 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] none (no prerequisite beyond `depends_on`, which is empty)
-- [ ] Parallel sessions: no open peer PR adds or edits `design-system/screens/v2/AB16-*`, `AB17-*` or `AB18-*`
+- [x] none (no prerequisite beyond `depends_on`, which is empty)
+- [x] Parallel sessions: no open peer PR adds or edits `design-system/screens/v2/AB16-*`, `AB17-*` or `AB18-*`
       (`gh pr list --state open`, `git worktree list`, ListAgents)
 
 _Informational, not gates:_ `design-system/screens/v2/index.html` and `board.css` are written once by
@@ -267,14 +267,14 @@ these files. The owner may review after the merge; any change is a follow-up des
 
 ## Acceptance criteria
 
-- [ ] Every frame listed for AB16 (F1–F16), AB17 (F1–F10) and AB18 (F1–F11) is present with final copy, its state, its decision refs
+- [x] Every frame listed for AB16 (F1–F16), AB17 (F1–F10) and AB18 (F1–F11) is present with final copy, its state, its decision refs
       and a behaviour-notes aside.
-- [ ] No board shows dollars to the learner, leaks withheld data, or names the injection heuristic; manual entry is reachable from
+- [x] No board shows dollars to the learner, leaks withheld data, or names the injection heuristic; manual entry is reachable from
       every AI state (F10–F12 of AB16; F3, F5, F6 of AB18).
-- [ ] Boards open with no JS runtime; `theme.css` is linked, not copied or overridden; only this sprint's three board files and
+- [x] Boards open with no JS runtime; `theme.css` is linked, not copied or overridden; only this sprint's three board files and
       their screenshots are added (no `index.html`/`board.css` edit).
-- [ ] The self-review checklist passed and is ticked in the PR body, with the "Decisions to confirm" list (each item's frozen default stated).
-- [ ] PR **merged on CI green** (the freeze) with 1440 px and 390 px screenshots of each board; this file and `docs/v2/status.md` record ds-m4-01 ✅ and AB16–AB18 "frozen (merged)".
+- [x] The self-review checklist passed and is ticked in the PR body, with the "Decisions to confirm" list (each item's frozen default stated).
+- [x] PR **merged on CI green** (the freeze) with 1440 px and 390 px screenshots of each board; this file and `docs/v2/status.md` record ds-m4-01 ✅ and AB16–AB18 "frozen (merged)".
 
 ## Release
 
