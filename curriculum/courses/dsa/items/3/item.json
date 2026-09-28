@@ -9,7 +9,7 @@
   "role": "core",
   "status": "live",
   "provenance": {
-    "origin": "adapted",
+    "origin": "original",
     "inspired_by": [
       "leetcode:two-sum"
     ],
