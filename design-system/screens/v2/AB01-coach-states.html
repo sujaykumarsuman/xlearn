@@ -1,0 +1,1324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB01 · Coach states — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB01 board-local layout (prefix ab01-). Tokens only; never restyles a ds- or xl- class.
+     Look-alikes of live classes that live in web/src/styles/app.css (not theme.css) are named in the notes. */
+  .ab01-flex { flex: 1; }
+  .ab01-sub { color: var(--ds-dim); font-weight: 500; }
+  .ab01-mode { margin: 8px 16px 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .ab01-note { display: flex; gap: 9px; align-items: flex-start; padding: 10px 12px; border-radius: 10px;
+    font-size: 12.5px; line-height: 1.5; color: var(--ds-text); background: var(--ds-panel-2); border: 1px solid var(--ds-line-2); }
+  .ab01-note .ab01-ic { margin-top: 1px; }
+  .ab01-note--warn { background: rgba(240,180,41,.08); border-color: rgba(240,180,41,.35); }
+  .ab01-note--err { background: rgba(242,109,109,.1); border-color: rgba(242,109,109,.35); }
+  .ab01-note--info { background: rgba(106,166,255,.1); border-color: rgba(106,166,255,.35); }
+  .ab01-note__txt { flex: 1; min-width: 0; }
+  .ab01-note__act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 9px; }
+  .ab01-mono { font-family: var(--ds-font-mono); font-size: 12px; }
+  .ab01-confirm { border: 1px solid rgba(240,180,41,.35); background: var(--ds-panel-2); border-radius: 12px; padding: 14px; }
+  .ab01-confirm h3 { font-size: 13.5px; font-weight: 600; display: flex; gap: 8px; align-items: center; }
+  .ab01-confirm p { font-size: 12.5px; line-height: 1.5; color: var(--ds-dim); margin-top: 6px; }
+  .ab01-confirm p b { color: var(--ds-text); }
+  .ab01-confirm__act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .ab01-foot-meta { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 11.5px; color: var(--ds-dim); }
+  .ab01-cut { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; padding-top: 9px;
+    border-top: 1px dashed var(--ds-line-2); font-size: 12px; color: var(--ds-dim); }
+  .ab01-keyline { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ds-dim); }
+  .ab01-hud { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; padding: 12px 16px;
+    border: 1px solid var(--ds-line); border-radius: 12px; background: var(--ds-panel); }
+  .ab01-ring { display: flex; align-items: center; gap: 10px; }
+  .ab01-ring__t { font-family: var(--ds-font-mono); font-size: 18px; font-weight: 600; color: var(--ds-teal); }
+  .ab01-ring__k { font-family: var(--ds-font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab01-cap { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); margin-bottom: 8px; }
+  .ab01-pop { position: absolute; left: 16px; right: 16px; bottom: 74px; z-index: 50; }
+  /* catalog switcher look-alike (live: .xl-coachsw / .xl-pillsw / .xl-modelbtn / .xl-menu / .xl-mitem in app.css) */
+  .ab01-cluster { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .ab01-pillsw { display: inline-flex; gap: 2px; padding: 3px; background: var(--ds-input-bg); border: 1px solid var(--ds-line-2); border-radius: 999px; }
+  .ab01-pillsw__btn { width: 34px; height: 28px; border-radius: 999px; display: grid; place-items: center; opacity: .55;
+    font-family: var(--ds-font-mono); font-size: 10.5px; font-weight: 700; color: var(--ds-text); }
+  .ab01-pillsw__btn--on { opacity: 1; background: var(--ds-panel-2); box-shadow: inset 0 0 0 1px rgba(53,208,192,.45); }
+  .ab01-modelbtn { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border-radius: 999px;
+    border: 1px solid var(--ds-line-2); background: var(--ds-panel-2); color: var(--ds-text); font-size: 13px; font-weight: 600; }
+  .ab01-menu { width: 330px; padding: 7px; background: var(--ds-panel-2); border: 1px solid var(--ds-line-2);
+    border-radius: 14px; box-shadow: 0 16px 40px rgba(0,0,0,.5); }
+  .ab01-menu--fill { width: 100%; }
+  .ab01-menu__head { padding: 8px 10px 9px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ds-dim); }
+  .ab01-menu__head span { display: block; margin-top: 3px; font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 11.5px; }
+  .ab01-menu__sep { height: 1px; background: var(--ds-line); margin: 6px 4px; }
+  .ab01-mitem { display: flex; align-items: flex-start; gap: 10px; padding: 9px 10px; border-radius: 10px; color: var(--ds-text); }
+  .ab01-mitem--on { background: rgba(53,208,192,.1); }
+  .ab01-mitem--link { color: var(--ds-dim); font-size: 12.5px; align-items: center; }
+  .ab01-mitem__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+  .ab01-mitem__label { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; font-size: 13.5px; font-weight: 600; }
+  .ab01-mitem__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: var(--ds-dim); }
+  .ab01-price { font-family: var(--ds-font-mono); font-size: 11px; color: var(--ds-dim); }
+  .ab01-custom { padding: 4px 10px 10px; display: flex; flex-direction: column; gap: 8px; }
+  .ab01-custom__row { display: flex; gap: 8px; }
+  .ab01-err { font-size: 11.5px; color: var(--ds-err); }
+  /* Settings look-alike (live: .xl-settings / .xl-set-* / .xl-prov* / .xl-set-hint in app.css) */
+  .ab01-set { max-width: 1060px; margin: 0 auto; width: 100%; }
+  .ab01-set__h h1 { font-size: 28px; font-weight: 700; letter-spacing: -.4px; margin-top: 8px; }
+  .ab01-set__h p { font-size: 13.5px; color: var(--ds-dim); margin-top: 6px; }
+  .ab01-set__grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 30px; align-items: start; margin-top: 24px; }
+  .ab01-rail { display: flex; flex-direction: column; gap: 16px; }
+  .ab01-pf { border: 1px solid var(--ds-line); border-radius: 16px; background: var(--ds-panel); padding: 22px 20px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .ab01-av { width: 84px; height: 84px; font-size: 32px; }
+  .ab01-pf b { font-size: 18px; }
+  .ab01-pf span { font-size: 12.5px; color: var(--ds-dim); font-family: var(--ds-font-mono); }
+  .ab01-railnav { display: flex; flex-direction: column; gap: 4px; }
+  .ab01-railitem { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border-radius: 999px;
+    color: var(--ds-dim); font-size: 13.5px; font-weight: 550; }
+  .ab01-railitem--on { background: rgba(53,208,192,.1); color: var(--ds-teal); }
+  .ab01-card { border: 1px solid var(--ds-line); border-radius: 14px; background: var(--ds-panel); overflow: hidden; }
+  .ab01-card__h { display: flex; align-items: center; gap: 12px; padding: 15px 18px; border-bottom: 1px solid var(--ds-line); }
+  .ab01-card__h h3 { font-size: 14.5px; font-weight: 650; }
+  .ab01-card__h p { font-size: 12px; color: var(--ds-dim); margin-top: 2px; }
+  .ab01-card__ic { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center;
+    background: rgba(53,208,192,.13); color: var(--ds-teal); }
+  .ab01-card__b { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .ab01-sub-h { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab01-feat { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 12px 14px; border: 1px solid var(--ds-line-2);
+    border-radius: 14px; background: var(--ds-panel-2); }
+  .ab01-feat__k { width: 86px; font-size: 13px; font-weight: 650; }
+  .ab01-feat__v { flex: 1; min-width: 200px; display: flex; align-items: center; flex-wrap: wrap; gap: 7px; font-size: 13px; color: var(--ds-dim); }
+  .ab01-feat__v b { color: var(--ds-text); }
+  .ab01-hint { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 11px 14px; background: var(--ds-inset);
+    border: 1px solid var(--ds-line); border-radius: 12px; font-size: 12.5px; color: var(--ds-dim); }
+  .ab01-hint b { color: var(--ds-text); }
+  .ab01-prov { border: 1px solid var(--ds-line-2); border-radius: 16px; background: var(--ds-panel-2); padding: 16px;
+    display: flex; flex-direction: column; gap: 14px; }
+  .ab01-prov__head { display: flex; align-items: center; gap: 13px; }
+  .ab01-prov__name { font-size: 14.5px; font-weight: 650; }
+  .ab01-prov__status { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 11.5px; color: var(--ds-ok); }
+  .ab01-prov__status--off { color: var(--ds-dim); }
+  .ab01-logo { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none;
+    background: var(--ds-inset); border: 1px solid var(--ds-line-2); font-family: var(--ds-font-mono); font-size: 12px; font-weight: 700; color: var(--ds-text); }
+  .ab01-logo--sm { width: 18px; height: 18px; font-size: 8px; }
+  .ab01-keyrow { display: flex; gap: 8px; }
+  .ab01-keyrow .ds-input { flex: 1; }
+  .ab01-prov__act { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .ab01-enc { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--ds-dim); }
+  /* plain-shell top bar pieces (live: .xl-topbar__brand / .xl-topbar__spacer in app.css) */
+  .ab01-brand { display: inline-flex; align-items: center; gap: 9px; }
+  .ab01-mark { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, #35d0c0, #2a9d92);
+    display: grid; place-items: center; color: #06231f; font-family: var(--ds-font-mono); font-weight: 700; font-size: 14px; flex: none; }
+  .ab01-name { font-size: 15px; font-weight: 700; letter-spacing: -.2px; }
+  .ab01-name b { color: var(--ds-teal); }
+  .ab01-ic { display: inline-flex; flex: none; }
+  .ab01-ic--teal { color: var(--ds-teal); } .ab01-ic--ok { color: var(--ds-ok); } .ab01-ic--warn { color: var(--ds-warn); }
+  .ab01-ic--err { color: var(--ds-err); } .ab01-ic--info { color: var(--ds-info); }
+  /* onboarding card look-alike (live: .xl-auth__card in app.css) */
+  .ab01-auth { max-width: 410px; margin: 0 auto; padding: 34px 6px 30px; }
+  .ab01-stepper { display: flex; align-items: center; gap: 8px; margin-bottom: 26px; }
+  .ab01-stepper__bar { flex: 1; height: 2px; background: var(--ds-teal); }
+  .ab01-auth h2 { font-size: 22px; font-weight: 700; margin-top: 6px; }
+  .ab01-auth__lede { font-size: 13px; color: var(--ds-dim); margin-top: 6px; line-height: 1.55; }
+  .ab01-auth__fields { margin-top: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .ab01-auth__row { display: flex; gap: 10px; margin-top: 10px; }
+  .ab01-auth__row .ds-btn:last-child { flex: 1; }
+  .ab01-included { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; font-size: 12.5px; line-height: 1.5; color: var(--ds-text); }
+  /* empty state (live: CoachEmptyState in Coach.tsx) */
+  .ab01-empty { display: flex; flex-direction: column; gap: 12px; text-align: center; padding: 18px 6px; align-items: center; }
+  .ab01-empty b { font-size: 13.5px; }
+  .ab01-empty p { font-size: 12.5px; color: var(--ds-dim); line-height: 1.5; }
+  .ab01-stage-fab { position: relative; width: 150px; height: 104px; border-radius: 10px; border: 1px solid var(--ds-line); background: var(--ds-bg); flex: none; }
+  .ab01-stage-phone { height: 720px; }
+  .ab01-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 12px; color: var(--ds-dim); }
+  .ab01-row { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
+  .ab01-col { display: flex; flex-direction: column; gap: 10px; }
+  /* narrow Settings */
+  .ab01-set--narrow .ab01-set__grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .ab01-railnav--row { flex-direction: row; overflow-x: auto; }
+  .ab01-railnav--row .ab01-railitem { flex: none; }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5" /><path d="M6 10.2V19h12v-8.8" /></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7 9 5z" /><path d="M9 5v12M15 7v12" /></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4" /></symbol>
+  <symbol id="i-journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 3v18M12.5 8h3.5M12.5 12h3.5" /></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.4" /><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" /></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V11M10 19V5M16 19v-6" /><path d="M3 21h18" /></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A2 2 0 0 1 7 3h12v15H7a2 2 0 0 0-2 2z" /><path d="M5 4.5V19" /></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6" /><path d="M10 20a2 2 0 0 0 4 0" /></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></symbol>
+  <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9" /></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" /></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4" /></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c.5 3 3.5 4 3.5 8a3.5 3.5 0 0 1-7 0c0-1.5.7-2.3 1.2-3 .3 1 .9 1.6 1.5 1.8-.3-2.5-.8-4.8.8-6.8z" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M18 5l2 2M15 8l2 2" /></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" /></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z" /><path d="M12 10v4M12 17h.01" /></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.5" /></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" /></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5z" /><path d="M3 12.5 12 17l9-4.5M3 17 12 21.5 21 17" /></symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 8l4 4 5-7 5 7 4-4v9H3z" /></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 5.3a3.2 3.2 0 0 1 0 5.4M18 13.6a6.5 6.5 0 0 1 3.5 6.4" /></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-3.8 10.6c.8.7 1.3 1.5 1.3 2.4h5c0-.9.5-1.7 1.3-2.4A6 6 0 0 0 12 3z" /></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 3.5L16 11H5" /></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z" /></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></symbol>
+  <symbol id="i-signout" viewBox="0 0 24 24"><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" /><path d="M16 12H8M13 8l4 4-4 4" /></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2" /><rect x="3" y="14" width="18" height="7" rx="2" /><path d="M7 7.5h.01M7 17.5h.01" /></symbol>
+  <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.4" /><circle cx="6" cy="19" r="2.4" /><circle cx="18" cy="8" r="2.4" /><path d="M6 7.4v9.2M6 12h6a4 4 0 0 0 4-4" /></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6" /></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.5A8 8 0 1 1 21 12z" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · M1 board</div>
+  <h1>AB01 · Coach states</h1>
+  <p class="bd-lede">
+    The bring-your-own-key coach under the v2 contract: the <b>D27</b> per-problem assist confirm and its
+    <b>Assisted</b> cap, the server-side <b>mode gate</b> (attempt · review · general · locked), fail-closed
+    notices, the <b>L18</b> limits as typed 429s, the cut-short marker, provider errors that never disable a key,
+    the <b>server model catalog</b>, per-feature default keys, and the optional onboarding step. Every string here is
+    final copy; the build copies it verbatim.
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-m1-01.md">ds-m1-01</a></span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-m1-07.md">m1-07</a> (F1–F10) · <a href="../../../docs/v2/sprints/sprint-m1-10.md">m1-10</a> (F11–F15)</span>
+    <span><b>Frozen before</b>M1b</span>
+    <span><b>Sources</b><a href="../../../docs/adr/0031-platform-ai-and-two-tier-keys.md#7-coach-byo-changes">ADR-0031 §7</a> (D27) ·
+      <a href="../../../docs/v2/research/t5-platform-ai.md#9-coach-and-byo-changes-in-v2">t5 §9</a> ·
+      <a href="../../../docs/adr/0029-judge-contract-and-learning-signal.md#3-conclusion-practice-the-single-writer">ADR-0029 §3</a> (D18) ·
+      <a href="../../../docs/adr/0035-v2-operations-nats-auth-limits-capacity.md#4-limits-inventory">ADR-0035 §4</a> (L18) ·
+      <a href="../../../docs/v2/research/t6-realtime-interviewer.md#11-what-t6-constrains-downstream">t6 §11</a></span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB01-F1">F1</a><a href="#AB01-F2">F2</a><a href="#AB01-F3">F3</a><a href="#AB01-F4">F4</a><a href="#AB01-F5">F5</a>
+    <a href="#AB01-F6">F6</a><a href="#AB01-F7">F7</a><a href="#AB01-F8">F8</a><a href="#AB01-F9">F9</a><a href="#AB01-F10">F10</a>
+    <a href="#AB01-F11">F11</a><a href="#AB01-F12">F12</a><a href="#AB01-F13">F13</a><a href="#AB01-F14">F14</a><a href="#AB01-F15">F15</a>
+    <a href="#narrow">390 px</a>
+  </nav>
+</header>
+
+<!-- ============================================================ naming -->
+<section class="bd-section" aria-labelledby="naming">
+  <h2 class="bd-section__h" id="naming">Naming reference <small>ADR-0031 §7 · UI names</small></h2>
+  <div class="bd-strip">
+    <div class="ab01-stage-fab" aria-hidden="true">
+      <span class="xl-fab"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-spark"/></svg></span>
+    </div>
+    <div class="ab01-col">
+      <span><b>"Your AI coach (your key)"</b> — the BYO coach. Ships in M1: panel header, FAB label, Settings card, onboarding step.</span>
+      <span><b>"xLearn AI (included)"</b> — the platform AI. Arrives in M4 (m4-06); it appears on this board only in F14's flagged <span class="bd-tag bd-tag--flag">from M4</span> variant.</span>
+      <span>FAB <code class="ds-mono">aria-label</code>: <b>"Open Your AI coach (your key)"</b>; close button: <b>"Close coach"</b>. Never shorten either name to "AI" alone.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================= A · mode gate + D27 -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · Mode gate and the D27 assist confirm <small>F1–F7 · m1-07</small></h2>
+  <p class="bd-section__p">
+    The panel shows the mode the <b>server</b> decided (<code class="ds-mono">gate.mode</code> on
+    <code class="ds-mono">GET /api/coach/thread</code>, then <code class="ds-mono">X-Coach-Mode</code> on each chat
+    response). The client never gates the coach itself; these frames only report what the gateway returned.
+    Sample context throughout: <b>#16 3Sum</b> (Medium) with an open counted attempt, <b>#1 Two Sum</b> concluded.
+  </p>
+
+  <div class="bd-grid">
+
+    <!-- F1 -->
+    <article class="bd-frame" id="AB01-F1">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F1</span><span class="bd-frame__title">· Panel, attempt mode</span><span class="bd-frame__state">· open counted attempt on this problem</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage bd-stage--panel">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> problem · #16 3Sum</div>
+            <div class="ab01-mode"><span class="ds-badge ds-badge--info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Attempt · hints only — no pattern or solution</span></div>
+            <div class="xl-coach__body" role="log" aria-live="polite">
+              <div class="xl-coach__msg xl-coach__msg--bot">You're mid-attempt on 3Sum, so I'll stick to questions and hints — no pattern names or solution steps until you've concluded.</div>
+              <div class="xl-coach__sugg">
+                <span class="xl-coach__chip">Which data structure fits here?</span>
+                <span class="xl-coach__chip">Am I missing an edge case?</span>
+                <span class="xl-coach__chip">Nudge me toward the next step</span>
+              </div>
+            </div>
+            <div class="xl-coach__foot">
+              <div class="xl-coach__input"><input placeholder="Ask your coach…" aria-label="Message coach"><span class="ds-iconbtn" style="color:var(--ds-teal)" aria-label="Send"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li><code>gate.mode = attempt</code>: an open counted attempt (<code>purpose: "course"</code>), a due touch, or never solved (t5 §9 table; m1-06's <code>live(s) ‖ !s.Solved</code>).</li>
+          <li>Context chip = the thread key's label (<code>problem:16</code>). Mode chip renders only when <code>gate</code> is present; no chip when it's omitted.</li>
+          <li>Input enabled. The first send on this problem may return F2.</li></ul>
+        <h4>Decision</h4>
+        <ul><li>ADR-0031 §7 mode gate: <code>attempt</code> withholds pattern, concepts and solution facts (server-side, <code>coach-prompt@2</code>). The chip states it; it doesn't enforce it.</li></ul>
+        <h4>A11y</h4>
+        <ul><li>Focus order: <span class="bd-num">1</span> Close · <span class="bd-num">2</span> suggestion chips · <span class="bd-num">3</span> input · <span class="bd-num">4</span> Send. Esc closes the panel and returns focus to the FAB.</li>
+          <li>Mode chip is text, not colour only (info 7.0:1 on panel-2). Thread is <code>role="log"</code> <code>aria-live="polite"</code>.</li></ul>
+        <h4>&lt; 1024 px</h4>
+        <ul><li>The panel opens as a full-width sheet over the page (narrow frame N1).</li></ul>
+      </aside>
+    </article>
+
+    <!-- F2 -->
+    <article class="bd-frame" id="AB01-F2">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F2</span><span class="bd-frame__title">· D27 assist confirm</span><span class="bd-frame__state">· 409 on the first send during the attempt</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage bd-stage--panel">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> problem · #16 3Sum</div>
+            <div class="ab01-mode"><span class="ds-badge ds-badge--info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Attempt · hints only — no pattern or solution</span></div>
+            <div class="xl-coach__body" role="log" aria-live="polite">
+              <div class="xl-coach__msg xl-coach__msg--bot">You're mid-attempt on 3Sum, so I'll stick to questions and hints — no pattern names or solution steps until you've concluded.</div>
+              <section class="ab01-confirm" role="alertdialog" aria-labelledby="f2-t" aria-describedby="f2-d">
+                <h3 id="f2-t"><span class="ab01-ic ab01-ic--warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span> Ask the coach about this problem?</h3>
+                <p id="f2-d">Using any AI during a counted attempt caps it at <b>Assisted</b>.</p>
+                <p>Only this attempt on #16 3Sum is affected.</p>
+                <div class="ab01-confirm__act">
+                  <span class="ds-btn ds-btn--primary ds-btn--sm" role="button">Ask — cap at Assisted</span>
+                  <span class="ds-btn ds-btn--secondary ds-btn--sm bd-focus" role="button">Cancel</span>
+                </div>
+              </section>
+            </div>
+            <div class="xl-coach__foot">
+              <div class="xl-coach__input"><input value="Is a hash set enough here, or should I sort first?" aria-label="Message coach" disabled><span class="ds-iconbtn" aria-label="Send" aria-disabled="true"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>Trigger</h4>
+        <ul><li><code>POST /api/coach/chat</code> in <code>problem:16</code>'s context, attempt open, not yet assisted → <b><code>409 assist_confirm_required</code></b> <code>{error:{code, attemptId, problemId}}</code>. Nothing is sent to the provider, nothing persisted.</li></ul>
+        <h4>Behaviour</h4>
+        <ul><li><b>Ask — cap at Assisted</b> re-sends the same message with <code>assist_ack: &lt;attemptId&gt;</code>. The gateway runs the L18 admission probe, records <code>POST /attempts/{id}/assist</code> (idempotent), then forwards → F3. A 429 from the probe shows F8 and leaves the attempt uncapped; a failed record shows F4.</li>
+          <li><b>Cancel</b> dismisses the card; the draft stays in the composer; nothing is recorded.</li>
+          <li>Once recorded, later sends and reloads skip this card (the attempt already carries <code>coach_assist_at</code>).</li>
+          <li>Placement: inline in the thread, above the composer — not a page modal, so the problem stays visible.</li></ul>
+        <h4>Decision</h4>
+        <ul><li><b>D27</b> (per problem): only a chat about <b>this</b> problem during its open counted attempt asks; another page is an accepted, honor-based bypass. <b>D18</b>: coach help ⇒ Assisted. Copy is an honesty prompt, not a claim of detection (t5 §9).</li></ul>
+        <h4>A11y</h4>
+        <ul><li><code>role="alertdialog"</code> labelled by the question. Focus moves to <b>Cancel</b> (drawn with the focus ring): the least consequential action; Tab reaches Ask; Esc = Cancel. Enter in the composer never confirms.</li>
+          <li>Warn border is decorative; the consequence is in text (text 14.2:1, dim 6.8:1).</li></ul>
+        <h4>&lt; 1024 px</h4>
+        <ul><li>Same card in the sheet; buttons wrap to full width below 360 px (N1).</li></ul>
+      </aside>
+    </article>
+
+    <!-- F3 -->
+    <article class="bd-frame" id="AB01-F3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F3</span><span class="bd-frame__title">· Assist recorded</span><span class="bd-frame__state">· attempt capped at Assisted</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage bd-stage--panel">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> problem · #16 3Sum</div>
+            <div class="ab01-mode">
+              <span class="ds-badge ds-badge--info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Attempt · hints only — no pattern or solution</span>
+              <span class="ds-badge ds-badge--warn" role="status">Coach used on this attempt · capped at Assisted</span>
+            </div>
+            <div class="xl-coach__body" role="log" aria-live="polite">
+              <div class="xl-coach__msg xl-coach__msg--me">Is a hash set enough here, or should I sort first?</div>
+              <div class="xl-coach__msg xl-coach__msg--bot">Good question to ask yourself. What does the output need to avoid, and how would you spot a repeated triplet cheaply? Try it by hand on [-1, 0, 1, 2, -1, -4] and watch what repeats.</div>
+            </div>
+            <div class="xl-coach__foot">
+              <div class="xl-coach__input"><input placeholder="Ask your coach…" aria-label="Message coach"><span class="ds-iconbtn" style="color:var(--ds-teal)" aria-label="Send"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+            </div>
+          </aside>
+        </div>
+        <div class="bd-pad">
+          <div class="ab01-cap">Problem HUD mirror · /xlearn/dsa/problem/16</div>
+          <div class="ab01-hud">
+            <div class="ds-tabs" role="group" aria-label="Stage"><span class="ds-tab ds-tab--active">0 · Attempt</span><span class="ds-tab">1 · Hint</span><span class="ds-tab">2 · Solution</span></div>
+            <div class="ab01-ring" role="timer" aria-label="attempt timer — 31:40 remaining">
+              <svg width="46" height="46" viewBox="0 0 56 56" aria-hidden="true" style="transform:rotate(-90deg)"><circle class="xl-ring-track" cx="28" cy="28" r="24" fill="none" stroke-width="4"/><circle cx="28" cy="28" r="24" fill="none" stroke="var(--ds-teal)" stroke-width="4" stroke-linecap="round" stroke-dasharray="106 150.8"/></svg>
+              <div><div class="ab01-ring__t">31:40</div><div class="ab01-ring__k">attempt</div></div>
+            </div>
+            <span class="ds-badge ds-badge--warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg> Coach used · capped at Assisted</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>After an acked send, or on load when <code>gate.attempt.coachAssistAt</code> is set. The panel invalidates the <code>["problem", id]</code> query so the HUD chip appears (<code>/state</code>'s <code>coachAssistAt</code>).</li>
+          <li>Outcome step (Problem, m1-07): Clean and Rough render capped, with the line "Coach used on this attempt · capped at Assisted"; a <code>cappedBy: "coach"</code> response is reflected in the recorded grade.</li>
+          <li>Sample reply is Socratic: no pattern name, no approach. HUD timer value is sample data (45:00 attempt from M3; v1's 15:00 until then).</li></ul>
+        <h4>Decision</h4>
+        <ul><li>D18: Assisted = pass after the hint <b>or with AI-coach help during the attempt</b>. D27: per problem. A later provider failure still leaves the cap (t5 §9: the learner chose to ask).</li></ul>
+        <h4>A11y</h4>
+        <ul><li>The cap badge is <code>role="status"</code>, announced once when it first appears. Warn on panel-2: 9.3:1.</li></ul>
+        <h4>&lt; 1024 px</h4>
+        <ul><li>Mode row wraps to two lines; HUD chip drops below the timer.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F4 -->
+    <article class="bd-frame" id="AB01-F4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F4</span><span class="bd-frame__title">· Fail closed</span><span class="bd-frame__state">· 503 — nothing sent</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag bd-tag--variant">a / b</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage bd-stage--panel">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> problem · #16 3Sum</div>
+            <div class="ab01-mode"><span class="ds-badge ds-badge--info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Attempt · hints only — no pattern or solution</span></div>
+            <div class="xl-coach__body" role="log" aria-live="polite">
+              <div class="xl-coach__msg xl-coach__msg--bot">You're mid-attempt on 3Sum, so I'll stick to questions and hints — no pattern names or solution steps until you've concluded.</div>
+              <div class="ab01-note ab01-note--err" role="alert"><span class="ab01-ic ab01-ic--err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span>
+                <div class="ab01-note__txt"><span class="bd-tag bd-tag--variant">a · assist_unavailable</span><br>We couldn't record coach use on your attempt, so nothing was sent. Try again.
+                  <div class="ab01-note__act"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg> Try again</span></div></div>
+              </div>
+              <div class="ab01-note ab01-note--err"><span class="ab01-ic ab01-ic--err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span>
+                <div class="ab01-note__txt"><span class="bd-tag bd-tag--variant">b · coach_state_unavailable</span><br>We couldn't check your practice state, so nothing was sent. Try again in a moment.
+                  <div class="ab01-note__act"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg> Try again</span></div></div>
+              </div>
+            </div>
+            <div class="xl-coach__foot">
+              <div class="xl-coach__input"><input value="Is a hash set enough here, or should I sort first?" aria-label="Message coach"><span class="ds-iconbtn" style="color:var(--ds-teal)" aria-label="Send"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+              <div class="ab01-foot-meta"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Your message wasn't sent. It's still here.</div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>Codes (exactly one notice shows at a time; both drawn for reference)</h4>
+        <ul><li><b>a</b> — <code>503 assist_unavailable</code>: the learner confirmed (F2) but practice couldn't record <code>coach_assist_at</code>. Copy is the plan's, verbatim.</li>
+          <li><b>b</b> — <code>503 coach_state_unavailable</code>: the mode lookup (practice, review or assessment) didn't answer, on any page. Its own copy, because no attempt may be involved. On the thread <code>GET</code> the <code>gate</code> field is simply omitted (no mode chip); the chat is what fails closed.</li>
+          <li><b>Try again</b> re-sends the kept draft (with <code>assist_ack</code> in case a). Nothing was forwarded, persisted or counted.</li></ul>
+        <h4>Decision</h4>
+        <ul><li>t5 §9: the assist record happens <b>before</b> forwarding; failure returns 503 and sends nothing (fails closed). m1-07 adds the state-lookup 503 (v1 fell back to <code>attempt</code>).</li></ul>
+        <h4>A11y</h4>
+        <ul><li><code>role="alert"</code> on the notice; focus stays in the composer. Error text is <code>--ds-text</code> on a red tint (≥ 12:1); the red border is decorative.</li></ul>
+        <h4>&lt; 1024 px</h4>
+        <ul><li>Unchanged in the sheet.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F5 -->
+    <article class="bd-frame" id="AB01-F5">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F5</span><span class="bd-frame__title">· Locked</span><span class="bd-frame__state">· 409 coach_paused during a live mock or touch</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage bd-stage--panel">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</div>
+            <div class="ab01-mode"><span class="ds-badge ds-badge--err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg> Paused</span></div>
+            <div class="xl-coach__body">
+              <div class="ab01-note ab01-note--warn" role="status"><span class="ab01-ic ab01-ic--warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg></span>
+                <div class="ab01-note__txt">The coach is paused while a revision touch or mock is live. It's back when you finish.</div>
+              </div>
+            </div>
+            <div class="xl-coach__foot">
+              <div class="xl-coach__input"><input placeholder="Paused while a mock or touch is live" aria-label="Message coach" disabled><span class="ds-iconbtn" aria-label="Send" aria-disabled="true"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>Trigger</h4>
+        <ul><li><code>gate.mode = locked</code> on thread load, or a chat → <b><code>409 coach_paused</code></b> <code>{reason: "mock" | "touch"}</code>; nothing sent or persisted. M1: a live mock only (assessment <code>GET /mocks/live</code>); touches join in M2a (m2-01 reports <code>purpose: "touch"</code>).</li>
+          <li>One banner covers both reasons. The course manifest's <code>coach.off_during</code> decides which kinds lock.</li>
+          <li>When the mock or touch ends, the next thread load returns the normal mode; no reload prompt.</li></ul>
+        <h4>Decision</h4>
+        <ul><li>ADR-0031 §7 / D27 (kept): the coach stays <code>locked</code> during live touches and mocks. This is a visible change vs v1 (the coach worked during a mock) on m1-07's expected-change list.</li></ul>
+        <h4>A11y</h4>
+        <ul><li>Banner <code>role="status"</code>. Input <code>disabled</code> with the reason as its placeholder and banner text; Send <code>aria-disabled</code>. Focus lands on Close.</li></ul>
+        <h4>&lt; 1024 px</h4>
+        <ul><li>Unchanged in the sheet.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F6 -->
+    <article class="bd-frame" id="AB01-F6">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F6</span><span class="bd-frame__title">· Review mode</span><span class="bd-frame__state">· concluded, no touch due</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage bd-stage--panel">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> problem · #1 Two Sum</div>
+            <div class="ab01-mode"><span class="ds-badge ds-badge--ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Review</span></div>
+            <div class="xl-coach__body" role="log" aria-live="polite">
+              <div class="xl-coach__msg xl-coach__msg--me">Can you review how I handled duplicates?</div>
+              <div class="xl-coach__msg xl-coach__msg--bot">Walk me through what happens when the same value appears twice — does your check run before or after you store the current number? That order is what keeps a value from pairing with itself.</div>
+            </div>
+            <div class="xl-coach__foot">
+              <div class="xl-coach__input"><input placeholder="Ask your coach…" aria-label="Message coach"><span class="ds-iconbtn" style="color:var(--ds-teal)" aria-label="Send"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li><code>gate.mode = review</code>: concluded, no open attempt, no touch due. Normal chat, no confirm, no cap.</li>
+          <li>The prompt may include the pattern (mode <code>review</code> only); submission and xLearn AI feedback slots stay empty until M3/M4.</li></ul>
+        <h4>Decision</h4>
+        <ul><li>ADR-0031 §7: <code>review</code> after conclusion. A due touch flips the same problem back to <code>attempt</code> (withhold while due, ADR-0027 §1).</li></ul>
+        <h4>A11y</h4>
+        <ul><li>Ok badge 9.2:1 on panel-2, with a check icon and the word "Review".</li></ul>
+        <h4>&lt; 1024 px</h4>
+        <ul><li>Unchanged in the sheet.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F7 -->
+    <article class="bd-frame" id="AB01-F7">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F7</span><span class="bd-frame__title">· General mode</span><span class="bd-frame__state">· not an item page</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage bd-stage--panel">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-map"/></svg> week · 2</div>
+            <div class="ab01-mode"><span class="xl-tag"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg> General</span></div>
+            <div class="xl-coach__body" role="log" aria-live="polite">
+              <div class="ab01-note ab01-note--info"><span class="ab01-ic ab01-ic--info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg></span>
+                <div class="ab01-note__txt">Problems you're mid-attempt on stay off-limits in general chat. Ask about them on their own page.</div>
+              </div>
+              <div class="xl-coach__msg xl-coach__msg--bot">I read the current page and coach you — Socratically while you're attempting, and as a reviewer once you've solved. Ask me anything about Week 2.</div>
+              <div class="xl-coach__sugg">
+                <span class="xl-coach__chip">What's the theme this week?</span>
+                <span class="xl-coach__chip">How should I sequence these problems?</span>
+              </div>
+            </div>
+            <div class="xl-coach__foot">
+              <div class="xl-coach__input"><input placeholder="Ask your coach…" aria-label="Message coach"><span class="ds-iconbtn" style="color:var(--ds-teal)" aria-label="Send"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li><code>gate.mode = general</code>: week, concept, Today, Revision, Mistakes, Progress, Settings, Catalog. Context keys become <code>&lt;course&gt;:&lt;ctx&gt;</code> (m1-03); the chip shows the label.</li>
+          <li>The note is display only. The guard is server-side: the gateway adds <code>live_items</code> to the body and the prompt names them off-limits.</li>
+          <li>The note is static copy on every general-mode panel (the SPA isn't told which items are live, and doesn't need to be). Intro and suggestions are v1's copy.</li></ul>
+        <h4>Decision</h4>
+        <ul><li>t5 §9 table (<code>general</code>: "a guard line naming live items as off-limits"); D27: asking from another page is honor-based, but the model still refuses to discuss live items here.</li></ul>
+        <h4>A11y</h4>
+        <ul><li>Note is static text (no live region); info icon + words, not colour. General tag: dim text 7.4:1 on inset.</li></ul>
+        <h4>&lt; 1024 px</h4>
+        <ul><li>Unchanged in the sheet.</li></ul>
+      </aside>
+    </article>
+
+  </div>
+</section>
+
+<!-- ========================================== B · limits + provider errors -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · Limits, cut-short replies and provider errors <small>F8–F11 · m1-07 (F8–F10), m1-10 (F10 reasons, F11)</small></h2>
+  <p class="bd-section__p">
+    L18 limits are xLearn's own and come back as <b>typed 429s</b> with <code class="ds-mono">Retry-After</code>; they're
+    distinct from the provider's own limits (<code class="ds-mono">provider_limited</code>, F10). A rejected request
+    consumes nothing and writes no message.
+  </p>
+
+  <div class="bd-grid">
+
+    <!-- F8a -->
+    <article class="bd-frame" id="AB01-F8">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F8a</span><span class="bd-frame__title">· Rate limited</span><span class="bd-frame__state">· 429 coach_rate_limited (20 / min)</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage bd-stage--panel">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> problem · #1 Two Sum</div>
+            <div class="ab01-mode"><span class="ds-badge ds-badge--ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Review</span></div>
+            <div class="xl-coach__body" role="log" aria-live="polite">
+              <div class="xl-coach__msg xl-coach__msg--me">And the space cost?</div>
+              <div class="xl-coach__msg xl-coach__msg--bot">What do you keep around for the whole pass, and how big can it get in the worst case?</div>
+              <div class="ab01-note ab01-note--warn" role="status"><span class="ab01-ic ab01-ic--warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span>
+                <div class="ab01-note__txt">You're sending quickly — try again in <span class="ab01-mono">12 s</span></div>
+              </div>
+            </div>
+            <div class="xl-coach__foot">
+              <div class="xl-coach__input"><input value="What if the array is already sorted?" aria-label="Message coach"><span class="ds-iconbtn" aria-label="Send" aria-disabled="true"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>Code</h4>
+        <ul><li><b><code>429 coach_rate_limited</code></b>, <code>Retry-After</code> = seconds to the next token (bucket of 20, refilled 20/min). The seconds count down from <code>Retry-After</code>; at 0 the notice clears and Send re-enables. The draft stays.</li></ul>
+        <h4>Decision</h4>
+        <ul><li>L18 (ADR-0035 §4; t5 §9): 20 messages a minute per account.</li></ul>
+        <h4>A11y</h4>
+        <ul><li><code>role="status"</code>, announced once; the countdown updates the visible number only (no re-announcing every second). Reduced motion: no pulse.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F8b -->
+    <article class="bd-frame" id="AB01-F8b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F8b</span><span class="bd-frame__title">· Busy</span><span class="bd-frame__state">· 429 coach_busy (2 streams)</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage bd-stage--panel">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> problem · #1 Two Sum</div>
+            <div class="ab01-mode"><span class="ds-badge ds-badge--ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Review</span></div>
+            <div class="xl-coach__body" role="log" aria-live="polite">
+              <div class="xl-coach__msg xl-coach__msg--me">And the space cost?</div>
+              <div class="xl-coach__msg xl-coach__msg--bot">What do you keep around for the whole pass, and how big can it get in the worst case?</div>
+              <div class="ab01-note ab01-note--warn" role="status"><span class="ab01-ic ab01-ic--warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span>
+                <div class="ab01-note__txt">One reply at a time — wait for the current reply</div>
+              </div>
+            </div>
+            <div class="xl-coach__foot">
+              <div class="xl-coach__input"><input value="What if the array is already sorted?" aria-label="Message coach"><span class="ds-iconbtn" aria-label="Send" aria-disabled="true"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>Code</h4>
+        <ul><li><b><code>429 coach_busy</code></b>, <code>Retry-After: 5</code>: two replies are already streaming on this account (another tab or window). The client retries the check every 5 s; the notice clears when a slot frees. The draft stays.</li></ul>
+        <h4>Decision</h4>
+        <ul><li>L18: 2 concurrent streams per account.</li></ul>
+        <h4>A11y</h4>
+        <ul><li><code>role="status"</code>; Send <code>aria-disabled</code> while the notice shows.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F8c -->
+    <article class="bd-frame" id="AB01-F8c">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F8c</span><span class="bd-frame__title">· Daily cap</span><span class="bd-frame__state">· 429 coach_daily_cap (300 per UTC day)</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage bd-stage--panel">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> problem · #1 Two Sum</div>
+            <div class="ab01-mode"><span class="ds-badge ds-badge--ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Review</span></div>
+            <div class="xl-coach__body" role="log" aria-live="polite">
+              <div class="xl-coach__msg xl-coach__msg--me">And the space cost?</div>
+              <div class="xl-coach__msg xl-coach__msg--bot">What do you keep around for the whole pass, and how big can it get in the worst case?</div>
+              <div class="ab01-note ab01-note--warn" role="status"><span class="ab01-ic ab01-ic--warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span>
+                <div class="ab01-note__txt">You've reached today's 300-message limit on your key. It resets at 00:00 UTC (5:30 AM your time).</div>
+              </div>
+            </div>
+            <div class="xl-coach__foot">
+              <div class="xl-coach__input"><input placeholder="Back at 5:30 AM your time" aria-label="Message coach" disabled><span class="ds-iconbtn" aria-label="Send" aria-disabled="true"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>Code</h4>
+        <ul><li><b><code>429 coach_daily_cap</code></b>, <code>Retry-After</code> = seconds to the next <b>UTC</b> midnight. The local time is <code>now + Retry-After</code> formatted in the browser's locale (sample: IST, UTC+5:30 → "5:30 AM"). Copy never says "in your timezone": the day is the UTC day.</li>
+          <li>Input disabled until the reset; thread history stays readable.</li></ul>
+        <h4>Decision</h4>
+        <ul><li>L18: 300 messages a day per account on the learner's key (t5 §9: bounds what a stolen session can spend). The UTC-day wording removes m1-07's flagged copy delta.</li></ul>
+        <h4>A11y</h4>
+        <ul><li><code>role="status"</code>; the time is plain text. Warn icon + words.</li></ul>
+        <h4>&lt; 1024 px</h4>
+        <ul><li>Narrow frame N2.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F9 -->
+    <article class="bd-frame" id="AB01-F9">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F9</span><span class="bd-frame__title">· Cut-short reply</span><span class="bd-frame__state">· stop_reason = max tokens</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage bd-stage--panel">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> problem · #5 Group Anagrams</div>
+            <div class="ab01-mode"><span class="ds-badge ds-badge--ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Review</span></div>
+            <div class="xl-coach__body" role="log" aria-live="polite">
+              <div class="xl-coach__msg xl-coach__msg--me">Review my submission line by line?</div>
+              <div class="xl-coach__msg xl-coach__msg--bot">Here's a line-by-line pass over your submission.<br>
+                1. Your key-building loop runs once per word, so the pass is linear in the total characters times the cost of one key.<br>
+                2. The map lookup is constant on average, so it doesn't change the bound.<br>
+                3. On memory: every word is stored once under its key, and
+                <div class="ab01-cut"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-minus"/></svg> Reply cut short (length limit)<span class="ab01-flex"></span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Continue</span></div>
+              </div>
+            </div>
+            <div class="xl-coach__foot">
+              <div class="xl-coach__input"><input placeholder="Ask your coach…" aria-label="Message coach"><span class="ds-iconbtn" style="color:var(--ds-teal)" aria-label="Send"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>Trigger</h4>
+        <ul><li>SSE <code>done.truncated</code> (Anthropic <code>stop_reason: max_tokens</code>, OpenAI <code>finish_reason: length</code>) after the v1.5.1 fix (<code>max_tokens</code> 4096, effort low). The persisted note keeps history consistent on reload.</li>
+          <li><b>Continue</b> sends the fixed user turn "Continue from where you stopped." through the normal send path: it counts toward L18 and passes the same mode gate (it can hit F2/F5/F8).</li></ul>
+        <h4>Decision</h4>
+        <ul><li>t5 §9 ADR-0007 P0 truncation fix: mark cut-short replies. Sample reply is review mode on a concluded problem; it names no approach.</li></ul>
+        <h4>A11y</h4>
+        <ul><li>Marker is text inside the message (read in order); Continue is a real button, next in tab order after the message.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F10 -->
+    <article class="bd-frame" id="AB01-F10">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F10</span><span class="bd-frame__title">· Provider limited</span><span class="bd-frame__state">· quota / billing / spend / rate limit — key stays enabled</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage bd-stage--panel">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> problem · #1 Two Sum</div>
+            <div class="ab01-mode"><span class="ds-badge ds-badge--ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Review</span></div>
+            <div class="xl-coach__body" role="log" aria-live="polite">
+              <div class="xl-coach__msg xl-coach__msg--me">What would change for a stream of numbers?</div>
+              <div class="ab01-note ab01-note--warn" role="alert"><span class="ab01-ic ab01-ic--warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span>
+                <div class="ab01-note__txt">Your provider says this key is out of credit or rate-limited. Top up or wait, then retry.
+                  <div class="ab01-note__act"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg> Retry</span></div></div>
+              </div>
+              <div class="ab01-keyline"><span class="ds-dot ds-dot--ok"></span> Your Anthropic key is still on.</div>
+            </div>
+            <div class="xl-coach__foot">
+              <div class="xl-coach__input"><input placeholder="Ask your coach…" aria-label="Message coach"><span class="ds-iconbtn" style="color:var(--ds-teal)" aria-label="Send"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+            </div>
+          </aside>
+        </div>
+        <div class="bd-pad">
+          <div class="ab01-cap">Variant · reason = region (m1-10)</div>
+          <div class="ab01-note ab01-note--warn"><span class="ab01-ic ab01-ic--warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><div class="ab01-note__txt">Your provider doesn't serve this region.</div></div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>Trigger</h4>
+        <ul><li>SSE <code>error</code> <code>provider_limited</code> (or the pre-stream <code>429 provider_limited</code>) with <code>reason ∈ {quota, rate_limit}</code> → this line, verbatim. <code>reason = region</code> → the variant line. <code>model_access</code> → F11. <code>auth</code> → F15b.</li>
+          <li>The key's <code>enabled</code> flag stays true: only 401 / <code>authentication_error</code> / <code>invalid_api_key</code> disable a key. The status line replaces v1's warning text appended to the reply.</li></ul>
+        <h4>Decision</h4>
+        <ul><li>t5 §9 ADR-0007 P0 typed errors ("quota ≠ disable"); v1.5.1 <code>provider_limited</code> stays distinct from the L18 429s.</li></ul>
+        <h4>A11y</h4>
+        <ul><li><code>role="alert"</code> (the reply failed). Status dot has the words beside it.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F11 -->
+    <article class="bd-frame" id="AB01-F11">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F11</span><span class="bd-frame__title">· Model access error</span><span class="bd-frame__state">· ErrModelAccess, switcher open</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage bd-stage--panel">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> problem · #1 Two Sum</div>
+            <div class="ab01-mode"><span class="ds-badge ds-badge--ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Review</span></div>
+            <div class="xl-coach__body" role="log" aria-live="polite">
+              <div class="xl-coach__msg xl-coach__msg--me">What would change for a stream of numbers?</div>
+              <div class="ab01-note ab01-note--err" role="alert"><span class="ab01-ic ab01-ic--err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span>
+                <div class="ab01-note__txt">This key can't use <span class="ab01-mono">claude-opus-5-5</span>. Pick another model.
+                  <div class="ab01-note__act"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button" aria-expanded="true">Pick another model <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span></div></div>
+              </div>
+            </div>
+            <div class="xl-coach__foot">
+              <div class="xl-coach__input"><input placeholder="Ask your coach…" aria-label="Message coach"><span class="ds-iconbtn" style="color:var(--ds-teal)" aria-label="Send"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+            </div>
+            <div class="ab01-pop">
+              <div class="ab01-menu ab01-menu--fill" role="listbox" aria-label="Coach model">
+                <div class="ab01-menu__head">Anthropic · models<span>Prices per MTok, as of Sep 24, 2026</span></div>
+                <div class="ab01-mitem bd-focus" role="option" aria-selected="false">
+                  <span class="ab01-mitem__main"><span class="ab01-mitem__label">Sonnet 5 <span class="ds-badge ds-badge--ok">Recommended</span></span>
+                    <span class="ab01-mitem__meta"><span class="xl-tag">Interview</span><span class="ab01-price">$2 in · $10 out</span></span></span>
+                </div>
+                <div class="ab01-mitem ab01-mitem--on" role="option" aria-selected="true">
+                  <span class="ab01-mitem__main"><span class="ab01-mitem__label">Opus 5.5</span>
+                    <span class="ab01-mitem__meta"><span class="ab01-err">This key can't use it</span></span></span>
+                  <span class="ab01-ic ab01-ic--teal" style="margin-top:2px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span>
+                </div>
+                <div class="ab01-menu__sep"></div>
+                <div class="ab01-mitem ab01-mitem--link">Manage in Settings…</div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>Trigger</h4>
+        <ul><li>SSE <code>error</code> with <code>reason = model_access</code> (<code>ErrModelAccess</code>: 403 <code>permission_error</code> on a model, 404 <code>not_found_error</code>, <code>model_not_found</code>). Never disables the key.</li>
+          <li><b>Pick another model</b> opens the catalog switcher (F12's list for the key's provider) anchored above the composer; picking a model sets the <code>coach</code> feature default and closes it. The failing model stays listed and marked.</li></ul>
+        <h4>Decision</h4>
+        <ul><li>t5 §9 / m1-10 typed errors: a model error is "pick another model", never a disable.</li></ul>
+        <h4>A11y</h4>
+        <ul><li>The button has <code>aria-expanded</code>; the list is a <code>listbox</code>; focus moves to the first selectable option (Sonnet 5, drawn with the focus ring); arrows move, Enter picks, Esc closes back to the button.</li></ul>
+      </aside>
+    </article>
+
+  </div>
+</section>
+
+<!-- ======================================== C · catalog, keys, onboarding -->
+<section class="bd-section" aria-labelledby="sec-c">
+  <h2 class="bd-section__h" id="sec-c">C · Catalog, keys, onboarding and no key <small>F12–F15 · m1-10</small></h2>
+  <p class="bd-section__p">
+    Models come from the <b>server catalog</b> (<code class="ds-mono">GET /api/coach/models</code>): Anthropic and
+    OpenAI only (no Google), dated prices, a recommended default, custom ids shown as "cost unknown", and
+    <b>no base-URL field</b> anywhere. Prices below are t5 §5's list verified on 2026-09-24; the live catalog is
+    authoritative.
+  </p>
+
+  <!-- F12 -->
+  <article class="bd-frame" id="AB01-F12">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB01-F12</span><span class="bd-frame__title">· Model switcher from the server catalog</span><span class="bd-frame__state">· top-bar quick switch, open</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag bd-tag--variant">a · b · c</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad">
+        <div class="ab01-row">
+          <div class="ab01-col">
+            <div class="ab01-cap">a · Anthropic active (default list)</div>
+            <div class="ab01-cluster">
+              <span class="ab01-pillsw" role="group" aria-label="Coach provider"><span class="ab01-pillsw__btn ab01-pillsw__btn--on" aria-label="Anthropic">AN</span><span class="ab01-pillsw__btn" aria-label="OpenAI">OA</span></span>
+              <span class="ab01-modelbtn" aria-haspopup="listbox" aria-expanded="true"><span class="ab01-logo ab01-logo--sm">AN</span> Sonnet 5 <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+            </div>
+            <div class="ab01-menu" role="listbox" aria-label="Coach model">
+              <div class="ab01-menu__head">Anthropic · models<span>Prices per MTok, as of Sep 24, 2026</span></div>
+              <div class="ab01-mitem ab01-mitem--on" role="option" aria-selected="true">
+                <span class="ab01-mitem__main"><span class="ab01-mitem__label">Sonnet 5 <span class="ds-badge ds-badge--ok">Recommended</span></span>
+                  <span class="ab01-mitem__meta"><span class="xl-tag">Interview</span><span class="ab01-price">$2 in · $10 out</span></span></span>
+                <span class="ab01-ic ab01-ic--teal" style="margin-top:2px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span>
+              </div>
+              <div class="ab01-mitem" role="option" aria-selected="false">
+                <span class="ab01-mitem__main"><span class="ab01-mitem__label">Opus 5.5</span>
+                  <span class="ab01-mitem__meta"><span class="xl-tag">Interview</span><span class="ab01-price">$4 in · $20 out</span></span></span>
+              </div>
+              <div class="ab01-menu__sep"></div>
+              <div class="ab01-mitem ab01-mitem--link" role="option" aria-selected="false"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-plus"/></svg> Custom model id…</div>
+              <div class="ab01-menu__sep"></div>
+              <div class="ab01-mitem ab01-mitem--link">Manage in Settings…</div>
+            </div>
+          </div>
+
+          <div class="ab01-col">
+            <div class="ab01-cap">b · OpenAI active, custom id entered</div>
+            <div class="ab01-cluster">
+              <span class="ab01-pillsw" role="group" aria-label="Coach provider"><span class="ab01-pillsw__btn" aria-label="Anthropic">AN</span><span class="ab01-pillsw__btn ab01-pillsw__btn--on" aria-label="OpenAI">OA</span></span>
+              <span class="ab01-modelbtn" aria-haspopup="listbox" aria-expanded="true"><span class="ab01-logo ab01-logo--sm">OA</span> GPT-6 Sol <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+            </div>
+            <div class="ab01-menu" role="listbox" aria-label="Coach model">
+              <div class="ab01-menu__head">OpenAI · models<span>Prices per MTok, as of Sep 24, 2026</span></div>
+              <div class="ab01-mitem ab01-mitem--on" role="option" aria-selected="true">
+                <span class="ab01-mitem__main"><span class="ab01-mitem__label">GPT-6 Sol <span class="ds-badge ds-badge--ok">Recommended</span></span>
+                  <span class="ab01-mitem__meta"><span class="xl-tag">Interview</span><span class="ab01-price">$2 in · $10 out</span></span></span>
+                <span class="ab01-ic ab01-ic--teal" style="margin-top:2px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span>
+              </div>
+              <div class="ab01-mitem" role="option" aria-selected="false">
+                <span class="ab01-mitem__main"><span class="ab01-mitem__label">GPT-6 Luna</span>
+                  <span class="ab01-mitem__meta"><span class="ab01-price">$0.10 in · $0.50 out</span></span></span>
+              </div>
+              <div class="ab01-mitem" role="option" aria-selected="false">
+                <span class="ab01-mitem__main"><span class="ab01-mitem__label">GPT-6 Astra</span>
+                  <span class="ab01-mitem__meta"><span class="xl-tag">Interview</span><span class="ab01-price">$10 in · $50 out</span></span></span>
+              </div>
+              <div class="ab01-mitem" role="option" aria-selected="false">
+                <span class="ab01-mitem__main"><span class="ab01-mitem__label">GPT-5.6 Sol</span>
+                  <span class="ab01-mitem__meta"><span class="ab01-price">$4 in · $20 out</span></span></span>
+              </div>
+              <div class="ab01-menu__sep"></div>
+              <div class="ab01-mitem ab01-mitem--link" role="option" aria-selected="false"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-plus"/></svg> Custom model id…</div>
+              <div class="ab01-custom">
+                <label class="ds-field__label" for="f12-custom">Model id</label>
+                <div class="ab01-custom__row"><input id="f12-custom" class="ds-input ds-input--mono" value="ft:gpt-6-luna:personal:coach"><span class="ds-btn ds-btn--primary ds-btn--sm" role="button">Use</span></div>
+                <span class="ab01-mitem__meta"><span class="ds-chip ds-chip--warn ds-chip--sm">cost unknown</span> Not in the catalog, so this month's estimate leaves it out.</span>
+              </div>
+              <div class="ab01-menu__sep"></div>
+              <div class="ab01-mitem ab01-mitem--link">Manage in Settings…</div>
+            </div>
+          </div>
+
+          <div class="ab01-col">
+            <div class="ab01-cap">c · invalid custom id</div>
+            <div class="ab01-menu" aria-label="Custom model id">
+              <div class="ab01-custom">
+                <label class="ds-field__label" for="f12-bad">Model id</label>
+                <div class="ab01-custom__row"><input id="f12-bad" class="ds-input ds-input--mono ds-input--invalid" value="https://proxy.example.com/v1" aria-invalid="true" aria-describedby="f12-bad-e"><span class="ds-btn ds-btn--primary ds-btn--sm" role="button" aria-disabled="true">Use</span></div>
+                <span class="ab01-err" id="f12-bad-e">That isn't a model id. Use letters, digits and . _ : - (no URLs).</span>
+              </div>
+            </div>
+            <div class="ab01-cap" style="margin-top:14px">Tag legend</div>
+            <div class="ab01-legend"><span class="xl-tag">Interview</span> can run the text interviewer · <span class="xl-tag">Voice</span> voice shell (M6b)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Data</h4>
+        <ul><li><code>GET /api/coach/models</code> → <code>{as_of, providers, models:[{id, provider, label, capabilities, price, as_of, recommended, covered_model}], defaults}</code>. The head shows <code>as_of</code>; each row shows input · output price per MTok.</li>
+          <li>Tags from <code>capabilities</code>: <code>interview_brain</code> → Interview, <code>voice_shell</code> → Voice. Which models carry which tag is catalog data (sample here). No chat model carries Voice today; GPT-Live-1 is the provisional shell (D42).</li>
+          <li>Recommended: Sonnet 5; GPT-6 Sol only after m1-10's smoke call (else GPT-5.6 Sol keeps the badge). v1 entries still served (Opus 5, Opus 4.8, GPT-5.6 Terra/Luna) render the same way.</li>
+          <li>A Covered Model row adds the line "Your provider keeps these chats 30 days".</li></ul></section>
+      <section><h4>Custom ids</h4>
+        <ul><li>Valid: <code>^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$</code>, not in the catalog → accepted, "cost unknown" chip, no cost estimate. Invalid → the inline error; the server's <code>422 unknown_model</code> maps to the same line.</li>
+          <li><b>No base-URL field.</b> A URL typed as an id fails the regex (variant c); the API rejects a <code>base_url</code> field with 400.</li>
+          <li>On catalog failure the menu shows only the currently set model.</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>t5 §9 "Providers and catalog" (no Google, no user base URLs, server catalog); m1-10 task 2.</li>
+          <li>Button <code>aria-haspopup="listbox"</code> + <code>aria-expanded</code>; options <code>role="option"</code> + <code>aria-selected</code>; Esc closes. Prices in mono, dim 6.8:1.</li>
+          <li>&lt; 1024 px: the provider pill hides; the model button keeps its logo only; the list opens as a bottom sheet.</li>
+          <li>Live classes: <code>.xl-coachsw</code>, <code>.xl-pillsw</code>, <code>.xl-modelbtn</code>, <code>.xl-menu</code>, <code>.xl-mitem</code> (app.css). Provider tiles are drawn as monograms; the live <code>ProviderLogo</code> brand marks render there.</li></ul></section>
+    </aside>
+  </article>
+
+  <!-- F13 -->
+  <article class="bd-frame" id="AB01-F13">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB01-F13</span><span class="bd-frame__title">· Settings → Your AI coach (your key)</span><span class="bd-frame__state">· /xlearn/settings?tab=coach · both providers connected</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <div class="xl-main">
+            <div class="xl-topbar">
+              <span class="ab01-brand"><span class="ab01-mark">x</span><span class="ab01-name">x<b>Learn</b></span></span>
+              <span class="ab01-flex"></span>
+              <span class="ab01-modelbtn"><span class="ab01-logo ab01-logo--sm">AN</span> Sonnet 5 <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="xl-content">
+              <div class="ab01-set">
+                <div class="ab01-set__h"><div class="xl-eyebrow">Account</div><h1>Settings</h1><p>Your profile, study pace, AI coach and reminders — tuned to how you learn.</p></div>
+                <div class="ab01-set__grid">
+                  <aside class="ab01-rail">
+                    <div class="ab01-pf"><span class="ds-avatar ab01-av">S</span><b>Sam Rivera</b><span>@samr</span></div>
+                    <nav class="ab01-railnav" aria-label="Settings sections">
+                      <span class="ab01-railitem"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Study budget</span>
+                      <span class="ab01-railitem ab01-railitem--on" aria-selected="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach</span>
+                      <span class="ab01-railitem"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-bell"/></svg> Reminders</span>
+                      <span class="ab01-railitem"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-key"/></svg> Sign-in &amp; security</span>
+                    </nav>
+                  </aside>
+                  <section class="ab01-card">
+                    <div class="ab01-card__h">
+                      <span class="ab01-card__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg></span>
+                      <div class="ab01-flex"><h3>Your AI coach (your key)</h3><p>Connect one or both providers. Each feature uses its own default model. Keys are stored encrypted.</p></div>
+                      <span class="ds-badge ds-badge--ok">● Active</span>
+                    </div>
+                    <div class="ab01-card__b">
+                      <div class="ab01-sub-h">Default model per feature</div>
+                      <div class="ab01-feat">
+                        <span class="ab01-feat__k">Coach</span>
+                        <span class="ab01-feat__v"><b>Sonnet 5</b><span class="ds-chip ds-chip--xs ds-mono">claude-sonnet-5</span>· Anthropic</span>
+                        <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Change</span>
+                      </div>
+                      <div class="ab01-feat">
+                        <span class="ab01-feat__k">Interview</span>
+                        <span class="ab01-feat__v"><b>GPT-6 Sol</b><span class="ds-chip ds-chip--xs ds-mono">gpt-6-sol</span>· OpenAI <span>(needs an interview-capable model)</span></span>
+                        <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Change</span>
+                      </div>
+                      <div class="ab01-hint"><span class="ab01-ic ab01-ic--teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chart"/></svg></span> <span>This month on your keys: <b>212 messages · 1.4 M tokens · ≈ $3.10 (estimate)</b></span></div>
+
+                      <div class="ab01-sub-h" style="margin-top:4px">Keys</div>
+                      <div class="ab01-prov">
+                        <div class="ab01-prov__head">
+                          <span class="ab01-logo">AN</span>
+                          <div class="ab01-flex"><div class="ab01-prov__name">Anthropic</div><div class="ab01-prov__status"><span class="ds-dot ds-dot--ok"></span> Connected <span class="ds-mono" style="color:var(--ds-dim)">· sk-ant-…4f2a</span></div></div>
+                          <span class="xl-tag">Coach default</span>
+                        </div>
+                        <div class="ab01-keyrow"><input class="ds-input ds-input--mono" value="sk-ant-…4f2a" readonly aria-label="Anthropic API key"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Update</span></div>
+                        <div class="ab01-prov__act"><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button" style="color:var(--ds-err)">Remove</span><span class="ab01-enc"><span class="ab01-ic ab01-ic--ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg></span> Encrypted at rest</span></div>
+                      </div>
+                      <div class="ab01-prov">
+                        <div class="ab01-prov__head">
+                          <span class="ab01-logo">OA</span>
+                          <div class="ab01-flex"><div class="ab01-prov__name">OpenAI</div><div class="ab01-prov__status"><span class="ds-dot ds-dot--ok"></span> Connected <span class="ds-mono" style="color:var(--ds-dim)">· sk-…9c1e</span></div></div>
+                          <span class="xl-tag">Interview default</span>
+                        </div>
+                        <div class="ab01-keyrow"><input class="ds-input ds-input--mono" value="sk-…9c1e" readonly aria-label="OpenAI API key"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Update</span></div>
+                        <div class="ab01-prov__act"><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button" style="color:var(--ds-err)">Remove</span><span class="ab01-enc"><span class="ab01-ic ab01-ic--ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg></span> Encrypted at rest</span></div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bd-pad">
+        <div class="ab01-cap">Variants</div>
+        <div class="ab01-row">
+          <div class="ab01-feat" style="min-width:520px">
+            <span class="ab01-feat__k">Interview</span>
+            <span class="ab01-feat__v"><b>Not set</b><span>(needs an interview-capable model)</span></span>
+            <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Choose</span>
+          </div>
+          <div class="ab01-hint"><span class="ab01-ic ab01-ic--teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chart"/></svg></span> <span>This month on your keys: <b>96 messages · 0.6 M tokens · ≈ $1.20 (estimate)</b> · custom models not estimated</span></div>
+          <div class="ab01-prov" style="min-width:420px">
+            <div class="ab01-prov__head">
+              <span class="ab01-logo">OA</span>
+              <div class="ab01-flex"><div class="ab01-prov__name">OpenAI</div><div class="ab01-prov__status ab01-prov__status--off">Not connected</div></div>
+            </div>
+            <div class="ab01-keyrow"><input class="ds-input ds-input--mono" type="password" placeholder="sk-…" aria-label="OpenAI API key"></div>
+            <div class="ab01-prov__act"><span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Connect OpenAI</span><span class="ab01-enc"><span class="ab01-ic ab01-ic--ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg></span> Encrypted at rest</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Data</h4>
+        <ul><li>Masked keys per provider (per-(account, provider) rows). <b>Per-feature defaults</b> come only from <code>coach.key_default(feature ∈ {coach, interview})</code>; <b>Change</b> opens F12's list for that feature.</li>
+          <li><b>Coach</b> lists every catalog chat model of a connected provider plus "Custom model id…". <b>Interview</b> lists the catalog's <code>interview_brain</code> models plus "Custom model id…" (shown "cost unknown"); a known id without <code>interview_brain</code> is rejected. Unset → "Not set" + <b>Choose</b>.</li>
+          <li>"This month on your keys" = <code>usage_month</code> from <code>GET /keys</code> (UTC calendar month; display only, an estimate). <code>has_unknown_cost</code> appends "· custom models not estimated". Numbers are sample data.</li></ul></section>
+      <section><h4>Change vs v1</h4>
+        <ul><li>The heading gains "(your key)". The per-provider model pills and "Set as default" move into the per-feature defaults; each provider panel keeps connect / update / remove only. Status badge keeps v1's Active / Paused / Coach off.</li>
+          <li>The interview parenthetical follows t6 §11 (interview-capable = <code>interview_brain</code>); the plan's earlier "realtime-capable" rule was dropped there.</li>
+          <li>The rail label stays "Your AI coach" (short); the card heading carries the full name.</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>ADR-0031 §7 (per-feature default keys; UI names), t5 §9 (usage display), m1-10 task 5.</li>
+          <li>Focus order: rail → Change (Coach) → Change (Interview) → key Update → Remove, per provider. Save results announce via <code>role="status"</code>. Dim meta 7.2:1.</li>
+          <li>&lt; 1024 px: the rail becomes a horizontal tab strip; feature rows wrap (narrow frame N3). Live classes: <code>.xl-settings*</code>, <code>.xl-set-*</code>, <code>.xl-prov*</code> (app.css). The live Settings also rounds its buttons, inputs, chips and badges to pills (app.css <code>.xl-settings .ds-btn</code> …); the board keeps theme radii because boards never override <code>ds-*</code> rules.</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid">
+    <!-- F14 pre-M4 -->
+    <article class="bd-frame" id="AB01-F14">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F14</span><span class="bd-frame__title">· Onboarding coach step</span><span class="bd-frame__state">· optional BYO · ships now</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab01-auth">
+          <div class="ab01-stepper" aria-label="Step 4 of 4">
+            <span class="xl-touch__d xl-touch__d--pass"></span><span class="ab01-stepper__bar"></span>
+            <span class="xl-touch__d xl-touch__d--pass"></span><span class="ab01-stepper__bar"></span>
+            <span class="xl-touch__d xl-touch__d--pass"></span><span class="ab01-stepper__bar"></span>
+            <span class="xl-touch__d xl-touch__d--due"></span>
+          </div>
+          <div class="xl-eyebrow">Step 4 of 4 · optional</div>
+          <h2>Your AI coach (your key)</h2>
+          <p class="ab01-auth__lede">Optional: bring your own AI coach. Your key is stored encrypted; add it later in Settings.</p>
+          <div class="ab01-auth__fields">
+            <div class="ds-field"><span class="ds-field__label">Provider</span>
+              <div><div class="ds-seg" role="group" aria-label="Coach provider"><span class="ds-seg__btn ds-seg__btn--on" aria-pressed="true">Anthropic</span><span class="ds-seg__btn" aria-pressed="false">OpenAI</span></div></div></div>
+            <div class="ds-field"><label class="ds-field__label" for="f14-key">API key</label>
+              <input id="f14-key" class="ds-input ds-input--mono" type="password" placeholder="sk-ant-…" autocomplete="off"></div>
+            <div class="ab01-foot-meta"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg> Tip: set a monthly spend limit on this key at your provider.</div>
+          </div>
+          <span class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg" role="button" aria-disabled="true" style="margin-top:20px;opacity:.5"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg> Connect &amp; finish</span>
+          <div class="ab01-auth__row"><span class="ds-btn ds-btn--ghost" role="button">Back</span><span class="ds-btn ds-btn--ghost" role="button">Skip for now</span></div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>Behaviour</h4>
+        <ul><li><b>Connect &amp; finish</b> is enabled once a key is typed: it saves with <code>PUT /api/coach/key</code> (the catalog's recommended model for that provider as the <code>coach</code> default), then completes onboarding. A failed save keeps the learner here with v1's error line.</li>
+          <li><b>Skip for now</b> never stores a key, even a typed one, and completes onboarding. <b>Back</b> returns to step 3.</li>
+          <li>Providers come from the catalog: Anthropic and OpenAI only (Google stays gone, <code>Auth.test.tsx</code>).</li></ul>
+        <h4>Decision</h4>
+        <ul><li>t5 §9 "Onboarding step 3/4" (the coach step is step 4 of 4 since F009 added the username step) and its spend-limit recommendation; ADR-0031 §7 naming. Consents sit on the invite-acceptance step (AB19), not here.</li></ul>
+        <h4>A11y</h4>
+        <ul><li>Focus order: Provider seg → API key → Connect &amp; finish → Back → Skip for now. The disabled primary uses <code>aria-disabled</code> and explains nothing is required. Tip text dim 7.7:1.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F14 from M4 -->
+    <article class="bd-frame" id="AB01-F14-m4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F14</span><span class="bd-frame__title">· Onboarding coach step</span><span class="bd-frame__state">· copy variant, from M4</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--flag">from M4 · flagged</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab01-auth">
+          <div class="ab01-stepper" aria-label="Step 4 of 4">
+            <span class="xl-touch__d xl-touch__d--pass"></span><span class="ab01-stepper__bar"></span>
+            <span class="xl-touch__d xl-touch__d--pass"></span><span class="ab01-stepper__bar"></span>
+            <span class="xl-touch__d xl-touch__d--pass"></span><span class="ab01-stepper__bar"></span>
+            <span class="xl-touch__d xl-touch__d--due"></span>
+          </div>
+          <div class="xl-eyebrow">Step 4 of 4 · optional</div>
+          <h2>Your AI coach (your key)</h2>
+          <p class="ab01-auth__lede">Optional: bring your own AI coach. Your key is stored encrypted; add it later in Settings.</p>
+          <div class="ds-card ds-card--teal ab01-included" style="padding:11px 13px"><span class="ab01-ic ab01-ic--teal" style="margin-top:1px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg></span><span><b>xLearn AI (included)</b> — xLearn AI already reviews your submissions — no key needed.</span></div>
+          <div class="ab01-auth__fields">
+            <div class="ds-field"><span class="ds-field__label">Provider</span>
+              <div><div class="ds-seg" role="group" aria-label="Coach provider"><span class="ds-seg__btn ds-seg__btn--on" aria-pressed="true">Anthropic</span><span class="ds-seg__btn" aria-pressed="false">OpenAI</span></div></div></div>
+            <div class="ds-field"><label class="ds-field__label" for="f14b-key">API key</label>
+              <input id="f14b-key" class="ds-input ds-input--mono" type="password" value="sk-ant-api03-••••••••••••" autocomplete="off"></div>
+            <div class="ab01-foot-meta"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg> Tip: set a monthly spend limit on this key at your provider.</div>
+          </div>
+          <span class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg" role="button" style="margin-top:20px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg> Connect &amp; finish</span>
+          <div class="ab01-auth__row"><span class="ds-btn ds-btn--ghost" role="button">Back</span><span class="ds-btn ds-btn--ghost" role="button">Skip for now</span></div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>Flag</h4>
+        <ul><li>Shown <b>only once platform AI is on</b> for the account (M4, m4-06). Until then the pre-M4 frame ships; m1-10 builds the pre-M4 copy only. Promises nothing M4 hasn't shipped.</li>
+          <li>Drawn with a typed key, so Connect &amp; finish is enabled.</li></ul>
+        <h4>Decision</h4>
+        <ul><li>t5 §9 copy "xLearn AI already reviews your submissions — no key needed."; ADR-0031 §7 names both AIs.</li></ul>
+        <h4>A11y</h4>
+        <ul><li>The included-AI card is static text read before the fields.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F15 -->
+    <article class="bd-frame" id="AB01-F15">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F15</span><span class="bd-frame__title">· No usable key</span><span class="bd-frame__state">· a · no key</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">parity</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage bd-stage--panel">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> problem · #16 3Sum</div>
+            <div class="xl-coach__body">
+              <div class="ab01-empty"><span class="ab01-ic ab01-ic--teal"><svg class="xl-ico" aria-hidden="true"><use href="#i-key"/></svg></span>
+                <b>Your AI coach is off</b>
+                <p>Add your own OpenAI or Anthropic API key to enable Socratic hints during attempts and a reviewer after each solve.</p>
+                <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-settings"/></svg> Open Settings</span>
+              </div>
+            </div>
+            <div class="xl-coach__foot">
+              <span class="ds-btn ds-btn--primary ds-btn--sm ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-key"/></svg> Add your key in Settings</span>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>No key row, or the default key for <code>coach</code> is missing → v1's <code>CoachEmptyState</code>, copy unchanged, under the new header name. Both buttons route to <code>/settings?tab=coach</code>. No mode chip (no thread is loaded).</li></ul>
+        <h4>Decision</h4>
+        <ul><li>v1 parity (sprint-11 acceptance); ADR-0031 §7 naming is the only change.</li></ul>
+        <h4>A11y</h4>
+        <ul><li>Focus lands on Open Settings. Body copy dim 6.8:1.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F15b -->
+    <article class="bd-frame" id="AB01-F15b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB01-F15</span><span class="bd-frame__title">· No usable key</span><span class="bd-frame__state">· b · key turned off (auth error)</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">parity</span><span class="bd-tag bd-tag--variant">variant</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage bd-stage--panel">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> problem · #16 3Sum</div>
+            <div class="xl-coach__body">
+              <div class="ab01-empty"><span class="ab01-ic ab01-ic--teal"><svg class="xl-ico" aria-hidden="true"><use href="#i-key"/></svg></span>
+                <b>Your coach key is turned off</b>
+                <p>Re-enable your provider key in Settings to turn the coach back on.</p>
+                <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-settings"/></svg> Open Settings</span>
+              </div>
+            </div>
+            <div class="xl-coach__foot">
+              <span class="ds-btn ds-btn--primary ds-btn--sm ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-key"/></svg> Add your key in Settings</span>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>The key exists but <code>enabled = false</code>: set only by 401 / <code>authentication_error</code> / <code>invalid_api_key</code> (SSE <code>reason = auth</code>). Quota and model errors never land here (F10, F11). v1 copy unchanged.</li></ul>
+        <h4>Decision</h4>
+        <ul><li>t5 §9 ADR-0007 P0: only auth errors disable a key.</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================================ narrow -->
+<section class="bd-section" id="narrow" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">390 px <small>key frames at phone width</small></h2>
+  <p class="bd-section__p">Below 1024 px the coach panel opens as a <b>full-width sheet</b> over the page (the 392 px panel covers a 390 px viewport; the build sets the sheet to 100% width under 420 px). The FAB stays bottom-right.</p>
+  <div class="bd-narrow-row">
+
+    <article class="bd-frame bd-narrow" id="AB01-N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1 · AB01-F2</span><span class="bd-frame__state">· assist confirm, sheet</span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage ab01-stage-phone">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> problem · #16 3Sum</div>
+            <div class="ab01-mode"><span class="ds-badge ds-badge--info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Attempt · hints only — no pattern or solution</span></div>
+            <div class="xl-coach__body">
+              <div class="xl-coach__msg xl-coach__msg--bot">You're mid-attempt on 3Sum, so I'll stick to questions and hints — no pattern names or solution steps until you've concluded.</div>
+              <section class="ab01-confirm" role="alertdialog" aria-labelledby="n1-t">
+                <h3 id="n1-t"><span class="ab01-ic ab01-ic--warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span> Ask the coach about this problem?</h3>
+                <p>Using any AI during a counted attempt caps it at <b>Assisted</b>.</p>
+                <p>Only this attempt on #16 3Sum is affected.</p>
+                <div class="ab01-confirm__act">
+                  <span class="ds-btn ds-btn--primary ds-btn--sm ds-btn--block" role="button">Ask — cap at Assisted</span>
+                  <span class="ds-btn ds-btn--secondary ds-btn--sm ds-btn--block bd-focus" role="button">Cancel</span>
+                </div>
+              </section>
+            </div>
+            <div class="xl-coach__foot">
+              <div class="xl-coach__input"><input value="Is a hash set enough here, or should I sort first?" aria-label="Message coach" disabled><span class="ds-iconbtn" aria-label="Send" aria-disabled="true"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Buttons stack full width; Cancel keeps initial focus. The sheet traps focus while open.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB01-N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2 · AB01-F8c</span><span class="bd-frame__state">· daily cap, sheet</span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage ab01-stage-phone">
+          <aside class="xl-coach" aria-label="Your AI coach (your key)">
+            <div class="xl-coach__top">
+              <div class="xl-coach__title"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab01-sub">(your key)</span></div>
+              <span class="ab01-flex"></span>
+              <span class="ds-iconbtn" role="button" aria-label="Close coach"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span>
+            </div>
+            <div class="xl-coach__ctx"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> problem · #1 Two Sum</div>
+            <div class="ab01-mode"><span class="ds-badge ds-badge--ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Review</span></div>
+            <div class="xl-coach__body">
+              <div class="xl-coach__msg xl-coach__msg--me">And the space cost?</div>
+              <div class="xl-coach__msg xl-coach__msg--bot">What do you keep around for the whole pass, and how big can it get in the worst case?</div>
+              <div class="ab01-note ab01-note--warn" role="status"><span class="ab01-ic ab01-ic--warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span>
+                <div class="ab01-note__txt">You've reached today's 300-message limit on your key. It resets at 00:00 UTC (5:30 AM your time).</div>
+              </div>
+            </div>
+            <div class="xl-coach__foot">
+              <div class="xl-coach__input"><input placeholder="Back at 5:30 AM your time" aria-label="Message coach" disabled><span class="ds-iconbtn" aria-label="Send" aria-disabled="true"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Same notice; the thread above stays scrollable.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB01-N3">
+      <header class="bd-frame__label"><span class="bd-frame__id">N3 · AB01-F13</span><span class="bd-frame__state">· Settings, stacked</span></header>
+      <div class="bd-frame__body">
+        <div class="xl-app">
+          <div class="xl-main">
+            <div class="xl-topbar" style="padding:0 14px;gap:10px">
+              <span class="ab01-brand"><span class="ab01-mark">x</span><span class="ab01-name">x<b>Learn</b></span></span>
+              <span class="ab01-flex"></span>
+              <span class="ab01-modelbtn" aria-label="Coach model: Sonnet 5"><span class="ab01-logo ab01-logo--sm">AN</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="xl-content" style="padding:18px 14px 28px">
+              <div class="ab01-set ab01-set--narrow">
+                <div class="ab01-set__h"><div class="xl-eyebrow">Account</div><h1 style="font-size:24px">Settings</h1></div>
+                <div class="ab01-set__grid">
+                  <nav class="ab01-railnav ab01-railnav--row" aria-label="Settings sections">
+                    <span class="ab01-railitem"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Study budget</span>
+                    <span class="ab01-railitem ab01-railitem--on"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach</span>
+                    <span class="ab01-railitem"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-bell"/></svg> Reminders</span>
+                  </nav>
+                  <section class="ab01-card">
+                    <div class="ab01-card__h"><span class="ab01-card__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg></span><div class="ab01-flex"><h3>Your AI coach (your key)</h3></div><span class="ds-badge ds-badge--ok">● Active</span></div>
+                    <div class="ab01-card__b">
+                      <div class="ab01-feat"><span class="ab01-feat__k">Coach</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button" style="margin-left:auto">Change</span><span class="ab01-feat__v"><b>Sonnet 5</b>· Anthropic</span></div>
+                      <div class="ab01-feat"><span class="ab01-feat__k">Interview</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button" style="margin-left:auto">Change</span><span class="ab01-feat__v"><b>GPT-6 Sol</b>· OpenAI <span>(needs an interview-capable model)</span></span></div>
+                      <div class="ab01-hint"><span class="ab01-ic ab01-ic--teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chart"/></svg></span> <span>This month on your keys: <b>212 messages · 1.4 M tokens · ≈ $3.10 (estimate)</b></span></div>
+                      <div class="ab01-prov">
+                        <div class="ab01-prov__head"><span class="ab01-logo">AN</span><div class="ab01-flex"><div class="ab01-prov__name">Anthropic</div><div class="ab01-prov__status"><span class="ds-dot ds-dot--ok"></span> Connected</div></div></div>
+                        <div class="ab01-keyrow"><input class="ds-input ds-input--mono" value="sk-ant-…4f2a" readonly aria-label="Anthropic API key"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Update</span></div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Rail → horizontal tabs (scrolls); feature rows wrap label / button / value; the top-bar model button keeps its logo only.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB01-N4">
+      <header class="bd-frame__label"><span class="bd-frame__id">N4 · AB01-F14</span><span class="bd-frame__state">· onboarding, one column</span></header>
+      <div class="bd-frame__body">
+        <div class="ab01-auth" style="padding:28px 20px">
+          <div class="ab01-stepper" aria-label="Step 4 of 4">
+            <span class="xl-touch__d xl-touch__d--pass"></span><span class="ab01-stepper__bar"></span>
+            <span class="xl-touch__d xl-touch__d--pass"></span><span class="ab01-stepper__bar"></span>
+            <span class="xl-touch__d xl-touch__d--pass"></span><span class="ab01-stepper__bar"></span>
+            <span class="xl-touch__d xl-touch__d--due"></span>
+          </div>
+          <div class="xl-eyebrow">Step 4 of 4 · optional</div>
+          <h2>Your AI coach (your key)</h2>
+          <p class="ab01-auth__lede">Optional: bring your own AI coach. Your key is stored encrypted; add it later in Settings.</p>
+          <div class="ab01-auth__fields">
+            <div class="ds-field"><span class="ds-field__label">Provider</span>
+              <div><div class="ds-seg" role="group" aria-label="Coach provider"><span class="ds-seg__btn ds-seg__btn--on">Anthropic</span><span class="ds-seg__btn">OpenAI</span></div></div></div>
+            <div class="ds-field"><label class="ds-field__label" for="n4-key">API key</label>
+              <input id="n4-key" class="ds-input ds-input--mono" type="password" placeholder="sk-ant-…" autocomplete="off"></div>
+            <div class="ab01-foot-meta"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg> Tip: set a monthly spend limit on this key at your provider.</div>
+          </div>
+          <span class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg" role="button" aria-disabled="true" style="margin-top:20px;opacity:.5"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg> Connect &amp; finish</span>
+          <div class="ab01-auth__row"><span class="ds-btn ds-btn--ghost" role="button">Back</span><span class="ds-btn ds-btn--ghost" role="button">Skip for now</span></div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>The marketing column is hidden below 900 px (v1 <code>.xl-auth__left</code>); the card fills the width.</li></ul></aside>
+    </article>
+
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB01 · Coach states · drafted in ds-m1-01 · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> ·
+  preview-only (never imported by <code class="ds-mono">web/</code>). Sample data: learner "Sam Rivera", usage figures, key suffixes and the HUD timer.
+  Prices: t5 §5, verified 2026-09-24.
+</footer>
+</main>
+</body>
+</html>

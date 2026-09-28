@@ -1,0 +1,337 @@
+/* =============================================================================
+   xLearn v2 artboards — shared board chrome
+   design-system/screens/v2/board.css
+
+   Written ONCE in ds-m1-01 (with index.html). Later design sprints link this
+   file and never edit it; a board that needs its own layout puts it in the
+   board's own <style> under a board prefix (ab04-*, ab05-*, …).
+
+   Rules this file keeps:
+   - Load order: ../../theme.css first, then this file.
+   - Defines only bd-* classes, plus ONE sanctioned override of an xl-* rule:
+     `.bd-frame .xl-app` (below). theme.css draws .xl-app as a fixed
+     1440x1024 artboard; the live app fills the viewport instead
+     (web/src/styles/app.css: `.xl-app { width:100%; height:100vh;
+     min-height:0 }`). A board frame grows with its content, so the frame
+     reflows rather than being a fixed artboard.
+   - Tokens only (var(--ds-*)). The few rgba() literals are the exact tints
+     theme.css already uses for the same tokens. No new colours.
+   - Dark theme only. Static CSS: no JS runtime.
+   ============================================================================= */
+
+/* ---------------------------------------------------------------- canvas --- */
+
+.bd-canvas {
+  min-height: 100vh;
+  padding: 36px 44px 88px;
+  background: var(--ds-bg);
+  color: var(--ds-text);
+  font-family: var(--ds-font-sans);
+}
+
+/* Board header: eyebrow (reuse .xl-eyebrow), title, lede, meta, frame index. */
+.bd-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 22px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--ds-line);
+}
+.bd-head h1 { font-size: 26px; font-weight: 700; letter-spacing: -.3px; }
+.bd-lede { font-size: 13.5px; line-height: 1.6; color: var(--ds-dim); max-width: 900px; }
+.bd-lede b { color: var(--ds-text); font-weight: 600; }
+
+/* Key/value meta row: "Drafted in · Consumed by · Frozen before · Sources". */
+.bd-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  font-size: 12px;
+  color: var(--ds-dim);
+}
+.bd-meta span b {
+  color: var(--ds-dim);
+  font-weight: 600;
+  font-family: var(--ds-font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-right: 6px;
+}
+
+/* Frame index: jump links to every frame on the board. */
+.bd-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.bd-toc a {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-inset);
+  border: 1px solid var(--ds-line-2);
+  font-family: var(--ds-font-mono);
+  font-size: 11px;
+  color: var(--ds-dim);
+}
+.bd-toc a:hover { color: var(--ds-teal); border-color: var(--ds-teal); }
+
+/* --------------------------------------------------------------- sections --- */
+
+.bd-section { margin-top: 44px; }
+.bd-section__h {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -.2px;
+  margin-bottom: 6px;
+}
+.bd-section__h small {
+  font-family: var(--ds-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ds-dim);
+  text-transform: uppercase;
+  letter-spacing: .6px;
+}
+.bd-section__p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ds-dim);
+  max-width: 900px;
+  margin-bottom: 18px;
+}
+.bd-section__p b { color: var(--ds-text); font-weight: 600; }
+
+/* ----------------------------------------------------------------- frames --- */
+
+/* One frame = label bar + body (the drawn UI) + behaviour-notes aside. */
+.bd-frame {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin-bottom: 26px;
+  background: var(--ds-panel);
+  border: 1px solid var(--ds-line-2);
+  border-radius: var(--ds-radius-lg);
+  overflow: hidden;
+}
+/* An alternative drawn beside a parity frame: NOT what the merge freezes. */
+.bd-frame--alt { border-style: dashed; border-color: rgba(240,180,41,.35); }
+
+.bd-frame__label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ds-line);
+  background: var(--ds-panel-2);
+  font-size: 12.5px;
+}
+.bd-frame__id {
+  font-family: var(--ds-font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ds-teal);
+}
+.bd-frame__title { font-weight: 600; color: var(--ds-text); }
+.bd-frame__state { color: var(--ds-dim); font-size: 12px; }
+.bd-frame__tags { margin-left: auto; display: inline-flex; flex-wrap: wrap; gap: 6px; }
+
+/* The drawn UI. Scrolls sideways (never the page) when the board is narrower
+   than the frame. */
+.bd-frame__body {
+  position: relative;
+  overflow-x: auto;
+  background: var(--ds-bg);
+}
+
+/* Desktop frames keep the desktop layout when the board itself is viewed
+   narrow: the app inside never squashes below 1240 px. */
+.bd-desk { min-width: 1240px; }
+
+/* Loose components drawn outside an app frame (a card, a menu, a strip). */
+.bd-pad { padding: 22px; }
+
+/* A positioned stage for absolutely-placed components (the coach panel,
+   menus, modals, sheets). Panel stage = the coach panel's 392 px. */
+.bd-stage {
+  position: relative;
+  overflow: hidden;
+  background: var(--ds-bg);
+}
+.bd-stage--panel { width: 392px; height: 640px; margin: 0 auto; }
+.bd-stage--tall { height: 860px; }
+
+/* The sanctioned .xl-app override (see header). */
+.bd-frame .xl-app { width: 100%; height: auto; min-height: 720px; }
+
+/* Crop marker: the frame is cut here; the content below is unchanged. */
+.bd-crop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-top: 1px dashed var(--ds-line-2);
+  font-family: var(--ds-font-mono);
+  font-size: 10.5px;
+  color: var(--ds-dim);
+  background: var(--ds-bg);
+}
+
+/* ------------------------------------------------------------------ notes --- */
+
+.bd-notes {
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--ds-line);
+  background: var(--ds-panel);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ds-dim);
+}
+.bd-notes h4 {
+  margin: 12px 0 5px;
+  font-family: var(--ds-font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--ds-dim);
+}
+.bd-notes h4:first-child { margin-top: 0; }
+.bd-notes ul { margin: 0; padding-left: 17px; }
+.bd-notes li { margin: 2px 0; }
+.bd-notes p { margin: 0 0 6px; }
+.bd-notes b { color: var(--ds-text); font-weight: 600; }
+.bd-notes code {
+  font-family: var(--ds-font-mono);
+  font-size: 11.5px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--ds-inset);
+  border: 1px solid var(--ds-line-2);
+  color: var(--ds-text);
+  overflow-wrap: anywhere;
+}
+.bd-notes a { color: var(--ds-teal); }
+/* Wide frames lay their notes out in columns. */
+.bd-notes--cols { columns: 3 320px; column-gap: 28px; }
+.bd-notes--cols > section { break-inside: avoid; margin-bottom: 10px; }
+
+/* ------------------------------------------------------- layout helpers --- */
+
+/* Panel-sized frames side by side. */
+.bd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(410px, 1fr));
+  gap: 22px;
+  align-items: start;
+}
+.bd-grid > .bd-frame { margin-bottom: 0; }
+.bd-grid--wide { grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); }
+
+/* Narrow (390 px) frames: every board ends with a section of these. */
+.bd-narrow-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  align-items: flex-start;
+}
+.bd-narrow { width: 392px; flex: none; margin-bottom: 0; }
+.bd-narrow .bd-frame__body { width: 390px; overflow: hidden; }
+
+/* ------------------------------------------------------------------ tags --- */
+
+.bd-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: var(--ds-radius-sm);
+  font-family: var(--ds-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  background: var(--ds-inset);
+  border: 1px solid var(--ds-line-2);
+  color: var(--ds-dim);
+  white-space: nowrap;
+}
+.bd-tag--parity { color: var(--ds-ok); border-color: rgba(87,211,154,.35); background: rgba(87,211,154,.08); }
+.bd-tag--new { color: var(--ds-teal); border-color: rgba(53,208,192,.45); background: rgba(53,208,192,.1); }
+.bd-tag--alt { color: var(--ds-warn); border-color: rgba(240,180,41,.35); background: rgba(240,180,41,.08); }
+.bd-tag--variant { color: var(--ds-violet); border-color: rgba(155,140,240,.35); background: rgba(155,140,240,.1); }
+.bd-tag--flag { color: var(--ds-info); border-color: rgba(106,166,255,.35); background: rgba(106,166,255,.1); }
+.bd-tag--change { color: var(--ds-err); border-color: rgba(242,109,109,.35); background: rgba(242,109,109,.1); }
+
+/* ------------------------------------------------------------ annotation --- */
+
+/* A strip for references drawn across the board (naming, legends). */
+.bd-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  padding: 12px 16px;
+  background: var(--ds-panel);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius);
+  font-size: 12.5px;
+  color: var(--ds-dim);
+}
+.bd-strip b { color: var(--ds-text); font-weight: 600; }
+
+/* A numbered marker for focus order or callouts: <span class="bd-num">1</span>. */
+.bd-num {
+  display: inline-grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: rgba(106,166,255,.1);
+  border: 1px solid rgba(106,166,255,.35);
+  color: var(--ds-info);
+  font-family: var(--ds-font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  vertical-align: middle;
+  flex: none;
+}
+
+/* Draws the keyboard focus ring on a static element (mirrors the live app's
+   :focus-visible rule in web/src/styles/app.css). */
+.bd-focus {
+  outline: 2px solid var(--ds-teal);
+  outline-offset: 2px;
+}
+
+/* A plain wrapper that lets a wide table scroll sideways on a narrow board. */
+.bd-scroll { overflow-x: auto; }
+
+/* Board footer. */
+.bd-foot {
+  margin-top: 56px;
+  padding-top: 18px;
+  border-top: 1px solid var(--ds-line);
+  font-size: 12px;
+  color: var(--ds-dim);
+  line-height: 1.6;
+}
+
+@media (max-width: 720px) {
+  .bd-canvas { padding: 22px 16px 56px; }
+  .bd-grid, .bd-grid--wide { grid-template-columns: minmax(0, 1fr); }
+  .bd-notes--cols { columns: 1; }
+  .bd-stage--panel { width: 100%; max-width: 392px; }
+  .bd-narrow { width: 100%; max-width: 392px; }
+  .bd-narrow .bd-frame__body { width: 100%; }
+}
