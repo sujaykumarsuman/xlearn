@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>xLearn v2 artboards — board index</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* index-local layout (prefix ix-); never restyles a ds- or xl- class */
+  .ix-ms { margin-top: 30px; }
+  .ix-ms h2 { font-size: 16px; font-weight: 700; display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .ix-ms h2 small { font-family: var(--ds-font-mono); font-size: 11px; font-weight: 500; color: var(--ds-dim); }
+  .ix-table td { color: var(--ds-dim); }
+  .ix-table td:first-child { white-space: nowrap; }
+  .ix-table td.ix-file a { font-family: var(--ds-font-mono); font-size: 12px; }
+  .ix-table td.ix-file span { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-dim); }
+  .ix-hero { color: var(--ds-warn); margin-left: 3px; }
+  .ix-dropped td { opacity: .75; }
+  .ix-dropped td:first-child b { text-decoration: line-through; }
+  .ix-conv { margin-top: 40px; }
+  .ix-conv ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; line-height: 1.6; color: var(--ds-dim); }
+  .ix-conv li b { color: var(--ds-text); }
+  .ix-conv code { font-family: var(--ds-font-mono); font-size: 12px; padding: 0 5px; border-radius: 4px; background: var(--ds-inset); border: 1px solid var(--ds-line-2); color: var(--ds-text); }
+</style>
+</head>
+<body>
+<main class="bd-canvas">
+
+  <header class="bd-head">
+    <div class="xl-eyebrow">xLearn v2 · design-system/screens/v2</div>
+    <h1>Board index</h1>
+    <p class="bd-lede">
+      Every v2 artboard, grouped by milestone: <b>AB01–AB30</b> (AB23 dropped) plus the <b>AB31</b> outline.
+      Boards are static HTML on <code class="ds-mono">theme.css</code>: preview-only, never imported by
+      <code class="ds-mono">web/</code>, never embedded, never deployed. A board whose file doesn't exist yet
+      404s here until its design sprint lands. <b>Freeze state isn't kept here</b>: it lives in
+      <a href="../../../docs/v2/status.md#artboards">docs/v2/status.md → Artboards</a>
+      (a board is frozen when its <code class="ds-mono">ds-*</code> PR merges, D40).
+    </p>
+    <div class="bd-meta">
+      <span><b>Written in</b><a href="../../../docs/v2/sprints/sprint-ds-m1-01.md">ds-m1-01</a> (once; later design PRs never edit this file or board.css)</span>
+      <span><b>Register</b><a href="../../../docs/v2/build-plan.md#artboard-register">build-plan → Artboard register</a></span>
+      <span><b>Source</b><a href="../../../docs/v2/rollout-plan.md#9-artboards-by-milestone">rollout plan §9</a></span>
+      <span><b>Heroes</b>★ AB04 · AB07 · AB16 · AB19 · AB30</span>
+    </div>
+  </header>
+
+  <!-- ============================================================== M1 -->
+  <section class="ix-ms" aria-labelledby="ms-m1">
+    <h2 id="ms-m1">M1 <small>spine · frozen before M1b</small></h2>
+    <div class="xl-panel bd-scroll">
+      <table class="xl-table ix-table">
+        <thead><tr><th>Board</th><th>What</th><th>Drafted in</th><th>Consumed by</th><th>Frozen before</th><th>File</th></tr></thead>
+        <tbody>
+          <tr><td><b>AB01</b></td><td>Coach states: D27 assist confirm, locked during touches and mocks, L18 limits (300/day), "your key" naming, catalog, keys</td><td><a href="../../../docs/v2/sprints/sprint-ds-m1-01.md">ds-m1-01</a></td><td><a href="../../../docs/v2/sprints/sprint-m1-10.md">m1-10</a>, <a href="../../../docs/v2/sprints/sprint-m1-07.md">m1-07</a></td><td>M1b</td><td class="ix-file"><a href="AB01-coach-states.html">AB01-coach-states.html</a></td></tr>
+          <tr><td><b>AB02</b></td><td>Course nav from the manifest, switcher, <code class="ds-mono">coming_soon</code>, unknown course (DSA parity)</td><td><a href="../../../docs/v2/sprints/sprint-ds-m1-01.md">ds-m1-01</a> (+ <a href="../../../docs/v2/sprints/sprint-ds-p-01.md">ds-p-01</a> full fidelity)</td><td><a href="../../../docs/v2/sprints/sprint-m1-03.md">m1-03</a>, <a href="../../../docs/v2/sprints/sprint-p-02.md">p-02</a></td><td>M1b (full fidelity: P)</td><td class="ix-file"><a href="AB02-course-nav.html">AB02-course-nav.html</a></td></tr>
+          <tr><td><b>AB03</b></td><td>Revision v2: format badges, withheld pattern</td><td><a href="../../../docs/v2/sprints/sprint-ds-m1-01.md">ds-m1-01</a></td><td><a href="../../../docs/v2/sprints/sprint-m1-06.md">m1-06</a></td><td>M1b</td><td class="ix-file"><a href="AB03-revision-v2.html">AB03-revision-v2.html</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================================================== M2 -->
+  <section class="ix-ms" aria-labelledby="ms-m2">
+    <h2 id="ms-m2">M2 <small>attempt engine and projections · frozen before M2a</small></h2>
+    <div class="xl-panel bd-scroll">
+      <table class="xl-table ix-table">
+        <thead><tr><th>Board</th><th>What</th><th>Drafted in</th><th>Consumed by</th><th>Frozen before</th><th>File</th></tr></thead>
+        <tbody>
+          <tr><td><b>AB04</b><span class="ix-hero" aria-label="hero">★</span></td><td>A8 Touch: recall + re-solve, L4–5 mock conditions, pass / fail / abandoned</td><td><a href="../../../docs/v2/sprints/sprint-ds-m2-01.md">ds-m2-01</a></td><td><a href="../../../docs/v2/sprints/sprint-m2-01.md">m2-01</a>, <a href="../../../docs/v2/sprints/sprint-m2-04.md">m2-04</a></td><td>M2a</td><td class="ix-file"><a href="AB04-touch.html">AB04-touch.html</a></td></tr>
+          <tr><td><b>AB05</b></td><td>Catalog + cross-course agenda, Today in minutes, "grades waiting"</td><td><a href="../../../docs/v2/sprints/sprint-ds-m2-01.md">ds-m2-01</a> (+ <a href="../../../docs/v2/sprints/sprint-ds-p-01.md">ds-p-01</a> full fidelity)</td><td><a href="../../../docs/v2/sprints/sprint-m2-04.md">m2-04</a>, <a href="../../../docs/v2/sprints/sprint-p-02.md">p-02</a></td><td>M2a (full fidelity: P)</td><td class="ix-file"><a href="AB05-catalog-agenda.html">AB05-catalog-agenda.html</a></td></tr>
+          <tr><td><b>AB06</b></td><td>Public profile v2: per-course rows, provenance, judge-checked %, mock count only, private and empty states</td><td><a href="../../../docs/v2/sprints/sprint-ds-m2-01.md">ds-m2-01</a></td><td><a href="../../../docs/v2/sprints/sprint-m2-03.md">m2-03</a></td><td>M2a</td><td class="ix-file"><a href="AB06-public-profile-v2.html">AB06-public-profile-v2.html</a></td></tr>
+          <tr><td><b>AB22</b></td><td>Visibility toggles</td><td><a href="../../../docs/v2/sprints/sprint-ds-m2-01.md">ds-m2-01</a></td><td><a href="../../../docs/v2/sprints/sprint-m2-03.md">m2-03</a></td><td>M2a</td><td class="ix-file"><a href="AB22-visibility-toggles.html">AB22-visibility-toggles.html</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================================================== M3 -->
+  <section class="ix-ms" aria-labelledby="ms-m3">
+    <h2 id="ms-m3">M3 <small>judge plus code grader · frozen before the M3 UI sprint</small></h2>
+    <div class="xl-panel bd-scroll">
+      <table class="xl-table ix-table">
+        <thead><tr><th>Board</th><th>What</th><th>Drafted in</th><th>Consumed by</th><th>Frozen before</th><th>File</th></tr></thead>
+        <tbody>
+          <tr><td><b>AB07</b><span class="ix-hero" aria-label="hero">★</span></td><td>A1 Workspace-Code: 45:00 cover, Run / Submit, language picker, hint at 15 caps Assisted, give-up = Miss, no re-implement</td><td><a href="../../../docs/v2/sprints/sprint-ds-m3-01.md">ds-m3-01</a></td><td><a href="../../../docs/v2/sprints/sprint-m3-11.md">m3-11</a>, <a href="../../../docs/v2/sprints/sprint-m5-01.md">m5-01</a></td><td>the M3 UI sprint</td><td class="ix-file"><a href="AB07-workspace-code.html">AB07-workspace-code.html</a></td></tr>
+          <tr><td><b>AB08</b></td><td>A2 results dock: queued / running, WA, TLE, CE, inconclusive, <code class="ds-mono">contract_changed</code>, 413 / quota</td><td><a href="../../../docs/v2/sprints/sprint-ds-m3-01.md">ds-m3-01</a></td><td><a href="../../../docs/v2/sprints/sprint-m3-12.md">m3-12</a></td><td>the M3 UI sprint</td><td class="ix-file"><a href="AB08-results-dock.html">AB08-results-dock.html</a></td></tr>
+          <tr><td><b>AB09</b></td><td>A4 Problems (dual markers)</td><td><a href="../../../docs/v2/sprints/sprint-ds-m3-02.md">ds-m3-02</a></td><td><a href="../../../docs/v2/sprints/sprint-m3-12.md">m3-12</a></td><td>the M3 UI sprint</td><td class="ix-file"><a href="AB09-problems.html">AB09-problems.html</a></td></tr>
+          <tr><td><b>AB10</b></td><td>A5 Arena: manual timer, history + diff</td><td><a href="../../../docs/v2/sprints/sprint-ds-m3-02.md">ds-m3-02</a></td><td><a href="../../../docs/v2/sprints/sprint-m3-12.md">m3-12</a></td><td>the M3 UI sprint</td><td class="ix-file"><a href="AB10-arena.html">AB10-arena.html</a></td></tr>
+          <tr><td><b>AB11</b></td><td>Degradation badges</td><td><a href="../../../docs/v2/sprints/sprint-ds-m3-01.md">ds-m3-01</a></td><td><a href="../../../docs/v2/sprints/sprint-m3-12.md">m3-12</a></td><td>the M3 UI sprint</td><td class="ix-file"><a href="AB11-degradation-badges.html">AB11-degradation-badges.html</a></td></tr>
+          <tr><td><b>AB12</b></td><td>Week / Mistakes / Progress deltas: provenance, judge-checked %</td><td><a href="../../../docs/v2/sprints/sprint-ds-m3-02.md">ds-m3-02</a></td><td><a href="../../../docs/v2/sprints/sprint-m3-13.md">m3-13</a></td><td>the M3 UI sprint</td><td class="ix-file"><a href="AB12-week-mistakes-progress.html">AB12-week-mistakes-progress.html</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- =============================================================== P -->
+  <section class="ix-ms" aria-labelledby="ms-p">
+    <h2 id="ms-p">P <small>pilot course · frozen before P</small></h2>
+    <div class="xl-panel bd-scroll">
+      <table class="xl-table ix-table">
+        <thead><tr><th>Board</th><th>What</th><th>Drafted in</th><th>Consumed by</th><th>Frozen before</th><th>File</th></tr></thead>
+        <tbody>
+          <tr><td><b>AB14</b></td><td>A7 Workspace-Quiz</td><td><a href="../../../docs/v2/sprints/sprint-ds-p-01.md">ds-p-01</a></td><td><a href="../../../docs/v2/sprints/sprint-p-03.md">p-03</a></td><td>P</td><td class="ix-file"><a href="AB14-workspace-quiz.html">AB14-workspace-quiz.html</a></td></tr>
+          <tr><td><b>AB15</b></td><td>go-concurrency multi-file + race verdict (or the SQL explorer)</td><td><a href="../../../docs/v2/sprints/sprint-ds-p-01.md">ds-p-01</a></td><td><a href="../../../docs/v2/sprints/sprint-p-03.md">p-03</a></td><td>P</td><td class="ix-file"><a href="AB15-go-concurrency-race.html">AB15-go-concurrency-race.html</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="bd-section__p" style="margin:10px 0 0">AB02 and AB05 reach full multi-course fidelity in <a href="../../../docs/v2/sprints/sprint-ds-p-01.md">ds-p-01</a>, in their own files above.</p>
+  </section>
+
+  <!-- ============================================================== M4 -->
+  <section class="ix-ms" aria-labelledby="ms-m4">
+    <h2 id="ms-m4">M4 <small>platform AI · frozen before the M4 UI sprint</small></h2>
+    <div class="xl-panel bd-scroll">
+      <table class="xl-table ix-table">
+        <thead><tr><th>Board</th><th>What</th><th>Drafted in</th><th>Consumed by</th><th>Frozen before</th><th>File</th></tr></thead>
+        <tbody>
+          <tr><td><b>AB16</b><span class="ix-hero" aria-label="hero">★</span></td><td>A3 AI suggestion / dispute: accept, edit, re-grade, compare, override, honor claim</td><td><a href="../../../docs/v2/sprints/sprint-ds-m4-01.md">ds-m4-01</a></td><td><a href="../../../docs/v2/sprints/sprint-m4-06.md">m4-06</a></td><td>the M4 UI sprint</td><td class="ix-file"><a href="AB16-ai-suggestion-dispute.html">AB16-ai-suggestion-dispute.html</a></td></tr>
+          <tr><td><b>AB17</b></td><td>Pointer notes + "correct, with improvements"</td><td><a href="../../../docs/v2/sprints/sprint-ds-m4-01.md">ds-m4-01</a></td><td><a href="../../../docs/v2/sprints/sprint-m4-06.md">m4-06</a></td><td>the M4 UI sprint</td><td class="ix-file"><a href="AB17-pointer-notes.html">AB17-pointer-notes.html</a></td></tr>
+          <tr><td><b>AB18</b></td><td>AI allowance meter + Settings AI consents</td><td><a href="../../../docs/v2/sprints/sprint-ds-m4-01.md">ds-m4-01</a></td><td><a href="../../../docs/v2/sprints/sprint-m4-06.md">m4-06</a></td><td>the M4 UI sprint</td><td class="ix-file"><a href="AB18-ai-allowance-consents.html">AB18-ai-allowance-consents.html</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- =============================================================== L -->
+  <section class="ix-ms" aria-labelledby="ms-l">
+    <h2 id="ms-l">L <small>learner gate · AB19–AB20 before L-A, AB21 before L-E</small></h2>
+    <div class="xl-panel bd-scroll">
+      <table class="xl-table ix-table">
+        <thead><tr><th>Board</th><th>What</th><th>Drafted in</th><th>Consumed by</th><th>Frozen before</th><th>File</th></tr></thead>
+        <tbody>
+          <tr><td><b>AB19</b><span class="ix-hero" aria-label="hero">★</span></td><td>Invite acceptance: 18+, notice, region, 2 unticked consents; invite errors, no seats, <code class="ds-mono">acceptance_required</code>, the <code class="ds-mono">mailto:</code> "request an invite"</td><td><a href="../../../docs/v2/sprints/sprint-ds-l-01.md">ds-l-01</a></td><td><a href="../../../docs/v2/sprints/sprint-l-05.md">l-05</a></td><td>L-A</td><td class="ix-file"><a href="AB19-invite-acceptance.html">AB19-invite-acceptance.html</a></td></tr>
+          <tr><td><b>AB20</b></td><td>Privacy notice / terms page</td><td><a href="../../../docs/v2/sprints/sprint-ds-l-01.md">ds-l-01</a></td><td><a href="../../../docs/v2/sprints/sprint-l-05.md">l-05</a></td><td>L-A</td><td class="ix-file"><a href="AB20-privacy-notice.html">AB20-privacy-notice.html</a></td></tr>
+          <tr><td><b>AB21</b></td><td>Erase account: typed confirmation, "sign in again", what's deleted, cooldown</td><td><a href="../../../docs/v2/sprints/sprint-ds-l-01.md">ds-l-01</a></td><td><a href="../../../docs/v2/sprints/sprint-l-02.md">l-02</a></td><td><b>L-E</b></td><td class="ix-file"><a href="AB21-erase-account.html">AB21-erase-account.html</a></td></tr>
+          <tr class="ix-dropped"><td><b>AB23</b></td><td>Owner admin page: dropped — admin is CLI-only (D33)</td><td>—</td><td>—</td><td>—</td><td class="ix-file"><span>— (no file)</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================================================= M6a -->
+  <section class="ix-ms" aria-labelledby="ms-m6a">
+    <h2 id="ms-m6a">M6a <small>text interviewer plus failsafes · frozen before M6a</small></h2>
+    <div class="xl-panel bd-scroll">
+      <table class="xl-table ix-table">
+        <thead><tr><th>Board</th><th>What</th><th>Drafted in</th><th>Consumed by</th><th>Frozen before</th><th>File</th></tr></thead>
+        <tbody>
+          <tr><td><b>AB13</b></td><td>A9 Mock-v2</td><td><a href="../../../docs/v2/sprints/sprint-ds-m6a-01.md">ds-m6a-01</a></td><td><a href="../../../docs/v2/sprints/sprint-m6a-05.md">m6a-05</a></td><td>M6a</td><td class="ix-file"><a href="AB13-mock-v2.html">AB13-mock-v2.html</a></td></tr>
+          <tr><td><b>AB24</b></td><td>Setup + consent + pre-flight + $ cap</td><td><a href="../../../docs/v2/sprints/sprint-ds-m6a-01.md">ds-m6a-01</a></td><td><a href="../../../docs/v2/sprints/sprint-m6a-05.md">m6a-05</a></td><td>M6a</td><td class="ix-file"><a href="AB24-mock-setup-preflight.html">AB24-mock-setup-preflight.html</a></td></tr>
+          <tr><td><b>AB25</b></td><td>Live HUD (text)</td><td><a href="../../../docs/v2/sprints/sprint-ds-m6a-01.md">ds-m6a-01</a></td><td><a href="../../../docs/v2/sprints/sprint-m6a-05.md">m6a-05</a></td><td>M6a</td><td class="ix-file"><a href="AB25-live-hud-text.html">AB25-live-hud-text.html</a></td></tr>
+          <tr><td><b>AB26</b></td><td>Grace, paused, resume</td><td><a href="../../../docs/v2/sprints/sprint-ds-m6a-02.md">ds-m6a-02</a></td><td><a href="../../../docs/v2/sprints/sprint-m6a-06.md">m6a-06</a></td><td>M6a</td><td class="ix-file"><a href="AB26-grace-paused-resume.html">AB26-grace-paused-resume.html</a></td></tr>
+          <tr><td><b>AB27</b></td><td>Debrief + proposal (explicit accept), <code class="ds-mono">incomplete</code></td><td><a href="../../../docs/v2/sprints/sprint-ds-m6a-02.md">ds-m6a-02</a></td><td><a href="../../../docs/v2/sprints/sprint-m6a-06.md">m6a-06</a></td><td>M6a</td><td class="ix-file"><a href="AB27-debrief-proposal.html">AB27-debrief-proposal.html</a></td></tr>
+          <tr><td><b>AB28</b></td><td>Accessibility settings</td><td><a href="../../../docs/v2/sprints/sprint-ds-m6a-02.md">ds-m6a-02</a></td><td><a href="../../../docs/v2/sprints/sprint-m6a-06.md">m6a-06</a></td><td>M6a</td><td class="ix-file"><a href="AB28-accessibility-settings.html">AB28-accessibility-settings.html</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================================================= M6b -->
+  <section class="ix-ms" aria-labelledby="ms-m6b">
+    <h2 id="ms-m6b">M6b <small>voice, one shell · frozen before M6b</small></h2>
+    <div class="xl-panel bd-scroll">
+      <table class="xl-table ix-table">
+        <thead><tr><th>Board</th><th>What</th><th>Drafted in</th><th>Consumed by</th><th>Frozen before</th><th>File</th></tr></thead>
+        <tbody>
+          <tr><td><b>AB29</b></td><td>Voice pre-flight, browser and EU notices</td><td><a href="../../../docs/v2/sprints/sprint-ds-m6b-01.md">ds-m6b-01</a></td><td><a href="../../../docs/v2/sprints/sprint-m6b-03.md">m6b-03</a></td><td>M6b</td><td class="ix-file"><a href="AB29-voice-preflight-notices.html">AB29-voice-preflight-notices.html</a></td></tr>
+          <tr><td><b>AB30</b><span class="ix-hero" aria-label="hero">★</span></td><td>Voice live HUD</td><td><a href="../../../docs/v2/sprints/sprint-ds-m6b-01.md">ds-m6b-01</a></td><td><a href="../../../docs/v2/sprints/sprint-m6b-03.md">m6b-03</a></td><td>M6b</td><td class="ix-file"><a href="AB30-voice-live-hud.html">AB30-voice-live-hud.html</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================================================ v2.2+ -->
+  <section class="ix-ms" aria-labelledby="ms-v22">
+    <h2 id="ms-v22">v2.2+ <small>outline only</small></h2>
+    <div class="xl-panel bd-scroll">
+      <table class="xl-table ix-table">
+        <thead><tr><th>Board</th><th>What</th><th>Drafted in</th><th>Consumed by</th><th>Frozen before</th><th>File</th></tr></thead>
+        <tbody>
+          <tr class="ix-dropped"><td>AB31</td><td>A6 Workspace-Canvas (Excalidraw; system-design course): outline only, v2.2+</td><td>outline in <a href="../../../docs/v2/sprints/sprint-m6c-03.md">m6c-03</a></td><td>v2.2+</td><td>v2.2 planning</td><td class="ix-file"><span>not drafted in v2</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ====================================================== superseded -->
+  <section class="ix-ms" aria-labelledby="ms-v1">
+    <h2 id="ms-v1">Superseded v1 boards <small>references only · they need the design-canvas runtime, so they don't open standalone</small></h2>
+    <div class="xl-panel bd-scroll">
+      <table class="xl-table ix-table">
+        <thead><tr><th>v1 board</th><th>Replaced by</th></tr></thead>
+        <tbody>
+          <tr><td><a href="../Problem.dc.html">Problem</a></td><td>AB07</td></tr>
+          <tr><td><a href="../Revision.dc.html">Revision</a></td><td>AB03, AB04</td></tr>
+          <tr><td><a href="../Mock.dc.html">Mock</a></td><td>AB13</td></tr>
+          <tr><td><a href="../Dashboard.dc.html">Dashboard</a>, <a href="../Week.dc.html">Week</a></td><td>AB05, AB12</td></tr>
+          <tr><td><a href="../Mistakes.dc.html">Mistakes</a>, <a href="../Progress.dc.html">Progress</a></td><td>AB12</td></tr>
+          <tr><td><a href="../Catalog.dc.html">Catalog</a></td><td>AB05</td></tr>
+          <tr><td><a href="../Settings.dc.html">Settings</a></td><td>AB18, AB21, AB22</td></tr>
+          <tr><td><a href="../Auth.dc.html">Auth</a></td><td>AB19</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="bd-section__p" style="margin:10px 0 0">Roadmap and Concept have no v2 replacement board; AB02 draws the course chrome around Roadmap and Today. Brief AB07 per D15, D16 and D18: a 45:00 cover, the hint at 15, no re-implement.</p>
+  </section>
+
+  <!-- ===================================================== conventions -->
+  <section class="ix-conv" aria-labelledby="conv">
+    <h2 class="bd-section__h" id="conv">Conventions <small>every board, in every design sprint</small></h2>
+    <div class="ds-card" style="padding:18px 20px">
+      <ol>
+        <li><b>One file per board</b> under <code>design-system/screens/v2/</code>, named exactly as in the tables above (this index is the naming source of truth). A sprint never renames a board or edits <code>index.html</code> or <code>board.css</code>.</li>
+        <li><b>Head:</b> the Google Fonts <code>&lt;link&gt;</code> for Inter and JetBrains Mono, then <code>&lt;link rel="stylesheet" href="../../theme.css"&gt;</code>, then <code>board.css</code>, then the board's own <code>&lt;style&gt;</code>.</li>
+        <li><b>theme.css verbatim.</b> Reuse its tokens and components (<code>ds-btn</code>, <code>ds-card</code>, <code>ds-badge</code>, <code>ds-modal</code>, <code>ds-seg</code>, <code>ds-toggle</code>, <code>xl-side</code>, <code>xl-nav</code>, <code>xl-topbar</code>/<code>xl-crumb</code>, <code>xl-touch</code>, <code>xl-pat</code>, <code>xl-lock</code>, <code>xl-coach</code>/<code>xl-fab</code>, <code>xl-timer</code>, …). Never copy, fork or override a <code>ds-*</code>/<code>xl-*</code> rule. Board-only layout goes in the board's <code>&lt;style&gt;</code> under its own prefix (<code>ab04-*</code>, …). Where the live app uses a class from <code>web/src/styles/app.css</code> (not in theme.css), the board draws a board-prefixed look-alike and names the live class in the notes. Dark theme only; no new colours. Difficulty: Easy = <code>--ds-ok</code>, Medium = <code>--ds-warn</code>, Hard = <code>--ds-err</code>.</li>
+        <li><b>Frames.</b> Full-screen frames stack vertically; panel-sized states sit side by side in a <code>.bd-grid</code>. Each frame is a <code>.bd-frame</code> with a <code>.bd-frame__label</code> reading <code>ABnn-Fk · &lt;title&gt; · &lt;state&gt;</code>, and <b>final copy</b>: real strings and real error codes, no lorem ipsum, no "TBD". Sample data is marked as sample in the notes.</li>
+        <li><b>Behaviour-notes aside</b> (<code>.bd-notes</code>) on every frame: timers, gates, exact error codes (e.g. <code>409 assist_confirm_required</code>), the decision it implements (D-number / ADR §), a11y (focus order, contrast ≥ 4.5:1 on text, keyboard, <code>aria-live</code> for status changes, reduced motion) and the &lt; 1024 px layout intent. <code>--ds-muted</code> text is 3.2–3.6:1 on the panels, so it is for non-essential meta only.</li>
+        <li><b>Parity and change.</b> A frame that reproduces v1 is tagged <span class="bd-tag bd-tag--parity">parity</span>; a new state <span class="bd-tag bd-tag--new">new</span>; a flagged copy variant <span class="bd-tag bd-tag--flag">flag</span>; a sub-variant <span class="bd-tag bd-tag--variant">variant</span>. A visible change you'd recommend for a live screen is drawn as a separate <span class="bd-tag bd-tag--alt">alternative</span> frame (<code>.bd-frame--alt</code>) beside the parity frame and listed under "Decisions to confirm" in the PR. The merge freezes the parity frame, never the alternative.</li>
+        <li><b>Narrow frames.</b> Every board ends with a section of <code>.bd-narrow</code> frames (390 px) for its key frames.</li>
+        <li><b>Static HTML only:</b> no JS runtime, no <code>support.js</code>, no <code>&lt;script type="text/x-dc"&gt;</code>. Boards open from disk or any static server. v1 <code>.dc.html</code> boards are references only.</li>
+        <li><b>Never leak withheld data</b> (<a href="../../../docs/adr/0027-content-evalpack-and-user-data-model.md#1-the-publicprivate-rule">ADR-0027 §1</a>): no pattern chip while an item is live (open attempt, due or live touch, never solved), no hidden inputs, no answers. A pattern shows only once a touch or attempt has concluded, or from the hint stage.</li>
+        <li><b>Preview-only:</b> never imported by <code>web/</code>, never <code>//go:embed</code>ded, never shipped. Screenshots go to <code>shots/ABnn@1440.png</code> and <code>shots/ABnn@390.png</code> (full page, each ≲ 500 KB).</li>
+        <li><b>The freeze</b> is the board PR merging on CI green (D40). The owner may review afterwards; any change to a frozen board is a follow-up design PR. Freeze state is recorded in <code>docs/v2/status.md</code>, not here.</li>
+      </ol>
+    </div>
+  </section>
+
+  <footer class="bd-foot">
+    xLearn v2 board index · written once in ds-m1-01 · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only.
+  </footer>
+</main>
+</body>
+</html>

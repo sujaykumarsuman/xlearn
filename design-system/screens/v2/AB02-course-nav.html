@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB02 · Course nav — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB02 board-local layout (prefix ab02-). Tokens only; never restyles a ds- or xl- class.
+     Look-alikes of live classes in web/src/styles/app.css are named in the notes. */
+  .ab02-flex { flex: 1; }
+  .ab02-top { position: relative; z-index: 20; }
+  .ab02-brand { display: inline-flex; align-items: center; gap: 9px; }
+  .ab02-mark { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, #35d0c0, #2a9d92);
+    display: grid; place-items: center; color: #06231f; font-family: var(--ds-font-mono); font-weight: 700; font-size: 14px; flex: none; }
+  .ab02-name { font-size: 15px; font-weight: 700; letter-spacing: -.2px; }
+  .ab02-name b { color: var(--ds-teal); }
+  /* curriculum selector (live: .xl-topsw, .xl-topsw__btn, .xl-topsw__menu in app.css) */
+  .ab02-topsw { position: relative; }
+  .ab02-topsw__btn { display: inline-flex; align-items: center; gap: 9px; height: 34px; padding: 0 10px; max-width: 260px;
+    background: var(--ds-panel-2); border: 1px solid var(--ds-line-2); border-radius: 8px; color: var(--ds-text); font-size: 12.5px; }
+  .ab02-topsw__btn .xl-pathsw__t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ab02-topsw__menu { position: absolute; top: calc(100% + 6px); right: 0; min-width: 244px; padding: 6px; z-index: 46;
+    background: var(--ds-panel); border: 1px solid var(--ds-line); border-radius: 10px; box-shadow: 0 18px 40px rgba(0,0,0,.45); }
+  .ab02-topsw__menu .xl-pathsw__opt { white-space: nowrap; }
+  .ab02-modelbtn { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border-radius: 999px;
+    border: 1px solid var(--ds-line-2); background: var(--ds-panel-2); color: var(--ds-text); font-size: 13px; font-weight: 600; }
+  .ab02-logo { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--ds-inset);
+    border: 1px solid var(--ds-line-2); font-family: var(--ds-font-mono); font-size: 8px; font-weight: 700; }
+  /* Roadmap */
+  .ab02-road { display: grid; grid-template-columns: 1fr 340px; gap: 26px; align-items: start; }
+  .ab02-phase { margin-bottom: 26px; }
+  .ab02-phase__h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 2px; }
+  .ab02-phase__n { font-family: var(--ds-font-mono); font-size: 11px; color: var(--ds-violet); letter-spacing: .5px; }
+  .ab02-phase__h h2 { font-size: 16px; font-weight: 700; }
+  .ab02-phase__pct { margin-left: auto; font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-dim); }
+  .ab02-phase__theme { font-size: 12.5px; color: var(--ds-dim); margin-bottom: 14px; }
+  .ab02-week { display: flex; gap: 14px; color: inherit; }
+  .ab02-week__rail { display: flex; flex-direction: column; align-items: center; flex: none; width: 36px; }
+  .ab02-week__n { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; flex: none; font-family: var(--ds-font-mono);
+    font-weight: 600; font-size: 13px; background: var(--ds-panel-2); border: 1.6px solid var(--ds-line-2); color: var(--ds-dim); }
+  .ab02-week__line { flex: 1; width: 2px; background: var(--ds-line); min-height: 12px; }
+  .ab02-week__t { display: flex; align-items: center; gap: 9px; }
+  .ab02-week__t b { font-size: 13.5px; flex: 1; }
+  .ab02-week__m { margin-top: 8px; font-size: 11.5px; font-family: var(--ds-font-mono); display: flex; gap: 8px; flex-wrap: wrap; }
+  .ab02-week__thesis { margin-top: 8px; font-size: 11.5px; color: var(--ds-dim); }
+  .ab02-ok { color: var(--ds-ok); } .ab02-warn { color: var(--ds-warn); } .ab02-err { color: var(--ds-err); } .ab02-mut { color: var(--ds-dim); }
+  .ab02-sum { display: flex; flex-direction: column; gap: 16px; }
+  .ab02-ringbox { padding: 20px; display: flex; flex-direction: column; align-items: center; }
+  .ab02-ringval { margin-top: -88px; text-align: center; margin-bottom: 52px; }
+  .ab02-ringval b { font-family: var(--ds-font-mono); font-size: 30px; font-weight: 700; display: block; }
+  .ab02-ringval span { font-size: 11px; color: var(--ds-dim); }
+  .ab02-sumrow { width: 100%; display: flex; justify-content: space-between; font-size: 12px; color: var(--ds-dim); margin-top: 8px; }
+  .ab02-sumrow--first { border-top: 1px solid var(--ds-line); padding-top: 14px; margin-top: 0; }
+  .ab02-meters { padding: 14px; display: flex; flex-direction: column; gap: 13px; }
+  .ab02-meter__h { display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 5px; color: var(--ds-dim); }
+  /* Today */
+  .ab02-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .ab02-today { display: grid; grid-template-columns: minmax(0, 1fr) 396px; gap: 22px; align-items: start; }
+  .ab02-plan { display: flex; flex-direction: column; gap: 10px; }
+  .ab02-pc { display: flex; gap: 14px; align-items: center; padding: 13px 15px; background: var(--ds-panel); border: 1px solid var(--ds-line); border-radius: 10px; }
+  .ab02-pc--hot { border-color: rgba(53,208,192,.5); background: #101a1c; }
+  .ab02-pc__ic { width: 28px; height: 28px; border-radius: 8px; background: rgba(53,208,192,.14); display: grid; place-items: center; flex: none; color: var(--ds-teal); }
+  .ab02-pc__main { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+  .ab02-pc__t { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .ab02-pc__t b { font-size: 13.5px; }
+  .ab02-pc__s { font-size: 12px; color: var(--ds-dim); }
+  .ab02-due { padding: 11px 10px; }
+  .ab02-due__t { display: flex; align-items: center; gap: 8px; }
+  .ab02-due__t b { font-size: 13px; flex: 1; }
+  .ab02-mono { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-dim); }
+  /* Plain-shell pages */
+  .ab02-card { display: flex; gap: 24px; align-items: center; }
+  .ab02-card__ic { width: 56px; height: 56px; border-radius: 14px; background: rgba(53,208,192,.16); display: grid; place-items: center; flex: none; color: var(--ds-teal); }
+  .ab02-card__main { flex: 1; min-width: 0; }
+  .ab02-card__t { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+  .ab02-card__t h2 { font-size: 19px; font-weight: 700; }
+  .ab02-card__main p { font-size: 13px; color: var(--ds-dim); max-width: 560px; }
+  .ab02-card__act { display: flex; flex-direction: column; gap: 8px; flex: none; }
+  .ab02-teaser { max-width: 620px; margin: 30px auto 0; display: flex; flex-direction: column; gap: 12px; }
+  .ab02-teaser__row { display: flex; align-items: center; justify-content: space-between; }
+  .ab02-teaser__ic { width: 48px; height: 48px; border-radius: 12px; background: var(--ds-inset); display: grid; place-items: center; color: var(--ds-dim); }
+  .ab02-teaser h1 { font-size: 24px; font-weight: 700; letter-spacing: -.3px; }
+  .ab02-teaser p { font-size: 13.5px; color: var(--ds-dim); line-height: 1.6; }
+  .ab02-gate { max-width: 520px; margin: 20px auto; padding: 32px 28px; text-align: center; }
+  .ab02-gate__ic { width: 46px; height: 46px; border-radius: 12px; display: inline-grid; place-items: center; background: rgba(53,208,192,.14); color: var(--ds-teal); margin-bottom: 14px; }
+  .ab02-gate h2 { font-size: 18px; font-weight: 700; }
+  .ab02-gate p { font-size: 13px; color: var(--ds-dim); margin: 8px auto 20px; max-width: 360px; }
+  .ab02-gate p b { color: var(--ds-text); }
+  .ab02-btnrow { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  /* crumbs strips */
+  .ab02-crumbs { display: flex; flex-direction: column; gap: 12px; }
+  .ab02-crumbrow { display: grid; grid-template-columns: 330px 1fr; gap: 16px; align-items: center; }
+  .ab02-crumbbox { border: 1px solid var(--ds-line); border-radius: 10px; overflow: hidden; }
+  .ab02-url { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-dim); }
+  /* low-fi blocks (live: .xl-skel in app.css; static here) */
+  .ab02-lofi { background: var(--ds-panel-2); border: 1px solid var(--ds-line); border-radius: 10px; }
+  .ab02-lofi-col { display: flex; flex-direction: column; gap: 12px; }
+  /* narrow */
+  .ab02-nhead { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
+  .ab02-nhead h1 { font-size: 21px; font-weight: 700; margin-top: 6px; }
+  .ab02-nhead p { font-size: 13px; color: var(--ds-dim); margin-top: 5px; }
+  .ab02-scrim { position: absolute; inset: 0; z-index: 60; background: rgba(6,9,13,.66); }
+  .ab02-sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 61; padding: 10px 12px 20px; background: var(--ds-panel);
+    border-top: 1px solid var(--ds-line); border-radius: 14px 14px 0 0; box-shadow: 0 -18px 40px rgba(0,0,0,.45); }
+  .ab02-sheet__grab { width: 40px; height: 4px; border-radius: 2px; background: var(--ds-line-2); margin: 0 auto 12px; }
+  .ab02-sheet__h { display: flex; align-items: center; justify-content: space-between; padding: 0 6px 8px; }
+  .ab02-sheet__h b { font-size: 14px; }
+  .ab02-sheet .xl-pathsw__opt { min-height: 44px; }
+  .ab02-stage-phone { height: 780px; }
+  .ab02-nowrap { white-space: nowrap; flex: none; }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5" /><path d="M6 10.2V19h12v-8.8" /></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7 9 5z" /><path d="M9 5v12M15 7v12" /></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4" /></symbol>
+  <symbol id="i-journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 3v18M12.5 8h3.5M12.5 12h3.5" /></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.4" /><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" /></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V11M10 19V5M16 19v-6" /><path d="M3 21h18" /></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A2 2 0 0 1 7 3h12v15H7a2 2 0 0 0-2 2z" /><path d="M5 4.5V19" /></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6" /><path d="M10 20a2 2 0 0 0 4 0" /></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></symbol>
+  <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9" /></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" /></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4" /></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c.5 3 3.5 4 3.5 8a3.5 3.5 0 0 1-7 0c0-1.5.7-2.3 1.2-3 .3 1 .9 1.6 1.5 1.8-.3-2.5-.8-4.8.8-6.8z" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M18 5l2 2M15 8l2 2" /></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" /></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z" /><path d="M12 10v4M12 17h.01" /></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.5" /></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" /></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5z" /><path d="M3 12.5 12 17l9-4.5M3 17 12 21.5 21 17" /></symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 8l4 4 5-7 5 7 4-4v9H3z" /></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 5.3a3.2 3.2 0 0 1 0 5.4M18 13.6a6.5 6.5 0 0 1 3.5 6.4" /></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-3.8 10.6c.8.7 1.3 1.5 1.3 2.4h5c0-.9.5-1.7 1.3-2.4A6 6 0 0 0 12 3z" /></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 3.5L16 11H5" /></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z" /></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></symbol>
+  <symbol id="i-signout" viewBox="0 0 24 24"><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" /><path d="M16 12H8M13 8l4 4-4 4" /></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2" /><rect x="3" y="14" width="18" height="7" rx="2" /><path d="M7 7.5h.01M7 17.5h.01" /></symbol>
+  <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.4" /><circle cx="6" cy="19" r="2.4" /><circle cx="18" cy="8" r="2.4" /><path d="M6 7.4v9.2M6 12h6a4 4 0 0 0 4-4" /></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6" /></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.5A8 8 0 1 1 21 12z" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · M1 board</div>
+  <h1>AB02 · Course nav</h1>
+  <p class="bd-lede">
+    Course navigation rendered from the <b>course manifest</b> at <code class="ds-mono">/xlearn/:course/…</code>, with
+    <b>DSA pixel parity</b>: the DSA chrome and copy in F1–F3 and F6 are v1's, unchanged (M1 exit: golden = v1). New
+    states — <code class="ds-mono">coming_soon</code>, not enrolled, a second course — are drawn at the fidelity M1 needs;
+    full multi-course fidelity is ds-p-01's. Any change to v1 I'd recommend is drawn as a separate, dashed
+    <span class="bd-tag bd-tag--alt">alternative</span> frame; the merge freezes the parity frame.
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-m1-01.md">ds-m1-01</a> (+ <a href="../../../docs/v2/sprints/sprint-ds-p-01.md">ds-p-01</a> full fidelity)</span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-m1-03.md">m1-03</a> · <a href="../../../docs/v2/sprints/sprint-p-02.md">p-02</a></span>
+    <span><b>Frozen before</b>M1b</span>
+    <span><b>Sources</b><a href="../../../docs/adr/0026-per-course-extensibility-model.md#5-screens-routing-today">ADR-0026 §5</a> ·
+      <a href="../../../docs/v2/research/t0-extensibility-frame.md#7-screens--routing">t0 §7</a> · ADR-0025 (/u/ profiles) ·
+      <a href="../../../docs/adr/0033-invite-only-admission-and-owner-admin.md#6-the-acceptance-step-onboarding-step-0-l-a">ADR-0033 §6</a> · ADR-0034 §2 (<code class="ds-mono">preview</code>)</span>
+    <span><b>Live reference</b><code class="ds-mono">web/src/nav.ts</code>, <code class="ds-mono">Sidebar</code>, <code class="ds-mono">PathSwitcher</code>, <code class="ds-mono">Topbar</code>, <code class="ds-mono">NotFound</code></span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB02-F1">F1</a><a href="#AB02-F2">F2</a><a href="#AB02-F3">F3</a><a href="#AB02-F3-alt">F3 alt</a><a href="#AB02-F4">F4</a>
+    <a href="#AB02-F5">F5</a><a href="#AB02-F6">F6</a><a href="#AB02-F6-alt">F6 alt</a><a href="#AB02-F7">F7</a><a href="#AB02-F8">F8</a>
+    <a href="#AB02-F9">F9 · 390 px</a><a href="#routes">Routes &amp; reserved segments</a>
+  </nav>
+</header>
+
+<!-- ======================================================= routes -->
+<section class="bd-section" id="routes" aria-labelledby="sec-r">
+  <h2 class="bd-section__h" id="sec-r">Routes and reserved segments <small>ADR-0026 §5 · t0 §7 · ADR-0033 §6</small></h2>
+  <div class="bd-strip">
+    <span><b>Course routes</b> <code class="ds-mono">/xlearn/:course</code> (Roadmap) + <code class="ds-mono">/{dashboard, problems, week/:n, concept/:slug, problem/:id, revision, mistakes, mock, progress}</code> — the same segments for every course; only labels differ.</span>
+    <span><b>Account routes</b> <code class="ds-mono">/xlearn</code> (Catalog) · <code class="ds-mono">/xlearn/settings</code> · <code class="ds-mono">/xlearn/auth</code> · <code class="ds-mono">/xlearn/u/:username</code>.</span>
+    <span><b>Reserved top-level segments — never a course slug:</b> <code class="ds-mono">u, auth, settings, api, assets, healthz, readyz, privacy</code> (<code class="ds-mono">.well-known</code> is excluded by the slug regex). Enforced at seed time and in a test (m1-09's Go guard, m1-03's <code class="ds-mono">courseSlugGuard.ts</code> parity test); any new static SPA segment joins the list.</span>
+  </div>
+</section>
+
+<!-- ========================================================= F1 -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · DSA chrome, manifest-driven <small>F1–F3 · parity</small></h2>
+  <p class="bd-section__p">The sidebar groups, labels, icons, order and live badges come from the DSA manifest's <code class="ds-mono">nav</code> block and must render <b>identically</b> to v1's <code class="ds-mono">navForPath("dsa")</code>. Sample learner: Week 2, 28 / 151 solved, 12-day streak, 4 reviews due, 3 open mistakes.</p>
+
+  <article class="bd-frame" id="AB02-F1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB02-F1</span><span class="bd-frame__title">· DSA Roadmap</span><span class="bd-frame__state">· /xlearn/dsa · enrolled</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">parity</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav" >
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a>
+              <a class="xl-nav__item xl-nav__item--active" aria-current="page"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a>
+              <div class="xl-nav__cap">Practice loop</div>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision <span class="xl-nav__badge xl-nav__badge--teal">4</span></a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes <span class="xl-nav__badge">3</span></a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a>
+            </nav>
+            <div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab02-top">
+              <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><b>dsa</b></div>
+              <span class="ab02-flex"></span>
+              <div class="ab02-topsw"><span class="ab02-topsw__btn" role="button" aria-haspopup="true" aria-expanded="false" aria-label="Switch curriculum"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span></div>
+              <span class="ab02-modelbtn"><span class="ab02-logo">AN</span> Sonnet 5 <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="xl-content">
+              <div class="xl-page-h">
+                <div>
+                  <div class="xl-eyebrow">Learning path · /xlearn/dsa</div>
+                  <h1 style="margin-top:6px">Data Structures &amp; Algorithms</h1>
+                  <p>16 weeks · 4 phases · 151 problems · Go-first. The method is enforced: sequential unlocks, timed practice, and five-touch spaced revision.</p>
+                </div>
+                <span class="ds-btn ds-btn--primary ds-btn--lg ab02-nowrap" role="button"><svg class="xl-ico" aria-hidden="true"><use href="#i-play"/></svg> Start today's plan</span>
+              </div>
+              <div class="ab02-road">
+                <div>
+                  <div class="ab02-phase">
+                    <div class="ab02-phase__h"><span class="ab02-phase__n">PHASE 1</span><h2>Fundamentals</h2><span class="ds-chip ds-chip--xs ds-mono">W1–3</span><span class="ab02-phase__pct">58%</span></div>
+                    <p class="ab02-phase__theme">Arrays, hashing, and the two-pointer mind.</p>
+                    <div class="ab02-week"><div class="ab02-week__rail"><span class="ab02-week__n">1</span><span class="ab02-week__line"></span></div>
+                      <div class="ds-card" style="flex:1;margin-bottom:10px;padding:12px 14px"><div class="ab02-week__t"><b>Week 1 · Arrays, Strings, Hashing, Prefix Sums</b><span class="ds-chip ds-chip--xs ds-mono">6 problems</span></div>
+                        <div class="ab02-week__m"><span class="ab02-ok">3 Easy</span><span class="ab02-mut">·</span><span class="ab02-warn">3 Med</span></div></div></div>
+                    <div class="ab02-week"><div class="ab02-week__rail"><span class="ab02-week__n">2</span><span class="ab02-week__line"></span></div>
+                      <div class="ds-card" style="flex:1;margin-bottom:10px;padding:12px 14px"><div class="ab02-week__t"><b>Week 2 · Two Pointers &amp; Sliding Window</b><span class="ds-chip ds-chip--xs ds-mono">3 problems</span></div>
+                        <div class="ab02-week__m"><span class="ab02-warn">2 Med</span><span class="ab02-mut">·</span><span class="ab02-err">1 Hard</span></div></div></div>
+                    <div class="ab02-week"><div class="ab02-week__rail"><span class="ab02-week__n">3</span><span class="ab02-week__line"></span></div>
+                      <div class="ds-card" style="flex:1;margin-bottom:10px;padding:12px 14px"><div class="ab02-week__t"><b>Week 3 · Stacks &amp; Monotonic Stack</b><span class="ds-chip ds-chip--xs ds-mono">1 problem</span></div>
+                        <div class="ab02-week__m"><span class="ab02-err">1 Hard</span></div></div></div>
+                  </div>
+                  <div class="ab02-phase">
+                    <div class="ab02-phase__h"><span class="ab02-phase__n">PHASE 2</span><h2>Core Data Structures</h2><span class="ds-chip ds-chip--xs ds-mono">W4–8</span><span class="ab02-phase__pct">0%</span></div>
+                    <p class="ab02-phase__theme">The structures interviewers reach for by default.</p>
+                    <div class="ab02-week"><div class="ab02-week__rail"><span class="ab02-week__n">4</span><span class="ab02-week__line"></span></div>
+                      <div class="ds-card" style="flex:1;margin-bottom:10px;padding:12px 14px"><div class="ab02-week__t"><b>Week 4 · Linked Lists &amp; Design</b><span class="ds-chip ds-chip--xs ds-mono">1 problem</span></div>
+                        <div class="ab02-week__m"><span class="ab02-warn">1 Med</span></div></div></div>
+                    <div class="ab02-week"><div class="ab02-week__rail"><span class="ab02-week__n">5</span><span class="ab02-week__line"></span></div>
+                      <div class="ds-card" style="flex:1;margin-bottom:10px;padding:12px 14px"><div class="ab02-week__t"><b>Week 5 · Trees &amp; BST</b></div>
+                        <div class="ab02-week__thesis">Recursion over structure — traversals, invariants, and the ordered guarantees of a binary search tree.</div></div></div>
+                  </div>
+                </div>
+                <div class="ab02-sum">
+                  <div class="xl-panel ab02-ringbox">
+                    <svg width="132" height="132" viewBox="0 0 76 76" style="transform:rotate(-90deg)" aria-hidden="true"><circle class="xl-ring-track" cx="38" cy="38" r="30" fill="none" stroke-width="7"/><circle cx="38" cy="38" r="30" fill="none" stroke-width="7" stroke-linecap="round" stroke="var(--ds-teal)" stroke-dasharray="35.8 188.5"/></svg>
+                    <div class="ab02-ringval"><b>19%</b><span>28 / 151 solved</span></div>
+                    <div class="ab02-sumrow ab02-sumrow--first"><span>Current</span><b style="color:var(--ds-teal)">Week 2</b></div>
+                    <div class="ab02-sumrow"><span>Streak</span><b style="color:var(--ds-warn)">12</b></div>
+                    <div class="ab02-sumrow"><span>Revisions due</span><b style="color:var(--ds-dim)">4</b></div>
+                  </div>
+                  <div class="xl-panel">
+                    <div class="xl-panel__h" style="padding:12px 14px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg><h3 style="font-size:13px">Phase progress</h3></div>
+                    <div class="ab02-meters">
+                      <div><div class="ab02-meter__h"><span>Fundamentals</span><span class="ds-mono">58%</span></div><div class="ds-meter"><div class="ds-meter__fill" style="width:58%"></div></div></div>
+                      <div><div class="ab02-meter__h"><span>Core Data Structures</span><span class="ds-mono">0%</span></div><div class="ds-meter"><div class="ds-meter__fill" style="width:0%"></div></div></div>
+                      <div><div class="ab02-meter__h"><span>Advanced Patterns</span><span class="ds-mono">0%</span></div><div class="ds-meter"><div class="ds-meter__fill" style="width:0%"></div></div></div>
+                      <div><div class="ab02-meter__h"><span>Interview Mastery</span><span class="ds-mono">0%</span></div><div class="ds-meter"><div class="ds-meter__fill" style="width:0%"></div></div></div>
+                    </div>
+                  </div>
+                  <span class="ds-btn ds-btn--secondary ds-btn--block" role="button">Browse all paths <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bd-crop">— cropped: weeks 6–16 continue unchanged —</div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Chrome (the parity target)</h4>
+        <ul><li>Sidebar = DSA manifest <code>nav</code>: <b>Today</b> · <b>Roadmap</b> (exact-match active) · <b>Problems</b> · <b>Progress</b>; cap <b>"Practice loop"</b>: <b>Revision</b> (teal live badge = reviews due) · <b>Mistakes</b> (amber live badge = open entries) · <b>Mock interview</b>. Icons today · map · list · chart · refresh · journal · target. Badges hide until loaded and when 0; "99+" above 99.</li>
+          <li>No path switcher and no Settings in the sidebar (F001): the switcher is in the top bar, Settings in the avatar menu.</li>
+          <li>Top bar: crumbs <code>xlearn / dsa</code> (xlearn links to the Catalog) · selector <b>DSA · Data Structures &amp; Algorithms</b> · coach model switcher (AB01 F12) · bell · avatar.</li></ul></section>
+      <section><h4>What's manifest data</h4>
+        <ul><li>Nav groups, labels, icons, cap titles and which items exist; the short code (<code>DSA</code>) and title in the selector; the Roadmap eyebrow slug and the "16 weeks · 4 phases · 151 problems · Go-first" line. <code>navForPath</code> renders the block; DSA output is snapshot-identical to v1 (m1-03).</li>
+          <li>Content below the page header is sample data (unchanged v1 Roadmap). "Browse all paths" keeps v1's wording (see F3 alt).</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>ADR-0026 §5 / t0 §7: one <code>/:course/*</code> route inside AuthedShell; <code>useCourse()</code> replaces the literal <code>dsa</code>.</li>
+          <li>Unchanged from v1: nav is a <code>&lt;nav&gt;</code>; the active item gets <code>aria-current="page"</code> (NavLink); collapse is the pure-CSS checkbox.</li>
+          <li>&lt; 1024 px: see F9 (collapsed rail, compact top bar).</li></ul></section>
+    </aside>
+  </article>
+
+  <!-- F2 -->
+  <article class="bd-frame" id="AB02-F2">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB02-F2</span><span class="bd-frame__title">· DSA Today</span><span class="bd-frame__state">· /xlearn/dsa/dashboard · same chrome</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">parity</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav" >
+              <a class="xl-nav__item xl-nav__item--active" aria-current="page"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a>
+              <div class="xl-nav__cap">Practice loop</div>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision <span class="xl-nav__badge xl-nav__badge--teal">4</span></a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes <span class="xl-nav__badge">3</span></a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a>
+            </nav>
+            <div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab02-top">
+              <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><b>dashboard</b></div>
+              <span class="ab02-flex"></span>
+              <div class="ab02-topsw"><span class="ab02-topsw__btn" role="button" aria-haspopup="true" aria-expanded="false" aria-label="Switch curriculum"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span></div>
+              <span class="ab02-modelbtn"><span class="ab02-logo">AN</span> Sonnet 5 <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="xl-content">
+              <div class="xl-page-h" style="border-bottom:1px solid var(--ds-line);padding-bottom:16px;margin-bottom:20px">
+                <div>
+                  <div class="xl-eyebrow">Data Structures &amp; Algorithms</div>
+                  <h1 style="margin-top:6px;font-size:26px;font-weight:700;letter-spacing:-.3px">Today</h1>
+                  <p>Day 12 · Monday, September 28 · Week 2 — Two Pointers &amp; Sliding Window · reviews come before new problems.</p>
+                </div>
+                <div class="xl-row" style="gap:12px">
+                  <span class="xl-streak" style="font-size:15px"><svg class="xl-ico" aria-hidden="true"><use href="#i-flame"/></svg> 12</span>
+                  <span class="ds-btn ds-btn--primary ds-btn--lg" role="button"><svg class="xl-ico" aria-hidden="true"><use href="#i-play"/></svg> Start reviews</span>
+                </div>
+              </div>
+              <div class="ab02-stats">
+                <div class="xl-stat"><div class="xl-stat__l"><span style="color:var(--ds-warn)"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-flame"/></svg></span> Streak</div><div class="xl-stat__v" style="color:var(--ds-warn)">12<span style="font-size:13px;color:var(--ds-muted)"> days</span></div><div class="xl-stat__d">Personal best: 12</div></div>
+                <div class="xl-stat"><div class="xl-stat__l"><span style="color:var(--ds-teal)"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span> Solved</div><div class="xl-stat__v">28<span style="font-size:13px;color:var(--ds-muted)"> / 151</span></div><div class="ds-meter" style="margin-top:10px"><div class="ds-meter__fill" style="width:19%"></div></div></div>
+                <div class="xl-stat"><div class="xl-stat__l"><span style="color:var(--ds-teal)"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg></span> Revisions due</div><div class="xl-stat__v" style="color:var(--ds-teal)">4</div><div class="xl-stat__d">2 · Day 1 &nbsp;•&nbsp; 1 · Day 3 &nbsp;•&nbsp; 1 · Day 7</div></div>
+                <div class="xl-stat"><div class="xl-stat__l"><span style="color:var(--ds-violet)"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-target"/></svg></span> Mock best</div><div class="xl-stat__v">22<span style="font-size:13px;color:var(--ds-muted)"> / 35</span></div><div class="xl-stat__d">Target by W13: <b style="color:var(--ds-dim)">24</b></div></div>
+              </div>
+              <div class="ab02-today">
+                <div>
+                  <div class="xl-sect__h"><h2>Today's plan</h2><span class="ds-chip ds-chip--sm ds-mono">0 / 3 done</span></div>
+                  <div class="ab02-plan">
+                    <div class="ab02-pc"><span class="ab02-pc__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg></span><span class="ab02-pc__main"><span class="ab02-pc__t"><b>Review · re-solve <span class="ds-mono">#5</span> Group Anagrams</b><span class="ds-badge ds-badge--info ds-mono" style="height:19px;font-size:10px">Day 1</span></span><span class="ab02-pc__s">From a blank editor · 20-min timer</span></span><span class="ab02-mono">20 min</span></div>
+                    <div class="ab02-pc"><span class="ab02-pc__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg></span><span class="ab02-pc__main"><span class="ab02-pc__t"><b>Review · re-solve <span class="ds-mono">#1</span> Two Sum</b><span class="ds-badge ds-badge--ok ds-mono" style="height:19px;font-size:10px">Day 3</span></span><span class="ab02-pc__s">From a blank editor · 20-min timer</span></span><span class="ab02-mono">20 min</span></div>
+                    <div class="ab02-pc ab02-pc--hot"><span class="ab02-pc__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg></span><span class="ab02-pc__main"><span class="ab02-pc__t"><b>Primary problem · <span class="ds-mono">#16</span> 3Sum</b><span class="xl-diff xl-diff--med">Medium</span></span><span class="ab02-pc__s">Guided flow · 15-min attempt, then gated hints</span></span><span class="xl-row"><span class="ds-mono" style="font-size:11.5px;color:var(--ds-teal)">in progress</span><span class="ds-btn ds-btn--primary ds-btn--sm" role="button">Resume</span></span></div>
+                  </div>
+                </div>
+                <div class="xl-panel">
+                  <div class="xl-panel__h" style="padding:10px 14px"><span style="color:var(--ds-teal)"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg></span><h3 style="flex:1;font-size:13px">Revisions due today</h3><span class="ds-badge ds-badge--info ds-mono">4</span></div>
+                  <div style="padding:6px 8px">
+                    <div class="ab02-due"><div class="ab02-due__t"><span class="ab02-mono">#5</span><b>Group Anagrams</b><span class="ds-badge ds-badge--info ds-mono" style="height:19px;font-size:10px">Day 1</span></div>
+                      <div class="xl-touch" style="margin-top:8px"><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div></div>
+                    <div class="ab02-due"><div class="ab02-due__t"><span class="ab02-mono">#1</span><b>Two Sum</b><span class="ds-badge ds-badge--ok ds-mono" style="height:19px;font-size:10px">Day 3</span></div>
+                      <div class="xl-touch" style="margin-top:8px"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bd-crop">— cropped: the rest of Today (week progress, weak area, reminders) is unchanged —</div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>What this proves</h4>
+        <ul><li>The chrome is course-agnostic: same sidebar (Today active), same top bar; crumbs <code>xlearn / dsa / dashboard</code> (generic per-segment trail from <code>buildCrumbs</code>).</li>
+          <li>Eyebrow "Data Structures &amp; Algorithms" = the manifest title (v1 hard-codes it; now data).</li></ul></section>
+      <section><h4>Content deltas that are not AB02's</h4>
+        <ul><li>The in-progress card shows <b>no pattern chip</b>: #16 has an open counted attempt, so m1-06's <code>withhold()</code> strips its pattern from Today (ADR-0027 §1); the card simply omits it. That delta is m1-06's, not the chrome's. Review cards never showed a pattern.</li>
+          <li>"15-min attempt" is v1 copy; M3 (AB07) changes it. "Mock best" is the private Today stat (D31 governs only the public profile).</li></ul></section>
+      <section><h4>A11y · narrow</h4>
+        <ul><li>Unchanged from v1. Dates format in the learner's locale.</li><li>&lt; 1024 px: F9.</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide">
+    <!-- F3 -->
+    <article class="bd-frame" id="AB02-F3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB02-F3</span><span class="bd-frame__title">· Course switcher open</span><span class="bd-frame__state">· owner / tester cohort (preview visible)</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">parity</span><span class="bd-tag bd-tag--new">+ preview row</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage" style="height:470px">
+          <div class="xl-topbar ab02-top" style="background:var(--ds-bg)">
+            <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><b>dsa</b></div>
+            <span class="ab02-flex"></span>
+            <div class="ab02-topsw">
+              <span class="ab02-topsw__btn" role="button" aria-haspopup="true" aria-expanded="true" aria-label="Switch curriculum"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <div class="ab02-topsw__menu" role="menu">
+                <span class="xl-pathsw__opt xl-pathsw__opt--active bd-focus" role="menuitem"><span class="ds-dot ds-dot--ok"></span> Data Structures &amp; Algorithms</span>
+                <span class="xl-pathsw__opt" role="menuitem"><span class="ds-dot ds-dot--ok"></span> Go Concurrency Patterns <span class="ds-badge ds-badge--violet" style="height:19px;font-size:10.5px;margin-left:auto">Preview</span></span>
+                <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> System Design Interviews · <i>Coming soon</i></div>
+                <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Low-Level / OOD · <i>Coming soon</i></div>
+                <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> SQL &amp; Data Modeling · <i>Coming soon</i></div>
+                <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Behavioral &amp; Storytelling · <i>Coming soon</i></div>
+                <div class="xl-acct-sep"></div>
+                <span class="xl-pathsw__opt" role="menuitem" style="color:var(--ds-dim)"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-grid"/></svg> Browse all paths</span>
+              </div>
+            </div>
+            <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+            <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>Rows</h4>
+        <ul><li><b>Active</b> courses first, as v1 (every <code>active</code> course, enrolled or not; picking one goes to <code>/:course/dashboard</code>, which shows F5 if not started). Current = <code>xl-pathsw__opt--active</code> (teal), green dot.</li>
+          <li><b>Preview</b> row: a <code>preview</code> course, with <code>ds-badge--violet</code> "Preview". Present <b>only</b> for the owner/tester cohort (m1-04 passes the cohort bit; everyone else gets 404 from the resolver and never sees the row, ADR-0034 §2). Sample: go-concurrency during P.</li>
+          <li><b>Coming soon</b> rows: muted, not focusable, lock icon + "&lt;title&gt; · <i>Coming soon</i>" (<code>aria-disabled</code>), v1 copy.</li>
+          <li>Footer: v1's <b>"Browse all paths"</b> → Catalog (<code>PathSwitcher.tsx:91</code>), unchanged. Wording change → F3 alt.</li></ul>
+        <h4>A11y</h4>
+        <ul><li>v1's button disclosure: <code>aria-haspopup</code> + <code>aria-expanded</code>, Esc and outside click close; focus to the current row (drawn); Tab moves through enabled rows; locked rows are skipped.</li></ul>
+        <h4>Narrow</h4>
+        <ul><li>Opens as a full-width bottom sheet (F9 · N2). Live class: <code>.xl-topsw*</code> (app.css).</li></ul>
+      </aside>
+    </article>
+
+    <!-- F3 alt -->
+    <article class="bd-frame bd-frame--alt" id="AB02-F3-alt">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB02-F3 alt</span><span class="bd-frame__title">· Switcher footer wording</span><span class="bd-frame__state">· proposal — not frozen</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--alt">alternative</span><span class="bd-tag bd-tag--change">visible change vs v1</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage" style="height:470px">
+          <div class="xl-topbar ab02-top" style="background:var(--ds-bg)">
+            <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><b>dsa</b></div>
+            <span class="ab02-flex"></span>
+            <div class="ab02-topsw">
+              <span class="ab02-topsw__btn" role="button" aria-haspopup="true" aria-expanded="true" aria-label="Switch course"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <div class="ab02-topsw__menu" role="menu">
+                <span class="xl-pathsw__opt xl-pathsw__opt--active" role="menuitem"><span class="ds-dot ds-dot--ok"></span> Data Structures &amp; Algorithms</span>
+                <span class="xl-pathsw__opt" role="menuitem"><span class="ds-dot ds-dot--ok"></span> Go Concurrency Patterns <span class="ds-badge ds-badge--violet" style="height:19px;font-size:10.5px;margin-left:auto">Preview</span></span>
+                <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> System Design Interviews · <i>Coming soon</i></div>
+                <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Low-Level / OOD · <i>Coming soon</i></div>
+                <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> SQL &amp; Data Modeling · <i>Coming soon</i></div>
+                <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Behavioral &amp; Storytelling · <i>Coming soon</i></div>
+                <div class="xl-acct-sep"></div>
+                <span class="xl-pathsw__opt" role="menuitem" style="color:var(--ds-dim)"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-grid"/></svg> Browse all courses <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+              </div>
+            </div>
+            <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+            <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>Proposal</h4>
+        <ul><li>Footer "Browse all courses →" and the button's <code>aria-label</code> "Switch course": v2 calls them courses (ADR-0026). Also applies to Roadmap's "Browse all paths" button (F1).</li>
+          <li><b>Not frozen.</b> The merge freezes F3 (v1 wording). This becomes an intended delta only if the owner picks it after the merge, through a follow-up design PR (listed in "Decisions to confirm").</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- ======================================================= B · states -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · Course states <small>F4–F6 · new states + NotFound parity</small></h2>
+  <p class="bd-section__p">One <code class="ds-mono">/:course/*</code> route inside AuthedShell, checked against the session-gated catalog: <b>unknown</b> → NotFound (no hint whether the slug exists) · <b><code class="ds-mono">coming_soon</code></b> → the catalog teaser · <b>active, not enrolled</b> → the start-path call to action · <b><code class="ds-mono">preview</code></b> outside the cohort → treated as unknown · signed out → <code class="ds-mono">/auth</code>, as today.</p>
+
+  <!-- F4 -->
+  <article class="bd-frame" id="AB02-F4">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB02-F4</span><span class="bd-frame__title">· coming_soon course</span><span class="bd-frame__state">· /xlearn/system-design</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app" style="min-height:560px">
+          <div class="xl-main">
+            <div class="xl-topbar ab02-top">
+              <span class="ab02-brand"><span class="ab02-mark">x</span><span class="ab02-name">x<b>Learn</b></span></span>
+              <span class="ab02-flex"></span>
+              <span class="ab02-modelbtn"><span class="ab02-logo">AN</span> Sonnet 5 <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="xl-content">
+              <div class="ds-card ab02-teaser" style="padding:26px">
+                <div class="ab02-teaser__row"><span class="ab02-teaser__ic"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-server"/></svg></span><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Coming soon</span></div>
+                <div class="xl-eyebrow">Learning path · /xlearn/system-design</div>
+                <h1>System Design Interviews</h1>
+                <p>Scalable systems, trade-offs, and the whiteboard narrative — timed design rounds with rubric scoring.</p>
+                <div class="ab02-mono">12 weeks · 40 problems</div>
+                <p>This course isn't open yet. It opens here when it's ready.</p>
+                <div><span class="ds-btn ds-btn--secondary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-grid"/></svg> Back to catalog</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li>Resolver: <code>coming_soon</code> → listed in the catalog only; data routes 404 (m1-03). Every <code>/xlearn/system-design/*</code> sub-route shows this same teaser.</li>
+          <li>Plain shell (no sidebar, no course nav): the course has no nav to show. No start button, no curriculum selector. Title, summary, counts and icon come from the catalog entry (v1 <code>ComingSoonCard</code> content); "Coming soon" uses v1's <code>xl-lock</code> badge.</li>
+          <li>v1's "Notify me when it's live" toggle isn't carried over: it never persisted anything.</li></ul></section>
+      <section><h4>Decision</h4>
+        <ul><li>t0 §7: "<code>coming_soon</code>: the catalog teaser". New state (v1 had no <code>/system-design</code> route: it fell to NotFound).</li></ul></section>
+      <section><h4>A11y · narrow</h4>
+        <ul><li>Page <code>h1</code> is the course title. The status is also stated in body text (dim 6.8:1): the <code>xl-lock</code> badge's muted text is 3.4:1, a theme-level debt left as v1 has it. Back to catalog → <code>/xlearn</code>, first focusable after the heading.</li>
+          <li>&lt; 1024 px: the card fills the width (N4).</li></ul></section>
+    </aside>
+  </article>
+
+  <!-- F5 -->
+  <article class="bd-frame" id="AB02-F5">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB02-F5</span><span class="bd-frame__title">· Active, not enrolled</span><span class="bd-frame__state">· start-path call to action (F002)</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">parity</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad">
+        <div class="ab02-crumbrow" style="grid-template-columns:1fr;gap:8px">
+          <span class="ab02-url">Catalog card · /xlearn</span>
+          <div class="ds-card ds-card--teal ab02-card" style="padding:22px">
+            <span class="ab02-card__ic"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-code"/></svg></span>
+            <div class="ab02-card__main">
+              <div class="ab02-card__t"><h2>Data Structures &amp; Algorithms</h2><span class="ds-badge ds-mono">Not started</span></div>
+              <p>From arrays to graphs and DP, built to make you interview-ready — and to keep it retained.</p>
+              <div class="ab02-mono" style="margin-top:14px">16 weeks · 151 problems · Go-first</div>
+            </div>
+            <div class="ab02-card__act">
+              <span class="ds-btn ds-btn--primary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start path</span>
+              <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">View roadmap</span>
+            </div>
+          </div>
+          <span class="ab02-url" style="margin-top:16px">Inside the course · /xlearn/dsa/problem/16 (any practice action)</span>
+          <div class="xl-panel ab02-gate">
+            <span class="ab02-gate__ic"><svg class="xl-ico" aria-hidden="true"><use href="#i-lock"/></svg></span>
+            <h2>Start the path to begin</h2>
+            <p>Solving counts toward your curriculum once you start <b>Data Structures &amp; Algorithms</b>. Start it to unlock the guided flow and your daily schedule — or browse the problems freely first.</p>
+            <div class="ab02-btnrow"><span class="ds-btn ds-btn--primary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start path</span><span class="ds-btn ds-btn--secondary" role="button">Browse problems</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li>An <code>active</code> course the account hasn't started: the Catalog card shows "Not started" + <b>Start path</b> / <b>View roadmap</b>; read views (Roadmap, Week, Problems, Concept) render in the course shell with Roadmap's "Current: Not started"; any practice action returns <code>403 not_enrolled</code> and shows the gate.</li>
+          <li><b>Start path</b> → <code>POST /api/paths/{slug}/start</code> (idempotent; enrollment accepts only <code>active</code>, ADR-0033 §12). "Starting…" while pending; v1's error lines.</li></ul></section>
+      <section><h4>Manifest data</h4>
+        <ul><li>Title, summary, "16 weeks · 151 problems", the item noun ("problems") and the language note ("Go-first", from the manifest's <code>primary_language</code>; v1 hard-codes it) are per course. Copy otherwise v1's.</li></ul></section>
+      <section><h4>Decision · a11y</h4>
+        <ul><li>F002 parity; ADR-0026 §5 enrollment. Unchanged a11y: the gate's <code>h2</code> leads; errors <code>role="alert"</code>.</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide">
+    <!-- F6 -->
+    <article class="bd-frame" id="AB02-F6">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB02-F6</span><span class="bd-frame__title">· Unknown course</span><span class="bd-frame__state">· /xlearn/nope · v1 NotFound unchanged</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">parity</span></span></header>
+      <div class="bd-frame__body">
+        <div class="xl-app" style="min-height:420px">
+          <div class="xl-main">
+            <div class="xl-topbar ab02-top">
+              <span class="ab02-brand"><span class="ab02-mark">x</span><span class="ab02-name">x<b>Learn</b></span></span>
+              <span class="ab02-flex"></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="xl-content">
+              <div class="xl-page-h"><div><div class="xl-eyebrow">404</div><h1 style="margin-top:6px">Page not found</h1><p>That route doesn't exist in xLearn.</p></div></div>
+              <span class="ds-btn ds-btn--secondary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-today"/></svg> Back to Today</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>Unknown slug, a retired course, or <code>preview</code> outside the cohort → the <b>same</b> v1 NotFound in the plain shell: eyebrow <code>404</code>, "Page not found", "That route doesn't exist in xLearn.", <b>[Back to Today]</b> → <code>/dsa/dashboard</code> (the default course's dashboard, <code>course.DefaultSlug</code>), exactly as v1. The API returns the uniform <code>404 course_not_found</code>.</li>
+          <li>No hint whether the slug exists: no "did you mean", no course list, identical response for unknown, retired and hidden preview courses.</li></ul>
+        <h4>Decision</h4>
+        <ul><li>t0 §7 "Unknown slug: NotFound"; ADR-0034 §2 (<code>preview</code> hidden outside the cohort).</li></ul>
+      </aside>
+    </article>
+
+    <!-- F6 alt -->
+    <article class="bd-frame bd-frame--alt" id="AB02-F6-alt">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB02-F6 alt</span><span class="bd-frame__title">· NotFound button target</span><span class="bd-frame__state">· proposal — not frozen</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--alt">alternative</span><span class="bd-tag bd-tag--change">visible change vs v1</span></span></header>
+      <div class="bd-frame__body">
+        <div class="xl-app" style="min-height:420px">
+          <div class="xl-main">
+            <div class="xl-topbar ab02-top">
+              <span class="ab02-brand"><span class="ab02-mark">x</span><span class="ab02-name">x<b>Learn</b></span></span>
+              <span class="ab02-flex"></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="xl-content">
+              <div class="xl-page-h"><div><div class="xl-eyebrow">404</div><h1 style="margin-top:6px">Page not found</h1><p>That route doesn't exist in xLearn.</p></div></div>
+              <span class="ds-btn ds-btn--secondary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-grid"/></svg> Back to catalog</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>Proposal</h4>
+        <ul><li><b>[Back to catalog]</b> → <code>/xlearn</code>: with several courses, "Today" for DSA may not be where the learner was heading, and a learner not enrolled in DSA lands on its gate.</li>
+          <li><b>Not frozen.</b> F6 (v1) is what the merge freezes; listed in "Decisions to confirm".</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- ================================================= C · crumbs + 2nd course -->
+<section class="bd-section" aria-labelledby="sec-c">
+  <h2 class="bd-section__h" id="sec-c">C · Breadcrumbs and a second course <small>F7–F8</small></h2>
+
+  <!-- F7 -->
+  <article class="bd-frame" id="AB02-F7">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB02-F7</span><span class="bd-frame__title">· Breadcrumbs</span><span class="bd-frame__state">· parity with buildCrumbs, generic over :course</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">parity</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad ab02-crumbs">
+        <div class="ab02-crumbrow"><span class="ab02-url">/xlearn/dsa/week/3</span>
+          <div class="ab02-crumbbox"><div class="xl-topbar" style="border-bottom:0"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><b>week/3</b></div></div></div></div>
+        <div class="ab02-crumbrow"><span class="ab02-url">/xlearn/dsa/concept/two-pointers?week=3</span>
+          <div class="ab02-crumbbox"><div class="xl-topbar" style="border-bottom:0"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><a>week 3</a><span class="xl-crumb__sep">/</span><b>concept/two-pointers</b></div></div></div></div>
+        <div class="ab02-crumbrow"><span class="ab02-url">/xlearn/dsa/problem/16</span>
+          <div class="ab02-crumbbox"><div class="xl-topbar" style="border-bottom:0"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><a>problems</a><span class="xl-crumb__sep">/</span><b>#16</b></div></div></div></div>
+        <div class="ab02-crumbrow"><span class="ab02-url">/xlearn/dsa/revision</span>
+          <div class="ab02-crumbbox"><div class="xl-topbar" style="border-bottom:0"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><b>revision</b></div></div></div></div>
+        <div class="ab02-crumbrow"><span class="ab02-url">/xlearn/go-concurrency/week/2</span>
+          <div class="ab02-crumbbox"><div class="xl-topbar" style="border-bottom:0"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>go-concurrency</a><span class="xl-crumb__sep">/</span><b>week/2</b></div></div></div></div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Rules (v1 <code>buildCrumbs</code>, now for any course)</h4>
+        <ul><li><code>/:course/week/:n</code> → <code>xlearn / &lt;course&gt; / week/N</code>.</li>
+          <li><code>/:course/concept/:slug</code> → <code>xlearn / &lt;course&gt; / [week N /] concept/slug</code>; "week N" only from a numeric <code>?week=</code> and links to that week.</li>
+          <li><code>/:course/problem/:id</code> → <code>xlearn / &lt;course&gt; / problems / #id</code>; "problems" links to the Problems arena (no singular index).</li>
+          <li>Anything else: one crumb per segment; the last is the current page (bold, not a link). <code>xlearn</code> links to the Catalog unless it's the only crumb.</li></ul></section>
+      <section><h4>Parity</h4>
+        <ul><li>DSA trails are character-identical to v1 (m1-03 snapshot tests). Crumbs show the slug, not the title (v1).</li>
+          <li>The last row shows the same rules on a second course; the item segment stays <code>problem</code>/<code>problems</code> in URLs for every course (t0 §7: same segments), while nav labels can differ (F8).</li></ul></section>
+      <section><h4>A11y</h4>
+        <ul><li>Mono 12.5 px; links dim 7.7:1, current page text 16:1, separators decorative. Markup unchanged from v1 (a plain <code>div.xl-crumb</code>).</li></ul></section>
+    </aside>
+  </article>
+
+  <!-- F8 -->
+  <article class="bd-frame" id="AB02-F8">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB02-F8</span><span class="bd-frame__title">· Second course nav</span><span class="bd-frame__state">· /xlearn/go-concurrency · rendered from its manifest</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag">low fidelity · illustrative</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app" style="min-height:560px">
+          <input type="checkbox" class="xl-collapse-cb" aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav" >
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a>
+              <a class="xl-nav__item xl-nav__item--active" aria-current="page"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Exercises</a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a>
+              <div class="xl-nav__cap">Practice loop</div>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision <span class="xl-nav__badge xl-nav__badge--teal">2</span></a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a>
+            </nav>
+            <div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab02-top">
+              <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><b>go-concurrency</b></div>
+              <span class="ab02-flex"></span>
+              <div class="ab02-topsw"><span class="ab02-topsw__btn" role="button" aria-haspopup="true" aria-expanded="false" aria-label="Switch curriculum"><span class="xl-pathsw__ic">GO</span><span class="xl-pathsw__t">Go Concurrency Patterns</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span></div>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="xl-content">
+              <div class="xl-page-h">
+                <div>
+                  <div class="xl-eyebrow">Learning path · /xlearn/go-concurrency</div>
+                  <h1 style="margin-top:6px">Go Concurrency Patterns</h1>
+                  <p>8 weeks · 60 exercises · Go. Goroutines, channels, and the race detector as muscle memory.</p>
+                </div>
+                <span class="ds-btn ds-btn--primary ds-btn--lg ab02-nowrap" role="button"><svg class="xl-ico" aria-hidden="true"><use href="#i-play"/></svg> Start today's plan</span>
+              </div>
+              <div class="ab02-road">
+                <div class="ab02-lofi-col"><div class="ab02-lofi" style="height:64px"></div><div class="ab02-lofi" style="height:64px"></div><div class="ab02-lofi" style="height:64px"></div></div>
+                <div class="ab02-lofi-col"><div class="ab02-lofi" style="height:180px"></div><div class="ab02-lofi" style="height:120px"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>What it shows</h4>
+        <ul><li>The nav is data: the same <code>navForPath</code> renders this course's manifest <code>nav</code> block — its own item label (<b>Exercises</b>, item noun "exercise"), and <b>no "Mock interview"</b> because the manifest declares no mock.</li>
+          <li>Same URL segments as DSA (<code>/go-concurrency/problems</code> behind "Exercises"); only labels differ.</li></ul></section>
+      <section><h4>Fidelity</h4>
+        <ul><li>Illustrative: labels, counts and summary are placeholders for P's manifest, drawn at low fidelity (grey blocks for content). Full multi-course fidelity is ds-p-01's (AB02 revision); p-02 builds it.</li></ul></section>
+      <section><h4>Decision</h4>
+        <ul><li>ADR-0026 §5 / t0 §7: "same segments for every course; only labels differ"; a course may have no mock (PRD §5.1).</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ============================================================ narrow -->
+<section class="bd-section" id="AB02-F9" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">AB02-F9 · 390 px <small>narrow: collapsed rail, compact top bar, switcher as a sheet</small></h2>
+  <p class="bd-section__p">Below 720 px the sidebar starts <b>collapsed</b> to v1's 66 px icon rail (<code class="ds-mono">.xl-collapse-cb</code>: labels, caps and badges hide; the learner can still expand it), the top bar drops to crumbs (the last two segments: <code class="ds-mono">xlearn / dsa</code>, <code class="ds-mono">dsa / revision</code>) · selector (short code only) · avatar, and the course switcher opens as a <b>full-width bottom sheet</b>. The coach model switcher and bell move out of the bar (Settings and the avatar menu keep them).</p>
+  <div class="bd-narrow-row">
+
+    <article class="bd-frame bd-narrow" id="AB02-N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1 · AB02-F1/F9</span><span class="bd-frame__state">· Roadmap, collapsed rail</span></header>
+      <div class="bd-frame__body">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav" >
+              <a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a>
+              <a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a>
+              <a class="xl-nav__item" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a>
+              <a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a>
+              <div class="xl-nav__cap">Practice loop</div>
+              <a class="xl-nav__item" aria-label="Revision, 4 due"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision <span class="xl-nav__badge xl-nav__badge--teal">4</span></a>
+              <a class="xl-nav__item" aria-label="Mistakes, 3 open"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes <span class="xl-nav__badge">3</span></a>
+              <a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a>
+            </nav>
+            <div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab02-top" style="padding:0 12px;gap:8px">
+              <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><b>dsa</b></div>
+              <span class="ab02-flex"></span>
+              <span class="ab02-topsw__btn" role="button" aria-haspopup="true" aria-label="Switch curriculum: Data Structures &amp; Algorithms"><span class="xl-pathsw__ic">DSA</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="xl-content" style="padding:18px 14px 28px">
+              <div class="ab02-nhead">
+                <div><div class="xl-eyebrow">Learning path · /xlearn/dsa</div><h1 style="margin-top:6px">Data Structures &amp; Algorithms</h1>
+                  <p>16 weeks · 4 phases · 151 problems · Go-first.</p></div>
+                <span class="ds-btn ds-btn--primary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start today's plan</span>
+              </div>
+              <div class="ab02-phase">
+                <div class="ab02-phase__h"><span class="ab02-phase__n">PHASE 1</span><h2>Fundamentals</h2><span class="ab02-phase__pct">58%</span></div>
+                <div class="ab02-week"><div class="ab02-week__rail"><span class="ab02-week__n">1</span><span class="ab02-week__line"></span></div>
+                  <div class="ds-card" style="flex:1;margin-bottom:10px;padding:12px 14px"><div class="ab02-week__t"><b>Week 1 · Arrays, Strings, Hashing, Prefix Sums</b></div><div class="ab02-week__m"><span class="ab02-ok">3 Easy</span><span class="ab02-mut">·</span><span class="ab02-warn">3 Med</span></div></div></div>
+                <div class="ab02-week"><div class="ab02-week__rail"><span class="ab02-week__n">2</span><span class="ab02-week__line"></span></div>
+                  <div class="ds-card" style="flex:1;margin-bottom:10px;padding:12px 14px"><div class="ab02-week__t"><b>Week 2 · Two Pointers &amp; Sliding Window</b></div><div class="ab02-week__m"><span class="ab02-warn">2 Med</span><span class="ab02-mut">·</span><span class="ab02-err">1 Hard</span></div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Rail items keep an <code>aria-label</code> (their text is hidden at 0 px). The summary column stacks below the phases. Touch targets ≥ 37 px (v1 nav item height).</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB02-N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2 · AB02-F3/F9</span><span class="bd-frame__state">· switcher as a sheet</span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage ab02-stage-phone">
+          <div class="xl-app">
+            <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar">
+            <aside class="xl-side">
+              <div class="xl-brand"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+              <nav class="xl-nav"><a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item xl-nav__item--active"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a><a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a><a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a></nav>
+            </aside>
+            <div class="xl-main">
+              <div class="xl-topbar" style="padding:0 12px;gap:8px"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><b>dsa</b></div><span class="ab02-flex"></span><span class="ab02-topsw__btn" aria-expanded="true"><span class="xl-pathsw__ic">DSA</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span><span class="ds-avatar xl-topbar__avatar">S</span></div>
+              <div class="xl-content" style="padding:18px 14px 28px"><div class="xl-eyebrow">Learning path · /xlearn/dsa</div><h1 style="margin-top:6px;font-size:21px">Data Structures &amp; Algorithms</h1></div>
+            </div>
+          </div>
+          <div class="ab02-scrim" aria-hidden="true"></div>
+          <div class="ab02-sheet" role="dialog" aria-modal="true" aria-labelledby="n2-t">
+            <div class="ab02-sheet__grab" aria-hidden="true"></div>
+            <div class="ab02-sheet__h"><b id="n2-t">Switch curriculum</b><span class="ds-iconbtn" aria-label="Close"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+            <span class="xl-pathsw__opt xl-pathsw__opt--active bd-focus" role="menuitem"><span class="ds-dot ds-dot--ok"></span> Data Structures &amp; Algorithms</span>
+            <span class="xl-pathsw__opt" role="menuitem"><span class="ds-dot ds-dot--ok"></span> Go Concurrency Patterns <span class="ds-badge ds-badge--violet" style="height:19px;font-size:10.5px;margin-left:auto">Preview</span></span>
+            <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> System Design Interviews · <i>Coming soon</i></div>
+            <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Low-Level / OOD · <i>Coming soon</i></div>
+            <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> SQL &amp; Data Modeling · <i>Coming soon</i></div>
+            <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Behavioral &amp; Storytelling · <i>Coming soon</i></div>
+            <div class="xl-acct-sep"></div>
+            <span class="xl-pathsw__opt" role="menuitem" style="color:var(--ds-dim)"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-grid"/></svg> Browse all paths</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Same rows and copy as F3; rows ≥ 44 px tall. Sheet title reuses the button's label ("Switch curriculum"). Focus is trapped; Esc, the scrim and Close dismiss it; reduced motion: no slide.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB02-N3">
+      <header class="bd-frame__label"><span class="bd-frame__id">N3 · AB02-F6</span><span class="bd-frame__state">· unknown course</span></header>
+      <div class="bd-frame__body">
+        <div class="xl-app" style="min-height:480px">
+          <div class="xl-main">
+            <div class="xl-topbar" style="padding:0 12px;gap:8px"><span class="ab02-brand"><span class="ab02-mark">x</span><span class="ab02-name">x<b>Learn</b></span></span><span class="ab02-flex"></span><span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span></div>
+            <div class="xl-content" style="padding:18px 14px 28px">
+              <div class="ab02-nhead"><div><div class="xl-eyebrow">404</div><h1 style="margin-top:6px">Page not found</h1><p>That route doesn't exist in xLearn.</p></div></div>
+              <span class="ds-btn ds-btn--secondary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-today"/></svg> Back to Today</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>v1 copy and target; nothing else changes.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB02-N4">
+      <header class="bd-frame__label"><span class="bd-frame__id">N4 · AB02-F4</span><span class="bd-frame__state">· coming_soon teaser</span></header>
+      <div class="bd-frame__body">
+        <div class="xl-app" style="min-height:560px">
+          <div class="xl-main">
+            <div class="xl-topbar" style="padding:0 12px;gap:8px"><span class="ab02-brand"><span class="ab02-mark">x</span><span class="ab02-name">x<b>Learn</b></span></span><span class="ab02-flex"></span><span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span></div>
+            <div class="xl-content" style="padding:18px 14px 28px">
+              <div class="ds-card ab02-teaser" style="margin-top:4px;padding:20px">
+                <div class="ab02-teaser__row"><span class="ab02-teaser__ic"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-server"/></svg></span><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Coming soon</span></div>
+                <div class="xl-eyebrow">Learning path · /xlearn/system-design</div>
+                <h1 style="font-size:21px">System Design Interviews</h1>
+                <p>Scalable systems, trade-offs, and the whiteboard narrative — timed design rounds with rubric scoring.</p>
+                <div class="ab02-mono">12 weeks · 40 problems</div>
+                <p>This course isn't open yet. It opens here when it's ready.</p>
+                <div><span class="ds-btn ds-btn--secondary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-grid"/></svg> Back to catalog</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>The card fills the width; no sidebar, as at 1440 px.</li></ul></aside>
+    </article>
+
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB02 · Course nav · drafted in ds-m1-01 (full fidelity in ds-p-01) · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only.
+  Sample data: learner progress, streak, badges, dates and the go-concurrency manifest (illustrative).
+</footer>
+</main>
+</body>
+</html>

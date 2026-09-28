@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB03 · Revision v2 — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB03 board-local layout (prefix ab03-). Tokens only; never restyles a ds- or xl- class. */
+  .ab03-flex { flex: 1; }
+  .ab03-top { position: relative; z-index: 20; }
+  .ab03-topsw__btn { display: inline-flex; align-items: center; gap: 9px; height: 34px; padding: 0 10px; max-width: 260px;
+    background: var(--ds-panel-2); border: 1px solid var(--ds-line-2); border-radius: 8px; color: var(--ds-text); font-size: 12.5px; }
+  .ab03-topsw__btn .xl-pathsw__t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ab03-pageh p { margin-top: 8px; }
+  .ab03-pageh p { max-width: 640px; font-size: 13.5px; }
+  .ab03-pageh p b { color: var(--ds-text); }
+  .ab03-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; align-items: start; }
+  .ab03-col { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+  .ab03-list { display: flex; flex-direction: column; gap: 12px; }
+  .ab03-banner { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .ab03-banner b { font-size: 13.5px; }
+  .ab03-banner__sub { font-size: 12px; color: var(--ds-dim); margin-top: 2px; }
+  .ab03-banner--warn { padding: 16px; border: 1px solid rgba(240,180,41,.35); background: rgba(240,180,41,.08); border-radius: var(--ds-radius); }
+  .ab03-ic-warn { display: inline-flex; flex: none; color: var(--ds-warn); }
+  .ab03-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .ab03-id { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-dim); }
+  .ab03-title { font-size: 14.5px; font-weight: 600; color: var(--ds-text); }
+  .ab03-fmt b { font-family: var(--ds-font-mono); font-weight: 600; color: var(--ds-text); }
+  .ab03-dots { margin-top: 10px; }
+  .ab03-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .ab03-foot > span { font-size: 11.5px; color: var(--ds-dim); }
+  .ab03-course { font-family: var(--ds-font-mono); font-weight: 700; }
+  .ab03-active { padding: 0; }
+  .ab03-active__h { padding: 14px 16px; border-bottom: 1px solid var(--ds-line); }
+  .ab03-active__b { padding: 16px; }
+  .ab03-timerrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .ab03-timerrow span { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ds-dim); }
+  .ab03-timer { font-family: var(--ds-font-mono); font-size: 20px; font-variant-numeric: tabular-nums; color: var(--ds-teal); }
+  .ab03-editor { width: 100%; min-height: 150px; resize: vertical; background: var(--ds-input-bg); color: var(--ds-text); border: 1px solid var(--ds-line-2);
+    border-radius: 8px; padding: 12px; font-family: var(--ds-font-mono); font-size: 12.5px; line-height: 1.6; margin-bottom: 12px; display: block; }
+  .ab03-editor::placeholder { color: var(--ds-dim); }
+  .ab03-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .ab03-tile { display: flex; align-items: center; gap: 10px; text-align: left; }
+  .ab03-tile__l { font-size: 12.5px; font-weight: 600; display: block; }
+  .ab03-tile__h { font-size: 11px; color: var(--ds-dim); }
+  .ab03-small { font-size: 11.5px; color: var(--ds-dim); margin: 0 0 12px; }
+  .ab03-result__h { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .ab03-result__h b { font-size: 13.5px; }
+  .ab03-result p { font-size: 12.5px; color: var(--ds-dim); margin: 0 0 8px; }
+  .ab03-reveal { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--ds-dim); margin: 10px 0 2px; }
+  .ab03-btnrow { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .ab03-rail { display: flex; flex-direction: column; gap: 16px; }
+  .ab03-step { display: flex; gap: 10px; align-items: flex-start; }
+  .ab03-step b { font-family: var(--ds-font-mono); font-size: 11px; color: var(--ds-teal); margin-top: 1px; }
+  .ab03-step span { font-size: 12px; color: var(--ds-dim); line-height: 1.5; }
+  .ab03-legend { display: flex; gap: 14px; flex-wrap: wrap; }
+  .ab03-legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ds-dim); }
+  .ab03-overdue { font-family: var(--ds-font-mono); font-size: 11px; color: var(--ds-warn); }
+  .ab03-seg-row { display: flex; align-items: center; gap: 10px; }
+  .ab03-empty { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .ab03-empty b { font-size: 13.5px; }
+  .ab03-empty__sub { font-size: 12px; color: var(--ds-dim); margin-top: 2px; }
+  /* narrow */
+  .ab03-nhead { border-bottom: 1px solid var(--ds-line); padding-bottom: 14px; margin-bottom: 16px; }
+  .ab03-nhead h1 { font-size: 22px; font-weight: 700; }
+  .ab03-tiles--stack { grid-template-columns: minmax(0, 1fr); }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5" /><path d="M6 10.2V19h12v-8.8" /></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7 9 5z" /><path d="M9 5v12M15 7v12" /></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4" /></symbol>
+  <symbol id="i-journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 3v18M12.5 8h3.5M12.5 12h3.5" /></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.4" /><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" /></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V11M10 19V5M16 19v-6" /><path d="M3 21h18" /></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A2 2 0 0 1 7 3h12v15H7a2 2 0 0 0-2 2z" /><path d="M5 4.5V19" /></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6" /><path d="M10 20a2 2 0 0 0 4 0" /></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></symbol>
+  <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9" /></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" /></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4" /></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c.5 3 3.5 4 3.5 8a3.5 3.5 0 0 1-7 0c0-1.5.7-2.3 1.2-3 .3 1 .9 1.6 1.5 1.8-.3-2.5-.8-4.8.8-6.8z" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M18 5l2 2M15 8l2 2" /></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" /></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z" /><path d="M12 10v4M12 17h.01" /></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.5" /></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" /></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5z" /><path d="M3 12.5 12 17l9-4.5M3 17 12 21.5 21 17" /></symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 8l4 4 5-7 5 7 4-4v9H3z" /></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 5.3a3.2 3.2 0 0 1 0 5.4M18 13.6a6.5 6.5 0 0 1 3.5 6.4" /></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-3.8 10.6c.8.7 1.3 1.5 1.3 2.4h5c0-.9.5-1.7 1.3-2.4A6 6 0 0 0 12 3z" /></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 3.5L16 11H5" /></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z" /></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></symbol>
+  <symbol id="i-signout" viewBox="0 0 24 24"><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" /><path d="M16 12H8M13 8l4 4-4 4" /></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2" /><rect x="3" y="14" width="18" height="7" rx="2" /><path d="M7 7.5h.01M7 17.5h.01" /></symbol>
+  <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.4" /><circle cx="6" cy="19" r="2.4" /><circle cx="18" cy="8" r="2.4" /><path d="M6 7.4v9.2M6 12h6a4 4 0 0 0 4-4" /></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6" /></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.5A8 8 0 1 1 21 12z" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · M1 board</div>
+  <h1>AB03 · Revision v2</h1>
+  <p class="bd-lede">
+    The Revision queue with <b>manifest-driven format badges</b> and the <b>withheld pattern</b>. A due or active
+    touch never shows the pattern it's testing (the learner has to name it); the chip appears only after the touch is
+    scored. Everything else is v1's queue. Badges are placeholders until M2a's touch formats make them real data.
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-m1-01.md">ds-m1-01</a></span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-m1-06.md">m1-06</a> (F1–F4, F6, F9) · <a href="../../../docs/v2/sprints/sprint-m2-04.md">m2-04</a> (F5, F7) · <a href="../../../docs/v2/sprints/sprint-p-02.md">p-02</a> (F5, F8)</span>
+    <span><b>Frozen before</b>M1b</span>
+    <span><b>Sources</b><a href="../../../docs/prd/xlearn-v2-prd.md#51-method-universal-vs-per-course">PRD §5.1–5.2</a> (R-SR2) · D3 ·
+      <a href="../../../docs/adr/0027-content-evalpack-and-user-data-model.md#1-the-publicprivate-rule">ADR-0027 §1</a> ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#64-concepts-to-revise">t4 §6.4</a> ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#66-touch-formats-and-pass-criteria-per-course">t4 §6.6</a> · D4 (R-SR5 per course)</span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB03-F1">F1</a><a href="#AB03-F2">F2</a><a href="#AB03-F3">F3</a><a href="#AB03-F4">F4</a><a href="#AB03-F5">F5</a>
+    <a href="#AB03-F6">F6</a><a href="#AB03-F7">F7</a><a href="#AB03-F8">F8</a><a href="#AB03-F9">F9 · 390 px</a>
+  </nav>
+</header>
+
+<section class="bd-section" aria-labelledby="sec-badges">
+  <h2 class="bd-section__h" id="sec-badges">Format badge rule <small>t4 §6.6 · m1-01 manifest</small></h2>
+  <div class="bd-strip">
+    <span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span> <span>DSA L1–3</span>
+    <span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · mock conditions · <b>20:00</b></span><span class="ds-badge ds-badge--violet">mock</span> <span>DSA L4–5 (v1's violet <code class="ds-mono">mock</code> badge kept)</span>
+    <span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Recall · <b>~5 min</b></span> <span>a recall band (e.g. go-concurrency L1–3, from P)</span>
+    <span>Label = <code class="ds-mono">revision.bands[L].label</code> (+ "mock conditions" when <code class="ds-mono">mock_mode</code>) · a <b>timer</b> band shows its timer as <code class="ds-mono">mm:ss</code>; an untimed band shows <b>~N min</b> from <code class="ds-mono">plan.est_minutes["touch_" + band.format]</code> — never a number in code.</span>
+  </div>
+</section>
+
+<!-- ========================================================== F1 -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · DSA queue and the re-solve <small>F1–F4 · m1-06</small></h2>
+
+  <article class="bd-frame" id="AB03-F1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB03-F1</span><span class="bd-frame__title">· Due queue (DSA)</span><span class="bd-frame__state">· /xlearn/dsa/revision · 4 due</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">badges + withheld pattern</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav">
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a>
+              <div class="xl-nav__cap">Practice loop</div>
+              <a class="xl-nav__item xl-nav__item--active" aria-current="page"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision <span class="xl-nav__badge xl-nav__badge--teal">4</span></a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes <span class="xl-nav__badge">3</span></a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a>
+            </nav>
+            <div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab03-top">
+              <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><b>revision</b></div>
+              <span class="ab03-flex"></span>
+              <span class="ab03-topsw__btn"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="xl-content">
+              <div class="xl-page-h ab03-pageh" style="border-bottom:1px solid var(--ds-line);padding-bottom:16px;margin-bottom:20px">
+                <div>
+                  <div class="xl-eyebrow">Spaced repetition · the five-touch schedule</div>
+                  <h1 style="margin-top:6px;font-size:26px;font-weight:700;letter-spacing:-.3px">Revision queue</h1>
+                  <p>Reviews are <b>re-solves from a blank editor</b>, not re-reads — and they take priority over new problems. <b>4 due today.</b></p>
+                </div>
+                <div class="ds-seg" role="group" aria-label="Queue scope"><span class="ds-seg__btn ds-seg__btn--on" aria-pressed="true">This course</span><span class="ds-seg__btn" aria-pressed="false">All courses</span></div>
+              </div>
+              <div class="ab03-grid">
+                <div class="ab03-col">
+                  <div class="ds-card ds-card--teal ab03-banner" style="padding:16px"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg>
+                    <div class="ab03-flex"><b>4 reviews due — clear these before new problems.</b><div class="ab03-banner__sub">Start with the most fragile (Day 1) touches while they're fresh.</div></div>
+                    <span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start next review</span>
+                  </div>
+
+                  <section class="xl-sect" style="margin-bottom:0">
+                    <div class="xl-sect__h"><h2>Due · Day 1</h2><span class="ds-mono" style="font-size:11px;color:var(--ds-dim)">touch 1</span></div>
+                    <div class="ds-card">
+                      <div class="ab03-line"><span class="ab03-id">#5</span><span class="ab03-title">Group Anagrams</span><span class="xl-diff xl-diff--med">Medium</span><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span></div>
+                      <div class="xl-touch ab03-dots"><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div>
+                      <div class="xl-touch__lab" style="margin-top:4px"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div>
+                      <div class="ab03-foot"><span>Day 1 touch · re-solve from a blank editor</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg> Re-solve from blank</span></div>
+                    </div>
+                  </section>
+
+                  <section class="xl-sect" style="margin-bottom:0">
+                    <div class="xl-sect__h"><h2>Due · Day 3</h2><span class="ds-mono" style="font-size:11px;color:var(--ds-dim)">touch 2</span></div>
+                    <div class="ds-card">
+                      <div class="ab03-line"><span class="ab03-id">#1</span><span class="ab03-title">Two Sum</span><span class="xl-diff xl-diff--easy">Easy</span><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span></div>
+                      <div class="xl-touch ab03-dots"><span class="xl-touch__d"></span><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div>
+                      <div class="xl-touch__lab" style="margin-top:4px"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div>
+                      <div class="ab03-foot"><span>Day 3 touch · re-solve from a blank editor</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg> Re-solve from blank</span></div>
+                    </div>
+                  </section>
+
+                  <section class="xl-sect" style="margin-bottom:0">
+                    <div class="xl-sect__h"><h2>Due · Day 7</h2><span class="ds-mono" style="font-size:11px;color:var(--ds-dim)">touch 3</span></div>
+                    <div class="ds-card">
+                      <div class="ab03-line"><span class="ab03-id">#7</span><span class="ab03-title">Top K Frequent Elements</span><span class="xl-diff xl-diff--med">Medium</span><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span></div>
+                      <div class="xl-touch ab03-dots"><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div>
+                      <div class="xl-touch__lab" style="margin-top:4px"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div>
+                      <div class="ab03-foot"><span>Day 7 touch · re-solve from a blank editor</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg> Re-solve from blank</span></div>
+                    </div>
+                  </section>
+
+                  <section class="xl-sect" style="margin-bottom:0">
+                    <div class="xl-sect__h"><h2>Due · Day 21 · mock conditions</h2><span class="ds-mono" style="font-size:11px;color:var(--ds-dim)">touch 4</span></div>
+                    <div class="ds-card">
+                      <div class="ab03-line"><span class="ab03-id">#23</span><span class="ab03-title">Largest Rectangle in Histogram</span><span class="xl-diff xl-diff--hard">Hard</span><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · mock conditions · <b>20:00</b></span><span class="ds-badge ds-badge--violet">mock</span></div>
+                      <div class="xl-touch ab03-dots"><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d xl-touch__d--mock"></span><span class="xl-touch__d"></span></div>
+                      <div class="xl-touch__lab" style="margin-top:4px"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div>
+                      <div class="ab03-foot"><span>Day 21 · mock conditions — talk aloud, no notes</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg> Re-solve from blank</span></div>
+                    </div>
+                  </section>
+
+                  <section class="xl-sect" style="margin-bottom:0">
+                    <div class="xl-sect__h"><h2>Coming up</h2></div>
+                    <div class="ds-card" style="opacity:.85">
+                      <div class="ab03-line"><span class="ab03-id">#2</span><span class="ab03-title">Valid Anagram</span><span class="xl-diff xl-diff--easy">Easy</span><span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Hashing</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span></div>
+                      <div class="xl-touch ab03-dots"><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div>
+                      <div class="xl-touch__lab" style="margin-top:4px"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div>
+                      <div class="ab03-foot"><span>Day 7 · due Oct 1</span><span class="ds-badge" style="font-size:10.5px">Not due yet</span></div>
+                    </div>
+                  </section>
+                </div>
+                <aside class="ab03-rail">
+                  <div class="xl-panel">
+                    <div class="xl-panel__h" style="padding:10px 14px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-bulb"/></svg><h3 style="font-size:13px">How a review works</h3></div>
+                    <div class="xl-panel__b" style="padding:14px;display:flex;flex-direction:column;gap:10px">
+                      <div class="ab03-step"><b>01</b><span>Re-solve from a blank editor with a 20-min timer. Never a re-read.</span></div>
+                      <div class="ab03-step"><b>02</b><span>Auto-scored — passes only if: pattern named &lt; 2 min · solved in-timer · complexity stated.</span></div>
+                      <div class="ab03-step"><b>03</b><span>A miss on any check resets the clock to Day 1.</span></div>
+                      <div class="ab03-step"><b>04</b><span>Day 21 &amp; 45 run under mock conditions — talk aloud, no notes.</span></div>
+                    </div>
+                  </div>
+                  <div class="xl-panel">
+                    <div class="xl-panel__h" style="padding:10px 14px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg><h3 style="font-size:13px">The five touches</h3></div>
+                    <div class="xl-panel__b" style="padding:14px">
+                      <div class="xl-touch"><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div>
+                      <div class="xl-touch__lab" style="margin:4px 0 12px"><span>1</span><span>3</span><span>7</span><span>21</span><span>45</span></div>
+                      <div class="ab03-legend"><span><span class="xl-touch__d xl-touch__d--pass"></span> passed</span><span><span class="xl-touch__d xl-touch__d--due"></span> due</span><span><span class="xl-touch__d xl-touch__d--fail"></span> failed</span></div>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>What changes vs v1</h4>
+        <ul><li><b>Pattern withheld:</b> every due row shows <code>xl-lock</code> "Pattern hidden while due" where v1 showed the <code>xl-pat</code> chip (<code>Revision.tsx:235-237</code>). The due payload carries no pattern: the server strips it (m1-06 <code>withhold()</code>, lists: <code>live(s)</code>). The lock is not a hidden value — there's nothing in the DOM to reveal.</li>
+          <li><b>Format badge</b> per row from the manifest band for its <code>touchLevel</code> (rule strip above). L4–5 keep v1's violet <code>mock</code> badge and dashed mock dot.</li>
+          <li><b>Scope toggle</b> "This course · All courses" (F8); course-scoped by default. Built in p-02; m1-06 omits the control until then.</li>
+          <li>Everything else is v1 copy and layout: banner, group heads, touch dots, notes, buttons, right rail.</li></ul></section>
+      <section><h4>Coming up (not due)</h4>
+        <ul><li>A row that isn't due and whose item has concluded with a pass keeps v1's pattern chip: nothing is live (ADR-0027 §1; t4 §6.4 withholds only while live).</li>
+          <li>Conservative reading for M2 (R-SR1, a Miss also gets a ladder): a never-solved item keeps the lock on every row until it's solved.</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>R-SR2 (touch format per band), ADR-0027 §1 / t4 §6.4 (withhold while due; fixes the leaking chip), D3.</li>
+          <li>The lock reads as text ("Pattern hidden while due"); its muted colour is a theme debt (3.4:1), so the meaning is also in the group head ("Due · …"). Badge text 7.4:1. Focus order per card: title link → Re-solve from blank.</li>
+          <li>&lt; 1024 px: the right rail drops below the queue; rows become full-width cards (F9).</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide">
+    <!-- F2 -->
+    <article class="bd-frame" id="AB03-F2">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB03-F2</span><span class="bd-frame__title">· Active re-solve</span><span class="bd-frame__state">· #1 Two Sum · Day 3 · 18:42 left</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">pattern hidden</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="xl-panel ab03-active">
+            <div class="ab03-active__h">
+              <div class="ab03-line"><span class="ab03-id">#1</span><span class="ab03-title">Two Sum</span><span class="xl-diff xl-diff--easy">Easy</span><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span></div>
+              <div class="xl-touch ab03-dots"><span class="xl-touch__d"></span><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div>
+              <div class="xl-touch__lab" style="margin-top:4px"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div>
+            </div>
+            <div class="ab03-active__b">
+              <div class="ab03-timerrow"><span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve from blank — no peeking at the solution.</span><b class="ab03-timer" role="timer" aria-label="18:42 remaining">18:42</b></div>
+              <textarea class="ab03-editor" spellcheck="false" aria-label="Your re-solve" placeholder="// re-implement #1 from memory — a blank editor, not a re-read"></textarea>
+              <div class="ab03-tiles">
+                <span class="ds-card ds-card--interactive ab03-tile" role="button" aria-pressed="true" style="padding:9px 12px"><span class="xl-touch__d xl-touch__d--pass"></span><span class="ab03-flex"><span class="ab03-tile__l">Named the pattern</span><span class="ab03-tile__h">named at 0:48 ✓ under 2 min</span></span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span>
+                <span class="ds-card ds-card--interactive ab03-tile" role="button" aria-pressed="true" style="padding:9px 12px"><span class="xl-touch__d xl-touch__d--pass"></span><span class="ab03-flex"><span class="ab03-tile__l">Solved within the timer</span><span class="ab03-tile__h">solved before the 20:00 timer</span></span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span>
+                <span class="ds-card ab03-tile" role="button" aria-pressed="false" style="padding:9px 12px"><span class="xl-touch__d"></span><span class="ab03-flex"><span class="ab03-tile__l">Stated the complexity</span><span class="ab03-tile__h">time &amp; space, out loud</span></span></span>
+              </div>
+              <p class="ab03-small">Scored automatically — passes only if the pattern is named in under 2 minutes, solved in-timer, and complexity stated. Any miss resets this problem to Day 1.</p>
+              <span class="ds-btn ds-btn--primary ds-btn--block" role="button">Submit re-solve for auto-score</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>The expanded card of v1 (<code>ResolvePanel</code>): timer from the band (<code>20:00</code>; ≤ 2:00 turns amber, 0 turns red), blank editor, v1's three criteria tiles and copy, auto-score submit.</li>
+          <li><b>Pattern still hidden:</b> the learner names it. "Named the pattern" records the moment they recognise it; the name itself is never shown here. From M2a the tile becomes a probe the learner types (AB04, t4 §6.6 <code>pattern_named_fast</code>).</li>
+          <li>No hint stage exists in a revision re-solve, so the chip doesn't appear before scoring.</li></ul>
+        <h4>Decision</h4>
+        <ul><li>R-SR2: DSA criteria stay "pattern named &lt; 2 min · correct within the timer · complexity stated".</li></ul>
+        <h4>A11y</h4>
+        <ul><li>Timer <code>role="timer"</code>, announced at 5:00, 2:00 and 0:00 only. Tiles are toggle buttons (<code>aria-pressed</code>). Focus order: editor → tiles → Submit. Reduced motion: no ticking animation.</li></ul>
+      </aside>
+    </article>
+
+    <div class="ab03-col" style="gap:22px">
+      <!-- F3 -->
+      <article class="bd-frame" id="AB03-F3" style="margin:0">
+        <header class="bd-frame__label"><span class="bd-frame__id">AB03-F3</span><span class="bd-frame__title">· Scored pass</span><span class="bd-frame__state">· pattern revealed · advances to Day 7</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">reveal</span></span></header>
+        <div class="bd-frame__body">
+          <div class="bd-pad">
+            <div class="xl-panel ab03-active">
+              <div class="ab03-active__h">
+                <div class="ab03-line"><span class="ab03-id">#1</span><span class="ab03-title">Two Sum</span><span class="xl-diff xl-diff--easy">Easy</span><span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Hashing</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span></div>
+              </div>
+              <div class="ab03-active__b">
+                <div class="ds-card ds-card--teal ab03-result" role="status" style="padding:16px">
+                  <div class="ab03-result__h"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg><b style="color:var(--ds-ok)">Auto-logged · Passed — advances to Day 7</b></div>
+                  <p>All three auto-checks cleared. Next review Day 7.</p>
+                  <div class="ab03-reveal">Pattern <span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Hashing</span></div>
+                  <div class="xl-touch ab03-dots"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div>
+                </div>
+                <div class="ab03-btnrow"><span class="ds-btn ds-btn--primary ds-btn--sm" role="button">Next review</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Open #1</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <aside class="bd-notes">
+          <ul><li>After scoring the touch has concluded, so <code>withhold()</code> no longer applies: the score response carries the pattern, and the chip appears in the card header and the result. v1 result copy otherwise unchanged.</li>
+            <li>Result is <code>role="status"</code>; focus moves to "Next review".</li></ul>
+        </aside>
+      </article>
+
+      <!-- F4 -->
+      <article class="bd-frame" id="AB03-F4" style="margin:0">
+        <header class="bd-frame__label"><span class="bd-frame__id">AB03-F4</span><span class="bd-frame__title">· Scored fail</span><span class="bd-frame__state">· reset to Day 1 · mistake entry open</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">reveal + link</span></span></header>
+        <div class="bd-frame__body">
+          <div class="bd-pad">
+            <div class="xl-panel ab03-active">
+              <div class="ab03-active__h">
+                <div class="ab03-line"><span class="ab03-id">#7</span><span class="ab03-title">Top K Frequent Elements</span><span class="xl-diff xl-diff--med">Medium</span><span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Heap / Bucket Sort</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span></div>
+              </div>
+              <div class="ab03-active__b">
+                <div class="ds-card ab03-result ab03-result--fail" role="status" style="border-color:rgba(242,109,109,.35);padding:16px">
+                  <div class="ab03-result__h"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg><b style="color:var(--ds-err)">Auto-logged · Missed — reset to Day 1</b></div>
+                  <p>One of the three checks failed (pattern &lt; 2 min · solved in-timer · complexity stated), so the schedule rebuilds from Day 1 — the memory needs another pass.</p>
+                  <div class="ab03-reveal">Pattern <span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Heap / Bucket Sort</span> · <a>A mistake entry is open <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></a></div>
+                  <div class="xl-touch ab03-dots"><span class="xl-touch__d xl-touch__d--fail"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div>
+                </div>
+                <div class="ab03-btnrow"><span class="ds-btn ds-btn--primary ds-btn--sm" role="button">Next review</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Open #7</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <aside class="bd-notes">
+          <ul><li>Fail resets to Day 1 (R-SR3) and opens the item's journal entry (one open entry per item, PRD §5.1). "A mistake entry is open" links to <code>/:course/mistakes</code>, focused on that entry. Pattern revealed as in F3.</li>
+            <li>Red is carried by the heading words and the crossed dot, not colour alone (err 5.9:1 on panel-2).</li></ul>
+        </aside>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================= B · other states -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · Recall, empty, overdue, all courses <small>F5–F8</small></h2>
+  <div class="bd-grid bd-grid--wide">
+
+    <!-- F5 -->
+    <article class="bd-frame" id="AB03-F5">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB03-F5</span><span class="bd-frame__title">· Recall badge</span><span class="bd-frame__state">· all-courses view, non-DSA row</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag">low fidelity</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab03-list">
+          <div class="ds-card">
+            <div class="ab03-line"><span class="xl-tag ab03-course">GO</span><span class="ab03-id">#gc-14</span><span class="ab03-title">Spot the race: shared counter</span><span class="xl-diff xl-diff--med">Medium</span><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Recall · <b>~5 min</b></span></div>
+            <div class="xl-touch ab03-dots"><span class="xl-touch__d"></span><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div>
+            <div class="xl-touch__lab" style="margin-top:4px"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div>
+            <div class="ab03-foot"><span>Day 3 touch · a short recall check</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start recall</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>Rule</h4>
+        <ul><li>Label from the band (<code>revision.bands[L].label</code> = "Recall"); minutes from <code>plan.est_minutes["touch_" + band.format]</code> — the manifest's single minutes source (m1-01). An untimed band shows <b>~N min</b>; a timed one its <code>mm:ss</code>. Nothing is hard-coded.</li>
+          <li>Button verb follows the format ("Start recall"); the Touch screen itself is AB04's.</li>
+          <li>Item id, title and difficulty are illustrative (go-concurrency L1–3 is a checked recall, t4 §6.6). m1-06 builds only a fixture test for this badge; m2-04 and p-02 make it real.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F6 -->
+    <article class="bd-frame" id="AB03-F6">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB03-F6</span><span class="bd-frame__title">· Empty / caught up</span><span class="bd-frame__state">· nothing due today</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">copy</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab03-list">
+          <div class="ds-card ds-card--teal ab03-empty" style="padding:20px"><svg class="xl-ico" aria-hidden="true"><use href="#i-check"/></svg>
+            <div class="ab03-flex"><b>Nothing due today. Next review: Thu, Oct 8.</b><div class="ab03-empty__sub">New problems unlock while the queue is empty. Solve one and its five touches schedule automatically.</div></div>
+            <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Roadmap</span>
+          </div>
+          <div class="ab03-cap" style="font-family:var(--ds-font-mono);font-size:10.5px;color:var(--ds-dim);text-transform:uppercase;letter-spacing:.6px">Variant · no upcoming touch in the payload</div>
+          <div class="ds-card ds-card--teal ab03-empty" style="padding:20px"><svg class="xl-ico" aria-hidden="true"><use href="#i-check"/></svg>
+            <div class="ab03-flex"><b>Nothing due today.</b><div class="ab03-empty__sub">New problems unlock while the queue is empty. Solve one and its five touches schedule automatically.</div></div>
+            <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Roadmap</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Replaces v1's "Queue clear — no reviews due." heading; sub-line and Roadmap button are v1's. The date (learner-local, "Thu, Oct 8") renders only when the due payload carries the next upcoming touch; <code>GET /api/revision/due</code> doesn't today, so m1-06 ships the variant and logs the gap for m2-04.</li>
+          <li><code>role="status"</code> region; check icon + words.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F7 -->
+    <article class="bd-frame" id="AB03-F7">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB03-F7</span><span class="bd-frame__title">· Overdue</span><span class="bd-frame__state">· R-SR5 blocks new work in this course</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab03-list">
+          <div class="ab03-banner ab03-banner--warn" role="status"><span class="ab03-ic-warn"><svg class="xl-ico" aria-hidden="true"><use href="#i-alert"/></svg></span>
+            <div class="ab03-flex"><b>3 reviews overdue — new DSA problems wait until they're done.</b><div class="ab03-banner__sub">Your other courses aren't affected.</div></div>
+            <span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start next review</span>
+          </div>
+          <div class="ds-card">
+            <div class="ab03-line"><span class="ab03-id">#5</span><span class="ab03-title">Group Anagrams</span><span class="xl-diff xl-diff--med">Medium</span><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span><span class="ab03-overdue">overdue 2 days</span></div>
+            <div class="xl-touch ab03-dots"><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div>
+          </div>
+          <div class="ds-card">
+            <div class="ab03-line"><span class="ab03-id">#1</span><span class="ab03-title">Two Sum</span><span class="xl-diff xl-diff--easy">Easy</span><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span><span class="ab03-overdue">overdue 1 day</span></div>
+            <div class="xl-touch ab03-dots"><span class="xl-touch__d"></span><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Shown when the course has overdue touches (m2-04 defines "overdue" and builds the per-course block). The banner replaces F1's teal banner; the course name comes from the manifest short name.</li>
+          <li>R-SR5 is <b>per course</b> (D4): only this course's new problems wait. Rows add "overdue N days" (amber, text).</li>
+          <li>Deferred to m2-04: showing the banner before the block exists would be false copy.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F8 -->
+    <article class="bd-frame" id="AB03-F8">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB03-F8</span><span class="bd-frame__title">· All-courses toggle</span><span class="bd-frame__state">· merged, oldest first, course-tagged</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab03-list">
+          <div class="ab03-seg-row"><span class="ab03-flex" style="font-size:13px;color:var(--ds-dim)">5 due across 2 courses</span>
+            <div class="ds-seg" role="group" aria-label="Queue scope"><span class="ds-seg__btn" aria-pressed="false">This course</span><span class="ds-seg__btn ds-seg__btn--on" aria-pressed="true">All courses</span></div></div>
+          <div class="ds-card">
+            <div class="ab03-line"><span class="xl-tag ab03-course">DSA</span><span class="ab03-id">#23</span><span class="ab03-title">Largest Rectangle in Histogram</span><span class="xl-diff xl-diff--hard">Hard</span><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · mock conditions · <b>20:00</b></span><span class="ds-badge ds-badge--violet">mock</span></div>
+            <div class="ab03-foot"><span>Due Sep 25 · Day 21</span></div>
+          </div>
+          <div class="ds-card">
+            <div class="ab03-line"><span class="xl-tag ab03-course">GO</span><span class="ab03-id">#gc-14</span><span class="ab03-title">Spot the race: shared counter</span><span class="xl-diff xl-diff--med">Medium</span><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Recall · <b>~5 min</b></span></div>
+            <div class="ab03-foot"><span>Due Sep 26 · Day 3</span></div>
+          </div>
+          <div class="ds-card">
+            <div class="ab03-line"><span class="xl-tag ab03-course">DSA</span><span class="ab03-id">#5</span><span class="ab03-title">Group Anagrams</span><span class="xl-diff xl-diff--med">Medium</span><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span></div>
+            <div class="ab03-foot"><span>Due Sep 27 · Day 1</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Course-scoped by default (<code>/:course/revision</code>); "All courses" merges every enrolled course's due touches, <b>oldest due first</b> (PRD §5.4, D4), each row tagged with the course short code. Clicking a row opens it in its own course.</li>
+          <li>The choice persists per account; the sidebar badge stays course-scoped. Built in p-02 (needs a cross-course due queue).</li>
+          <li><code>ds-seg</code> buttons use <code>aria-pressed</code>; the count line is <code>aria-live="polite"</code> when the scope changes.</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================================ narrow -->
+<section class="bd-section" id="AB03-F9" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">AB03-F9 · 390 px <small>queue as cards, criteria tiles stacked</small></h2>
+  <p class="bd-section__p">Collapsed rail and compact top bar as in AB02-F9. The right rail ("How a review works", "The five touches") moves below the queue; the scope toggle wraps under the heading; criteria tiles stack one per row.</p>
+  <div class="bd-narrow-row">
+
+    <article class="bd-frame bd-narrow" id="AB03-N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1 · AB03-F1</span><span class="bd-frame__state">· due queue</span></header>
+      <div class="bd-frame__body">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav"><a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a><a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Revision, 4 due"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a><a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a></nav>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab03-top" style="padding:0 12px;gap:8px"><div class="xl-crumb"><a>dsa</a><span class="xl-crumb__sep">/</span><b>revision</b></div><span class="ab03-flex"></span><span class="ab03-topsw__btn"><span class="xl-pathsw__ic">DSA</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span><span class="ds-avatar xl-topbar__avatar">S</span></div>
+            <div class="xl-content" style="padding:18px 14px 28px">
+              <div class="ab03-nhead"><div class="xl-eyebrow">Spaced repetition</div><h1 style="margin-top:6px">Revision queue</h1><p style="font-size:13px;color:var(--ds-dim);margin-top:6px">Re-solves from a blank editor, not re-reads. <b style="color:var(--ds-text)">4 due today.</b></p>
+                <div class="ds-seg" role="group" aria-label="Queue scope" style="margin-top:12px"><span class="ds-seg__btn ds-seg__btn--on">This course</span><span class="ds-seg__btn">All courses</span></div></div>
+              <div class="ab03-list">
+                <div class="ds-card ds-card--teal ab03-banner" style="padding:14px"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg><div class="ab03-flex"><b>4 reviews due — clear these before new problems.</b></div><span class="ds-btn ds-btn--primary ds-btn--sm ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start next review</span></div>
+                <div class="ds-card">
+                  <div class="ab03-line"><span class="ab03-id">#5</span><span class="ab03-title">Group Anagrams</span><span class="xl-diff xl-diff--med">Medium</span></div>
+                  <div class="ab03-line" style="margin-top:8px"><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span></div>
+                  <div class="xl-touch ab03-dots"><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div>
+                  <div class="ab03-foot"><span>Day 1 touch · re-solve from a blank editor</span><span class="ds-btn ds-btn--secondary ds-btn--sm ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg> Re-solve from blank</span></div>
+                </div>
+                <div class="ds-card">
+                  <div class="ab03-line"><span class="ab03-id">#23</span><span class="ab03-title">Largest Rectangle in Histogram</span><span class="xl-diff xl-diff--hard">Hard</span></div>
+                  <div class="ab03-line" style="margin-top:8px"><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · mock conditions · <b>20:00</b></span><span class="ds-badge ds-badge--violet">mock</span></div>
+                  <div class="xl-touch ab03-dots"><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d xl-touch__d--mock"></span><span class="xl-touch__d"></span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Badges wrap to a second line under the title; buttons go full width. Crumbs keep the last two segments (AB02-F9).</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB03-N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2 · AB03-F2</span><span class="bd-frame__state">· active re-solve, tiles stacked</span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad" style="padding:14px">
+          <div class="xl-panel ab03-active">
+            <div class="ab03-active__h">
+              <div class="ab03-line"><span class="ab03-id">#1</span><span class="ab03-title">Two Sum</span><span class="xl-diff xl-diff--easy">Easy</span></div>
+              <div class="ab03-line" style="margin-top:8px"><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span><span class="xl-tag ab03-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span></div>
+            </div>
+            <div class="ab03-active__b">
+              <div class="ab03-timerrow"><span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> No peeking at the solution.</span><b class="ab03-timer">18:42</b></div>
+              <textarea class="ab03-editor" aria-label="Your re-solve" placeholder="// re-implement #1 from memory — a blank editor, not a re-read"></textarea>
+              <div class="ab03-tiles ab03-tiles--stack">
+                <span class="ds-card ds-card--interactive ab03-tile" style="padding:9px 12px"><span class="xl-touch__d xl-touch__d--pass"></span><span class="ab03-flex"><span class="ab03-tile__l">Named the pattern</span><span class="ab03-tile__h">named at 0:48 ✓ under 2 min</span></span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span>
+                <span class="ds-card ds-card--interactive ab03-tile" style="padding:9px 12px"><span class="xl-touch__d xl-touch__d--pass"></span><span class="ab03-flex"><span class="ab03-tile__l">Solved within the timer</span><span class="ab03-tile__h">solved before the 20:00 timer</span></span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span>
+                <span class="ds-card ab03-tile" style="padding:9px 12px"><span class="xl-touch__d"></span><span class="ab03-flex"><span class="ab03-tile__l">Stated the complexity</span><span class="ab03-tile__h">time &amp; space, out loud</span></span></span>
+              </div>
+              <span class="ds-btn ds-btn--primary ds-btn--block" role="button">Submit re-solve for auto-score</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>The timer stays visible at the top of the card while the editor scrolls. Tiles ≥ 44 px tall.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB03-N3">
+      <header class="bd-frame__label"><span class="bd-frame__id">N3 · AB03-F4</span><span class="bd-frame__state">· scored fail</span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad" style="padding:14px">
+          <div class="xl-panel ab03-active">
+            <div class="ab03-active__h">
+              <div class="ab03-line"><span class="ab03-id">#7</span><span class="ab03-title">Top K Frequent Elements</span><span class="xl-diff xl-diff--med">Medium</span></div>
+              <div class="ab03-line" style="margin-top:8px"><span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Heap / Bucket Sort</span></div>
+            </div>
+            <div class="ab03-active__b">
+              <div class="ds-card ab03-result ab03-result--fail" role="status" style="border-color:rgba(242,109,109,.35);padding:16px">
+                <div class="ab03-result__h"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg><b style="color:var(--ds-err)">Auto-logged · Missed — reset to Day 1</b></div>
+                <p>One of the three checks failed (pattern &lt; 2 min · solved in-timer · complexity stated), so the schedule rebuilds from Day 1 — the memory needs another pass.</p>
+                <div class="ab03-reveal"><a>A mistake entry is open <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></a></div>
+              </div>
+              <div class="ab03-btnrow"><span class="ds-btn ds-btn--primary ds-btn--sm" role="button">Next review</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Open #7</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Pattern chip moves under the title once revealed.</li></ul></aside>
+    </article>
+
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB03 · Revision v2 · drafted in ds-m1-01 · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only.
+  Sample data: the queue, dates, timer values and the go-concurrency row (illustrative). Patterns appear only on concluded or not-due rows.
+</footer>
+</main>
+</body>
+</html>
