@@ -1015,6 +1015,7 @@ judge also logs and alerts when the **runner lane is unavailable or returning 50
 | Denylist modules | **none loaded** | The module denylist is safe to apply |
 | k3s invocation | systemd unit `k3s server --write-kubeconfig-mode 0644`; no `config.yaml` | Matches T2's host-bootstrap assumptions |
 | Kernel (verified separately) | running **6.8.0-90**; noble candidate **6.8.0-142**; **`linux-image-generic` meta not installed**, so the kernel never auto-updates; Livepatch off; `core_pattern` pipes to apport as host root | **H0 is urgent for v1 today.** It is a separate task (patch the kernel, install the meta-package, fix core dumps) |
+| **S0 steal, `vmstat -t -w 60`** (mi-02, 2026-09-28) | The H0 reboot (2026-09-25 05:59Z) cut the 72 h sampler short. The owner's pre-reboot copy covers 2026-09-24 07:52Z → 2026-09-25 05:36Z: **1,305 one-minute samples**, the 63 repeated header lines skipped. `st` (steal): **p50 3%, p95 8%, max 20%**, mean 3.8%, worst 60-minute mean 7.0%; 0.8% of minutes over 10%. user + system: p95 8%, max 29%. Omitting the first (since-boot) line changes nothing | Within ADR-0035 §5's TR-STEAL bounds (24 h p95 ≤ 10%, no 1 h average over 25%) and close to sar's 9-day p95 of 5.2%. **sar is the ongoing source:** `host-verify --cluster` reads it (MI-8). On 2026-09-28 it showed TR-STEAL firing: p95 over 10% on 09-26 → 09-28, while a faulted Longhorn volume kept ~2.4 cores busy. After the 06:14Z recovery steal fell back to 5–7% ([status.md capacity reads](../status.md#capacity-reads-tr-)) |
 
 ---
 

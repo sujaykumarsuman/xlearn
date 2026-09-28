@@ -9,20 +9,20 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done 2026-09-28 (attempt 2, run r-13; attempt 1 was held by the Longhorn incident). The script is infra#36 (`d863abe`), with the follow-up infra#37 (`356c936`). A piped `--cluster` run gives 63 pass / 1 warn / 0 fail; the WARN is TR-STEAL, a real signal.
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Memory-sum check (+ embedded `memory-budget.tsv`) | H | ⬜ |
-| 2 | Flux objects, pod health, CNPG | H | ⬜ |
-| 3 | Volumes and disk | H | ⬜ |
-| 4 | NATS auth stage | H | ⬜ |
-| 5 | NetworkPolicy presence (+ embedded `expected-netpol.tsv`) | H | ⬜ |
-| 6 | Steal and CPU (TR-*) | H | ⬜ |
-| 7 | Read-only proof, lint, `--json`, README; PR and merge | H | ⬜ |
-| 8 | Throwaway top sampler for MI-11a | H | ⬜ |
-| 9 | MI-0 follow-up (H0 result, S0 vmstat) | H | ⬜ |
-| 10 | Record | X | ⬜ |
+| 1 | Memory-sum check (+ embedded `memory-budget.tsv`) | H | ✅ 13,583 Mi against 15,480 Mi: PASS, +1,897 Mi. `--with-runner`: 16,655 Mi, FAIL, −1,175 Mi. Every term matches the hand calculation. The total is 13.26 GiB, not ≈ 13.7: the post-reboot limitless working set is 804 Mi, not 1,201 Mi (Decisions log). 23/23 budgeted; a trimmed `--budget-file` WARNs |
+| 2 | Flux objects, pod health, CNPG | H | ✅ Flux over 7 kinds; `DependencyNotReady`/`Unknown` get re-reads for up to 2 min (infra#37). No OOMKill. The restarts are INFO only (the 9/25 reboot). CNPG healthy |
+| 3 | Volumes and disk | H | ✅ PG PVC 6.2%, NATS 0.0%; node disk 10% |
+| 4 | NATS auth stage | H | ✅ `open` PASSes. `n3` FAILs (7 anonymous connections) and `n4` FAILs (`auth_required` absent) on the live node |
+| 5 | NetworkPolicy presence (+ embedded `expected-netpol.tsv`) | H | ✅ `kubescope/kubescope` present |
+| 6 | Steal and CPU (TR-*) | H | ✅ **TR-STEAL WARN, live**: p95 over 10% on 3 of 7 days (the Longhorn fault loop, 09-26 → 09-28). TR-CPU is 2 of 7. `SAR_BIN=/nonexistent` WARNs "unmeasured" |
+| 7 | Read-only proof, lint, `--json`, README; PR and merge | H | ✅ infra#36 + infra#37 merged. `host-lint` OK; 13/13 lint negative tests caught; `--json` 83 lines, 0 unparsable. `/root/host-verify.sh` refreshed (sha256 `313a21ca…`) and green, 63/1/0 |
+| 8 | Throwaway top sampler for MI-11a | H | ✅ PID 1569254, started 2026-09-28T06:36:48Z; it stops itself at about 2026-10-05T06:37Z. mi-08 may read from 2026-09-30T06:37Z |
+| 9 | MI-0 follow-up (H0 result, S0 vmstat) | H | ✅ 6.8.0-142, boot 2026-09-25 05:59Z. The node copy of the log is absent (nothing deleted). S0 steal p50 3%, p95 8%, max 20% ([t3 §15](../research/t3-sandbox.md#15-s0-results-read-only-production-facts-2026-09-24-owner-approved)) |
+| 10 | Record | X | ✅ this PR |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + MI track rows MI-0, MI-8).
