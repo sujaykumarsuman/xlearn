@@ -8,18 +8,18 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done — AB04★, AB05, AB06, AB22 frozen (merged in PR #78, 2026-09-28)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Board scaffolding (own files only; never `index.html` or `board.css`) | X | ⬜ |
-| 2 | AB04 ★ A8 Touch (hero) | X | ⬜ |
-| 3 | AB05 catalog + cross-course agenda + Today in minutes | X | ⬜ |
-| 4 | AB06 public profile v2 (P12) | X | ⬜ |
-| 5 | AB22 visibility toggles | X | ⬜ |
-| 6 | Self-review checklist (run before merging) + screenshots | X | ⬜ |
-| 7 | Open the design PR (screenshots, frame lists, the ticked self-review checklist, "Decisions to confirm") | X | ⬜ |
-| 8 | Freeze: squash-merge on CI green (the merge is the freeze) → status → sync `main` | X | ⬜ |
+| 1 | Board scaffolding (own files only; never `index.html` or `board.css`) | X | ✅ |
+| 2 | AB04 ★ A8 Touch (hero) | X | ✅ |
+| 3 | AB05 catalog + cross-course agenda + Today in minutes | X | ✅ |
+| 4 | AB06 public profile v2 (P12) | X | ✅ |
+| 5 | AB22 visibility toggles | X | ✅ |
+| 6 | Self-review checklist (run before merging) + screenshots | X | ✅ |
+| 7 | Open the design PR (screenshots, frame lists, the ticked self-review checklist, "Decisions to confirm") | X | ✅ |
+| 8 | Freeze: squash-merge on CI green (the merge is the freeze) → status → sync `main` | X | ✅ frozen: merged in PR #78, 2026-09-28 |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly. **Land and sync ([D40](../feasibility.md#decisions-log-newest-first)):** the board PR
