@@ -9,18 +9,18 @@
 
 ## Status
 
-_Overall:_ 🔄 In progress
+_Overall:_ ✅ Done — frozen: merged in PR #92, 2026-09-28
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
 | 1 | PRD Q5 (`ev-q5`): the owner confirms it before launch; the session records it (small docs PR, merged on CI green) | O (before launch) + X | ✅ go-concurrency (P3 GO; no fallback), recorded 2026-09-28 |
-| 2 | Board scaffolding (own files only; never `index.html` or `board.css`) | X | ⬜ |
-| 3 | AB14 A7 Workspace-Quiz | X | ⬜ |
-| 4 | AB15 go-concurrency multi-file + race verdicts (or the SQL explorer if Q5 flips) | X | ⬜ |
-| 5 | AB02 / AB05 full fidelity (two real courses) | X | ⬜ |
-| 6 | Self-review checklist (run before merging) + screenshots | X | ⬜ |
-| 7 | Open the design PR (screenshots, frame lists, the ticked self-review checklist, "Decisions to confirm") | X | ⬜ |
-| 8 | Freeze: squash-merge on CI green (the merge is the freeze) → status → sync `main` | X | ⬜ |
+| 2 | Board scaffolding (own files only; never `index.html` or `board.css`) | X | ✅ |
+| 3 | AB14 A7 Workspace-Quiz | X | ✅ F1–F14 |
+| 4 | AB15 go-concurrency multi-file + race verdicts (or the SQL explorer if Q5 flips) | X | ✅ F1–F16 (go-concurrency) |
+| 5 | AB02 / AB05 full fidelity (two real courses) | X | ✅ AB02-P1–P7, AB05-P1–P7 |
+| 6 | Self-review checklist (run before merging) + screenshots | X | ✅ ticked in the PR |
+| 7 | Open the design PR (screenshots, frame lists, the ticked self-review checklist, "Decisions to confirm") | X | ✅ PR #92 |
+| 8 | Freeze: squash-merge on CI green (the merge is the freeze) → status → sync `main` | X | ✅ frozen: merged in PR #92, 2026-09-28 |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly. **Two PRs, both merged on CI green ([D40](../feasibility.md#decisions-log-newest-first)).**

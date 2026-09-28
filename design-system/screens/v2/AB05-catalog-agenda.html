@@ -123,6 +123,10 @@
   .ab05-acc b { font-size: 13px; }
   .ab05-acc__body { padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
   .ab05-acc__row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ds-dim); }
+  /* ====== P · full fidelity (ds-p-01) — appended; the frames above are unchanged ====== */
+  .ab05-pcic { background: rgba(155,140,240,.14); color: var(--ds-violet); }
+  .ab05-cards--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ab05-pvar { display: flex; align-items: center; gap: 12px; }
 </style>
 </head>
 <body>
@@ -166,7 +170,7 @@
   </div>
   <nav class="bd-toc" aria-label="Frames">
     <a href="#AB05-F2">F2 · home</a><a href="#AB05-F1">F1</a><a href="#AB05-F3">F3</a><a href="#AB05-F4">F4</a><a href="#AB05-F5">F5</a><a href="#AB05-F6">F6</a>
-    <a href="#AB05-F7">F7</a><a href="#AB05-F8">F8 · M4</a><a href="#AB05-F9">F9</a><a href="#AB05-F10">F10 · 390 px</a>
+    <a href="#AB05-F7">F7</a><a href="#AB05-F8">F8 · M4</a><a href="#AB05-F9">F9</a><a href="#AB05-F10">F10 · 390 px</a><a href="#AB05-P">P · full fidelity (P1–P7)</a>
   </nav>
 </header>
 
@@ -186,7 +190,7 @@
   <h2 class="bd-section__h" id="sec-a">A · The home: Today across courses <small>F2 with F3, F5 and F9 in place · then F1 below it</small></h2>
 
   <article class="bd-frame" id="AB05-F2">
-    <header class="bd-frame__label"><span class="bd-frame__id">AB05-F2</span><span class="bd-frame__title">· Today · budget header</span><span class="bd-frame__state">· /xlearn · Mon, Sep 28 · 55 of 60 min planned</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <header class="bd-frame__label"><span class="bd-frame__id">AB05-F2</span><span class="bd-frame__title">· Today · budget header</span><span class="bd-frame__state">· /xlearn · Mon, Sep 28 · 55 of 60 min planned</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag bd-tag--change">Go rows superseded by P3</span></span></header>
     <div class="bd-frame__body">
       <div class="bd-desk">
         <div class="xl-app">
@@ -274,7 +278,7 @@
 
   <!-- F1 -->
   <article class="bd-frame" id="AB05-F1">
-    <header class="bd-frame__label"><span class="bd-frame__id">AB05-F1</span><span class="bd-frame__title">· Catalog</span><span class="bd-frame__state">· /xlearn, below the plan · owner / tester cohort view</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">multi-course</span><span class="bd-tag">non-DSA low fidelity</span></span></header>
+    <header class="bd-frame__label"><span class="bd-frame__id">AB05-F1</span><span class="bd-frame__title">· Catalog</span><span class="bd-frame__state">· /xlearn, below the plan · owner / tester cohort view</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">multi-course</span><span class="bd-tag">non-DSA low fidelity</span><span class="bd-tag bd-tag--change">superseded by P1 · P2</span></span></header>
     <div class="bd-frame__body">
       <div class="ab05-croptop">— cropped: the plan (F2) sits above —</div>
       <div class="bd-desk">
@@ -345,7 +349,7 @@
   <div class="bd-grid bd-grid--wide ab05-gap">
     <!-- F3 -->
     <article class="bd-frame" id="AB05-F3">
-      <header class="bd-frame__label"><span class="bd-frame__id">AB05-F3</span><span class="bd-frame__title">· Today · Reviews first</span><span class="bd-frame__state">· across courses · oldest due first</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <header class="bd-frame__label"><span class="bd-frame__id">AB05-F3</span><span class="bd-frame__title">· Today · Reviews first</span><span class="bd-frame__state">· across courses · oldest due first</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag bd-tag--change">Go rows superseded by P3</span></span></header>
       <div class="bd-frame__body">
         <div class="bd-pad">
           <div class="ab05-sech"><h2>Reviews first</h2><span>3 due · ≈ 45 min</span></div>
@@ -389,7 +393,7 @@
   <div class="bd-grid bd-grid--wide ab05-gap">
     <!-- F5 -->
     <article class="bd-frame" id="AB05-F5">
-      <header class="bd-frame__label"><span class="bd-frame__id">AB05-F5</span><span class="bd-frame__title">· Today · new work split</span><span class="bd-frame__state">· remainder across active enrollments</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <header class="bd-frame__label"><span class="bd-frame__id">AB05-F5</span><span class="bd-frame__title">· Today · new work split</span><span class="bd-frame__state">· remainder across active enrollments</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag bd-tag--change">Go rows superseded by P3 · P4</span></span></header>
       <div class="bd-frame__body">
         <div class="bd-pad" style="display:flex;flex-direction:column;gap:16px">
           <div>
@@ -491,7 +495,7 @@
 <section class="bd-section" aria-labelledby="sec-c">
   <h2 class="bd-section__h" id="sec-c">C · Cross-course agenda <small>F9 · next 7 days</small></h2>
   <article class="bd-frame" id="AB05-F9">
-    <header class="bd-frame__label"><span class="bd-frame__id">AB05-F9</span><span class="bd-frame__title">· Cross-course agenda</span><span class="bd-frame__state">· All courses (left) · This course = DSA (right)</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <header class="bd-frame__label"><span class="bd-frame__id">AB05-F9</span><span class="bd-frame__title">· Cross-course agenda</span><span class="bd-frame__state">· All courses (left) · This course = DSA (right)</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag bd-tag--change">superseded by P6</span></span></header>
     <div class="bd-frame__body">
       <div class="bd-pad" style="display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:22px;align-items:start">
         <div class="xl-panel ab05-wide">
@@ -565,7 +569,7 @@
     </article>
 
     <article class="bd-frame bd-narrow" id="AB05-N2">
-      <header class="bd-frame__label"><span class="bd-frame__id">N2 · AB05-F1/F4</span><span class="bd-frame__state">· blocked course · catalog cards</span></header>
+      <header class="bd-frame__label"><span class="bd-frame__id">N2 · AB05-F1/F4</span><span class="bd-frame__state">· blocked course · catalog cards</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--change">Go card superseded by P7</span></span></header>
       <div class="bd-frame__body">
         <div class="bd-pad" style="padding:16px 14px;display:flex;flex-direction:column;gap:12px">
           <div class="ab05-note ab05-note--warn" role="status"><span class="ab05-ic ab05-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg></span><span><b>New DSA work is paused until your overdue DSA reviews are done.</b><span class="ab05-note__sub">Your other courses still get their share.</span></span></div>
@@ -589,9 +593,306 @@
   </div>
 </section>
 
+<!-- ================================================ P · full fidelity (ds-p-01) -->
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 5.3a3.2 3.2 0 0 1 0 5.4M18 13.6a6.5 6.5 0 0 1 3.5 6.4" /></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" /></symbol>
+</svg>
+<section class="bd-section" id="AB05-P" aria-labelledby="sec-p">
+  <h2 class="bd-section__h" id="sec-p">P · full fidelity (ds-p-01) <small>P1–P7 · DSA + Go Concurrency Patterns (preview) · minutes from each manifest</small></h2>
+  <p class="bd-section__p">The catalog, the plan and the agenda with the two real courses of milestone P. The planner is the gateway's <b>deterministic pure function</b> (unchanged from the strip above); minutes come from each manifest's <code class="ds-mono">est_minutes</code> — DSA: re-solve 20, problem 45 · go-concurrency: recall 5, re-solve 25, quiz 5, code exercise 45 (sample values for p-02's manifest). <code class="ds-mono">preview</code> is filtered <b>server-side</b> (catalog, course routes, item routes by id, enrollment, agenda, public profile, <code class="ds-mono">/public/stats</code>), so the SPA never hides anything; the public repo holds the content anyway, so "no trace" means product surfaces, not secrecy. These frames supersede the go-concurrency placeholders in F1–F5, F9 and N2; nothing else above changes.</p>
+
+  <!-- P1 -->
+  <article class="bd-frame" id="AB05-P1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB05-P1</span><span class="bd-frame__title">· Catalog</span><span class="bd-frame__state">· /xlearn, below the plan · owner / tester cohort</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">full fidelity</span></span></header>
+    <div class="bd-frame__body">
+      <div class="ab05-croptop">— cropped: the plan (P3) sits above —</div>
+      <div class="bd-desk">
+        <div class="bd-pad" style="padding:26px 30px 34px">
+          <div class="ab05-page">
+            <div class="ab05-sech"><h2>Your courses</h2><span>2 enrolled</span></div>
+            <div class="ab05-cards ab05-gap">
+              <div class="ds-card ds-card--teal ab05-cc2" style="padding:18px 20px">
+                <div class="ab05-cc2__top">
+                  <span class="ab05-cic"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-code"/></svg></span>
+                  <div class="ab05-flex"><h3>Data Structures &amp; Algorithms <span class="ds-badge ds-badge--ok ds-mono">Day 12</span></h3>
+                    <p class="ab05-sum">From arrays to graphs and DP, built to make you interview-ready — and to keep it retained.</p></div>
+                  <div class="ab05-ring" role="img" aria-label="28 of 151 solved, 19 percent"><svg width="58" height="58" viewBox="0 0 58 58" aria-hidden="true"><circle class="ds-ring__track" cx="29" cy="29" r="24" fill="none" stroke-width="6"/><circle cx="29" cy="29" r="24" fill="none" class="ab05-ringfill" stroke-width="6" stroke-linecap="round" stroke-dasharray="28.6 150.8" transform="rotate(-90 29 29)"/></svg><span>19%</span></div>
+                </div>
+                <div class="ab05-stats"><span><b>28</b> / 151 solved</span><span class="xl-streak"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-flame"/></svg> 12-day</span><span>≈ 35 min/day of your plan</span></div>
+                <div class="ab05-btns"><span class="ds-btn ds-btn--primary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Continue</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">View roadmap</span></div>
+              </div>
+              <div class="ds-card ds-card--violet ab05-cc2" style="padding:18px 20px">
+                <div class="ab05-cc2__top">
+                  <span class="ab05-cic ab05-pcic"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-branch"/></svg></span>
+                  <div class="ab05-flex"><h3>Go Concurrency Patterns <span class="ds-badge ds-badge--violet">Preview</span></h3>
+                    <p class="ab05-sum">Goroutines, channels and the race detector, drilled until they're habits. <b style="color:var(--ds-text)">Owner &amp; testers only.</b></p></div>
+                  <div class="ab05-ring" role="img" aria-label="3 of 10 done, 30 percent"><svg width="58" height="58" viewBox="0 0 58 58" aria-hidden="true"><circle class="ds-ring__track" cx="29" cy="29" r="24" fill="none" stroke-width="6"/><circle cx="29" cy="29" r="24" fill="none" class="ab05-ringfill" stroke-width="6" stroke-linecap="round" stroke-dasharray="45.2 150.8" transform="rotate(-90 29 29)"/></svg><span>30%</span></div>
+                </div>
+                <div class="ab05-stats"><span>Pilot · 10 exercises · 2 weeks</span><span><b>3</b> / 10 done</span><span>≈ 20 min/day of your plan</span></div>
+                <div class="ab05-stats"><span class="ab05-violet" style="display:inline-flex;align-items:center;gap:6px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-shield"/></svg> Honor-graded: tests run inside your program</span></div>
+                <div class="ab05-btns"><span class="ds-btn ds-btn--primary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Continue</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">View roadmap</span></div>
+              </div>
+            </div>
+            <div class="ab05-pvar ab05-gap" role="note">
+              <span class="bd-tag" style="flex:none">variant · cohort, not enrolled</span>
+              <div class="ds-card ds-card--violet ab05-cc2" style="padding:14px 16px;flex:1">
+                <div class="ab05-cc2__top"><span class="ab05-cic ab05-pcic"><svg class="xl-ico" aria-hidden="true"><use href="#i-branch"/></svg></span><div class="ab05-flex"><h3 style="font-size:14.5px">Go Concurrency Patterns <span class="ds-badge ds-badge--violet">Preview</span></h3><p class="ab05-sum">Pilot · 10 exercises · 2 weeks · owner &amp; testers only.</p></div><span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-plus"/></svg> Enroll</span></div>
+              </div>
+            </div>
+            <div class="ab05-sech"><h2>More courses</h2><span>coming soon · same method, new domains</span></div>
+            <div class="ab05-cards ab05-cards--4">
+              <div class="ds-card ab05-cc2 ab05-soon" style="padding:16px 18px" aria-disabled="true">
+                <div class="ab05-cc2__top"><span class="ab05-cic ab05-cic--dim"><svg class="xl-ico" aria-hidden="true"><use href="#i-server"/></svg></span><div class="ab05-flex"><h3 style="font-size:14.5px">System Design Interviews</h3><p class="ab05-sum">Scalable systems, trade-offs, and the whiteboard narrative.</p></div></div>
+                <div class="ab05-btns"><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Coming soon</span></div>
+              </div>
+              <div class="ds-card ab05-cc2 ab05-soon" style="padding:16px 18px" aria-disabled="true">
+                <div class="ab05-cc2__top"><span class="ab05-cic ab05-cic--dim"><svg class="xl-ico" aria-hidden="true"><use href="#i-layers"/></svg></span><div class="ab05-flex"><h3 style="font-size:14.5px">Low-Level / OOD</h3><p class="ab05-sum">Object modeling and design patterns under interview pressure.</p></div></div>
+                <div class="ab05-btns"><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Coming soon</span></div>
+              </div>
+              <div class="ds-card ab05-cc2 ab05-soon" style="padding:16px 18px" aria-disabled="true">
+                <div class="ab05-cc2__top"><span class="ab05-cic ab05-cic--dim"><svg class="xl-ico" aria-hidden="true"><use href="#i-db"/></svg></span><div class="ab05-flex"><h3 style="font-size:14.5px">SQL &amp; Data Modeling</h3><p class="ab05-sum">Query optimization, indexing, and schema design.</p></div></div>
+                <div class="ab05-btns"><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Coming soon</span></div>
+              </div>
+              <div class="ds-card ab05-cc2 ab05-soon" style="padding:16px 18px" aria-disabled="true">
+                <div class="ab05-cc2__top"><span class="ab05-cic ab05-cic--dim"><svg class="xl-ico" aria-hidden="true"><use href="#i-users"/></svg></span><div class="ab05-flex"><h3 style="font-size:14.5px">Behavioral &amp; Storytelling</h3><p class="ab05-sum">STAR stories you can tell under pressure.</p></div></div>
+                <div class="ab05-btns"><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Coming soon</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Cards</h4>
+        <ul><li><b>DSA</b> (enrolled, active): F1's hero card unchanged — ring, Day N, streak, <b>"≈ 35 min/day of your plan"</b> (the course's average planned minutes over the last 7 days).</li>
+          <li><b>Go Concurrency Patterns</b> (<code>preview</code>): violet card and <code>ds-badge--violet</code> <b>Preview</b> (the same badge as AB02; F1's info badge is superseded), <b>"Pilot · 10 exercises · 2 weeks"</b>, "Owner &amp; testers only.", the honor line, and the learner's state: enrolled (ring, Continue) or the <b>[Enroll]</b> variant for a tester who hasn't started it.</li>
+          <li><b>More courses</b>: the four <code>coming_soon</code> entries (System Design, Low-Level / OOD, SQL &amp; Data Modeling, Behavioral &amp; Storytelling), disabled, <code>xl-lock</code>. F1's "SQL · Enroll" card was illustrative; SQL is coming soon (PRD Q5 chose go-concurrency).</li></ul></section>
+      <section><h4>Enroll</h4>
+        <ul><li><b>[Enroll]</b> → <code>POST /api/paths/go-concurrency/start</code> (cohort only, ADR-0034 §2); the course joins tomorrow's split. Inside the course the same call reads "Start course" (AB02-P6).</li>
+          <li>Retired courses are never listed; a <code>preview</code> course is listed only for owner and testers (P2 shows everyone else).</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>ADR-0034 §2 · ADR-0026 §5 · D4 · P7 (honor results stay out of judge-checked %).</li>
+          <li>Rings are <code>role="img"</code> with the numbers; coming-soon cards <code>aria-disabled</code>; the violet honor line is text (6.5:1 on the violet card).</li>
+          <li>&lt; 1024 px: one card per row (P7 · N3).</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide ab05-gap">
+    <!-- P2 -->
+    <article class="bd-frame" id="AB05-P2">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB05-P2</span><span class="bd-frame__title">· Catalog · non-cohort</span><span class="bd-frame__state">· learner account · DSA enrolled</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">full fidelity</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="ab05-sech"><h2>Your courses</h2><span>1 enrolled</span></div>
+          <div class="ds-card ds-card--teal ab05-cc2 ab05-gap" style="padding:16px 18px">
+            <div class="ab05-cc2__top"><span class="ab05-cic"><svg class="xl-ico" aria-hidden="true"><use href="#i-code"/></svg></span><div class="ab05-flex"><h3 style="font-size:15px">Data Structures &amp; Algorithms <span class="ds-badge ds-badge--ok ds-mono">Day 12</span></h3><p class="ab05-sum">28 / 151 solved · ≈ 55 min/day of your plan</p></div><span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Continue</span></div>
+          </div>
+          <div class="ab05-sech"><h2>More courses</h2><span>coming soon</span></div>
+          <div class="ab05-cards">
+            <div class="ds-card ab05-cc2 ab05-soon" style="padding:12px 14px" aria-disabled="true"><h3 style="font-size:13.5px">System Design Interviews</h3><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Coming soon</span></div>
+            <div class="ds-card ab05-cc2 ab05-soon" style="padding:12px 14px" aria-disabled="true"><h3 style="font-size:13.5px">Low-Level / OOD</h3><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Coming soon</span></div>
+            <div class="ds-card ab05-cc2 ab05-soon" style="padding:12px 14px" aria-disabled="true"><h3 style="font-size:13.5px">SQL &amp; Data Modeling</h3><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Coming soon</span></div>
+            <div class="ds-card ab05-cc2 ab05-soon" style="padding:12px 14px" aria-disabled="true"><h3 style="font-size:13.5px">Behavioral &amp; Storytelling</h3><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Coming soon</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li><b>No trace of the pilot</b>: not in "Your courses", not in "More courses", not in counts ("1 enrolled"), not in the plan, the agenda or the header meter. The whole budget is DSA's ("≈ 55 min/day").</li>
+          <li>The gateway's catalog and agenda responses omit <code>preview</code> entries for this account; the SPA renders what it gets (ADR-0034 §2). A direct URL is AB02-P4's NotFound.</li></ul>
+      </aside>
+    </article>
+
+    <!-- P4 -->
+    <article class="bd-frame" id="AB05-P4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB05-P4</span><span class="bd-frame__title">· Doesn't fit</span><span class="bd-frame__state">· /xlearn/go-concurrency/dashboard · Go only</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">full fidelity</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad" style="display:flex;flex-direction:column;gap:10px">
+          <div class="xl-eyebrow">Go Concurrency Patterns</div>
+          <h3 style="font-size:24px;font-weight:700;letter-spacing:-.3px">Today · 45 min of 60</h3>
+          <div class="ds-meter ab05-meter" role="img" aria-label="Go concurrency reviews 45 minutes of 60; 15 free"><span class="ab05-seg ab05-seg--rev" style="width:75%"></span></div>
+          <div class="ab05-legend"><span><span class="ab05-sw ab05-sw--rev"></span>Reviews <b>45</b></span><span><span class="ab05-sw ab05-sw--free"></span>Free <b>15</b></span></div>
+          <div class="ab05-sech" style="margin:8px 0 0"><h2>Reviews first</h2><span>5 due · ≈ 45 min</span></div>
+          <div class="ab05-due" style="padding-left:2px">gc-001 Re-solve · 25:00 · gc-002, gc-005, gc-006, gc-007 Recall · ~5 min each</div>
+          <div class="ab05-sech" style="margin:8px 0 0"><h2>New work</h2><span>15 min left</span></div>
+          <div class="xl-panel"><div class="xl-panel__b"><div class="ab05-nw"><div class="ab05-nw__k"><b>Go concurrency</b><span>15 min</span></div><div class="ab05-nw__v"><b>Go concurrency: nothing fits in today's remaining 15 min.</b><br>The next exercise, gc-009 Concurrent cache, needs ≈ 45 min.</div></div></div></div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Copy (plan): <b>"Go concurrency: nothing fits in today's remaining 15 min"</b>. An item that doesn't fit isn't planned or startable; as in F5 the row says why in words. Drawn on the course Today (F2b's pattern: that course alone, whole remainder), where the share is the full 15; on the home the same line appears in the Go row with its share.</li>
+          <li>Minutes: re-solve 25 + four recalls × 5 = 45; next item a code exercise (≈ 45). Same inputs → same plan.</li></ul>
+      </aside>
+    </article>
+  </div>
+
+  <!-- P3 -->
+  <article class="bd-frame" id="AB05-P3">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB05-P3</span><span class="bd-frame__title">· Today · both courses</span><span class="bd-frame__state">· /xlearn · Mon, Dec 28 · 60 min budget · 55 min planned</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">full fidelity</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="bd-pad" style="padding:26px 30px 30px">
+          <div class="ab05-page">
+            <div class="ab05-head">
+              <div>
+                <div class="xl-eyebrow">Mon, Dec 28 · all your courses</div>
+                <h1>Today · 55 min of 60</h1>
+                <div class="ab05-head__meter">
+                  <div class="ds-meter ab05-meter" role="img" aria-label="Planned: reviews 50 minutes, Go concurrency new work 5 minutes, 5 minutes free, of 60"><span class="ab05-seg ab05-seg--rev" style="width:83.3%"></span><span class="ab05-seg ab05-seg--go" style="width:8.3%"></span></div>
+                  <div class="ab05-legend"><span><span class="ab05-sw ab05-sw--rev"></span>Reviews <b>50</b></span><span><span class="ab05-sw ab05-sw--dsa"></span>DSA new <b>0</b></span><span><span class="ab05-sw ab05-sw--go"></span>Go concurrency new <b>5</b></span><span><span class="ab05-sw ab05-sw--free"></span>Free <b>5</b></span></div>
+                </div>
+              </div>
+              <div class="ab05-head__side">
+                <span class="ds-btn ds-btn--primary ds-btn--lg" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start next review</span>
+                <span class="ab05-budget">Budget: 60 min on weekdays · <a>Change in Settings</a></span>
+              </div>
+            </div>
+            <div class="ab05-col" style="max-width:780px">
+              <section aria-labelledby="p3-rev">
+                <div class="ab05-sech"><h2 id="p3-rev">Reviews first</h2><span>3 due · ≈ 50 min</span></div>
+                <div class="ab05-list">
+                  <div class="ds-card ab05-rv"><div class="ab05-rv__main"><span class="xl-tag ab05-course">DSA</span><span class="ab05-id">#5</span><span class="ab05-title">Group Anagrams</span><span class="xl-diff xl-diff--med">Medium</span><span class="xl-tag ab05-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span></div><span class="ab05-due">Day 1 · today</span><span class="ab05-min">≈ 20 min</span></div>
+                  <div class="ds-card ab05-rv"><div class="ab05-rv__main"><span class="xl-tag ab05-course">GO</span><span class="ab05-id">gc-002</span><span class="ab05-title">Guard a shared counter</span><span class="xl-diff xl-diff--easy">Easy</span><span class="xl-tag ab05-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Recall · <b>~5 min</b></span></div><span class="ab05-due">Day 3 · today</span><span class="ab05-min">≈ 5 min</span></div>
+                  <div class="ds-card ab05-rv"><div class="ab05-rv__main"><span class="xl-tag ab05-course">GO</span><span class="ab05-id">gc-001</span><span class="ab05-title">Fan out with a WaitGroup</span><span class="xl-diff xl-diff--easy">Easy</span><span class="xl-tag ab05-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>25:00</b></span><span class="ds-badge ds-badge--violet">Mock conditions</span></div><span class="ab05-due">Day 21 · today</span><span class="ab05-min">≈ 25 min</span></div>
+                </div>
+              </section>
+              <section aria-labelledby="p3-new">
+                <div class="ab05-sech"><h2 id="p3-new">New work</h2><span>10 min left · split across 2 courses</span></div>
+                <div class="xl-panel">
+                  <div class="xl-panel__b" style="display:flex;flex-direction:column;gap:14px">
+                    <div class="ab05-nw"><div class="ab05-nw__k"><b>DSA</b><span>5 min</span></div><div class="ab05-nw__v">The next problem, <b>#18 Minimum Window Substring</b>, needs ≈ 45 min, so no new DSA work fits today.</div></div>
+                    <div class="xl-divider"></div>
+                    <div class="ab05-nw"><div class="ab05-nw__k"><b>Go concurrency</b><span>5 min</span></div><div class="ab05-nw__v">Next: <b>gc-008 Spot the race</b> · quiz · drill · ≈ 5 min</div><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Start</span></div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Header</h4>
+        <ul><li>The plan's "60 min budget · 55 min planned" in F2's one string: <b>"Today · 55 min of 60"</b> (N planned of M budget), so the home and course Today stay one pattern. Meter segments: reviews (teal) · DSA new (info) · Go new (violet) · free; the legend carries every number.</li></ul></section>
+      <section><h4>Reviews first, then per-course new work</h4>
+        <ul><li><b>Reviews first</b> across both courses, oldest due first; all three are due today, so lower level first: DSA #5 <b>"Re-solve · 20:00"</b> (L1), Go gc-002 <b>"Recall · ~5 min"</b> (L2), Go gc-001 <b>"Re-solve · 25:00 · Mock conditions"</b> (L4). Course chips are text; no topic chips (<code>withhold()</code>).</li>
+          <li><b>New work</b>: 60 − 50 = 10 min, split 5 / 5. DSA's next problem needs 45, so nothing is planned and the row says why (F5); Go's next item, the drill quiz <code>gc-008</code>, fits at ≈ 5 min.</li></ul></section>
+      <section><h4>Decision · a11y</h4>
+        <ul><li>D4 · PRD §5.4 · R-SR5 · the planner strip above (a deterministic pure function in the gateway). Minutes from each manifest's <code>est_minutes</code> (Go values are sample).</li>
+          <li>Focus order and contrast as F2. &lt; 1024 px: P7 · N4.</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide ab05-gap">
+    <!-- P5 -->
+    <article class="bd-frame" id="AB05-P5">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB05-P5</span><span class="bd-frame__title">· R-SR5 per course</span><span class="bd-frame__state">· Go has an overdue review · DSA continues</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">full fidelity</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad" style="display:flex;flex-direction:column;gap:12px">
+          <div class="ab05-rv"><h3 style="font-size:20px;font-weight:700;letter-spacing:-.3px">Today · 60 min of 60</h3></div>
+          <div class="ab05-sech" style="margin-bottom:0"><h2>Reviews first</h2><span>3 due · ≈ 15 min</span></div>
+          <div class="ds-card ab05-rv"><div class="ab05-rv__main"><span class="xl-tag ab05-course">GO</span><span class="ab05-id">gc-002</span><span class="ab05-title">Guard a shared counter</span><span class="xl-tag ab05-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Recall · <b>~5 min</b></span></div><span class="ab05-due ab05-due--over">overdue 2 days</span><span class="ab05-min">≈ 5 min</span></div>
+          <div class="ab05-due" style="padding-left:4px">— 2 more, due today: GO gc-005 · GO gc-007 —</div>
+          <div class="ab05-note ab05-note--warn" role="status"><span class="ab05-ic ab05-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg></span><span><b>Reviews first — new work paused in Go Concurrency Patterns</b><span class="ab05-note__sub">until your overdue Go concurrency reviews are done. DSA still gets its share.</span></span></div>
+          <div class="ab05-sech" style="margin:4px 0 0"><h2>New work</h2><span>45 min left</span></div>
+          <div class="xl-panel"><div class="xl-panel__b"><div class="ab05-nw"><div class="ab05-nw__k"><b>DSA</b><span>45 min</span></div><div class="ab05-nw__v">Next: <b>#18 Minimum Window Substring</b> · <span class="xl-diff xl-diff--hard">Hard</span> · ≈ 45 min</div><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Start</span></div></div></div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>R-SR5 <b>per course</b>: gc-002 was due Dec 26, so the planner marks go-concurrency <code>blocked: "reviews_overdue"</code> and gives it no share. Copy (plan): <b>"Reviews first — new work paused in Go Concurrency Patterns"</b>, with F4's sub-line pattern. DSA, unblocked, takes the whole remainder (60 − 15 = 45) and its next problem fits.</li>
+          <li>The mirror of F4 (DSA blocked, Go continues); both stay valid. Amber "overdue 2 days" is text; the note is <code>role="status"</code>.</li></ul>
+      </aside>
+    </article>
+
+    <!-- P6 -->
+    <article class="bd-frame" id="AB05-P6">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB05-P6</span><span class="bd-frame__title">· 7-day agenda</span><span class="bd-frame__state">· All courses · This course = Go Concurrency Patterns</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">full fidelity</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab05-col" style="gap:16px">
+          <div class="xl-panel">
+            <div class="ab05-ag__h"><svg class="xl-ico xl-ico--sm ab05-teal" aria-hidden="true"><use href="#i-cal"/></svg><h3>Next 7 days</h3><div class="ds-seg" role="group" aria-label="Agenda scope"><span class="ds-seg__btn ds-seg__btn--on" aria-pressed="true">All courses</span><span class="ds-seg__btn" aria-pressed="false">This course</span></div></div>
+            <div>
+              <div class="ab05-day ab05-day--today"><div class="ab05-day__d"><b>Today</b><span>Mon 28</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>1</b> · 20 min</span><span class="ab05-cc">GO <b>2</b> · 30 min</span></div><div class="ab05-day__m">50 min<span>of 60</span></div></div>
+              <div class="ab05-day"><div class="ab05-day__d"><b>Tomorrow</b><span>Tue 29</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>1</b> · 20 min</span><span class="ab05-cc">GO <b>1</b> · 5 min</span></div><div class="ab05-day__m">25 min<span>of 60</span></div></div>
+              <div class="ab05-day"><div class="ab05-day__d"><b>Wed</b><span>Dec 30</span></div><div class="ab05-day__c"><span class="ab05-cc">GO <b>2</b> · 10 min</span></div><div class="ab05-day__m">10 min<span>of 60</span></div></div>
+              <div class="ab05-day"><div class="ab05-day__d"><b>Thu</b><span>Dec 31</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>2</b> · 40 min</span></div><div class="ab05-day__m">40 min<span>of 60</span></div></div>
+              <div class="ab05-day"><div class="ab05-day__d"><b>Fri</b><span>Jan 1</span></div><div class="ab05-day__c"><span class="ab05-day__none">Nothing due</span></div><div class="ab05-day__m">—</div></div>
+              <div class="ab05-day"><div class="ab05-day__d"><b>Sat</b><span>Jan 2</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>3</b> · 60 min</span><span class="ab05-cc">GO <b>1</b> · 25 min</span></div><div class="ab05-day__m">85 min<span>of 120</span></div></div>
+              <div class="ab05-day"><div class="ab05-day__d"><b>Sun</b><span>Jan 3</span></div><div class="ab05-day__c"><span class="ab05-cc">GO <b>1</b> · 5 min</span></div><div class="ab05-day__m">5 min<span>of 120</span></div></div>
+            </div>
+          </div>
+          <div class="xl-panel">
+            <div class="ab05-ag__h"><svg class="xl-ico xl-ico--sm ab05-teal" aria-hidden="true"><use href="#i-cal"/></svg><h3>Next 7 days · Go Concurrency Patterns</h3><div class="ds-seg" role="group" aria-label="Agenda scope"><span class="ds-seg__btn" aria-pressed="false">All courses</span><span class="ds-seg__btn ds-seg__btn--on" aria-pressed="true">This course</span></div></div>
+            <div>
+              <div class="ab05-day ab05-day--today"><div class="ab05-day__d"><b>Today</b><span>Mon 28</span></div><div class="ab05-day__c"><span class="ab05-cc">GO <b>2</b> · 30 min</span></div><div class="ab05-day__m">30 min<span>of 60</span></div></div>
+              <div class="ab05-day"><div class="ab05-day__d"><b>Tomorrow</b><span>Tue 29</span></div><div class="ab05-day__c"><span class="ab05-cc">GO <b>1</b> · 5 min</span></div><div class="ab05-day__m">5 min<span>of 60</span></div></div>
+              <div class="ab05-day"><div class="ab05-day__d"><b>Wed</b><span>Dec 30</span></div><div class="ab05-day__c"><span class="ab05-cc">GO <b>2</b> · 10 min</span></div><div class="ab05-day__m">10 min<span>of 60</span></div></div>
+              <div class="ab05-day"><div class="ab05-day__d"><b>Thu–Fri</b><span>Dec 31–Jan 1</span></div><div class="ab05-day__c"><span class="ab05-day__none">Nothing due</span></div><div class="ab05-day__m">—</div></div>
+              <div class="ab05-day"><div class="ab05-day__d"><b>Sat</b><span>Jan 2</span></div><div class="ab05-day__c"><span class="ab05-cc">GO <b>1</b> · 25 min</span></div><div class="ab05-day__m">25 min<span>of 120</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>F9's agenda with both real courses: each day lists its due reviews <b>per course with minute totals</b> ("GO 2 · 30 min"), and the day's total against that day's budget (weekday 60, weekend 120). New work isn't planned ahead, so future days show reviews only; today matches P3 (50).</li>
+          <li>Toggle <b>"All courses / This course"</b> (plan copy): on the home it defaults to All courses; "This course" is the course last opened (here Go). Rows are links; chips are text; <code>aria-pressed</code> on the toggle. The row "Thu–Fri" merges two empty days only in this cropped sample.</li></ul>
+      </aside>
+    </article>
+  </div>
+
+  <!-- P7 narrow -->
+  <h3 class="bd-section__h" id="AB05-P7" style="font-size:15px;margin-top:8px">AB05-P7 · &lt; 1024 px (390 px shown) <small>stacked cards · the agenda as an accordion</small></h3>
+  <div class="bd-narrow-row">
+    <article class="bd-frame bd-narrow" id="AB05-P7a">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB05-P7a · P3/P6</span><span class="bd-frame__state">· the plan, both courses</span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad" style="padding:16px 14px;display:flex;flex-direction:column;gap:14px">
+          <div class="ab05-nhead"><div class="xl-eyebrow">Mon, Dec 28</div><h1>Today · 55 min of 60</h1>
+            <div class="ds-meter ab05-meter" style="margin-top:10px" role="img" aria-label="Reviews 50, Go concurrency new 5, free 5, of 60"><span class="ab05-seg ab05-seg--rev" style="width:83.3%"></span><span class="ab05-seg ab05-seg--go" style="width:8.3%"></span></div>
+            <div class="ab05-legend"><span><span class="ab05-sw ab05-sw--rev"></span>Reviews <b>50</b></span><span><span class="ab05-sw ab05-sw--go"></span>Go new <b>5</b></span><span><span class="ab05-sw ab05-sw--free"></span>Free <b>5</b></span></div></div>
+          <span class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start next review</span>
+          <div class="ab05-sech" style="margin:0"><h2>Reviews first</h2><span>3 due · ≈ 50 min</span></div>
+          <div class="ds-card"><div class="ab05-rv__main"><span class="xl-tag ab05-course">GO</span><span class="ab05-id">gc-002</span><span class="ab05-title">Guard a shared counter</span></div><div class="ab05-rv" style="margin-top:8px"><span class="xl-tag ab05-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Recall · <b>~5 min</b></span><span class="ab05-flex"></span><span class="ab05-min">≈ 5 min</span></div></div>
+          <div class="ds-card"><div class="ab05-rv__main"><span class="xl-tag ab05-course">GO</span><span class="ab05-id">gc-001</span><span class="ab05-title">Fan out with a WaitGroup</span></div><div class="ab05-rv" style="margin-top:8px"><span class="xl-tag ab05-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>25:00</b></span><span class="ds-badge ds-badge--violet">Mock conditions</span><span class="ab05-flex"></span><span class="ab05-min">≈ 25 min</span></div></div>
+          <div class="xl-panel">
+            <div class="ab05-ag__h"><h3>Next 7 days</h3><span class="ab05-due">All courses</span></div>
+            <div class="ab05-acc"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg><b>Today</b><span class="ab05-flex"></span><span class="ab05-min">50 of 60</span></div>
+            <div class="ab05-acc__body"><div class="ab05-acc__row"><span class="ab05-cc">DSA <b>1</b></span>#5 · 20 min</div><div class="ab05-acc__row"><span class="ab05-cc">GO <b>2</b></span>gc-002 · gc-001 · 30 min</div></div>
+            <div class="ab05-acc"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevron"/></svg><b>Tomorrow</b><span class="ab05-flex"></span><span class="ab05-min">25 of 60</span></div>
+            <div class="ab05-acc"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevron"/></svg><b>Wed</b><span class="ab05-flex"></span><span class="ab05-min">10 of 60</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>One column; review cards full width (badges wrap under the title); the agenda is an accordion with Today open, listing items by id per course. Accordion rows are buttons with <code>aria-expanded</code>.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB05-P7b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB05-P7b · P1</span><span class="bd-frame__state">· catalog, cohort · stacked cards</span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad" style="padding:16px 14px;display:flex;flex-direction:column;gap:12px">
+          <div class="ab05-sech" style="margin:0"><h2>Your courses</h2><span>2 enrolled</span></div>
+          <div class="ds-card ds-card--teal ab05-cc2" style="padding:14px">
+            <div class="ab05-cc2__top"><span class="ab05-cic"><svg class="xl-ico" aria-hidden="true"><use href="#i-code"/></svg></span><div class="ab05-flex"><h3 style="font-size:15px">Data Structures &amp; Algorithms</h3><span class="ds-badge ds-badge--ok ds-mono" style="margin-top:6px">Day 12</span></div></div>
+            <div class="ab05-stats"><span><b>28</b> / 151 solved</span><span>≈ 35 min/day</span></div>
+            <span class="ds-btn ds-btn--primary ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Continue</span>
+          </div>
+          <div class="ds-card ds-card--violet ab05-cc2" style="padding:14px">
+            <div class="ab05-cc2__top"><span class="ab05-cic ab05-pcic"><svg class="xl-ico" aria-hidden="true"><use href="#i-branch"/></svg></span><div class="ab05-flex"><h3 style="font-size:15px">Go Concurrency Patterns</h3><span class="ds-badge ds-badge--violet" style="margin-top:6px">Preview</span></div></div>
+            <div class="ab05-stats"><span>Pilot · 10 exercises · 2 weeks</span><span><b>3</b> / 10 done</span></div>
+            <span class="ds-btn ds-btn--primary ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Continue</span>
+          </div>
+          <div class="ab05-sech" style="margin:6px 0 0"><h2>More courses</h2></div>
+          <div class="ds-card ab05-cc2 ab05-soon" style="padding:12px 14px" aria-disabled="true"><h3 style="font-size:14px">System Design Interviews</h3><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Coming soon</span></div>
+          <div class="bd-crop" style="padding:4px 0;background:none">— 3 more coming-soon cards —</div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>One card per row; the ring hides below 480 px (the "3 / 10 done" text carries it). Buttons full width, ≥ 44 px. A non-cohort account sees P2's list: no Go card.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
 <footer class="bd-foot">
-  AB05 · Catalog + agenda, Today in minutes · drafted in ds-m2-01 · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only.
-  Sample data: the persona's courses, reviews, minutes and dates (illustrative, computed with the m2-04 rules and the manifest's dormant minutes: re-solve 20, recall 5, DSA problem 45). Go-concurrency item ids and titles, and the SQL course's active status, are placeholders.
+  AB05 · Catalog + agenda, Today in minutes · drafted in ds-m2-01 (full fidelity in ds-p-01) · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only.
+  Sample data: the persona's courses, reviews, minutes and dates (illustrative, computed with the m2-04 rules and the manifest's dormant minutes: re-solve 20, recall 5, DSA problem 45). Go-concurrency item ids and titles, and the SQL course's active status, are placeholders in F1–F10; the P section draws the pilot with its real ids (sample titles, states and go-concurrency minutes for p-02).
 </footer>
 </main>
 </body>

@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB14 · A7 Workspace-Quiz — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB14 board-local layout (prefix ab14-). Tokens only; never restyles a ds- or xl- class.
+     Live class names are p-03's; the notes name the widget contracts (t4 §5.5). */
+  .ab14-flex { flex: 1; }
+  .ab14-top { position: relative; z-index: 20; }
+  .ab14-ok { color: var(--ds-ok); } .ab14-err { color: var(--ds-err); } .ab14-warn { color: var(--ds-warn); }
+  .ab14-info { color: var(--ds-info); } .ab14-teal { color: var(--ds-teal); } .ab14-dim { color: var(--ds-dim); }
+  .ab14-violet { color: var(--ds-violet); } .ab14-text { color: var(--ds-text); }
+  .ab14-ic { display: inline-flex; flex: none; }
+  .ab14-b { font-weight: 600; color: var(--ds-text); }
+  .ab14-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .ab14-col { display: flex; flex-direction: column; gap: 10px; }
+  .ab14-gap { margin-bottom: 22px; }
+  .ab14-help { font-size: 12px; line-height: 1.55; color: var(--ds-dim); }
+  .ab14-help b { color: var(--ds-text); font-weight: 600; }
+  .ab14-cap { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab14-cd { font-family: var(--ds-font-mono); font-size: 12px; padding: 0 5px; border-radius: 4px; background: var(--ds-inset); border: 1px solid var(--ds-line-2); }
+  .ab14-nolig { font-variant-ligatures: none; } /* Go's <- must read as typed, not as a ligature arrow */
+  .ab14-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* top bar course switcher (live: .xl-topsw in app.css; AB02-F3) */
+  .ab14-topsw { display: inline-flex; align-items: center; gap: 9px; height: 34px; padding: 0 10px; background: var(--ds-panel-2);
+    border: 1px solid var(--ds-line-2); border-radius: 8px; color: var(--ds-text); font-size: 12.5px; }
+  .ab14-pv { height: 19px; font-size: 10.5px; }
+
+  /* HUD (AB07 shell) */
+  .ab14-hud { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; padding: 10px 22px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab14-hud__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 9px; min-width: 0; }
+  .ab14-id { font-family: var(--ds-font-mono); font-size: 13px; color: var(--ds-dim); }
+  .ab14-title { font-size: 18px; font-weight: 700; letter-spacing: -.2px; color: var(--ds-text); }
+  .ab14-count { font-family: var(--ds-font-mono); font-size: 13px; font-weight: 600; color: var(--ds-text); padding: 5px 10px; border-radius: var(--ds-radius-sm);
+    background: var(--ds-inset); border: 1px solid var(--ds-line-2); font-variant-numeric: tabular-nums; }
+  .ab14-count span { color: var(--ds-dim); font-weight: 500; }
+  .ab14-clock { display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 6px; border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); background: var(--ds-inset); }
+  .ab14-clock--idle { padding: 8px 12px; }
+  .ab14-clock--err { border-color: rgba(242,109,109,.35); }
+  .ab14-ring { width: 44px; height: 44px; transform: rotate(-90deg); flex: none; display: block; }
+  .ab14-ring--sm { width: 34px; height: 34px; }
+  .ab14-t { font-size: 20px; line-height: 1.1; color: var(--ds-text); }
+  .ab14-t--sm { font-size: 16px; } .ab14-t--dim { color: var(--ds-dim); } .ab14-t--err { color: var(--ds-err); }
+  .ab14-clock__s { font-family: var(--ds-font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--ds-dim); margin-top: 2px; }
+  .ab14-saved { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--ds-dim); }
+
+  /* work area */
+  .ab14-work { display: grid; grid-template-columns: 230px minmax(0, 1fr) 280px; gap: 16px; padding: 16px 22px 60px; align-items: start; }
+  .ab14-pane__h { display: flex; align-items: center; gap: 8px; padding: 11px 14px; border-bottom: 1px solid var(--ds-line); }
+  .ab14-pane__h h3 { font-size: 13px; font-weight: 600; }
+  .ab14-qnav { list-style: none; margin: 0; padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+  .ab14-qnav li { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 8px; font-size: 12.5px; color: var(--ds-dim); }
+  .ab14-qnav li b { color: var(--ds-text); font-weight: 600; font-family: var(--ds-font-mono); font-size: 11.5px; width: 22px; }
+  .ab14-qnav__on { background: rgba(53,208,192,.1); }
+  .ab14-qnav__on span:last-child { color: var(--ds-teal); }
+  .ab14-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; border: 1.6px solid var(--ds-line-2); }
+  .ab14-dot--done { background: var(--ds-teal); border-color: var(--ds-teal); }
+  .ab14-dot--open { border-style: dashed; border-color: var(--ds-dim); }
+
+  /* question cards (fieldset / legend) */
+  .ab14-q { display: flex; flex-direction: column; }
+  .ab14-q__h { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--ds-line); }
+  .ab14-q__n { font-family: var(--ds-font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--ds-dim); }
+  .ab14-q__b { padding: 14px; display: flex; flex-direction: column; gap: 11px; }
+  .ab14-fs { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .ab14-lg { padding: 0; font-size: 14px; font-weight: 600; line-height: 1.5; color: var(--ds-text); margin-bottom: 4px; }
+  .ab14-lg small { display: block; font-size: 12px; font-weight: 400; color: var(--ds-dim); margin-top: 3px; }
+  .ab14-opt { display: flex; align-items: flex-start; gap: 10px; padding: 9px 11px; border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius);
+    background: var(--ds-inset); font-size: 13px; line-height: 1.45; color: var(--ds-text); cursor: pointer; }
+  .ab14-opt input { margin: 2px 0 0; accent-color: var(--ds-teal); color-scheme: dark; flex: none; }
+  .ab14-opt--on { border-color: rgba(53,208,192,.45); background: #101a1c; }
+  .ab14-opt code, .ab14-q code { font-family: var(--ds-font-mono); font-size: 12px; }
+  .ab14-ord { display: flex; align-items: center; gap: 8px; padding: 7px 8px 7px 11px; border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); background: var(--ds-inset); font-size: 13px; color: var(--ds-text); }
+  .ab14-ord__n { font-family: var(--ds-font-mono); font-size: 11px; color: var(--ds-dim); width: 16px; }
+  .ab14-ord__btn { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 6px; border: 1px solid var(--ds-line-2); background: var(--ds-panel-2); color: var(--ds-dim); }
+  .ab14-ord__btn[aria-disabled="true"] { opacity: .45; }
+  .ab14-ans { font-family: var(--ds-font-mono); }
+  .ab14-select { height: 38px; padding: 0 10px; background: var(--ds-input-bg); border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius);
+    color: var(--ds-text); font-family: var(--ds-font-sans); font-size: 14px; color-scheme: dark; }
+  .ab14-inrow { display: flex; align-items: center; gap: 8px; }
+  .ab14-inrow .ds-input { flex: 1; }
+  .ab14-predict { width: 100%; min-height: 64px; resize: none; background: var(--ds-input-bg); border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius);
+    color: var(--ds-text); font-family: var(--ds-font-mono); font-size: 13px; padding: 9px 11px; line-height: 1.5; display: block; }
+  .ab14-predict::placeholder { color: var(--ds-dim); }
+  .ab14-unans { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--ds-warn); }
+
+  /* rail */
+  .ab14-rail { display: flex; flex-direction: column; gap: 14px; }
+  .ab14-railtxt { padding: 12px 14px; font-size: 12px; line-height: 1.55; color: var(--ds-dim); display: flex; flex-direction: column; gap: 8px; }
+  .ab14-railtxt b { color: var(--ds-text); font-weight: 600; }
+  .ab14-bands { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; }
+  .ab14-band { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; color: var(--ds-dim); }
+  .ab14-band b { width: 64px; flex: none; font-weight: 700; }
+
+  /* cover */
+  .ab14-cover { max-width: 640px; margin: 28px auto 40px; }
+  .ab14-cover__b { padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; }
+  .ab14-cover__t { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .ab14-cover__t h2 { font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+  .ab14-lead { font-size: 15px; font-weight: 600; color: var(--ds-text); }
+  .ab14-rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); background: var(--ds-inset); }
+  .ab14-rules li { display: flex; gap: 11px; align-items: flex-start; padding: 11px 14px; border-top: 1px solid var(--ds-line); font-size: 13.5px; line-height: 1.5; color: var(--ds-text); }
+  .ab14-rules li:first-child { border-top: none; }
+  .ab14-rules li > .ab14-ic { margin-top: 2px; }
+
+  /* notes and banners */
+  .ab14-note { display: flex; gap: 10px; align-items: flex-start; padding: 11px 13px; border-radius: var(--ds-radius); border: 1px solid var(--ds-line-2);
+    background: var(--ds-panel-2); font-size: 13px; color: var(--ds-text); line-height: 1.5; }
+  .ab14-note b { font-weight: 600; }
+  .ab14-note .ab14-ic { margin-top: 2px; }
+  .ab14-note--info { border-color: rgba(106,166,255,.35); background: rgba(106,166,255,.1); }
+  .ab14-note--warn { border-color: rgba(240,180,41,.35); background: rgba(240,180,41,.08); }
+  .ab14-note--err { border-color: rgba(242,109,109,.35); background: rgba(242,109,109,.08); }
+  .ab14-note--ok { border-color: rgba(87,211,154,.35); background: rgba(87,211,154,.08); }
+  .ab14-note--violet { border-color: rgba(155,140,240,.35); background: rgba(155,140,240,.1); }
+  .ab14-note__sub { display: block; font-size: 12px; color: var(--ds-dim); margin-top: 3px; line-height: 1.5; }
+  .ab14-note__act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+
+  /* results */
+  .ab14-res__top { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; padding: 14px 16px; border-bottom: 1px solid var(--ds-line); }
+  .ab14-grade { display: inline-flex; align-items: center; gap: 8px; font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+  .ab14-score { font-family: var(--ds-font-mono); font-size: 15px; font-weight: 600; color: var(--ds-text); }
+  .ab14-prov { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ab14-rows { display: flex; flex-direction: column; }
+  .ab14-rr { display: grid; grid-template-columns: 22px 92px minmax(0, 1fr); gap: 4px 10px; padding: 11px 16px; border-top: 1px solid var(--ds-line); font-size: 13px; line-height: 1.5; }
+  .ab14-rr:first-child { border-top: none; }
+  .ab14-rr__q { color: var(--ds-text); font-weight: 600; }
+  .ab14-rr__k { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--ds-dim); padding-top: 2px; }
+  .ab14-rr__v { color: var(--ds-text); min-width: 0; overflow-wrap: anywhere; }
+  .ab14-rr__v code { font-family: var(--ds-font-mono); font-size: 12px; }
+  .ab14-rr__why { color: var(--ds-dim); }
+  .ab14-mc { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px; border-radius: 6px; font-size: 11.5px; color: var(--ds-violet);
+    background: rgba(155,140,240,.1); border: 1px solid rgba(155,140,240,.35); }
+  .ab14-res__foot { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--ds-line); background: var(--ds-panel-2); }
+  .ab14-drill { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ds-dim); }
+  .ab14-variant { border: 1px dashed var(--ds-line-2); border-radius: var(--ds-radius); padding: 11px 13px; font-size: 12.5px; color: var(--ds-dim); line-height: 1.55; }
+  .ab14-variant b { color: var(--ds-text); font-weight: 600; }
+
+  /* modal stages */
+  .ab14-stage { position: relative; min-height: 420px; overflow: hidden; }
+  .ab14-ghost { padding: 14px; display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 12px; }
+  .ab14-ghost span { display: block; height: 360px; border-radius: var(--ds-radius-lg); border: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab14-danger { background: var(--ds-err); border-color: var(--ds-err); color: var(--ds-bg); }
+
+  /* touch shell (AB04) */
+  .ab14-thud { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; padding: 10px 16px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab14-probe { display: flex; flex-direction: column; gap: 9px; padding: 13px 14px; border-top: 1px solid var(--ds-line); }
+  .ab14-probe:first-child { border-top: none; }
+  .ab14-probe__h { display: flex; align-items: center; gap: 8px; }
+  .ab14-locked { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ds-dim); }
+  .ab14-ro { font-family: var(--ds-font-mono); font-size: 12.5px; color: var(--ds-text); padding: 6px 10px; border-radius: 7px; border: 1px dashed var(--ds-line-2); background: var(--ds-inset); }
+  .ab14-crit { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 4px 10px; padding: 10px 14px; border-top: 1px solid var(--ds-line); font-size: 13px; line-height: 1.5; }
+  .ab14-crit:first-child { border-top: none; }
+
+  /* narrow */
+  .ab14-nhud { padding: 9px 12px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); display: flex; flex-direction: column; gap: 8px; }
+  .ab14-nbody { padding: 12px 12px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .ab14-nbar { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab14-nbar > * { flex: 1; }
+  .ab14-pinned { font-family: var(--ds-font-mono); font-size: 10px; color: var(--ds-dim); text-transform: uppercase; letter-spacing: .6px; }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5" /><path d="M6 10.2V19h12v-8.8" /></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7 9 5z" /><path d="M9 5v12M15 7v12" /></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4" /></symbol>
+  <symbol id="i-journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 3v18M12.5 8h3.5M12.5 12h3.5" /></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V11M10 19V5M16 19v-6" /><path d="M3 21h18" /></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" /></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A2 2 0 0 1 7 3h12v15H7a2 2 0 0 0-2 2z" /><path d="M5 4.5V19" /></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6" /><path d="M10 20a2 2 0 0 0 4 0" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></symbol>
+  <symbol id="i-chevleft" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" /></symbol>
+  <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" /></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6" /></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6" /></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4" /></symbol>
+  <symbol id="i-quiz" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.7.3-1 .8-1 1.5v.6M12 17h.01" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" /></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z" /><path d="M12 10v4M12 17h.01" /></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></symbol>
+  <symbol id="i-flagx" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" /><path d="M14 16l5 5M19 16l-5 5" /></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" /></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2" /><rect x="3" y="14" width="18" height="7" rx="2" /><path d="M7 7.5h.01M7 17.5h.01" /></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4" /></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" /></symbol>
+  <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" /></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · P board</div>
+  <h1>AB14 · A7 Workspace-Quiz</h1>
+  <p class="bd-lede">
+    A quiz item (archetype C) as a course attempt: a list of question cards, one per widget mode, answered in any order under the same
+    <b>45:00 server clock that never pauses</b> (D15, D18) and graded <b>only when you submit your answers</b> by the pack key
+    (<code class="ds-mono">weighted_gate@1</code>: <b>Clean</b> all correct, <b>Rough</b> ≥ 80%, else <b>Miss</b>). <b>Keys and rationale appear only after a
+    counted conclusion</b>, never before and never in Run. The pilot's two quizzes are <b>drills</b> (<code class="ds-mono">revision.drills false</code>), so they
+    get <b>no revision line and no mistake entry</b> (I8). The go-concurrency <b>recall touch</b> (L1–3) reuses the same cards inside the AB04 shell,
+    on a revisable code item: that is where the quiz pre-fill is drawn (F12).
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-p-01.md">ds-p-01</a></span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-p-03.md">p-03</a> (quiz widget + result view)</span>
+    <span><b>Frozen before</b>P</span>
+    <span><b>Sources</b><a href="../../../docs/v2/research/t4-judge-contract.md#43-archetype-c-quiz--key">t4 §4.3</a> ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#62-strategies-a-closed-go-set-the-manifest-picks-one-and-sets-thresholds">§6.2</a> ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#63-mistake-pre-fill-two-tiers-data-only">§6.3</a> ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#66-touch-formats-and-pass-criteria-per-course">§6.6</a> ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#8-learner-flows-and-v2-artboards-needed">§8</a> ·
+      <a href="../../../docs/adr/0027-content-evalpack-and-user-data-model.md#1-the-publicprivate-rule">ADR-0027 §1</a> · D2 · D10 · D15 · D16 · D17 · D18 · I8</span>
+    <span><b>Builds on</b><a href="AB07-workspace-code.html">AB07★</a> shell · <a href="AB04-touch.html">AB04★</a> touch shell · <a href="AB08-results-dock.html">AB08</a> settling</span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB14-F1">F1 cover</a><a href="#AB14-F2">F2 answering</a><a href="#AB14-F3">F3 widget modes</a><a href="#AB14-F4">F4 submit confirm</a>
+    <a href="#AB14-F5">F5 grading</a><a href="#AB14-F6">F6 pass</a><a href="#AB14-F7">F7 miss</a><a href="#AB14-F8">F8 give up</a><a href="#AB14-F9">F9 deadline</a>
+    <a href="#AB14-F10">F10 honor key</a><a href="#AB14-F11">F11 arena</a><a href="#AB14-F12">F12 recall touch</a><a href="#AB14-F13">F13 couldn't grade</a><a href="#AB14-F14">F14 &lt; 1024 px</a>
+  </nav>
+</header>
+
+<!-- ======================================================== rules -->
+<section class="bd-section" aria-labelledby="sec-rules">
+  <h2 class="bd-section__h" id="sec-rules">Board-wide rules <small>t4 §4.3 · §6.2 · §6.3 · D15 · D17 · D18 · I8 · ADR-0027 §1</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <div class="bd-strip" style="align-items:flex-start">
+      <div class="ab14-col" style="gap:6px">
+        <span><b>Grading.</b> The <code class="ds-mono">key</code> grader runs inline when the learner submits (cadence <code class="ds-mono">final</code>). Score = correct / total; <code class="ds-mono">weighted_gate@1</code> with the quiz thresholds <code class="ds-mono">clean_pct 1.0</code>, <code class="ds-mono">pass_pct 0.8</code>: <b class="ab14-ok">Clean</b> 6 / 6 · <b class="ab14-warn">Rough</b> ≥ 80% (5 / 6) · <b class="ab14-err">Miss</b> below 80%, a give-up or the deadline. Unanswered questions count as wrong. Quiz items are <b>never provisional</b>.</span>
+        <span><b>Reveal (withheld, ADR-0027 §1).</b> Keys and rationale appear <b>only after a counted conclusion</b> (a course attempt or a touch). Never while answering, never in Run, never in a mock for an unconcluded item. The arena follows <b>D17</b> (F11: reveal behind a spoiler confirm, recorded, uncapped) — see "Decisions to confirm".</span>
+        <span><b>Shuffle.</b> Options are shown in a <b>per-attempt shuffled order</b> (seeded by the attempt id, stable across reloads); order items start shuffled. Recall bands prefer <code class="ds-mono">blank</code> probes over MCQ (a 4-option guess is right 25% of the time).</span>
+      </div>
+    </div>
+    <div class="bd-strip" style="align-items:flex-start">
+      <div class="ab14-col" style="gap:6px">
+        <span><b>Revisable guard (I8).</b> <code class="ds-mono">revisable = role ∈ {core, reinforcement} ∨ (role = drill ∧ revision.drills)</code>. Every pilot quiz (<code class="ds-mono">gc-004</code>, <code class="ds-mono">gc-008</code>) is a <b>drill</b> and go-concurrency sets <code class="ds-mono">revision.drills false</code>: no revision line, no touch dots, no mistake entry. They read <b>"Drill · not scheduled for revision"</b>.</span>
+        <span><b>Clock (D15, D18).</b> Start stamps <code class="ds-mono">started_at</code>; the deadline is <code class="ds-mono">started_at + 45:00</code>. No pause control anywhere. The ring is <code class="ds-mono">role="timer"</code>, <code class="ds-mono">aria-live="off"</code>; one polite region announces "5 minutes left." at 40:00 and "1 minute left." at 44:00. There is <b>no hint stage</b> on a quiz item.</span>
+        <span><b>Keyboard.</b> Radios and checkboxes are native groups in <code class="ds-mono">fieldset</code>/<code class="ds-mono">legend</code> (arrow keys, Space). Order: move buttons and <span class="xl-kbd">Alt</span>+<span class="xl-kbd">↑</span>/<span class="xl-kbd">↓</span>. <span class="xl-kbd">⌘⇧↵</span> opens the submit confirm (never submits directly). Give up is never focused first and never bound to a key.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================== A · cover -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · Before the start <small>F1 · D15 · D18</small></h2>
+
+  <article class="bd-frame" id="AB14-F1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB14-F1</span><span class="bd-frame__title">· Cover</span><span class="bd-frame__state">· /xlearn/go-concurrency/problem/gc-008 · no attempt yet · nothing timed</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav">
+              <a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a>
+              <a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a>
+              <a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Exercises"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Exercises</a>
+              <a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a>
+              <div class="xl-nav__cap">Practice loop</div>
+              <a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a>
+              <a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a>
+            </nav>
+            <div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab14-top">
+              <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>go-concurrency</a><span class="xl-crumb__sep">/</span><a>exercises</a><span class="xl-crumb__sep">/</span><b>gc-008</b></div>
+              <span class="ab14-flex"></span>
+              <span class="ab14-topsw"><span class="xl-pathsw__ic">GO</span><span class="xl-pathsw__t">Go Concurrency Patterns</span><span class="ds-badge ds-badge--violet ab14-pv">Preview</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="ab14-hud" role="region" aria-label="Attempt status">
+              <div class="ab14-hud__meta"><span class="ab14-id">gc-008</span><span class="ab14-title">Spot the race</span><span class="xl-diff xl-diff--easy">Easy</span><span class="ds-chip ds-chip--xs">Drill</span></div>
+              <span class="ab14-flex"></span>
+              <div class="ab14-clock ab14-clock--idle" role="timer" aria-label="45 minutes, not started"><span class="xl-timer"><svg class="xl-ico xl-ico--sm ab14-dim" aria-hidden="true"><use href="#i-clock"/></svg><span class="xl-timer__t ab14-t ab14-t--dim ab14-t--sm">45:00</span></span><span class="ab14-clock__s" style="margin:0">not started</span></div>
+            </div>
+            <div class="ab14-cover">
+              <section class="xl-panel" aria-labelledby="f1-h">
+                <div class="ab14-cover__b">
+                  <div class="ab14-cover__t"><h2 id="f1-h"><span class="ab14-id" style="font-size:18px">gc-008</span> Spot the race</h2><span class="xl-diff xl-diff--easy">Easy</span><span class="ds-chip ds-chip--sm">Drill</span><span class="ds-chip ds-chip--sm"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-quiz"/></svg> Quiz · key-graded</span></div>
+                  <p class="ab14-lead">6 questions · graded when you submit your answers · 45:00</p>
+                  <ul class="ab14-rules" aria-label="Rules for this attempt">
+                    <li><span class="ab14-ic ab14-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span><span>Starting begins a server clock. It keeps running if you leave.</span></li>
+                    <li><span class="ab14-ic ab14-dim"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eye"/></svg></span><span>Nothing is marked right or wrong until you submit. Then you see every answer and why.</span></li>
+                    <li><span class="ab14-ic ab14-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span><b>Clean:</b> all 6 right · <b>Rough:</b> at least 5 of 6 · fewer is a <b>Miss</b>. Unanswered questions count as wrong.</span></li>
+                    <li><span class="ab14-ic ab14-dim"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg></span><span>Drill · not scheduled for revision.</span></li>
+                  </ul>
+                  <span class="ds-btn ds-btn--primary ds-btn--lg ds-btn--block bd-focus" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start</span>
+                </div>
+              </section>
+            </div>
+          </div>
+          <span class="xl-fab" aria-label="Open Your AI coach (your key)"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-spark"/></svg></span>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li><code>GET /api/problems/gc-008</code> with no open attempt returns the <b>cover only</b>: title, difficulty, role (<b>Drill</b>), grader kind, question count and the pinned limit. <b>No question text, no options</b> (D10: the full item shows on Start).</li>
+          <li><b>[Start]</b> → <code>POST /api/problems/gc-008/attempt/start</code> (cohort-checked; the course is <code>preview</code>). practice pins the policy (45:00, <code>weighted_gate@1</code>, <code>clean_pct 1.0</code>, <code>pass_pct 0.8</code>), stamps <code>started_at</code> and the <b>per-attempt shuffle seed</b>; the page becomes F2.</li>
+          <li>An open attempt exists → no cover: the page resumes it with the saved draft (the clock kept running).</li></ul></section>
+      <section><h4>Copy and chrome</h4>
+        <ul><li>Lead line is the plan's final copy: "6 questions · graded when you submit your answers · 45:00"; the clock rule reads "Starting begins a server clock. It keeps running if you leave."</li>
+          <li>Course chrome from the go-concurrency manifest (AB02-P1): Exercises instead of Problems, no Mock interview; the switcher carries the violet <b>Preview</b> badge. No hint rule: a quiz item has no hint stage.</li>
+          <li>The drill line appears on the cover so the learner knows up front this attempt won't schedule a review (I8).</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>D15 (hard limit, no pause) · D18 (45:00 manifest default) · D10 (content on Start) · I8 · t4 §4.3.</li>
+          <li>Focus lands on <b>Start</b>; the rules list is a <code>&lt;ul&gt;</code> with decorative icons. Text 15:1, dim 7.2:1 on the panel.</li>
+          <li>&lt; 1024 px: the cover card goes full width with Start as a block button (F14 follows the same pattern as AB07-N1).</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- =================================================== B · answering -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · Answering <small>F2–F5 · the counter moves, correctness never shows</small></h2>
+
+  <article class="bd-frame" id="AB14-F2">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB14-F2</span><span class="bd-frame__title">· Answering</span><span class="bd-frame__state">· 6:20 in · 38:40 left · 4 of 6 answered</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav">
+              <a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a>
+              <a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a>
+              <a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Exercises"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Exercises</a>
+              <a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a>
+              <div class="xl-nav__cap">Practice loop</div>
+              <a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a>
+              <a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a>
+            </nav>
+            <div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab14-top">
+              <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>go-concurrency</a><span class="xl-crumb__sep">/</span><a>exercises</a><span class="xl-crumb__sep">/</span><b>gc-008</b></div>
+              <span class="ab14-flex"></span>
+              <span class="ab14-topsw"><span class="xl-pathsw__ic">GO</span><span class="xl-pathsw__t">Go Concurrency Patterns</span><span class="ds-badge ds-badge--violet ab14-pv">Preview</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="ab14-hud" role="region" aria-label="Attempt status">
+              <div class="ab14-hud__meta"><span class="ab14-id">gc-008</span><span class="ab14-title">Spot the race</span><span class="xl-diff xl-diff--easy">Easy</span><span class="ds-chip ds-chip--xs">Drill</span><span class="ds-chip ds-chip--xs"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-quiz"/></svg> Quiz · key-graded</span></div>
+              <span class="ab14-flex"></span>
+              <span class="ab14-count" aria-live="polite">4 / 6 <span>answered</span></span>
+              <span class="ab14-saved" role="status"><svg class="xl-ico xl-ico--sm ab14-ok" aria-hidden="true"><use href="#i-check"/></svg> Saved</span>
+              <div class="ab14-clock" role="timer" aria-live="off" aria-label="38 minutes 40 seconds left of 45">
+                <svg class="ab14-ring" viewBox="0 0 44 44" aria-hidden="true"><circle class="xl-ring-track" cx="22" cy="22" r="19" fill="none" stroke-width="4"/><circle cx="22" cy="22" r="19" fill="none" stroke-width="4" stroke-linecap="round" style="stroke:var(--ds-teal)" stroke-dasharray="102.6 119.4"/></svg>
+                <div><div class="xl-timer__t ab14-t">38:40</div><div class="ab14-clock__s">left of 45:00</div></div>
+              </div>
+              <span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-send"/></svg> Submit answers <span class="xl-kbd">⌘⇧↵</span></span>
+            </div>
+            <div class="ab14-work">
+              <!-- part navigator -->
+              <nav class="xl-panel" aria-label="Questions">
+                <div class="ab14-pane__h"><svg class="xl-ico xl-ico--sm ab14-teal" aria-hidden="true"><use href="#i-list"/></svg><h3>Questions</h3></div>
+                <ol class="ab14-qnav">
+                  <li><b>Q1</b><span class="ab14-dot ab14-dot--done" aria-hidden="true"></span><span>Answered</span></li>
+                  <li><b>Q2</b><span class="ab14-dot ab14-dot--done" aria-hidden="true"></span><span>Answered</span></li>
+                  <li><b>Q3</b><span class="ab14-dot ab14-dot--open" aria-hidden="true"></span><span class="ab14-warn">Unanswered</span></li>
+                  <li><b>Q4</b><span class="ab14-dot ab14-dot--done" aria-hidden="true"></span><span>Answered</span></li>
+                  <li class="ab14-qnav__on" aria-current="step"><b>Q5</b><span class="ab14-dot ab14-dot--done" aria-hidden="true"></span><span>Answered</span></li>
+                  <li><b>Q6</b><span class="ab14-dot ab14-dot--open" aria-hidden="true"></span><span class="ab14-warn">Unanswered</span></li>
+                </ol>
+              </nav>
+              <!-- cards -->
+              <div class="ab14-col" style="gap:14px">
+                <section class="xl-panel ab14-q" aria-labelledby="f2-q5">
+                  <div class="ab14-q__h"><span class="ab14-q__n">Question 5 of 6</span><span class="ds-chip ds-chip--xs">Short answer</span><span class="ab14-flex"></span><span class="ab14-saved"><svg class="xl-ico xl-ico--sm ab14-ok" aria-hidden="true"><use href="#i-check"/></svg> Saved</span></div>
+                  <div class="ab14-q__b">
+                    <label class="ab14-lg" id="f2-q5" for="f2-q5in">Name the <code>sync</code> type that runs an initializer exactly once, however many goroutines call it.</label>
+                    <input class="ds-input ab14-ans bd-focus" id="f2-q5in" value="sync.Once" autocomplete="off" spellcheck="false">
+                  </div>
+                </section>
+                <section class="xl-panel ab14-q" aria-labelledby="f2-q6">
+                  <div class="ab14-q__h"><span class="ab14-q__n">Question 6 of 6</span><span class="ds-chip ds-chip--xs">Predict the output</span><span class="ab14-flex"></span><span class="ab14-unans"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg> Unanswered</span></div>
+                  <div class="ab14-q__b">
+                    <label class="ab14-lg" id="f2-q6" for="f2-q6in">What does this program print?</label>
+<pre class="xl-code ab14-nolig" aria-label="Code snippet, read-only"><span class="k">func</span> <span class="fn">main</span>() {
+    ch := <span class="fn">make</span>(<span class="k">chan</span> <span class="t">int</span>, <span class="n">2</span>)
+    ch &lt;- <span class="n">1</span>
+    ch &lt;- <span class="n">2</span>
+    <span class="fn">close</span>(ch)
+    <span class="k">for</span> v := <span class="k">range</span> ch {
+        fmt.<span class="fn">Println</span>(v)
+    }
+}</pre>
+                    <textarea class="ab14-predict" id="f2-q6in" placeholder="Type the exact output, one line per line printed"></textarea>
+                  </div>
+                </section>
+                <div class="bd-crop" style="background:none;padding:2px 0">— Q1–Q4 sit above in the same list; the navigator jumps to any card —</div>
+              </div>
+              <!-- rail -->
+              <aside class="ab14-rail" aria-label="How it's graded">
+                <div class="xl-panel">
+                  <div class="ab14-pane__h"><svg class="xl-ico xl-ico--sm ab14-dim" aria-hidden="true"><use href="#i-info"/></svg><h3>How it's graded</h3></div>
+                  <div class="ab14-bands">
+                    <div class="ab14-band"><b class="ab14-ok">Clean</b>all 6 right</div>
+                    <div class="ab14-band"><b class="ab14-warn">Rough</b>at least 5 of 6 (80%)</div>
+                    <div class="ab14-band"><b class="ab14-err">Miss</b>fewer, a give-up or 45:00</div>
+                  </div>
+                </div>
+                <div class="xl-panel">
+                  <div class="ab14-railtxt">
+                    <span><b>Nothing is checked yet.</b> You can change any answer until you submit. Unanswered questions count as wrong.</span>
+                    <span>Answers save as you go. Leaving the page doesn't stop the clock.</span>
+                  </div>
+                </div>
+                <div class="ab14-col" style="gap:6px">
+                  <span class="ds-btn ds-btn--ghost ds-btn--sm" role="button" style="align-self:flex-start"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-flagx"/></svg> Give up…</span>
+                  <span class="ab14-help">Ends the attempt as a Miss and shows the answers.</span>
+                </div>
+              </aside>
+            </div>
+          </div>
+          <span class="xl-fab" aria-label="Open Your AI coach (your key)"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-spark"/></svg></span>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li>All six cards load on Start in the attempt's shuffled option order. The value per card is the t4 §4.3 shape (<code>{selected}</code>, <code>{order}</code>, <code>{fields}</code>, <code>{raw, unit}</code>, <code>{raw}</code>); drafts autosave (debounced ~2 s) → <code>PUT /api/problems/gc-008/draft</code>. "Saved" per card and in the HUD; offline: "Not saved — retrying".</li>
+          <li>Header counter <b>"4 / 6 answered"</b> counts non-empty values; it is <code>aria-live="polite"</code> and changes only when a card flips between empty and answered (not per keystroke).</li>
+          <li>Unanswered cards are marked in the navigator and on the card ("Unanswered", amber text with an icon — never colour alone). The navigator is a list of in-page links; the current card has <code>aria-current</code>.</li></ul></section>
+      <section><h4>Withheld</h4>
+        <ul><li><b>No correctness anywhere</b>: no ✓/✗, no score, no "close", no key-derived hint, no misconception labels. The server's attempt view carries the prompt and options only; keys stay in the pack until the counted conclusion (ADR-0027 §1, t4 §4.3).</li>
+          <li>No Run button: a quiz has nothing to run. The coach button behaves exactly as on AB07 (AB01's assist confirm); nothing quiz-specific is added (P = widget code only).</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>t4 §4.3 (modes, widgets) · §8 (A7: list, lock-in, results) · D15 / D18 (server clock, 45:00, no pause).</li>
+          <li>Focus order: Submit answers → navigator → cards in order → rail (Give up last). The ring is <code>role="timer"</code>, <code>aria-live="off"</code>. Text 15:1; warn text 9.8:1 on the panel.</li>
+          <li>&lt; 1024 px: one question per screen with Prev / Next and the counter pinned (F14).</li></ul></section>
+    </aside>
+  </article>
+
+  <!-- F3 widget modes -->
+  <section class="bd-section" id="AB14-F3" style="margin-top:10px" aria-labelledby="f3-h">
+    <h3 class="bd-section__h" id="f3-h" style="font-size:15px">AB14-F3 · Widget modes <small>one card per mode · t4 §4.3 · options in a per-attempt shuffled order</small></h3>
+    <div class="bd-grid">
+      <!-- single -->
+      <article class="bd-frame" id="AB14-F3a">
+        <header class="bd-frame__label"><span class="bd-frame__id">AB14-F3a</span><span class="bd-frame__title">· choice.single</span><span class="bd-frame__state">· radio group</span></header>
+        <div class="bd-frame__body"><div class="bd-pad">
+          <section class="xl-panel ab14-q">
+            <div class="ab14-q__h"><span class="ab14-q__n">Question 2 of 6</span><span class="ds-chip ds-chip--xs">Pick one</span></div>
+            <div class="ab14-q__b">
+              <fieldset class="ab14-fs">
+                <legend class="ab14-lg">Many goroutines increment a counter; one reader reads it after they finish. Which primitive fits the increment best?</legend>
+                <label class="ab14-opt"><input type="radio" name="f3a"> <span><code>sync.WaitGroup</code></span></label>
+                <label class="ab14-opt ab14-opt--on"><input type="radio" name="f3a" checked> <span><code>atomic.Int64</code></span></label>
+                <label class="ab14-opt"><input type="radio" name="f3a"> <span><code>sync.Once</code></span></label>
+                <label class="ab14-opt"><input type="radio" name="f3a"> <span>An unbuffered channel</span></label>
+              </fieldset>
+            </div>
+          </section>
+        </div></div>
+        <aside class="bd-notes"><ul><li>Native radios in <code>fieldset</code>/<code>legend</code>; arrow keys move, Space selects. The selected row gets the teal border <b>and</b> the checked radio (never colour alone). Value <code>{selected:[id]}</code>. Scoring exact. Each distractor carries a <code>misconception</code> tag in the pack, used only after conclusion (F7).</li></ul></aside>
+      </article>
+      <!-- multi -->
+      <article class="bd-frame" id="AB14-F3b">
+        <header class="bd-frame__label"><span class="bd-frame__id">AB14-F3b</span><span class="bd-frame__title">· choice.multi</span><span class="bd-frame__state">· checkbox group</span></header>
+        <div class="bd-frame__body"><div class="bd-pad">
+          <section class="xl-panel ab14-q">
+            <div class="ab14-q__h"><span class="ab14-q__n">Question 3 of 6</span><span class="ds-chip ds-chip--xs">Select all that apply</span></div>
+            <div class="ab14-q__b">
+              <fieldset class="ab14-fs">
+                <legend class="ab14-lg">Which changes remove the race on <code>hits++</code>?<small>Select all that apply.</small></legend>
+                <label class="ab14-opt ab14-opt--on"><input type="checkbox" checked> <span>Guard <code>hits++</code> with a <code>sync.Mutex</code></span></label>
+                <label class="ab14-opt"><input type="checkbox"> <span>Call <code>runtime.Gosched()</code> before <code>hits++</code></span></label>
+                <label class="ab14-opt"><input type="checkbox"> <span>Count locally in each goroutine and send the total on a channel</span></label>
+                <label class="ab14-opt ab14-opt--on"><input type="checkbox" checked> <span>Use <code>hits.Add(1)</code> on an <code>atomic.Int64</code></span></label>
+              </fieldset>
+            </div>
+          </section>
+        </div></div>
+        <aside class="bd-notes"><ul><li>Native checkboxes; the legend's second line states "Select all that apply." Value <code>{selected:[ids]}</code>; scoring per the item (<code>all_or_nothing</code> for the pilot). The board never hints how many are right.</li></ul></aside>
+      </article>
+      <!-- order -->
+      <article class="bd-frame" id="AB14-F3c">
+        <header class="bd-frame__label"><span class="bd-frame__id">AB14-F3c</span><span class="bd-frame__title">· choice.order</span><span class="bd-frame__state">· move buttons + Alt+↑/↓</span></header>
+        <div class="bd-frame__body"><div class="bd-pad">
+          <section class="xl-panel ab14-q">
+            <div class="ab14-q__h"><span class="ab14-q__n">Question 4 of 6</span><span class="ds-chip ds-chip--xs">Put in order</span></div>
+            <div class="ab14-q__b">
+              <fieldset class="ab14-fs">
+                <legend class="ab14-lg">Put the steps to shut down a worker pool in order, first to last.</legend>
+                <ol class="ab14-col" style="gap:6px;list-style:none;margin:0;padding:0" aria-label="Steps, in your order">
+                  <li class="ab14-ord"><span class="ab14-ord__n">1</span><span class="ab14-flex">Workers finish their jobs and return</span><span class="ab14-ord__btn" role="button" aria-label="Move up" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-up"/></svg></span><span class="ab14-ord__btn" role="button" aria-label="Move down"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-down"/></svg></span></li>
+                  <li class="ab14-ord bd-focus"><span class="ab14-ord__n">2</span><span class="ab14-flex">Stop sending and <code>close(jobs)</code></span><span class="ab14-ord__btn" role="button" aria-label="Move up"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-up"/></svg></span><span class="ab14-ord__btn" role="button" aria-label="Move down"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-down"/></svg></span></li>
+                  <li class="ab14-ord"><span class="ab14-ord__n">3</span><span class="ab14-flex"><code>wg.Wait()</code> in a closer goroutine</span><span class="ab14-ord__btn" role="button" aria-label="Move up"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-up"/></svg></span><span class="ab14-ord__btn" role="button" aria-label="Move down"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-down"/></svg></span></li>
+                  <li class="ab14-ord"><span class="ab14-ord__n">4</span><span class="ab14-flex"><code>close(results)</code></span><span class="ab14-ord__btn" role="button" aria-label="Move up"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-up"/></svg></span><span class="ab14-ord__btn" role="button" aria-label="Move down" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-down"/></svg></span></li>
+                </ol>
+                <span class="ab14-help"><span class="xl-kbd">Alt</span> + <span class="xl-kbd">↑</span> / <span class="xl-kbd">↓</span> moves the focused step.</span>
+              </fieldset>
+            </div>
+          </section>
+        </div></div>
+        <aside class="bd-notes"><ul><li>Items start in a shuffled order (the order shown is the learner's current order, not the key). Each row: position, text, <b>Move up</b> / <b>Move down</b> buttons (disabled at the ends); <span class="xl-kbd">Alt</span>+<span class="xl-kbd">↑</span>/<span class="xl-kbd">↓</span> on the focused row. After a move, a polite region says "Stop sending and close(jobs), moved to position 1 of 4." No drag-only interaction. Value <code>{order:[ids]}</code>.</li></ul></aside>
+      </article>
+      <!-- text -->
+      <article class="bd-frame" id="AB14-F3d">
+        <header class="bd-frame__label"><span class="bd-frame__id">AB14-F3d</span><span class="bd-frame__title">· blank.text</span><span class="bd-frame__state">· short answer</span></header>
+        <div class="bd-frame__body"><div class="bd-pad">
+          <section class="xl-panel ab14-q">
+            <div class="ab14-q__h"><span class="ab14-q__n">Question 5 of 6</span><span class="ds-chip ds-chip--xs">Short answer</span></div>
+            <div class="ab14-q__b">
+              <label class="ab14-lg" for="f3d-in">Name the <code>sync</code> type that runs an initializer exactly once, however many goroutines call it.</label>
+              <input class="ds-input ab14-ans" id="f3d-in" value="sync.Once" autocomplete="off" spellcheck="false">
+            </div>
+          </section>
+        </div></div>
+        <aside class="bd-notes"><ul><li><code>ds-input</code>, mono, no autocomplete or spellcheck. Graded after submit by <code>accept[]</code> plus the closed normalizers (<code>trim, casefold, collapse_ws, strip_punct, nfkc</code>). Nothing tells the learner which spellings are accepted before the conclusion.</li></ul></aside>
+      </article>
+      <!-- numeric -->
+      <article class="bd-frame" id="AB14-F3e">
+        <header class="bd-frame__label"><span class="bd-frame__id">AB14-F3e</span><span class="bd-frame__title">· blank.numeric</span><span class="bd-frame__state">· inputmode=decimal + unit</span></header>
+        <div class="bd-frame__body"><div class="bd-pad">
+          <section class="xl-panel ab14-q">
+            <div class="ab14-q__h"><span class="ab14-q__n">gc-004 · Question 3 of 5</span><span class="ds-chip ds-chip--xs">Number</span></div>
+            <div class="ab14-q__b">
+              <label class="ab14-lg" for="f3e-in">Four workers each sleep 250 ms, all started together; <code>main</code> then calls <code>wg.Wait()</code>. About how long until <code>Wait</code> returns?</label>
+              <div class="ab14-inrow"><input class="ds-input ab14-ans" id="f3e-in" inputmode="decimal" value="250" autocomplete="off"><select class="ab14-select" aria-label="Unit"><option selected>ms</option><option>s</option></select></div>
+            </div>
+          </section>
+        </div></div>
+        <aside class="bd-notes"><ul><li><code>inputmode="decimal"</code> brings up the number pad on phones; the unit is a native <code>&lt;select&gt;</code> of the item's unit family. Value <code>{raw, unit}</code>; graded with the key's tolerance after a closed unit conversion. Sample from the pilot's other drill, <code>gc-004</code>.</li></ul></aside>
+      </article>
+      <!-- big-O -->
+      <article class="bd-frame" id="AB14-F3f">
+        <header class="bd-frame__label"><span class="bd-frame__id">AB14-F3f</span><span class="bd-frame__title">· blank.big_o</span><span class="bd-frame__state">· complexity</span></header>
+        <div class="bd-frame__body"><div class="bd-pad">
+          <section class="xl-panel ab14-q">
+            <div class="ab14-q__h"><span class="ab14-q__n">gc-004 · Question 5 of 5</span><span class="ds-chip ds-chip--xs">Complexity</span></div>
+            <div class="ab14-q__b">
+              <label class="ab14-lg" for="f3f-in">A pipeline of <code>k</code> stages passes <code>n</code> values; each stage does constant work per value. What is the total work?</label>
+              <input class="ds-input ab14-ans" id="f3f-in" placeholder="e.g. O(n log n)" autocomplete="off" spellcheck="false">
+              <span class="ab14-help">Hint: e.g. O(n log n). <code>n^2</code>, <code>n²</code> and <code>n*n</code> are read the same way.</span>
+            </div>
+          </section>
+        </div></div>
+        <aside class="bd-notes"><ul><li>The format hint "e.g. O(n log n)" is the placeholder <b>and</b> a visible line (a placeholder alone disappears on typing). The closed <code>big_o</code> normalizer folds <code>O(n^2)</code> ≡ <code>O(n²)</code> ≡ <code>O(N*N)</code>, <code>log n</code> ≡ <code>lg n</code>; it runs only when graded.</li></ul></aside>
+      </article>
+      <!-- predict -->
+      <article class="bd-frame" id="AB14-F3g">
+        <header class="bd-frame__label"><span class="bd-frame__id">AB14-F3g</span><span class="bd-frame__title">· blank.predict_output</span><span class="bd-frame__state">· read-only snippet + mono answer</span></header>
+        <div class="bd-frame__body"><div class="bd-pad">
+          <section class="xl-panel ab14-q">
+            <div class="ab14-q__h"><span class="ab14-q__n">Question 6 of 6</span><span class="ds-chip ds-chip--xs">Predict the output</span></div>
+            <div class="ab14-q__b">
+              <label class="ab14-lg" for="f3g-in">What does this program print?</label>
+<pre class="xl-code ab14-nolig" aria-label="Code snippet, read-only"><span class="k">func</span> <span class="fn">main</span>() {
+    ch := <span class="fn">make</span>(<span class="k">chan</span> <span class="t">int</span>, <span class="n">2</span>)
+    ch &lt;- <span class="n">1</span>
+    ch &lt;- <span class="n">2</span>
+    <span class="fn">close</span>(ch)
+    <span class="k">for</span> v := <span class="k">range</span> ch {
+        fmt.<span class="fn">Println</span>(v)
+    }
+}</pre>
+              <textarea class="ab14-predict" id="f3g-in">1
+2</textarea>
+            </div>
+          </section>
+        </div></div>
+        <aside class="bd-notes"><ul><li>The snippet is a read-only <code>xl-code</code> block (not an editor; it can't be run). The answer box is monospace, multi-line; graded exact after <code>trim_lines, crlf</code>, no typo tolerance.</li></ul></aside>
+      </article>
+    </div>
+    <div class="bd-strip" style="margin-top:4px">
+      <span><b>Shuffle (all choice modes).</b> The options above are in this attempt's order. practice stores a seed with the attempt and the server returns options already permuted; the pack's option ids never reach the client in key order. The same attempt always shows the same order (a reload doesn't reshuffle). Sample questions are illustrative, written for this board.</span>
+    </div>
+  </section>
+
+  <div class="bd-grid bd-grid--wide" style="margin-top:22px">
+    <!-- F4 -->
+    <article class="bd-frame" id="AB14-F4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB14-F4</span><span class="bd-frame__title">· Submit confirm</span><span class="bd-frame__state">· 7:05 in · 2 unanswered · ds-modal--sm</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab14-stage">
+          <div class="ab14-ghost" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div class="ds-modal__backdrop">
+            <div class="ds-modal__panel ds-modal--sm" role="dialog" aria-modal="true" aria-labelledby="f4-t" aria-describedby="f4-d">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="f4-t">Submit your answers?</span></div>
+              <div class="ds-modal__body ab14-col" id="f4-d" style="gap:8px;font-size:13.5px;line-height:1.55">
+                <span class="ab14-note ab14-note--warn" style="font-size:13px"><span class="ab14-ic ab14-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span><b>2 questions are unanswered</b> — they count as wrong.</span></span>
+                <span>You can't change answers after submitting.</span>
+              </div>
+              <div class="ds-modal__footer"><span class="ds-btn ds-btn--secondary bd-focus" role="button">Keep answering</span><span class="ds-btn ds-btn--primary" role="button">Submit answers</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Copy (plan, final): "Submit your answers? 2 questions are unanswered — they count as wrong. You can't change answers after submitting." With 0 unanswered the warning line is dropped. <b>Keep answering</b> has default focus; Esc = Keep answering.</li>
+          <li><b>Submit answers</b> → <code>POST /api/problems/gc-008/submissions {context: course, action: final, parts[]}</code> with an <code>Idempotency-Key</code> (t4 §4.3 <code>final</code> cadence: one submit, no retries that count twice). The page becomes F5.</li>
+          <li><code>role="dialog"</code>, <code>aria-modal</code>, focus trapped; the count also names the questions in the description for screen readers ("Q3 and Q6 are unanswered").</li></ul>
+      </aside>
+    </article>
+
+    <!-- F5 -->
+    <article class="bd-frame" id="AB14-F5">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB14-F5</span><span class="bd-frame__title">· Grading</span><span class="bd-frame__state">· submitted at 7:08 · practice settling</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab14-col" style="gap:14px">
+          <section class="xl-panel" aria-label="Result">
+            <div class="ab14-res__top"><span class="ab14-id">gc-008</span><b>Spot the race</b><span class="ab14-flex"></span><span class="ab14-count">6 / 6 <span>submitted</span></span></div>
+            <div style="padding:16px" aria-live="polite">
+              <div class="ab14-note ab14-note--info" role="status"><span class="ab14-ic ab14-info"><svg class="xl-ico xl-ico--sm ds-spin" aria-hidden="true"><use href="#i-retry"/></svg></span><span><b>Recording your result…</b><span class="ab14-note__sub">Your answers are in. This usually takes a second.</span></span></div>
+            </div>
+          </section>
+          <div class="ab14-help">Every card is now read-only; the clock has stopped at 7:08.</div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>The <code>key</code> grader is inline in judge, so there is no queue or runner state; this is AB08-F4's <b>settling</b> phase (t4 §5.5), shown while practice records the conclusion (<code>factsThroughSeq &lt; attemptSeq</code>). F6 or F7 replaces it.</li>
+          <li>Cards lock (inputs <code>disabled</code>), still without marks. Spinner is <code>ds-spin</code>; with reduced motion it becomes a static clock icon. <code>role="status"</code> in a polite region.</li>
+          <li>If recording fails → F13 (not counted, attempt still open).</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- =================================================== C · concluded -->
+<section class="bd-section" aria-labelledby="sec-c">
+  <h2 class="bd-section__h" id="sec-c">C · Concluded <small>F6–F9 · the only course-attempt frames with ✓ / ✗, keys and rationale</small></h2>
+
+  <article class="bd-frame" id="AB14-F6">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB14-F6</span><span class="bd-frame__title">· Concluded · pass</span><span class="bd-frame__state">· 5 / 6 · 83% · Rough · drill (no revision)</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad" style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start">
+        <section class="xl-panel" aria-labelledby="f6-h">
+          <div class="ab14-res__top" role="status">
+            <span class="ab14-grade ab14-warn" id="f6-h"><svg class="xl-ico" aria-hidden="true"><use href="#i-check"/></svg> Rough</span>
+            <span class="ab14-score">5 / 6 · 83%</span>
+            <span class="ab14-flex"></span>
+            <div class="ab14-prov"><span class="ds-chip ds-chip--xs"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-server"/></svg> Judge · checked</span></div>
+          </div>
+          <div class="ab14-rows" role="list" aria-label="Your answers, with the key">
+            <div class="ab14-rr" role="listitem"><span class="ab14-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab14-rr__k">Q1 · Right</span><span class="ab14-rr__v"><span class="ab14-rr__q">Which pair of accesses races?</span><br>You: <code>hits++</code> in one goroutine and <code>hits++</code> in another<br><span class="ab14-rr__why">Why: <code>hits++</code> reads, adds and writes; four goroutines do it with no lock. <code>wg.Wait()</code> orders the final read after every <code>Done</code>, so that read doesn't race.</span></span></div>
+            <div class="ab14-rr" role="listitem"><span class="ab14-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab14-rr__k">Q2 · Right</span><span class="ab14-rr__v"><span class="ab14-rr__q">Which primitive fits the increment best?</span><br>You: <code>atomic.Int64</code><br><span class="ab14-rr__why">Why: one integer, one operation: an atomic add is the smallest correct tool. A <code>WaitGroup</code> waits; it doesn't protect data.</span></span></div>
+            <div class="ab14-rr" role="listitem"><span class="ab14-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><span class="ab14-rr__k">Q3 · Wrong</span><span class="ab14-rr__v"><span class="ab14-rr__q">Which changes remove the race?</span><br>You: Mutex · <code>atomic.Int64</code><br>Answer: Mutex · <code>atomic.Int64</code> · <b>count locally and send the total on a channel</b><br><span class="ab14-rr__why">Why: a goroutine-local count shares nothing until it's sent, and the channel send happens before the receive. <code>runtime.Gosched()</code> only yields; it orders nothing.</span></span></div>
+            <div class="ab14-rr" role="listitem"><span class="ab14-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab14-rr__k">Q4 · Right</span><span class="ab14-rr__v"><span class="ab14-rr__q">Order the pool shutdown.</span><br>You: <code>close(jobs)</code> → workers return → <code>wg.Wait()</code> → <code>close(results)</code><br><span class="ab14-rr__why">Why: close the input first so workers' <code>range</code> ends; close the output only after every sender is done.</span></span></div>
+            <div class="ab14-rr" role="listitem"><span class="ab14-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab14-rr__k">Q5 · Right</span><span class="ab14-rr__v"><span class="ab14-rr__q">The type that runs an initializer once.</span><br>You: <code>sync.Once</code><br><span class="ab14-rr__why">Why: <code>Once.Do</code> runs its function once and makes every caller wait until it has returned.</span></span></div>
+            <div class="ab14-rr" role="listitem"><span class="ab14-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab14-rr__k">Q6 · Right</span><span class="ab14-rr__v"><span class="ab14-rr__q">Predict the output.</span><br>You: <code>1</code> / <code>2</code><br><span class="ab14-rr__why">Why: a closed buffered channel still delivers what's buffered; <code>range</code> stops after the last value.</span></span></div>
+          </div>
+          <div class="ab14-res__foot">
+            <span class="ab14-drill"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg> Drill · not scheduled for revision</span>
+            <span class="ab14-flex"></span>
+            <span class="ds-btn ds-btn--primary ds-btn--sm bd-focus" role="button">Next exercise</span>
+          </div>
+        </section>
+        <div class="ab14-col" style="gap:12px">
+          <div class="ab14-variant" role="note"><b>Variant · a revisable quiz item</b> (role <code class="ds-mono">core</code> or <code class="ds-mono">reinforcement</code>; none in the pilot). The footer line becomes the revision line:
+            <div class="ab14-row" style="margin-top:8px;gap:8px"><div class="xl-touch" aria-hidden="true"><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div><b>Day 1 review tomorrow</b></div>
+          </div>
+          <div class="ab14-help"><b>Grade bands</b> (<code class="ds-mono">weighted_gate@1</code>): 6 / 6 → <b class="ab14-ok">Clean</b> · 5 / 6 → <b class="ab14-warn">Rough</b> · ≤ 4 / 6 → <b class="ab14-err">Miss</b>.</div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li>From the concluded view: per question <code>correct</code>, the learner's value, <b>the key and its rationale — shown only now</b> (the reveal rule: after a counted conclusion, even for a miss). Score "5 / 6 · 83%"; grade <b>Rough</b> because 83% ≥ <code>pass_pct 0.8</code> but &lt; <code>clean_pct 1.0</code>.</li>
+          <li>Provenance chip <b>"Judge · checked"</b>: the key comes from the private pack (<code>key_source: pack</code>), so the result counts toward judge-checked % (P7). An honor key reads as F10.</li>
+          <li>Right answers show the learner's value only; wrong ones add "Answer:" with the key. Rows never show which distractor was "close".</li></ul></section>
+      <section><h4>Revision (I8, D2)</h4>
+        <ul><li><code>gc-008</code> is a <b>drill</b> and the manifest sets <code>revision.drills false</code>, so the footer reads <b>"Drill · not scheduled for revision"</b>: no touch dots, no Day-1 line, no mistake entry, whatever the grade.</li>
+          <li>A revisable quiz item (none in the pilot) anchors L1 at the conclusion (D2: any grade) and shows "Day 1 review tomorrow" with the dots — drawn as the variant, not frozen as pilot behaviour.</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li><code>weighted_gate@1</code> (t4 §6.2) · t4 §4.3 reveal rule · D2 · I8 · P7.</li>
+          <li>Result header is <code>role="status"</code>; focus moves to the grade heading, then <b>Next exercise</b>. Each row states "Right" / "Wrong" in words next to the ✓ / ✗ (ok 9.7:1, err 6.2:1, warn 9.8:1 on the panel).</li>
+          <li>&lt; 1024 px: rows stack (mark + label, then the text), N2.</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide">
+    <!-- F7 -->
+    <article class="bd-frame" id="AB14-F7">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB14-F7</span><span class="bd-frame__title">· Concluded · miss</span><span class="bd-frame__state">· 3 / 6 · Not passed · drill: no mistake entry</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <section class="xl-panel" aria-labelledby="f7-h">
+            <div class="ab14-res__top" role="status">
+              <span class="ab14-grade ab14-err" id="f7-h"><svg class="xl-ico" aria-hidden="true"><use href="#i-flagx"/></svg> Not passed</span>
+              <span class="ab14-score">3 / 6</span>
+              <span class="ab14-flex"></span>
+              <span class="ds-chip ds-chip--xs"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-server"/></svg> Judge · checked</span>
+            </div>
+            <div class="ab14-rows" role="list" aria-label="Your answers, with the key">
+              <div class="ab14-rr" role="listitem"><span class="ab14-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab14-rr__k">Q1 · Right</span><span class="ab14-rr__v"><span class="ab14-rr__q">Which pair of accesses races?</span></span></div>
+              <div class="ab14-rr" role="listitem"><span class="ab14-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><span class="ab14-rr__k">Q2 · Wrong</span><span class="ab14-rr__v"><span class="ab14-rr__q">Which primitive fits the increment best?</span><br>You: <code>sync.WaitGroup</code> <span class="ab14-mc" style="margin-left:4px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg> Wrong primitive</span><br>Answer: <code>atomic.Int64</code><br><span class="ab14-rr__why">Why: a <code>WaitGroup</code> waits for goroutines to finish; it doesn't make the increment safe. One integer, one operation: an atomic add.</span></span></div>
+              <div class="ab14-rr" role="listitem"><span class="ab14-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><span class="ab14-rr__k">Q3 · Wrong</span><span class="ab14-rr__v"><span class="ab14-rr__q">Which changes remove the race?</span><br>You: Mutex · <code>runtime.Gosched()</code><br>Answer: Mutex · <code>atomic.Int64</code> · count locally and send the total</span></div>
+              <div class="ab14-rr" role="listitem"><span class="ab14-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab14-rr__k">Q4 · Right</span><span class="ab14-rr__v"><span class="ab14-rr__q">Order the pool shutdown.</span></span></div>
+              <div class="ab14-rr" role="listitem"><span class="ab14-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><span class="ab14-rr__k">Q5 · No answer</span><span class="ab14-rr__v"><span class="ab14-rr__q">The type that runs an initializer once.</span><br>Unanswered — counts as wrong. Answer: <code>sync.Once</code></span></div>
+              <div class="ab14-rr" role="listitem"><span class="ab14-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab14-rr__k">Q6 · Right</span><span class="ab14-rr__v"><span class="ab14-rr__q">Predict the output.</span></span></div>
+            </div>
+            <div class="ab14-res__foot">
+              <span class="ab14-drill"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg> Drill · not scheduled for revision</span>
+              <span class="ab14-flex"></span>
+              <span class="ds-btn ds-btn--primary ds-btn--sm bd-focus" role="button">Next exercise</span>
+            </div>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>"Not passed · 3 / 6": 50% &lt; <code>pass_pct</code> → grade <b>Miss</b>. Keys and rationale are shown now, as in F6 (rows cropped to the wrong ones' detail).</li>
+          <li><b>Misconception label</b> on the question whose chosen distractor carries a tag: Q2's <code>sync.WaitGroup</code> is tagged <code>misconception:wrong_primitive</code> → the violet chip <b>"Wrong primitive"</b> beside the learner's answer. A wrong answer without a tagged distractor (Q3, Q5) gets no label.</li>
+          <li><b>No mistake entry and no revision line</b>: <code>gc-008</code> is a drill (I8, <code>revision.drills false</code>). The footer repeats "Drill · not scheduled for revision". On a revisable item the line under the result would read "Mistake entry opened · Wrong primitive" (strong pre-fill) — the pilot draws it in F12, where it applies.</li></ul>
+        <h4>Decision · a11y</h4>
+        <ul><li>t4 §6.3 (<code>misconception:*</code> → category, strong; mistakes open only on revisable items) · I8 · t4 §4.3 (reveal after a counted conclusion, even for a miss). The label chip is text, violet 6.4:1 on the panel, 5.6:1 on its tint.</li></ul>
+      </aside>
+    </article>
+
+    <div class="ab14-col" style="gap:22px">
+      <!-- F8 -->
+      <article class="bd-frame" id="AB14-F8" style="margin:0">
+        <header class="bd-frame__label"><span class="bd-frame__id">AB14-F8</span><span class="bd-frame__title">· Give up · Miss</span><span class="bd-frame__state">· 12:40 in · ds-modal--sm</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+        <div class="bd-frame__body">
+          <div class="ab14-stage" style="min-height:330px">
+            <div class="ab14-ghost" aria-hidden="true"><span style="height:300px"></span><span style="height:300px"></span><span style="height:300px"></span></div>
+            <div class="ds-modal__backdrop">
+              <div class="ds-modal__panel ds-modal--sm" role="dialog" aria-modal="true" aria-labelledby="f8-t">
+                <div class="ds-modal__head"><span class="ds-modal__title" id="f8-t">Give up?</span></div>
+                <div class="ds-modal__body" style="font-size:13.5px;line-height:1.55">This attempt is graded Miss and the answers and rationale unlock now.</div>
+                <div class="ds-modal__footer"><span class="ds-btn ds-btn--secondary bd-focus" role="button">Keep answering</span><span class="ds-btn ab14-danger" role="button">Give up · Miss</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <aside class="bd-notes">
+          <ul><li>Copy (plan, final): "Give up? This attempt is graded Miss and the answers and rationale unlock now." For a <b>revisable</b> item a second sentence follows: "It enters revision tomorrow." (D2). The pilot's drills never show it.</li>
+            <li><b>Give up · Miss</b> → <code>POST …/attempt/give-up</code>; it concludes at once (D15, D16: give-up = Miss; no re-attempt inside the attempt), then F7's layout with every card graded as it stood. Keep answering has default focus; the danger button is last.</li></ul>
+        </aside>
+      </article>
+
+      <!-- F9 -->
+      <article class="bd-frame" id="AB14-F9" style="margin:0">
+        <header class="bd-frame__label"><span class="bd-frame__id">AB14-F9</span><span class="bd-frame__title">· Deadline on the page</span><span class="bd-frame__state">· 0:00 · waiting for the server</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+        <div class="bd-frame__body">
+          <div class="bd-pad ab14-col" style="gap:12px">
+            <div class="ab14-row"><div class="ab14-clock ab14-clock--err" role="timer" aria-label="Time's up"><svg class="ab14-ring ab14-ring--sm" viewBox="0 0 44 44" aria-hidden="true"><circle class="xl-ring-track" cx="22" cy="22" r="19" fill="none" stroke-width="4"/></svg><div><div class="xl-timer__t ab14-t ab14-t--err ab14-t--sm">0:00</div><div class="ab14-clock__s">time's up</div></div></div><span class="ab14-count">4 / 6 <span>answered</span></span></div>
+            <div class="ab14-note ab14-note--info" role="status"><span class="ab14-ic ab14-info"><svg class="xl-ico xl-ico--sm ds-spin" aria-hidden="true"><use href="#i-retry"/></svg></span><span><b>Time's up · recording your result…</b><span class="ab14-note__sub">Your saved answers are graded as they are. Unanswered questions count as wrong.</span></span></div>
+          </div>
+        </div>
+        <aside class="bd-notes">
+          <ul><li>At 0:00 the page locks the cards and shows "Time's up · recording your result…" (plan copy). The server concludes at the deadline by grading the <b>last saved draft</b> as a final submit: unanswered = wrong, then F6 or F7 (D15's hard limit; a quiz's "pass" is decided by the key at that moment — see "Decisions to confirm").</li>
+            <li>The page never grades client-side; if the learner was away, reopening shows the concluded result with "Time ran out while you were away." <code>role="status"</code>.</li></ul>
+        </aside>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================== D · variants -->
+<section class="bd-section" aria-labelledby="sec-d">
+  <h2 class="bd-section__h" id="sec-d">D · Honor keys, arena, recall touch, failure <small>F10–F13 · t1 §3.1 · D17 · t4 §6.6 · INV-14</small></h2>
+
+  <div class="bd-grid bd-grid--wide">
+    <!-- F10 -->
+    <article class="bd-frame" id="AB14-F10">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB14-F10</span><span class="bd-frame__title">· Honor-key variant</span><span class="bd-frame__state">· a question whose key is public-derived · concluded</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--variant">variant</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab14-col" style="gap:12px">
+          <section class="xl-panel">
+            <div class="ab14-rows">
+              <div class="ab14-rr"><span class="ab14-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab14-rr__k">Q5 · Right</span><span class="ab14-rr__v"><span class="ab14-rr__q">The type that runs an initializer once.</span><br>You: <code>sync.Once</code><br>
+                <span class="ab14-row" style="gap:6px;margin-top:6px"><span class="ds-chip ds-chip--xs"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-shield"/></svg> honor</span><span class="ab14-help">This answer is in the public course text, so it counts on your honour.</span></span></span></div>
+            </div>
+          </section>
+          <section class="xl-panel">
+            <div class="ab14-res__top"><span class="ab14-grade ab14-ok" style="font-size:18px"><svg class="xl-ico" aria-hidden="true"><use href="#i-check"/></svg> Clean</span><span class="ab14-score">6 / 6</span><span class="ab14-flex"></span><span class="ds-chip ds-chip--xs"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-shield"/></svg> Judge · honor</span></div>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>A question whose key is derivable from public course text (<code>key_source: public:*</code>, t1 §3.1: here <code>sync.Once</code> is named on the concept page) is still graded by the key, but its trust is <b>honor</b>: the per-question chip reads <b>"honor"</b> with the note "This answer is in the public course text, so it counts on your honour" (plan copy).</li>
+          <li>The attempt's trust is the minimum over its questions (t4 §4.0): one honor question makes the result <b>"Judge · honor"</b>, and it is left out of judge-checked % (P7). An honor-key <i>miss</i> can later be claimed ("I meant this") — that claim UI is AB16's (M4), never drawn here. Quiz items are never provisional.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F11 -->
+    <article class="bd-frame" id="AB14-F11">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB14-F11</span><span class="bd-frame__title">· Arena / study mode</span><span class="bd-frame__state">· /xlearn/go-concurrency/problems · gc-008 in the arena</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag bd-tag--flag">D17 over t4 §4.3 · decision to confirm</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab14-col" style="gap:12px">
+          <div class="ab14-note ab14-note--violet"><span class="ab14-ic ab14-violet"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span><b>Nothing here counts toward your course.</b><span class="ab14-note__sub">Practice freely. No clock unless you start one.</span></span></div>
+          <section class="xl-panel ab14-q">
+            <div class="ab14-q__h"><span class="ab14-q__n">gc-008 · Spot the race · 6 questions</span><span class="ab14-flex"></span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eye"/></svg> Show answers…</span></div>
+            <div class="ab14-q__b"><span class="ab14-help">Question cards as F2 (same widgets, fresh shuffle), without the course clock.</span></div>
+          </section>
+          <div class="ab14-row"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Mark studied</span><span class="ab14-help">Marks it done in the arena only.</span></div>
+          <div class="ds-modal__panel ds-modal--sm" role="dialog" aria-modal="true" aria-labelledby="f11-t" style="margin:4px 0 0">
+            <div class="ds-modal__head"><span class="ds-modal__title" id="f11-t">Show answers?</span></div>
+            <div class="ds-modal__body" style="font-size:13.5px;line-height:1.55">It's recorded, and doesn't cap your course grade.</div>
+            <div class="ds-modal__footer"><span class="ds-btn ds-btn--secondary bd-focus" role="button">Not now</span><span class="ds-btn ds-btn--primary" role="button">Show answers</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Arena (D10): not counted, learner-private, a separate "studied" marker (<b>[Mark studied]</b>, plan copy). Copy: "Nothing here counts toward your course."</li>
+          <li><b>D17 is drawn:</b> the arena is unrestricted, so answers sit behind a spoiler confirm — "Show answers? It's recorded, and doesn't cap your course grade." — even while the item is unconcluded in the course. Revealing stamps <code>arena_revealed_at</code> (the <code>arena_revealed</code> signal); it never caps (honor system).</li>
+          <li><b>Conflict flagged:</b> t4 §4.3 says the key is never shown in the arena before the item is concluded. Owner decisions override the t4 body (t4 §13), so D17's reading is what the merge freezes; listed under "Decisions to confirm".</li>
+          <li>Confirm dialog: "Not now" has default focus; reduced motion: no fade.</li></ul>
+      </aside>
+    </article>
+  </div>
+
+  <!-- F12 recall touch -->
+  <article class="bd-frame" id="AB14-F12">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB14-F12</span><span class="bd-frame__title">· Recall touch (L1–3)</span><span class="bd-frame__state">· gc-002 · core code item · Day 3 review · AB04 shell</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag">pre-fill drawn here (revisable)</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad" style="display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start">
+        <!-- live -->
+        <section class="xl-panel" aria-label="Live recall touch">
+          <div class="ab14-thud">
+            <span class="ab14-id">gc-002</span><b style="font-size:13.5px">Guard a shared counter</b><span class="xl-diff xl-diff--easy">Easy</span>
+            <span class="xl-tag"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Recall · <b style="font-family:var(--ds-font-mono)">~5 min</b></span>
+            <span class="ab14-flex"></span>
+            <div class="ab14-clock" role="timer" aria-label="3 minutes 10 seconds left of 5"><span class="xl-timer"><svg class="xl-ico xl-ico--sm ab14-teal" aria-hidden="true"><use href="#i-clock"/></svg><span class="xl-timer__t ab14-t ab14-t--sm">3:10</span></span><span class="ab14-clock__s" style="margin:0">left of 5:00</span></div>
+          </div>
+          <div>
+            <div class="ab14-probe">
+              <div class="ab14-probe__h"><span class="ab14-cap">Probe 1 of 3</span><span class="ab14-flex"></span><span class="ab14-locked"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Locked at 0:52</span></div>
+              <span class="ab14-b" style="font-size:13px">Which primitive fits the increment in your solution best?</span>
+              <span class="ab14-ro">sync.WaitGroup</span>
+            </div>
+            <div class="ab14-probe">
+              <div class="ab14-probe__h"><span class="ab14-cap">Probe 2 of 3</span></div>
+              <label class="ab14-b" style="font-size:13px" for="f12-p2">Which <code>go test</code> flag reports this bug?</label>
+              <div class="ab14-inrow"><input class="ds-input ab14-ans bd-focus" id="f12-p2" value="-race" autocomplete="off" spellcheck="false"><span class="ds-btn ds-btn--primary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Lock in <span class="xl-kbd">Enter</span></span></div>
+              <span class="ab14-help">A lock-in is final. Nothing is checked until the review ends.</span>
+            </div>
+            <div class="ab14-probe">
+              <div class="ab14-probe__h"><span class="ab14-cap">Probe 3 of 3</span><span class="ab14-flex"></span><span class="ab14-help">next</span></div>
+              <span class="ab14-help">Predict the output of a short snippet.</span>
+            </div>
+          </div>
+        </section>
+        <!-- pass -->
+        <section class="xl-panel" aria-labelledby="f12-pass">
+          <div class="ab14-thud"><span class="ab14-cap">Result · pass</span><span class="ab14-flex"></span><span class="ds-badge ds-badge--ok">Concluded</span></div>
+          <div class="ab14-col" style="padding:14px;gap:10px" role="status">
+            <div class="ab14-grade ab14-ok" style="font-size:17px" id="f12-pass"><svg class="xl-ico" aria-hidden="true"><use href="#i-check"/></svg> Passed — advances to Day 7</div>
+            <div>
+              <div class="ab14-crit"><span class="ab14-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span>P1 <code class="ds-mono">atomic.Int64</code> ✓<br><span class="ab14-help">Why: one integer, one operation — an atomic add.</span></span></div>
+              <div class="ab14-crit"><span class="ab14-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span>P2 <code class="ds-mono">-race</code> ✓<br><span class="ab14-help">Why: the race detector instruments memory accesses at run time.</span></span></div>
+              <div class="ab14-crit"><span class="ab14-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span>P3 <code class="ds-mono">1 / 2</code> ✓</span></div>
+            </div>
+            <div class="ab14-row" style="gap:8px"><div class="xl-touch" aria-hidden="true"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div><span class="ab14-flex"></span><span class="ds-chip ds-chip--xs">Judge · checked</span></div>
+          </div>
+        </section>
+        <!-- fail -->
+        <section class="xl-panel" aria-labelledby="f12-fail">
+          <div class="ab14-thud"><span class="ab14-cap">Result · not passed</span><span class="ab14-flex"></span><span class="ds-badge ds-badge--err">Concluded</span></div>
+          <div class="ab14-col" style="padding:14px;gap:10px" role="status">
+            <div class="ab14-grade ab14-err" style="font-size:17px" id="f12-fail"><svg class="xl-ico" aria-hidden="true"><use href="#i-alert"/></svg> Not passed — resets to Day 1</div>
+            <div>
+              <div class="ab14-crit"><span class="ab14-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><span>P1 You: <code class="ds-mono">sync.WaitGroup</code> <span class="ab14-mc">Wrong primitive</span><br>Answer: <code class="ds-mono">atomic.Int64</code><br><span class="ab14-help">Why: a WaitGroup waits for goroutines; it doesn't guard data.</span></span></div>
+              <div class="ab14-crit"><span class="ab14-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span>P2 <code class="ds-mono">-race</code> ✓</span></div>
+              <div class="ab14-crit"><span class="ab14-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><span>P3 You: <code class="ds-mono">2 / 1</code> · Answer: <code class="ds-mono">1 / 2</code></span></div>
+            </div>
+            <div class="ab14-row" style="gap:8px"><div class="xl-touch" aria-hidden="true"><span class="xl-touch__d xl-touch__d--fail"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div><span class="ab14-flex"></span><span class="ds-chip ds-chip--xs">Judge · checked</span></div>
+            <a class="ab14-row" style="gap:6px;font-size:13px"><svg class="xl-ico xl-ico--sm ab14-violet" aria-hidden="true"><use href="#i-journal"/></svg> Mistake entry opened · Wrong primitive <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+          </div>
+        </section>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li>go-concurrency <b>L1–3</b> touches are archetype C recall (t4 §6.6): 2–3 probe questions on the reviewed <b>code</b> item, about 5 minutes, keyed by the pack (<b>checked</b>). Pass = <code>s ≥ pass_pct</code> and every required probe correct. The badge reads <b>"Recall · ~5 min"</b>; the clock is the band's limit from the manifest (5:00 sample), one server clock, no pause (D15).</li>
+          <li>Each probe: <b>[Lock in]</b> (<span class="xl-kbd">Enter</span>) → <code>POST /api/touches/{id}/probes/{probe}</code>. After a lock-in the probe shows <b>"Locked at 0:52"</b> — lock icon, dim text, no ✓, no colour (AB04-F4a). The touch concludes when every probe is locked or at the deadline.</li></ul></section>
+      <section><h4>Results (keys + rationale only now)</h4>
+        <ul><li><b>Passed — advances to Day 7</b> (L2 → L3) / <b>Not passed — resets to Day 1</b> (plan copy). Keys and rationale appear only in these result frames.</li>
+          <li><b>Pre-fill (revisable, t4 §6.3):</b> <code>gc-002</code> is a <b>core</b> item, so a failed touch opens or refreshes its mistake. P1's chosen distractor is tagged <code>misconception:wrong_primitive</code> → strong rule → category <code>wrong_primitive</code>: <b>"Mistake entry opened · Wrong primitive"</b>, linking to the go-concurrency Mistakes journal with the category pre-filled (learner &gt; strong rule).</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>t4 §6.6 (go-concurrency L1–3 recall, checked, never provisional) · §6.3 · I8 · D15 · AB04 (the touch shell and lock-in states).</li>
+          <li>Focus lands in the current probe's field; order: field → Lock in → next probe. "Probe N locked." announced politely. Results: <code>role="status"</code>, words beside every mark.</li>
+          <li>&lt; 1024 px: AB04-F16's pattern — HUD pinned with the clock, probes stacked.</li></ul></section>
+    </aside>
+  </article>
+
+  <!-- F13 -->
+  <article class="bd-frame" id="AB14-F13">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB14-F13</span><span class="bd-frame__title">· Couldn't grade</span><span class="bd-frame__state">· infra error · not counted · the clock keeps running</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad" style="max-width:720px">
+        <div class="ab14-note ab14-note--warn" role="alert"><span class="ab14-ic ab14-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span><b>We couldn't record your answers. Not counted.</b><span class="ab14-note__sub">Your answers are saved and the attempt is still open; the clock keeps running (31:52 left).</span>
+          <span class="ab14-note__act"><span class="ds-btn ds-btn--secondary ds-btn--sm bd-focus" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-retry"/></svg> Try again</span></span></span></div>
+      </div>
+    </div>
+    <aside class="bd-notes">
+      <ul><li>Copy (plan, final): "We couldn't record your answers. Not counted. [Try again]". Shown when the submit returns a typed infra error (<code>5xx</code>, <code>judge_unavailable</code>, t4 §3): the submission is <b>not counted</b> (INV-14: infra never decides a grade), the cards unlock and the attempt stays open while the clock runs.</li>
+        <li><b>[Try again]</b> re-sends with the same <code>Idempotency-Key</code>. If the deadline passes first, F9 applies to the saved draft. <code>role="alert"</code>; focus moves to Try again.</li></ul>
+    </aside>
+  </article>
+</section>
+
+<!-- ============================================================ narrow -->
+<section class="bd-section" id="AB14-F14" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">AB14-F14 · &lt; 1024 px (390 px shown) <small>one question per screen · counter pinned · Submit in a sticky footer</small></h2>
+  <p class="bd-section__p">Below 1024 px the navigator becomes a <b>"Q5 of 6"</b> strip with <b>Prev / Next</b>; the counter and the clock stay pinned in the HUD; <b>Submit answers</b> sits in a sticky footer. The concluded view stacks each row (mark and label, then the text).</p>
+  <div class="bd-narrow-row">
+    <article class="bd-frame bd-narrow" id="AB14-N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1 · AB14-F2</span><span class="bd-frame__state">· answering · Q5 of 6</span></header>
+      <div class="bd-frame__body">
+        <div class="ab14-nhud">
+          <div class="ab14-row" style="gap:8px"><span class="ab14-id">gc-008</span><b style="font-size:14px">Spot the race</b><span class="ab14-flex"></span><span class="ds-chip ds-chip--xs">Drill</span></div>
+          <div class="ab14-row" style="gap:8px"><div class="ab14-clock" role="timer" aria-label="38 minutes 40 seconds left of 45"><svg class="ab14-ring ab14-ring--sm" viewBox="0 0 44 44" aria-hidden="true"><circle class="xl-ring-track" cx="22" cy="22" r="19" fill="none" stroke-width="4"/><circle cx="22" cy="22" r="19" fill="none" stroke-width="4" stroke-linecap="round" style="stroke:var(--ds-teal)" stroke-dasharray="102.6 119.4"/></svg><div class="xl-timer__t ab14-t ab14-t--sm">38:40</div></div><span class="ab14-flex"></span><span class="ab14-count" aria-live="polite">4 / 6 <span>answered</span></span></div>
+          <span class="ab14-pinned">pinned</span>
+        </div>
+        <div class="ab14-nbody">
+          <div class="ab14-row" style="gap:8px"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevleft"/></svg> Prev</span><span class="ab14-flex" style="text-align:center;font-family:var(--ds-font-mono);font-size:12px;color:var(--ds-dim)">Q5 of 6</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Next <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevron"/></svg></span></div>
+          <section class="xl-panel ab14-q">
+            <div class="ab14-q__h"><span class="ab14-q__n">Question 5 of 6</span><span class="ds-chip ds-chip--xs">Short answer</span></div>
+            <div class="ab14-q__b">
+              <label class="ab14-lg" for="n1-in">Name the <code>sync</code> type that runs an initializer exactly once, however many goroutines call it.</label>
+              <input class="ds-input ab14-ans bd-focus" id="n1-in" value="sync.Once" autocomplete="off" spellcheck="false">
+            </div>
+          </section>
+          <div class="ab14-help">Unanswered: Q3, Q6</div>
+        </div>
+        <div class="ab14-nbar"><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button" style="flex:none">Give up…</span><span class="ds-btn ds-btn--primary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-send"/></svg> Submit answers</span></div>
+      </div>
+      <aside class="bd-notes"><ul><li>Prev / Next are ≥ 44 px targets; swiping is never required. The counter stays <code>aria-live="polite"</code>. The sticky footer never covers the focused field (scroll padding). Submit opens F4 as a full-width sheet.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB14-N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2 · AB14-F7</span><span class="bd-frame__state">· concluded miss · rows stacked</span></header>
+      <div class="bd-frame__body">
+        <div class="ab14-nbody">
+          <div class="ab14-row" style="gap:10px"><span class="ab14-grade ab14-err" style="font-size:19px"><svg class="xl-ico" aria-hidden="true"><use href="#i-flagx"/></svg> Not passed</span><span class="ab14-score">3 / 6</span></div>
+          <span class="ds-chip ds-chip--xs" style="align-self:flex-start">Judge · checked</span>
+          <section class="xl-panel">
+            <div style="padding:11px 12px;border-bottom:1px solid var(--ds-line);font-size:13px;line-height:1.5">
+              <div class="ab14-row" style="gap:6px"><span class="ab14-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><span class="ab14-rr__k">Q2 · Wrong</span></div>
+              <div class="ab14-text" style="margin-top:4px">You: <code class="ds-mono">sync.WaitGroup</code></div>
+              <span class="ab14-mc" style="margin-top:6px">Wrong primitive</span>
+              <div class="ab14-text" style="margin-top:6px">Answer: <code class="ds-mono">atomic.Int64</code></div>
+              <div class="ab14-help" style="margin-top:4px">Why: a WaitGroup waits for goroutines; it doesn't make the increment safe.</div>
+            </div>
+            <div style="padding:11px 12px;font-size:13px"><div class="ab14-row" style="gap:6px"><span class="ab14-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab14-rr__k">Q4 · Right</span></div></div>
+          </section>
+          <span class="ab14-drill"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg> Drill · not scheduled for revision</span>
+          <span class="ds-btn ds-btn--primary ds-btn--block" role="button">Next exercise</span>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Rows stack: mark + "Q2 · Wrong", then the learner's answer, the misconception label, the key and why. Same withholding as 1440 px; the drill line replaces any revision or mistake line (I8).</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB14 · A7 Workspace-Quiz · drafted in ds-p-01 · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only.
+  Sample data: the go-concurrency pilot's ids (<code class="ds-mono">gc-002</code>, <code class="ds-mono">gc-004</code>, <code class="ds-mono">gc-008</code>), questions, answers, rationale, times and dates are illustrative, written for this board (never taken from an eval pack).
+</footer>
+</main>
+</body>
+</html>
