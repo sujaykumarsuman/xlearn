@@ -9,17 +9,17 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done — AB07★, AB08, AB11 frozen (merged in [PR #89](https://github.com/sujaykumarsuman/xlearn/pull/89), 2026-09-28)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Board scaffolding (own three files only; never `index.html` / `board.css`) | X | ⬜ |
-| 2 | AB07 ★ A1 Workspace-Code (hero) | X | ⬜ |
-| 3 | AB08 A2 results dock | X | ⬜ |
-| 4 | AB11 degradation badges | X | ⬜ |
-| 5 | Self-review checklist (run before merging) + screenshots (1440 px, 390 px) | X | ⬜ |
-| 6 | Open the design PR (screenshots, frame lists, the ticked self-review checklist, "Decisions to confirm") | X | ⬜ |
-| 7 | Freeze: squash-merge on CI green (the merge is the freeze) → status → sync `main` | X | ⬜ |
+| 1 | Board scaffolding (own three files only; never `index.html` / `board.css`) | X | ✅ |
+| 2 | AB07 ★ A1 Workspace-Code (hero) | X | ✅ |
+| 3 | AB08 A2 results dock | X | ✅ |
+| 4 | AB11 degradation badges | X | ✅ |
+| 5 | Self-review checklist (run before merging) + screenshots (1440 px, 390 px) | X | ✅ (ticked in PR #89) |
+| 6 | Open the design PR (screenshots, frame lists, the ticked self-review checklist, "Decisions to confirm") | X | ✅ (PR #89) |
+| 7 | Freeze: squash-merge on CI green (the merge is the freeze) → status → sync `main` | X | ✅ frozen: merged in PR #89, 2026-09-28 |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly. **Land and sync ([D40](../feasibility.md#decisions-log-newest-first)):** the board PR
@@ -32,7 +32,7 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] Parallel sessions: no open PR adds `AB07-*`, `AB08-*` or `AB11-*` under `design-system/screens/v2/` (`gh pr list --state open`,
+- [x] Parallel sessions: no open PR adds `AB07-*`, `AB08-*` or `AB11-*` under `design-system/screens/v2/` (`gh pr list --state open`,
       `git worktree list`, ListAgents)
 
 _Check (not a stop):_ [t4 §8](../research/t4-judge-contract.md#8-learner-flows-and-v2-artboards-needed)'s A1 frames should read
@@ -239,14 +239,14 @@ AB07–AB12, i.e. for [ds-m3-02](sprint-ds-m3-02.md)'s merge too.
 
 ## Acceptance criteria
 
-- [ ] Every frame listed for AB07 (F1–F14), AB08 (F1–F18) and AB11 (F1–F7) is present with final copy, its state and a behaviour-notes aside citing its decision.
-- [ ] AB07 has a 45:00 cover and **no re-implement on the judged path** (no Re-implement frame, stage, CTA or modal line); re-implement
+- [x] Every frame listed for AB07 (F1–F14), AB08 (F1–F18) and AB11 (F1–F7) is present with final copy, its state and a behaviour-notes aside citing its decision.
+- [x] AB07 has a 45:00 cover and **no re-implement on the judged path** (no Re-implement frame, stage, CTA or modal line); re-implement
       appears only inside the F12(a) self-path variant, listed under "Decisions to confirm"; the uncapped grade picker appears only in
       the self-path variant.
-- [ ] No board leaks withheld data (no pattern chip before the hint stage or conclusion; no hidden inputs, case ids, ordinals or per-case timing).
-- [ ] Boards open from disk or a static server with no JS runtime; `theme.css` is linked, not copied or overridden; `index.html`, `board.css` and `theme.css` untouched.
-- [ ] The self-review checklist passed and is ticked in the PR body, with the "Decisions to confirm" list (each item's frozen default stated).
-- [ ] PR **merged on CI green** (the freeze) with 1440 px and 390 px screenshots of each board; this file and `docs/v2/status.md` record ds-m3-01 ✅ and AB07, AB08, AB11 "frozen (merged)".
+- [x] No board leaks withheld data (no pattern chip before the hint stage or conclusion; no hidden inputs, case ids, ordinals or per-case timing).
+- [x] Boards open from disk or a static server with no JS runtime; `theme.css` is linked, not copied or overridden; `index.html`, `board.css` and `theme.css` untouched.
+- [x] The self-review checklist passed and is ticked in the PR body, with the "Decisions to confirm" list (each item's frozen default stated).
+- [x] PR **merged on CI green** (the freeze) with 1440 px and 390 px screenshots of each board; this file and `docs/v2/status.md` record ds-m3-01 ✅ and AB07, AB08, AB11 "frozen (merged)".
 
 ## Release
 
