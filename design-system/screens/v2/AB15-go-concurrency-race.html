@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB15 · go-concurrency multi-file + race verdicts — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB15 board-local layout (prefix ab15-). Tokens only; never restyles a ds- or xl- class.
+     Only the go-concurrency deltas on the frozen AB07★ shell and AB08 dock are drawn. */
+  .ab15-flex { flex: 1; }
+  .ab15-top { position: relative; z-index: 20; }
+  .ab15-ok { color: var(--ds-ok); } .ab15-err { color: var(--ds-err); } .ab15-warn { color: var(--ds-warn); }
+  .ab15-info { color: var(--ds-info); } .ab15-teal { color: var(--ds-teal); } .ab15-dim { color: var(--ds-dim); }
+  .ab15-violet { color: var(--ds-violet); } .ab15-text { color: var(--ds-text); }
+  .ab15-ic { display: inline-flex; flex: none; }
+  .ab15-b { font-weight: 600; color: var(--ds-text); }
+  .ab15-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .ab15-col { display: flex; flex-direction: column; gap: 10px; }
+  .ab15-gap { margin-bottom: 22px; }
+  .ab15-help { font-size: 12px; line-height: 1.55; color: var(--ds-dim); }
+  .ab15-help b { color: var(--ds-text); font-weight: 600; }
+  .ab15-cap { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab15-cd { font-family: var(--ds-font-mono); font-size: 12px; padding: 0 5px; border-radius: 4px; background: var(--ds-inset); border: 1px solid var(--ds-line-2); }
+  .ab15-mono { font-family: var(--ds-font-mono); }
+  .ab15-nolig { font-variant-ligatures: none; } /* Go's <- reads as typed, not as a ligature arrow */
+
+  /* top bar switcher (live: .xl-topsw; AB02-P1) */
+  .ab15-topsw { display: inline-flex; align-items: center; gap: 9px; height: 34px; padding: 0 10px; background: var(--ds-panel-2);
+    border: 1px solid var(--ds-line-2); border-radius: 8px; color: var(--ds-text); font-size: 12.5px; }
+  .ab15-pv { height: 19px; font-size: 10.5px; }
+
+  /* HUD (AB07 shell) */
+  .ab15-hud { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; padding: 10px 22px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab15-hud__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 9px; min-width: 0; }
+  .ab15-id { font-family: var(--ds-font-mono); font-size: 13px; color: var(--ds-dim); }
+  .ab15-title { font-size: 18px; font-weight: 700; letter-spacing: -.2px; color: var(--ds-text); }
+  .ab15-stages { display: inline-flex; gap: 2px; padding: 3px; background: var(--ds-inset); border: 1px solid var(--ds-line-2); border-radius: 9px; }
+  .ab15-stab { gap: 6px; }
+  .ab15-clock { display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 6px; border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); background: var(--ds-inset); }
+  .ab15-ring { width: 44px; height: 44px; transform: rotate(-90deg); flex: none; display: block; }
+  .ab15-t { font-size: 20px; line-height: 1.1; color: var(--ds-text); }
+  .ab15-t--sm { font-size: 16px; }
+  .ab15-clock__s { font-family: var(--ds-font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--ds-dim); margin-top: 2px; }
+  .ab15-honor { display: inline-flex; align-items: center; gap: 5px; height: 19px; padding: 0 7px; border-radius: 6px; font-size: 10.5px;
+    color: var(--ds-violet); background: rgba(155,140,240,.1); border: 1px solid rgba(155,140,240,.35); }
+
+  /* work area */
+  .ab15-work { display: grid; grid-template-columns: 290px minmax(0, 1fr) 280px; gap: 16px; padding: 16px 22px 80px; align-items: start; }
+  .ab15-pane__h { display: flex; align-items: center; gap: 8px; padding: 11px 14px; border-bottom: 1px solid var(--ds-line); }
+  .ab15-pane__h h3 { font-size: 13px; font-weight: 600; }
+  .ab15-stmt { padding: 13px 14px 14px; font-size: 13px; line-height: 1.6; color: var(--ds-text); display: flex; flex-direction: column; gap: 9px; }
+  .ab15-ex { font-family: var(--ds-font-mono); font-size: 11.5px; line-height: 1.65; padding: 8px 10px; border-radius: 8px; background: var(--ds-input-bg);
+    border: 1px solid var(--ds-line-2); color: var(--ds-text); overflow-wrap: anywhere; }
+  .ab15-ex i { font-style: normal; color: var(--ds-dim); }
+  .ab15-locks { display: flex; flex-direction: column; gap: 8px; padding: 0 14px 14px; }
+
+  /* editor with file tabs and tree */
+  .ab15-ed__bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 8px 12px; border-bottom: 1px solid var(--ds-line); }
+  .ab15-ftabs { display: flex; align-items: flex-end; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel-2); overflow-x: auto; }
+  .ab15-ftab { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-dim);
+    border: 1px solid transparent; border-bottom: none; border-radius: 7px 7px 0 0; white-space: nowrap; }
+  .ab15-ftab--on { color: var(--ds-text); background: var(--ds-panel); border-color: var(--ds-line); margin-bottom: -1px; }
+  .ab15-ftab--ro { color: var(--ds-dim); }
+  .ab15-ed { display: grid; grid-template-columns: 178px minmax(0, 1fr); }
+  .ab15-tree { border-right: 1px solid var(--ds-line); padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; background: var(--ds-panel); }
+  .ab15-tree__cap { padding: 2px 6px 6px; }
+  .ab15-tf { display: flex; align-items: center; gap: 7px; padding: 6px 7px; border-radius: 6px; font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-text); }
+  .ab15-tf--on { background: rgba(53,208,192,.1); color: var(--ds-teal); }
+  .ab15-tf--ro { color: var(--ds-dim); }
+  .ab15-tf small { margin-left: auto; font-family: var(--ds-font-sans); font-size: 10px; color: var(--ds-dim); }
+  .ab15-ed__body { padding: 10px 12px 6px; min-width: 0; }
+  .ab15-ln { display: inline-block; width: 22px; margin-right: 12px; text-align: right; color: var(--ds-muted); user-select: none; }
+  .ab15-ln--hot { color: var(--ds-err); font-weight: 600; }
+  .ab15-mark { background: rgba(242,109,109,.1); box-shadow: inset 2px 0 0 var(--ds-err); display: inline-block; width: 100%; }
+  .ab15-ed__foot { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; padding: 2px 12px 10px; font-size: 11.5px; color: var(--ds-dim); }
+  .ab15-saved { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--ds-dim); }
+  .ab15-ro { display: flex; align-items: flex-start; gap: 9px; padding: 10px 12px; border-radius: var(--ds-radius); border: 1px dashed var(--ds-line-2);
+    background: var(--ds-inset); font-size: 12.5px; color: var(--ds-text); line-height: 1.5; }
+
+  /* dock (AB08) */
+  .ab15-dock { border-top: 1px solid var(--ds-line); background: var(--ds-panel); border-radius: 0 0 var(--ds-radius-lg) var(--ds-radius-lg); }
+  .ab15-dock--card { border: 1px solid var(--ds-line); border-radius: var(--ds-radius-lg); }
+  .ab15-dock__h { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--ds-line); }
+  .ab15-dock__meta { font-size: 11.5px; color: var(--ds-dim); font-family: var(--ds-font-mono); }
+  .ab15-dock__b { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
+  .ab15-verdict { display: flex; gap: 10px; align-items: flex-start; padding: 11px 13px; border-radius: var(--ds-radius); border: 1px solid var(--ds-line-2);
+    background: var(--ds-panel-2); font-size: 13px; line-height: 1.5; color: var(--ds-text); }
+  .ab15-verdict b { font-weight: 600; }
+  .ab15-verdict > .ab15-ic { margin-top: 2px; }
+  .ab15-verdict--ok { border-color: rgba(87,211,154,.35); background: rgba(87,211,154,.08); }
+  .ab15-verdict--err { border-color: rgba(242,109,109,.35); background: rgba(242,109,109,.08); }
+  .ab15-verdict--warn { border-color: rgba(240,180,41,.35); background: rgba(240,180,41,.08); }
+  .ab15-verdict--info { border-color: rgba(106,166,255,.35); background: rgba(106,166,255,.1); }
+  .ab15-verdict__sub { display: block; font-size: 12px; color: var(--ds-dim); margin-top: 3px; }
+  .ab15-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ab15-test { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 4px 9px; align-items: center; padding: 8px 10px; border: 1px solid var(--ds-line-2);
+    border-radius: 8px; background: var(--ds-inset); font-size: 12.5px; }
+  .ab15-test__n { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-text); }
+  .ab15-test__t { font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-dim); }
+  .ab15-out { grid-column: 2 / -1; font-family: var(--ds-font-mono); font-size: 11.5px; line-height: 1.6; color: var(--ds-text); padding: 7px 9px; border-radius: 6px;
+    background: var(--ds-input-bg); border: 1px solid var(--ds-line-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .ab15-out i { font-style: normal; color: var(--ds-dim); }
+
+  /* race / dump reports */
+  .ab15-rep { border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); background: var(--ds-inset); overflow: hidden; }
+  .ab15-rep__h { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border-bottom: 1px solid var(--ds-line); font-size: 12.5px; }
+  .ab15-site { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 3px 10px; padding: 8px 11px; border-top: 1px solid var(--ds-line); font-size: 12.5px; }
+  .ab15-site:first-of-type { border-top: none; }
+  .ab15-site__k { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; color: var(--ds-dim); padding-top: 2px; }
+  .ab15-site__v { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-text); overflow-wrap: anywhere; }
+  .ab15-site__v a { color: var(--ds-teal); }
+  .ab15-elide { display: flex; align-items: center; gap: 7px; padding: 6px 11px; border-top: 1px dashed var(--ds-line-2); font-family: var(--ds-font-mono); font-size: 11px; color: var(--ds-dim); }
+  .ab15-grp { border-top: 1px solid var(--ds-line); }
+  .ab15-grp:first-of-type { border-top: none; }
+  .ab15-grp__h { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 9px 11px; font-size: 12.5px; color: var(--ds-text); }
+  .ab15-grp__h b { font-weight: 600; }
+  .ab15-grp__f { display: flex; flex-direction: column; gap: 2px; padding: 0 11px 9px 34px; }
+  .ab15-fr { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-text); }
+  .ab15-fr a { color: var(--ds-teal); }
+
+  /* rail and results */
+  .ab15-rail { display: flex; flex-direction: column; gap: 14px; }
+  .ab15-steps { list-style: none; margin: 0; padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+  .ab15-steps li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 8px; }
+  .ab15-steps b { display: block; font-size: 13px; font-weight: 600; color: var(--ds-text); }
+  .ab15-steps__s { display: block; font-size: 11.5px; color: var(--ds-dim); margin-top: 2px; line-height: 1.4; }
+  .ab15-steps__n { width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; font-family: var(--ds-font-mono);
+    font-size: 11px; font-weight: 600; border: 1px solid var(--ds-line-2); color: var(--ds-dim); }
+  .ab15-steps__on { background: rgba(53,208,192,.1); }
+  .ab15-steps__on .ab15-steps__n { border-color: var(--ds-teal); color: var(--ds-teal); }
+  .ab15-outl { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .ab15-outl__v { font-size: 15px; font-weight: 700; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 6px; }
+  .ab15-outl__m { font-size: 12.5px; font-weight: 500; color: var(--ds-dim); font-family: var(--ds-font-mono); }
+  .ab15-ladder { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .ab15-lad { text-align: center; font-size: 11px; padding: 4px 0; border-radius: 6px; border: 1px solid var(--ds-line-2); background: var(--ds-inset); color: var(--ds-dim); }
+  .ab15-lad--ok { color: var(--ds-ok); border-color: rgba(87,211,154,.35); background: rgba(87,211,154,.1); font-weight: 600; }
+  .ab15-railtxt { padding: 12px 14px; font-size: 12px; line-height: 1.55; color: var(--ds-dim); display: flex; flex-direction: column; gap: 8px; }
+  .ab15-railtxt b { color: var(--ds-text); font-weight: 600; }
+  .ab15-concl { padding: 14px 15px; display: flex; flex-direction: column; gap: 10px; }
+  .ab15-concl__k { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab15-grade { display: flex; align-items: center; gap: 9px; font-size: 24px; font-weight: 700; letter-spacing: -.3px; }
+  .ab15-grade small { font-size: 13px; font-weight: 500; color: var(--ds-text); letter-spacing: 0; }
+  .ab15-facts { font-family: var(--ds-font-mono); font-size: 12px; line-height: 1.6; color: var(--ds-text); }
+  .ab15-facts span { color: var(--ds-dim); }
+  .ab15-tip { position: relative; margin-top: 4px; padding: 10px 12px; border-radius: 9px; background: var(--ds-panel); border: 1px solid var(--ds-line-2);
+    box-shadow: 0 12px 30px rgba(0,0,0,.45); font-size: 12.5px; line-height: 1.5; color: var(--ds-text); }
+  .ab15-sep { height: 1px; background: var(--ds-line); }
+  .ab15-mk { display: flex; flex-direction: column; gap: 9px; }
+  .ab15-mk__h { display: flex; align-items: center; gap: 7px; font-family: var(--ds-font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--ds-violet); }
+  .ab15-lab { font-size: 12px; color: var(--ds-dim); }
+  .ab15-ta { width: 100%; min-height: 54px; resize: none; background: var(--ds-input-bg); border: 1px solid var(--ds-line-2); border-radius: 8px; color: var(--ds-text);
+    font-family: var(--ds-font-sans); font-size: 12.5px; padding: 8px 10px; display: block; }
+  .ab15-ta::placeholder { color: var(--ds-dim); }
+  .ab15-from { font-family: var(--ds-font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--ds-dim);
+    border: 1px dashed var(--ds-line-2); border-radius: 5px; padding: 1px 6px; }
+  .ab15-cats { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ab15-cat--on { color: var(--ds-teal); border-color: var(--ds-teal); background: rgba(53,208,192,.12); }
+  .ab15-map { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .ab15-map td { padding: 7px 8px; border-top: 1px solid var(--ds-line); color: var(--ds-dim); }
+  .ab15-map tr:first-child td { border-top: none; }
+  .ab15-map td b { color: var(--ds-text); font-weight: 600; }
+
+  /* touch shell (AB04) */
+  .ab15-thud { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; padding: 10px 16px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab15-crit { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--ds-line); font-size: 13px; }
+
+  /* narrow */
+  .ab15-nhud { padding: 9px 12px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); display: flex; flex-direction: column; gap: 8px; }
+  .ab15-ntabs { padding: 6px 12px 0; border-bottom: 1px solid var(--ds-line); }
+  .ab15-nbody { padding: 12px 12px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .ab15-nbar { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab15-nbar > * { flex: 1; }
+  .ab15-select { height: 38px; width: 100%; padding: 0 10px; background: var(--ds-input-bg); border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius);
+    color: var(--ds-text); font-family: var(--ds-font-mono); font-size: 13px; color-scheme: dark; }
+  .ab15-acc { display: flex; align-items: center; gap: 9px; padding: 10px 11px; border-top: 1px solid var(--ds-line); font-size: 12.5px; color: var(--ds-text); }
+  .ab15-acc:first-child { border-top: none; }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5" /><path d="M6 10.2V19h12v-8.8" /></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7 9 5z" /><path d="M9 5v12M15 7v12" /></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4" /></symbol>
+  <symbol id="i-journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 3v18M12.5 8h3.5M12.5 12h3.5" /></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V11M10 19V5M16 19v-6" /><path d="M3 21h18" /></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" /></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A2 2 0 0 1 7 3h12v15H7a2 2 0 0 0-2 2z" /><path d="M5 4.5V19" /></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6" /><path d="M10 20a2 2 0 0 0 4 0" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></symbol>
+  <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" /></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4" /></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v4h4" /></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2h8.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" /></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z" /><path d="M12 10v4M12 17h.01" /></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></symbol>
+  <symbol id="i-flagx" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" /><path d="M14 16l5 5M19 16l-5 5" /></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" /></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2" /><rect x="3" y="14" width="18" height="7" rx="2" /><path d="M7 7.5h.01M7 17.5h.01" /></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4" /></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" /></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z" /></symbol>
+  <symbol id="i-race" viewBox="0 0 24 24"><path d="M4 7h11M4 17h11" /><path d="M13 4l3 3-3 3M13 14l3 3-3 3" /><path d="M20 5v14" /></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14" /></symbol>
+  <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M5.6 5.6l12.8 12.8" /></symbol>
+  <symbol id="i-leak" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z" /></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · P board</div>
+  <h1>AB15 · go-concurrency multi-file + race verdicts</h1>
+  <p class="bd-lede">
+    A go-concurrency exercise is a small <b>Go module</b>: some files the learner edits, a public <code class="ds-mono">visible_test.go</code> and <code class="ds-mono">go.mod</code>
+    they can read. <b>Run</b> executes the visible tests once under the race detector; <b>Submit</b> runs the hidden tests <b>20× under the race detector (up to 45 s)</b>.
+    The runner returns <b>RACE / DEADLOCK / LEAK / WA / TLE / RE / CE</b>; on a timeout it captures a goroutine dump, reduced to <b>your</b> function names and file:line.
+    The hidden tests run inside the learner's program, so every result is <b>honor-grade</b> and left out of judge-checked %. Only the deltas on the frozen
+    <a href="AB07-workspace-code.html">AB07★</a> shell (45:00, hint at 15:00, give-up = Miss, no re-implement) and <a href="AB08-results-dock.html">AB08</a> dock are drawn.
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-p-01.md">ds-p-01</a> (PRD Q5 = go-concurrency, <a href="https://github.com/sujaykumarsuman/xlearn/pull/91">#91</a>)</span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-p-02.md">p-02</a> (F1–F2 multi-file editor) · <a href="../../../docs/v2/sprints/sprint-p-03.md">p-03</a> (F3–F15 verdict views)</span>
+    <span><b>Frozen before</b>P</span>
+    <span><b>Sources</b><a href="../../../docs/v2/research/t4-judge-contract.md#41-archetype-a-code-ide">t4 §4.1</a> ·
+      <a href="../../../docs/v2/research/t3-sandbox.md#58-goroutine-dump-go-race">t3 §5.8</a> ·
+      <a href="../../../docs/v2/research/t3-sandbox.md#62-profile-table-limits-are-proposed-a8-tunes-them">§6.2</a> ·
+      <a href="../../../docs/v2/research/t1-content-data-model.md#71-package-format">t1 §7.1</a> ·
+      <a href="../../../docs/adr/0027-content-evalpack-and-user-data-model.md#1-the-publicprivate-rule">ADR-0027 §1</a> ·
+      <a href="../../../docs/v2/rollout-plan.md#10-public-dashboard-tasks">rollout §10 P7</a> ·
+      <a href="../../../docs/prd/xlearn-v2-prd.md#55-content-arena-profile-privacy-from-t1--adr-0027">PRD R-CT2</a> · D15 · D16 · D18</span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB15-F1">F1 workspace</a><a href="#AB15-F2">F2 Run</a><a href="#AB15-F3">F3 Run race</a><a href="#AB15-F4">F4 running</a><a href="#AB15-F5">F5 RACE</a>
+    <a href="#AB15-F6">F6 DEADLOCK</a><a href="#AB15-F7">F7 TLE</a><a href="#AB15-F8">F8 LEAK</a><a href="#AB15-F9">F9 WA</a><a href="#AB15-F10">F10 CE</a><a href="#AB15-F11">F11 REJECTED</a>
+    <a href="#AB15-F12">F12 inconclusive</a><a href="#AB15-F13">F13 Clean</a><a href="#AB15-F14">F14 re-solve touch</a><a href="#AB15-F15">F15 pre-fill</a><a href="#AB15-F16">F16 &lt; 1024 px</a>
+  </nav>
+</header>
+
+<!-- ======================================================== rules -->
+<section class="bd-section" aria-labelledby="sec-rules">
+  <h2 class="bd-section__h" id="sec-rules">Board-wide rules <small>t3 §5.8 · §6.2 · t4 §4.1 · ADR-0027 §1 · P7 · R-CT2</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <div class="bd-strip" style="align-items:flex-start">
+      <div class="ab15-col" style="gap:6px">
+        <span><b>Withheld.</b> Submit never shows a hidden test's <b>name, source, line or output</b> (<code class="ds-mono">TestEvent.Output</code> is dropped). It shows the passed count and the <b>first failure class</b> (R-CT2). Race reports and goroutine dumps are <b>filtered to learner-editable files</b>: a frame in a hidden <code class="ds-mono">_test.go</code>, <code class="ds-mono">visible_test.go</code>, the standard library or the runtime is collapsed into "+N frames outside your code", never named.</span>
+        <span><b>Honor.</b> <code class="ds-mono">gotest@1</code> runs the tests in-process, so trust is <b>honor</b>: every result carries <b>"Judge · honor"</b> and is left out of judge-checked % (P7). The HUD says so up front: <b>"honor · tests run in-process"</b>.</span>
+      </div>
+    </div>
+    <div class="bd-strip" style="align-items:flex-start">
+      <div class="ab15-col" style="gap:6px">
+        <span><b>Verdicts</b> (precedence <b>RACE &gt; DEADLOCK &gt; TLE &gt; LEAK &gt; RE &gt; WA</b>; a missing pass line fails). <b>A race or an assertion failure in any run fails</b>, even if that test passed on other runs. RACE, DEADLOCK, TLE, LEAK, RE and WA are <b>counted</b> failed submits (D18: Clean allows 3). <b>CE and REJECTED are free</b>; <code class="ds-mono">inconclusive</code> never counts (INV-14).</span>
+        <span><b>Limits (t3 §6.2).</b> Run: <code class="ds-mono">-race -count=1</code>, job ≤ 20 s. Submit: every declared test <code class="ds-mono">-count=20</code> under <code class="ds-mono">-race</code> with <code class="ds-mono">goleak</code>, job ≤ 45 s, per-test deadline ≥ 10× the published baseline. Everything else is AB07: one 45:00 server clock, hint at 15:00 caps at Assisted, give-up = Miss, a pass finishes the attempt.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================== A · workspace -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · The multi-file workspace <small>F1 · t1 §7.1 · D18</small></h2>
+
+  <article class="bd-frame" id="AB15-F1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB15-F1</span><span class="bd-frame__title">· Multi-file workspace · solving</span><span class="bd-frame__state">· /xlearn/go-concurrency/problem/gc-003 · 13:20 in · 31:40 left</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav">
+              <a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a>
+              <a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a>
+              <a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Exercises"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Exercises</a>
+              <a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a>
+              <div class="xl-nav__cap">Practice loop</div>
+              <a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a>
+              <a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a>
+            </nav>
+            <div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab15-top">
+              <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>go-concurrency</a><span class="xl-crumb__sep">/</span><a>exercises</a><span class="xl-crumb__sep">/</span><b>gc-003</b></div>
+              <span class="ab15-flex"></span>
+              <span class="ab15-topsw"><span class="xl-pathsw__ic">GO</span><span class="xl-pathsw__t">Go Concurrency Patterns</span><span class="ds-badge ds-badge--violet ab15-pv">Preview</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="ab15-hud" role="region" aria-label="Attempt status">
+              <div class="ab15-hud__meta">
+                <span class="ab15-id">gc-003</span><span class="ab15-title">Bounded worker pool</span><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs">Core</span>
+                <span class="ab15-honor" title="The tests run inside your program, so results count on your honour."><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-shield"/></svg> honor · tests run in-process</span>
+              </div>
+              <span class="ab15-flex"></span>
+              <div class="ab15-stages" role="list" aria-label="Stages">
+                <span class="ds-tab ds-tab--active ab15-stab" role="listitem" aria-current="step">Attempt</span>
+                <span class="ds-tab ab15-stab" role="listitem"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Hint · 15:00</span>
+                <span class="ds-tab ab15-stab" role="listitem"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Solution</span>
+              </div>
+              <div class="ab15-clock" role="timer" aria-live="off" aria-label="31 minutes 40 seconds left of 45">
+                <svg class="ab15-ring" viewBox="0 0 44 44" aria-hidden="true"><circle class="xl-ring-track" cx="22" cy="22" r="19" fill="none" stroke-width="4"/><circle cx="22" cy="22" r="19" fill="none" stroke-width="4" stroke-linecap="round" style="stroke:var(--ds-teal)" stroke-dasharray="84.0 119.4"/></svg>
+                <div><div class="xl-timer__t ab15-t">31:40</div><div class="ab15-clock__s">left of 45:00</div></div>
+              </div>
+            </div>
+            <div class="ab15-work">
+              <!-- statement -->
+              <section class="xl-panel" aria-label="Exercise">
+                <div class="ab15-pane__h"><svg class="xl-ico xl-ico--sm ab15-teal" aria-hidden="true"><use href="#i-book"/></svg><h3>Statement</h3></div>
+                <div class="ab15-stmt">
+                  <p>Build a pool that runs submitted jobs on a fixed number of worker goroutines. At most <span class="ab15-cd">workers</span> jobs may run at once, <span class="ab15-cd">Submit</span> must be safe to call from many goroutines, and <span class="ab15-cd">Wait</span> returns once every submitted job has finished.</p>
+                  <div class="ab15-cap">Exported API · the hidden tests call exactly these</div>
+                  <div class="ab15-ex">func <b>NewPool</b>(workers int) *Pool<br>func (p *Pool) <b>Submit</b>(job func())<br>func (p *Pool) <b>Wait</b>()</div>
+                  <div class="ab15-cap">Files</div>
+                  <div class="ab15-ex"><i>you edit</i> pool.go · worker.go<br><i>read-only</i> visible_test.go · go.mod</div>
+                  <div class="ab15-cap">How it's checked</div>
+                  <p style="font-size:12px;color:var(--ds-dim)">Run executes <b style="color:var(--ds-text)">visible_test.go</b> once with the race detector. Submit runs the hidden tests 20 times each under the race detector, with a goroutine-leak check.</p>
+                </div>
+                <div class="ab15-locks">
+                  <div class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Hint · unlocks at 15:00</div>
+                  <div class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Solution · after a pass, a give-up or 45:00</div>
+                </div>
+              </section>
+              <!-- editor -->
+              <section class="xl-panel" aria-label="Your module">
+                <div class="ab15-ed__bar">
+                  <span class="ab15-cap">Module · gc-003</span>
+                  <span class="ab15-flex"></span>
+                  <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Run visible tests <span class="xl-kbd">⌘↵</span></span>
+                  <span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-send"/></svg> Submit <span class="xl-kbd">⌘⇧↵</span></span>
+                </div>
+                <div class="ab15-ftabs" role="tablist" aria-label="Open files">
+                  <span class="ab15-ftab ab15-ftab--on" role="tab" aria-selected="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-file"/></svg> pool.go</span>
+                  <span class="ab15-ftab" role="tab" aria-selected="false"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-file"/></svg> worker.go</span>
+                  <span class="ab15-ftab ab15-ftab--ro" role="tab" aria-selected="false"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> visible_test.go</span>
+                  <span class="ab15-ftab ab15-ftab--ro" role="tab" aria-selected="false"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> go.mod</span>
+                </div>
+                <div class="ab15-ed">
+                  <nav class="ab15-tree" aria-label="Files">
+                    <span class="ab15-cap ab15-tree__cap"><svg class="xl-ico xl-ico--sm" style="display:inline;vertical-align:-3px" aria-hidden="true"><use href="#i-folder"/></svg> gc-003</span>
+                    <span class="ab15-tf ab15-tf--on" aria-current="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-file"/></svg> pool.go</span>
+                    <span class="ab15-tf"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-file"/></svg> worker.go</span>
+                    <span class="ab15-tf ab15-tf--ro"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> visible_test.go <small>read-only</small></span>
+                    <span class="ab15-tf ab15-tf--ro"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> go.mod <small>read-only</small></span>
+                  </nav>
+                  <div>
+                    <div class="ab15-ed__body">
+<pre class="xl-code ab15-nolig" aria-label="Code editor, pool.go, Go"><span class="ab15-ln">1</span><span class="k">package</span> pool
+<span class="ab15-ln">2</span>
+<span class="ab15-ln">3</span><span class="k">import</span> <span class="s">"sync"</span>
+<span class="ab15-ln">4</span>
+<span class="ab15-ln">5</span><span class="c">// Pool runs submitted jobs on a fixed number of workers.</span>
+<span class="ab15-ln">6</span><span class="k">type</span> <span class="t">Pool</span> <span class="k">struct</span> {
+<span class="ab15-ln">7</span>    jobs   <span class="k">chan</span> <span class="k">func</span>()
+<span class="ab15-ln">8</span>    wg     sync.<span class="t">WaitGroup</span>
+<span class="ab15-ln">9</span>    mu     sync.<span class="t">Mutex</span>
+<span class="ab15-ln">10</span>    queued <span class="t">int</span>
+<span class="ab15-ln">11</span>}
+<span class="ab15-ln">12</span>
+<span class="ab15-ln">13</span><span class="c">// NewPool starts workers goroutines that run submitted jobs.</span>
+<span class="ab15-ln">14</span><span class="k">func</span> <span class="fn">NewPool</span>(workers <span class="t">int</span>) *<span class="t">Pool</span> {
+<span class="ab15-ln">15</span>    p := &amp;<span class="t">Pool</span>{jobs: <span class="fn">make</span>(<span class="k">chan</span> <span class="k">func</span>())}
+<span class="ab15-ln">16</span>    <span class="k">for</span> i := <span class="n">0</span>; i &lt; workers; i++ {
+<span class="ab15-ln">17</span>        <span class="k">go</span> p.<span class="fn">worker</span>()
+<span class="ab15-ln">18</span>    }
+<span class="ab15-ln">19</span>    <span class="k">return</span> p
+<span class="ab15-ln">20</span>}</pre>
+                    </div>
+                    <div class="ab15-ed__foot"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-keyboard"/></svg><span class="xl-kbd">Tab</span> indents · <span class="xl-kbd">Esc</span> then <span class="xl-kbd">Tab</span> leaves the editor<span class="ab15-flex"></span><span class="ab15-saved" role="status"><svg class="xl-ico xl-ico--sm ab15-ok" aria-hidden="true"><use href="#i-check"/></svg> Saved · 2 files</span></div>
+                  </div>
+                </div>
+                <section class="ab15-dock" aria-label="Results">
+                  <div class="ab15-dock__h"><div class="ds-tabs" role="tablist" aria-label="Results"><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Visible tests</span><span class="ds-tab" role="tab" aria-selected="false">Submission</span><span class="ds-tab" role="tab" aria-selected="false">History</span></div><span class="ab15-flex"></span><span class="ab15-dock__meta">not run yet</span></div>
+                  <div class="ab15-dock__b" aria-live="polite"><span class="ab15-help">Run your visible tests to see results here. They run once with the race detector.</span></div>
+                </section>
+              </section>
+              <!-- rail -->
+              <aside class="ab15-rail" aria-label="Method">
+                <div class="xl-panel">
+                  <ol class="ab15-steps" aria-label="Stages">
+                    <li class="ab15-steps__on" aria-current="step"><span class="ab15-steps__n">1</span><span><b>Attempt</b><span class="ab15-steps__s">45:00 limit, no pause</span></span></li>
+                    <li><span class="ab15-steps__n"><svg class="xl-ico" style="width:11px;height:11px" aria-hidden="true"><use href="#i-lock"/></svg></span><span><b>Hint</b><span class="ab15-steps__s">Unlocks at 15:00 · caps at Assisted</span></span></li>
+                    <li><span class="ab15-steps__n"><svg class="xl-ico" style="width:11px;height:11px" aria-hidden="true"><use href="#i-lock"/></svg></span><span><b>Solution</b><span class="ab15-steps__s">After a pass, a give-up or 45:00</span></span></li>
+                  </ol>
+                </div>
+                <section class="xl-panel ab15-outl" role="status" aria-label="Grade outlook">
+                  <div class="ab15-cap">Grade outlook</div>
+                  <div class="ab15-outl__v"><span class="ab15-ok">Clean possible</span><span class="ab15-outl__m">· failed 0/3</span></div>
+                  <div class="ab15-ladder" aria-hidden="true"><span class="ab15-lad ab15-lad--ok">Clean</span><span class="ab15-lad">Rough</span><span class="ab15-lad">Assisted</span><span class="ab15-lad">Miss</span></div>
+                  <p class="ab15-help">Clean needs a pass by 20:00 — <b>6:40</b> to go. A race, deadlock or leak counts as a failed submit.</p>
+                </section>
+                <div class="xl-panel"><div class="ab15-railtxt"><span><b>Honor-graded.</b> The tests run inside your program, so the result counts on your honour and stays out of judge-checked %.</span></div></div>
+                <div class="ab15-col" style="gap:6px">
+                  <span class="ds-btn ds-btn--ghost ds-btn--sm" role="button" style="align-self:flex-start"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-flagx"/></svg> Give up…</span>
+                  <span class="ab15-help">Ends the attempt as a Miss and unlocks the solution.</span>
+                </div>
+              </aside>
+            </div>
+          </div>
+          <span class="xl-fab" aria-label="Open Your AI coach (your key)"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-spark"/></svg></span>
+        </div>
+      </div>
+      <div class="bd-crop">— cropped: pool.go continues (lines 21–58); the hint card and the rest of the rail are AB07-F2's —</div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Files (t1 §7.1)</h4>
+        <ul><li>The item's <code>_starter/module/</code> gives the <b>editable list</b> (<code>pool.go</code>, <code>worker.go</code>) and the read-only public files (<code>visible_test.go</code>, <code>go.mod</code> from <code>go.mod.tmpl</code>). Read-only files show a lock icon and the word <b>"read-only"</b> in the tree; their tabs open in a read-only view (<code>aria-readonly</code>), not an editor.</li>
+          <li>The widget value is <code>{language: go, files[]}</code> with only the editable files (t4 §4.1); drafts save per attempt: "Saved · 2 files". The learner <b>can't add, rename or delete files</b> (REJECTED otherwise, F11).</li>
+          <li>The statement lists the <b>exported API</b> the hidden tests call (<code>NewPool</code>, <code>(*Pool).Submit</code>, <code>(*Pool).Wait</code>): changing a signature is a hidden-API CE (F10).</li></ul></section>
+      <section><h4>HUD and actions (AB07 deltas)</h4>
+        <ul><li>Provenance chip <b>"honor · tests run in-process"</b> (violet, shield icon, text first) sits with the title: the learner knows before Run that results are honor-grade (D18 rules otherwise unchanged).</li>
+          <li><b>Run visible tests</b> (<span class="xl-kbd">⌘↵</span>) replaces AB07's Run; there are no samples or custom input on a go-concurrency item (F2). <b>Submit</b> (<span class="xl-kbd">⌘⇧↵</span>) as AB07. The dock's first tab reads <b>Visible tests</b>.</li>
+          <li>Everything else — ring, stages, hint at 15:00, outlook, give-up — is AB07's, frozen. The outlook note adds that race, deadlock and leak count as failed submits.</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>t1 §7.1 (starter module, editable list, <code>visible_test.go</code>, honor trust) · t4 §4.1 (value <code>{language, files[]}</code>; <code>visible_test.go</code> read-only) · D18 · D15.</li>
+          <li>Focus order: Run → Submit → file tabs (arrow keys between tabs) → tree → editor → dock → rail. File tabs are a <code>tablist</code>; the tree is a list of buttons. Violet 6.4:1 on the panel (5.6:1 on the chip tint); dim 7.2:1.</li>
+          <li>&lt; 1024 px: Statement / Files / Results tabs; the file tabs become a <code>&lt;select&gt;</code> (F16).</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- =================================================== B · Run -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · Run <small>F2–F3 · visible tests only · your own output · never counted</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <!-- F2 -->
+    <article class="bd-frame" id="AB15-F2">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB15-F2</span><span class="bd-frame__title">· Run · visible tests</span><span class="bd-frame__state">· Run at 13:05 · 2 of 3 passed</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <section class="ab15-dock ab15-dock--card" aria-label="Results">
+            <div class="ab15-dock__h"><div class="ds-tabs" role="tablist" aria-label="Results"><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Visible tests</span><span class="ds-tab" role="tab" aria-selected="false">Submission</span><span class="ds-tab" role="tab" aria-selected="false">History</span></div><span class="ab15-flex"></span><span class="ab15-dock__meta">Run at 13:05 · 2 of 3 passed</span></div>
+            <div class="ab15-dock__b" aria-live="polite">
+              <div class="ab15-test"><span class="ab15-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab15-test__n">TestPoolRunsAll</span><span class="ab15-test__t">✓ 0.12 s</span></div>
+              <div class="ab15-test"><span class="ab15-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab15-test__n">TestPoolWaitReturns</span><span class="ab15-test__t">✓ 0.04 s</span></div>
+              <div class="ab15-test"><span class="ab15-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><span class="ab15-test__n">TestPoolBounded</span><span class="ab15-test__t ab15-err">✗ failed · 0.31 s</span>
+                <div class="ab15-out">visible_test.go:41: at most 2 jobs may run at once; saw 3
+<i>your output</i>  pool: started worker 1
+<i>your output</i>  pool: started worker 2</div></div>
+              <span class="ab15-help">Ran once with the race detector (-count=1). Submit runs every test many times.</span>
+            </div>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Run → <code>POST /api/problems/gc-003/runs {context, language: go, files[]}</code>: the <b>visible tests only</b> (public <code>visible_test.go</code>), <code>go test -race -count=1</code>, job ≤ 20 s (t3 §6.2). Never counted; never touches the outlook.</li>
+          <li>One row per visible test: name, ✓ / ✗ with the words, duration. A failed test shows <b>your own</b> assertion message and your program's output (<code>t.Log</code>, <code>fmt</code>), capped at 8 KiB with "…output trimmed". It's all public: the test file is in the repo.</li>
+          <li>Note (plan copy): "Ran once with the race detector (-count=1). Submit runs every test many times." <code>aria-live="polite"</code>; each row carries words, not colour alone.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F3 -->
+    <article class="bd-frame" id="AB15-F3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB15-F3</span><span class="bd-frame__title">· Run · race in a visible test</span><span class="bd-frame__state">· Run at 16:48 · TestPoolWaitReturns</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab15-col" style="gap:12px">
+          <div class="ab15-test"><span class="ab15-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-race"/></svg></span><span class="ab15-test__n">TestPoolWaitReturns</span><span class="ab15-test__t ab15-err">✗ data race · 0.09 s</span></div>
+          <div class="ab15-rep" role="group" aria-label="Data race report">
+            <div class="ab15-rep__h"><span class="ab15-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-race"/></svg></span><b>Data race</b><span class="ab15-help">two goroutines touched <code class="ds-mono">p.queued</code> without a lock</span></div>
+            <div class="ab15-site"><span class="ab15-site__k">Write</span><span class="ab15-site__v"><a>pool.go:42</a> · (*Pool).Submit · goroutine 9</span></div>
+            <div class="ab15-site"><span class="ab15-site__k">Previous read</span><span class="ab15-site__v"><a>pool.go:57</a> · (*Pool).Wait · goroutine 7</span></div>
+            <div class="ab15-site"><span class="ab15-site__k">Goroutine 9 created at</span><span class="ab15-site__v"><a>worker.go:21</a> · (*Pool).dispatch</span></div>
+            <div class="ab15-elide"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevron"/></svg> +4 frames outside your code</div>
+          </div>
+          <div class="xl-panel">
+<pre class="xl-code ab15-nolig" style="border:0;border-radius:var(--ds-radius-lg)" aria-label="pool.go, lines 40 to 58, race sites marked"><span class="ab15-ln">40</span><span class="c">// Submit hands job to a free worker; it blocks while all are busy.</span>
+<span class="ab15-ln">41</span><span class="k">func</span> (p *<span class="t">Pool</span>) <span class="fn">Submit</span>(job <span class="k">func</span>()) {
+<span class="ab15-mark"><span class="ab15-ln ab15-ln--hot">42</span>    p.queued++</span>
+<span class="ab15-ln">43</span>    p.wg.<span class="fn">Add</span>(<span class="n">1</span>)
+<span class="ab15-ln">44</span>    p.jobs &lt;- job
+<span class="ab15-ln">45</span>}
+<span class="ab15-ln">…</span>
+<span class="ab15-ln">53</span><span class="k">func</span> (p *<span class="t">Pool</span>) <span class="fn">Wait</span>() {
+<span class="ab15-ln">54</span>    p.wg.<span class="fn">Wait</span>()
+<span class="ab15-ln">55</span>    p.mu.<span class="fn">Lock</span>()
+<span class="ab15-ln">56</span>    <span class="k">defer</span> p.mu.<span class="fn">Unlock</span>()
+<span class="ab15-mark"><span class="ab15-ln ab15-ln--hot">57</span>    p.<span class="fn">logf</span>(<span class="s">"finished %d jobs"</span>, p.queued)</span>
+<span class="ab15-ln">58</span>}</pre>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>The runner parses the race detector's report (exit 66) into <b>access sites</b>: the two accesses in <b>your</b> code (<code>pool.go:42</code> write in <code>(*Pool).Submit</code> ↔ <code>pool.go:57</code> read in <code>(*Pool).Wait</code>) and the racing goroutine's creation site. Each location is a link that moves the editor cursor there; the gutter marks both lines (red bar + bold number, not colour alone).</li>
+          <li>Frames in the runtime, the standard library and the test files are elided: <b>"+4 frames outside your code"</b> (plan copy), collapsed and not expandable. Function names and file:line only — no argument values, no PC offsets (t3 §5.8).</li>
+          <li>Run is still uncounted. The same filter applies in Submit (F5), where the test side is hidden too.</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- =================================================== C · Submit -->
+<section class="bd-section" aria-labelledby="sec-c">
+  <h2 class="bd-section__h" id="sec-c">C · Submit verdicts <small>F4–F12 · counts and classes only · your files only</small></h2>
+  <div class="bd-grid bd-grid--wide ab15-gap">
+    <!-- F4 -->
+    <article class="bd-frame" id="AB15-F4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB15-F4</span><span class="bd-frame__title">· Submit · running</span><span class="bd-frame__state">· submit #2 at 17:10 · claimed → settling</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab15-col" style="gap:12px">
+          <section class="ab15-dock ab15-dock--card" aria-label="Results">
+            <div class="ab15-dock__h"><div class="ds-tabs" role="tablist" aria-label="Results"><span class="ds-tab" role="tab" aria-selected="false">Visible tests</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Submission</span></div><span class="ab15-flex"></span><span class="ab15-dock__meta">#2 · 17:10 · Go</span></div>
+            <div class="ab15-dock__b" aria-live="polite"><div class="ab15-verdict ab15-verdict--info" role="status"><span class="ab15-ic ab15-info"><svg class="xl-ico xl-ico--sm ds-spin" aria-hidden="true"><use href="#i-retry"/></svg></span><span>Running hidden tests 20× under the race detector… (up to 45 s)<span class="ab15-verdict__sub">You can keep editing.</span></span></div></div>
+          </section>
+          <section class="ab15-dock ab15-dock--card" aria-label="Results, next state">
+            <div class="ab15-dock__h"><span class="ab15-cap">then</span><span class="ab15-flex"></span><span class="ab15-dock__meta">#2 · 17:10 · Go</span></div>
+            <div class="ab15-dock__b"><div class="ab15-verdict ab15-verdict--info" role="status"><span class="ab15-ic ab15-info"><svg class="xl-ico xl-ico--sm ds-spin" aria-hidden="true"><use href="#i-retry"/></svg></span><span>Recording your result…</span></div></div>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Queued is AB08-F2 unchanged. Once claimed, the line reads (plan copy) <b>"Running hidden tests 20× under the race detector… (up to 45 s)"</b>; then AB08-F4's settling line <b>"Recording your result…"</b>.</li>
+          <li>No progress bar and no "test 4 of 9" — a count would leak the hidden test list's size and order. The 45 s is the profile's job limit (t3 §6.2), so the learner knows a long wait is normal.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F5 -->
+    <article class="bd-frame" id="AB15-F5">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB15-F5</span><span class="bd-frame__title">· Submit · RACE</span><span class="bd-frame__state">· gc-009 Concurrent cache · submit #3 · counted</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <section class="ab15-dock ab15-dock--card" aria-label="Results">
+            <div class="ab15-dock__h"><div class="ds-tabs" role="tablist" aria-label="Results"><span class="ds-tab" role="tab" aria-selected="false">Visible tests</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Submission</span></div><span class="ab15-flex"></span><span class="ab15-dock__meta">#3 · 19:02 · Go</span></div>
+            <div class="ab15-dock__b" aria-live="polite">
+              <div class="ab15-verdict ab15-verdict--err" role="status"><span class="ab15-ic ab15-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-race"/></svg></span><span><b>Data race · not passed</b><span class="ab15-verdict__sub">Hidden tests: 6 / 9 passed · first failure: data race</span></span></div>
+              <div class="ab15-rep" role="group" aria-label="Where the race is, in your files">
+                <div class="ab15-site"><span class="ab15-site__k">Write</span><span class="ab15-site__v"><a>cache.go:48</a> · (*Cache).Set</span></div>
+                <div class="ab15-site"><span class="ab15-site__k">Previous read</span><span class="ab15-site__v"><a>cache.go:31</a> · (*Cache).Get</span></div>
+                <div class="ab15-elide"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevron"/></svg> +6 frames outside your code</div>
+              </div>
+              <span class="ab15-help">A race in any run fails, even if the test passed on other runs.</span>
+              <div class="ab15-chips"><span class="ds-chip ds-chip--xs">Visible 3 / 3</span><span class="ds-chip ds-chip--xs">Hidden 6 / 9</span><span class="ds-chip ds-chip--xs">20× · -race</span><span class="ds-chip ds-chip--xs">Counted</span></div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Headline (plan copy) <b>"Data race · not passed"</b>; the sub-line is R-CT2's hidden feedback: <b>passed count + first failure class</b> ("Hidden tests: 6 / 9 passed · first failure: data race").</li>
+          <li>Location in <b>your files only</b>: <code>(*Cache).Get</code> cache.go:31 ↔ <code>(*Cache).Set</code> cache.go:48. <b>No hidden test name, no test line, no test output</b>; the test-side frames are in the elided count. RACE ranks first in precedence, so a run that also timed out still reads RACE.</li>
+          <li>Counted failed submit → the outlook's "failed N/3" moves (AB07). Sample from <code>gc-009</code>.</li></ul>
+      </aside>
+    </article>
+  </div>
+
+  <!-- F6 -->
+  <article class="bd-frame" id="AB15-F6">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB15-F6</span><span class="bd-frame__title">· Submit · DEADLOCK + goroutine dump</span><span class="bd-frame__state">· submit #4 · a test hit its deadline · counted</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad" style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;align-items:start">
+        <section class="ab15-dock ab15-dock--card" aria-label="Results">
+          <div class="ab15-dock__h"><div class="ds-tabs" role="tablist" aria-label="Results"><span class="ds-tab" role="tab" aria-selected="false">Visible tests</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Submission</span></div><span class="ab15-flex"></span><span class="ab15-dock__meta">#4 · 24:37 · Go</span></div>
+          <div class="ab15-dock__b" aria-live="polite">
+            <div class="ab15-verdict ab15-verdict--err" role="status"><span class="ab15-ic ab15-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg></span><span><b>Deadlock · a test timed out with goroutines stuck in your code</b><span class="ab15-verdict__sub">Hidden tests: 4 / 9 passed · first failure: deadlock</span></span></div>
+            <div class="ab15-rep" role="group" aria-label="Goroutine dump, grouped by state, your code only">
+              <div class="ab15-rep__h"><svg class="xl-ico xl-ico--sm ab15-dim" aria-hidden="true"><use href="#i-list"/></svg><b>Goroutines stuck in your code</b><span class="ab15-flex"></span><span class="ab15-help">at the deadline</span></div>
+              <div class="ab15-grp">
+                <div class="ab15-grp__h"><svg class="xl-ico xl-ico--sm ab15-dim" aria-hidden="true"><use href="#i-chevdown"/></svg><b>2 goroutines · chan send · 10 s</b></div>
+                <div class="ab15-grp__f"><span class="ab15-fr">pipeline.stage · <a>pipeline.go:23</a></span></div>
+                <div class="ab15-elide" style="margin-left:23px;border-top:0;padding-top:0">+3 frames outside your code</div>
+              </div>
+              <div class="ab15-grp">
+                <div class="ab15-grp__h"><svg class="xl-ico xl-ico--sm ab15-dim" aria-hidden="true"><use href="#i-chevdown"/></svg><b>1 goroutine · sync.Mutex.Lock</b></div>
+                <div class="ab15-grp__f"><span class="ab15-fr">(*Bank).Transfer · <a>bank.go:18</a></span></div>
+                <div class="ab15-elide" style="margin-left:23px;border-top:0;padding-top:0">+3 frames outside your code</div>
+              </div>
+            </div>
+            <div class="ab15-chips"><span class="ds-chip ds-chip--xs">Hidden 4 / 9</span><span class="ds-chip ds-chip--xs">20× · -race</span><span class="ds-chip ds-chip--xs">Counted</span></div>
+          </div>
+        </section>
+        <div class="ab15-col" style="gap:10px">
+          <span class="ab15-cap">What the runner saw → what you see</span>
+          <table class="ab15-map" aria-label="Dump filtering">
+            <tr><td>goroutine in <b>your file</b> blocked</td><td>grouped by state and wait time, frame named with file:line</td></tr>
+            <tr><td>hidden <b>_test.go</b> frame</td><td>counted into "+N frames outside your code", never named</td></tr>
+            <tr><td><b>runtime / stdlib</b> frame</td><td>counted into "+N frames outside your code"</td></tr>
+            <tr><td>goroutine with <b>no</b> frame in your files</td><td>not listed (if none are left, the verdict is TLE, F7)</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li>On a per-test timeout the runner sends SIGQUIT with <code>GOTRACEBACK=all</code>, parses the goroutine headers and frames, and classifies: <b>a goroutine blocked in a learner-package frame → DEADLOCK</b>, even if other runs passed; otherwise TLE (t3 §5.8, t4 §4.1).</li>
+          <li>Headline (plan copy): <b>"Deadlock · a test timed out with goroutines stuck in your code"</b>. The dump panel groups goroutines by <b>wait state</b> and duration ("2 goroutines · chan send · 10 s"), each group listing its <b>first frame in your files</b>: <code>pipeline.stage</code> pipeline.go:23; <code>(*Bank).Transfer</code> bank.go:18 on <code>sync.Mutex.Lock</code>.</li></ul></section>
+      <section><h4>Withheld</h4>
+        <ul><li>Standard-library, runtime and <b>hidden-test frames are collapsed</b> ("+3 frames outside your code") and never expand: the dump is filtered to learner-editable files before it leaves judge. No goroutine ids, argument words or PC offsets.</li>
+          <li>No hidden test name or line, and not which test timed out: only the count and the class.</li></ul></section>
+      <section><h4>A11y · narrow</h4>
+        <ul><li>Groups are disclosure buttons (<code>aria-expanded</code>), open by default here; each frame location is a link into the editor. Words carry the state, not the icon.</li>
+          <li>&lt; 1024 px: the dump becomes an accordion, first group open (F16 · N2). Sample dump: two of the learner's files.</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid ab15-gap">
+    <!-- F7 -->
+    <article class="bd-frame" id="AB15-F7">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB15-F7</span><span class="bd-frame__title">· Submit · TLE (not a deadlock)</span><span class="bd-frame__state">· counted</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <div class="ab15-verdict ab15-verdict--err" role="status"><span class="ab15-ic ab15-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span><span><b>Too slow · a test hit its deadline, but no goroutine was stuck in your code.</b><span class="ab15-verdict__sub">Look for busy loops or unbounded work. Hidden tests: 7 / 9 passed · first failure: time limit.</span></span></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Plan copy verbatim. The dump had no goroutine blocked in a learner frame (spinning, or blocked only in test or runtime code), so t3 §5.8 classifies <b>TLE</b>, not DEADLOCK. No dump is shown: there's nothing of yours in it. Counted.</li></ul></aside>
+    </article>
+
+    <!-- F8 -->
+    <article class="bd-frame" id="AB15-F8">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB15-F8</span><span class="bd-frame__title">· Submit · LEAK</span><span class="bd-frame__state">· gc-007 Fan-in without leaks · counted</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab15-col" style="gap:10px">
+        <div class="ab15-verdict ab15-verdict--err" role="status"><span class="ab15-ic ab15-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-leak"/></svg></span><span><b>Goroutine leak · goroutines were still running after the test finished</b><span class="ab15-verdict__sub">Hidden tests: 8 / 9 passed · first failure: goroutine leak</span></span></div>
+        <div class="ab15-rep"><div class="ab15-site"><span class="ab15-site__k">Still running</span><span class="ab15-site__v">merge · <a>merge.go:12</a></span></div><div class="ab15-site"><span class="ab15-site__k">Created by</span><span class="ab15-site__v">fanIn · <a>merge.go:7</a></span></div><div class="ab15-elide">+2 frames outside your code</div></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li><code>goleak</code> (harness-owned <code>TestMain</code>) found goroutines alive after a test returned. The report names the leaked goroutine's <b>creation site in your code</b> ("merge merge.go:12", created by <code>fanIn</code>). Counted. Plan copy for the headline.</li></ul></aside>
+    </article>
+
+    <!-- F9 -->
+    <article class="bd-frame" id="AB15-F9">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB15-F9</span><span class="bd-frame__title">· Submit · WA</span><span class="bd-frame__state">· assertion failed · counted</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <div class="ab15-verdict ab15-verdict--err" role="status"><span class="ab15-ic ab15-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><span><b>Wrong result · 7 / 9 hidden tests passed · first failure: assertion.</b><span class="ab15-verdict__sub">Hidden test output isn't shown. Reproduce it with your visible tests.</span></span></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Plan copy. <b>No test output in Submit</b> (t3 §5.8: <code>TestEvent.Output</code> is dropped; results come from the harness on fd 4). No assertion text, no test name. RE reads the same way with "first failure: panic" (class only).</li></ul></aside>
+    </article>
+
+    <!-- F10 -->
+    <article class="bd-frame" id="AB15-F10">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB15-F10</span><span class="bd-frame__title">· CE · your file · hidden API</span><span class="bd-frame__state">· free · not counted</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab15-col" style="gap:10px">
+        <div class="ab15-verdict ab15-verdict--warn" role="status"><span class="ab15-ic ab15-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg></span><span><b>Doesn't compile — not counted.</b><span class="ab15-verdict__sub ab15-mono"><a>pool.go:14:2</a>: undefined: sync.WaitGrop</span></span></div>
+        <div class="ab15-verdict ab15-verdict--warn" role="status"><span class="ab15-ic ab15-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg></span><span><b>Hidden tests don't compile against your code.</b><span class="ab15-verdict__sub">Check the exported names in the statement. (Not counted.)</span></span></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>(1) Your file: positioned diagnostics <b>only at your-file positions</b> (<code>pool.go:14:2: undefined: sync.WaitGrop</code>), each a link into the editor — <b>free, not a failed submit</b> (AB08-F8; t4 §5.6 #15).</li>
+          <li>(2) Hidden-API variant (plan copy): your files compile, the hidden tests don't (a renamed or re-typed export). <b>Fixed text</b>: no hidden file, line or message; not counted (AB08-F9).</li></ul></aside>
+    </article>
+
+    <!-- F11 -->
+    <article class="bd-frame" id="AB15-F11">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB15-F11</span><span class="bd-frame__title">· REJECTED (lint, uncounted)</span><span class="bd-frame__state">· nothing ran</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <div class="ab15-verdict ab15-verdict--warn" role="status"><span class="ab15-ic ab15-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-ban"/></svg></span><span><b>Not allowed in this course: importing <code class="ds-mono">unsafe</code>.</b><span class="ab15-verdict__sub">Nothing ran; not counted. Also rejected: defining <code class="ds-mono">TestMain</code> · adding files.</span></span></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Static lint before compile (t3 §10, the A5 rules): importing <code>unsafe</code>, defining <code>TestMain</code> or any <code>Test*</code> in your files, or adding files → <b>REJECTED</b>. One line names the rule that fired ("importing <code>unsafe</code>" / "defining <code>TestMain</code>" / "adding files"); nothing ran; free (<code>free_classes</code>).</li></ul></aside>
+    </article>
+
+    <!-- F12 -->
+    <article class="bd-frame" id="AB15-F12">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB15-F12</span><span class="bd-frame__title">· Inconclusive</span><span class="bd-frame__state">· runner_throttled · not counted</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <div class="ab15-verdict ab15-verdict--info" role="status"><span class="ab15-ic ab15-info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-server"/></svg></span><span><b>We couldn't get a reliable result (the server was busy). Not counted.</b><span class="ab15-verdict__sub"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button" style="margin-top:8px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-retry"/></svg> Submit again</span></span></span></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Plan copy. <code>inconclusive(runner_throttled)</code>: T3 reported <code>throttled</code> and one re-run in a quiet slot was still throttled (INV-14, t3 §5.7). A timing-sensitive race job never becomes a verdict on a busy node. Never counted; <b>[Submit again]</b> re-sends the current draft.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<!-- =================================================== D · concluded -->
+<section class="bd-section" aria-labelledby="sec-d">
+  <h2 class="bd-section__h" id="sec-d">D · Concluded, touches, pre-fill <small>F13–F15 · D15 · D16 · D18 · P7 · t4 §6.3 · §6.6</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <!-- F13 -->
+    <article class="bd-frame" id="AB15-F13">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB15-F13</span><span class="bd-frame__title">· Concluded · Clean</span><span class="bd-frame__state">· gc-003 · passed at 18:40 · honor</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab15-row" style="align-items:flex-start;gap:16px">
+          <div class="ab15-col" style="flex:1;min-width:220px;gap:12px">
+            <span class="ab15-cap">Dock · Submission</span>
+            <div class="ab15-verdict ab15-verdict--ok" role="status"><span class="ab15-ic ab15-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span><b>Passed 20× under the race detector at 18:40</b><span class="ab15-verdict__sub">Hidden tests 9 / 9 · no races · no leaks</span></span></div>
+            <div class="ab15-ro" role="note"><span class="ab15-ic ab15-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span>A pass finishes the attempt. Your module is kept with it, read-only.</span></div>
+          </div>
+          <section class="ds-card ds-card--teal ab15-concl" style="width:300px;flex:none" role="status" aria-label="Result">
+            <div class="ab15-concl__k">Result</div>
+            <div class="ab15-grade ab15-ok"><svg class="xl-ico" aria-hidden="true"><use href="#i-check"/></svg> Clean</div>
+            <div class="ab15-row" style="gap:6px"><span class="ab15-honor bd-focus" tabindex="0" aria-describedby="f13-tip"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-shield"/></svg> Judge · honor</span></div>
+            <div class="ab15-tip" role="tooltip" id="f13-tip">The tests run inside your program, so this counts on your honour. Judge-checked % leaves it out.</div>
+            <div class="ab15-facts">Passed at 18:40 · 1 failed submit</div>
+            <div class="ab15-col" style="gap:5px"><div class="xl-touch" aria-hidden="true"><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div><div class="xl-touch__lab" aria-hidden="true"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div><span class="ab15-help"><b>Day 1 review · Thu, Dec 10</b></span></div>
+            <span class="ds-btn ds-btn--primary ds-btn--block" role="button">Next exercise</span>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Plan copy: "Passed 20× under the race detector at 18:40"; grade <b>Clean</b> by <code>verdict_timer@1</code> (pass ≤ 20:00, no hint, no coach, 1 failed ≤ 3; D18). A pass finishes the attempt (D16).</li>
+          <li>Provenance <b>"Judge · honor"</b> with the tooltip (on hover and focus): <b>"The tests run inside your program, so this counts on your honour. Judge-checked % leaves it out."</b> (P7). Every go-concurrency result frame carries it; nothing implies judge-checked.</li>
+          <li><code>gc-003</code> is <b>core</b> (revisable), so L1 anchors at the pass: "Day 1 review" with the dots (D2).</li></ul>
+      </aside>
+    </article>
+
+    <!-- F14 -->
+    <article class="bd-frame" id="AB15-F14">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB15-F14</span><span class="bd-frame__title">· Re-solve touch (L4–5)</span><span class="bd-frame__state">· gc-003 · Day 21 review · AB04 shell + the module</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab15-col" style="gap:12px">
+          <section class="xl-panel">
+            <div class="ab15-thud">
+              <span class="ab15-id">gc-003</span><b style="font-size:13.5px">Bounded worker pool</b><span class="xl-diff xl-diff--med">Medium</span>
+              <span class="xl-tag"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b class="ab15-mono">25:00</b></span><span class="ds-badge ds-badge--violet">Mock conditions</span>
+              <span class="ab15-flex"></span>
+              <div class="ab15-clock" role="timer" aria-label="16 minutes 5 seconds left of 25"><span class="xl-timer"><svg class="xl-ico xl-ico--sm ab15-teal" aria-hidden="true"><use href="#i-clock"/></svg><span class="xl-timer__t ab15-t ab15-t--sm">16:05</span></span><span class="ab15-clock__s" style="margin:0">left of 25:00</span></div>
+            </div>
+            <div class="ab15-ftabs" style="background:var(--ds-panel)"><span class="ab15-ftab ab15-ftab--on"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-file"/></svg> pool.go</span><span class="ab15-ftab"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-file"/></svg> worker.go</span><span class="ab15-ftab ab15-ftab--ro"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> visible_test.go</span><span class="ab15-flex"></span><span class="ds-btn ds-btn--primary ds-btn--sm" role="button" style="margin:4px 0"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-send"/></svg> Submit</span></div>
+            <div class="ab15-help" style="padding:10px 14px">Blank starter module. Statement only · coach off · talk aloud, no notes.</div>
+            <div class="ab15-crit"><span class="ab15-dim"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-server"/></svg></span><span>Tests pass in time <span class="ab15-honor" style="margin-left:4px">honor</span></span><span class="ab15-help">within 25:00</span></div>
+          </section>
+          <div class="ab15-row" style="gap:10px">
+            <div class="ab15-verdict ab15-verdict--ok" style="flex:1;min-width:210px"><span class="ab15-ic ab15-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span><b>Passed — advances to Day 45</b></span></div>
+            <div class="ab15-verdict ab15-verdict--err" style="flex:1;min-width:210px"><span class="ab15-ic ab15-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span><b>Not passed — resets to Day 1</b></span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>go-concurrency <b>L4–5</b> (t4 §6.6): an archetype A re-solve on the <code>go-race</code> profile; pass = every declared test passes within the timer; trust <b>honor</b>; never provisional. AB04's shell and lock-in rules; the workspace is F1's multi-file editor with a <b>blank starter module</b>.</li>
+          <li>Badge <b>"Re-solve · 25:00 · Mock conditions"</b> (plan copy; the manifest's band timer). Mock conditions as AB04-F3: statement only, coach off, "talk aloud, no notes". One criterion row: <b>"Tests pass in time (honor)"</b>. Results "advances to Day 45" / "resets to Day 1" (D15: the timer is a hard limit).</li>
+          <li>Submit verdicts inside the touch use F4–F12 unchanged; a race, deadlock or leak is a fail.</li></ul>
+      </aside>
+    </article>
+  </div>
+
+  <!-- F15 -->
+  <article class="bd-frame" id="AB15-F15">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB15-F15</span><span class="bd-frame__title">· Mistake pre-fill</span><span class="bd-frame__state">· gc-009 (core) · concluded Miss after a race · strong rule</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag">pre-fill drawn here (revisable)</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad" style="display:grid;grid-template-columns:300px 300px minmax(0,1fr);gap:18px;align-items:start">
+        <section class="ds-card ab15-concl" style="border-color:rgba(242,109,109,.35)" aria-label="Result">
+          <div class="ab15-concl__k">Result</div>
+          <div class="ab15-grade ab15-err" role="status"><svg class="xl-ico" aria-hidden="true"><use href="#i-flagx"/></svg> Miss <small>· time limit reached (45:00)</small></div>
+          <div class="ab15-row" style="gap:6px"><span class="ab15-honor"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-shield"/></svg> Judge · honor</span></div>
+          <div class="ab15-facts"><span>Last submit</span> data race · hidden 6 / 9</div>
+          <div class="ab15-sep"></div>
+          <div class="ab15-mk">
+            <div class="ab15-mk__h"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-journal"/></svg> Mistake entry</div>
+            <div class="ab15-row" style="gap:6px"><span class="ab15-lab">Category</span><span class="ab15-flex"></span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button">Change</span></div>
+            <div class="ab15-row" style="gap:6px"><span class="ds-chip ds-chip--sm ab15-text">Data race</span><span class="ab15-from">from your result</span></div>
+            <label class="ab15-lab" for="f15-rc">Root cause</label>
+            <textarea class="ab15-ta" id="f15-rc" placeholder="What actually went wrong?"></textarea>
+            <label class="ab15-lab" for="f15-in">Insight</label>
+            <textarea class="ab15-ta" id="f15-in" placeholder="What will you do differently next time?"></textarea>
+            <span class="ds-btn ds-btn--secondary ds-btn--sm ds-btn--block" role="button">Save to journal</span>
+          </div>
+        </section>
+        <section class="ds-card ab15-concl" aria-label="Change category">
+          <div class="ab15-mk__h"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-journal"/></svg> Mistake entry · Change category</div>
+          <div class="ab15-cats" role="radiogroup" aria-label="Mistake category">
+            <span class="ds-chip ds-chip--sm ab15-cat--on" role="radio" aria-checked="true"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-check"/></svg> Data race · from your result</span>
+            <span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Deadlock</span>
+            <span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Goroutine leak</span>
+            <span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Wrong primitive</span>
+            <span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Happens-before misread</span>
+            <span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Misread</span>
+            <span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Time management</span>
+          </div>
+          <span class="ab15-help">Your pick replaces the suggestion and stays.</span>
+        </section>
+        <div class="ab15-col" style="gap:8px">
+          <span class="ab15-cap">Strong rules (manifest <code class="ds-mono">mistakes.prefill</code>)</span>
+          <table class="ab15-map" aria-label="Pre-fill rules">
+            <tr><td><code class="ds-mono">race</code></td><td>→ <b>Data race</b> · strong</td></tr>
+            <tr><td><code class="ds-mono">deadlock</code></td><td>→ <b>Deadlock</b> · strong</td></tr>
+            <tr><td><code class="ds-mono">leak</code></td><td>→ <b>Goroutine leak</b> · strong</td></tr>
+            <tr><td><code class="ds-mono">misconception:*</code></td><td>→ its category · strong (AB14-F12)</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li>After a race-concluded Miss on a <b>core</b> item (revisable, I8), practice opens a mistake with category from the manifest's strong rule <code>race → data_race</code>: the chip <b>"Data race"</b> with <b>"from your result"</b> (plan copy). <code>deadlock</code> and <code>leak</code> map likewise (t4 §6.3 tier 2).</li>
+          <li>Strong rules aren't labelled "suggested" (only weak rules are, AB07-F9). <b>[Change]</b> opens the course's category picker; the learner's pick wins and locks the field (learner &gt; strong rule).</li></ul></section>
+      <section><h4>Where it doesn't appear</h4>
+        <ul><li>Never on a <b>drill</b> (the pilot's quizzes, I8), never in the arena, never on Run results. Only concluded course attempts and failed touches on revisable items.</li>
+          <li>Categories are the go-concurrency manifest's list (sample names; the manifest is p-02's content).</li></ul></section>
+      <section><h4>Decision · a11y</h4>
+        <ul><li>t4 §6.3 · I8 · D2 (a Miss anchors L1 and opens a mistake) · D15 (time limit → Miss).</li>
+          <li>The picker is a <code>radiogroup</code> (arrow keys); the selected chip has a check icon, not colour alone. Honor chip on the Miss too: the grade came from in-process tests.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ============================================================ narrow -->
+<section class="bd-section" id="AB15-F16" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">AB15-F16 · &lt; 1024 px (390 px shown) <small>Statement / Files / Results tabs · file tabs → &lt;select&gt; · dump groups → accordion</small></h2>
+  <p class="bd-section__p">AB07-F14's narrow pattern with a <b>Files</b> tab in place of Work: a native <code class="ds-mono">&lt;select&gt;</code> picks the file (read-only files marked), the ring and outlook stay pinned, Run / Submit sit in a bottom bar, and the goroutine dump becomes an accordion with the first group open.</p>
+  <div class="bd-narrow-row">
+    <article class="bd-frame bd-narrow" id="AB15-N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1 · AB15-F1</span><span class="bd-frame__state">· Files tab</span></header>
+      <div class="bd-frame__body">
+        <div class="ab15-nhud">
+          <div class="ab15-row" style="gap:8px"><span class="ab15-id">gc-003</span><b style="font-size:14px">Bounded worker pool</b></div>
+          <div class="ab15-row" style="gap:8px"><div class="ab15-clock" role="timer" aria-label="31 minutes 40 seconds left of 45"><svg class="ab15-ring" style="width:34px;height:34px" viewBox="0 0 44 44" aria-hidden="true"><circle class="xl-ring-track" cx="22" cy="22" r="19" fill="none" stroke-width="4"/><circle cx="22" cy="22" r="19" fill="none" stroke-width="4" stroke-linecap="round" style="stroke:var(--ds-teal)" stroke-dasharray="84.0 119.4"/></svg><div class="xl-timer__t ab15-t ab15-t--sm">31:40</div></div><span class="ab15-flex"></span><span class="ab15-honor"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-shield"/></svg> honor · in-process</span></div>
+        </div>
+        <div class="ab15-ntabs"><div class="ds-tabs" role="tablist"><span class="ds-tab" role="tab" aria-selected="false">Statement</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Files</span><span class="ds-tab" role="tab" aria-selected="false">Results</span></div></div>
+        <div class="ab15-nbody">
+          <label class="ab15-lab" for="n1-file">File</label>
+          <select class="ab15-select" id="n1-file"><option selected>pool.go</option><option>worker.go</option><option>visible_test.go · read-only</option><option>go.mod · read-only</option></select>
+<pre class="xl-code ab15-nolig" style="font-size:11.5px" aria-label="Code editor, pool.go, Go"><span class="ab15-ln">14</span><span class="k">func</span> <span class="fn">NewPool</span>(workers <span class="t">int</span>) *<span class="t">Pool</span> {
+<span class="ab15-ln">15</span>    p := &amp;<span class="t">Pool</span>{jobs: <span class="fn">make</span>(<span class="k">chan</span> <span class="k">func</span>())}
+<span class="ab15-ln">16</span>    <span class="k">for</span> i := <span class="n">0</span>; i &lt; workers; i++ {
+<span class="ab15-ln">17</span>        <span class="k">go</span> p.<span class="fn">worker</span>()
+<span class="ab15-ln">18</span>    }
+<span class="ab15-ln">19</span>    <span class="k">return</span> p
+<span class="ab15-ln">20</span>}</pre>
+        </div>
+        <div class="ab15-nbar"><span class="ds-btn ds-btn--secondary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Run tests</span><span class="ds-btn ds-btn--primary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-send"/></svg> Submit</span></div>
+      </div>
+      <aside class="bd-notes"><ul><li>The file tabs become a native <code>&lt;select&gt;</code> labelled "File"; read-only files say so in the option text. The editor scrolls horizontally inside its box, never the page. Bottom-bar buttons ≥ 44 px.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB15-N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2 · AB15-F6</span><span class="bd-frame__state">· Results tab · dump as an accordion</span></header>
+      <div class="bd-frame__body">
+        <div class="ab15-ntabs"><div class="ds-tabs" role="tablist"><span class="ds-tab" role="tab" aria-selected="false">Statement</span><span class="ds-tab" role="tab" aria-selected="false">Files</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Results</span></div></div>
+        <div class="ab15-nbody">
+          <div class="ab15-verdict ab15-verdict--err" role="status"><span class="ab15-ic ab15-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg></span><span><b>Deadlock · a test timed out with goroutines stuck in your code</b><span class="ab15-verdict__sub">Hidden tests: 4 / 9 passed</span></span></div>
+          <div class="ab15-rep">
+            <div class="ab15-acc" role="button" aria-expanded="true"><svg class="xl-ico xl-ico--sm ab15-dim" aria-hidden="true"><use href="#i-chevdown"/></svg><b>2 goroutines · chan send · 10 s</b></div>
+            <div class="ab15-grp__f" style="padding-left:32px"><span class="ab15-fr">pipeline.stage · <a>pipeline.go:23</a></span><span class="ab15-help">+3 frames outside your code</span></div>
+            <div class="ab15-acc" role="button" aria-expanded="false"><svg class="xl-ico xl-ico--sm ab15-dim" aria-hidden="true"><use href="#i-chevron"/></svg><b>1 goroutine · sync.Mutex.Lock</b></div>
+          </div>
+          <div class="ab15-chips"><span class="ds-chip ds-chip--xs">Counted</span><span class="ds-chip ds-chip--xs">Judge · honor</span></div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Groups are buttons with <code>aria-expanded</code>; the first starts open. A frame link switches to the Files tab with that file and line selected. Same filtering as 1440 px.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB15 · go-concurrency multi-file + race verdicts · drafted in ds-p-01 (PRD Q5 = go-concurrency) · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only.
+  Sample data: the pilot ids (<code class="ds-mono">gc-003</code>, <code class="ds-mono">gc-007</code>, <code class="ds-mono">gc-009</code>), file names, code, line numbers, test names in <code class="ds-mono">visible_test.go</code>, counts, times and categories are illustrative, written for this board (never taken from an eval pack).
+</footer>
+</main>
+</body>
+</html>

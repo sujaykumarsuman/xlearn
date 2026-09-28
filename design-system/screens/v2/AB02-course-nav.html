@@ -113,6 +113,26 @@
   .ab02-sheet .xl-pathsw__opt { min-height: 44px; }
   .ab02-stage-phone { height: 780px; }
   .ab02-nowrap { white-space: nowrap; flex: none; }
+  /* ====== P · full fidelity (ds-p-01) — appended; the frames above are unchanged ====== */
+  .ab02-pv { height: 19px; font-size: 10.5px; }
+  .ab02-teal { color: var(--ds-teal); }
+  .ab02-exlist { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .ab02-ex { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 10px 12px; background: var(--ds-panel-2);
+    border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); }
+  .ab02-ex b { font-size: 13.5px; font-weight: 600; }
+  .ab02-ex--on { border-color: rgba(53,208,192,.45); background: #101a1c; }
+  .ab02-ex__id { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-dim); }
+  .ab02-ex__st { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ds-dim); }
+  .ab02-ex--n b { flex: 1 1 60%; }
+  .ab02-ex__row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; width: 100%; padding-left: 36px; }
+  .ab02-glyph { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; flex: none; background: var(--ds-inset);
+    border: 1px solid var(--ds-line-2); color: var(--ds-dim); }
+  .ab02-pnote { display: flex; gap: 9px; align-items: flex-start; padding: 12px 14px; border-radius: var(--ds-radius); border: 1px solid rgba(155,140,240,.35);
+    background: rgba(155,140,240,.1); font-size: 12.5px; line-height: 1.5; color: var(--ds-text); }
+  .ab02-pnote svg { color: var(--ds-violet); margin-top: 2px; flex: none; }
+  .ab02-pnote b { font-weight: 600; }
+  .ab02-enr { margin-left: auto; display: inline-flex; }
+  .ab02-crumbrow--stack { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 </style>
 </head>
 <body>
@@ -185,7 +205,7 @@
   <nav class="bd-toc" aria-label="Frames">
     <a href="#AB02-F1">F1</a><a href="#AB02-F2">F2</a><a href="#AB02-F3">F3</a><a href="#AB02-F3-alt">F3 alt</a><a href="#AB02-F4">F4</a>
     <a href="#AB02-F5">F5</a><a href="#AB02-F6">F6</a><a href="#AB02-F6-alt">F6 alt</a><a href="#AB02-F7">F7</a><a href="#AB02-F8">F8</a>
-    <a href="#AB02-F9">F9 · 390 px</a><a href="#routes">Routes &amp; reserved segments</a>
+    <a href="#AB02-F9">F9 · 390 px</a><a href="#routes">Routes &amp; reserved segments</a><a href="#AB02-P">P · full fidelity (P1–P7)</a>
   </nav>
 </header>
 
@@ -650,7 +670,7 @@
 
   <!-- F8 -->
   <article class="bd-frame" id="AB02-F8">
-    <header class="bd-frame__label"><span class="bd-frame__id">AB02-F8</span><span class="bd-frame__title">· Second course nav</span><span class="bd-frame__state">· /xlearn/go-concurrency · rendered from its manifest</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag">low fidelity · illustrative</span></span></header>
+    <header class="bd-frame__label"><span class="bd-frame__id">AB02-F8</span><span class="bd-frame__title">· Second course nav</span><span class="bd-frame__state">· /xlearn/go-concurrency · rendered from its manifest</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag">low fidelity · illustrative</span><span class="bd-tag bd-tag--change">superseded by P1</span></span></header>
     <div class="bd-frame__body">
       <div class="bd-desk">
         <div class="xl-app" style="min-height:560px">
@@ -833,9 +853,350 @@
   </div>
 </section>
 
+<!-- ================================================ P · full fidelity (ds-p-01) -->
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-quiz" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.7.3-1 .8-1 1.5v.6M12 17h.01" /></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" /></symbol>
+</svg>
+<section class="bd-section" id="AB02-P" aria-labelledby="sec-p">
+  <h2 class="bd-section__h" id="sec-p">P · full fidelity (ds-p-01) <small>P1–P7 · two real courses · DSA + Go Concurrency Patterns (preview)</small></h2>
+  <p class="bd-section__p">Drawn with the two real courses of milestone P: <b>DSA</b> and the pilot <b>Go Concurrency Patterns</b> (<code class="ds-mono">preview</code>: owner and testers only until GA; pilot = <b>10 exercises over 2 weeks</b>; PRD Q5 = go-concurrency, <a href="https://github.com/sujaykumarsuman/xlearn/pull/91">#91</a>). Everything course-specific comes from each <b>manifest</b>: nav, item noun, labels, counts. <code class="ds-mono">preview</code> is filtered <b>server-side</b> (catalog, course routes, item routes by id, enrollment, agenda, public profile, <code class="ds-mono">/public/stats</code>), so the SPA never has to hide it. These frames supersede the low-fidelity AB02-F8; everything above is unchanged.</p>
+
+  <!-- P1 -->
+  <article class="bd-frame" id="AB02-P1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB02-P1</span><span class="bd-frame__title">· go-concurrency Roadmap</span><span class="bd-frame__state">· /xlearn/go-concurrency · cohort · enrolled · Wed, Dec 9</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">full fidelity</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav">
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a>
+              <a class="xl-nav__item xl-nav__item--active" aria-current="page"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Exercises</a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a>
+              <div class="xl-nav__cap">Practice loop</div>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision <span class="xl-nav__badge xl-nav__badge--teal">1</span></a>
+              <a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes <span class="xl-nav__badge">1</span></a>
+            </nav>
+            <div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab02-top">
+              <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><b>go-concurrency</b></div>
+              <span class="ab02-flex"></span>
+              <div class="ab02-topsw"><span class="ab02-topsw__btn" style="max-width:340px" role="button" aria-haspopup="true" aria-expanded="false" aria-label="Switch curriculum"><span class="xl-pathsw__ic">GO</span><span class="xl-pathsw__t">Go Concurrency Patterns</span><span class="ds-badge ds-badge--violet ab02-pv">Preview</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span></div>
+              <span class="ab02-modelbtn"><span class="ab02-logo">AN</span> Sonnet 5 <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="xl-content">
+              <div class="xl-page-h">
+                <div>
+                  <div class="xl-eyebrow">Learning path · /xlearn/go-concurrency</div>
+                  <h1 style="margin-top:6px;display:flex;align-items:center;gap:10px">Go Concurrency Patterns <span class="ds-badge ds-badge--violet">Preview</span></h1>
+                  <p>Pilot · 2 weeks · 10 exercises · Go. Goroutines, channels and the race detector, drilled until they're habits.</p>
+                </div>
+                <span class="ds-btn ds-btn--primary ds-btn--lg ab02-nowrap" role="button"><svg class="xl-ico" aria-hidden="true"><use href="#i-play"/></svg> Start today's plan</span>
+              </div>
+              <div class="ab02-road">
+                <div>
+                  <div class="ab02-phase">
+                    <div class="ab02-phase__h"><span class="ab02-phase__n">WEEK 1</span><h2>Goroutines, WaitGroups &amp; mutexes</h2><span class="ab02-phase__pct">60%</span></div>
+                    <p class="ab02-phase__theme">Start work safely, wait for it, and guard what it shares.</p>
+                    <ol class="ab02-exlist" aria-label="Week 1 exercises">
+                      <li class="ab02-ex"><span class="ab02-glyph" aria-label="code"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg></span><span class="ab02-ex__id">gc-001</span><b>Fan out with a WaitGroup</b><span class="xl-diff xl-diff--easy">Easy</span><span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> WaitGroup</span><span class="ab02-flex"></span><span class="ab02-ex__st ab02-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Clean</span></li>
+                      <li class="ab02-ex"><span class="ab02-glyph" aria-label="code"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg></span><span class="ab02-ex__id">gc-002</span><b>Guard a shared counter</b><span class="xl-diff xl-diff--easy">Easy</span><span class="ab02-flex"></span><span class="ab02-ex__st"><span class="ds-dot ds-dot--progressing"></span> Day 3 review today</span></li>
+                      <li class="ab02-ex ab02-ex--on"><span class="ab02-glyph" aria-label="code"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg></span><span class="ab02-ex__id">gc-003</span><b>Bounded worker pool</b><span class="xl-diff xl-diff--med">Medium</span><span class="ab02-flex"></span><span class="ab02-ex__st ab02-teal">In progress · 31:40 left</span></li>
+                      <li class="ab02-ex"><span class="ab02-glyph" aria-label="quiz"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-quiz"/></svg></span><span class="ab02-ex__id">gc-004</span><b>Channels and timing</b><span class="xl-diff xl-diff--easy">Easy</span><span class="ds-chip ds-chip--xs">Drill</span><span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Channel semantics</span><span class="ab02-flex"></span><span class="ab02-ex__st ab02-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Rough</span></li>
+                      <li class="ab02-ex"><span class="ab02-glyph" aria-label="code"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg></span><span class="ab02-ex__id">gc-005</span><b>Close a channel exactly once</b><span class="xl-diff xl-diff--med">Medium</span><span class="ab02-flex"></span><span class="ab02-ex__st">Not started</span></li>
+                    </ol>
+                  </div>
+                  <div class="ab02-phase">
+                    <div class="ab02-phase__h"><span class="ab02-phase__n">WEEK 2</span><h2>Channels, pipelines &amp; cancellation</h2><span class="ab02-phase__pct">0%</span></div>
+                    <p class="ab02-phase__theme">Move work through stages, stop it cleanly, and leave nothing running.</p>
+                    <ol class="ab02-exlist" aria-label="Week 2 exercises">
+                      <li class="ab02-ex"><span class="ab02-glyph" aria-label="code"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg></span><span class="ab02-ex__id">gc-006</span><b>Pipeline stages with cancellation</b><span class="xl-diff xl-diff--med">Medium</span><span class="ab02-flex"></span><span class="ab02-ex__st">Not started</span></li>
+                      <li class="ab02-ex"><span class="ab02-glyph" aria-label="code"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg></span><span class="ab02-ex__id">gc-007</span><b>Fan-in without leaks</b><span class="xl-diff xl-diff--med">Medium</span><span class="ab02-flex"></span><span class="ab02-ex__st">Not started</span></li>
+                      <li class="ab02-ex"><span class="ab02-glyph" aria-label="quiz"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-quiz"/></svg></span><span class="ab02-ex__id">gc-008</span><b>Spot the race</b><span class="xl-diff xl-diff--easy">Easy</span><span class="ds-chip ds-chip--xs">Drill</span><span class="ab02-flex"></span><span class="ab02-ex__st">Not started</span></li>
+                      <li class="ab02-ex"><span class="ab02-glyph" aria-label="code"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg></span><span class="ab02-ex__id">gc-009</span><b>Concurrent cache</b><span class="xl-diff xl-diff--hard">Hard</span><span class="ab02-flex"></span><span class="ab02-ex__st">Not started</span></li>
+                      <li class="ab02-ex"><span class="ab02-glyph" aria-label="code"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg></span><span class="ab02-ex__id">gc-010</span><b>Bank transfer without deadlock</b><span class="xl-diff xl-diff--hard">Hard</span><span class="ab02-flex"></span><span class="ab02-ex__st">Not started</span></li>
+                    </ol>
+                  </div>
+                </div>
+                <div class="ab02-sum">
+                  <div class="xl-panel ab02-ringbox">
+                    <svg width="132" height="132" viewBox="0 0 76 76" style="transform:rotate(-90deg)" aria-hidden="true"><circle class="xl-ring-track" cx="38" cy="38" r="30" fill="none" stroke-width="7"/><circle cx="38" cy="38" r="30" fill="none" stroke-width="7" stroke-linecap="round" stroke="var(--ds-teal)" stroke-dasharray="56.5 188.5"/></svg>
+                    <div class="ab02-ringval"><b>30%</b><span>3 / 10 done</span></div>
+                    <div class="ab02-sumrow ab02-sumrow--first"><span>Current</span><b style="color:var(--ds-teal)">Week 1</b></div>
+                    <div class="ab02-sumrow"><span>Revisions due</span><b style="color:var(--ds-dim)">1</b></div>
+                  </div>
+                  <div class="ab02-pnote"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-shield"/></svg><span><b>Honor-graded.</b> Code exercises run their tests inside your program, so results count on your honour and stay out of judge-checked %.</span></div>
+                  <span class="ds-btn ds-btn--secondary ds-btn--block" role="button">Browse all paths <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Chrome from the manifest</h4>
+        <ul><li>Sidebar = go-concurrency manifest <code>nav</code>: <b>Today · Roadmap · Exercises · Progress</b>; cap <b>"Practice loop"</b>: <b>Revision · Mistakes</b>. <b>No "Mock interview"</b>: the pilot manifest declares no mock. Same <code>navForPath</code> as DSA; badges as F1.</li>
+          <li>Top bar: crumbs <code>xlearn / go-concurrency</code> · selector <b>GO · Go Concurrency Patterns</b> + <code>ds-badge--violet</code> <b>Preview</b> · model switcher · bell · avatar. The page heading repeats the Preview badge.</li>
+          <li>The Roadmap groups by the manifest's weeks (the pilot has no phases): "Pilot · 2 weeks · 10 exercises · Go" is manifest data.</li></ul></section>
+      <section><h4>Exercise rows</h4>
+        <ul><li>Each row: a <b>code</b> or <b>quiz</b> glyph (with an <code>aria-label</code>), id, title, difficulty chip (Easy <code>--ds-ok</code>, Medium <code>--ds-warn</code>, Hard <code>--ds-err</code>), <b>Drill</b> chip for the two quizzes, and the learner's state in words.</li>
+          <li><b>No topic chip while an item is live</b> (ADR-0027 §1): only concluded items with no due or live touch show one (<code>gc-001</code>, <code>gc-004</code>). <code>gc-002</code> has a review due today and <code>gc-003</code> an open attempt, so both are withheld; never-solved items show none.</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>ADR-0026 §5 (same segments, labels from the manifest) · ADR-0034 §2 (<code>preview</code>, cohort only) · PRD §5.1 (a course may have no mock). "Browse all paths" keeps F1's frozen wording (see "Decisions to confirm").</li>
+          <li>Rows are links; the list is an <code>&lt;ol&gt;</code> per week. State words carry the meaning ("Clean", "Day 3 review today", "In progress"), not the colour. Violet badge 5.6:1 on its tint.</li>
+          <li>&lt; 1024 px: P7 (icon rail, rows wrap under the title). Sample: dates, progress and titles.</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide">
+    <!-- P2 -->
+    <article class="bd-frame" id="AB02-P2">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB02-P2</span><span class="bd-frame__title">· Switcher open</span><span class="bd-frame__state">· cohort · enrolled in both</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">full fidelity</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage" style="height:470px">
+          <div class="xl-topbar ab02-top" style="background:var(--ds-bg)">
+            <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><b>go-concurrency</b></div>
+            <span class="ab02-flex"></span>
+            <div class="ab02-topsw">
+              <span class="ab02-topsw__btn" role="button" aria-haspopup="true" aria-expanded="true" aria-label="Switch curriculum"><span class="xl-pathsw__ic">GO</span><span class="xl-pathsw__t">Go Concurrency Patterns</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <div class="ab02-topsw__menu" role="menu" style="min-width:300px">
+                <span class="xl-pathsw__opt" role="menuitem"><span class="ds-dot ds-dot--ok"></span> Data Structures &amp; Algorithms <span class="ab02-enr ab02-ok" aria-label="enrolled"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span></span>
+                <span class="xl-pathsw__opt xl-pathsw__opt--active bd-focus" role="menuitem"><span class="ds-dot ds-dot--ok"></span> Go Concurrency Patterns <span class="ds-badge ds-badge--violet" style="height:19px;font-size:10.5px;margin-left:auto">Preview</span><span class="ab02-ok" aria-label="enrolled" style="display:inline-flex"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span></span>
+                <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> System Design Interviews · <i>Coming soon</i></div>
+                <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Low-Level / OOD · <i>Coming soon</i></div>
+                <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> SQL &amp; Data Modeling · <i>Coming soon</i></div>
+                <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Behavioral &amp; Storytelling · <i>Coming soon</i></div>
+                <div class="xl-acct-sep"></div>
+                <span class="xl-pathsw__opt" role="menuitem" style="color:var(--ds-dim)"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-grid"/></svg> Browse all paths</span>
+              </div>
+            </div>
+            <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+            <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Opened from inside the pilot, so <b>Go Concurrency Patterns</b> is the current row (teal, focused) with its <b>Preview</b> badge. <b>Enrolled</b> courses carry a ✓ at the end (<code>aria-label="enrolled"</code>): DSA ✓, Go ✓. F3's rows and order otherwise: active and preview first, then the four coming-soon rows, locked and skipped by Tab.</li>
+          <li>Footer keeps F3's frozen <b>"Browse all paths"</b>. The plan's "Browse all courses →" is F3 alt, which the ds-m1-01 merge didn't adopt; listed under "Decisions to confirm".</li>
+          <li>Picking DSA goes to <code>/xlearn/dsa/dashboard</code>; the menu is v1's disclosure (Esc, outside click).</li></ul>
+      </aside>
+    </article>
+
+    <!-- P3 -->
+    <article class="bd-frame" id="AB02-P3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB02-P3</span><span class="bd-frame__title">· Item crumbs</span><span class="bd-frame__state">· the item noun from the manifest</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">full fidelity</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab02-crumbs">
+          <div class="ab02-crumbrow ab02-crumbrow--stack"><span class="ab02-url">/xlearn/go-concurrency/problem/gc-003</span>
+            <div class="ab02-crumbbox"><div class="xl-topbar" style="border-bottom:0"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>go-concurrency</a><span class="xl-crumb__sep">/</span><a>exercises</a><span class="xl-crumb__sep">/</span><b>gc-003</b></div></div></div></div>
+          <div class="ab02-crumbrow ab02-crumbrow--stack"><span class="ab02-url">/xlearn/go-concurrency/problems</span>
+            <div class="ab02-crumbbox"><div class="xl-topbar" style="border-bottom:0"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>go-concurrency</a><span class="xl-crumb__sep">/</span><b>exercises</b></div></div></div></div>
+          <div class="ab02-crumbrow ab02-crumbrow--stack"><span class="ab02-url">/xlearn/go-concurrency/week/2</span>
+            <div class="ab02-crumbbox"><div class="xl-topbar" style="border-bottom:0"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>go-concurrency</a><span class="xl-crumb__sep">/</span><b>week/2</b></div></div></div></div>
+          <div class="ab02-crumbrow ab02-crumbrow--stack"><span class="ab02-url">/xlearn/go-concurrency/revision/gc-002</span>
+            <div class="ab02-crumbbox"><div class="xl-topbar" style="border-bottom:0"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>go-concurrency</a><span class="xl-crumb__sep">/</span><a>revision</a><span class="xl-crumb__sep">/</span><b>gc-002</b></div></div></div></div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>F7's <code>buildCrumbs</code> rules, with one manifest input: the <b>item noun</b>. The item crumb reads <code>xlearn / go-concurrency / exercises / gc-003</code> (plural noun "exercises"; the id as the manifest writes it, no <code>#</code>), and the list page's crumb uses the same noun. <b>URLs keep the shared segments</b> (<code>problem</code>, <code>problems</code>, t0 §7); DSA's noun is "problem", so its trails stay character-identical to v1 (F7).</li>
+          <li>Crumbs show slugs and ids, never a topic. Mono 12.5 px; links dim 7.7:1.</li></ul>
+      </aside>
+    </article>
+  </div>
+
+  <div class="bd-grid bd-grid--wide">
+    <!-- P4 -->
+    <article class="bd-frame" id="AB02-P4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB02-P4</span><span class="bd-frame__title">· Non-cohort, direct URL</span><span class="bd-frame__state">· /xlearn/go-concurrency · learner account</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">= F6</span></span></header>
+      <div class="bd-frame__body">
+        <div class="xl-app" style="min-height:420px">
+          <div class="xl-main">
+            <div class="xl-topbar ab02-top">
+              <span class="ab02-brand"><span class="ab02-mark">x</span><span class="ab02-name">x<b>Learn</b></span></span>
+              <span class="ab02-flex"></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">L</span>
+            </div>
+            <div class="xl-content">
+              <div class="xl-page-h"><div><div class="xl-eyebrow">404</div><h1 style="margin-top:6px">Page not found</h1><p>That route doesn't exist in xLearn.</p></div></div>
+              <span class="ds-btn ds-btn--secondary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-today"/></svg> Back to Today</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>A non-cohort account (any role but owner or tester) opening <code>/xlearn/go-concurrency</code> — or any sub-route, or an item by id — gets the <b>same NotFound as an unknown course</b> (F6): same copy, same button, same <code>404 course_not_found</code> from the API, same timing. <b>No hint the course exists.</b></li>
+          <li>ADR-0034 §2: <code>preview</code> is filtered in the resolver, before any course data loads.</li></ul>
+      </aside>
+    </article>
+
+    <!-- P5 -->
+    <article class="bd-frame" id="AB02-P5">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB02-P5</span><span class="bd-frame__title">· Non-cohort switcher</span><span class="bd-frame__state">· learner account · DSA enrolled</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">full fidelity</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage" style="height:420px">
+          <div class="xl-topbar ab02-top" style="background:var(--ds-bg)">
+            <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><b>dsa</b></div>
+            <span class="ab02-flex"></span>
+            <div class="ab02-topsw">
+              <span class="ab02-topsw__btn" role="button" aria-haspopup="true" aria-expanded="true" aria-label="Switch curriculum"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <div class="ab02-topsw__menu" role="menu">
+                <span class="xl-pathsw__opt xl-pathsw__opt--active bd-focus" role="menuitem"><span class="ds-dot ds-dot--ok"></span> Data Structures &amp; Algorithms</span>
+                <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> System Design Interviews · <i>Coming soon</i></div>
+                <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Low-Level / OOD · <i>Coming soon</i></div>
+                <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> SQL &amp; Data Modeling · <i>Coming soon</i></div>
+                <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Behavioral &amp; Storytelling · <i>Coming soon</i></div>
+                <div class="xl-acct-sep"></div>
+                <span class="xl-pathsw__opt" role="menuitem" style="color:var(--ds-dim)"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-grid"/></svg> Browse all paths</span>
+              </div>
+            </div>
+            <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">L</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>DSA + the four coming-soon rows only. The pilot's row <b>isn't there at all</b>: no gap, no locked row, no count that includes it. The catalog response omits <code>preview</code> for this account, so the menu renders what it gets.</li>
+          <li>Same menu, same a11y as F3. Sample: a learner account "L".</li></ul>
+      </aside>
+    </article>
+  </div>
+
+  <!-- P6 -->
+  <article class="bd-frame" id="AB02-P6">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB02-P6</span><span class="bd-frame__title">· Cohort, not enrolled</span><span class="bd-frame__state">· /xlearn/go-concurrency · a tester who hasn't started it</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">full fidelity</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad" style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:22px;align-items:start">
+        <div class="ab02-crumbrow" style="grid-template-columns:1fr;gap:8px">
+          <span class="ab02-url">Roadmap header · /xlearn/go-concurrency</span>
+          <div class="ds-card ds-card--violet ab02-card" style="padding:22px">
+            <span class="ab02-card__ic" style="background:rgba(155,140,240,.14);color:var(--ds-violet)"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-branch"/></svg></span>
+            <div class="ab02-card__main">
+              <div class="ab02-card__t"><h2>Go Concurrency Patterns</h2><span class="ds-badge ds-badge--violet">Preview</span></div>
+              <p>Preview · owner &amp; testers. Tests run inside your program, so results count on your honour.</p>
+              <div class="ab02-mono" style="margin-top:14px">Pilot · 2 weeks · 10 exercises · Go</div>
+            </div>
+            <div class="ab02-card__act">
+              <span class="ds-btn ds-btn--primary bd-focus" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start course</span>
+              <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Browse exercises</span>
+            </div>
+          </div>
+        </div>
+        <div class="ab02-crumbrow" style="grid-template-columns:1fr;gap:8px">
+          <span class="ab02-url">Any practice action · /xlearn/go-concurrency/problem/gc-001</span>
+          <div class="xl-panel ab02-gate" style="margin:0">
+            <span class="ab02-gate__ic"><svg class="xl-ico" aria-hidden="true"><use href="#i-lock"/></svg></span>
+            <h2>Start the course to begin</h2>
+            <p>Solving counts once you start <b>Go Concurrency Patterns</b>. It's a preview for owner &amp; testers, and its results count on your honour.</p>
+            <div class="ab02-btnrow"><span class="ds-btn ds-btn--primary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start course</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li>Owner or tester, pilot not started: read views render (Roadmap, Exercises, week pages) with this call to action at the top of the Roadmap. Copy (plan, final): <b>"Preview · owner &amp; testers. Tests run inside your program, so results count on your honour."</b> <b>[Start course]</b>.</li>
+          <li><b>Start course</b> → <code>POST /api/paths/go-concurrency/start</code>; enrollment accepts <code>preview</code> only for the cohort (ADR-0033 §12, ADR-0034 §2). Practice actions before that return <code>403 not_enrolled</code> and show the right-hand gate (F5's pattern).</li></ul></section>
+      <section><h4>Why this copy</h4>
+        <ul><li>The CTA states both facts a tester needs before opting in: who sees the course (preview) and how it's graded (honor, left out of judge-checked %, P7).</li>
+          <li>"Start course" is the pilot's label (plan); F5 keeps v1's "Start path" for DSA. Unifying them is listed under "Decisions to confirm".</li></ul></section>
+      <section><h4>A11y</h4>
+        <ul><li><code>h2</code> leads; Start course is the first focusable. Violet card border is decorative; the badge carries the word "Preview".</li></ul></section>
+    </aside>
+  </article>
+
+  <!-- P7 narrow -->
+  <h3 class="bd-section__h" id="AB02-P7" style="font-size:15px;margin-top:8px">AB02-P7 · &lt; 1024 px (390 px shown) <small>icon rail · switcher as a sheet with both courses</small></h3>
+  <div class="bd-narrow-row">
+    <article class="bd-frame bd-narrow" id="AB02-P7a">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB02-P7a · P1</span><span class="bd-frame__state">· Roadmap, icon rail</span></header>
+      <div class="bd-frame__body">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar">
+          <aside class="xl-side">
+            <div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+            <nav class="xl-nav">
+              <a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a>
+              <a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a>
+              <a class="xl-nav__item" aria-label="Exercises"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Exercises</a>
+              <a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a>
+              <div class="xl-nav__cap">Practice loop</div>
+              <a class="xl-nav__item" aria-label="Revision, 1 due"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision <span class="xl-nav__badge xl-nav__badge--teal">1</span></a>
+              <a class="xl-nav__item" aria-label="Mistakes, 1 open"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes <span class="xl-nav__badge">1</span></a>
+            </nav>
+          </aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab02-top" style="padding:0 12px;gap:8px">
+              <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><b>go-conc…</b></div>
+              <span class="ab02-flex"></span>
+              <span class="ab02-topsw__btn" role="button" aria-haspopup="true" aria-label="Switch curriculum: Go Concurrency Patterns, preview"><span class="xl-pathsw__ic">GO</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="xl-content" style="padding:18px 14px 28px">
+              <div class="ab02-nhead">
+                <div><div class="xl-eyebrow">Learning path · /xlearn/go-concurrency</div><h1 style="margin-top:6px">Go Concurrency Patterns</h1>
+                  <span class="ds-badge ds-badge--violet" style="margin-top:8px">Preview</span>
+                  <p>Pilot · 2 weeks · 10 exercises · Go.</p></div>
+                <span class="ds-btn ds-btn--primary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start today's plan</span>
+              </div>
+              <div class="ab02-phase__h"><span class="ab02-phase__n">WEEK 1</span><h2 style="font-size:15px">Goroutines, WaitGroups &amp; mutexes</h2></div>
+              <ol class="ab02-exlist" style="margin-top:10px" aria-label="Week 1 exercises">
+                <li class="ab02-ex ab02-ex--n"><span class="ab02-glyph" aria-label="code"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg></span><span class="ab02-ex__id">gc-002</span><b>Guard a shared counter</b><span class="ab02-ex__row"><span class="xl-diff xl-diff--easy">Easy</span><span class="ab02-ex__st"><span class="ds-dot ds-dot--progressing"></span> Day 3 review today</span></span></li>
+                <li class="ab02-ex ab02-ex--n"><span class="ab02-glyph" aria-label="code"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg></span><span class="ab02-ex__id">gc-003</span><b>Bounded worker pool</b><span class="ab02-ex__row"><span class="xl-diff xl-diff--med">Medium</span><span class="ab02-ex__st ab02-teal">In progress</span></span></li>
+                <li class="ab02-ex ab02-ex--n"><span class="ab02-glyph" aria-label="quiz"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-quiz"/></svg></span><span class="ab02-ex__id">gc-004</span><b>Channels and timing</b><span class="ab02-ex__row"><span class="xl-diff xl-diff--easy">Easy</span><span class="ds-chip ds-chip--xs">Drill</span><span class="ab02-ex__st ab02-warn">Rough</span></span></li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>F9's rules with the pilot's nav (no Mock row). Crumbs truncate the slug with an ellipsis; the full slug stays in the <code>title</code>. Rows wrap: glyph + id + title, then difficulty, Drill and state.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB02-P7b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB02-P7b · P2</span><span class="bd-frame__state">· switcher as a sheet, both courses</span></header>
+      <div class="bd-frame__body">
+        <div class="bd-stage ab02-stage-phone">
+          <div class="xl-app">
+            <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar">
+            <aside class="xl-side">
+              <div class="xl-brand"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div>
+              <nav class="xl-nav"><a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item xl-nav__item--active"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Exercises</a><a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a></nav>
+            </aside>
+            <div class="xl-main">
+              <div class="xl-topbar" style="padding:0 12px;gap:8px"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><b>go-conc…</b></div><span class="ab02-flex"></span><span class="ab02-topsw__btn" aria-expanded="true"><span class="xl-pathsw__ic">GO</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span><span class="ds-avatar xl-topbar__avatar">S</span></div>
+              <div class="xl-content" style="padding:18px 14px 28px"><div class="xl-eyebrow">Learning path · /xlearn/go-concurrency</div><h1 style="margin-top:6px;font-size:21px">Go Concurrency Patterns</h1></div>
+            </div>
+          </div>
+          <div class="ab02-scrim" aria-hidden="true"></div>
+          <div class="ab02-sheet" role="dialog" aria-modal="true" aria-labelledby="p7b-t">
+            <div class="ab02-sheet__grab" aria-hidden="true"></div>
+            <div class="ab02-sheet__h"><b id="p7b-t">Switch curriculum</b><span class="ds-iconbtn" aria-label="Close"><svg class="xl-ico" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+            <span class="xl-pathsw__opt" role="menuitem"><span class="ds-dot ds-dot--ok"></span> Data Structures &amp; Algorithms <span class="ab02-enr ab02-ok" aria-label="enrolled"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span></span>
+            <span class="xl-pathsw__opt xl-pathsw__opt--active bd-focus" role="menuitem"><span class="ds-dot ds-dot--ok"></span> Go Concurrency Patterns <span class="ds-badge ds-badge--violet" style="height:19px;font-size:10.5px;margin-left:auto">Preview</span><span class="ab02-ok" aria-label="enrolled" style="display:inline-flex"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span></span>
+            <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> System Design Interviews · <i>Coming soon</i></div>
+            <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Low-Level / OOD · <i>Coming soon</i></div>
+            <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> SQL &amp; Data Modeling · <i>Coming soon</i></div>
+            <div class="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Behavioral &amp; Storytelling · <i>Coming soon</i></div>
+            <div class="xl-acct-sep"></div>
+            <span class="xl-pathsw__opt" role="menuitem" style="color:var(--ds-dim)"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-grid"/></svg> Browse all paths</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>N2's sheet with both enrolled courses (✓) and the Preview badge; rows ≥ 44 px; focus trapped; Esc, scrim and Close dismiss it. A non-cohort account's sheet is P5's list.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
 <footer class="bd-foot">
   AB02 · Course nav · drafted in ds-m1-01 (full fidelity in ds-p-01) · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only.
-  Sample data: learner progress, streak, badges, dates and the go-concurrency manifest (illustrative).
+  Sample data: learner progress, streak, badges, dates and the go-concurrency manifest (illustrative). The P section's pilot titles, weeks and states are sample content for p-02.
 </footer>
 </main>
 </body>
