@@ -236,6 +236,6 @@ The UI warns before a hint or a coach message caps the grade.
 | ~~Q2~~ | ~~What happens to abandoned attempts?~~ **Resolved (D15):** the timer is a hard limit, so timeout = Miss, re-attempted via the schedule. | T4 ✅ |
 | ~~Q3~~ | ~~Where does the platform LLM key live and meter?~~ **Resolved (T5):** in judge, as a WIF credential with a spend ledger. | T5 ✅ |
 | ~~Q4~~ | ~~Where do public content and the private eval pack live? How is authoring done?~~ **Resolved in T1 (D5–D6):** public content stays in this repo; the eval pack goes in a private repo, shipped as a private image readable only by judge. Authoring: AI drafts, machines verify, the owner stamps. | T1 ✅ |
-| Q5 | Which course goes second (candidates: system-design or go-concurrency; behavioral is not a pilot)? **Recommended (T7): go-concurrency; confirm at the pilot milestone's entry.** | Pilot (P) entry |
+| ~~Q5~~ | ~~Which course goes second (candidates: system-design or go-concurrency; behavioral is not a pilot)?~~ **Resolved (2026-09-28):** go-concurrency — confirmed by the owner before launch of ds-p-01 (D40). spk-02's P3 input: go-race / TSAN works under `mmap_rnd_bits=32` with no ASLR policy, so the SQL fallback didn't apply. | Pilot (P) ✅ |
 | ~~Q6~~ | ~~Which languages at launch?~~ **Resolved (D20): Go, C++ and Python at M3.** | T3 ✅ |
 | Q7 | What is the ideal time budget per problem? The default is 45 minutes with the hint at 15; this needs its own research and analysis session. | Future session |

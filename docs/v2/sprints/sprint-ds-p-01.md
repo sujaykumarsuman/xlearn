@@ -9,11 +9,11 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ 🔄 In progress
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | PRD Q5 (`ev-q5`): the owner confirms it before launch; the session records it (small docs PR, merged on CI green) | O (before launch) + X | ⬜ |
+| 1 | PRD Q5 (`ev-q5`): the owner confirms it before launch; the session records it (small docs PR, merged on CI green) | O (before launch) + X | ✅ go-concurrency (P3 GO; no fallback), recorded 2026-09-28 |
 | 2 | Board scaffolding (own files only; never `index.html` or `board.css`) | X | ⬜ |
 | 3 | AB14 A7 Workspace-Quiz | X | ⬜ |
 | 4 | AB15 go-concurrency multi-file + race verdicts (or the SQL explorer if Q5 flips) | X | ⬜ |

@@ -177,7 +177,7 @@ One PR carries the union of every topic's asks, all default-off:
 
 | | |
 |---|---|
-| **Course** | **go-concurrency (recommended; confirmed at P entry; PRD Q5 stays open).** It reuses the Go toolchain, the code widget and the quiz, and it's honor-grade. It needs P3's TSAN result. SQL is the fallback: the cheapest *checked* course, but the heaviest runner profile. The choice changes nothing before M3. |
+| **Course** | **go-concurrency (PRD Q5 resolved 2026-09-28, `ev-q5`, confirmed before launch of ds-p-01).** It reuses the Go toolchain, the code widget and the quiz, and it's honor-grade. It needs P3's TSAN result. SQL is the fallback: the cheapest *checked* course, but the heaviest runner profile. The choice changes nothing before M3. |
 | **Scope** | <ul><li>about 10 items;</li><li>the go-race profile (`runner-v1.1.0`);</li><li>the quiz widget (A7) with `weighted_gate@1`;</li><li>the multi-course catalog, agenda and nav.</li></ul>The manifest ships as `preview` and flips to `active` at GA. |
 | **Services** | curriculum, judge, runner, web, gateway |
 | **Artboards** | AB14, AB15, plus AB02 and AB05 at full fidelity |
@@ -584,7 +584,7 @@ None of these gates v2.0 GA. All of them gate the first real invitee.
 
 | Item | Needed by | Default / recommendation |
 |---|---|---|
-| **PRD Q5:** the pilot course | P entry | go-concurrency (SQL fallback) |
+| **PRD Q5:** the pilot course | P entry | ✅ resolved 2026-09-28: **go-concurrency**, confirmed by the owner before launch of ds-p-01 (`ev-q5`, D40); spk-02's P3 is GO for go-race, so the SQL fallback didn't apply |
 | **PRD Q7:** per-problem time budgets | a future research session; not a gate | manifest default of 45 min, hint at 15 (D18) |
 | **Artboard production** | before M1b (AB01–AB03) | ✅ decided (D38, D40): agents draft all boards in `ds-*` sprints, and the boards land on CI green. The merge is the freeze. The owner may review after the fact: D38's review happens asynchronously, per D40. |
 | **Spike go-aheads:** P0–P3 + image volume (D23); WIF | mid-October; before M4 | one spike week, with WIF included if convenient. Launching spk-01 (spk-03 for WIF) is the go-ahead (D40) **D41:** pulled forward to Fri–Sat 2026-09-25/26, before any build sprint. |
