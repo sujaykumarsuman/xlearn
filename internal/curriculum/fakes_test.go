@@ -116,7 +116,9 @@ func (f *fakeStore) CountProblems(_ context.Context, slug string) (int, error) {
 	return len(f.problem), nil
 }
 
-func (f *fakeStore) SeedAll(context.Context, store.SeedContent) error { return nil }
+func (f *fakeStore) SeedAll(context.Context, store.SeedContent) (store.SeedReport, error) {
+	return store.SeedReport{}, nil
+}
 
 func (f *fakeStore) Ping(context.Context) error { return f.pingErr }
 

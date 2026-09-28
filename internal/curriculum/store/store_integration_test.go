@@ -40,6 +40,8 @@ func TestStoreIntegration(t *testing.T) {
 	defer pool.Close()
 	st := store.New(pool)
 
+	assertIndexesValid(ctx, t, pool)
+
 	if err := st.Ping(ctx); err != nil {
 		t.Fatalf("ping: %v", err)
 	}
@@ -56,11 +58,11 @@ func TestStoreIntegration(t *testing.T) {
 	content := sampleContent()
 
 	// Seed twice: the second run must not change any row counts (idempotency).
-	if err := st.SeedAll(ctx, content); err != nil {
+	if _, err := st.SeedAll(ctx, content); err != nil {
 		t.Fatalf("SeedAll (first): %v", err)
 	}
 	before := counts(ctx, t, pool)
-	if err := st.SeedAll(ctx, content); err != nil {
+	if _, err := st.SeedAll(ctx, content); err != nil {
 		t.Fatalf("SeedAll (rerun): %v", err)
 	}
 	after := counts(ctx, t, pool)
@@ -144,8 +146,9 @@ func TestStoreIntegration(t *testing.T) {
 
 func sampleContent() store.SeedContent {
 	return store.SeedContent{
+		Courses: []string{"dsa"},
 		Paths: []store.SeedPath{
-			{Slug: "dsa", Title: "DSA", Status: "active", Summary: "s", ProblemTotal: 151, WeekTotal: 2, SortOrder: 0},
+			{Slug: "dsa", Title: "DSA", Status: "active", Summary: "s", ProblemTotal: 151, WeekTotal: 2, SortOrder: 0, IDPrefix: "dsa"},
 		},
 		Phases: []store.SeedPhase{
 			{PathSlug: "dsa", Order: 1, Name: "Fundamentals", Theme: "arrays", WeekFrom: 1, WeekTo: 2},
@@ -155,16 +158,20 @@ func sampleContent() store.SeedContent {
 			{PathSlug: "dsa", N: 2, Title: "Two Pointers", Thesis: "t2"},
 		},
 		Concepts: []store.SeedConcept{
-			{PathSlug: "dsa", Slug: "two-pointers", Title: "Two Pointers", BodyMD: "b", WhenToUseMD: "w", CodeTemplate: "c", Weeks: []int{2}},
+			{PathSlug: "dsa", Slug: "two-pointers", Title: "Two Pointers", BodyMD: "b", WhenToUseMD: "w", Templates: map[string]string{"go": "c"}, Weeks: []int{2}},
 		},
 		Problems: []store.SeedProblem{
 			{ID: "1", PathSlug: "dsa", WeekN: 1, Title: "Contains Duplicate", Difficulty: "easy", Pattern: "Hashing", SortOrder: 1,
+				Role: "core", Status: "live",
+				Links:    []store.SeedLink{{Kind: "leetcode", URL: "https://leetcode.com/problems/contains-duplicate/"}},
 				Sections: []store.SeedSection{{Stage: "attempt", Kind: "summary", Order: 1, BodyMD: "x"}}},
-			{ID: "9", PathSlug: "dsa", WeekN: 1, Title: "Subarray Sum", Difficulty: "med", Pattern: "Prefix Sum", SortOrder: 2},
+			{ID: "9", PathSlug: "dsa", WeekN: 1, Title: "Subarray Sum", Difficulty: "med", Pattern: "Prefix Sum", SortOrder: 2,
+				Role: "reinforcement", Status: "live"},
 			{ID: "16", PathSlug: "dsa", WeekN: 2, Title: "3Sum", Difficulty: "med", Pattern: "Two Pointers", SortOrder: 1,
+				Role: "core", Status: "live",
 				Sections: []store.SeedSection{
 					{Stage: "attempt", Kind: "summary", Order: 1, BodyMD: "a"},
-					{Stage: "solution", Kind: "code", Order: 1, Code: "func threeSum() {}"},
+					{Stage: "solution", Kind: "code", Order: 1, Language: "go", Code: "func threeSum() {}"},
 				}},
 		},
 	}
@@ -182,4 +189,46 @@ func counts(ctx context.Context, t *testing.T, pool *pgxpool.Pool) map[string]in
 		out[tbl] = n
 	}
 	return out
+}
+
+// assertIndexesValid fails on any INVALID index in schema curriculum and checks that the
+// M1a expand uniques and the v1 uniques exist: 00003 builds the new ones CONCURRENTLY,
+// and a failed CONCURRENTLY build leaves an INVALID index that a re-run's IF NOT EXISTS
+// would silently skip.
+func assertIndexesValid(ctx context.Context, t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	rows, err := pool.Query(ctx, `
+		SELECT c.relname, i.indisvalid, i.indisunique
+		FROM pg_index i
+		JOIN pg_class c     ON c.oid = i.indexrelid
+		JOIN pg_namespace n ON n.oid = c.relnamespace
+		WHERE n.nspname = 'curriculum'`)
+	if err != nil {
+		t.Fatalf("list indexes: %v", err)
+	}
+	defer rows.Close()
+	unique := map[string]bool{}
+	for rows.Next() {
+		var name string
+		var valid, isUnique bool
+		if err := rows.Scan(&name, &valid, &isUnique); err != nil {
+			t.Fatalf("scan index: %v", err)
+		}
+		if !valid {
+			t.Errorf("index curriculum.%s is INVALID (a failed CREATE INDEX CONCURRENTLY): drop it and re-migrate", name)
+		}
+		unique[name] = isUnique
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("list indexes: %v", err)
+	}
+	for _, name := range []string{
+		"path_id_prefix_key", "concept_path_slug_slug_key", "problem_section_problem_id_stage_order_language_key",
+		// The v1 uniques stay until M1c (v1.5.2's upserts target them).
+		"concept_slug_key", "problem_section_problem_id_stage_order_key",
+	} {
+		if !unique[name] {
+			t.Errorf("unique index curriculum.%s is missing", name)
+		}
+	}
 }

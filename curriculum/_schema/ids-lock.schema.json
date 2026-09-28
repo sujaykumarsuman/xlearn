@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://projects.sujaykumar.dev/xlearn/schema/ids-lock.schema.json",
+  "title": "xLearn id lock",
+  "description": "curriculum/ids.lock.json — every item id ever published with its course and status, and every immutable asset id@v with its digest (m1-09, t1 §4). Append-only: an id never disappears or changes course, an id@v never changes bytes (contentlint checks both against the previous release tag). Go type: internal/course/content.go IDsLock.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["items", "assets"],
+  "properties": {
+    "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^([1-9][0-9]{0,2}|[a-z]{2,4}-[0-9]{3})$": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["course", "status"],
+          "properties": {
+            "course": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+            "status": { "enum": ["live", "retired", "withdrawn"] }
+          }
+        }
+      }
+    },
+    "assets": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^[a-z0-9][a-z0-9/_-]*@[1-9][0-9]*$": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    }
+  }
+}

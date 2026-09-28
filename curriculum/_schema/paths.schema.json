@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://projects.sujaykumar.dev/xlearn/schema/paths.schema.json",
+  "title": "xLearn catalog",
+  "description": "curriculum/paths.json — one row per course for the Catalog (title, status, summary, totals, display order). Every row has a manifest with the same slug, title and status (internal/course.Load). Go type: internal/course/content.go PathRow.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["slug", "title", "status", "summary", "problem_total", "week_total", "sort_order"],
+    "properties": {
+      "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+      "title": { "type": "string", "minLength": 1 },
+      "status": { "enum": ["active", "coming_soon"] },
+      "summary": { "type": "string" },
+      "problem_total": { "type": "integer", "minimum": 0 },
+      "week_total": { "type": "integer", "minimum": 0 },
+      "sort_order": { "type": "integer" }
+    }
+  }
+}

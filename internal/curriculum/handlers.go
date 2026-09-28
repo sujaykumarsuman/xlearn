@@ -232,10 +232,11 @@ func (s *Service) handleGetWeek(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-// maxBulkProblemIDs caps a single bulk problem-metadata request. The curriculum has
-// 151 problems total, so a due queue / journal enrichment never needs more; the cap
-// just bounds a malformed/abusive query.
-const maxBulkProblemIDs = 256
+// maxBulkProblemIDs caps a single bulk problem-metadata request. It bounds a
+// malformed/abusive query while leaving room for every course: v2 grows past DSA's 151
+// problems (t1 §4: ~345 items at v2.0), so a due queue / journal enrichment across
+// courses still fits in one call.
+const maxBulkProblemIDs = 1024
 
 // handleGetProblemsByIDs: GET /problems?ids=a,b,c — bulk problem metadata (no
 // sections). This is the gateway's one-call enrichment path for the Revision due

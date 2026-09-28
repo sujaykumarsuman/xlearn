@@ -1,0 +1,13 @@
+{
+  "comment": "Generated from internal/course/reserved.go (ReservedSegments) by `go test ./internal/course -run TestReservedSegmentsJSON -update`. Do not edit by hand.",
+  "reserved": [
+    "api",
+    "assets",
+    "auth",
+    "healthz",
+    "privacy",
+    "readyz",
+    "settings",
+    "u"
+  ]
+}

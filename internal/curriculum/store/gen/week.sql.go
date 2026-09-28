@@ -11,6 +11,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteMissingWeeks = `-- name: DeleteMissingWeeks :exec
+DELETE FROM curriculum.week
+WHERE path_slug = $1 AND NOT (n = ANY($2::int[]))
+`
+
+type DeleteMissingWeeksParams struct {
+	PathSlug string
+	Keep     []int32
+}
+
+// Delete-missing per course (content-only table; week_concept rows cascade).
+func (q *Queries) DeleteMissingWeeks(ctx context.Context, arg DeleteMissingWeeksParams) error {
+	_, err := q.db.Exec(ctx, deleteMissingWeeks, arg.PathSlug, arg.Keep)
+	return err
+}
+
 const getWeek = `-- name: GetWeek :one
 SELECT n, title, thesis
 FROM curriculum.week
@@ -46,7 +62,7 @@ SELECT
     COUNT(p.id)                                       AS total
 FROM curriculum.week w
 LEFT JOIN curriculum.problem p
-    ON p.path_slug = w.path_slug AND p.week_n = w.n
+    ON p.path_slug = w.path_slug AND p.week_n = w.n AND p.status = 'live'
 WHERE w.path_slug = $1
 GROUP BY w.n, w.title, w.thesis
 ORDER BY w.n
@@ -62,8 +78,9 @@ type ListWeeksWithCountsRow struct {
 	Total  int64
 }
 
-// Weeks for a path with the difficulty mix computed from the SEEDED problems
-// (real content — most weeks are 0 until the seed is expanded past the sample set).
+// Weeks for a path with the difficulty mix computed from the SEEDED live problems, so
+// the Roadmap's per-week counts agree with the index (retired and withdrawn items are
+// out of both).
 func (q *Queries) ListWeeksWithCounts(ctx context.Context, pathSlug string) ([]ListWeeksWithCountsRow, error) {
 	rows, err := q.db.Query(ctx, listWeeksWithCounts, pathSlug)
 	if err != nil {

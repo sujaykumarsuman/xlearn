@@ -1,9 +1,7 @@
 package curriculum
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -11,56 +9,44 @@ import (
 	"github.com/sujaykumarsuman/xlearn/internal/curriculum/store"
 )
 
-// seedFiles maps each JSON seed file (relative to the embedded curriculum/ root) to
-// the SeedContent slice it fills. The DSA path's content lives under dsa/; paths.json
-// holds every path row (the active DSA path + the coming-soon stubs) so Catalog is
-// fully API-driven.
-const (
-	pathsFile    = "paths.json"
-	phasesFile   = "dsa/phases.json"
-	weeksFile    = "dsa/weeks.json"
-	conceptsFile = "dsa/concepts.json"
-	problemsFile = "dsa/problems.json"
-)
-
-// Seed parses the versioned curriculum files from fsys and upserts them idempotently
-// (store.SeedAll runs one transaction of natural-key upserts). It logs the seeded
-// problem count against each path's declared target (the 151 goal for DSA) so a
-// partial sample seed is visible in the logs. Called on startup; the caller refuses
-// to serve on a non-nil error (a content service with no content is broken).
+// Seed loads the versioned curriculum from fsys (the glob loader, LoadContent: every
+// course under courses/, strictly decoded, id and slug guards applied) and applies it in
+// one transaction (store.SeedAll: upserts, delete-missing per course, sections rewritten,
+// re-parenting aborts). It logs a WARN for every item it had to retire because the seed
+// no longer carries it, and the seeded problem count against each path's declared target
+// (the 151 goal for DSA). Called on startup; the caller refuses to serve on a non-nil
+// error (a content service with no content is broken).
 func Seed(ctx context.Context, st store.Store, fsys fs.FS, log *slog.Logger) error {
-	var content store.SeedContent
-
-	if err := readJSON(fsys, pathsFile, &content.Paths); err != nil {
-		return err
+	content, err := LoadContent(fsys)
+	if err != nil {
+		return fmt.Errorf("load curriculum: %w", err)
 	}
-	if err := readJSON(fsys, phasesFile, &content.Phases); err != nil {
-		return err
-	}
-	if err := readJSON(fsys, weeksFile, &content.Weeks); err != nil {
-		return err
-	}
-	if err := readJSON(fsys, conceptsFile, &content.Concepts); err != nil {
-		return err
-	}
-	if err := readJSON(fsys, problemsFile, &content.Problems); err != nil {
-		return err
+	seed, err := content.SeedContent()
+	if err != nil {
+		return fmt.Errorf("resolve curriculum: %w", err)
 	}
 
-	if err := st.SeedAll(ctx, content); err != nil {
+	report, err := st.SeedAll(ctx, seed)
+	if err != nil {
 		return fmt.Errorf("apply seed: %w", err)
+	}
+	for _, r := range report.Retired {
+		log.Warn("curriculum item missing from the seed; retired (ids.lock.json should prevent this)",
+			"id", r.ID, "path", r.PathSlug)
 	}
 
 	log.Info("curriculum seeded",
-		"paths", len(content.Paths),
-		"phases", len(content.Phases),
-		"weeks", len(content.Weeks),
-		"concepts", len(content.Concepts),
-		"problems_in_seed", len(content.Problems),
+		"courses", len(seed.Courses),
+		"paths", len(seed.Paths),
+		"phases", len(seed.Phases),
+		"weeks", len(seed.Weeks),
+		"concepts", len(seed.Concepts),
+		"problems_in_seed", len(seed.Problems),
+		"retired_missing", len(report.Retired),
 	)
 
-	// Report seeded vs the declared target per path (e.g. DSA: sample set / 151).
-	for _, p := range content.Paths {
+	// Report seeded (live) vs the declared target per path (e.g. DSA: sample set / 151).
+	for _, p := range seed.Paths {
 		if p.ProblemTotal == 0 {
 			continue
 		}
@@ -69,20 +55,6 @@ func Seed(ctx context.Context, st store.Store, fsys fs.FS, log *slog.Logger) err
 			return fmt.Errorf("count problems for %q: %w", p.Slug, err)
 		}
 		log.Info("curriculum seed coverage", "path", p.Slug, "seeded", n, "target", p.ProblemTotal)
-	}
-	return nil
-}
-
-// readJSON reads and strictly decodes a single seed file into v.
-func readJSON(fsys fs.FS, name string, v any) error {
-	b, err := fs.ReadFile(fsys, name)
-	if err != nil {
-		return fmt.Errorf("read seed file %s: %w", name, err)
-	}
-	dec := json.NewDecoder(bytes.NewReader(b))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(v); err != nil {
-		return fmt.Errorf("decode seed file %s: %w", name, err)
 	}
 	return nil
 }

@@ -13,7 +13,7 @@ MODULE  := github.com/sujaykumarsuman/xlearn
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X $(MODULE).Version=$(VERSION)
 
-.PHONY: all web build run test lint go-test go-lint web-test web-lint clean
+.PHONY: all web build run test lint go-test go-lint web-test web-lint contentlint clean
 
 all: build
 
@@ -48,6 +48,15 @@ go-lint:
 
 go-test:
 	go test -race ./...
+
+## ---- public content (curriculum/) ----
+# The public content checks (cmd/contentlint; t1 §7.2): schema + strict decode, id and
+# slug guards vs ids.lock.json and the previous release tag, the Markdown profile,
+# filename rules, the embedded-file allowlist. CI's `content` job also runs the
+# seeded-row snapshot test (TestSeedMatchesV1Snapshot) on Postgres 18. After adding or
+# removing content: go run ./cmd/contentlint -write-allowlist (and review the diff).
+contentlint:
+	go run ./cmd/contentlint
 
 ## ---- aggregate ----
 lint: go-lint web-lint

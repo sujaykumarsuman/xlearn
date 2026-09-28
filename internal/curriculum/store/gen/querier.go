@@ -12,36 +12,71 @@ import (
 
 type Querier interface {
 	CountProblemsByPath(ctx context.Context, pathSlug string) (int64, error)
+	// Delete-missing per course (content-only table; week_concept rows cascade).
+	DeleteMissingConcepts(ctx context.Context, arg DeleteMissingConceptsParams) error
+	// Delete-missing per course (content-only table).
+	DeleteMissingPhases(ctx context.Context, arg DeleteMissingPhasesParams) error
+	// Delete-missing per course (content-only table; week_concept rows cascade).
+	DeleteMissingWeeks(ctx context.Context, arg DeleteMissingWeeksParams) error
+	// Every seed rewrites every item's sections (delete, then re-insert), inside the seed
+	// transaction. content_hash is NOT a skip key: the v1.5.2 image (a valid R-b target
+	// while the floor is "none") rewrites section bodies without touching content_hash, so
+	// a hash skip would keep its text after a roll-forward.
+	DeleteSectionsByProblem(ctx context.Context, problemID string) error
+	// The seed relinks a course's week <-> concept pairs from scratch on every run.
+	DeleteWeekConceptsByPath(ctx context.Context, pathSlug string) error
+	// code_template is nullable since 00002 but dual-written from templates.go by the seed.
 	GetConcept(ctx context.Context, slug string) (GetConceptRow, error)
-	GetPath(ctx context.Context, slug string) (CurriculumPath, error)
+	GetPath(ctx context.Context, slug string) (GetPathRow, error)
+	// Resolves any item by id, whatever its status (a retired item stays reachable).
 	GetProblem(ctx context.Context, id string) (GetProblemRow, error)
 	// Bulk problem-metadata read: resolve many bare problem ids in ONE round-trip so the
 	// gateway can enrich the Revision due queue / mistake journal without N per-id GETs
 	// (ADR-0005: the gateway composes cross-context state; this keeps it a single query).
 	// Ordered by the same (week_n, sort_order, id) key as the path index for stability.
+	// Any status resolves (a retired item may still be on a learner's ladder).
 	GetProblemsByIDs(ctx context.Context, ids []string) ([]GetProblemsByIDsRow, error)
 	GetWeek(ctx context.Context, arg GetWeekParams) (GetWeekRow, error)
+	InsertSection(ctx context.Context, arg InsertSectionParams) error
 	LinkWeekConcept(ctx context.Context, arg LinkWeekConceptParams) error
 	ListConceptsByWeek(ctx context.Context, arg ListConceptsByWeekParams) ([]ListConceptsByWeekRow, error)
-	ListPaths(ctx context.Context) ([]CurriculumPath, error)
+	ListPaths(ctx context.Context) ([]ListPathsRow, error)
 	ListPhasesByPath(ctx context.Context, pathSlug string) ([]ListPhasesByPathRow, error)
-	// The whole problem index for a path (id -> week_n / pattern / difficulty /
+	// The whole live problem index for a path (id -> week_n / pattern / difficulty /
 	// reinforcement). The gateway reads this once to compose the Progress + Dashboard
 	// roll-ups (by-phase completion, by-pattern mastery) without N per-problem calls.
 	ListProblemsByPath(ctx context.Context, pathSlug string) ([]ListProblemsByPathRow, error)
+	// Readers keep the v1 response shape (m1-09 is M1a expand; m1-03 switches readers to the
+	// new columns). The M1c-drop columns are nullable since 00002 but dual-written by the
+	// seed, so the COALESCEs only guard a row some future writer left NULL.
+	//
+	// Retire semantics (t1 §4): only `live` items are in the index and the counts; retired
+	// and withdrawn items stay resolvable by id (GetProblem, GetProblemsByIDs).
 	ListProblemsByWeek(ctx context.Context, arg ListProblemsByWeekParams) ([]ListProblemsByWeekRow, error)
 	// All content sections for a problem, ordered by stage (attempt -> hint -> solution)
-	// then position. S05 will filter to only the user's unlocked stages; this sprint
-	// returns the full content set (the shape is already stage-keyed).
+	// then position. A withdrawn item (a takedown) serves no sections: its prose is
+	// blanked while its title stays resolvable.
 	ListSectionsByProblem(ctx context.Context, problemID string) ([]ListSectionsByProblemRow, error)
-	// Weeks for a path with the difficulty mix computed from the SEEDED problems
-	// (real content — most weeks are 0 until the seed is expanded past the sample set).
+	// Weeks for a path with the difficulty mix computed from the SEEDED live problems, so
+	// the Roadmap's per-week counts agree with the index (retired and withdrawn items are
+	// out of both).
 	ListWeeksWithCounts(ctx context.Context, pathSlug string) ([]ListWeeksWithCountsRow, error)
+	// Defensive retire (t1 §4): a live item in the DB that the seed no longer carries is
+	// retired, never deleted (ids.lock.json should make this impossible; the caller logs a
+	// WARN per id).
+	RetireMissingProblems(ctx context.Context, seededIds []string) ([]RetireMissingProblemsRow, error)
+	// Keyed on (path_slug, slug) (00003's unique), so a concept is never re-parented. The v1
+	// UNIQUE(slug) stays until M1c, so a slug is still global until then. Dual-writes
+	// code_template from templates.go.
 	UpsertConcept(ctx context.Context, arg UpsertConceptParams) (pgtype.UUID, error)
+	// id_prefix comes from the course manifest (00002; unique since 00003).
 	UpsertPath(ctx context.Context, arg UpsertPathParams) error
 	UpsertPhase(ctx context.Context, arg UpsertPhaseParams) error
-	UpsertProblem(ctx context.Context, arg UpsertProblemParams) error
-	UpsertSection(ctx context.Context, arg UpsertSectionParams) error
+	// The id guard (t1 §4): an id is never re-parented. The DO UPDATE applies only when the
+	// stored row is in the same course, so a move affects 0 rows and the seed aborts unless
+	// exactly 1 row is affected. Writes the v2 columns and dual-writes the v1 ones
+	// (is_reinforcement, leetcode_url, neetcode_url) from them until M1c.
+	UpsertProblem(ctx context.Context, arg UpsertProblemParams) (int64, error)
 	UpsertWeek(ctx context.Context, arg UpsertWeekParams) (pgtype.UUID, error)
 }
 

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://projects.sujaykumar.dev/xlearn/schema/concepts.schema.json",
+  "title": "xLearn course concepts",
+  "description": "curriculum/courses/<slug>/concepts.json — the course's concept readings (m1-09). Bodies are sidecars: concepts/<slug>.md (body), concepts/<slug>.when.md (when to use), concepts/_code/<slug>.<lang>.snip (code templates). Go type: internal/course/content.go Concept.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["slug", "title", "weeks"],
+    "properties": {
+      "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+      "title": { "type": "string", "minLength": 1 },
+      "weeks": {
+        "$comment": "The week numbers the concept is read in.",
+        "type": "array",
+        "uniqueItems": true,
+        "items": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}
