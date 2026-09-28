@@ -1,0 +1,1 @@
+Reach for a monotonic stack when a problem asks for the nearest larger/smaller element on either side, or spans/areas bounded by such elements (Largest Rectangle in Histogram, Trapping Rain Water). The tell is 'for each element, find the next one that is bigger/smaller'.

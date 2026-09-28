@@ -1,0 +1,1 @@
+Find the cheapest price from src to dst using at most K stops. The stop cap turns this into Bellman-Ford limited to K+1 relaxation rounds over a snapshot of the distances.

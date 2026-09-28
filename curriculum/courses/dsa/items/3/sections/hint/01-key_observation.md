@@ -1,0 +1,1 @@
+For each number `n`, the number you still need is `target - n`. If you have already seen it, you are done — so check the map before inserting.

@@ -1,0 +1,1 @@
+Map key → list node. On get, move the node to the front (most recent) and return its value. On put, upsert and move to front; if over capacity, evict the tail node and delete its key. Use head/tail sentinel nodes so no operation special-cases the ends.

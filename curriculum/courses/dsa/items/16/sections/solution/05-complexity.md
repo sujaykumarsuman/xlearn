@@ -1,0 +1,1 @@
+Time O(n^2): the sort is O(n log n) and each anchor drives an O(n) two-pointer sweep. Space O(1) beyond the output (or O(n) counting the sort).

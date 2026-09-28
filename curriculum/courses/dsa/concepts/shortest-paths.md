@@ -1,0 +1,1 @@
+Pick the shortest-path algorithm by the graph's constraints. Unweighted edges: plain BFS. Non-negative weights: Dijkstra with a min-heap. Negative weights, or a hard cap on the number of edges used: Bellman-Ford, which relaxes every edge repeatedly. 'Cheapest flight within K stops' is Bellman-Ford limited to K+1 relaxation rounds — the round count is exactly the edge budget.

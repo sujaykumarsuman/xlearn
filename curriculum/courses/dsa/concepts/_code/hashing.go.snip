@@ -1,0 +1,14 @@
+// Frequency map over a slice.
+freq := make(map[int]int, len(nums))
+for _, n := range nums {
+    freq[n]++
+}
+
+// Complement lookup (Two Sum shape).
+seen := make(map[int]int, len(nums)) // value -> index
+for i, n := range nums {
+    if j, ok := seen[target-n]; ok {
+        return []int{j, i}
+    }
+    seen[n] = i
+}

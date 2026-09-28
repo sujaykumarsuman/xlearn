@@ -1,0 +1,24 @@
+{
+  "id": "92",
+  "course": "dsa",
+  "week_n": 9,
+  "sort_order": 1,
+  "title": "Cheapest Flights Within K Stops",
+  "difficulty": "med",
+  "pattern": "Shortest Paths (Bellman-Ford)",
+  "role": "core",
+  "status": "live",
+  "provenance": {
+    "origin": "original",
+    "inspired_by": [
+      "leetcode:cheapest-flights-within-k-stops"
+    ],
+    "authored_by": "ai-assisted"
+  },
+  "links": [
+    {
+      "kind": "leetcode",
+      "url": "https://leetcode.com/problems/cheapest-flights-within-k-stops/"
+    }
+  ]
+}

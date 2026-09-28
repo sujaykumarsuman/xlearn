@@ -1,0 +1,1 @@
+Relax all edges K+1 times, but each round must read from the previous round's distances (a copy) so a single round cannot chain multiple edges — that is what enforces the stop limit.

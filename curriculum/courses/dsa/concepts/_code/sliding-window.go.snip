@@ -1,0 +1,16 @@
+window := make(map[byte]int)
+left, best := 0, 0
+for right := 0; right < len(s); right++ {
+    window[s[right]]++
+    for windowInvalid(window) { // e.g. a char count > 1
+        window[s[left]]--
+        if window[s[left]] == 0 {
+            delete(window, s[left])
+        }
+        left++
+    }
+    if right-left+1 > best {
+        best = right - left + 1
+    }
+}
+return best

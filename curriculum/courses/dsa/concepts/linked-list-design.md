@@ -1,0 +1,1 @@
+Linked-list problems are pointer discipline: keep a dummy head to avoid special-casing the first node, advance with care, and reconnect in the right order. The design payoff is the LRU cache — a hash map from key to node gives O(1) lookup, and a doubly-linked list ordered by recency gives O(1) move-to-front and evict-from-back. Together they make every `get`/`put` O(1).

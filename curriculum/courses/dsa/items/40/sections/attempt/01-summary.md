@@ -1,0 +1,1 @@
+Design a cache with O(1) get and put that evicts the least-recently-used key at capacity. The canonical hashmap + doubly-linked-list design problem.

@@ -1,0 +1,1 @@
+Given courses and prerequisite pairs, decide whether you can finish all of them. This is cycle detection on a directed graph — a topological-sort feasibility check.

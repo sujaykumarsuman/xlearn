@@ -1,0 +1,28 @@
+{
+  "id": "3",
+  "course": "dsa",
+  "week_n": 1,
+  "sort_order": 3,
+  "title": "Two Sum",
+  "difficulty": "easy",
+  "pattern": "Hashing",
+  "role": "core",
+  "status": "live",
+  "provenance": {
+    "origin": "adapted",
+    "inspired_by": [
+      "leetcode:two-sum"
+    ],
+    "authored_by": "ai-assisted"
+  },
+  "links": [
+    {
+      "kind": "leetcode",
+      "url": "https://leetcode.com/problems/two-sum/"
+    },
+    {
+      "kind": "neetcode",
+      "url": "https://neetcode.io/problems/two-integer-sum"
+    }
+  ]
+}

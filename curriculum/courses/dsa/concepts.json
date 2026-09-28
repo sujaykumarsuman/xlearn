@@ -1,0 +1,65 @@
+[
+  {
+    "slug": "hashing",
+    "title": "Hashing & Frequency Maps",
+    "weeks": [
+      1
+    ]
+  },
+  {
+    "slug": "prefix-sums",
+    "title": "Prefix Sums",
+    "weeks": [
+      1
+    ]
+  },
+  {
+    "slug": "two-pointers",
+    "title": "Two Pointers",
+    "weeks": [
+      2
+    ]
+  },
+  {
+    "slug": "sliding-window",
+    "title": "Sliding Window",
+    "weeks": [
+      2
+    ]
+  },
+  {
+    "slug": "monotonic-stack",
+    "title": "Monotonic Stack",
+    "weeks": [
+      3
+    ]
+  },
+  {
+    "slug": "linked-list-design",
+    "title": "Linked Lists & O(1) Design",
+    "weeks": [
+      4
+    ]
+  },
+  {
+    "slug": "topological-sort",
+    "title": "Graphs & Topological Sort",
+    "weeks": [
+      8
+    ]
+  },
+  {
+    "slug": "shortest-paths",
+    "title": "Shortest Paths",
+    "weeks": [
+      9
+    ]
+  },
+  {
+    "slug": "dynamic-programming",
+    "title": "Dynamic Programming",
+    "weeks": [
+      10
+    ]
+  }
+]

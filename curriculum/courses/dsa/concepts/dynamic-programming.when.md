@@ -1,0 +1,1 @@
+Reach for DP when a problem asks for an optimum (min/max/count) over a sequence of choices AND the same sub-problems recur (overlapping subproblems + optimal substructure). If your brute-force recursion re-solves the same arguments, add a memo and you have DP.

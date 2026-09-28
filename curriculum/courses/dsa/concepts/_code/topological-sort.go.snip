@@ -1,0 +1,25 @@
+indeg := make([]int, n)
+adj := make([][]int, n)
+for _, e := range edges { // e = [dependent, prereq]
+    adj[e[1]] = append(adj[e[1]], e[0])
+    indeg[e[0]]++
+}
+q := []int{}
+for i := 0; i < n; i++ {
+    if indeg[i] == 0 {
+        q = append(q, i)
+    }
+}
+seen := 0
+for len(q) > 0 {
+    u := q[0]
+    q = q[1:]
+    seen++
+    for _, v := range adj[u] {
+        indeg[v]--
+        if indeg[v] == 0 {
+            q = append(q, v)
+        }
+    }
+}
+return seen == n // false => a cycle

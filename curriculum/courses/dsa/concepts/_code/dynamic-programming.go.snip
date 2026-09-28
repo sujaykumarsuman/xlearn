@@ -1,0 +1,14 @@
+// Coin Change: fewest coins to make `amount`.
+dp := make([]int, amount+1)
+for a := 1; a <= amount; a++ {
+    dp[a] = amount + 1 // sentinel = impossible
+    for _, c := range coins {
+        if c <= a && dp[a-c]+1 < dp[a] {
+            dp[a] = dp[a-c] + 1
+        }
+    }
+}
+if dp[amount] > amount {
+    return -1
+}
+return dp[amount]

@@ -1,0 +1,24 @@
+{
+  "id": "9",
+  "course": "dsa",
+  "week_n": 1,
+  "sort_order": 6,
+  "title": "Subarray Sum Equals K",
+  "difficulty": "med",
+  "pattern": "Prefix Sum",
+  "role": "core",
+  "status": "live",
+  "provenance": {
+    "origin": "original",
+    "inspired_by": [
+      "leetcode:subarray-sum-equals-k"
+    ],
+    "authored_by": "ai-assisted"
+  },
+  "links": [
+    {
+      "kind": "leetcode",
+      "url": "https://leetcode.com/problems/subarray-sum-equals-k/"
+    }
+  ]
+}

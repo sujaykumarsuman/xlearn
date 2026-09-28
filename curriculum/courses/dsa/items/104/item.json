@@ -1,0 +1,28 @@
+{
+  "id": "104",
+  "course": "dsa",
+  "week_n": 10,
+  "sort_order": 1,
+  "title": "Coin Change",
+  "difficulty": "med",
+  "pattern": "Dynamic Programming",
+  "role": "core",
+  "status": "live",
+  "provenance": {
+    "origin": "original",
+    "inspired_by": [
+      "leetcode:coin-change"
+    ],
+    "authored_by": "ai-assisted"
+  },
+  "links": [
+    {
+      "kind": "leetcode",
+      "url": "https://leetcode.com/problems/coin-change/"
+    },
+    {
+      "kind": "neetcode",
+      "url": "https://neetcode.io/problems/coin-change"
+    }
+  ]
+}

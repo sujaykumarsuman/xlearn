@@ -1,0 +1,1 @@
+LRU forces you to combine two structures for their complementary strengths: a hash map for O(1) key lookup and a doubly-linked list for O(1) recency reordering and eviction. Recognising 'I need O(1) access AND O(1) ordering' is the transferable skill.

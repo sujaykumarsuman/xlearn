@@ -1,0 +1,1 @@
+Given bar heights, find the largest axis-aligned rectangle in the histogram. The problem that finally makes the monotonic-stack pattern click.

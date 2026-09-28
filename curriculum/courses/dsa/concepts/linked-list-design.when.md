@@ -1,0 +1,1 @@
+Use a dummy node whenever the head can change (insert/delete at front). Reach for hashmap + doubly-linked list whenever you need O(1) access AND O(1) ordering updates — LRU/LFU caches, browser history with jumps, any 'most-recently-used' structure.

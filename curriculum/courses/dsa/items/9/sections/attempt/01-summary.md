@@ -1,0 +1,1 @@
+Count the contiguous subarrays that sum to k. The running-prefix-sum + hashmap-of-seen-prefixes trick counts them in one pass.

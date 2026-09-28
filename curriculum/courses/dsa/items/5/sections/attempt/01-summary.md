@@ -1,0 +1,1 @@
+Group strings that are anagrams of each other. Key each group by a canonical signature — the sorted string, or a 26-length count tuple.

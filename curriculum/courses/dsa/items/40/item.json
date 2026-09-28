@@ -1,0 +1,28 @@
+{
+  "id": "40",
+  "course": "dsa",
+  "week_n": 4,
+  "sort_order": 1,
+  "title": "LRU Cache",
+  "difficulty": "med",
+  "pattern": "Design / Hashmap + DLL",
+  "role": "core",
+  "status": "live",
+  "provenance": {
+    "origin": "original",
+    "inspired_by": [
+      "leetcode:lru-cache"
+    ],
+    "authored_by": "ai-assisted"
+  },
+  "links": [
+    {
+      "kind": "leetcode",
+      "url": "https://leetcode.com/problems/lru-cache/"
+    },
+    {
+      "kind": "neetcode",
+      "url": "https://neetcode.io/problems/lru-cache"
+    }
+  ]
+}

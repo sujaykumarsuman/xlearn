@@ -1,0 +1,28 @@
+{
+  "id": "23",
+  "course": "dsa",
+  "week_n": 3,
+  "sort_order": 1,
+  "title": "Largest Rectangle in Histogram",
+  "difficulty": "hard",
+  "pattern": "Monotonic Stack",
+  "role": "core",
+  "status": "live",
+  "provenance": {
+    "origin": "original",
+    "inspired_by": [
+      "leetcode:largest-rectangle-in-histogram"
+    ],
+    "authored_by": "ai-assisted"
+  },
+  "links": [
+    {
+      "kind": "leetcode",
+      "url": "https://leetcode.com/problems/largest-rectangle-in-histogram/"
+    },
+    {
+      "kind": "neetcode",
+      "url": "https://neetcode.io/problems/largest-rectangle-in-histogram"
+    }
+  ]
+}

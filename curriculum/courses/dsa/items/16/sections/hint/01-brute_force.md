@@ -1,0 +1,1 @@
+The obvious approach is three nested loops over every triple — O(n^3) time — plus a set to dedupe. It works but times out on large inputs and wastes the structure you could get from sorting.

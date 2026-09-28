@@ -1,0 +1,1 @@
+Use prefix sums when the question is about the sum (or count, or XOR) of contiguous subarrays, especially with many range queries or a target subarray sum. The running-prefix-plus-hashmap trick is the go-to for 'number of subarrays that sum to k'.

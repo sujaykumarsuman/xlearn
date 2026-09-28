@@ -1,0 +1,1 @@
+3Sum is the bridge from the O(1) complement trick (Two Sum) to reducing a k-sum problem by one dimension: fix one element and two-pointer the rest. That fix-and-sweep move reappears in 4Sum, 3Sum Closest, and countless interview variants.

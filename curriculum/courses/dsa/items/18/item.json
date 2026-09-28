@@ -1,0 +1,28 @@
+{
+  "id": "18",
+  "course": "dsa",
+  "week_n": 2,
+  "sort_order": 3,
+  "title": "Minimum Window Substring",
+  "difficulty": "hard",
+  "pattern": "Sliding Window",
+  "role": "core",
+  "status": "live",
+  "provenance": {
+    "origin": "original",
+    "inspired_by": [
+      "leetcode:minimum-window-substring"
+    ],
+    "authored_by": "ai-assisted"
+  },
+  "links": [
+    {
+      "kind": "leetcode",
+      "url": "https://leetcode.com/problems/minimum-window-substring/"
+    },
+    {
+      "kind": "neetcode",
+      "url": "https://neetcode.io/problems/minimum-window-with-characters"
+    }
+  ]
+}

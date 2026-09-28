@@ -1,0 +1,1 @@
+Scan once, keeping a set of values seen so far. If the current value is already in the set, you found a duplicate; otherwise add it.

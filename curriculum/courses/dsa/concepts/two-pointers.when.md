@@ -1,0 +1,1 @@
+Reach for two pointers when the input is sorted (or you can afford to sort it) and you are looking for a pair/triple that meets a numeric condition, or when you need to partition/dedupe in place. If you sorted specifically to unlock the pointer sweep, that O(n log n) sort is almost always worth it.

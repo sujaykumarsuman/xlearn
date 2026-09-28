@@ -1,0 +1,9 @@
+// Count subarrays summing to k.
+count, sum := 0, 0
+seen := map[int]int{0: 1} // prefix sum -> frequency
+for _, n := range nums {
+    sum += n
+    count += seen[sum-k]
+    seen[sum]++
+}
+return count

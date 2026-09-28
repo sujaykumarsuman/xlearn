@@ -1,0 +1,1 @@
+nums = [-1, 0, 1, 2, -1, -4] → [[-1, -1, 2], [-1, 0, 1]]. Note the two -1 values collapse into one unique triplet.

@@ -1,0 +1,61 @@
+{
+  "items": {
+    "1": {
+      "course": "dsa",
+      "status": "live"
+    },
+    "104": {
+      "course": "dsa",
+      "status": "live"
+    },
+    "12": {
+      "course": "dsa",
+      "status": "live"
+    },
+    "16": {
+      "course": "dsa",
+      "status": "live"
+    },
+    "18": {
+      "course": "dsa",
+      "status": "live"
+    },
+    "2": {
+      "course": "dsa",
+      "status": "live"
+    },
+    "23": {
+      "course": "dsa",
+      "status": "live"
+    },
+    "3": {
+      "course": "dsa",
+      "status": "live"
+    },
+    "40": {
+      "course": "dsa",
+      "status": "live"
+    },
+    "5": {
+      "course": "dsa",
+      "status": "live"
+    },
+    "7": {
+      "course": "dsa",
+      "status": "live"
+    },
+    "78": {
+      "course": "dsa",
+      "status": "live"
+    },
+    "9": {
+      "course": "dsa",
+      "status": "live"
+    },
+    "92": {
+      "course": "dsa",
+      "status": "live"
+    }
+  },
+  "assets": {}
+}
