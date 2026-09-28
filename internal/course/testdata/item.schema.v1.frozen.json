@@ -1,0 +1,304 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://projects.sujaykumar.dev/xlearn/schema/item.schema.json",
+  "title": "xLearn public item (item schema v1, FROZEN)",
+  "description": "curriculum/courses/<slug>/items/<id>/item.json — one public item (ADR-0026 §2, ADR-0027 §1–2, ADR-0029 §1/§4, t1 §7.1). FROZEN at ev-schema-freeze (sprint m1-01): from then on changes are additive and optional only, enforced by the freeze guard in internal/course/schema_test.go against internal/course/testdata/item.schema.v1.frozen.json. Go types: internal/course/item.go. Runtime validation is the Go types plus Item.Validate (which also applies the per-type config rules and the closed type/checker registries); this schema is for editors and CI.",
+  "$comment": "ANSWER SECRECY (ADR-0027 §1): no field can hold an answer. Hidden cases, keys that cannot be derived from public text, rubric anchors, must-cover lists and exemplars live only in the private eval pack. SIDECARS (not fields; m1-09 implements them): prose sections are Markdown files sections/<stage>/<NN>-<kind>.md next to item.json (NN = order); code sections are _code/<stage>-<NN>.<lang>.snip fragments, and a complete reference is _code/solution.go; concept bodies live at courses/<slug>/concepts/<slug>.md. Hints and editorial are served only once review.hints / review.editorial is stamped. An item with no parts is valid: that is the v1 self path.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "course", "week_n", "sort_order", "title", "difficulty", "pattern", "role", "status", "provenance"],
+  "properties": {
+    "id": {
+      "$comment": "Globally unique, never re-parented, retired rather than deleted. DSA ids stay bare (1-999); every other course uses <id_prefix>-NNN.",
+      "type": "string",
+      "pattern": "^([1-9][0-9]{0,2}|[a-z]{2,4}-[0-9]{3})$"
+    },
+    "course": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "week_n": { "type": "integer", "minimum": 1 },
+    "sort_order": { "type": "integer", "minimum": 0 },
+    "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "difficulty": { "enum": ["easy", "med", "hard"] },
+    "pattern": {
+      "$comment": "The item's pattern/topic. Public, but withheld while the item is live (gateway withhold()).",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "role": { "enum": ["core", "reinforcement", "drill"] },
+    "status": { "enum": ["live", "retired", "withdrawn"] },
+    "provenance": { "$ref": "#/$defs/provenance" },
+    "links": { "type": "array", "items": { "$ref": "#/$defs/link" } },
+    "review": { "$ref": "#/$defs/reviewStamp" },
+    "concepts": {
+      "$comment": "Concepts to revise (ADR-0029 §4): at most 3 refs <course>:concept:<slug>, the primary concept first.",
+      "type": "array",
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*:concept:[a-z0-9]+(-[a-z0-9]+)*$"
+      }
+    },
+    "parts": { "type": "array", "items": { "$ref": "#/$defs/part" } },
+    "grader": {
+      "$comment": "The steps of the item's single, non-nested composite@1 root. The analyzer is never authored.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/graderStep" }
+    },
+    "solution_facts": { "$ref": "#/$defs/solutionFacts" },
+    "revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["probes"],
+      "properties": {
+        "probes": { "type": "array", "items": { "$ref": "#/$defs/probe" } }
+      }
+    },
+    "assets": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/versionedRef" }
+    }
+  },
+  "$defs": {
+    "localId": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+    "ident": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "versionedRef": { "type": "string", "pattern": "^[a-z0-9][a-z0-9/_-]*@[1-9][0-9]*$" },
+    "isoDate": { "type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "provenance": {
+      "$comment": "Required on every item (t1 §8). origin copied is rejected.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origin", "authored_by"],
+      "properties": {
+        "origin": { "enum": ["original", "adapted", "licensed"] },
+        "inspired_by": {
+          "$comment": "<source>:<ref>, e.g. leetcode:15. An idea reference, never copied text.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "license": { "type": "string", "minLength": 1 },
+        "attribution": { "type": "string", "minLength": 1 },
+        "authored_by": { "type": "string", "minLength": 1 }
+      }
+    },
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "url"],
+      "properties": {
+        "kind": { "enum": ["leetcode", "neetcode", "other"] },
+        "url": { "type": "string", "pattern": "^https://[^\\s]+$" }
+      }
+    },
+    "reviewStamp": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "statement": { "$ref": "#/$defs/isoDate" },
+        "hints": { "$ref": "#/$defs/isoDate" },
+        "editorial": { "$ref": "#/$defs/isoDate" }
+      }
+    },
+    "part": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "cadence", "grading", "required", "config"],
+      "properties": {
+        "id": { "$ref": "#/$defs/localId" },
+        "type": {
+          "$comment": "audio is reserved; it is added (additively) when its widget ships.",
+          "enum": ["code", "text", "choice", "blank", "canvas"]
+        },
+        "cadence": { "enum": ["iterate", "final"] },
+        "grading": { "enum": ["auto", "ai", "none"] },
+        "required": { "type": "boolean" },
+        "config": { "$ref": "#/$defs/partConfig" }
+      }
+    },
+    "partConfig": {
+      "$comment": "One shape for every part type; Item.Validate allows only the fields of the part's type — code: signature, languages, harness, checker, constraints, samples, limits; choice: mode, options; blank: fields; text: fields, max_chars; canvas: palette, max_nodes. No field marks a correct option.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "signature": { "$ref": "#/$defs/signature" },
+        "languages": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "harness": { "$ref": "#/$defs/versionedRef" },
+        "checker": { "$ref": "#/$defs/checker" },
+        "constraints": { "type": "array", "items": { "$ref": "#/$defs/constraint" } },
+        "samples": { "type": "array", "items": { "$ref": "#/$defs/sample" } },
+        "limits": { "$ref": "#/$defs/limits" },
+        "mode": { "enum": ["single", "multi", "ordering"] },
+        "options": { "type": "array", "items": { "$ref": "#/$defs/option" } },
+        "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } },
+        "max_chars": { "type": "integer", "minimum": 1 },
+        "palette": { "$ref": "#/$defs/versionedRef" },
+        "max_nodes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "signature": {
+      "$comment": "Types come from the closed registry (int, int64, float64, bool, string, ListNode, TreeNode, GraphNode, each with optional [] suffixes), checked by Item.Validate.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "name"],
+      "properties": {
+        "mode": { "enum": ["function", "class"] },
+        "name": { "type": "string", "minLength": 1 },
+        "params": { "type": "array", "items": { "$ref": "#/$defs/param" } },
+        "returns": { "type": "string", "minLength": 1 },
+        "ops": { "type": "array", "items": { "$ref": "#/$defs/op" } }
+      }
+    },
+    "param": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 }
+      }
+    },
+    "op": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "params": { "type": "array", "items": { "$ref": "#/$defs/param" } },
+        "returns": { "type": "string", "minLength": 1 }
+      }
+    },
+    "checker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "eps": { "type": "number", "exclusiveMinimum": 0 } }
+        }
+      }
+    },
+    "constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["arg"],
+      "properties": {
+        "arg": { "type": "string", "minLength": 1 },
+        "len": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "integer", "minimum": 0 }
+        },
+        "range": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } }
+      }
+    },
+    "sample": {
+      "$comment": "A PUBLIC example shown with the statement: its expected output is public by definition. Hidden cases live only in the private pack.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "args", "expected"],
+      "properties": {
+        "id": { "$ref": "#/$defs/localId" },
+        "ops": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "args": { "type": "array" },
+        "expected": {}
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["time_ms", "memory_mb"],
+      "properties": {
+        "time_ms": { "type": "integer", "minimum": 1 },
+        "memory_mb": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "option": {
+      "$comment": "No correctness flag: which option is right lives in the pack.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": { "$ref": "#/$defs/localId" },
+        "label": { "type": "string", "minLength": 1 }
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": { "$ref": "#/$defs/localId" },
+        "label": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["text", "numeric", "big_o"] },
+        "units": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "max_chars": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "graderStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["step", "kind", "inputs", "required"],
+      "properties": {
+        "step": { "$ref": "#/$defs/localId" },
+        "kind": { "enum": ["code", "key", "ai_rubric"] },
+        "inputs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/localId" } },
+        "required": { "type": "boolean" },
+        "weight": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+        "rubric": { "$ref": "#/$defs/versionedRef" }
+      }
+    },
+    "solutionFacts": {
+      "$comment": "Public facts about the reference, served only with the solution stage (and withheld while the item is live).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complexity"],
+      "properties": {
+        "complexity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["time", "space"],
+          "properties": {
+            "time": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1, "maxLength": 40 } },
+            "space": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1, "maxLength": 40 } }
+          }
+        }
+      }
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "band", "grading", "key_source", "criterion", "prompt_md"],
+      "properties": {
+        "id": { "$ref": "#/$defs/localId" },
+        "type": { "enum": ["text", "blank", "choice"] },
+        "band": { "$ref": "#/$defs/ident" },
+        "grading": { "const": "key" },
+        "key_source": {
+          "$comment": "WHERE the key lives, never the key: public:<field> (honor-grade, derived from public text) or pack (a private key only judge holds).",
+          "type": "string",
+          "pattern": "^(public:[a-z_.]+|pack)$"
+        },
+        "criterion": { "$ref": "#/$defs/ident" },
+        "timer_s": { "type": "integer", "minimum": 1 },
+        "prompt_md": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "config": { "$ref": "#/$defs/probeConfig" }
+      }
+    },
+    "probeConfig": {
+      "$comment": "A probe's config: the choice, blank and text fields only (never code, samples or limits).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "enum": ["single", "multi", "ordering"] },
+        "options": { "type": "array", "items": { "$ref": "#/$defs/option" } },
+        "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } },
+        "max_chars": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

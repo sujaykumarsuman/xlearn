@@ -41,6 +41,11 @@ and use "Continue with GitHub" (the client id/secret come from the repo `.env`).
 docker compose down -v   # drops the Postgres + NATS volumes (fresh seed + a new dev account)
 ```
 
+**PG major bump → `docker compose down -v`.** The stack runs `postgres:18-alpine` (prod parity). A
+volume initialised by an older major (e.g. PG 16) is incompatible, and PG 18 images keep their data
+under `/var/lib/postgresql/18/docker` (the volume mounts `/var/lib/postgresql`). If Postgres exits
+on startup after a pull, drop the volumes once with `docker compose down -v`.
+
 ## Ports
 
 - `8080` → gateway / SPA (the only one you need)

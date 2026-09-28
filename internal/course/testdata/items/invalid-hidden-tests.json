@@ -1,0 +1,122 @@
+{
+  "id": "900",
+  "course": "dsa",
+  "week_n": 1,
+  "sort_order": 90,
+  "title": "Ballot Leader",
+  "difficulty": "easy",
+  "pattern": "Hashing",
+  "role": "reinforcement",
+  "status": "live",
+  "provenance": {
+    "origin": "original",
+    "authored_by": "owner"
+  },
+  "review": {
+    "statement": "2026-09-28",
+    "hints": "2026-09-28",
+    "editorial": "2026-09-28"
+  },
+  "concepts": [
+    "dsa:concept:hashing"
+  ],
+  "parts": [
+    {
+      "id": "solution",
+      "type": "code",
+      "cadence": "iterate",
+      "grading": "auto",
+      "required": true,
+      "config": {
+        "signature": {
+          "mode": "function",
+          "name": "ballotLeader",
+          "params": [
+            {
+              "name": "votes",
+              "type": "string[]"
+            }
+          ],
+          "returns": "string"
+        },
+        "languages": [
+          "go"
+        ],
+        "harness": "func-json@1",
+        "checker": {
+          "name": "exact"
+        },
+        "constraints": [
+          {
+            "arg": "votes",
+            "len": [
+              1,
+              10000
+            ]
+          }
+        ],
+        "samples": [
+          {
+            "id": "s1",
+            "args": [
+              [
+                "kiwi",
+                "fig",
+                "kiwi",
+                "plum"
+              ]
+            ],
+            "expected": "kiwi"
+          },
+          {
+            "id": "s2",
+            "args": [
+              [
+                "pear",
+                "apple"
+              ]
+            ],
+            "expected": "apple"
+          }
+        ],
+        "limits": {
+          "time_ms": 1000,
+          "memory_mb": 128
+        },
+        "hidden_tests": [
+          {
+            "args": [
+              [
+                "a",
+                "b",
+                "a"
+              ]
+            ],
+            "expected": "a"
+          }
+        ]
+      }
+    }
+  ],
+  "grader": [
+    {
+      "step": "tests",
+      "kind": "code",
+      "inputs": [
+        "solution"
+      ],
+      "required": true
+    }
+  ],
+  "solution_facts": {
+    "complexity": {
+      "time": [
+        "O(n)"
+      ],
+      "space": [
+        "O(k)",
+        "O(n)"
+      ]
+    }
+  }
+}

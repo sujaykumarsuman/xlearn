@@ -12,5 +12,11 @@ import "embed"
 // FS holds the JSON seed files: paths.json (all paths) + dsa/*.json (the DSA
 // content). internal/curriculum.Seed reads and upserts them at startup.
 //
-//go:embed paths.json dsa/*.json
+// It also carries, additively (v2 M1a, sprint m1-01), the course manifests
+// courses/*/course.json and the JSON Schemas _schema/*.json (the manifest schema and
+// the frozen item schema). internal/course.Load reads the manifests; nothing reads
+// them at runtime yet, and the v1 loader keeps reading dsa/*.json until m1-09 moves
+// the content under courses/<slug>/ and replaces this directive with all:courses.
+//
+//go:embed paths.json dsa/*.json courses/*/course.json _schema/*.json
 var FS embed.FS

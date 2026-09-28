@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "slug": "sql",
+  "title": "SQL & Data Modeling",
+  "status": "coming_soon",
+  "id_prefix": "sql",
+  "public_stats": {
+    "default_visible": true
+  }
+}
