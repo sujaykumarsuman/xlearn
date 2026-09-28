@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB05 · Catalog + agenda, Today in minutes — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB05 board-local layout (prefix ab05-). Tokens only; never restyles a ds- or xl- class. */
+  .ab05-flex { flex: 1; }
+  .ab05-gap { margin-bottom: 22px; }
+  .ab05-ok { color: var(--ds-ok); } .ab05-warn { color: var(--ds-warn); } .ab05-err { color: var(--ds-err); }
+  .ab05-teal { color: var(--ds-teal); } .ab05-info { color: var(--ds-info); } .ab05-violet { color: var(--ds-violet); } .ab05-dimc { color: var(--ds-dim); }
+  .ab05-ic { display: inline-flex; flex: none; }
+  .ab05-mono { font-family: var(--ds-font-mono); }
+  /* plain-shell top bar pieces (live: .xl-topbar__brand / .xl-topbar__spacer in app.css; AB01-F13) */
+  .ab05-brand { display: inline-flex; align-items: center; gap: 9px; }
+  .ab05-mark { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, #35d0c0, #2a9d92); display: grid; place-items: center;
+    color: #06231f; font-family: var(--ds-font-mono); font-weight: 700; font-size: 14px; flex: none; }
+  .ab05-name { font-size: 15px; font-weight: 700; letter-spacing: -.2px; }
+  .ab05-name b { color: var(--ds-teal); }
+  .ab05-modelbtn { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border-radius: 999px; background: var(--ds-input-bg);
+    border: 1px solid var(--ds-line-2); font-size: 12.5px; color: var(--ds-text); }
+  .ab05-logo { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--ds-inset); border: 1px solid var(--ds-line-2);
+    font-family: var(--ds-font-mono); font-size: 8px; font-weight: 700; color: var(--ds-text); }
+  /* home page */
+  .ab05-page { max-width: 1120px; margin: 0 auto; width: 100%; }
+  .ab05-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; flex-wrap: wrap; padding-bottom: 18px; margin-bottom: 20px; border-bottom: 1px solid var(--ds-line); }
+  .ab05-head h1 { font-size: 28px; font-weight: 700; letter-spacing: -.4px; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .ab05-head__meter { margin-top: 14px; width: 560px; max-width: 100%; }
+  .ab05-meter { display: flex; }
+  .ab05-seg { height: 100%; flex: none; }
+  .ab05-seg + .ab05-seg { box-shadow: -2px 0 0 var(--ds-bg); }
+  .ab05-seg--rev { background: var(--ds-teal); }
+  .ab05-seg--dsa { background: var(--ds-info); }
+  .ab05-seg--go { background: var(--ds-violet); }
+  .ab05-seg--over { background: var(--ds-warn); }
+  .ab05-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 9px; font-size: 12px; color: var(--ds-dim); }
+  .ab05-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .ab05-legend b { color: var(--ds-text); font-weight: 600; font-family: var(--ds-font-mono); font-size: 11.5px; }
+  .ab05-sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .ab05-sw--rev { background: var(--ds-teal); } .ab05-sw--dsa { background: var(--ds-info); } .ab05-sw--go { background: var(--ds-violet); }
+  .ab05-sw--free { background: var(--ds-line-2); } .ab05-sw--over { background: var(--ds-warn); }
+  .ab05-head__side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .ab05-budget { font-size: 12px; color: var(--ds-dim); }
+  .ab05-budget a { color: var(--ds-teal); }
+  .ab05-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 22px; align-items: start; }
+  .ab05-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  .ab05-sech { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .ab05-sech h2 { font-size: 13px; font-weight: 600; color: var(--ds-text); text-transform: uppercase; letter-spacing: .6px; }
+  .ab05-sech span { font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-dim); }
+  .ab05-list { display: flex; flex-direction: column; gap: 8px; }
+  .ab05-rv { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .ab05-rv__main { flex: 1; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 9px; }
+  .ab05-course { font-family: var(--ds-font-mono); font-weight: 700; }
+  .ab05-id { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-dim); }
+  .ab05-title { font-size: 14px; font-weight: 600; color: var(--ds-text); }
+  .ab05-fmt b { font-family: var(--ds-font-mono); font-weight: 600; color: var(--ds-text); }
+  .ab05-min { font-family: var(--ds-font-mono); font-size: 12.5px; color: var(--ds-text); white-space: nowrap; }
+  .ab05-due { font-family: var(--ds-font-mono); font-size: 11px; color: var(--ds-dim); white-space: nowrap; }
+  .ab05-due--over { color: var(--ds-warn); }
+  .ab05-nw { display: flex; align-items: flex-start; gap: 12px; }
+  .ab05-nw__k { width: 150px; flex: none; }
+  .ab05-nw__k b { display: block; font-size: 13.5px; }
+  .ab05-nw__k span { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-dim); }
+  .ab05-nw__v { flex: 1; min-width: 0; font-size: 13px; color: var(--ds-dim); line-height: 1.5; }
+  .ab05-nw__v b { color: var(--ds-text); font-weight: 600; }
+  .ab05-note { display: flex; gap: 10px; align-items: flex-start; padding: 11px 13px; border-radius: var(--ds-radius); border: 1px solid var(--ds-line-2);
+    background: var(--ds-panel-2); font-size: 13px; color: var(--ds-text); line-height: 1.5; }
+  .ab05-note b { font-weight: 600; }
+  .ab05-note--warn { border-color: rgba(240,180,41,.35); background: rgba(240,180,41,.08); }
+  .ab05-note--ok { border-color: rgba(87,211,154,.35); background: rgba(87,211,154,.08); }
+  .ab05-note .ab05-ic { margin-top: 2px; }
+  .ab05-note__sub { display: block; font-size: 12px; color: var(--ds-dim); margin-top: 2px; }
+  /* agenda */
+  .ab05-ag__h { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--ds-line); flex-wrap: wrap; }
+  .ab05-ag__h h3 { font-size: 13.5px; font-weight: 600; flex: 1; }
+  .ab05-day { display: grid; grid-template-columns: 96px minmax(0, 1fr) 92px; gap: 10px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--ds-line); }
+  .ab05-day:first-of-type { border-top: none; }
+  .ab05-day--today { background: rgba(53,208,192,.1); }
+  .ab05-day__d b { display: block; font-size: 13px; color: var(--ds-text); }
+  .ab05-day__d span { font-family: var(--ds-font-mono); font-size: 11px; color: var(--ds-dim); }
+  .ab05-day__c { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; min-width: 0; }
+  .ab05-day__m { text-align: right; font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-text); }
+  .ab05-day__m span { display: block; font-size: 10.5px; color: var(--ds-dim); }
+  .ab05-day__none { font-size: 12px; color: var(--ds-dim); }
+  .ab05-cc { display: inline-flex; align-items: center; gap: 5px; height: 21px; padding: 0 7px; border-radius: 6px; background: var(--ds-inset);
+    border: 1px solid var(--ds-line-2); font-family: var(--ds-font-mono); font-size: 10.5px; color: var(--ds-dim); }
+  .ab05-cc b { color: var(--ds-text); font-weight: 600; }
+  .ab05-wide .ab05-day { grid-template-columns: 170px minmax(0, 1fr) 220px 110px; }
+  .ab05-bar { position: relative; height: 6px; border-radius: 3px; background: var(--ds-line); overflow: hidden; }
+  .ab05-bar__f { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--ds-teal); }
+  .ab05-bar__f--over { background: var(--ds-warn); }
+  /* catalog */
+  .ab05-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .ab05-cards--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ab05-cc2 { display: flex; flex-direction: column; gap: 12px; }
+  .ab05-cc2__top { display: flex; align-items: flex-start; gap: 14px; }
+  .ab05-cic { width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center; flex: none; background: rgba(53,208,192,.12); color: var(--ds-teal); }
+  .ab05-cic--dim { background: var(--ds-inset); color: var(--ds-dim); border: 1px solid var(--ds-line-2); }
+  .ab05-cc2 h3 { font-size: 16px; font-weight: 700; letter-spacing: -.2px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .ab05-sum { font-size: 12.5px; color: var(--ds-dim); line-height: 1.5; margin-top: 4px; }
+  .ab05-stats { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-dim); }
+  .ab05-stats b { color: var(--ds-text); font-weight: 600; }
+  .ab05-ring { position: relative; width: 58px; height: 58px; flex: none; }
+  .ab05-ring svg { display: block; }
+  .ab05-ring span { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--ds-font-mono); font-size: 12px; font-weight: 600; }
+  .ab05-btns { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .ab05-soon { opacity: .8; }
+  .ab05-ringfill { stroke: var(--ds-teal); }
+  .ab05-croptop { padding: 8px 14px; border-bottom: 1px dashed var(--ds-line-2); font-family: var(--ds-font-mono); font-size: 10.5px; color: var(--ds-dim); background: var(--ds-bg); }
+  .ab05-lf { margin-left: auto; }
+  /* grades waiting slot (M4) */
+  .ab05-gw { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  /* narrow */
+  .ab05-nhead h1 { font-size: 22px; font-weight: 700; margin-top: 6px; }
+  .ab05-acc { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-top: 1px solid var(--ds-line); }
+  .ab05-acc:first-child { border-top: none; }
+  .ab05-acc b { font-size: 13px; }
+  .ab05-acc__body { padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .ab05-acc__row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ds-dim); }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6" /><path d="M10 20a2 2 0 0 0 4 0" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></symbol>
+  <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" /></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4" /></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c.5 3 3.5 4 3.5 8a3.5 3.5 0 0 1-7 0c0-1.5.7-2.3 1.2-3 .3 1 .9 1.6 1.5 1.8-.3-2.5-.8-4.8.8-6.8z" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z" /><path d="M12 10v4M12 17h.01" /></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5z" /><path d="M3 12.5 12 17l9-4.5M3 17 12 21.5 21 17" /></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2" /><rect x="3" y="14" width="18" height="7" rx="2" /><path d="M7 7.5h.01M7 17.5h.01" /></symbol>
+  <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.4" /><circle cx="6" cy="19" r="2.4" /><circle cx="18" cy="8" r="2.4" /><path d="M6 7.4v9.2M6 12h6a4 4 0 0 0 4-4" /></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · M2 board</div>
+  <h1>AB05 · Catalog + agenda, Today in minutes</h1>
+  <p class="bd-lede">
+    The home (<code class="ds-mono">/xlearn</code>) becomes <b>one plan across courses</b>: a budget in <b>minutes</b> (D4), <b>reviews first</b> from every
+    course (oldest due first), R-SR5 blocking new work <b>per course</b>, and the remainder split across active enrollments. Below the plan, the
+    multi-course catalog (active, preview for the cohort, coming soon). Non-DSA content is <b>low fidelity</b> here; full fidelity is ds-p-01's.
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-m2-01.md">ds-m2-01</a> (+ <a href="../../../docs/v2/sprints/sprint-ds-p-01.md">ds-p-01</a> full fidelity)</span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-m2-04.md">m2-04</a> (planner, agenda, Catalog, course Today) · <a href="../../../docs/v2/sprints/sprint-p-02.md">p-02</a></span>
+    <span><b>Frozen before</b>M2a</span>
+    <span><b>Sources</b>D4 · <a href="../../../docs/adr/0026-per-course-extensibility-model.md#5-screens-routing-today">ADR-0026 §5</a> ·
+      <a href="../../../docs/prd/xlearn-v2-prd.md#54-today-and-budget-across-courses">PRD §5.4</a> ·
+      <a href="../../../docs/adr/0034-v2-release-labelling-gating-and-rollback.md#2-feature-gating-three-tiers-no-flag-service">ADR-0034 §2</a> · D14 (M4 slot) · R-SR5</span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB05-F2">F2 · home</a><a href="#AB05-F1">F1</a><a href="#AB05-F3">F3</a><a href="#AB05-F4">F4</a><a href="#AB05-F5">F5</a><a href="#AB05-F6">F6</a>
+    <a href="#AB05-F7">F7</a><a href="#AB05-F8">F8 · M4</a><a href="#AB05-F9">F9</a><a href="#AB05-F10">F10 · 390 px</a>
+  </nav>
+</header>
+
+<section class="bd-section" aria-labelledby="sec-rule">
+  <h2 class="bd-section__h" id="sec-rule">The planner, in one strip <small>m2-04 task 3 · a deterministic pure function in the gateway</small></h2>
+  <div class="bd-strip">
+    <span><b>Budget</b> = minutes per day from Settings (weekday, or the weekend band's lower bound) in the account's timezone.</span>
+    <span><b>1 · Reviews first:</b> due touches from every enrolled course, oldest due first (ties: lower level, then enrollment order). Never dropped, even over budget.</span>
+    <span><b>2 · R-SR5 per course:</b> a course with an overdue review (due before today) gets no new work. Other courses are unaffected.</span>
+    <span><b>3 · The remainder</b> splits evenly across active, unblocked enrollments (leftover minute to the earliest). Each course fills its share with its next items while they fit; an item that doesn't fit isn't planned.</span>
+    <span><b>Minutes</b> come from each manifest's <code class="ds-mono">plan.est_minutes</code>: DSA re-solve 20, DSA problem 45, recall 5. Same inputs → same plan.</span>
+  </div>
+</section>
+
+<!-- =============================================== F2 · home -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · The home: Today across courses <small>F2 with F3, F5 and F9 in place · then F1 below it</small></h2>
+
+  <article class="bd-frame" id="AB05-F2">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB05-F2</span><span class="bd-frame__title">· Today · budget header</span><span class="bd-frame__state">· /xlearn · Mon, Sep 28 · 55 of 60 min planned</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <div class="xl-main">
+            <div class="xl-topbar">
+              <span class="ab05-brand"><span class="ab05-mark">x</span><span class="ab05-name">x<b>Learn</b></span></span>
+              <span class="ab05-flex"></span>
+              <span class="ab05-modelbtn"><span class="ab05-logo">AN</span> Sonnet 5 <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="xl-content">
+              <div class="ab05-page">
+                <div class="ab05-head">
+                  <div>
+                    <div class="xl-eyebrow">Mon, Sep 28 · all your courses</div>
+                    <h1>Today · 55 min of 60</h1>
+                    <div class="ab05-head__meter">
+                      <div class="ds-meter ab05-meter" role="img" aria-label="Planned: reviews 50 minutes, Go concurrency new work 5 minutes, 5 minutes free, of 60"><span class="ab05-seg ab05-seg--rev" style="width:83.3%"></span><span class="ab05-seg ab05-seg--go" style="width:8.3%"></span></div>
+                      <div class="ab05-legend"><span><span class="ab05-sw ab05-sw--rev"></span>Reviews <b>50</b></span><span><span class="ab05-sw ab05-sw--dsa"></span>DSA new <b>0</b></span><span><span class="ab05-sw ab05-sw--go"></span>Go concurrency new <b>5</b></span><span><span class="ab05-sw ab05-sw--free"></span>Free <b>5</b></span></div>
+                    </div>
+                  </div>
+                  <div class="ab05-head__side">
+                    <span class="ds-btn ds-btn--primary ds-btn--lg" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start next review</span>
+                    <span class="ab05-budget">Budget: 60 min on weekdays · <a>Change in Settings</a></span>
+                  </div>
+                </div>
+                <div class="ab05-grid">
+                  <div class="ab05-col">
+                    <section aria-labelledby="f2-rev">
+                      <div class="ab05-sech"><h2 id="f2-rev">Reviews first</h2><span>4 due · ≈ 50 min</span></div>
+                      <div class="ab05-list">
+                        <div class="ds-card ab05-rv"><div class="ab05-rv__main"><span class="xl-tag ab05-course">DSA</span><span class="ab05-id">#5</span><span class="ab05-title">Group Anagrams</span><span class="xl-diff xl-diff--med">Medium</span><span class="xl-tag ab05-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span></div><span class="ab05-due">Day 1 · today</span><span class="ab05-min">≈ 20 min</span></div>
+                        <div class="ds-card ab05-rv"><div class="ab05-rv__main"><span class="xl-tag ab05-course">GO</span><span class="ab05-id">#gc-14</span><span class="ab05-title">Spot the race: shared counter</span><span class="xl-tag ab05-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Recall · <b>~5 min</b></span></div><span class="ab05-due">Day 3 · today</span><span class="ab05-min">≈ 5 min</span></div>
+                        <div class="ds-card ab05-rv"><div class="ab05-rv__main"><span class="xl-tag ab05-course">GO</span><span class="ab05-id">#gc-9</span><span class="ab05-title">Close a channel exactly once</span><span class="xl-tag ab05-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Recall · <b>~5 min</b></span></div><span class="ab05-due">Day 7 · today</span><span class="ab05-min">≈ 5 min</span></div>
+                        <div class="ds-card ab05-rv"><div class="ab05-rv__main"><span class="xl-tag ab05-course">DSA</span><span class="ab05-id">#23</span><span class="ab05-title">Largest Rectangle in Histogram</span><span class="xl-diff xl-diff--hard">Hard</span><span class="xl-tag ab05-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span><span class="ds-badge ds-badge--violet">Mock conditions</span></div><span class="ab05-due">Day 21 · today</span><span class="ab05-min">≈ 20 min</span></div>
+                      </div>
+                    </section>
+                    <section aria-labelledby="f2-new">
+                      <div class="ab05-sech"><h2 id="f2-new">New work</h2><span>10 min left · split across 2 courses</span></div>
+                      <div class="xl-panel">
+                        <div class="xl-panel__b" style="display:flex;flex-direction:column;gap:14px">
+                          <div class="ab05-nw"><div class="ab05-nw__k"><b>DSA</b><span>5 min</span></div><div class="ab05-nw__v">The next problem, <b>#18 Minimum Window Substring</b>, needs ≈ 45 min, so no new DSA work fits today.</div></div>
+                          <div class="xl-divider"></div>
+                          <div class="ab05-nw"><div class="ab05-nw__k"><b>Go concurrency</b><span>5 min</span></div><div class="ab05-nw__v">Next: <b>#gc-15 Predict the output</b> · quiz · ≈ 5 min</div><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Start</span></div>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                  <aside class="xl-panel" aria-labelledby="f2-ag">
+                    <div class="ab05-ag__h"><svg class="xl-ico xl-ico--sm ab05-teal" aria-hidden="true"><use href="#i-cal"/></svg><h3 id="f2-ag">Next 7 days</h3><div class="ds-seg" role="group" aria-label="Agenda scope"><span class="ds-seg__btn ds-seg__btn--on" aria-pressed="true">All courses</span><span class="ds-seg__btn" aria-pressed="false">This course</span></div></div>
+                    <div>
+                      <div class="ab05-day ab05-day--today"><div class="ab05-day__d"><b>Today</b><span>Mon 28</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>2</b></span><span class="ab05-cc">GO <b>2</b></span></div><div class="ab05-day__m">50 min<span>of 60</span></div></div>
+                      <div class="ab05-day"><div class="ab05-day__d"><b>Tomorrow</b><span>Tue 29</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>1</b></span><span class="ab05-cc">GO <b>1</b></span></div><div class="ab05-day__m">25 min<span>of 60</span></div></div>
+                      <div class="ab05-day"><div class="ab05-day__d"><b>Wed</b><span>Sep 30</span></div><div class="ab05-day__c"><span class="ab05-day__none">Nothing due</span></div><div class="ab05-day__m">—</div></div>
+                      <div class="ab05-day"><div class="ab05-day__d"><b>Thu</b><span>Oct 1</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>2</b></span></div><div class="ab05-day__m">40 min<span>of 60</span></div></div>
+                      <div class="ab05-day"><div class="ab05-day__d"><b>Fri</b><span>Oct 2</span></div><div class="ab05-day__c"><span class="ab05-cc">GO <b>1</b></span></div><div class="ab05-day__m">5 min<span>of 60</span></div></div>
+                      <div class="ab05-day"><div class="ab05-day__d"><b>Sat</b><span>Oct 3</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>3</b></span><span class="ab05-cc">GO <b>1</b></span></div><div class="ab05-day__m">65 min<span>of 120</span></div></div>
+                      <div class="ab05-day"><div class="ab05-day__d"><b>Sun</b><span>Oct 4</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>1</b></span></div><div class="ab05-day__m">20 min<span>of 120</span></div></div>
+                    </div>
+                  </aside>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bd-crop">— cropped: the catalog continues below the plan (F1) —</div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Header (the one string)</h4>
+        <ul><li><b>"Today · N min of M"</b>: N = planned minutes (reviews + the new work that fits), M = today's budget. The same string heads the course Today (F2b), where N counts that course only. Tabular figures so the header doesn't jump.</li>
+          <li>Segmented <code>ds-meter</code>: reviews (teal) · DSA new (info) · Go new (violet) · free (track). The legend carries every number, so colour is never the only cue (<code>role="img"</code> with the full sentence).</li>
+          <li><b>Start next review</b> opens the first row's cover (AB04-F2) in its own course. Hidden when nothing is due.</li></ul></section>
+      <section><h4>What's in place (F3, F5, F9)</h4>
+        <ul><li><b>Reviews first</b> (F3): every enrolled course, oldest due first; here all four are due today, so lower level first (#5 L1, gc-14 L2, gc-9 L3, #23 L4). Each row: course chip · id · title · format badge · "≈ N min". No pattern chips (m1-06 <code>withhold()</code>).</li>
+          <li><b>New work</b> (F5): 60 − 50 = 10 min, split 5 / 5. DSA's next problem needs 45, so nothing is planned for DSA and the row says why; Go's next item fits.</li>
+          <li><b>Next 7 days</b> (F9): reviews due per day, per course, with minutes of that day's budget.</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>D4 · ADR-0026 §5 (the planner is a pure function; same inputs → same plan) · PRD §5.4. Data from <code>GET /api/agenda</code> (<code>budgetMin</code>, <code>plannedMin</code>, <code>overBudgetMin</code>, per-course <code>blocked</code>, <code>gradesWaiting</code>).</li>
+          <li>Focus order: Start next review → review rows (each a link) → new-work Start → agenda toggle. Text 15:1, dim 6.8–7.7:1, mono minutes 14:1.</li>
+          <li>&lt; 1024 px: F10 (one column; the agenda becomes an accordion).</li></ul></section>
+    </aside>
+  </article>
+
+  <!-- F1 -->
+  <article class="bd-frame" id="AB05-F1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB05-F1</span><span class="bd-frame__title">· Catalog</span><span class="bd-frame__state">· /xlearn, below the plan · owner / tester cohort view</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">multi-course</span><span class="bd-tag">non-DSA low fidelity</span></span></header>
+    <div class="bd-frame__body">
+      <div class="ab05-croptop">— cropped: the plan (F2) sits above —</div>
+      <div class="bd-desk">
+        <div class="bd-pad" style="padding:26px 30px 34px">
+          <div class="ab05-page">
+            <div class="ab05-sech"><h2>Your courses</h2><span>2 enrolled</span></div>
+            <div class="ab05-cards ab05-gap">
+              <div class="ds-card ds-card--teal ab05-cc2" style="padding:18px 20px">
+                <div class="ab05-cc2__top">
+                  <span class="ab05-cic"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-code"/></svg></span>
+                  <div class="ab05-flex"><h3>Data Structures &amp; Algorithms <span class="ds-badge ds-badge--ok ds-mono">Day 12</span></h3>
+                    <p class="ab05-sum">From arrays to graphs and DP, built to make you interview-ready — and to keep it retained.</p></div>
+                  <div class="ab05-ring" role="img" aria-label="28 of 151 solved, 19 percent"><svg width="58" height="58" viewBox="0 0 58 58" aria-hidden="true"><circle class="ds-ring__track" cx="29" cy="29" r="24" fill="none" stroke-width="6"/><circle cx="29" cy="29" r="24" fill="none" class="ab05-ringfill" stroke-width="6" stroke-linecap="round" stroke-dasharray="28.6 150.8" transform="rotate(-90 29 29)"/></svg><span>19%</span></div>
+                </div>
+                <div class="ab05-stats"><span><b>28</b> / 151 solved</span><span class="xl-streak"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-flame"/></svg> 12-day</span><span>≈ 35 min/day of your plan</span></div>
+                <div class="ab05-btns"><span class="ds-btn ds-btn--primary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Continue</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">View roadmap</span></div>
+              </div>
+              <div class="ds-card ab05-cc2" style="padding:18px 20px">
+                <div class="ab05-cc2__top">
+                  <span class="ab05-cic"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-branch"/></svg></span>
+                  <div class="ab05-flex"><h3>Go Concurrency Patterns <span class="ds-badge ds-badge--info">Preview</span><span class="bd-tag ab05-lf">low fidelity</span></h3>
+                    <p class="ab05-sum">Goroutines, channels, and the race detector as muscle memory. <b style="color:var(--ds-text)">Owner &amp; testers only.</b></p></div>
+                  <div class="ab05-ring" role="img" aria-label="3 of 10 done, 30 percent"><svg width="58" height="58" viewBox="0 0 58 58" aria-hidden="true"><circle class="ds-ring__track" cx="29" cy="29" r="24" fill="none" stroke-width="6"/><circle cx="29" cy="29" r="24" fill="none" class="ab05-ringfill" stroke-width="6" stroke-linecap="round" stroke-dasharray="45.2 150.8" transform="rotate(-90 29 29)"/></svg><span>30%</span></div>
+                </div>
+                <div class="ab05-stats"><span><b>3</b> / 10 done</span><span>≈ 10 min/day of your plan</span></div>
+                <div class="ab05-btns"><span class="ds-btn ds-btn--primary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Continue</span></div>
+              </div>
+            </div>
+            <div class="ab05-sech"><h2>More courses</h2><span>same method · new domains</span></div>
+            <div class="ab05-cards ab05-cards--3">
+              <div class="ds-card ab05-cc2" style="padding:16px 18px">
+                <div class="ab05-cc2__top"><span class="ab05-cic"><svg class="xl-ico" aria-hidden="true"><use href="#i-db"/></svg></span><div class="ab05-flex"><h3 style="font-size:14.5px">SQL &amp; Data Modeling <span class="bd-tag ab05-lf">low fidelity</span></h3><p class="ab05-sum">Query optimization, indexing, and schema design with a spaced-repetition drill set.</p></div></div>
+                <div class="ab05-btns"><span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-plus"/></svg> Enroll</span><span class="ab05-due">50 items · 6 weeks</span></div>
+              </div>
+              <div class="ds-card ab05-cc2 ab05-soon" style="padding:16px 18px" aria-disabled="true">
+                <div class="ab05-cc2__top"><span class="ab05-cic ab05-cic--dim"><svg class="xl-ico" aria-hidden="true"><use href="#i-server"/></svg></span><div class="ab05-flex"><h3 style="font-size:14.5px">System Design Interviews</h3><p class="ab05-sum">Scalable systems, trade-offs, and the whiteboard narrative.</p></div></div>
+                <div class="ab05-btns"><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Coming soon</span></div>
+              </div>
+              <div class="ds-card ab05-cc2 ab05-soon" style="padding:16px 18px" aria-disabled="true">
+                <div class="ab05-cc2__top"><span class="ab05-cic ab05-cic--dim"><svg class="xl-ico" aria-hidden="true"><use href="#i-layers"/></svg></span><div class="ab05-flex"><h3 style="font-size:14.5px">Low-Level / OOD</h3><p class="ab05-sum">Object modeling and design patterns under interview pressure.</p></div></div>
+                <div class="ab05-btns"><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Coming soon</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Card states</h4>
+        <ul><li><b>Enrolled, active</b> (DSA): v1's hero card (ring, Day N, streak, Continue, View roadmap) plus <b>"≈ 35 min/day of your plan"</b> = the course's average planned minutes per day over the last 7 days.</li>
+          <li><b>Preview</b> (Go concurrency): an info <b>Preview</b> badge and "Owner &amp; testers only". <b>Visible only to the cohort</b> (<code>account.role ∈ {owner, tester}</code>); for anyone else the card, its enrollment and its agenda rows don't exist (ADR-0034 §2).</li>
+          <li><b>Active, not enrolled</b> (SQL, illustrative): <b>[Enroll]</b> → the F002 start-path call; the course then joins the plan tomorrow's split. <b>Coming soon</b>: disabled, <code>xl-lock</code>. <b>Retired</b> courses are never listed.</li></ul></section>
+      <section><h4>Fidelity</h4>
+        <ul><li>Dashed borders mark low-fidelity cards (non-DSA content): titles and summaries come from <code>paths.json</code>; the SQL status is illustrative (it is <code>coming_soon</code> today). ds-p-01 draws them at full fidelity.</li>
+          <li>v1's "Notify me when it's live" is not carried (it never persisted; AB02-F4 dropped it too).</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>D4 · ADR-0034 §2 (<code>preview</code> hidden outside the cohort; <code>retired</code> never listed) · ADR-0026 §5 (catalog is account-wide).</li>
+          <li>Rings are <code>role="img"</code> with the numbers; coming-soon cards <code>aria-disabled</code>. Muted lock text is the known theme debt (3.4:1); the heading and "Coming soon" words carry the meaning.</li>
+          <li>&lt; 1024 px: one card per row (N2).</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ============================================ B · plan states -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · Plan states <small>F3–F8 · panel-sized</small></h2>
+
+  <div class="bd-grid bd-grid--wide ab05-gap">
+    <!-- F3 -->
+    <article class="bd-frame" id="AB05-F3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB05-F3</span><span class="bd-frame__title">· Today · Reviews first</span><span class="bd-frame__state">· across courses · oldest due first</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="ab05-sech"><h2>Reviews first</h2><span>3 due · ≈ 45 min</span></div>
+          <div class="ab05-list">
+            <div class="ds-card ab05-rv"><div class="ab05-rv__main"><span class="xl-tag ab05-course">GO</span><span class="ab05-id">#gc-14</span><span class="ab05-title">Spot the race: shared counter</span><span class="xl-tag ab05-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Recall · <b>~5 min</b></span></div><span class="ab05-due">Day 3 · today</span><span class="ab05-min">≈ 5 min</span></div>
+            <div class="ds-card ab05-rv"><div class="ab05-rv__main"><span class="xl-tag ab05-course">DSA</span><span class="ab05-id">#3</span><span class="ab05-title">Two Sum</span><span class="xl-diff xl-diff--easy">Easy</span><span class="xl-tag ab05-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span></div><span class="ab05-due">Day 7 · today</span><span class="ab05-min">≈ 20 min</span></div>
+            <div class="ds-card ab05-rv"><div class="ab05-rv__main"><span class="xl-tag ab05-course">DSA</span><span class="ab05-id">#23</span><span class="ab05-title">Largest Rectangle in Histogram</span><span class="xl-diff xl-diff--hard">Hard</span><span class="xl-tag ab05-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span><span class="ds-badge ds-badge--violet">Mock conditions</span></div><span class="ab05-due">Day 21 · today</span><span class="ab05-min">≈ 20 min</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Header <b>"Reviews first · N due · ≈ M min"</b>. Rows merge every enrolled course: oldest due date first; ties by lower level, then enrollment order. A row opens the touch cover (AB04-F2 / F3) in its own course.</li>
+          <li>Minutes per row from <code>plan.est_minutes["touch_" + band.format]</code> (DSA re-solve 20, recall 5). Badges as AB04-F1; no pattern chips.</li>
+          <li>Reviews are <b>never dropped</b> for budget (F6). D4 · R-SR5. Each row is a link; the course chip is text, not colour.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F4 -->
+    <article class="bd-frame" id="AB05-F4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB05-F4</span><span class="bd-frame__title">· Today · per-course block</span><span class="bd-frame__state">· DSA has an overdue review · Go unaffected</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad" style="display:flex;flex-direction:column;gap:12px">
+          <div class="ab05-sech" style="margin-bottom:0"><h2>Reviews first</h2><span>3 due · ≈ 45 min</span></div>
+          <div class="ds-card ab05-rv"><div class="ab05-rv__main"><span class="xl-tag ab05-course">DSA</span><span class="ab05-id">#5</span><span class="ab05-title">Group Anagrams</span><span class="xl-diff xl-diff--med">Medium</span></div><span class="ab05-due ab05-due--over">overdue 1 day</span><span class="ab05-min">≈ 20 min</span></div>
+          <div class="ab05-due" style="padding-left:4px">— 2 more, due today: GO #gc-14 · DSA #23 —</div>
+          <div class="ab05-sech" style="margin:6px 0 0"><h2>New work</h2><span>15 min left</span></div>
+          <div class="xl-panel"><div class="xl-panel__b" style="display:flex;flex-direction:column;gap:12px">
+            <div class="ab05-note ab05-note--warn" role="status"><span class="ab05-ic ab05-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg></span><span><b>New DSA work is paused until your overdue DSA reviews are done.</b><span class="ab05-note__sub">Your other courses still get their share.</span></span></div>
+            <div class="ab05-nw"><div class="ab05-nw__k"><b>Go concurrency</b><span>15 min</span></div><div class="ab05-nw__v">Next: <b>#gc-15 Predict the output</b> · ≈ 5 min, then <b>#gc-16 Worker pool with a WaitGroup</b> · ≈ 10 min</div></div>
+          </div></div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>R-SR5 applies <b>per course</b>: DSA has a review due before today (#5, due Sep 27), so the planner marks it <code>blocked: "reviews_overdue"</code> and gives DSA no share. The whole remainder (60 − 45 = 15) goes to the unblocked course.</li>
+          <li>The overdue row sorts first (oldest due). "overdue N days" is amber text, not colour alone. The block lifts as soon as the overdue review is done; the plan recomputes on return.</li>
+          <li>Copy follows R-SR5's "overdue" (the plan's draft said "today's DSA reviews"; see the PR note). D4 · PRD §5.4. The note is <code>role="status"</code>.</li></ul>
+      </aside>
+    </article>
+  </div>
+
+  <div class="bd-grid bd-grid--wide ab05-gap">
+    <!-- F5 -->
+    <article class="bd-frame" id="AB05-F5">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB05-F5</span><span class="bd-frame__title">· Today · new work split</span><span class="bd-frame__state">· remainder across active enrollments</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad" style="display:flex;flex-direction:column;gap:16px">
+          <div>
+            <div class="ab05-sech"><h2>New work</h2><span>10 min left · split across 2 courses</span></div>
+            <div class="xl-panel"><div class="xl-panel__b" style="display:flex;flex-direction:column;gap:14px">
+              <div class="ab05-nw"><div class="ab05-nw__k"><b>DSA</b><span>5 min</span></div><div class="ab05-nw__v">The next problem, <b>#18 Minimum Window Substring</b>, needs ≈ 45 min, so no new DSA work fits today.</div></div>
+              <div class="xl-divider"></div>
+              <div class="ab05-nw"><div class="ab05-nw__k"><b>Go concurrency</b><span>5 min</span></div><div class="ab05-nw__v">Next: <b>#gc-15 Predict the output</b> · quiz · ≈ 5 min</div><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Start</span></div>
+            </div></div>
+          </div>
+          <div>
+            <div class="bd-tag" style="margin-bottom:8px">variant · Sun, Oct 4 · budget 120 · reviews 20</div>
+            <div class="xl-panel"><div class="xl-panel__b" style="display:flex;flex-direction:column;gap:14px">
+              <div class="ab05-nw"><div class="ab05-nw__k"><b>DSA</b><span>50 min</span></div><div class="ab05-nw__v">Next: <b>#18 Minimum Window Substring</b> · <span class="xl-diff xl-diff--hard">Hard</span> · ≈ 45 min</div><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Start</span></div>
+              <div class="xl-divider"></div>
+              <div class="ab05-nw"><div class="ab05-nw__k"><b>Go concurrency</b><span>50 min</span></div><div class="ab05-nw__v">Next: <b>#gc-15 Predict the output</b> · ≈ 5 min, <b>#gc-16 Worker pool with a WaitGroup</b> · ≈ 10 min</div></div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>One row per active, unblocked enrollment: <b>"&lt;Course&gt; · N min"</b> (its share) and its next item(s) that fit, in frontier order. Share = remainder ÷ courses, integer minutes, any leftover minute to the earliest enrollment (e.g. 95 → 48 / 47).</li>
+          <li>When the next item is bigger than the share the row says so in words and plans nothing (m2-04: an item that doesn't fit isn't shown). On a weekday with two courses, a 45-min DSA problem rarely fits; see the planner note in the PR.</li>
+          <li>Start opens the item in its course (a DSA problem opens the AB07 cover from M3; v1's problem page until then).</li></ul>
+      </aside>
+    </article>
+
+    <div style="display:flex;flex-direction:column;gap:22px">
+      <!-- F6 -->
+      <article class="bd-frame" id="AB05-F6" style="margin:0">
+        <header class="bd-frame__label"><span class="bd-frame__id">AB05-F6</span><span class="bd-frame__title">· Over budget</span><span class="bd-frame__state">· reviews alone exceed today's 60 min</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+        <div class="bd-frame__body">
+          <div class="bd-pad" style="display:flex;flex-direction:column;gap:12px">
+            <div class="ab05-rv"><h3 style="font-size:20px;font-weight:700;letter-spacing:-.3px">Today · 75 min of 60</h3><span class="ds-badge ds-badge--warn ds-mono">15 min over</span></div>
+            <div class="ds-meter ab05-meter" role="img" aria-label="Reviews 75 minutes, 15 over the 60-minute budget"><span class="ab05-seg ab05-seg--rev" style="width:80%"></span><span class="ab05-seg ab05-seg--over" style="width:20%"></span></div>
+            <div class="ab05-note ab05-note--warn" role="status"><span class="ab05-ic ab05-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span><b>Reviews alone need 75 min today — new work is paused. Reviews still come first.</b></span></div>
+            <div class="ab05-sech" style="margin:4px 0 0"><h2>Reviews first</h2><span>6 due · ≈ 75 min</span></div>
+          </div>
+        </div>
+        <aside class="bd-notes">
+          <ul><li><code>overBudgetMin &gt; 0</code>: the header keeps the true total ("75 min of 60") with an amber "15 min over" badge; the meter shows the overflow as the last 20% (amber). Every due review stays listed (never dropped); the New work section is replaced by this line. D4.</li></ul>
+        </aside>
+      </article>
+
+      <!-- F7 -->
+      <article class="bd-frame" id="AB05-F7" style="margin:0">
+        <header class="bd-frame__label"><span class="bd-frame__id">AB05-F7</span><span class="bd-frame__title">· All caught up</span><span class="bd-frame__state">· nothing due today</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">copy</span></span></header>
+        <div class="bd-frame__body">
+          <div class="bd-pad" style="display:flex;flex-direction:column;gap:10px">
+            <div class="ab05-sech" style="margin-bottom:0"><h2>Reviews first</h2><span>0 due</span></div>
+            <div class="ab05-note ab05-note--ok" role="status"><span class="ab05-ic ab05-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span><b>Nothing due today. Your next review is Thu (2 due).</b><span class="ab05-note__sub">Today's whole budget goes to new work.</span></span></div>
+          </div>
+        </div>
+        <aside class="bd-notes">
+          <ul><li>From the agenda's next non-empty day (learner-local weekday; beyond 6 days, the date: "Mon, Oct 12"). With no upcoming review at all: "Nothing due today." alone. The header and New work follow as in F2.</li></ul>
+        </aside>
+      </article>
+    </div>
+  </div>
+
+  <div class="bd-grid bd-grid--wide">
+    <!-- F8 -->
+    <article class="bd-frame" id="AB05-F8">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB05-F8</span><span class="bd-frame__title">· Grades waiting</span><span class="bd-frame__state">· slot only · appears when <code class="ds-mono">gradesWaiting &gt; 0</code></span><span class="bd-frame__tags"><span class="bd-tag bd-tag--flag">M4 — slot only</span><span class="bd-tag">low fidelity</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="ds-card ds-card--violet ab05-gw" style="padding:14px 16px">
+            <span class="ab05-ic ab05-violet"><svg class="xl-ico" aria-hidden="true"><use href="#i-spark"/></svg></span>
+            <span class="ab05-flex"><b style="font-size:13.5px">1 grade waiting</b> <span class="ab05-due" style="margin-left:6px">auto-accepts in 23:41</span></span>
+            <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Review</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>The slot's place: top of the plan, above Reviews first. m2-04 ships the key (<code>gradesWaiting: 0</code>) and hides the card at 0; <b>M4 fills it</b> (D14: an AI suggestion auto-submits after 24 h). The card's design is AB16's (ds-m4-01); this frame only reserves the place and the copy shape.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F2b -->
+    <article class="bd-frame" id="AB05-F2b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB05-F2b</span><span class="bd-frame__title">· The same header on a course's Today</span><span class="bd-frame__state">· /xlearn/dsa/dashboard · DSA only</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">one string</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad" style="display:flex;flex-direction:column;gap:10px">
+          <div class="xl-eyebrow">Data Structures &amp; Algorithms</div>
+          <h3 style="font-size:24px;font-weight:700;letter-spacing:-.3px">Today · 40 min of 60</h3>
+          <div class="ds-meter ab05-meter" role="img" aria-label="DSA reviews 40 minutes of 60"><span class="ab05-seg ab05-seg--rev" style="width:66.7%"></span></div>
+          <div class="ab05-legend"><span><span class="ab05-sw ab05-sw--rev"></span>Reviews <b>40</b></span><span><span class="ab05-sw ab05-sw--free"></span>Free <b>20</b></span></div>
+          <p style="font-size:12.5px;color:var(--ds-dim)">The next problem, #18 Minimum Window Substring, needs ≈ 45 min, so no new DSA work fits today.</p>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>The course Today (<code>GET /api/paths/dsa/dashboard</code>) plans that course alone: its due reviews first (#5, #23: 40), then the whole remainder for that course (20). Same string, "Today · N min of M"; AB02-F2's layout otherwise.</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================ C · agenda -->
+<section class="bd-section" aria-labelledby="sec-c">
+  <h2 class="bd-section__h" id="sec-c">C · Cross-course agenda <small>F9 · next 7 days</small></h2>
+  <article class="bd-frame" id="AB05-F9">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB05-F9</span><span class="bd-frame__title">· Cross-course agenda</span><span class="bd-frame__state">· All courses (left) · This course = DSA (right)</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad" style="display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:22px;align-items:start">
+        <div class="xl-panel ab05-wide">
+          <div class="ab05-ag__h"><svg class="xl-ico xl-ico--sm ab05-teal" aria-hidden="true"><use href="#i-cal"/></svg><h3>Next 7 days</h3><div class="ds-seg" role="group" aria-label="Agenda scope"><span class="ds-seg__btn ds-seg__btn--on" aria-pressed="true">All courses</span><span class="ds-seg__btn" aria-pressed="false">This course</span></div></div>
+          <div>
+            <div class="ab05-day ab05-day--today"><div class="ab05-day__d"><b>Today</b><span>Mon, Sep 28</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>2</b></span><span class="ab05-cc">GO <b>2</b></span></div><div class="ab05-bar" aria-hidden="true"><span class="ab05-bar__f" style="width:83%"></span></div><div class="ab05-day__m">50 min<span>of 60</span></div></div>
+            <div class="ab05-day"><div class="ab05-day__d"><b>Tomorrow</b><span>Tue, Sep 29</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>1</b></span><span class="ab05-cc">GO <b>1</b></span></div><div class="ab05-bar" aria-hidden="true"><span class="ab05-bar__f" style="width:42%"></span></div><div class="ab05-day__m">25 min<span>of 60</span></div></div>
+            <div class="ab05-day"><div class="ab05-day__d"><b>Wed</b><span>Sep 30</span></div><div class="ab05-day__c"><span class="ab05-day__none">Nothing due</span></div><div class="ab05-bar" aria-hidden="true"></div><div class="ab05-day__m">—</div></div>
+            <div class="ab05-day"><div class="ab05-day__d"><b>Thu</b><span>Oct 1</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>2</b></span></div><div class="ab05-bar" aria-hidden="true"><span class="ab05-bar__f" style="width:67%"></span></div><div class="ab05-day__m">40 min<span>of 60</span></div></div>
+            <div class="ab05-day"><div class="ab05-day__d"><b>Fri</b><span>Oct 2</span></div><div class="ab05-day__c"><span class="ab05-cc">GO <b>1</b></span></div><div class="ab05-bar" aria-hidden="true"><span class="ab05-bar__f" style="width:8%"></span></div><div class="ab05-day__m">5 min<span>of 60</span></div></div>
+            <div class="ab05-day"><div class="ab05-day__d"><b>Sat</b><span>Oct 3</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>3</b></span><span class="ab05-cc">GO <b>1</b></span></div><div class="ab05-bar" aria-hidden="true"><span class="ab05-bar__f" style="width:54%"></span></div><div class="ab05-day__m">65 min<span>of 120</span></div></div>
+            <div class="ab05-day"><div class="ab05-day__d"><b>Sun</b><span>Oct 4</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>1</b></span></div><div class="ab05-bar" aria-hidden="true"><span class="ab05-bar__f" style="width:17%"></span></div><div class="ab05-day__m">20 min<span>of 120</span></div></div>
+          </div>
+        </div>
+        <div class="xl-panel">
+          <div class="ab05-ag__h"><svg class="xl-ico xl-ico--sm ab05-teal" aria-hidden="true"><use href="#i-cal"/></svg><h3>Next 7 days</h3><div class="ds-seg" role="group" aria-label="Agenda scope"><span class="ds-seg__btn" aria-pressed="false">All courses</span><span class="ds-seg__btn ds-seg__btn--on" aria-pressed="true">This course</span></div></div>
+          <div>
+            <div class="ab05-day ab05-day--today"><div class="ab05-day__d"><b>Today</b><span>Mon 28</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>2</b></span></div><div class="ab05-day__m">40 min<span>of 60</span></div></div>
+            <div class="ab05-day"><div class="ab05-day__d"><b>Tomorrow</b><span>Tue 29</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>1</b></span></div><div class="ab05-day__m">20 min<span>of 60</span></div></div>
+            <div class="ab05-day"><div class="ab05-day__d"><b>Wed</b><span>Sep 30</span></div><div class="ab05-day__c"><span class="ab05-day__none">Nothing due</span></div><div class="ab05-day__m">—</div></div>
+            <div class="ab05-day"><div class="ab05-day__d"><b>Thu</b><span>Oct 1</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>2</b></span></div><div class="ab05-day__m">40 min<span>of 60</span></div></div>
+            <div class="ab05-day"><div class="ab05-day__d"><b>Fri</b><span>Oct 2</span></div><div class="ab05-day__c"><span class="ab05-day__none">Nothing due</span></div><div class="ab05-day__m">—</div></div>
+            <div class="ab05-day"><div class="ab05-day__d"><b>Sat</b><span>Oct 3</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>3</b></span></div><div class="ab05-day__m">60 min<span>of 120</span></div></div>
+            <div class="ab05-day"><div class="ab05-day__d"><b>Sun</b><span>Oct 4</span></div><div class="ab05-day__c"><span class="ab05-cc">DSA <b>1</b></span></div><div class="ab05-day__m">20 min<span>of 120</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Content</h4>
+        <ul><li>Seven day rows (Today, Tomorrow, then weekday names), each with its <b>due reviews per course</b> (course chip + count) and the <b>review minutes</b> against that day's budget (weekday 60, weekend 120: the "2h" band's lower bound). New work isn't planned ahead, so future rows show reviews only; today's minutes match F3 (50).</li>
+          <li>A day whose reviews exceed its budget shows the amber bar and "over" (as F6). Rows are links to that day's queue (Revision, all-courses view).</li></ul></section>
+      <section><h4>Toggle "All courses / This course"</h4>
+        <ul><li>On the home it defaults to <b>All courses</b>; "This course" means the course last opened from the switcher. On a course's Today it defaults to <b>This course</b>. The choice persists per account (like AB03-F8's queue scope).</li>
+          <li>Built on <code>GET /api/agenda</code> (account-wide, cached per account). D4 · ADR-0026 §5 (the agenda is account-wide).</li></ul></section>
+      <section><h4>A11y · narrow</h4>
+        <ul><li>A list of day rows; each reads "Tomorrow, Tuesday September 29: DSA 1, GO 1, 25 minutes of 60." Bars are decorative (<code>aria-hidden</code>). <code>ds-seg</code> buttons use <code>aria-pressed</code>.</li>
+          <li>&lt; 1024 px: an accordion, Today open (N1).</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ============================================================ narrow -->
+<section class="bd-section" id="AB05-F10" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">AB05-F10 · &lt; 1024 px (390 px shown) <small>stacked cards · the agenda as an accordion</small></h2>
+  <p class="bd-section__p">One column: the header and meter, <b>Reviews first</b> as full-width cards (badges wrap under the title), <b>New work</b>, the <b>agenda as an accordion</b> (Today open), then the catalog one card per row.</p>
+  <div class="bd-narrow-row">
+    <article class="bd-frame bd-narrow" id="AB05-N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1 · AB05-F2/F9</span><span class="bd-frame__state">· the plan</span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad" style="padding:16px 14px;display:flex;flex-direction:column;gap:14px">
+          <div class="ab05-nhead"><div class="xl-eyebrow">Mon, Sep 28</div><h1>Today · 55 min of 60</h1>
+            <div class="ds-meter ab05-meter" style="margin-top:10px" role="img" aria-label="Reviews 50, Go concurrency new 5, free 5, of 60"><span class="ab05-seg ab05-seg--rev" style="width:83.3%"></span><span class="ab05-seg ab05-seg--go" style="width:8.3%"></span></div>
+            <div class="ab05-legend"><span><span class="ab05-sw ab05-sw--rev"></span>Reviews <b>50</b></span><span><span class="ab05-sw ab05-sw--go"></span>Go new <b>5</b></span><span><span class="ab05-sw ab05-sw--free"></span>Free <b>5</b></span></div></div>
+          <span class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start next review</span>
+          <div class="ab05-sech" style="margin:0"><h2>Reviews first</h2><span>4 due · ≈ 50 min</span></div>
+          <div class="ds-card"><div class="ab05-rv__main"><span class="xl-tag ab05-course">DSA</span><span class="ab05-id">#5</span><span class="ab05-title">Group Anagrams</span></div><div class="ab05-rv" style="margin-top:8px"><span class="xl-tag ab05-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Re-solve · <b>20:00</b></span><span class="ab05-flex"></span><span class="ab05-min">≈ 20 min</span></div></div>
+          <div class="ds-card"><div class="ab05-rv__main"><span class="xl-tag ab05-course">GO</span><span class="ab05-id">#gc-14</span><span class="ab05-title">Spot the race: shared counter</span></div><div class="ab05-rv" style="margin-top:8px"><span class="xl-tag ab05-fmt"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Recall · <b>~5 min</b></span><span class="ab05-flex"></span><span class="ab05-min">≈ 5 min</span></div></div>
+          <div class="bd-crop" style="padding:4px 0;background:none">— 2 more reviews, then New work —</div>
+          <div class="xl-panel">
+            <div class="ab05-ag__h"><h3>Next 7 days</h3><span class="ab05-due">All courses</span></div>
+            <div class="ab05-acc"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg><b>Today</b><span class="ab05-flex"></span><span class="ab05-min">50 of 60</span></div>
+            <div class="ab05-acc__body"><div class="ab05-acc__row"><span class="ab05-cc">DSA <b>2</b></span>#5 · #23 · 40 min</div><div class="ab05-acc__row"><span class="ab05-cc">GO <b>2</b></span>#gc-14 · #gc-9 · 10 min</div></div>
+            <div class="ab05-acc"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevron"/></svg><b>Tomorrow</b><span class="ab05-flex"></span><span class="ab05-min">25 of 60</span></div>
+            <div class="ab05-acc"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevron"/></svg><b>Wed</b><span class="ab05-flex"></span><span class="ab05-due">nothing due</span></div>
+            <div class="ab05-acc"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevron"/></svg><b>Thu</b><span class="ab05-flex"></span><span class="ab05-min">40 of 60</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Accordion rows are buttons (<code>aria-expanded</code>); Today starts open and lists the items by id. The toggle becomes a select-like chip ("All courses") that opens a sheet.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB05-N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2 · AB05-F1/F4</span><span class="bd-frame__state">· blocked course · catalog cards</span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad" style="padding:16px 14px;display:flex;flex-direction:column;gap:12px">
+          <div class="ab05-note ab05-note--warn" role="status"><span class="ab05-ic ab05-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg></span><span><b>New DSA work is paused until your overdue DSA reviews are done.</b><span class="ab05-note__sub">Your other courses still get their share.</span></span></div>
+          <div class="ab05-sech" style="margin:6px 0 0"><h2>Your courses</h2></div>
+          <div class="ds-card ds-card--teal ab05-cc2" style="padding:14px">
+            <div class="ab05-cc2__top"><span class="ab05-cic"><svg class="xl-ico" aria-hidden="true"><use href="#i-code"/></svg></span><div class="ab05-flex"><h3 style="font-size:15px">Data Structures &amp; Algorithms</h3><span class="ds-badge ds-badge--ok ds-mono" style="margin-top:6px">Day 12</span></div></div>
+            <div class="ab05-stats"><span><b>28</b> / 151 solved</span><span>≈ 35 min/day</span></div>
+            <span class="ds-btn ds-btn--primary ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Continue</span>
+          </div>
+          <div class="ds-card ab05-cc2" style="padding:14px">
+            <div class="ab05-cc2__top"><span class="ab05-cic"><svg class="xl-ico" aria-hidden="true"><use href="#i-branch"/></svg></span><div class="ab05-flex"><h3 style="font-size:15px">Go Concurrency Patterns</h3><span class="ds-badge ds-badge--info" style="margin-top:6px">Preview</span></div></div>
+            <span class="ds-btn ds-btn--primary ds-btn--block" role="button">Continue</span>
+          </div>
+          <div class="ab05-sech" style="margin:6px 0 0"><h2>More courses</h2></div>
+          <div class="ds-card ab05-cc2" style="padding:14px"><h3 style="font-size:14.5px">SQL &amp; Data Modeling</h3><span class="ds-btn ds-btn--primary ds-btn--sm ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-plus"/></svg> Enroll</span></div>
+          <div class="ds-card ab05-cc2 ab05-soon" style="padding:14px" aria-disabled="true"><h3 style="font-size:14.5px">System Design Interviews</h3><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Coming soon</span></div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Catalog cards stack one per row; the ring hides below 480 px (the "28 / 151" text carries it). Buttons full width, ≥ 44 px.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB05 · Catalog + agenda, Today in minutes · drafted in ds-m2-01 · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only.
+  Sample data: the persona's courses, reviews, minutes and dates (illustrative, computed with the m2-04 rules and the manifest's dormant minutes: re-solve 20, recall 5, DSA problem 45). Go-concurrency item ids and titles, and the SQL course's active status, are placeholders.
+</footer>
+</main>
+</body>
+</html>

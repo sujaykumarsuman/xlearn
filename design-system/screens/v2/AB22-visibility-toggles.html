@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB22 · Visibility toggles — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB22 board-local layout (prefix ab22-). Tokens only; never restyles a ds- or xl- class.
+     Settings look-alikes (live: .xl-settings / .xl-set-* in web/src/styles/app.css; drawn as in AB01-F13) are board-prefixed. */
+  .ab22-flex { flex: 1; }
+  .ab22-gap { margin-bottom: 22px; }
+  .ab22-ok { color: var(--ds-ok); } .ab22-err { color: var(--ds-err); } .ab22-warn { color: var(--ds-warn); } .ab22-teal { color: var(--ds-teal); } .ab22-dimc { color: var(--ds-dim); }
+  .ab22-ic { display: inline-flex; flex: none; }
+  /* plain-shell top bar pieces (AB01-F13) */
+  .ab22-brand { display: inline-flex; align-items: center; gap: 9px; }
+  .ab22-mark { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, #35d0c0, #2a9d92); display: grid; place-items: center;
+    color: #06231f; font-family: var(--ds-font-mono); font-weight: 700; font-size: 14px; flex: none; }
+  .ab22-name { font-size: 15px; font-weight: 700; letter-spacing: -.2px; }
+  .ab22-name b { color: var(--ds-teal); }
+  /* settings */
+  .ab22-set { max-width: 1060px; margin: 0 auto; width: 100%; }
+  .ab22-set__h h1 { font-size: 28px; font-weight: 700; letter-spacing: -.4px; margin-top: 8px; }
+  .ab22-set__h p { font-size: 13.5px; color: var(--ds-dim); margin-top: 6px; }
+  .ab22-set__grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 30px; align-items: start; margin-top: 24px; }
+  .ab22-rail { display: flex; flex-direction: column; gap: 16px; }
+  .ab22-pf { border: 1px solid var(--ds-line); border-radius: 16px; background: var(--ds-panel); padding: 22px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .ab22-av { width: 84px; height: 84px; font-size: 32px; }
+  .ab22-pf b { font-size: 18px; }
+  .ab22-pf__h { font-size: 12.5px; color: var(--ds-dim); font-family: var(--ds-font-mono); }
+  .ab22-railnav { display: flex; flex-direction: column; gap: 4px; }
+  .ab22-railitem { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border-radius: 999px; color: var(--ds-dim); font-size: 13.5px; font-weight: 550; white-space: nowrap; }
+  .ab22-railitem--on { background: rgba(53,208,192,.1); color: var(--ds-teal); }
+  .ab22-card { border: 1px solid var(--ds-line); border-radius: 14px; background: var(--ds-panel); overflow: hidden; }
+  .ab22-card__h { display: flex; align-items: center; gap: 12px; padding: 15px 18px; border-bottom: 1px solid var(--ds-line); }
+  .ab22-card__h h3 { font-size: 14.5px; font-weight: 650; }
+  .ab22-card__h p { font-size: 12px; color: var(--ds-dim); margin-top: 2px; }
+  .ab22-card__ic { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; background: rgba(53,208,192,.14); color: var(--ds-teal); }
+  .ab22-card__b { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .ab22-sub { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab22-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; padding: 14px 16px; border: 1px solid var(--ds-line-2); border-radius: 14px; background: var(--ds-panel-2); }
+  .ab22-row__main { flex: 1; min-width: 200px; }
+  .ab22-row__t { font-size: 13.5px; font-weight: 650; color: var(--ds-text); display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .ab22-row__d { font-size: 12px; color: var(--ds-dim); margin-top: 3px; line-height: 1.5; }
+  .ab22-state { font-size: 12.5px; font-weight: 600; min-width: 52px; }
+  .ab22-url { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px; background: var(--ds-inset); border: 1px solid var(--ds-line); }
+  .ab22-url code { font-family: var(--ds-font-mono); font-size: 12.5px; color: var(--ds-text); overflow-wrap: anywhere; }
+  .ab22-hint { display: flex; align-items: flex-start; gap: 8px; padding: 11px 14px; background: var(--ds-inset); border: 1px solid var(--ds-line); border-radius: 12px;
+    font-size: 12.5px; color: var(--ds-dim); line-height: 1.5; }
+  .ab22-hint b { color: var(--ds-text); font-weight: 600; }
+  .ab22-hint .ab22-ic { margin-top: 1px; }
+  .ab22-off { opacity: .55; }
+  .ab22-msg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+  .ab22-saving { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ds-dim); }
+  .ab22-spin { width: 14px; height: 14px; flex: none; }
+  /* modal stage */
+  .ab22-stage { position: relative; min-height: 400px; overflow: hidden; }
+  .ab22-mbody { font-size: 13.5px; line-height: 1.6; color: var(--ds-text); }
+  .ab22-mbody b { font-weight: 600; }
+  /* narrow */
+  .ab22-set--narrow .ab22-set__grid { grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 16px; }
+  .ab22-railnav--row { flex-direction: row; overflow-x: auto; }
+  .ab22-railnav--row .ab22-railitem { flex: none; height: 36px; font-size: 13px; }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6" /><path d="M10 20a2 2 0 0 0 4 0" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M18 5l2 2M15 8l2 2" /></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z" /><path d="M12 10v4M12 17h.01" /></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></symbol>
+  <symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M3 3l18 18" /><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7c1.9 0 3.5-.6 4.9-1.4" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="12" height="12" rx="2" /><path d="M15.5 8.5V5a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 5v9A1.5 1.5 0 0 0 5 15.5h3.5" /></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.5h.01" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · M2 board</div>
+  <h1>AB22 · Visibility toggles</h1>
+  <p class="bd-lede">
+    A new Settings tab, <b>Profile &amp; visibility</b>, decides what the public profile (AB06) shows: the whole profile <b>Public / Private</b>, and
+    one toggle per enrolled course whose <b>default comes from the course manifest</b> (D7: visible, except behavioral). Going private or hiding a
+    course asks first and applies immediately; a private profile is indistinguishable from an unknown username.
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-m2-01.md">ds-m2-01</a></span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-m2-03.md">m2-03</a> (identity <code class="ds-mono">PATCH /accounts/{id}/visibility</code>, BFF <code class="ds-mono">PATCH /api/me/visibility</code>, <code class="ds-mono">Settings.tsx</code>)</span>
+    <span><b>Frozen before</b>M2a</span>
+    <span><b>Sources</b>P5 (<a href="../../../docs/v2/rollout-plan.md#10-public-dashboard-tasks">rollout §10</a>) · D7 · P6 ·
+      <a href="../../../docs/adr/0033-invite-only-admission-and-owner-admin.md#13-public-dashboard-authz-deltas">ADR-0033 §13</a> ·
+      <a href="../../../docs/adr/0034-v2-release-labelling-gating-and-rollback.md#2-feature-gating-three-tiers-no-flag-service">ADR-0034 §2</a> (preview)</span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB22-F1">F1</a><a href="#AB22-F2">F2</a><a href="#AB22-F3">F3</a><a href="#AB22-F4">F4</a><a href="#AB22-F5">F5</a><a href="#AB22-F6">F6 · 390 px</a>
+  </nav>
+</header>
+
+<!-- ================================================= F1 -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · The section <small>F1</small></h2>
+  <article class="bd-frame" id="AB22-F1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB22-F1</span><span class="bd-frame__title">· Settings → Profile &amp; visibility</span><span class="bd-frame__state">· /xlearn/settings?tab=visibility · profile public · manifest defaults</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new tab</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <div class="xl-main">
+            <div class="xl-topbar">
+              <span class="ab22-brand"><span class="ab22-mark">x</span><span class="ab22-name">x<b>Learn</b></span></span>
+              <span class="ab22-flex"></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="xl-content">
+              <div class="ab22-set">
+                <div class="ab22-set__h"><div class="xl-eyebrow">Account</div><h1>Settings</h1><p>Your profile, study pace, AI coach and reminders — tuned to how you learn.</p></div>
+                <div class="ab22-set__grid">
+                  <aside class="ab22-rail">
+                    <div class="ab22-pf"><span class="ds-avatar ab22-av">S</span><b>Sam Rivera</b><span class="ab22-pf__h">@samr</span></div>
+                    <nav class="ab22-railnav" aria-label="Settings sections" role="tablist" aria-orientation="vertical">
+                      <span class="ab22-railitem" role="tab"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Study budget</span>
+                      <span class="ab22-railitem" role="tab"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach</span>
+                      <span class="ab22-railitem" role="tab"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-bell"/></svg> Reminders</span>
+                      <span class="ab22-railitem ab22-railitem--on" role="tab" aria-selected="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eye"/></svg> Profile &amp; visibility</span>
+                      <span class="ab22-railitem" role="tab"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-key"/></svg> Sign-in &amp; security</span>
+                    </nav>
+                  </aside>
+                  <section class="ab22-card" role="tabpanel" aria-labelledby="f1-h">
+                    <div class="ab22-card__h">
+                      <span class="ab22-card__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-globe"/></svg></span>
+                      <div class="ab22-flex"><h3 id="f1-h">Public profile</h3><p>What anyone with your link can see. Code, answers, notes and mistakes are never shown.</p></div>
+                      <span class="ds-badge ds-badge--ok">● Public</span>
+                    </div>
+                    <div class="ab22-card__b">
+                      <div class="ab22-row">
+                        <div class="ab22-row__main"><div class="ab22-row__t">Profile</div><div class="ab22-row__d">Public: your name, streak, activity and the courses you choose below.</div></div>
+                        <span class="ds-toggle ds-toggle--on bd-focus" role="switch" aria-checked="true" aria-label="Public profile" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab22-state ab22-teal">Public</span>
+                      </div>
+                      <div class="ab22-url"><svg class="xl-ico xl-ico--sm ab22-dimc" aria-hidden="true"><use href="#i-globe"/></svg><code>projects.sujaykumar.dev/xlearn/u/samr</code><span class="ab22-flex"></span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-copy"/></svg> Copy link</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">View profile <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-ext"/></svg></span></div>
+                      <div class="ab22-sub" style="margin-top:6px">Courses on your profile</div>
+                      <div class="ab22-row">
+                        <div class="ab22-row__main"><div class="ab22-row__t">Data Structures &amp; Algorithms</div><div class="ab22-row__d">Default: visible (set by the course)</div></div>
+                        <span class="ds-toggle ds-toggle--on" role="switch" aria-checked="true" aria-label="Show Data Structures and Algorithms on your profile" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab22-state ab22-teal">Visible</span>
+                      </div>
+                      <div class="ab22-row">
+                        <div class="ab22-row__main"><div class="ab22-row__t">Behavioral &amp; Storytelling <span class="bd-tag">illustrative</span></div><div class="ab22-row__d">Default: hidden (set by the course)</div></div>
+                        <span class="ds-toggle" role="switch" aria-checked="false" aria-label="Show Behavioral and Storytelling on your profile" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab22-state ab22-dimc">Hidden</span>
+                      </div>
+                      <div class="ab22-row ab22-off">
+                        <div class="ab22-row__main"><div class="ab22-row__t">Go Concurrency Patterns <span class="ds-badge ds-badge--info">Preview</span></div><div class="ab22-row__d">Preview courses stay off every public profile until they launch.</div></div>
+                        <span class="ds-toggle" role="switch" aria-checked="false" aria-disabled="true" aria-label="Go Concurrency Patterns, preview, not shown" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab22-state ab22-dimc">Hidden</span>
+                      </div>
+                      <div class="ab22-hint"><span class="ab22-ic ab22-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span>Your header totals (solved, streak, activity, mocks) count <b>visible courses only</b>. Changes apply immediately.</span></div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li>New rail tab <b>Profile &amp; visibility</b> (<code>?tab=visibility</code>), between Reminders and Sign-in &amp; security. Read from <code>GET /api/me</code> → <code>visibility: {profile, courses: [{slug, visible, default}]}</code>.</li>
+          <li><b>Profile</b> switch Public / Private (P5) with the public URL, <b>Copy link</b> and <b>View profile</b> (opens AB06 in a new tab).</li>
+          <li>One row per <b>enrolled</b> course, with its manifest default as a hint: <b>"Default: visible (set by the course)"</b> / <b>"Default: hidden (set by the course)"</b> (D7; behavioral is the hidden one, drawn illustratively since it isn't active yet).</li>
+          <li>A <code>preview</code> course is listed but disabled (ADR-0034 §2 hides it from every public surface; a toggle would change nothing).</li></ul></section>
+      <section><h4>Writes</h4>
+        <ul><li>Each change → <code>PATCH /api/me/visibility</code> with a partial body (<code>{"profile":"private"}</code> or <code>{"courses":{"dsa":false}}</code>). The BFF bumps the cache epoch and purges the negative-404 entry <b>before</b> it answers, so the public page changes on the very next request.</li>
+          <li>Going <b>private</b> (F2) and <b>hiding</b> a course (F3) confirm first. Going public or showing a course applies directly. No optimistic write: the switch shows "Saving…" until the server answers (F5).</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>P5 · D7 · P6 · ADR-0033 §13 (toggle → synchronous epoch bump).</li>
+          <li>Real <code>&lt;button role="switch" aria-checked&gt;</code> elements with names that include the course; <span class="xl-kbd">Space</span> / <span class="xl-kbd">Enter</span> toggle. The state word ("Public", "Visible", "Hidden") sits beside each switch, so colour is never the only cue. Text 15:1, dim 6.8:1, teal 9.0:1.</li>
+          <li>&lt; 1024 px: F6.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ============================================ B · confirms -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · Confirmations <small>F2 · F3 · ds-modal--sm</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <!-- F2 -->
+    <article class="bd-frame" id="AB22-F2">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB22-F2</span><span class="bd-frame__title">· Go private — confirm</span><span class="bd-frame__state">· after the Profile switch is turned off</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab22-stage">
+          <div class="bd-pad ab22-off" aria-hidden="true">
+            <div class="ab22-row"><div class="ab22-row__main"><div class="ab22-row__t">Profile</div><div class="ab22-row__d">Public: your name, streak, activity and the courses you choose below.</div></div><span class="ds-toggle ds-toggle--on"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span></div>
+          </div>
+          <div class="ds-modal__backdrop">
+            <div class="ds-modal__panel ds-modal--sm" role="alertdialog" aria-modal="true" aria-labelledby="f2-t" aria-describedby="f2-d">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="f2-t">Make your profile private?</span><span class="ds-iconbtn" aria-label="Close"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+              <div class="ds-modal__body"><p class="ab22-mbody" id="f2-d">Anyone opening your link sees “No profile for @samr” — the same as an unknown user. Applies immediately.</p></div>
+              <div class="ds-modal__footer"><span class="ds-btn ds-btn--secondary ds-btn--sm bd-focus" role="button">Cancel</span><span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eyeoff"/></svg> Make private</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>The switch stays <b>on</b> behind the modal until the learner confirms. <b>Cancel</b> has initial focus (the non-destructive choice); <span class="xl-kbd">Esc</span> cancels. <b>Make private</b> → PATCH → F4.</li>
+          <li>The quoted line is AB06-F7's heading with the learner's own username. P5 (private = unknown, same 404). <code>role="alertdialog"</code>, focus trapped, focus returns to the switch.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F3 -->
+    <article class="bd-frame" id="AB22-F3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB22-F3</span><span class="bd-frame__title">· Hide a course — confirm</span><span class="bd-frame__state">· after the DSA switch is turned off</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab22-stage">
+          <div class="bd-pad ab22-off" aria-hidden="true">
+            <div class="ab22-row"><div class="ab22-row__main"><div class="ab22-row__t">Data Structures &amp; Algorithms</div><div class="ab22-row__d">Default: visible (set by the course)</div></div><span class="ds-toggle ds-toggle--on"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span></div>
+          </div>
+          <div class="ds-modal__backdrop">
+            <div class="ds-modal__panel ds-modal--sm" role="alertdialog" aria-modal="true" aria-labelledby="f3-t" aria-describedby="f3-d">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="f3-t">Hide DSA from your profile?</span><span class="ds-iconbtn" aria-label="Close"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+              <div class="ds-modal__body"><p class="ab22-mbody" id="f3-d">Its stats disappear, and your header totals (solved, streak, activity, mocks) are recomputed from visible courses only. Applies immediately.</p></div>
+              <div class="ds-modal__footer"><span class="ds-btn ds-btn--secondary ds-btn--sm bd-focus" role="button">Cancel</span><span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eyeoff"/></svg> Hide DSA</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>The title uses the course's manifest short name ("DSA"). <b>Hide DSA</b> → PATCH <code>{"courses":{"dsa":false}}</code>. If it was the last visible course, AB06 shows its F6 empty state.</li>
+          <li>D7 · P6 (header totals from visible courses only). Focus and keys as F2.</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================ C · states -->
+<section class="bd-section" aria-labelledby="sec-c">
+  <h2 class="bd-section__h" id="sec-c">C · Private, saved and error <small>F4 · F5</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <!-- F4 -->
+    <article class="bd-frame" id="AB22-F4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB22-F4</span><span class="bd-frame__title">· Private state</span><span class="bd-frame__state">· profile private · course switches disabled</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <section class="ab22-card">
+            <div class="ab22-card__h"><span class="ab22-card__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg></span><div class="ab22-flex"><h3>Public profile</h3><p>What anyone with your link can see.</p></div><span class="xl-tag">Private</span></div>
+            <div class="ab22-card__b">
+              <div class="ab22-row">
+                <div class="ab22-row__main"><div class="ab22-row__t">Profile</div><div class="ab22-row__d">Private: your link shows “No profile for @samr”.</div></div>
+                <span class="ds-toggle bd-focus" role="switch" aria-checked="false" aria-label="Public profile" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab22-state ab22-dimc">Private</span>
+              </div>
+              <div class="ab22-sub" style="margin-top:4px">Courses on your profile</div>
+              <div class="ab22-hint"><span class="ab22-ic ab22-dimc"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span>Course visibility applies while your profile is public.</span></div>
+              <div class="ab22-row ab22-off">
+                <div class="ab22-row__main"><div class="ab22-row__t">Data Structures &amp; Algorithms</div><div class="ab22-row__d">Default: visible (set by the course)</div></div>
+                <span class="ds-toggle ds-toggle--on" role="switch" aria-checked="true" aria-disabled="true" aria-label="Show Data Structures and Algorithms on your profile" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab22-state ab22-dimc">Visible</span>
+              </div>
+              <div class="ab22-row ab22-off">
+                <div class="ab22-row__main"><div class="ab22-row__t">Behavioral &amp; Storytelling</div><div class="ab22-row__d">Default: hidden (set by the course)</div></div>
+                <span class="ds-toggle" role="switch" aria-checked="false" aria-disabled="true" aria-label="Show Behavioral and Storytelling on your profile" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab22-state ab22-dimc">Hidden</span>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Course switches keep their saved values but are <code>aria-disabled</code> (still focusable, announced with the hint). Turning the profile back to Public needs no confirm and restores exactly these course choices.</li>
+          <li>The URL row is replaced by the "Private:" description. The card badge reads "Private" (neutral <code>xl-tag</code>). P5.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F5 -->
+    <article class="bd-frame" id="AB22-F5">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB22-F5</span><span class="bd-frame__title">· Saving · saved · error</span><span class="bd-frame__state">· inline, per row</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad" style="display:flex;flex-direction:column;gap:12px">
+          <div class="bd-tag" style="align-self:flex-start">a · saving</div>
+          <div class="ab22-row">
+            <div class="ab22-row__main"><div class="ab22-row__t">Behavioral &amp; Storytelling</div><div class="ab22-row__d">Default: hidden (set by the course)</div></div>
+            <span class="ab22-saving" role="status"><svg class="ab22-spin ds-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9"/></svg> Saving…</span>
+            <span class="ds-toggle ds-toggle--on ab22-off" role="switch" aria-checked="false" aria-disabled="true" aria-busy="true" aria-label="Show Behavioral and Storytelling on your profile"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab22-state ab22-dimc">Hidden</span>
+          </div>
+          <div class="bd-tag" style="align-self:flex-start">b · saved</div>
+          <div class="ab22-row">
+            <div class="ab22-row__main"><div class="ab22-row__t">Behavioral &amp; Storytelling</div><div class="ab22-row__d">Default: hidden (set by the course)</div></div>
+            <span class="ab22-msg ab22-ok" role="status"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Saved</span>
+            <span class="ds-toggle ds-toggle--on" role="switch" aria-checked="true" aria-label="Show Behavioral and Storytelling on your profile" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab22-state ab22-teal">Visible</span>
+          </div>
+          <div class="bd-tag" style="align-self:flex-start">c · error</div>
+          <div class="ab22-row">
+            <div class="ab22-row__main"><div class="ab22-row__t">Behavioral &amp; Storytelling</div><div class="ab22-row__d">Default: hidden (set by the course)</div></div>
+            <span class="ab22-msg ab22-err" role="alert"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg> Couldn’t save — try again.</span>
+            <span class="ds-toggle bd-focus" role="switch" aria-checked="false" aria-label="Show Behavioral and Storytelling on your profile" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab22-state ab22-dimc">Hidden</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li><b>a</b> While the PATCH is in flight the switch shows the requested position, dimmed and <code>aria-busy</code>, and the state word keeps the <b>saved</b> value; nothing else on the page changes.</li>
+          <li><b>b</b> On 2xx: "Saved" beside the switch for 3 s (<code>role="status"</code>), then it fades; the state word updates.</li>
+          <li><b>c</b> On any failure (network, 5xx, 400, 403) the switch <b>returns to its saved position</b> with "Couldn't save — try again." (<code>role="alert"</code>); focus stays on the switch. <code>422 not_enrolled</code> (the course was left meanwhile) reloads the list instead.</li>
+          <li>Matches v1's Settings error copy. err 5.9:1, ok 9.2:1 on panel-2, each with an icon and words.</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================================ narrow -->
+<section class="bd-section" id="AB22-F6" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">AB22-F6 · &lt; 1024 px (390 px shown) <small>stacked toggles</small></h2>
+  <p class="bd-section__p">The rail becomes a horizontal tab strip under the heading (AB01-N3). Each row stacks its text above a full-width line holding the switch and its state word; the URL row wraps and its buttons go full width.</p>
+  <div class="bd-narrow-row">
+    <article class="bd-frame bd-narrow" id="AB22-N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1 · AB22-F1</span><span class="bd-frame__state">· public</span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad" style="padding:16px 14px">
+          <div class="ab22-set ab22-set--narrow">
+            <div class="ab22-set__h"><div class="xl-eyebrow">Account</div><h1 style="font-size:22px">Settings</h1></div>
+            <div class="ab22-set__grid">
+              <nav class="ab22-railnav ab22-railnav--row" aria-label="Settings sections"><span class="ab22-railitem">Reminders</span><span class="ab22-railitem ab22-railitem--on" aria-selected="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eye"/></svg> Profile &amp; visibility</span><span class="ab22-railitem">Sign-in</span></nav>
+              <section class="ab22-card">
+                <div class="ab22-card__h" style="padding:13px 14px"><div class="ab22-flex"><h3>Public profile</h3></div><span class="ds-badge ds-badge--ok">● Public</span></div>
+                <div class="ab22-card__b" style="padding:14px;gap:12px">
+                  <div class="ab22-row" style="padding:12px">
+                    <div class="ab22-row__main" style="min-width:0;flex-basis:100%"><div class="ab22-row__t">Profile</div><div class="ab22-row__d">Public: your name, streak, activity and the courses you choose below.</div></div>
+                    <span class="ds-toggle ds-toggle--on" role="switch" aria-checked="true" aria-label="Public profile" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab22-state ab22-teal">Public</span>
+                  </div>
+                  <div class="ab22-url"><code>projects.sujaykumar.dev/xlearn/u/samr</code><span class="ds-btn ds-btn--secondary ds-btn--sm ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-copy"/></svg> Copy link</span></div>
+                  <div class="ab22-sub">Courses on your profile</div>
+                  <div class="ab22-row" style="padding:12px">
+                    <div class="ab22-row__main" style="min-width:0;flex-basis:100%"><div class="ab22-row__t">Data Structures &amp; Algorithms</div><div class="ab22-row__d">Default: visible (set by the course)</div></div>
+                    <span class="ds-toggle ds-toggle--on" role="switch" aria-checked="true" aria-label="Show Data Structures and Algorithms on your profile" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab22-state ab22-teal">Visible</span>
+                  </div>
+                  <div class="ab22-row" style="padding:12px">
+                    <div class="ab22-row__main" style="min-width:0;flex-basis:100%"><div class="ab22-row__t">Behavioral &amp; Storytelling</div><div class="ab22-row__d">Default: hidden (set by the course)</div></div>
+                    <span class="ds-toggle" role="switch" aria-checked="false" aria-label="Show Behavioral and Storytelling on your profile" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab22-state ab22-dimc">Hidden</span>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Switch hit areas are padded to 44 × 44 px. The profile card (avatar, name) moves above the tab strip on this width (not shown).</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB22-N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2 · AB22-F2</span><span class="bd-frame__state">· the same confirm at 390 px</span></header>
+      <div class="bd-frame__body">
+        <div class="ab22-stage" style="min-height:420px">
+          <div class="ds-modal__backdrop">
+            <div class="ds-modal__panel ds-modal--sm" role="alertdialog" aria-modal="true" aria-labelledby="n2-t">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="n2-t">Make your profile private?</span><span class="ds-iconbtn" aria-label="Close"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+              <div class="ds-modal__body"><p class="ab22-mbody">Anyone opening your link sees “No profile for @samr” — the same as an unknown user. Applies immediately.</p></div>
+              <div class="ds-modal__footer"><span class="ds-btn ds-btn--secondary ds-btn--sm bd-focus" role="button">Cancel</span><span class="ds-btn ds-btn--primary ds-btn--sm" role="button">Make private</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>The same <code>ds-modal--sm</code>, inset by the backdrop's 20 px; Cancel keeps initial focus. F3 behaves the same.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB22 · Visibility toggles · drafted in ds-m2-01 · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only.
+  Sample data: the persona and its enrolments; the Behavioral row is illustrative (the only manifest default that is hidden), and Go concurrency shows the preview case.
+</footer>
+</main>
+</body>
+</html>
