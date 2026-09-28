@@ -9,16 +9,16 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ 🔄 In progress: MI-5b is live except the owner's signed-in probe (4b). Attempt 1 (run r-7) landed PR 1, then held at the merge brake during the 2026-09-28 Longhorn incident; attempt 2 (run r-15) landed PR 2 and 4a.
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | DNS record for `ops.sujaykumar.dev` (`ev-mi5b-dns`) — before launch | O | ⬜ |
-| 2 | Certificate `ops-tls` + TLSStore entry (infra PR 1) | I | ⬜ |
-| 3 | Move the IngressRoutes, block airlift admin on the shared origin, add old-URL redirects, rewrite the README (infra PR 2) | I | ⬜ |
-| 4 | Cross-origin acceptance: credential-free probes (4a), then the signed-in browser probe (4b; ⛔ for a follow-up if no signed-in session) | H | ⬜ |
-| 5 | Interim guard: `ipAllowList` (infra PR 3, **only if task 4 fails**) | I | ⬜ |
-| 6 | Record MI-5b in `docs/v2/status.md` | X | ⬜ |
+| 1 | DNS record for `ops.sujaykumar.dev` (`ev-mi5b-dns`) — before launch | O | ✅ 2026-09-28: `ops` A equals `projects` A on the local, Cloudflare and Google resolvers, no AAAA, and the node's `getent hosts` agrees |
+| 2 | Certificate `ops-tls` + TLSStore entry (infra PR 1) | I | ✅ 2026-09-28: infra#34 (`df946d5`); `ops-tls` Ready (Let's Encrypt), `ops` serves it by SNI, `projects` still serves `projects-tls`; `infra-configs` Ready |
+| 3 | Move the IngressRoutes, block airlift admin on the shared origin, add old-URL redirects, rewrite the README (infra PR 2) | I | ✅ 2026-09-28: infra#35 (`600bf10`); `infra-configs`, `infra-storage`, `apps` Ready; no console on `projects` except the redirect and the 403 block; `host-verify --cluster` 63 pass / 1 warn / 0 fail (the WARN is the known TR-STEAL) |
+| 4 | Cross-origin acceptance: credential-free probes (4a), then the signed-in browser probe (4b; ⛔ for a follow-up if no signed-in session) | H | ⛔ owner signed-in probe (4b) pending. 4a ✅ 2026-09-28: all 8 rows pass (table in infra#35). 4b needs a browser signed in to landscape and kubescope on `ops`; the dispatched session had none. A follow-up session re-runs the prompt's step 5 |
+| 5 | Interim guard: `ipAllowList` (infra PR 3, **only if task 4 fails**) | I | ⬜ not needed so far: every 4a row passed; decided by 4b (no ranges were given, so a failed kubescope row falls back to `KUBESCOPE_READ_ONLY=true`) |
+| 6 | Record MI-5b in `docs/v2/status.md` | X | ✅ 2026-09-28: this docs PR (MI-5b 🔄 until 4b) |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, and ⛔ if it's blocked (say why).
 > Task 5 becomes ✅ "n/a (acceptance passed)" if task 4 passes. Update the _Overall_ line to match, and mirror the sprint's state into
@@ -26,9 +26,9 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] The DNS record exists: the owner adds it before launch (task 1, `ev-mi5b-dns`), and the session verifies it resolves before anything else (task 1).
-- [ ] Local `../infra` `main` is synced. No open peer PR touches `apps/kubescope.yaml`, `apps/landscape.yaml`, `apps/airlift.yaml`, `infrastructure/storage/ui.yaml` or `infrastructure/configs/`. If one does, agree the merge order first (parallel sessions).
-- [ ] No non-owner account exists on production yet: `identity admin account list` shows only the owner, or the M1b CLI isn't live yet. The session runs the CLI itself through the sanctioned admin-CLI `kubectl exec` path ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)); launching the prompt pre-approves that one use (D40), and it's logged in `docs/v2/status.md`'s CLI-use log, as §2.2 requires. If a `tester` already exists, this sprint is overdue. Treat it as urgent and record the gap in the Decisions log.
+- [x] The DNS record exists: the owner adds it before launch (task 1, `ev-mi5b-dns`), and the session verifies it resolves before anything else (task 1). *2026-09-28: attested (ask-8, ask-14); resolves on three resolvers and on the node.*
+- [x] Local `../infra` `main` is synced. No open peer PR touches `apps/kubescope.yaml`, `apps/landscape.yaml`, `apps/airlift.yaml`, `infrastructure/storage/ui.yaml` or `infrastructure/configs/`. If one does, agree the merge order first (parallel sessions). *2026-09-28: no peer PR touched these files; infra#35 was rebased onto `main` at `74c91a9` (after mi-02's infra#36/#37 and mi-07's infra#38) before merging.*
+- [x] No non-owner account exists on production yet: `identity admin account list` shows only the owner, or the M1b CLI isn't live yet. The session runs the CLI itself through the sanctioned admin-CLI `kubectl exec` path ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)); launching the prompt pre-approves that one use (D40), and it's logged in `docs/v2/status.md`'s CLI-use log, as §2.2 requires. If a `tester` already exists, this sprint is overdue. Treat it as urgent and record the gap in the Decisions log. *2026-09-28: the M1b CLI isn't live (production is v1.5.2; signup closed since 2026-09-24), so no CLI was run.*
 
 ## Goal
 
@@ -194,16 +194,16 @@ In `docs/v2/status.md`:
 
 ## Acceptance criteria
 
-- [ ] `ops.sujaykumar.dev` resolves to the node on public resolvers and serves a valid Let's Encrypt certificate (`ops-tls` Ready). `projects.sujaykumar.dev` still serves `projects-tls`.
-- [ ] **No admin console answers on `projects.sujaykumar.dev`:**
+- [x] `ops.sujaykumar.dev` resolves to the node on public resolvers and serves a valid Let's Encrypt certificate (`ops-tls` Ready). `projects.sujaykumar.dev` still serves `projects-tls`. *2026-09-28, infra#34.*
+- [x] **No admin console answers on `projects.sujaykumar.dev`:** *2026-09-28, 4a rows 1–4 (infra#35).*
   - console roots return a 302 to `ops`;
   - no console API responds there;
   - `/airlift/admin` and `/airlift/api/admin/*` return 403;
   - `/airlift/` and `/xlearn/` are unaffected.
-- [ ] **The consoles refuse cross-origin mutating calls and WebSocket upgrades** from `https://projects.sujaykumar.dev`: 4a #7 returns 403, and 4b (a)–(e) pass. **Or** the `ipAllowList` (PR 3) is live on every console that failed.
-- [ ] **Sign-in to landscape and kubescope works at the new URLs** (4b's signed-in browser). Longhorn opens through the landscape session on `ops`, and airlift admin works on `ops`.
-- [ ] Flux `infra-configs`, `infra-storage` and `apps` are Ready, and `host-verify --cluster` is green after the merges.
-- [ ] The infra README's "Admin consoles" section is rewritten, and `docs/v2/status.md` records MI-5b ✅.
+- [ ] *(4a #7 ✅ 2026-09-28; 4b pending, owner)* **The consoles refuse cross-origin mutating calls and WebSocket upgrades** from `https://projects.sujaykumar.dev`: 4a #7 returns 403, and 4b (a)–(e) pass. **Or** the `ipAllowList` (PR 3) is live on every console that failed.
+- [ ] *(pending 4b; credential-free: `ops` answers 200 for kubescope, landscape and airlift admin, and Longhorn redirects to the `ops` login)* **Sign-in to landscape and kubescope works at the new URLs** (4b's signed-in browser). Longhorn opens through the landscape session on `ops`, and airlift admin works on `ops`.
+- [x] Flux `infra-configs`, `infra-storage` and `apps` are Ready, and `host-verify --cluster` is green after the merges. *2026-09-28: all Ready at `600bf10`; 63 pass / 1 warn (TR-STEAL) / 0 fail.*
+- [ ] *(README ✅ in infra#35; status.md records MI-5b 🔄 until 4b)* The infra README's "Admin consoles" section is rewritten, and `docs/v2/status.md` records MI-5b ✅.
 
 ## Release
 
