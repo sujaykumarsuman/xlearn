@@ -9,7 +9,7 @@
 
 ## Status
 
-_Overall:_ ⛔ Merge held — everything is drafted and self-reviewed in [PR #73](https://github.com/sujaykumarsuman/xlearn/pull/73); a manager stop notice (prod incident, 2026-09-28) holds all merges, and the merge is the freeze
+_Overall:_ ✅ Done — AB01–AB03 frozen (merged in [PR #73](https://github.com/sujaykumarsuman/xlearn/pull/73), 2026-09-28); board index and `board.css` on `main`
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
@@ -19,7 +19,7 @@ _Overall:_ ⛔ Merge held — everything is drafted and self-reviewed in [PR #73
 | 4 | AB02 course nav | X | ✅ |
 | 5 | AB03 revision v2 | X | ✅ |
 | 6 | Self-review checklist (run before merging) + screenshots (1440 px, 390 px) | X | ✅ (ticked in PR #73) |
-| 7 | Land the design PR: CI green → squash-merge (the merge is the freeze) → status → sync `main` | X | ⛔ PR #73 open; merge held by a manager stop notice (2026-09-28) |
+| 7 | Land the design PR: CI green → squash-merge (the merge is the freeze) → status → sync `main` | X | ✅ frozen: merged in PR #73, 2026-09-28 |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly. **Land and sync ([D40](../feasibility.md#decisions-log-newest-first)):** the board PR
@@ -32,8 +32,8 @@ _Overall:_ ⛔ Merge held — everything is drafted and self-reviewed in [PR #73
 
 ## Entry gates
 
-- [ ] none (no prerequisite beyond `depends_on`, which is empty)
-- [ ] Parallel-sessions check: no open PR already adds `design-system/screens/v2/index.html` or `board.css`
+- [x] none (no prerequisite beyond `depends_on`, which is empty)
+- [x] Parallel-sessions check: no open PR already adds `design-system/screens/v2/index.html` or `board.css`
       (`gh pr list --state open`, `git worktree list`, ListAgents) — this sprint writes both, once
 
 ## Goal
@@ -261,12 +261,12 @@ squash-merge: **the merge is the freeze**. Never enable auto-merge. Then sync `m
 
 ## Acceptance criteria
 
-- [ ] `design-system/screens/v2/index.html` lists AB01–AB31 (AB23 dropped, AB31 outline) with the task 1 file names and links; `board.css` exists and defines only `bd-*` classes plus the `.xl-app` fill override.
-- [ ] Every frame listed for AB01 (F1–F15), AB02 (F1–F9) and AB03 (F1–F9) is present with final copy, its state, and a behaviour-notes aside citing its decision.
-- [ ] No board leaks withheld data (pattern chip only once a touch/attempt is concluded or from the hint stage; no hidden inputs, no answers).
-- [ ] Boards open from disk or a static server with no JS runtime; `theme.css` is linked, not copied or overridden.
-- [ ] The self-review checklist (task 6) passed and is ticked in the PR body, with "Decisions to confirm" (each item's frozen default stated).
-- [ ] PR **merged on CI green** (the freeze) with 1440 px and 390 px screenshots of each board; this file and `docs/v2/status.md` record ds-m1-01 ✅ and AB01–AB03 "frozen (merged)".
+- [x] `design-system/screens/v2/index.html` lists AB01–AB31 (AB23 dropped, AB31 outline) with the task 1 file names and links; `board.css` exists and defines only `bd-*` classes plus the `.xl-app` fill override.
+- [x] Every frame listed for AB01 (F1–F15), AB02 (F1–F9) and AB03 (F1–F9) is present with final copy, its state, and a behaviour-notes aside citing its decision.
+- [x] No board leaks withheld data (pattern chip only once a touch/attempt is concluded or from the hint stage; no hidden inputs, no answers).
+- [x] Boards open from disk or a static server with no JS runtime; `theme.css` is linked, not copied or overridden.
+- [x] The self-review checklist (task 6) passed and is ticked in the PR body, with "Decisions to confirm" (each item's frozen default stated).
+- [x] PR **merged on CI green** (the freeze) with 1440 px and 390 px screenshots of each board; this file and `docs/v2/status.md` record ds-m1-01 ✅ and AB01–AB03 "frozen (merged)".
 
 ## Release
 
