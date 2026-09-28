@@ -23,7 +23,7 @@ _Overall:_ ⬜ Not started
 | 8 | k3s pin: v1.36.5 only if GA, held branch for the window | H | ⬜ |
 | 9 | infra README: host table, flags, Rebuild order (the DR runbook) | I | ⬜ |
 | 10 | Window runbook `docs/v2/runbooks/host-window-2026-10.md` | X | ⬜ |
-| 11 | Record | X | ⬜ |
+| 11 | Record (+ the dated ADR-0027 note) | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + MI track row MI-11).
@@ -94,6 +94,9 @@ they also give its final content or its diff against [t3 §8.7](../research/t3-s
 | kubelet userns range | `kubelet:<start>:7208960` (110 × 65,536) in `/etc/subuid` + `/etc/subgid`; `getsubids` | P0: the range used and the recreate × 50 result; the package that ships `getsubids` on noble |
 | Sysctls | `io_uring_disabled=2`, `unprivileged_bpf_disabled=2`, `vm.unprivileged_userfaultfd=0`, `dmesg_restrict=1`, `kptr_restrict=2`; assert `perf_event_paranoid ≥ 3`; pin `apparmor_restrict_unprivileged_userns=1` | P0/P1: unchanged unless recorded |
 
+- **§16.3 (spk-02's image-volume block) adds a host rule, not a file:** no node-level registry credentials.
+  The pack credential exists only as the `xlearn-evalpack-pull` imagePullSecret. Task 4 asserts it
+  (`sandbox.registry-creds`), and task 10's runbook carries the rule.
 - **If §16 carries diffs only** for an artefact, rebuild that file from t3 §8.7 plus every recorded diff.
   The spike sessions never commit their VM files. Task 6 re-validates the rebuilt files.
 - **If the spike landed on R1-U** (a userns variant), the AppArmor profile gains exactly the `userns` rule the
@@ -176,7 +179,12 @@ Replace the `TODO(v2 T3)` section of `host-verify.sh`:
 | `sandbox.seccomp` | the file's sha256 = BOM |
 | `sandbox.userns` | the `kubelet` user exists; its range is in both `/etc/subuid` and `/etc/subgid`, a multiple of 65,536, and overlaps no other entry; `getsubids kubelet` resolves it |
 | `kubelet.config` | the drop-in's sha256 = BOM; `k3s kubectl get --raw /api/v1/nodes/<node>/proxy/configz` shows `systemReserved` {cpu 250m, memory 1Gi}, `evictionHard` including `memory.available: 500Mi` (print the full map), `podPidsLimit: 4096`; node allocatable memory ≈ capacity − 1 GiB − 500 Mi |
+| `sandbox.registry-creds` | no node-level registry credentials ([t3 §16.3](../research/t3-sandbox.md#163-image-volume-spk-02)). **FAIL** on an `auth:` for `ghcr.io` in `/etc/rancher/k3s/registries.yaml`, or if `/var/lib/kubelet/config.json` or `/root/.docker/config.json` exists. Never print a matched line (it holds a credential) |
 
+- **`sandbox.registry-creds` runs on every `host-verify`**, outside the presence rule: node-level credentials
+  expose the pack whether or not the sandbox block is installed. With any of the three, pods without the pull
+  secret pull the pack, the kubelet marks the cached image `nodePodsAccessible` for every pod, and that record
+  stays until the image is removed. So the rule is **never `docker login` on sujaykumar-vps** (tasks 9 and 10).
 - **Still read-only.** Every call is a `get` verb (`get --raw` included), so [mi-02](sprint-mi-02.md)'s
   read-only lint in `host-lint.sh` must still pass. No temp files.
 - **`hack/host-bom.txt`**, one line per artefact: `path · sha256 · source (spike record row or t3 §8.7) ·
@@ -194,6 +202,9 @@ Over `ssh sujaykumar-vps`, reads only. Paste the results into the host-script PR
 runbook compares against:
 - `k3s crictl info` runtimes; the rendered `config.toml`; `configz`; node capacity and allocatable;
   `/etc/subuid` and `/etc/subgid`; the task 2 sysctls.
+- **`sandbox.registry-creds`** on the live node. PASS is expected. If it FAILs, record which file in the PR and
+  as ⛔ in status.md for [m3-07](sprint-m3-07.md) (the credential must be gone before the pack is first pulled).
+  This session removes nothing.
 - **The pid ceiling:** the maximum `pids.current` per pod under `/sys/fs/cgroup/kubepods.slice/`. If any pod
   is above 2,048, raise `pod-max-pids` above it before the window, and record the value and why in the
   Decisions log.
@@ -263,7 +274,8 @@ Same PR as tasks 2–4:
   real section.
 - **Rebuild order** (the DR runbook): add `--with-sandbox` to the bootstrap line (sandbox files before the
   pinned k3s install) and `--expect-sandbox` to both verify lines. Add one line saying that a Hostinger
-  snapshot restore rewinds the host files too, so after any R-d restore you re-run bootstrap and verify.
+  snapshot restore rewinds the host files too, so after any R-d restore you re-run bootstrap and verify, and
+  one line saying **never `docker login` on the node** (the pack credential is pod-level only; task 4).
 - **Kernel reboot runbook**, step 1: flag that its off-node `pg_dumpall` conflicts with
   [ADR-0034 §4.3](../../adr/0034-v2-release-labelling-gating-and-rollback.md#43-snapshot-rule) (no off-node
   dump in v2: PII off the node, bends D12). Leave the step as it is here, and flag the conflict in the PR
@@ -279,8 +291,9 @@ the CNPG bump included. So the runbook opens with a **Before you launch (owner)*
 - hPanel and the Hostinger VNC console are reachable;
 - the date of the last Hostinger weekly image is known and ≤ 7 days old; the owner gives it at launch.
 
-It ends with the uniform **Ship** section (land-and-sync). Every step gives the command, the expected output
-and a stop condition:
+It ends with the uniform **Ship** section (land-and-sync). Its rules include the line **never `docker login` on
+sujaykumar-vps** (node-level credentials expose the eval pack to every pod; task 4, t3 §16.3). Every step gives
+the command, the expected output and a stop condition:
 
 0. **Ready.** mi-08's MI-11a branches if not yet merged (open their PRs now and merge them in the window), and the held branches `chore/cnpg-18.6-host-window` and
    (if GA) `chore/k3s-v1.36.5-host-window`, rebased on `main` and still lint-green. Copy scripts from `main`:
@@ -310,8 +323,9 @@ and a stop condition:
    - This restart doubles as the stress test for mi-08's 512 Mi Flux controller limits. Watch their
      restarts and OOMKills.
 6. **`host-verify --expect-sandbox --cluster`** must be green: `judge` runtime listed, runc parity, drop-in
-   hash, AppArmor enforce, seccomp hash, subuid, sysctls, `configz` (system-reserved, eviction-hard,
-   `podPidsLimit` 4096), allocatable ≈ 14.1 GiB, and **no pod `Evicted`**.
+   hash, AppArmor enforce, seccomp hash, subuid, sysctls, no node-level registry credentials
+   (`sandbox.registry-creds`), `configz` (system-reserved, eviction-hard, `podPidsLimit` 4096),
+   allocatable ≈ 14.1 GiB, and **no pod `Evicted`**.
 7. **CNPG:** open the CNPG PR from `chore/cnpg-18.6-host-window` and merge it. Flux applies it and CNPG
    restarts the single primary (the one PG restart).
    Wait until the Cluster is healthy. Services reconnect and the outboxes drain (unsent → 0).
@@ -336,7 +350,19 @@ and a stop condition:
 - **Worst case:** R-d, the snapshot restore, in the [ADR-0034 §4.2](../../adr/0034-v2-release-labelling-gating-and-rollback.md#42-r-d-is-a-procedure-not-a-button)
   order. The restore rewinds the host files too.
 
-### 11 · Record [X]
+### 11 · Record (+ the dated ADR-0027 note) [X]
+
+**ADR-0027 note.** [ADR-0027](../../adr/0027-content-evalpack-and-user-data-model.md) is Accepted and still says
+"Spike before M3" (§2, *Where content lives and how it ships*). This sprint's xlearn docs PR is the follow-up
+PR that adds its dated note, directly under that bullet. The decision text stays as it is:
+
+> **Note (<date>, mi-09):** the spike ran: **image volume GO** with the kubelet defaults (spk-02, 2026-09-25;
+> t3 §16.3). The pack credential is **pod-level only**, the `xlearn-evalpack-pull` imagePullSecret. It is never
+> node-level: no `auth:` in k3s `registries.yaml`, no `/var/lib/kubelet/config.json`, no root
+> `~/.docker/config.json`. `host-verify`'s `sandbox.registry-creds` asserts it.
+
+In the ADR, link "t3 §16.3" to `../v2/research/t3-sandbox.md#163-image-volume-spk-02`. If this sprint's docs PR
+doesn't carry the note, [m3-07](sprint-m3-07.md) adds it at the latest, before it first mounts the pack.
 
 In `docs/v2/status.md`:
 - the MI track MI-11 row: "prepared", with the PR numbers, and the window booked for 2026-10-24;
@@ -347,13 +373,16 @@ In `docs/v2/status.md`:
   `SANDBOX_CONTAINERD_MODE` (drop-in or `.tmpl`), the k3s decision, the caps list handed to mi-10, and any divergence from t3 §8.7;
 - the held branches (`chore/cnpg-18.6-host-window`, and `chore/k3s-v1.36.5-host-window` if GA) with their
   head commits and "opened and merged in ev-host-window", so the next session's peer checks don't take them
-  for stragglers or delete them.
+  for stragglers or delete them;
+- the Hand-offs row spk-02 → mi-09 (node-level registry credentials): closed, with the host-script PR number
+  and the task 5 live result.
 
 ## Acceptance criteria
 
 - [ ] On a throwaway VM with the new block (dry run), on the k3s pin the window will use: `host-verify --expect-sandbox` is green for every `sandbox.*` check and `kubelet.config`, with no host line regressed from the VM's baseline (`--cluster` is not gated on the VM; its expected VM-only FAILs are recorded if it was run)
 - [ ] `hack/host-lint.sh` green: shared constants identical; heredoc = constant = BOM hash for every artefact; shellcheck clean; mi-02's read-only lint still passes
-- [ ] On the live node, **without** `--with-sandbox`, the PR branch's `host-bootstrap.sh --dry-run` plans nothing beyond `main`'s copy (the two outputs diff empty), and `host-verify --cluster` is unchanged (sandbox: INFO only)
+- [ ] On the live node, **without** `--with-sandbox`, the PR branch's `host-bootstrap.sh --dry-run` plans nothing beyond `main`'s copy (the two outputs diff empty), and `host-verify --cluster` is unchanged (sandbox: INFO only), apart from the new `sandbox.registry-creds` line (PASS, or its FAIL recorded per task 5)
+- [ ] ADR-0027 carries its dated note (image volume GO; pod-level pull secret only), merged with the docs PR
 - [ ] The CNPG 18.6 branch (and the k3s pin branch, if GA) is pushed with no PR, lint-green, and linked from the runbook
 - [ ] The runbook is merged before 10-24, with its before-launch block (snapshot, hPanel/VNC, weekly-image date) and its Ship ending
 - [ ] The infra README host table, flags and Rebuild order are updated
@@ -368,12 +397,12 @@ owner.
    (`chore/cnpg-18.6-host-window`, `chore/k3s-v1.36.5-host-window`). The window session opens and merges
    their PRs at runbook steps 7 and 5b, so this session leaves no open PR behind (AGENT.md), the same pattern
    as [mi-11](sprint-mi-11.md)'s N4 fallback branch.
-3. The xlearn docs PR (runbook + status) merges; `main` is build-only, so no tag and no deploy.
+3. The xlearn docs PR (runbook + status + the ADR-0027 note) merges; `main` is build-only, so no tag and no deploy.
 
 ## Definition of Done
 
 Host-script PR merged with lint green · the dry run recorded in the PR · held branches pushed (no PR) and recorded in status.md ·
-runbook merged · statuses updated (this file + [`../status.md`](../status.md)) ·
+runbook merged · ADR-0027's dated note merged · statuses updated (this file + [`../status.md`](../status.md)) ·
 nothing applied to the live host by the agent · no `kubectl apply` · no alert, timer or CronJob added (D34).
 
 ## Risks / watch-outs
@@ -398,6 +427,9 @@ nothing applied to the live host by the agent · no `kubectl apply` · no alert,
 - **Seccomp architecture:** the host file must be the amd64 file from P3. The arm64 syscall set differs,
   and a wrong file breaks the runner pod at create time (in mi-10, not here).
 - **The subuid range must not overlap** the node's existing `ubuntu:100000:65536` entry.
+- **Node-level registry credentials** (a `docker login` on the node, a kubelet `config.json`, or a `registries.yaml`
+  `auth:`) make the cached pack readable by every pod, and the kubelet's record of that stays until the image is
+  removed (t3 §16.3). `sandbox.registry-creds` FAILs on them; never `docker login` on sujaykumar-vps.
 - **Merging a held branch early** breaks pre-window `host-verify` (k3s) or restarts PG outside the window (CNPG).
   The branches carry no PR, so a PR sweep won't merge them by accident; status.md names them.
 - **Hand-applied host state** is the one sanctioned exception to GitOps. It stays scripted, BOM-hashed and

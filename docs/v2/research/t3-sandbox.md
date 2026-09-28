@@ -1646,6 +1646,10 @@ before (i), and nothing was pulled with `ctr` or imported.
    **Rule:** the GHCR pack credential exists **only** as the `xlearn-evalpack-pull` imagePullSecret. Never put it in
    k3s `registries.yaml` `auth:`, `/var/lib/kubelet/config.json`, or a root `~/.docker/config.json` on the node
    (no `docker login` on the host). Add that to mi-09's host checks.
+   **Folded into mi-09 (2026-09-28, doc debt F1-16/F2-13/F5-11).** [mi-09](../sprints/sprint-mi-09.md) task 4 owns
+   it: a read-only `sandbox.registry-creds` check on every `host-verify` (FAIL on an `auth:` for `ghcr.io` in
+   `registries.yaml`, or if `/var/lib/kubelet/config.json` or `/root/.docker/config.json` exists). Its runbooks say
+   never `docker login` on sujaykumar-vps, and its docs PR adds ADR-0027's dated note (at the latest, m3-07 does).
 2. **`NeverVerifyPreloadedImages` exempts images that have no pull record.** It's safe while the pack is only ever
    pulled by the kubelet (never `k3s ctr` pull or import, no airgap tarball). If `/var/lib/kubelet/image_manager/`
    were lost while the image stayed on the node, the pack would count as preloaded and be exempt from verification.
