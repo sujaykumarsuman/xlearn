@@ -82,12 +82,10 @@ contract-header lint, and cuts `v1.6.0`. Production has 1 account and 19 events;
    the 19-event synthetic v1 fixture replay (+ its v2 twin) against golden projections; compose upgrade from `v1.5.2`
    images with seeded data → backfills correct; then **`v1.5.2` images on the expanded schema** boot and pass the smoke (R-b).
 7. **[X] PR** → conventional commit(s) `feat(m1a): …` with the attribution lines → CI green → squash-merge (see Ship).
-8. ~~**[I] Infra PR**~~ — **DROPPED 2026-09-28** (owner decision, ADR-0035 §2; identity's `NATS_URL` + seed move to
-   mi-06's N2 PR, mi-06 task 4). Open no infra PR; the text below is kept for the record only.
-   ~~**[I] Infra PR** in `../infra` (its own PR, never folded into the tag): add `NATS_URL` to `apps/xlearn-identity.yaml`.~~
-   This PR owns identity's prod `NATS_URL`; mi-06's identity N2 PR adds only the seed and inbox prefix. If MI-5 is live
-   and its `messaging` NetworkPolicy doesn't admit identity on 4222, add identity in this PR; if MI-5 isn't live, there's
-   nothing to change (MI-5 forward-declares identity). Merge before the tag.
+8. **[I] Infra PR: DROPPED 2026-09-28** (owner decision, ADR-0035 §2): identity's `NATS_URL` and its seed land together
+   in mi-06's N2 PR (mi-06 task 4), so this sprint opens **no** infra PR and does not own identity's prod `NATS_URL`.
+   The original step (add `NATS_URL` to `apps/xlearn-identity.yaml` and check the `messaging` NetworkPolicy before the
+   tag) is superseded.
 9. **[X] Tag `v1.6.0`** — run every release-checklist line in the plan (parallel-sessions check first:
    `git ls-remote --tags origin`, `gh pr list`, `git worktree list`, ListAgents; next free minor; major = `.release-line`).
    Release title `v1.6.0 — v2 build · M1a`. After the tag, verify by looking (D34): healthz version, `k3s kubectl get deploy -n xlearn`
@@ -117,7 +115,7 @@ contract-header lint, and cuts `v1.6.0`. Production has 1 account and 19 events;
 - `hack/lint-migrations.sh`, `hack/migrations-baseline.txt`, self-tests, CI step.
 - `internal/e2e/testdata/v1-events.jsonl` + replay test (v1 and v2 twin).
 - Updated `docs/architecture/events.md` and `data-model.md`.
-- Infra PR: identity `NATS_URL` (+ policy if needed).
+- No infra PR (task 6 dropped 2026-09-28: identity's `NATS_URL` + seed are mi-06 N2's; ADR-0035 §2).
 - Tag `v1.6.0`, verified.
 
 ## Update status
@@ -128,8 +126,8 @@ contract-header lint, and cuts `v1.6.0`. Production has 1 account and 19 events;
   MI row MI-6 → shipped in `v1.6.0`.
 - Decisions log: the mock CHECK relax and the new `xlearn:relax` marker (beyond ADR-0034 §3's `xlearn:contract`), the
   `weak_area_snapshot` v1 unique to be added to m1-08's drop list, the identity `admitted_via` backfill rule (every existing
-  row, owner included), `mock_session_item.item_id NULL` for mixed-set sessions, identity's prod `NATS_URL` owned by this
-  sprint's infra PR (not mi-06 N2), the envelope course-scoped flag. Record an ADR only if a call goes beyond ADR-0033/0034
+  row, owner included), `mock_session_item.item_id NULL` for mixed-set sessions, task 6 dropped (identity's prod `NATS_URL`
+  belongs to mi-06 N2, owner decision 2026-09-28, ADR-0035 §2), the envelope course-scoped flag. Record an ADR only if a call goes beyond ADR-0033/0034
   (check peers' ADR numbers first).
 
 ## Done when (acceptance)
@@ -138,15 +136,15 @@ contract-header lint, and cuts `v1.6.0`. Production has 1 account and 19 events;
 - [ ] Every consumer accepts a v2-envelope fixture with the same result as its v1 twin; v2-without-path dead-letters.
 - [ ] Backfills correct on a v1.5.2-shaped DB; `v1.5.2` images run on the expanded schema.
 - [ ] Migration lint in CI with green self-tests; `sqlc diff` clean; CI green.
-- [ ] Infra `NATS_URL` PR merged before the tag.
-- [ ] `v1.6.0` live and verified (healthz, images, policies, HelmReleases, smoke; identity on NATS).
+- [ ] `v1.6.0` live and verified (healthz, images, policies, HelmReleases, smoke). No identity-on-NATS check: task 6
+      was dropped (2026-09-28), so identity stays on the log publisher until mi-06's N2.
 
 ## Ship (land-and-sync — owner approval pre-granted)
 
 > Launching this prompt is the owner's approval for every change it makes (D40); don't stop for review.
 
-1. Branch `feat/m1a-expand`, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched: the xlearn PR (step 7) and the identity `NATS_URL` PR in `../infra` (step 8: its own PR, merged **before** the tag, never folded into it).
-2. Once CI is green (fix, then merge, on failure), squash-merge each. Never enable auto-merge. `../infra` has no CI: the env diff and the NetworkPolicy check in its PR body are its checks.
-3. **Release action — tag `v1.6.0`** (the next free minor): walk the release checklist (ADR-0034 §6, in the plan), push the tag, let Flux deploy, then verify live by looking (step 9: healthz, images, ImagePolicies, HelmReleases Ready, smoke, identity relay connected, `XLEARN_IDENTITY` exists).
+1. Branch `feat/m1a-expand`, then conventional commit(s) with the attribution lines, then push, then the xlearn PR (step 7). There is no infra PR (step 8 was dropped 2026-09-28).
+2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
+3. **Release action — tag `v1.6.0`** (the next free minor): walk the release checklist (ADR-0034 §6, in the plan), push the tag, let Flux deploy, then verify live by looking (step 9: healthz, images, ImagePolicies, HelmReleases Ready, smoke). Identity stays on the log publisher in `v1.6.0`, so there is no relay or `XLEARN_IDENTITY` check.
 4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
 5. Run `git checkout main && git pull` in xlearn and `../infra`. If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.
