@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB10 · A5 Arena — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB10 board-local layout (prefix ab10-). Tokens only; never restyles a ds- or xl- class.
+     The workspace shell is a board-local copy of AB07's (ab07-* → ab10-*). */
+  .ab10-flex { flex: 1; }
+  .ab10-top { position: relative; z-index: 20; }
+  .ab10-topsw { display: inline-flex; align-items: center; gap: 9px; height: 34px; padding: 0 10px; background: var(--ds-panel-2);
+    border: 1px solid var(--ds-line-2); border-radius: 8px; color: var(--ds-text); font-size: 12.5px; }
+  .ab10-ok { color: var(--ds-ok); } .ab10-err { color: var(--ds-err); } .ab10-warn { color: var(--ds-warn); }
+  .ab10-info { color: var(--ds-info); } .ab10-teal { color: var(--ds-teal); } .ab10-dim { color: var(--ds-dim); } .ab10-text { color: var(--ds-text); }
+  .ab10-ic { display: inline-flex; flex: none; }
+  .ab10-i12 { width: 12px; height: 12px; }
+  .ab10-b { font-weight: 600; color: var(--ds-text); }
+  .ab10-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .ab10-col { display: flex; flex-direction: column; gap: 10px; }
+  .ab10-help { font-size: 12px; line-height: 1.55; color: var(--ds-dim); }
+  .ab10-help b { color: var(--ds-text); font-weight: 600; }
+  .ab10-cap { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab10-mono { font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-text); overflow-wrap: anywhere; }
+  .ab10-gap { margin-bottom: 22px; }
+
+  /* the arena strip (persistent, under the top bar) */
+  .ab10-strip { display: flex; align-items: center; gap: 10px; padding: 8px 22px; border-bottom: 1px solid rgba(106,166,255,.35); background: rgba(106,166,255,.1);
+    font-size: 13px; color: var(--ds-text); }
+  .ab10-strip__n { color: var(--ds-dim); font-size: 12.5px; }
+
+  /* HUD (AB07 shell: no ring, no outlook) */
+  .ab10-hud { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; padding: 10px 22px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab10-hud__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 9px; min-width: 0; }
+  .ab10-id { font-family: var(--ds-font-mono); font-size: 13px; color: var(--ds-dim); }
+  .ab10-title { font-size: 18px; font-weight: 700; letter-spacing: -.2px; color: var(--ds-text); }
+  .ab10-aff { font-size: 11px; color: var(--ds-dim); }
+  .ab10-mk { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: var(--ds-radius-sm); border: 1px solid var(--ds-line-2);
+    background: var(--ds-inset); font-size: 12px; color: var(--ds-dim); }
+  .ab10-mk--on { color: var(--ds-text); border-color: rgba(53,208,192,.45); background: rgba(53,208,192,.1); }
+  .ab10-mk--st { color: var(--ds-text); }
+  .ab10-tmr { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border-radius: var(--ds-radius); border: 1px solid var(--ds-line-2); background: var(--ds-inset); }
+  .ab10-tmr__t { font-size: 14px; color: var(--ds-text); }
+  .ab10-tmr__t--zero { color: var(--ds-warn); }
+
+  /* three-column work area (AB07 parity) */
+  .ab10-work { display: grid; grid-template-columns: 292px minmax(0, 1fr) 270px; gap: 16px; padding: 16px 22px 90px; align-items: start; }
+  .ab10-pane__h { display: flex; align-items: center; gap: 4px; padding: 7px 10px; border-bottom: 1px solid var(--ds-line); }
+  .ab10-stmt { padding: 13px 14px 14px; font-size: 13px; line-height: 1.6; color: var(--ds-text); display: flex; flex-direction: column; gap: 9px; }
+  .ab10-cd { font-family: var(--ds-font-mono); font-size: 12px; padding: 0 5px; border-radius: 4px; background: var(--ds-inset); border: 1px solid var(--ds-line-2); }
+  .ab10-ex { font-family: var(--ds-font-mono); font-size: 11.5px; line-height: 1.6; padding: 8px 10px; border-radius: 8px; background: var(--ds-input-bg);
+    border: 1px solid var(--ds-line-2); color: var(--ds-text); overflow-wrap: anywhere; }
+  .ab10-ex i { font-style: normal; color: var(--ds-dim); }
+  .ab10-tabask { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .ab10-tabask small { font-size: 10.5px; color: var(--ds-dim); }
+
+  /* editor (CodeMirror look-alike; live class names are m3-11's) */
+  .ab10-ed__bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 9px 12px; border-bottom: 1px solid var(--ds-line); }
+  .ab10-file { display: inline-flex; align-items: center; gap: 6px; font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-text); }
+  .ab10-saved { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--ds-dim); }
+  .ab10-ed__body { padding: 10px 12px 6px; }
+  .ab10-ln { display: inline-block; width: 22px; margin-right: 12px; text-align: right; color: var(--ds-muted); user-select: none; }
+  .ab10-ed__foot { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; padding: 2px 12px 10px; font-size: 11.5px; color: var(--ds-dim); }
+  .ab10-helper { display: flex; align-items: center; gap: 7px; padding: 0 12px 10px; font-size: 12px; color: var(--ds-dim); }
+
+  /* dock (AB08 look; the full state set is AB08) */
+  .ab10-dock { border-top: 1px solid var(--ds-line); background: var(--ds-panel); border-radius: 0 0 var(--ds-radius-lg) var(--ds-radius-lg); }
+  .ab10-dock--solo { border: 1px solid var(--ds-line); border-radius: var(--ds-radius-lg); overflow: hidden; }
+  .ab10-dock__h { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--ds-line); }
+  .ab10-dock__meta { font-size: 11.5px; color: var(--ds-dim); font-family: var(--ds-font-mono); }
+  .ab10-dock__b { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 9px; font-size: 13px; }
+  .ab10-case { border: 1px solid var(--ds-line-2); border-radius: 8px; background: var(--ds-inset); overflow: hidden; }
+  .ab10-case__h { display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: 12.5px; }
+  .ab10-case__id { font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-dim); }
+  .ab10-custom { border: 1px dashed var(--ds-line-2); border-radius: 8px; padding: 9px 10px; display: flex; flex-direction: column; gap: 7px; }
+  .ab10-custom__in { font-family: var(--ds-font-mono); font-size: 11.5px; padding: 7px 9px; border-radius: 6px; background: var(--ds-input-bg); border: 1px solid var(--ds-line-2); color: var(--ds-text); }
+  .ab10-verdict { display: flex; gap: 10px; align-items: flex-start; padding: 11px 13px; border-radius: var(--ds-radius); border: 1px solid var(--ds-line-2);
+    background: var(--ds-panel-2); font-size: 13px; line-height: 1.5; color: var(--ds-text); }
+  .ab10-verdict > .ab10-ic { margin-top: 2px; }
+  .ab10-verdict--ok { border-color: rgba(87,211,154,.35); background: rgba(87,211,154,.08); }
+  .ab10-verdict--err { border-color: rgba(242,109,109,.35); background: rgba(242,109,109,.08); }
+  .ab10-verdict--warn { border-color: rgba(240,180,41,.35); background: rgba(240,180,41,.08); }
+  .ab10-verdict--info { border-color: rgba(106,166,255,.35); background: rgba(106,166,255,.1); }
+  .ab10-verdict__sub { display: block; font-size: 12px; color: var(--ds-dim); margin-top: 3px; }
+  .ab10-verdict__act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 9px; }
+  .ab10-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  /* rail */
+  .ab10-rail { display: flex; flex-direction: column; gap: 14px; }
+  .ab10-card { padding: 13px 14px; display: flex; flex-direction: column; gap: 9px; }
+  .ab10-card p { font-size: 12px; line-height: 1.5; color: var(--ds-dim); margin: 0; }
+  .ab10-card b { color: var(--ds-text); font-weight: 600; }
+
+  /* notes and banners */
+  .ab10-note { display: flex; gap: 10px; align-items: flex-start; padding: 11px 13px; border-radius: var(--ds-radius); border: 1px solid var(--ds-line-2);
+    background: var(--ds-panel-2); font-size: 13px; color: var(--ds-text); line-height: 1.5; }
+  .ab10-note > .ab10-ic { margin-top: 2px; }
+  .ab10-note--warn { border-color: rgba(240,180,41,.35); background: rgba(240,180,41,.08); }
+  .ab10-note--info { border-color: rgba(106,166,255,.35); background: rgba(106,166,255,.1); }
+  .ab10-note__sub { display: block; font-size: 12px; color: var(--ds-dim); margin-top: 3px; line-height: 1.5; }
+  .ab10-band { padding: 10px 22px 0; }
+
+  /* popover (timer) */
+  .ab10-pop { position: relative; width: 300px; padding: 13px 14px; background: var(--ds-panel); border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius);
+    box-shadow: 0 18px 40px rgba(0,0,0,.45); font-size: 13px; line-height: 1.5; color: var(--ds-text); display: flex; flex-direction: column; gap: 11px; }
+  .ab10-pop::before { content: ""; position: absolute; top: -6px; right: 30px; width: 10px; height: 10px; background: var(--ds-panel);
+    border-left: 1px solid var(--ds-line-2); border-top: 1px solid var(--ds-line-2); transform: rotate(45deg); }
+  .ab10-pop__h { display: flex; align-items: center; gap: 7px; font-weight: 600; }
+  .ab10-presets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .ab10-preset { display: grid; place-items: center; height: 32px; border-radius: 7px; border: 1px solid var(--ds-line-2); background: var(--ds-inset); font-size: 12.5px; color: var(--ds-dim); }
+  .ab10-preset--on { color: var(--ds-teal); border-color: var(--ds-teal); background: rgba(53,208,192,.12); font-weight: 600; }
+  .ab10-custom-t { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ds-dim); }
+  .ab10-mini-in { width: 64px; height: 30px; display: inline-flex; align-items: center; padding: 0 9px; border-radius: 7px; border: 1px solid var(--ds-line-2); background: var(--ds-input-bg);
+    font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-text); }
+  .ab10-anchor { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+
+  /* stages: ghost workspace behind drawers and modals */
+  .ab10-stage { position: relative; overflow: hidden; background: var(--ds-bg); }
+  .ab10-ghost { padding: 14px; display: grid; grid-template-columns: 1fr 1.6fr 0.9fr; gap: 12px; }
+  .ab10-ghost span { display: block; height: 560px; border-radius: var(--ds-radius-lg); border: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab10-ghost__hud { height: 52px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab10-scrim { position: absolute; inset: 0; background: rgba(6,9,13,.66); }
+
+  /* drawer */
+  .ab10-drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 540px; background: var(--ds-panel); border-left: 1px solid var(--ds-line);
+    box-shadow: -30px 0 70px rgba(0,0,0,.45); display: flex; flex-direction: column; }
+  .ab10-drawer__h { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--ds-line); }
+  .ab10-drawer__t { font-size: 14px; font-weight: 600; }
+  .ab10-drawer__b { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+  .ab10-hist { list-style: none; margin: 0; padding: 0; border: 1px solid var(--ds-line-2); border-radius: 8px; overflow: hidden; background: var(--ds-inset); }
+  .ab10-hist li { display: grid; grid-template-columns: 116px 62px minmax(0, 1fr) 70px; gap: 10px; align-items: center; padding: 9px 11px; border-top: 1px solid var(--ds-line); font-size: 12.5px; }
+  .ab10-hist li:first-child { border-top: none; }
+  .ab10-hist__on { background: rgba(53,208,192,.1); box-shadow: inset 2px 0 0 var(--ds-teal); }
+  .ab10-hist__m { font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-dim); }
+  .ab10-codeh { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ds-dim); }
+  .ab10-crop { display: flex; align-items: center; gap: 10px; padding: 6px 12px; border: 1px dashed var(--ds-line-2); border-top: none; border-radius: 0 0 8px 8px; margin-top: -9px;
+    font-family: var(--ds-font-mono); font-size: 10.5px; color: var(--ds-dim); background: var(--ds-bg); }
+
+  /* diff */
+  .ab10-diff { border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); overflow: hidden; background: var(--ds-input-bg); }
+  .ab10-diff__h { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--ds-line); }
+  .ab10-diff__h > span { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-dim); }
+  .ab10-diff__h > span + span { border-left: 1px solid var(--ds-line); }
+  .ab10-diff__cols { display: grid; grid-template-columns: 1fr 1fr; }
+  .ab10-diff__cols > div + div { border-left: 1px solid var(--ds-line); }
+  .ab10-dl { display: grid; grid-template-columns: 30px 18px minmax(0, 1fr); font-family: var(--ds-font-mono); font-size: 12px; line-height: 1.7; color: #cdd5e0; white-space: pre; }
+  .ab10-dl > span:first-child { text-align: right; padding-right: 8px; color: var(--ds-muted); }
+  .ab10-dl > span:nth-child(2) { text-align: center; color: var(--ds-dim); }
+  .ab10-dl--del { background: rgba(242,109,109,.1); }
+  .ab10-dl--del > span:nth-child(2) { color: var(--ds-err); font-weight: 700; }
+  .ab10-dl--add { background: rgba(87,211,154,.1); }
+  .ab10-dl--add > span:nth-child(2) { color: var(--ds-ok); font-weight: 700; }
+  .ab10-dl--pad { background: var(--ds-inset); }
+  .ab10-dl--u { grid-template-columns: 26px 26px 16px minmax(0, 1fr); font-size: 11px; }
+  .ab10-dl--u > span:nth-child(2) { text-align: right; padding-right: 6px; color: var(--ds-muted); }
+  .ab10-dl--u > span:nth-child(3) { text-align: center; color: var(--ds-dim); }
+  .ab10-dl--u.ab10-dl--del > span:nth-child(3) { color: var(--ds-err); font-weight: 700; }
+  .ab10-dl--u.ab10-dl--add > span:nth-child(3) { color: var(--ds-ok); font-weight: 700; }
+  .ab10-dl--u.ab10-dl--del > span:nth-child(2), .ab10-dl--u.ab10-dl--add > span:nth-child(2) { color: var(--ds-muted); font-weight: 400; }
+  .ab10-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--ds-dim); }
+  .ab10-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .ab10-sw { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; font-family: var(--ds-font-mono); font-weight: 700; font-size: 12px; }
+  .ab10-sw--del { background: rgba(242,109,109,.1); color: var(--ds-err); }
+  .ab10-sw--add { background: rgba(87,211,154,.1); color: var(--ds-ok); }
+
+  /* modal lists */
+  .ab10-mbody { font-size: 13.5px; line-height: 1.55; color: var(--ds-text); display: flex; flex-direction: column; gap: 10px; }
+  .ab10-mbody p { margin: 0; }
+  .ab10-mstage { position: relative; min-height: 460px; }
+
+  /* study mode (low fidelity) */
+  .ab10-lofi { border: 1px dashed var(--ds-line-2); border-radius: var(--ds-radius); background: var(--ds-inset); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .ab10-lofi__bar { display: block; height: 10px; border-radius: 5px; background: var(--ds-line); }
+  .ab10-lofi__opt { display: flex; align-items: center; gap: 9px; height: 32px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--ds-line-2); background: var(--ds-panel); }
+  .ab10-lofi__opt i { width: 14px; height: 14px; border-radius: 50%; border: 1.6px solid var(--ds-line-2); flex: none; }
+  .ab10-lofi__opt span { display: block; height: 8px; border-radius: 4px; background: var(--ds-line); }
+  .ab10-lofi__area { height: 72px; border-radius: 7px; border: 1px solid var(--ds-line-2); background: var(--ds-input-bg); }
+
+  /* v1 practice view (F9) */
+  .ab10-v1 { padding: 18px 22px 24px; display: flex; flex-direction: column; gap: 14px; }
+  .ab10-v1__grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+
+  /* limits grid */
+  .ab10-lims { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 12px; }
+  .ab10-lim { border: 1px solid var(--ds-line); border-radius: var(--ds-radius); background: var(--ds-panel); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .ab10-lim__k { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: var(--ds-dim); }
+  .ab10-lim__k code { font-family: var(--ds-font-mono); font-size: 11px; color: var(--ds-text); padding: 0 5px; border-radius: 4px; background: var(--ds-inset); border: 1px solid var(--ds-line-2); }
+  .ab10-grp { font-size: 13px; font-weight: 700; margin: 6px 0 2px; }
+  .ab10-grp small { font-weight: 500; color: var(--ds-dim); font-size: 12px; margin-left: 6px; }
+
+  /* narrow */
+  .ab10-nhud { padding: 9px 12px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); display: flex; flex-direction: column; gap: 8px; }
+  .ab10-nrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .ab10-nstrip { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-bottom: 1px solid rgba(106,166,255,.35); background: rgba(106,166,255,.1); font-size: 12px; color: var(--ds-text); }
+  .ab10-ntabs { padding: 6px 12px 0; border-bottom: 1px solid var(--ds-line); }
+  .ab10-nbody { padding: 12px 12px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .ab10-nbar { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab10-nbar > * { flex: 1; }
+  .ab10-nsheet { background: var(--ds-panel); min-height: 700px; display: flex; flex-direction: column; }
+  .ab10-nsheet__h { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--ds-line); }
+  .ab10-nhist li { grid-template-columns: minmax(0, 1fr) auto; row-gap: 3px; }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5" /><path d="M6 10.2V19h12v-8.8" /></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7 9 5z" /><path d="M9 5v12M15 7v12" /></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4" /></symbol>
+  <symbol id="i-journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 3v18M12.5 8h3.5M12.5 12h3.5" /></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.4" /><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" /></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V11M10 19V5M16 19v-6" /><path d="M3 21h18" /></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A2 2 0 0 1 7 3h12v15H7a2 2 0 0 0-2 2z" /><path d="M5 4.5V19" /></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6" /><path d="M10 20a2 2 0 0 0 4 0" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></symbol>
+  <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" /></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" /></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z" /><path d="M12 10v4M12 17h.01" /></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" /></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5z" /><path d="M3 12.5 12 17l9-4.5M3 17 12 21.5 21 17" /></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2" /><rect x="3" y="14" width="18" height="7" rx="2" /><path d="M7 7.5h.01M7 17.5h.01" /></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4" /></symbol>
+  <symbol id="i-spinner" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 1-9 9" /></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9" /><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z" /></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></symbol>
+  <symbol id="i-flagx" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" /><path d="M14 16l5 5M19 16l-5 5" /></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" /></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" /></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 16a8 8 0 1 1 16 0" /><path d="M12 16l4-5" /></symbol>
+  <symbol id="i-off" viewBox="0 0 24 24"><path d="M12 3v8" /><path d="M6.4 7.4a8 8 0 1 0 11.2 0" /></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5h16l-6 7.5V19l-4 2v-8.5z" /></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z" /><path d="M14 3v5h5" /></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14" /></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+  <symbol id="i-list2" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" /></symbol>
+  <symbol id="i-diff" viewBox="0 0 24 24"><path d="M6 3v12M6 9h6M18 21V9M12 15h6" /><circle cx="6" cy="18" r="2.4" /><circle cx="18" cy="6" r="2.4" /></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 1.5M9.5 2.5h5" /></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-3.8 2.5-5 .3 1.6 1.2 2.6 2.5 3 .2-2.8-.8-5.5 0-8z" /></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.6 3 8.3 7 10 4-1.7 7-5.4 7-10V6z" /></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></symbol>
+  <symbol id="i-dash" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" /></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M18 5l2 2M15 8l2 2" /></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 11V5.5a1.5 1.5 0 0 1 3 0V11M11 10V4a1.5 1.5 0 0 1 3 0v6M14 10V5.5a1.5 1.5 0 0 1 3 0V13c0 4-2.5 8-7 8-3 0-4.5-1.5-6-4l-1.5-3a1.5 1.5 0 0 1 2.6-1.5L8 14" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · M3 board</div>
+  <h1>AB10 · A5 Arena</h1>
+  <p class="bd-lede">
+    The arena workspace for one item, <code class="ds-mono">/xlearn/dsa/problem/:id?practice=1</code> (v1's arena URL; m3-12 may rename it — the board doesn't fix the route).
+    It reuses <a href="AB07-workspace-code.html">AB07</a>'s shell (statement left, editor and <a href="AB08-results-dock.html">AB08</a>'s dock centre, a right rail) with an arena HUD:
+    <b>no server timer ring, no grade outlook, no hint gate, no give-up</b>. <b>Nothing here counts</b> (D10): arena submits are kept as a history, Runs aren't, the arena has its own done marker
+    and a <b>manual timer that is off by default</b>. The arena is <b>unrestricted</b> (D17): nothing locks during a live attempt or a due review, and an early Solution reveal is
+    <b>recorded but never caps</b> the course grade. t4 §3.7 / §8's arena locks and reveal cap are superseded and are not drawn.
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-m3-02.md">ds-m3-02</a></span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-m3-12.md">m3-12</a> task 3 (Arena on m3-11's Workspace shell)</span>
+    <span><b>Frozen before</b>the M3 UI sprint</span>
+    <span><b>Sources</b>D10 · D17 · <a href="../../../docs/v2/research/t4-judge-contract.md#37-touches-mocks-arena">t4 §3.7</a> as overridden by
+      <a href="../../../docs/v2/research/t4-judge-contract.md#13-owner-decisions--resolved-2026-09-24-they-override-the-body-where-they-conflict">§13</a> ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#44-which-steps-run-in-which-context">t4 §4.4</a> ·
+      <a href="../../../docs/adr/0027-content-evalpack-and-user-data-model.md#4-problems-arena">ADR-0027 §4</a> ·
+      <a href="../../../docs/adr/0029-judge-contract-and-learning-signal.md#4-learning-loop">ADR-0029 §4</a> ·
+      PRD §5.5 R-AR1 + §5.6 R-AR1 (amended) · <a href="../../../docs/adr/0035-v2-operations-nats-auth-limits-capacity.md#4-limits-inventory">ADR-0035 §4</a> (L6, L9) ·
+      <a href="../../../docs/v2/sprints/sprint-m3-09.md">m3-09</a> task 4 (arena routes)</span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB10-F1">F1 arena default</a><a href="#AB10-F2">F2 manual timer</a><a href="#AB10-F3">F3 submit results</a><a href="#AB10-F4">F4 history drawer</a><a href="#AB10-F5">F5 diff</a>
+    <a href="#AB10-F6">F6 spoiler confirm</a><a href="#AB10-F7">F7 item is live</a><a href="#AB10-F8">F8 study mode</a><a href="#AB10-F9">F9 judge off</a><a href="#AB10-F10">F10 limits</a><a href="#AB10-F11">F11 narrow</a>
+  </nav>
+</header>
+
+<!-- ======================================================== rules -->
+<section class="bd-section" aria-labelledby="sec-rules">
+  <h2 class="bd-section__h" id="sec-rules">Board-wide rules <small>D10 · D17 · ADR-0027 §4 · t4 §4.4</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <div class="bd-strip" style="align-items:flex-start">
+      <div class="ab10-col" style="gap:6px">
+        <span><b>Nothing here counts (D10).</b> The arena context id is <code class="ds-mono">uuidv5(account, item)</code>, derived <b>server-side</b> (judge ignores any client value; the SPA
+          never sends one). <b>Runs aren't persisted</b> — samples and custom input only, with no reference oracle for custom input. <b>Arena submits are persisted</b> (History, F4) and are
+          <b>learner-private</b> in v2.0: they never reach <code class="ds-mono">/public/stats</code> (P10 allowlist). <b>No arena event is ever emitted</b>; no practice call, attempt, timer,
+          grade, revision or mistake comes from here. The only state the arena changes is its own marker (<code class="ds-mono">arena_progress</code>) and, once, the reveal record (F6).</span>
+        <span><b>The arena runs <code class="ds-mono">code</code> steps only</b> (t4 §4.4): a <code class="ds-mono">key</code> or <code class="ds-mono">ai_rubric</code> step shows AB08-F13's
+          "Checked only in a course attempt or review."; quiz and canvas items open in study mode (F8).</span>
+      </div>
+    </div>
+    <div class="bd-strip" style="align-items:flex-start">
+      <div class="ab10-col" style="gap:6px">
+        <span><b>Unrestricted (D17).</b> There is <b>no lock state</b> on this board. Run, Submit, History, Copy to editor, Diff and Solution work during an open course attempt and during a due
+          or live review. t4 §3.7 / §8's "Finish your review first" locks and its "caps your course attempt at Assisted" confirm are superseded (t4 §13, PRD R-AR1 amended) and are not drawn.</span>
+        <span><b>Withheld ≠ locked.</b> What <code class="ds-mono">withhold()</code> strips on every surface while an item is live — the pattern chip, concept chips, the hint stage — is simply
+          <b>absent</b> here, never drawn as a lock (ADR-0027 §1 nudge). The Solution is the one stage behind a question (F6), and answering it is recorded, never capped.</span>
+        <span><b>Copy is AB08's.</b> Verdict lines, limit lines and history rows are <a href="AB08-results-dock.html">AB08</a>'s strings, verbatim; "arena" is added only to the quota line, as AB08-F15 already does.</span>
+      </div>
+    </div>
+  </div>
+  <div class="bd-strip" style="margin-top:14px"><span><b>A11y on every frame.</b> Text <code class="ds-mono">--ds-text</code> 15:1 and <code class="ds-mono">--ds-dim</code> 7.2:1 on the panels; <code class="ds-mono">--ds-muted</code> only for non-essential meta; badge and chip text ≥ 5.5:1 on its tint. Every tone travels with a word or an icon, never colour alone.
+    The drawn focus ring (<code class="ds-mono">bd-focus</code>, the app's <code class="ds-mono">:focus-visible</code>) marks where focus lands first in a frame; each frame's notes give its focus order. Status changes are <code class="ds-mono">aria-live="polite"</code>; nothing steals focus; <code class="ds-mono">ds-spin</code> becomes a static icon under reduced motion. Touch targets ≥ 24 px with 8 px spacing (WCAG 2.5.8); 44 px rows in the 390 px sheets.</span></div>
+</section>
+
+<!-- ======================================================== A · workspace -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · The arena workspace <small>F1 · #16 3Sum · Mon, Oct 12 · not started in the course · item not live</small></h2>
+  <article class="bd-frame" id="AB10-F1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB10-F1</span><span class="bd-frame__title">· Arena default</span><span class="bd-frame__state">· 13:58 · a sample Run just returned · 2 arena submits so far</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--change">replaces v1 PracticeWorkspace</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar"><aside class="xl-side"><div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div><nav class="xl-nav"><a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a><a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a><a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a></nav><div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div></aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab10-top"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><a>problems</a><span class="xl-crumb__sep">/</span><b>#16 · arena</b></div><span class="ab10-flex"></span><span class="ab10-topsw"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span><span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span><span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span></div>
+            <div class="ab10-strip" role="note"><span class="ds-badge ds-badge--info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-target"/></svg> Arena</span><span>Nothing here counts toward your course.</span></div>
+            <div class="ab10-hud" role="region" aria-label="Arena">
+              <div class="ab10-hud__meta">
+                <span class="ab10-id">#16</span><span class="ab10-title">3Sum</span><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs">Core</span><span class="xl-pat">Two Pointers</span>
+                <a class="ds-chip ds-chip--xs">Original · inspired by LeetCode 15 <svg class="xl-ico" style="width:11px;height:11px" aria-hidden="true"><use href="#i-ext"/></svg></a><span class="ab10-aff">Not affiliated with LeetCode</span>
+              </div>
+              <span class="ab10-flex"></span>
+              <span class="ab10-mk" role="status" aria-label="Arena marker: not solved in the arena yet"><svg class="xl-ico ab10-i12" aria-hidden="true"><use href="#i-target"/></svg>Not solved in the arena yet</span>
+              <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button" aria-haspopup="dialog" aria-expanded="false"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-timer"/></svg> Timer off</span>
+              <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button" aria-haspopup="dialog"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-history"/></svg> History (2)</span>
+            </div>
+            <div class="ab10-work">
+              <!-- left -->
+              <section class="xl-panel" aria-label="Problem">
+                <div class="ab10-pane__h"><div class="ds-tabs" role="tablist" aria-label="Problem"><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Statement</span><span class="ds-tab" role="tab" aria-selected="false">Hints</span><span class="ds-tab" role="tab" aria-selected="false" aria-haspopup="dialog"><span class="ab10-tabask"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eye"/></svg>Solution <small>asks first</small></span></span></div></div>
+                <div class="ab10-stmt">
+                  <p>You're given an integer array <span class="ab10-cd">nums</span>. Return every distinct triple of values that adds up to 0, where the three values sit at three different indices.</p>
+                  <p>List each distinct triple once. The triples can come in any order, and so can the values inside a triple.</p>
+                  <div class="ab10-cap">Sample 1</div>
+                  <div class="ab10-ex">nums = [3, -1, -2, 0, 1, -3]<br><i>→</i> [[-3, 0, 3], [-2, -1, 3], [-1, 0, 1]]</div>
+                  <div class="ab10-cap">Sample 2</div>
+                  <div class="ab10-ex">nums = [-2, 0, 0, 2, 2]<br><i>→</i> [[-2, 0, 2]]</div>
+                  <div class="ab10-cap">Constraints</div>
+                  <div class="ab10-ex">3 ≤ nums.length ≤ 3000<br>−10⁵ ≤ nums[i] ≤ 10⁵</div>
+                  <div class="ab10-cap">Signature · Go</div>
+                  <div class="ab10-ex">func threeSum(nums []int) [][]int</div>
+                </div>
+              </section>
+              <!-- centre -->
+              <section class="xl-panel" aria-label="Your code">
+                <div class="ab10-ed__bar">
+                  <span class="ab10-file"><svg class="xl-ico xl-ico--sm ab10-dim" aria-hidden="true"><use href="#i-code"/></svg> solution.go</span>
+                  <div class="ds-seg" role="radiogroup" aria-label="Language"><button type="button" class="ds-seg__btn ds-seg__btn--on" role="radio" aria-checked="true">Go</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">C++</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Python</button></div>
+                  <span class="ab10-flex"></span>
+                  <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Run <span class="xl-kbd">⌘↵</span></span>
+                  <span class="ds-btn ds-btn--primary ds-btn--sm" role="button" aria-describedby="f1-help"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-send"/></svg> Submit <span class="xl-kbd">⌘⇧↵</span></span>
+                </div>
+                <div class="ab10-ed__body">
+<pre class="xl-code" aria-label="Code editor, Go"><span class="ab10-ln">1</span><span class="k">func</span> <span class="fn">threeSum</span>(nums []<span class="t">int</span>) [][]<span class="t">int</span> {
+<span class="ab10-ln">2</span>    sort.<span class="fn">Ints</span>(nums)
+<span class="ab10-ln">3</span>    out := [][]<span class="t">int</span>{}
+<span class="ab10-ln">4</span>    <span class="k">for</span> i := <span class="n">0</span>; i &lt; <span class="fn">len</span>(nums)-<span class="n">2</span> &amp;&amp; nums[i] &lt;= <span class="n">0</span>; i++ {
+<span class="ab10-ln">5</span>        <span class="k">if</span> i &gt; <span class="n">0</span> &amp;&amp; nums[i] == nums[i-<span class="n">1</span>] {
+<span class="ab10-ln">6</span>            <span class="k">continue</span> <span class="c">// same first value: same triples</span>
+<span class="ab10-ln">7</span>        }
+<span class="ab10-ln">8</span>        l, r := i+<span class="n">1</span>, <span class="fn">len</span>(nums)-<span class="n">1</span>
+<span class="ab10-ln">9</span>        <span class="k">for</span> l &lt; r {
+<span class="ab10-ln">10</span>            s := nums[i] + nums[l] + nums[r]
+<span class="ab10-ln">11</span>            <span class="k">switch</span> {
+<span class="ab10-ln">12</span>            <span class="k">case</span> s &lt; <span class="n">0</span>:
+<span class="ab10-ln">13</span>                l++
+<span class="ab10-ln">14</span>            <span class="k">case</span> s &gt; <span class="n">0</span>:
+<span class="ab10-ln">15</span>                r--</pre>
+                  <div class="bd-crop" style="margin-top:-9px;border:1px dashed var(--ds-line-2);border-top:none;border-radius:0 0 8px 8px">frame cropped · the draft continues (27 lines)</div>
+                </div>
+                <div class="ab10-ed__foot"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-keyboard"/></svg><span class="xl-kbd">Tab</span> indents · <span class="xl-kbd">Esc</span> then <span class="xl-kbd">Tab</span> leaves the editor<span class="ab10-flex"></span><span class="ab10-saved" role="status"><svg class="xl-ico xl-ico--sm ab10-ok" aria-hidden="true"><use href="#i-check"/></svg> Saved · 10 s ago</span></div>
+                <div class="ab10-helper" id="f1-help"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg>Arena submits run the hidden tests but never count</div>
+                <section class="ab10-dock" aria-label="Results">
+                  <div class="ab10-dock__h">
+                    <div class="ds-tabs" role="tablist" aria-label="Results"><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Samples</span><span class="ds-tab" role="tab" aria-selected="false">Submission</span></div>
+                    <span class="ab10-flex"></span><span class="ab10-dock__meta">Run · 13:58 · Go · not counted</span>
+                  </div>
+                  <div class="ab10-dock__b" aria-live="polite">
+                    <div class="ab10-case"><div class="ab10-case__h"><span class="ab10-ic ab10-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab10-case__id">s1</span><span class="ab10-b" style="color:var(--ds-ok)">Passed</span><span class="ab10-help ds-mono">nums = [3, -1, -2, 0, 1, -3]</span></div></div>
+                    <div class="ab10-case"><div class="ab10-case__h"><span class="ab10-ic ab10-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span class="ab10-case__id">s2</span><span class="ab10-b" style="color:var(--ds-ok)">Passed</span><span class="ab10-help ds-mono">nums = [-2, 0, 0, 2, 2]</span></div></div>
+                    <div class="ab10-custom">
+                      <div class="ab10-row" style="gap:8px"><span class="ab10-b" style="font-size:12.5px">Custom input</span><span class="ab10-help">≤ 64 KiB</span><span class="ab10-flex"></span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Run custom</span></div>
+                      <div class="ab10-custom__in">nums = [-1, -1, 0, 1, 2, -1]</div>
+                      <div class="ab10-row" style="gap:8px;align-items:flex-start"><span class="ab10-ic ab10-dim"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg></span><span class="ab10-mono"><span class="ab10-dim">Your output:</span> [[-1, -1, 2], [-1, 0, 1]]</span></div>
+                      <span class="ab10-help">Custom input — you'll see only your own output; there's no reference to compare against.</span>
+                    </div>
+                  </div>
+                </section>
+              </section>
+              <!-- right -->
+              <aside class="ab10-rail" aria-label="Arena">
+                <section class="xl-panel ab10-card" aria-labelledby="f1-ar">
+                  <div class="ab10-cap" id="f1-ar">Arena marker</div>
+                  <div class="ab10-row" style="gap:8px"><svg class="xl-ico xl-ico--sm ab10-dim" aria-hidden="true"><use href="#i-target"/></svg><b style="font-size:13px">Not solved in the arena yet</b></div>
+                  <p>Your first passing arena submit sets it. It never changes anything in your course.</p>
+                  <p><b>2</b> arena submits so far · Runs aren't kept.</p>
+                </section>
+                <section class="xl-panel ab10-card" aria-labelledby="f1-co">
+                  <div class="ab10-cap" id="f1-co">In your course</div>
+                  <div class="ab10-row" style="gap:8px"><span class="ab10-dim ds-mono">—</span><b style="font-size:13px">Not started</b><span class="ab10-help">· Week 2, your current week</span></div>
+                  <a class="ab10-row" style="gap:6px;font-size:12.5px">Open the course attempt <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+                  <p>Only the course attempt is graded and scheduled for revision.</p>
+                </section>
+              </aside>
+            </div>
+          </div>
+          <span class="xl-fab" aria-label="Open Your AI coach (your key)"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-spark"/></svg></span>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li><code>GET /api/problems/16?practice=1</code> (the arena GET): not live → the study view (statement, hints, the pattern chip), with the <b>solution stages withheld</b> until the reveal because the course attempt hasn't concluded (m3-09). Marker from <code>GET /api/paths/dsa/arena/progress</code>; history count from <code>GET /api/problems/16/arena/history</code>.</li>
+          <li><b>Run</b> (<span class="xl-kbd">⌘↵</span>) → <code>POST /api/problems/16/runs {context: arena, language, parts[], runInput?}</code> → AB08-F1's Samples view; not persisted. <b>Submit</b> (<span class="xl-kbd">⌘⇧↵</span>) → <code>POST /api/problems/16/submissions {context: arena, action: submit, parts[]}</code> + <code>Idempotency-Key</code>; the gateway adds <code>item_id</code> and the kind only — judge derives <code>uuidv5(sub, item)</code>. Persisted; <b>never counted</b>.</li>
+          <li>Drafts autosave per language under the arena context (<code>GET/PUT /api/problems/16/drafts?context=arena</code>), separate from the course draft.</li></ul></section>
+      <section><h4>What's not here (vs AB07)</h4>
+        <ul><li><b>No server timer ring</b> — only the manual timer button (F2). <b>No grade outlook</b>, <b>no hint gate</b> (hints are a tab, never timed), <b>no Give up</b>, no stage stepper, no Feedback tab (there's no counted conclusion) and History is a drawer (F4), not a dock tab.</li>
+          <li>The strip is persistent on every arena frame, <code>role="note"</code>, read once after the page title.</li>
+          <li>The rail's "In your course" card links to the course attempt (AB07-F1 cover) so the learner can start the counted one; it shows the course marker's state from practice, read-only.</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>D10 (never counts; own marker; manual timer) · D17 (unrestricted) · D20 languages · ADR-0027 §4 · PRD R-AR1. Sample draft, Run and times.</li>
+          <li>Focus order: strip → HUD (marker, Timer, History) → problem tabs → language → Run → Submit → editor → dock → rail → coach. The Submit helper is its <code>aria-describedby</code>. Marker changes announce politely (F3). Text 15:1, dim 7.2:1; info strip text 13:1 on its tint.</li>
+          <li>&lt; 1024 px: Statement / Work / Results tabs (AB07 parity), F11.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ======================================================== B · timer -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · Manual timer <small>F2 · D10: manual, client-side, off by default · never recorded</small></h2>
+  <div class="bd-grid" id="AB10-F2">
+    <article class="bd-frame" id="AB10-F2a">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F2a</span><span class="bd-frame__title">· Timer popover</span><span class="bd-frame__state">· opened from [Timer off]</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">D10</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <div class="ab10-anchor">
+          <span class="ds-btn ds-btn--secondary ds-btn--sm bd-focus" role="button" aria-haspopup="dialog" aria-expanded="true" aria-controls="f2-pop"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-timer"/></svg> Timer off</span>
+          <div class="ab10-pop" id="f2-pop" role="dialog" aria-labelledby="f2-h">
+            <div class="ab10-pop__h" id="f2-h"><svg class="xl-ico xl-ico--sm ab10-teal" aria-hidden="true"><use href="#i-timer"/></svg> Timer</div>
+            <div class="ab10-presets" role="radiogroup" aria-label="Length"><span class="ab10-preset" role="radio" aria-checked="false">15 min</span><span class="ab10-preset ab10-preset--on" role="radio" aria-checked="true">25 min</span><span class="ab10-preset" role="radio" aria-checked="false">45 min</span><span class="ab10-preset" role="radio" aria-checked="false">Custom</span></div>
+            <div class="ab10-custom-t"><span>Custom</span><span class="ab10-mini-in" style="color:var(--ds-muted)">mm</span><span>minutes, 1–120</span></div>
+            <div class="ab10-row" style="gap:8px"><span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Start</span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button" aria-disabled="true" style="opacity:.5">Reset</span></div>
+            <p class="ab10-help" style="margin:0">Only you see this timer. It isn't recorded.</p>
+          </div>
+        </div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Client-only: <code>sessionStorage</code> per item (wrapped in try/catch; private windows just forget it). No request, no event, never on the server. Presets 15 / 25 / 45 min + Custom (1–120). Reset is disabled until a timer exists. Non-modal; <span class="xl-kbd">Esc</span> closes; focus returns to the button.</li></ul></aside>
+    </article>
+    <article class="bd-frame" id="AB10-F2b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F2b</span><span class="bd-frame__title">· Running</span><span class="bd-frame__state">· 18:42 left · popover reopened</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">D10</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <div class="ab10-anchor">
+          <span class="ab10-row" style="gap:8px"><span class="ab10-mk"><svg class="xl-ico ab10-i12" aria-hidden="true"><use href="#i-target"/></svg>Not solved in the arena yet</span>
+            <span class="ab10-tmr" role="button" aria-expanded="true" aria-label="Your timer, 18 minutes 42 seconds left"><span class="xl-timer"><svg class="xl-ico xl-ico--sm ab10-teal" aria-hidden="true"><use href="#i-timer"/></svg><span class="xl-timer__t ab10-tmr__t">18:42</span></span></span></span>
+          <div class="ab10-pop" role="dialog" aria-label="Timer">
+            <div class="ab10-pop__h"><svg class="xl-ico xl-ico--sm ab10-teal" aria-hidden="true"><use href="#i-timer"/></svg> Timer · 25 min</div>
+            <div class="ab10-row" style="gap:8px"><span class="ds-btn ds-btn--secondary ds-btn--sm bd-focus" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg> Pause</span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-retry"/></svg> Reset</span></div>
+            <p class="ab10-help" style="margin:0">Only you see this timer. It isn't recorded.</p>
+          </div>
+        </div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Running: a small <code>xl-timer</code> replaces the button in the HUD (it is the button). <code>role="timer"</code>, <code>aria-live="off"</code>; one polite line at 1:00 left. Pause / Reset in the same popover (m3-12). It keeps running across tabs of the same session; it never pauses on its own.</li></ul></aside>
+    </article>
+    <article class="bd-frame" id="AB10-F2c">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F2c</span><span class="bd-frame__title">· At zero</span><span class="bd-frame__state">· no modal · no lock</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">D10</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab10-col">
+        <div class="ab10-row" style="justify-content:flex-end;gap:8px"><span class="ab10-mk"><svg class="xl-ico ab10-i12" aria-hidden="true"><use href="#i-target"/></svg>Not solved in the arena yet</span>
+          <span class="ab10-tmr ab10-tmr--zero" role="button" aria-label="Your timer ended"><span class="xl-timer"><svg class="xl-ico xl-ico--sm ab10-warn" aria-hidden="true"><use href="#i-timer"/></svg><span class="xl-timer__t ab10-tmr__t ab10-tmr__t--zero">0:00</span></span></span></div>
+        <div class="ab10-note ab10-note--info" role="status"><span class="ab10-ic ab10-info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-timer"/></svg></span><span>Time's up on your timer. Keep going — nothing is recorded.</span></div>
+        <div class="ab10-row" style="gap:8px;justify-content:flex-end"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Run</span><span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-send"/></svg> Submit</span><span class="ab10-help">still enabled</span></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>At 0:00 the digits turn amber and one inline line appears under the HUD (<code>role="status"</code>, polite). <b>No modal, no lock, no sound</b>; Run and Submit stay enabled. The line goes when the learner resets or starts a new timer. Reduced motion changes nothing (there's no animation).</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<!-- ======================================================== C · submit results -->
+<section class="bd-section" aria-labelledby="sec-c">
+  <h2 class="bd-section__h" id="sec-c">C · Arena submit results <small>F3 · AB08's dock copy verbatim + a "not counted" chip</small></h2>
+  <div class="bd-grid bd-grid--wide" id="AB10-F3">
+    <article class="bd-frame" id="AB10-F3a">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F3a</span><span class="bd-frame__title">· Wrong answer</span><span class="bd-frame__state">· arena submit #2 · 13:55</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">AB08-F6 copy</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <section class="ab10-dock ab10-dock--solo" aria-label="Results">
+          <div class="ab10-dock__h"><div class="ds-tabs" role="tablist"><span class="ds-tab" role="tab">Samples</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Submission</span></div><span class="ab10-flex"></span><span class="ab10-dock__meta">Arena · #2 · 13:55 · Go</span><span class="ds-chip ds-chip--xs">not counted</span></div>
+          <div class="ab10-dock__b" aria-live="polite">
+            <div class="ab10-verdict ab10-verdict--err" role="status"><span class="ab10-ic ab10-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><span><b>Wrong answer:</b> 37/40 hidden passed. Hidden inputs aren't shown; try edge cases with a custom Run.</span></div>
+            <div class="ab10-chips"><span class="ds-chip ds-chip--xs"><svg class="xl-ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-check"/></svg> Samples 2/2</span><span class="ds-chip ds-chip--xs">Hidden 37/40</span><span class="ds-chip ds-chip--xs">Performance · not run</span></div>
+          </div>
+        </section>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Arena · <b>Wrong answer</b> · 37/40 hidden passed: the header says <b>Arena</b> and carries the <code>not counted</code> chip; the verdict line is AB08-F6's, unchanged. Tone follows the verdict class (red ✗), as in AB08; the chip carries the arena meaning. Hidden = count + perf bit + first class only.</li></ul></aside>
+    </article>
+    <article class="bd-frame" id="AB10-F3b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F3b</span><span class="bd-frame__title">· Too slow (perf TLE)</span><span class="bd-frame__state">· one perf bit · example, not in #16's history</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">AB08-F7 copy</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <section class="ab10-dock ab10-dock--solo" aria-label="Results">
+          <div class="ab10-dock__h"><div class="ds-tabs" role="tablist"><span class="ds-tab" role="tab">Samples</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Submission</span></div><span class="ab10-flex"></span><span class="ab10-dock__meta">Arena · Go</span><span class="ds-chip ds-chip--xs">not counted</span></div>
+          <div class="ab10-dock__b" aria-live="polite">
+            <div class="ab10-verdict ab10-verdict--err" role="status"><span class="ab10-ic ab10-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span><span><b>Too slow on large inputs:</b> correctness 40/40, performance failed. Check your complexity against n ≤ 3000.</span></div>
+            <div class="ab10-chips"><span class="ds-chip ds-chip--xs">Hidden 40/40</span><span class="ds-chip ds-chip--xs">Performance ✗ failed</span></div>
+          </div>
+        </section>
+      </div></div>
+      <aside class="bd-notes"><ul><li>"correctness 40/40, performance failed". "n ≤ 3000" is filled from #16's own largest-input bound, as AB08-F7 notes. No per-case time, no ordinal.</li></ul></aside>
+    </article>
+    <article class="bd-frame" id="AB10-F3c">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F3c</span><span class="bd-frame__title">· Compile error against the hidden API</span><span class="bd-frame__state">· free class</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">AB08-F9 copy</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <section class="ab10-dock ab10-dock--solo" aria-label="Results">
+          <div class="ab10-dock__h"><div class="ds-tabs" role="tablist"><span class="ds-tab" role="tab">Samples</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Submission</span></div><span class="ab10-flex"></span><span class="ab10-dock__meta">Arena · #1 · Oct 11 · 21:40 · Python</span><span class="ds-chip ds-chip--xs">not counted</span></div>
+          <div class="ab10-dock__b" aria-live="polite">
+            <div class="ab10-verdict ab10-verdict--warn" role="status"><span class="ab10-ic ab10-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span>Hidden tests don't compile against your code. Check the required signature. (Not counted.)
+              <span class="ab10-verdict__sub">Required: <span class="ab10-mono">def three_sum(nums: list[int]) -&gt; list[list[int]]</span></span></span></div>
+          </div>
+        </section>
+      </div></div>
+      <aside class="bd-notes"><ul><li>AB08-F9's fixed text; the "Required:" line repeats the public signature in the submit's language (Python here). CE is a free class everywhere, so "(Not counted.)" reads the same in the arena.</li></ul></aside>
+    </article>
+    <article class="bd-frame" id="AB10-F3d">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F3d</span><span class="bd-frame__title">· Accepted → marker flips</span><span class="bd-frame__state">· arena submit #3 · 14:02</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">AB08-F5 copy</span><span class="bd-tag bd-tag--new">marker</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab10-col" style="gap:12px">
+        <div class="ab10-row" style="justify-content:flex-end;gap:8px">
+          <span class="ab10-mk ab10-mk--on" role="status" aria-live="polite"><svg class="xl-ico ab10-i12 ab10-teal" aria-hidden="true"><use href="#i-check"/></svg>Solved in the arena · just now</span>
+          <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-timer"/></svg> Timer off</span>
+          <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-history"/></svg> History (3)</span>
+        </div>
+        <section class="ab10-dock ab10-dock--solo" aria-label="Results">
+          <div class="ab10-dock__h"><div class="ds-tabs" role="tablist"><span class="ds-tab" role="tab">Samples</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Submission</span></div><span class="ab10-flex"></span><span class="ab10-dock__meta">Arena · #3 · 14:02 · Go</span><span class="ds-chip ds-chip--xs">not counted</span></div>
+          <div class="ab10-dock__b" aria-live="polite">
+            <div class="ab10-verdict ab10-verdict--ok" role="status"><span class="ab10-ic ab10-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span><b>All hidden tests passed · 40/40 · performance ✓</b><span class="ab10-verdict__sub">Time ≤ 0.5 s · Memory ≤ 64 MB</span></span></div>
+          </div>
+        </section>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Accepted · 40/40 · performance passed → judge upserts <code>arena_progress(first_passed_at, submits, source=auto)</code> in the result transaction; the HUD marker flips to <b>"Solved in the arena · just now"</b> ("Oct 12" once the page reloads) and announces "Solved in the arena." politely. Nothing else changes: no course marker, no week rollup, no Progress number (D10). A later pass keeps <code>first_passed_at</code>.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<!-- ======================================================== D · history + diff -->
+<section class="bd-section" aria-labelledby="sec-d">
+  <h2 class="bd-section__h" id="sec-d">D · History and diff <small>F4–F5 · read-only · R-AR1 · Runs aren't kept</small></h2>
+  <article class="bd-frame ab10-gap" id="AB10-F4">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB10-F4</span><span class="bd-frame__title">· History drawer</span><span class="bd-frame__state">· 3 arena submits · the 13:55 one selected</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">R-AR1</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="ab10-stage" style="height:720px">
+          <div class="ab10-ghost__hud" aria-hidden="true"></div>
+          <div class="ab10-ghost" aria-hidden="true"><span></span><span></span><span></span></div>
+                    <aside class="ab10-drawer" role="dialog" aria-modal="false" aria-labelledby="f4-h">
+            <div class="ab10-drawer__h"><svg class="xl-ico xl-ico--sm ab10-teal" aria-hidden="true"><use href="#i-history"/></svg><span class="ab10-drawer__t" id="f4-h">Arena history · 3 submits</span><span class="ab10-help">(Runs aren't kept)</span><span class="ab10-flex"></span><span class="ds-iconbtn" role="button" aria-label="Close history"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+            <div class="ab10-drawer__b">
+              <ul class="ab10-hist" role="listbox" aria-label="Arena submits, newest first">
+                <li role="option" aria-selected="false"><span class="ab10-hist__m">Oct 12 · 14:02</span><span class="ab10-hist__m">Go</span><span><span class="ab10-ok">✓</span> Accepted</span><span class="ab10-hist__m">40/40</span></li>
+                <li class="ab10-hist__on bd-focus" role="option" aria-selected="true"><span class="ab10-hist__m">Oct 12 · 13:55</span><span class="ab10-hist__m">Go</span><span><span class="ab10-err">✗</span> Wrong answer</span><span class="ab10-hist__m">37/40</span></li>
+                <li role="option" aria-selected="false"><span class="ab10-hist__m">Oct 11 · 21:40</span><span class="ab10-hist__m">Python</span><span><span class="ab10-warn">⚠</span> Compile error · not counted</span><span class="ab10-hist__m">—</span></li>
+              </ul>
+              <div class="ab10-codeh"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-file"/></svg><span>Submission Oct 12 · 13:55 · Go · read-only</span></div>
+<pre class="xl-code" aria-label="Arena submission of Oct 12, 13:55, read-only" style="font-size:12px"><span class="k">func</span> <span class="fn">threeSum</span>(nums []<span class="t">int</span>) [][]<span class="t">int</span> {
+    sort.<span class="fn">Ints</span>(nums)
+    out := [][]<span class="t">int</span>{}
+    <span class="k">for</span> i := <span class="n">0</span>; i &lt; <span class="fn">len</span>(nums)-<span class="n">2</span>; i++ {
+        l, r := i+<span class="n">1</span>, <span class="fn">len</span>(nums)-<span class="n">1</span>
+        <span class="k">for</span> l &lt; r {
+            s := nums[i] + nums[l] + nums[r]
+            <span class="k">switch</span> {
+            <span class="k">case</span> s &lt; <span class="n">0</span>:
+                l++</pre>
+              <div class="ab10-crop">frame cropped · the submission continues (13 more lines)</div>
+              <div class="ab10-row" style="gap:8px"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-copy"/></svg> Copy to editor</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-diff"/></svg> Diff with editor</span></div>
+              <span class="ab10-help">Copy replaces your Go draft (you can undo). Diff compares this submission with what's in your editor now.</span>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Data</h4>
+        <ul><li><code>GET /api/problems/16/arena/history?cursor=</code> → rows <code>{submissionId, submittedAt, language, status, class?, hidden{passed,total}?}</code>, newest first, 20 per page ("Show older" at the end). Selecting a row → <code>GET /api/problems/16/arena/history/{submissionId}</code>: the learner's <b>own</b> code only.</li>
+          <li>Row copy is AB08-F16's: <code>date · time · language · verdict · hidden passed/total</code>; a CE reads "Compile error · not counted" with "—". <b>Runs never appear</b> (they aren't stored). Never case detail.</li></ul></section>
+      <section><h4>Actions</h4>
+        <ul><li><b>Copy to editor</b>: clean editor → replaces the draft of that language and shows "Replaced with the Oct 12 · 13:55 submission. Undo" in the status line for 10 s. Dirty editor (unsaved to any submission) → F4b first. The draft autosave then records it.</li>
+          <li><b>Diff with editor</b> → F5. Both actions stay enabled during a live course attempt or a due review (D17).</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>R-AR1 (history, read-only) · D10 (Runs not kept) · D17 (never locked). Non-modal drawer, 540 px, over a dimmed workspace; <span class="xl-kbd">Esc</span> closes and returns focus to "History (3)". The list is a <code>listbox</code> (arrow keys, Enter selects); ✓ / ✗ / ⚠ travel with words.</li>
+          <li>&lt; 1024 px: a full-screen sheet (F11-N2).</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide ab10-gap">
+    <article class="bd-frame" id="AB10-F4b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F4b</span><span class="bd-frame__title">· Copy to editor · dirty editor</span><span class="bd-frame__state">· confirm</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab10-stage ab10-mstage">
+          <div class="ab10-ghost" aria-hidden="true" style="grid-template-columns:1fr"><span style="height:430px"></span></div>
+          <div class="ds-modal__backdrop">
+            <div class="ds-modal__panel ds-modal--sm" role="alertdialog" aria-modal="true" aria-labelledby="f4b-t" aria-describedby="f4b-d">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="f4b-t">Replace the code in your editor with this submission?</span></div>
+              <div class="ds-modal__body ab10-mbody"><p id="f4b-d" class="ab10-help" style="font-size:13px">Your Go draft has changes that aren't in any submission. You can undo right after.</p></div>
+              <div class="ds-modal__footer"><span class="ds-btn ds-btn--secondary bd-focus" role="button">Cancel</span><span class="ds-btn ds-btn--primary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-copy"/></svg> Replace</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Shown only when the editor differs from its last autosaved submission baseline. Focus starts on <b>Cancel</b>; <span class="xl-kbd">Esc</span> cancels. <b>Replace</b> → the F4 behaviour with the 10 s Undo.</li></ul></aside>
+    </article>
+    <article class="bd-frame" id="AB10-F5">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F5</span><span class="bd-frame__title">· Diff view</span><span class="bd-frame__state">· side-by-side (≥ 1024 px) · read-only</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">R-AR1</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab10-col">
+        <div class="ab10-row" style="gap:10px"><svg class="xl-ico xl-ico--sm ab10-teal" aria-hidden="true"><use href="#i-diff"/></svg><b style="font-size:14px">Submission Oct 12 · 13:55 ↔ your editor</b><span class="ab10-flex"></span><span class="ds-btn ds-btn--secondary ds-btn--sm bd-focus" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg> Close</span></div>
+        <div class="ab10-legend"><span><span class="ab10-sw ab10-sw--del">−</span> only in the submission</span><span><span class="ab10-sw ab10-sw--add">+</span> only in your editor</span><span>1 removed · 4 added · read-only</span></div>
+        <div class="ab10-diff" role="table" aria-label="Diff: submission of Oct 12 13:55 against your editor">
+          <div class="ab10-diff__h" role="row"><span role="columnheader">Submission · Oct 12 · 13:55 · Go</span><span role="columnheader">Your editor · Go</span></div>
+          <div class="ab10-diff__cols">
+            <div>
+              <div class="ab10-dl"><span>1</span><span></span><span>func threeSum(nums []int) [][]int {</span></div>
+              <div class="ab10-dl"><span>2</span><span></span><span>    sort.Ints(nums)</span></div>
+              <div class="ab10-dl"><span>3</span><span></span><span>    out := [][]int{}</span></div>
+              <div class="ab10-dl ab10-dl--del"><span>4</span><span>−</span><span>    for i := 0; i &lt; len(nums)-2; i++ {</span></div>
+              <div class="ab10-dl ab10-dl--pad"><span></span><span></span><span> </span></div>
+              <div class="ab10-dl ab10-dl--pad"><span></span><span></span><span> </span></div>
+              <div class="ab10-dl ab10-dl--pad"><span></span><span></span><span> </span></div>
+              <div class="ab10-dl"><span>5</span><span></span><span>        l, r := i+1, len(nums)-1</span></div>
+              <div class="ab10-dl"><span>6</span><span></span><span>        for l &lt; r {</span></div>
+            </div>
+            <div>
+              <div class="ab10-dl"><span>1</span><span></span><span>func threeSum(nums []int) [][]int {</span></div>
+              <div class="ab10-dl"><span>2</span><span></span><span>    sort.Ints(nums)</span></div>
+              <div class="ab10-dl"><span>3</span><span></span><span>    out := [][]int{}</span></div>
+              <div class="ab10-dl ab10-dl--add"><span>4</span><span>+</span><span>    for i := 0; i &lt; len(nums)-2 &amp;&amp; nums[i] &lt;= 0; i++ {</span></div>
+              <div class="ab10-dl ab10-dl--add"><span>5</span><span>+</span><span>        if i &gt; 0 &amp;&amp; nums[i] == nums[i-1] {</span></div>
+              <div class="ab10-dl ab10-dl--add"><span>6</span><span>+</span><span>            continue // same first value: same triples</span></div>
+              <div class="ab10-dl ab10-dl--add"><span>7</span><span>+</span><span>        }</span></div>
+              <div class="ab10-dl"><span>8</span><span></span><span>        l, r := i+1, len(nums)-1</span></div>
+              <div class="ab10-dl"><span>9</span><span></span><span>        for l &lt; r {</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="bd-crop" style="border:1px dashed var(--ds-line-2);border-radius:8px">frame cropped · 17 unchanged lines below, folded as "17 unchanged lines" with an expander</div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Client-side (<code>@codemirror/merge</code> in the lazy editor chunk, m3-12). Removed lines tinted from <code>--ds-err</code>, added from <code>--ds-ok</code> (the theme's .1 tints), each with a <b>− / +</b> gutter — never colour alone; runs of unchanged lines fold. Read-only: nothing here edits the draft. <b>Close</b> (or <span class="xl-kbd">Esc</span>) returns to the drawer with the same row selected. &lt; 1024 px: unified (F11-N4). Screen readers get a row-per-line table with "removed" / "added" cells.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<!-- ======================================================== E · solution + live -->
+<section class="bd-section" aria-labelledby="sec-e">
+  <h2 class="bd-section__h" id="sec-e">E · Solution and live items <small>F6–F7 · D17: recorded, never capped · nothing locked</small></h2>
+  <div class="bd-grid bd-grid--wide ab10-gap" id="AB10-F6">
+    <article class="bd-frame" id="AB10-F6a">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F6a</span><span class="bd-frame__title">· Spoiler confirm</span><span class="bd-frame__state">· Solution before the course attempt has concluded</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">D17</span><span class="bd-tag bd-tag--change">replaces t4's "caps at Assisted"</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab10-stage ab10-mstage">
+          <div class="ab10-ghost" aria-hidden="true" style="grid-template-columns:1fr 1.4fr"><span style="height:430px"></span><span style="height:430px"></span></div>
+          <div class="ds-modal__backdrop">
+            <div class="ds-modal__panel ds-modal--sm" role="alertdialog" aria-modal="true" aria-labelledby="f6-t" aria-describedby="f6-d">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="f6-t">Reveal the solution?</span></div>
+              <div class="ds-modal__body ab10-mbody" id="f6-d"><p>You haven't finished this problem in the course yet. Revealing it here is noted on your course attempt as <i>seen in the arena</i>. It <b>doesn't cap your grade</b> — the arena works on the honour system.</p></div>
+              <div class="ds-modal__footer"><span class="ds-btn ds-btn--secondary bd-focus" role="button">Cancel</span><span class="ds-btn ds-btn--primary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eye"/></svg> Reveal solution</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes bd-notes--cols">
+        <section><h4>Route</h4>
+          <ul><li><b>[Reveal solution]</b> → <code>POST /api/problems/{id}/arena/reveal</code> (m3-09) → practice <code>POST /problems/{id}/arena-reveal</code>: <code>arena_revealed_at = COALESCE(arena_revealed_at, now())</code> — recorded <b>once</b>; the response carries the solution sections. The later course attempt's <code>problem_solved</code> gets <code>arena_prior=revealed</code>.</li>
+            <li><b>No cap (D17).</b> Grades stay D18's. This replaces t4 §3.7's cap (O4) and its pre-D17 <code>POST /api/arena/{item}/reveal</code>; no copy on any board says the reveal caps a grade.</li></ul></section>
+        <section><h4>A11y</h4>
+          <ul><li><code>alertdialog</code>; focus starts on <b>Cancel</b> because the record can't be undone; <span class="xl-kbd">Esc</span> cancels and returns focus to the Solution tab. Reveal is the primary style: it's what the learner asked for.</li>
+            <li>A second visit to the tab never asks again (the item is marked revealed).</li></ul></section>
+      </aside>
+    </article>
+    <article class="bd-frame" id="AB10-F6b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F6b</span><span class="bd-frame__title">· Course attempt already concluded</span><span class="bd-frame__state">· no confirm · item not live</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--variant">variant</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <section class="xl-panel" aria-label="Problem">
+          <div class="ab10-pane__h"><div class="ds-tabs" role="tablist"><span class="ds-tab" role="tab" aria-selected="false">Statement</span><span class="ds-tab" role="tab" aria-selected="false">Hints</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Solution</span></div></div>
+          <div class="ab10-stmt">
+            <p><b>Sort, then fix one value and close in with two pointers.</b> After sorting, for each index <span class="ab10-cd">i</span> move <span class="ab10-cd">l</span> and <span class="ab10-cd">r</span> toward each other: a sum below 0 moves <span class="ab10-cd">l</span> right, above 0 moves <span class="ab10-cd">r</span> left. Skip repeated values of <span class="ab10-cd">nums[i]</span>, <span class="ab10-cd">nums[l]</span> and <span class="ab10-cd">nums[r]</span> so each triple appears once.</p>
+            <div class="ab10-ex">Time O(n²) · extra space O(1) beyond the output (sorting in place)</div>
+            <div class="bd-crop" style="border:1px dashed var(--ds-line-2);border-radius:8px">frame cropped · the reference code follows (Go · C++ · Python)</div>
+          </div>
+        </section>
+      </div></div>
+      <aside class="bd-notes"><ul><li>#16 concluded in the course (Oct 21, AB07-F8) and no review is due: the arena view includes the solution stages (m3-09: "a concluded item's arena view shows the solution directly"), so the tab opens at once and nothing is recorded. Editorial copy is sample text.</li></ul></aside>
+    </article>
+    <article class="bd-frame" id="AB10-F6c">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F6c</span><span class="bd-frame__title">· Concluded, but a review is due</span><span class="bd-frame__state">· the item is live again</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--variant">variant · drafted copy</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab10-stage ab10-mstage" style="min-height:400px">
+          <div class="ab10-ghost" aria-hidden="true" style="grid-template-columns:1fr 1.4fr"><span style="height:370px"></span><span style="height:370px"></span></div>
+          <div class="ds-modal__backdrop">
+            <div class="ds-modal__panel ds-modal--sm" role="alertdialog" aria-modal="true" aria-labelledby="f6c-t">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="f6c-t">Reveal the solution?</span></div>
+              <div class="ds-modal__body ab10-mbody"><p>You have a review due on this problem (Day 7). Revealing it here is noted as <i>seen in the arena</i>. It <b>doesn't change how the review is graded</b> — the arena works on the honour system.</p></div>
+              <div class="ds-modal__footer"><span class="ds-btn ds-btn--secondary bd-focus" role="button">Cancel</span><span class="ds-btn ds-btn--primary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eye"/></svg> Reveal solution</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>A concluded item with a due or live review is live again, so <code>withhold()</code> strips the solution stages and the reveal route is the way in (m3-09). Same record, same "no cap"; the first sentence names the review instead of the course attempt (drafted, see "Decisions to confirm").</li></ul></aside>
+    </article>
+  </div>
+
+  <article class="bd-frame" id="AB10-F7">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB10-F7</span><span class="bd-frame__title">· Item is live</span><span class="bd-frame__state">· #3 Two Sum · Day 7 review due today · honour notice · nothing locked</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">D17</span><span class="bd-tag bd-tag--change">replaces t4's "Finish your review first"</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app" style="min-height:0">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar"><aside class="xl-side"><div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div><nav class="xl-nav"><a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a><a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a><a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a></nav><div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div></aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab10-top"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><a>problems</a><span class="xl-crumb__sep">/</span><b>#3 · arena</b></div><span class="ab10-flex"></span><span class="ab10-topsw"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span><span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span><span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span></div>
+            <div class="ab10-strip" role="note"><span class="ds-badge ds-badge--info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-target"/></svg> Arena</span><span>Nothing here counts toward your course.</span></div>
+            <div class="ab10-hud" role="region" aria-label="Arena">
+              <div class="ab10-hud__meta"><span class="ab10-id">#3</span><span class="ab10-title">Two Sum</span><span class="xl-diff xl-diff--easy">Easy</span><span class="ds-chip ds-chip--xs">Core</span>
+                <a class="ds-chip ds-chip--xs">Original · inspired by LeetCode 1 <svg class="xl-ico" style="width:11px;height:11px" aria-hidden="true"><use href="#i-ext"/></svg></a><span class="ab10-aff">Not affiliated with LeetCode</span></div>
+              <span class="ab10-flex"></span>
+              <span class="ab10-mk"><svg class="xl-ico ab10-i12" aria-hidden="true"><use href="#i-target"/></svg>Not solved in the arena yet</span>
+              <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-timer"/></svg> Timer off</span>
+              <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-history"/></svg> History (1)</span>
+            </div>
+            <div class="ab10-band"><div class="ab10-note ab10-note--warn" role="note"><span class="ab10-ic ab10-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-hand"/></svg></span><span>You have a review due on this problem (Day 7). The arena stays open — practising here first makes that review less useful.<span class="ab10-note__sub"><a>Start the review instead <svg class="xl-ico xl-ico--sm" style="display:inline;vertical-align:-3px" aria-hidden="true"><use href="#i-arrow"/></svg></a></span></span></div></div>
+            <div class="ab10-work" style="padding-bottom:40px">
+              <section class="xl-panel" aria-label="Problem">
+                <div class="ab10-pane__h"><div class="ds-tabs" role="tablist" aria-label="Problem"><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Statement</span><span class="ds-tab" role="tab" aria-selected="false" aria-haspopup="dialog"><span class="ab10-tabask"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eye"/></svg>Solution <small>asks first</small></span></span></div></div>
+                <div class="ab10-stmt">
+                  <p>You're given an integer array <span class="ab10-cd">nums</span> and an integer <span class="ab10-cd">target</span>. Return the indices of the two different elements whose values add up to <span class="ab10-cd">target</span>.</p>
+                  <p>Exactly one such pair exists. Return the two indices in either order.</p>
+                  <div class="ab10-cap">Sample 1</div>
+                  <div class="ab10-ex">nums = [2, 7, 11, 15], target = 9<br><i>→</i> [0, 1]</div>
+                  <div class="ab10-cap">Signature · Go</div>
+                  <div class="ab10-ex">func twoSum(nums []int, target int) []int</div>
+                </div>
+              </section>
+              <section class="xl-panel" aria-label="Your code">
+                <div class="ab10-ed__bar">
+                  <span class="ab10-file"><svg class="xl-ico xl-ico--sm ab10-dim" aria-hidden="true"><use href="#i-code"/></svg> solution.go</span>
+                  <div class="ds-seg" role="radiogroup" aria-label="Language"><button type="button" class="ds-seg__btn ds-seg__btn--on" role="radio" aria-checked="true">Go</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">C++</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Python</button></div>
+                  <span class="ab10-flex"></span>
+                  <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Run <span class="xl-kbd">⌘↵</span></span>
+                  <span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-send"/></svg> Submit <span class="xl-kbd">⌘⇧↵</span></span>
+                </div>
+                <div class="ab10-ed__body">
+<pre class="xl-code" aria-label="Code editor, Go"><span class="ab10-ln">1</span><span class="k">func</span> <span class="fn">twoSum</span>(nums []<span class="t">int</span>, target <span class="t">int</span>) []<span class="t">int</span> {
+<span class="ab10-ln">2</span>    <span class="c">// your code here</span>
+<span class="ab10-ln">3</span>    <span class="k">return</span> <span class="k">nil</span>
+<span class="ab10-ln">4</span>}</pre>
+                </div>
+                <div class="ab10-helper"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg>Arena submits run the hidden tests but never count</div>
+                <section class="ab10-dock" aria-label="Results">
+                  <div class="ab10-dock__h"><div class="ds-tabs" role="tablist"><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Samples</span><span class="ds-tab" role="tab">Submission</span></div></div>
+                  <div class="ab10-dock__b"><span class="ab10-help">Run to try the samples, or Submit to run the hidden tests.</span></div>
+                </section>
+              </section>
+              <aside class="ab10-rail">
+                <section class="xl-panel ab10-card"><div class="ab10-cap">In your course</div>
+                  <div class="ab10-row" style="gap:8px"><span class="xl-touch__d xl-touch__d--due" aria-hidden="true"></span><b style="font-size:13px">Day 7 review due today</b></div>
+                  <a class="ab10-row" style="gap:6px;font-size:12.5px">Start the review <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></a></section>
+                <section class="xl-panel ab10-card"><div class="ab10-cap">Arena marker</div>
+                  <div class="ab10-row" style="gap:8px"><svg class="xl-ico xl-ico--sm ab10-dim" aria-hidden="true"><use href="#i-target"/></svg><b style="font-size:13px">Not solved in the arena yet</b></div></section>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Live, and still open (D17)</h4>
+        <ul><li>Live = an open course attempt, or a due or live touch (here: #3's Day 7 review, AB09-F3 row i). <b>No lock</b>: Run, Submit, History and Copy to editor work; Solution works through F6c's confirm. The notice is <b>honour-system advice</b>, not a gate — <code>role="note"</code>, amber, a hand icon.</li>
+          <li>Variant copy for an open course attempt: "You have an open course attempt on this problem. The arena stays open — practising here first makes that attempt less useful." (drafted).</li></ul></section>
+      <section><h4>Withheld, not locked</h4>
+        <ul><li>The <b>pattern chip is absent</b> from the HUD and the <b>Hints</b> tab is absent (m1-06's arena rule: attempt stage only while live) — no lock chip is drawn, so nothing in the arena reads as locked. They return after the review concludes, or once the Solution is revealed (the reveal returns the hint and solution stages).</li>
+          <li>The tone, icon and link make the trade-off plain without blocking. "Start the review instead" → the touch (AB04).</li></ul></section>
+      <section><h4>Decision · a11y</h4>
+        <ul><li>D17 (ADR-0029 §4, PRD R-AR1 amended) replaces t4 §3.7 / §8's locks · ADR-0027 §1 (withhold nudge). Sample statement for #3, drafted in the course's own words.</li>
+          <li>The notice sits between the HUD and the work area and is read after the strip; it never takes focus. Amber text on its tint 8.2:1.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ======================================================== F · study mode -->
+<section class="bd-section" aria-labelledby="sec-f">
+  <h2 class="bd-section__h" id="sec-f">F · Study mode <small>F8 · quiz / canvas items (low fidelity, full fidelity from P) · items with no evaluator for this account</small></h2>
+  <div class="bd-grid bd-grid--wide" id="AB10-F8">
+    <article class="bd-frame" id="AB10-F8a">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F8a</span><span class="bd-frame__title">· Study mode · quiz item</span><span class="bd-frame__state">· before Mark studied</span><span class="bd-frame__tags"><span class="bd-tag">low fidelity · from P</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab10-col">
+        <div class="ab10-row" style="gap:8px"><span class="ab10-id">#gc-9</span><b style="font-size:15px">Close a channel exactly once</b><span class="ds-chip ds-chip--xs">Go Concurrency Patterns · pilot</span><span class="ab10-flex"></span><span class="ab10-mk"><svg class="xl-ico ab10-i12" aria-hidden="true"><use href="#i-target"/></svg>Not studied yet</span></div>
+        <div class="ab10-note ab10-note--info" role="note"><span class="ab10-ic ab10-info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span>Answers aren't checked in the arena. Try them, then compare with the reference.</span></div>
+        <div class="ab10-lofi" aria-label="Question 1 of 3, choose one (placeholder)"><span class="ab10-cap">Question 1 of 3 · choose one</span><span class="ab10-lofi__bar" style="width:78%"></span>
+          <div class="ab10-lofi__opt"><i></i><span style="width:55%"></span></div><div class="ab10-lofi__opt"><i></i><span style="width:40%"></span></div><div class="ab10-lofi__opt"><i></i><span style="width:62%"></span></div></div>
+        <div class="ab10-lofi" aria-label="Question 2 of 3, short answer (placeholder)"><span class="ab10-cap">Question 2 of 3 · short answer</span><span class="ab10-lofi__bar" style="width:66%"></span><div class="ab10-lofi__area"></div></div>
+        <div class="ab10-row" style="gap:8px"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button" aria-haspopup="dialog"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eye"/></svg> Reveal reference</span><span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-book"/></svg> Mark studied</span></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>t4 §3.7 / §4.4: B and C items have no <code>code</code> step, so the arena runs nothing — <code>key</code> and <code>ai_rubric</code> never run in the arena (INV-4). Parts are editable; <b>no Run, no Submit</b>. <b>Reveal reference</b> uses F6's confirm with "reference" for "solution" when the course attempt hasn't concluded. Full fidelity (quiz cards AB14, canvas AB31) is ds-p-01's.</li></ul></aside>
+    </article>
+    <article class="bd-frame" id="AB10-F8b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F8b</span><span class="bd-frame__title">· After Mark studied</span><span class="bd-frame__state">· marker set · source=manual</span><span class="bd-frame__tags"><span class="bd-tag">low fidelity · from P</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab10-col">
+        <div class="ab10-row" style="gap:8px"><span class="ab10-id">#gc-9</span><b style="font-size:15px">Close a channel exactly once</b><span class="ab10-flex"></span><span class="ab10-mk ab10-mk--st" role="status" aria-live="polite"><svg class="xl-ico ab10-i12 ab10-teal" aria-hidden="true"><use href="#i-book"/></svg>Studied · Oct 12</span></div>
+        <div class="ab10-lofi"><span class="ab10-cap">Reference · shown</span><span class="ab10-lofi__bar" style="width:88%"></span><span class="ab10-lofi__bar" style="width:72%"></span><span class="ab10-lofi__bar" style="width:80%"></span></div>
+        <div class="ab10-row" style="gap:8px"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button" aria-disabled="true" style="opacity:.6"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Marked studied</span><span class="ab10-help">It stays on your Problems list. Nothing in your course changes.</span></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li><b>[Mark studied]</b> → <code>POST /api/problems/{id}/arena/studied</code> → judge <code>arena_progress(source=manual)</code>; the HUD marker reads <b>"Studied · Oct 12"</b> and AB09 row (l) shows it. Idempotent, no undo. A later passing arena submit (a code item) flips it to "Solved in arena" and keeps <code>first_passed_at</code>. Judge on only: the route 404s when judge is off (F9).</li></ul></aside>
+    </article>
+    <article class="bd-frame" id="AB10-F8c">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F8c</span><span class="bd-frame__title">· Code item with no pack yet</span><span class="bd-frame__state">· #17 · study mode with an editor</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--variant">variant</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab10-col">
+        <div class="ab10-row" style="gap:8px"><span class="ab10-id">#17</span><b style="font-size:15px">Container With Most Water</b><span class="xl-diff xl-diff--med">Medium</span><span class="xl-pat">Two Pointers</span><span class="ab10-flex"></span><span class="ab10-mk"><svg class="xl-ico ab10-i12" aria-hidden="true"><use href="#i-target"/></svg>Not studied yet</span></div>
+        <div class="ab10-note ab10-note--info" role="note"><span class="ab10-ic ab10-info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span>Code checking isn't available for this problem yet. Use the editor as a scratchpad, then compare with the reference.</span></div>
+<pre class="xl-code" aria-label="Scratchpad, Go"><span class="k">func</span> <span class="fn">maxArea</span>(height []<span class="t">int</span>) <span class="t">int</span> {
+    <span class="c">// scratchpad — not run, not submitted</span>
+}</pre>
+        <div class="ab10-row" style="gap:8px"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button" aria-haspopup="dialog"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eye"/></svg> Reveal reference</span><span class="ds-btn ds-btn--primary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-book"/></svg> Mark studied</span></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>m3-12: an arena item with <b>no evaluator for this account</b> (not packed: <code>items[17] = no_pack</code>) opens in study mode — an editor with no Run or Submit, the reference behind F6's confirm, and Mark studied (drafted copy). <b>Code items that are packed never show Mark studied</b>: their marker comes from a passing submit (see "Decisions to confirm").</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<!-- ======================================================== G · judge off -->
+<section class="bd-section" aria-labelledby="sec-g">
+  <h2 class="bd-section__h" id="sec-g">G · Judge off for this account <small>F9 · presence by config · AB09-F7 · AB11-F6</small></h2>
+  <div class="bd-grid bd-grid--wide" id="AB10-F9">
+    <article class="bd-frame" id="AB10-F9a">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F9a</span><span class="bd-frame__title">· The v1 arena, unchanged</span><span class="bd-frame__state">· JUDGE_BASE_URL unset, or not in the cohort</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">parity · v1 PracticeWorkspace</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab10-v1">
+          <div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><a>problems</a><span class="xl-crumb__sep">/</span><b>#16</b></div>
+          <div class="ab10-row" style="gap:9px"><span class="ab10-id">#16</span><span class="ab10-title">3Sum</span><span class="xl-diff xl-diff--med">Medium</span><span class="xl-pat">Two Pointers</span></div>
+          <div class="ds-card ab10-col" style="padding:12px 16px;gap:6px" role="note">
+            <div class="ab10-row" style="gap:10px"><span class="ds-badge ds-badge--info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-target"/></svg> Arena</span><span style="font-size:13px">Nothing here counts toward your course.</span></div>
+            <span class="ab10-help">Code checking isn't on for your account yet.</span>
+          </div>
+          <div class="ab10-v1__grid">
+            <section class="xl-panel"><div class="ab10-stmt"><p>You're given an integer array <span class="ab10-cd">nums</span>. Return every distinct triple of values that adds up to 0, where the three values sit at three different indices.</p><div class="bd-crop" style="border:1px dashed var(--ds-line-2);border-radius:8px">cropped · samples and constraints as F1</div></div></section>
+            <section class="xl-panel">
+              <div class="xl-panel__h" style="padding:12px 14px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg><h3 style="font-size:13px">Practice</h3></div>
+              <div class="xl-panel__b ab10-col" style="padding:14px">
+                <span class="ds-btn ds-btn--secondary ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-key"/></svg> Reveal hints</span>
+                <span class="ds-btn ds-btn--secondary ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Reveal solution</span>
+                <span class="ds-btn ds-btn--ghost ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> Open scratchpad</span>
+                <p class="ab10-help" style="margin:0">Untimed and unsaved. To earn course credit, solve this from Today or the Week view.</p>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Every arena route is judge's and 404s while judge is off (m3-09 presence by config), so this is <b>v1's <code>PracticeWorkspace</code></b> (<code>Problem.tsx:235-310</code>) with its strings: <b>no Run, no Submit, no History, no arena marker, no [Mark studied]</b>, no manual timer. The only change is the top card: v1's "Practice arena — untimed study…" line becomes the arena strip plus "Code checking isn't on for your account yet." (see "Decisions to confirm"). v1's reveal is client-side and records nothing; no badge (AB11-F6).</li></ul></aside>
+    </article>
+    <article class="bd-frame" id="AB10-F9b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB10-F9b</span><span class="bd-frame__title">· Judge on, runner lane off</span><span class="bd-frame__state">· state = off (L15 JUDGE_ADMISSION=closed)</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--variant">variant</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab10-col">
+        <div class="ab10-row" style="gap:8px"><span class="ab10-id">#16</span><b style="font-size:15px">3Sum</b><span class="xl-diff xl-diff--med">Medium</span><span class="ab10-flex"></span><span class="ab10-mk ab10-mk--on"><svg class="xl-ico ab10-i12 ab10-teal" aria-hidden="true"><use href="#i-check"/></svg>Solved in the arena · Oct 12</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-history"/></svg> History (3)</span></div>
+        <section class="xl-panel">
+          <div class="ab10-ed__bar"><span class="ab10-file"><svg class="xl-ico xl-ico--sm ab10-dim" aria-hidden="true"><use href="#i-code"/></svg> solution.go</span><div class="ds-seg" role="radiogroup" aria-label="Language"><button type="button" class="ds-seg__btn ds-seg__btn--on" role="radio" aria-checked="true">Go</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">C++</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">Python</button></div><span class="ab10-flex"></span>
+            <span role="status"><button type="button" class="ds-badge ds-badge--err" style="cursor:pointer;font-family:var(--ds-font-sans)" aria-expanded="false"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-off"/></svg> Auto-grading off</button></span></div>
+          <div class="ab10-dock__b"><div class="ab10-verdict ab10-verdict--info" role="status"><span class="ab10-ic ab10-info"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span>Auto-grading isn't available right now.<span class="ab10-verdict__sub">History, your marker and the Solution still work. Run and Submit come back on their own.</span></span></div></div>
+        </section>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Judge is present but its admission is closed (L15, <code>GET /api/judge/status → off</code>): <b>Run and Submit are hidden</b> and AB11's <b>Auto-grading off</b> badge takes their place in the editor bar; <b>History, the arena marker and Solution stay</b> (reads still work). The line is AB08-F15's arena <code>503 evaluation_unavailable{fallback: none}</code> copy; its second line is drafted. When the status clears, Run and Submit return with AB11-F5's "Auto-grading is back on."</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<!-- ======================================================== H · limits -->
+<section class="bd-section" aria-labelledby="sec-h">
+  <h2 class="bd-section__h" id="sec-h">H · Arena limits and errors <small>F10 · AB08-F11 / F14 / F15 strings, verbatim · "arena" only on the quota line</small></h2>
+  <article class="bd-frame" id="AB10-F10">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB10-F10</span><span class="bd-frame__title">· Limits and errors</span><span class="bd-frame__state">· every refusal the arena dock can show</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">AB08 copy</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad">
+        <div class="ab10-grp">Arena submits and Runs <small>the arena is budget-counted and shed first (t3 §7.4)</small></div>
+        <div class="ab10-lims">
+          <div class="ab10-lim"><div class="ab10-lim__k">L9 daily · <code>429 quota_exceeded {kind: arena}</code></div><div class="ab10-verdict ab10-verdict--warn" role="alert"><span class="ab10-ic ab10-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span><span>You've used today's 100 arena submits. More at 00:00 your time.</span></div></div>
+          <div class="ab10-lim"><div class="ab10-lim__k">L9 remaining · <code>quota{kind: arena, remaining: 8}</code> on a 2xx</div><div class="ab10-dock__h" style="border:1px solid var(--ds-line);border-radius:8px;background:var(--ds-panel)"><div class="ds-tabs"><span class="ds-tab" role="tab">Samples</span><span class="ds-tab ds-tab--active" role="tab">Submission</span></div><span class="ab10-flex"></span><span class="ds-chip ds-chip--xs" role="status">8 arena submits left today</span></div></div>
+          <div class="ab10-lim"><div class="ab10-lim__k">L11 spacing · <code>429 too_fast</code> (≥ 2 s)</div><div class="ab10-verdict ab10-verdict--warn" role="alert"><span class="ab10-ic ab10-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span><span>Wait a moment between submits.</span></div></div>
+          <div class="ab10-lim"><div class="ab10-lim__k">L10 lane · <code>429 queue_full</code> + <code>Retry-After: 30</code></div><div class="ab10-verdict ab10-verdict--warn" role="alert"><span class="ab10-ic ab10-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-server"/></svg></span><span>The grader is busy. Try again in 30 s.</span></div>
+            <div class="ab10-row" style="gap:8px"><button type="button" class="ds-btn ds-btn--primary ds-btn--sm" disabled aria-describedby="f10-qf"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-send"/></svg> Submit</button><span class="ab10-help" id="f10-qf">disabled until the time given; its description is the same line</span></div></div>
+          <div class="ab10-lim"><div class="ab10-lim__k">L6 · <code>413 part_too_large {partId, max: 65536}</code></div><div class="ab10-verdict ab10-verdict--warn" role="alert"><span class="ab10-ic ab10-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-file"/></svg></span><span>Too large to submit (code is capped at 64 KiB)</span></div></div>
+          <div class="ab10-lim"><div class="ab10-lim__k">not graded · <code>status: inconclusive</code></div><div class="ab10-verdict ab10-verdict--warn" role="status"><span class="ab10-ic ab10-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span>We couldn't get a reliable result. Not counted.<span class="ab10-verdict__act"><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-retry"/></svg> Submit again</span></span></span></div></div>
+        </div>
+        <div class="ab10-grp" style="margin-top:18px">Also from AB08-F15 <small>the arena rows for the runner budget and the breaker</small></div>
+        <div class="ab10-lims">
+          <div class="ab10-lim"><div class="ab10-lim__k">L12 runner budget · <code>429 budget_exhausted {window: hour}</code></div><div class="ab10-verdict ab10-verdict--warn" role="alert"><span class="ab10-ic ab10-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gauge"/></svg></span><span>You've used this hour's run time. Arena runs and submits resume next hour; course submits still work.</span></div></div>
+          <div class="ab10-lim"><div class="ab10-lim__k">L13 level 1 · accepted, <code>run_after</code> +5 min <span class="ds-badge ds-badge--warn">Grader busy</span></div><div class="ab10-verdict ab10-verdict--info" role="status"><span class="ab10-ic ab10-info"><svg class="xl-ico xl-ico--sm ds-spin" aria-hidden="true"><use href="#i-spinner"/></svg></span><span>Arena submits are delayed a few minutes while the grader is busy.</span></div></div>
+          <div class="ab10-lim"><div class="ab10-lim__k">L13 level 2 · <code>429 shed</code> <span class="ds-badge ds-badge--warn">Grader busy</span></div><div class="ab10-verdict ab10-verdict--warn" role="alert"><span class="ab10-ic ab10-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg></span><span>Arena runs and submits are paused while the grader is busy. Course submits still work.</span></div></div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Verbatim</h4>
+        <ul><li>Every line is AB08's string: F15 arena quota ("arena" is the only word added, as AB08 already does), F15 <code>too_fast</code> / <code>queue_full</code>, F14's 413, F11's <code>inconclusive</code> with [Submit again]. "30 s" is rendered from <code>Retry-After</code>; "00:00 your time" from <code>resetAt</code> in the browser's zone; "100" and "8" from the response, never constants (ADR-0035 §4 start values).</li></ul></section>
+      <section><h4>Placement · behaviour</h4>
+        <ul><li>A refusal replaces the verdict in the dock body as <code>role="alert"</code> (the learner just clicked); the previous verdict stays in History. While a <code>Retry-After</code> runs, the blocked button is disabled with the same line as its accessible description and re-enables itself.</li>
+          <li>The SPA pre-checks 64 KiB and disables Submit with the 413 line; the server's 413 is the backstop. <code>inconclusive</code> never counts anywhere; in the arena, "Not counted." is doubly true.</li></ul></section>
+      <section><h4>Decision</h4>
+        <ul><li>L6, L9–L13 (ADR-0035 §4) · AB08-F11/F14/F15 (ds-m3-01). The arena is shed before counted work (t3 §7.4), which is why these lines exist here and "course submits still work" appears on the budget and breaker lines.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ======================================================== F11 narrow -->
+<section class="bd-section" id="AB10-F11" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">AB10-F11 · &lt; 1024 px (390 px shown) <small>Statement / Work / Results tabs · History and Diff as full-screen sheets</small></h2>
+  <p class="bd-section__p">Below 1024 px the three columns become <b>Statement · Work · Results</b> tabs (AB07-F14 parity). The strip stays under the top bar; the HUD keeps the id, title, marker and two icon
+    buttons (<b>Timer</b>, <b>History</b>). Run / Submit sit in a bottom bar on Work and Results. <b>History</b> and <b>Diff</b> open as full-screen sheets (Diff is unified), and the spoiler confirm stacks its buttons.</p>
+  <div class="bd-narrow-row">
+    <article class="bd-frame bd-narrow" id="AB10-N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1 · AB10-F1</span><span class="bd-frame__state">· Work tab</span></header>
+      <div class="bd-frame__body">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar"><aside class="xl-side"><div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div><nav class="xl-nav"><a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a><a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a><a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a></nav><div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div></aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab10-top" style="padding:0 12px;gap:8px"><div class="xl-crumb"><a>problems</a><span class="xl-crumb__sep">/</span><b>#16 · arena</b></div><span class="ab10-flex"></span><span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span></div>
+            <div class="ab10-nstrip" role="note"><span class="ds-badge ds-badge--info"><svg class="xl-ico ab10-i12" aria-hidden="true"><use href="#i-target"/></svg> Arena</span><span>Nothing here counts toward your course.</span></div>
+            <div class="ab10-nhud">
+              <div class="ab10-nrow"><span class="ab10-id">#16</span><b style="font-size:14px">3Sum</b><span class="xl-diff xl-diff--med">Medium</span><span class="ab10-flex"></span><span class="ds-iconbtn" role="button" aria-label="Timer off"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-timer"/></svg></span><span class="ds-iconbtn" role="button" aria-label="History, 2 submits"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-history"/></svg></span></div>
+              <span class="ab10-mk" style="align-self:flex-start"><svg class="xl-ico ab10-i12" aria-hidden="true"><use href="#i-target"/></svg>Not solved in the arena yet</span>
+            </div>
+            <div class="ab10-ntabs"><div class="ds-tabs" role="tablist"><span class="ds-tab" role="tab" aria-selected="false">Statement</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Work</span><span class="ds-tab" role="tab" aria-selected="false">Results</span></div></div>
+            <div class="ab10-nbody" style="padding:10px">
+              <div class="ab10-row" style="gap:8px"><span class="ab10-file">solution.go</span><div class="ds-seg" role="radiogroup" aria-label="Language"><button type="button" class="ds-seg__btn ds-seg__btn--on" role="radio" aria-checked="true">Go</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false">C++</button><button type="button" class="ds-seg__btn" role="radio" aria-checked="false" aria-label="Python">Py</button></div></div>
+<pre class="xl-code" aria-label="Code editor, Go"><span class="k">func</span> <span class="fn">threeSum</span>(nums []<span class="t">int</span>)
+  [][]<span class="t">int</span> {
+  sort.<span class="fn">Ints</span>(nums)
+  out := [][]<span class="t">int</span>{}
+  <span class="k">for</span> i := <span class="n">0</span>; i &lt; <span class="fn">len</span>(nums)-<span class="n">2</span> &amp;&amp;
+    nums[i] &lt;= <span class="n">0</span>; i++ {</pre>
+              <span class="ab10-help"><svg class="xl-ico xl-ico--sm" style="display:inline;vertical-align:-3px" aria-hidden="true"><use href="#i-info"/></svg> Arena submits run the hidden tests but never count</span>
+            </div>
+            <div class="ab10-nbar"><span class="ds-btn ds-btn--secondary ds-btn--lg" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-play"/></svg> Run</span><span class="ds-btn ds-btn--primary ds-btn--lg" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-send"/></svg> Submit</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Timer and History become icon buttons with full accessible names; a running timer shows its digits in place of the icon. The marker keeps its words on its own line.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB10-N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2 · AB10-F4</span><span class="bd-frame__state">· History sheet</span></header>
+      <div class="bd-frame__body">
+        <div class="ab10-nsheet" role="dialog" aria-modal="true" aria-labelledby="n2-h" style="min-height:640px">
+          <div class="ab10-nsheet__h"><span class="ds-iconbtn" role="button" aria-label="Back to the arena"><svg class="xl-ico xl-ico--sm" aria-hidden="true" style="transform:rotate(180deg)"><use href="#i-arrow"/></svg></span><div class="ab10-col" style="gap:1px"><b id="n2-h" style="font-size:14px">Arena history · 3 submits</b><span class="ab10-help" style="font-size:11.5px">(Runs aren't kept)</span></div></div>
+          <div class="ab10-nbody">
+            <ul class="ab10-hist ab10-nhist" role="listbox" aria-label="Arena submits, newest first">
+              <li role="option" aria-selected="false"><span><span class="ab10-ok">✓</span> Accepted · <span class="ab10-hist__m">40/40</span></span><span class="ab10-hist__m">Go</span><span class="ab10-hist__m" style="grid-column:1 / -1">Oct 12 · 14:02</span></li>
+              <li class="ab10-hist__on" role="option" aria-selected="true"><span><span class="ab10-err">✗</span> Wrong answer · <span class="ab10-hist__m">37/40</span></span><span class="ab10-hist__m">Go</span><span class="ab10-hist__m" style="grid-column:1 / -1">Oct 12 · 13:55</span></li>
+              <li role="option" aria-selected="false"><span><span class="ab10-warn">⚠</span> Compile error · not counted</span><span class="ab10-hist__m">Python</span><span class="ab10-hist__m" style="grid-column:1 / -1">Oct 11 · 21:40</span></li>
+            </ul>
+<pre class="xl-code" aria-label="Arena submission of Oct 12, 13:55, read-only" style="font-size:11px;padding:10px 12px"><span class="k">func</span> <span class="fn">threeSum</span>(nums []<span class="t">int</span>)
+  [][]<span class="t">int</span> {
+  sort.<span class="fn">Ints</span>(nums)
+  out := [][]<span class="t">int</span>{}
+  <span class="k">for</span> i := <span class="n">0</span>; i &lt; <span class="fn">len</span>(nums)-<span class="n">2</span>; i++ {</pre>
+            <div class="ab10-col" style="gap:8px"><span class="ds-btn ds-btn--secondary ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-copy"/></svg> Copy to editor</span><span class="ds-btn ds-btn--secondary ds-btn--block" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-diff"/></svg> Diff with editor</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Full-screen modal sheet; Back (or the system back gesture) returns to the Work tab and focuses the History button. Rows stack: verdict + count, language, then the time.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB10-N3">
+      <header class="bd-frame__label"><span class="bd-frame__id">N3 · AB10-F6</span><span class="bd-frame__state">· spoiler confirm</span></header>
+      <div class="bd-frame__body">
+        <div class="ab10-stage" style="min-height:560px">
+          <div class="ab10-ghost" aria-hidden="true" style="grid-template-columns:1fr"><span style="height:520px"></span></div>
+          <div class="ds-modal__backdrop" style="padding:14px">
+            <div class="ds-modal__panel ds-modal--md" role="alertdialog" aria-modal="true" aria-labelledby="n3-t">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="n3-t">Reveal the solution?</span></div>
+              <div class="ds-modal__body ab10-mbody"><p>You haven't finished this problem in the course yet. Revealing it here is noted on your course attempt as <i>seen in the arena</i>. It <b>doesn't cap your grade</b> — the arena works on the honour system.</p></div>
+              <div class="ds-modal__footer" style="flex-direction:column-reverse;align-items:stretch"><span class="ds-btn ds-btn--primary ds-btn--lg" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eye"/></svg> Reveal solution</span><span class="ds-btn ds-btn--secondary ds-btn--lg bd-focus" role="button">Cancel</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Same copy as F6a. Buttons stack full width; <b>Cancel</b> is on top and focused.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB10-N4">
+      <header class="bd-frame__label"><span class="bd-frame__id">N4 · AB10-F5</span><span class="bd-frame__state">· unified diff sheet</span></header>
+      <div class="bd-frame__body">
+        <div class="ab10-nsheet" role="dialog" aria-modal="true" aria-labelledby="n4-h" style="min-height:560px">
+          <div class="ab10-nsheet__h"><span class="ds-iconbtn" role="button" aria-label="Close diff"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><b id="n4-h" style="font-size:13px">Submission Oct 12 · 13:55 ↔ your editor</b></div>
+          <div class="ab10-nbody">
+            <div class="ab10-legend"><span><span class="ab10-sw ab10-sw--del">−</span> submission</span><span><span class="ab10-sw ab10-sw--add">+</span> your editor</span></div>
+            <div class="ab10-diff">
+              <div class="ab10-dl ab10-dl--u"><span>3</span><span>3</span><span></span><span>  out := [][]int{}</span></div>
+              <div class="ab10-dl ab10-dl--u ab10-dl--del"><span>4</span><span></span><span>−</span><span>  for i := 0; i &lt; len(nums)-2;</span></div>
+              <div class="ab10-dl ab10-dl--u ab10-dl--del"><span></span><span></span><span></span><span>      i++ {</span></div>
+              <div class="ab10-dl ab10-dl--u ab10-dl--add"><span></span><span>4</span><span>+</span><span>  for i := 0; i &lt; len(nums)-2 &amp;&amp;</span></div>
+              <div class="ab10-dl ab10-dl--u ab10-dl--add"><span></span><span></span><span></span><span>      nums[i] &lt;= 0; i++ {</span></div>
+              <div class="ab10-dl ab10-dl--u ab10-dl--add"><span></span><span>5</span><span>+</span><span>    if i &gt; 0 &amp;&amp;</span></div>
+              <div class="ab10-dl ab10-dl--u ab10-dl--add"><span></span><span></span><span></span><span>      nums[i] == nums[i-1] {</span></div>
+              <div class="ab10-dl ab10-dl--u ab10-dl--add"><span></span><span>6</span><span>+</span><span>      continue</span></div>
+              <div class="ab10-dl ab10-dl--u ab10-dl--add"><span></span><span>7</span><span>+</span><span>    }</span></div>
+              <div class="ab10-dl ab10-dl--u"><span>5</span><span>8</span><span></span><span>    l, r := i+1, len(nums)-1</span></div>
+            </div>
+            <span class="ab10-help">17 unchanged lines folded · read-only</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Unified below 1024 px: old and new line numbers side by side, a − / + gutter, wrapped lines continue under their text. Same tints, same read-only rule.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB10 · A5 Arena · drafted in ds-m3-02 · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only, never imported by <code class="ds-mono">web/</code>.
+  The workspace shell is a board-local copy of AB07's; dock, limit and history strings are AB08's; the badge is AB11's; F9a is v1's <code class="ds-mono">PracticeWorkspace</code>. D17 replaces t4's arena locks and reveal cap — neither is drawn.
+  Sample data: #16's public samples, sample drafts, submits, times and editorial text; #3 and #gc-9 statements are sample text.
+</footer>
+</main>
+</body>
+</html>

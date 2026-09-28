@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB12 · Week / Mistakes / Progress deltas — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB12 board-local layout (prefix ab12-). Tokens only; never restyles a ds- or xl- class. */
+  .ab12-flex { flex: 1; }
+  .ab12-top { position: relative; z-index: 20; }
+  .ab12-topsw { display: inline-flex; align-items: center; gap: 9px; height: 34px; padding: 0 10px; background: var(--ds-panel-2);
+    border: 1px solid var(--ds-line-2); border-radius: 8px; color: var(--ds-text); font-size: 12.5px; }
+  .ab12-ok { color: var(--ds-ok); } .ab12-err { color: var(--ds-err); } .ab12-warn { color: var(--ds-warn); }
+  .ab12-info { color: var(--ds-info); } .ab12-teal { color: var(--ds-teal); } .ab12-dim { color: var(--ds-dim); } .ab12-text { color: var(--ds-text); } .ab12-violet { color: var(--ds-violet); }
+  .ab12-ic { display: inline-flex; flex: none; }
+  .ab12-i12 { width: 12px; height: 12px; }
+  .ab12-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .ab12-col { display: flex; flex-direction: column; gap: 10px; }
+  .ab12-help { font-size: 12px; line-height: 1.55; color: var(--ds-dim); }
+  .ab12-help b { color: var(--ds-text); font-weight: 600; }
+  .ab12-cap { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab12-mono { font-family: var(--ds-font-mono); }
+  .ab12-gap { margin-bottom: 22px; }
+  .ab12-sep { height: 1px; background: var(--ds-line); }
+  .ab12-mut { color: var(--ds-dim); }
+
+  /* shared: provenance + tooltips */
+  .ab12-pv { text-transform: none; letter-spacing: 0; }
+  .ab12-anchor { position: relative; display: inline-flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .ab12-tip { position: relative; width: 300px; padding: 10px 12px; background: var(--ds-panel); border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius);
+    box-shadow: 0 18px 40px rgba(0,0,0,.45); font-size: 12.5px; line-height: 1.5; color: var(--ds-text); z-index: 5; }
+  .ab12-tip::before { content: ""; position: absolute; top: -6px; left: 18px; width: 10px; height: 10px; background: var(--ds-panel);
+    border-left: 1px solid var(--ds-line-2); border-top: 1px solid var(--ds-line-2); transform: rotate(45deg); }
+  .ab12-tip--abs { position: absolute; top: calc(100% + 8px); left: -8px; }
+  .ab12-tip--up { position: absolute; bottom: calc(100% + 9px); left: 50%; transform: translateX(-50%); width: auto; white-space: nowrap; padding: 6px 10px; font-family: var(--ds-font-mono); font-size: 11.5px; }
+  .ab12-tip--up::before { top: auto; bottom: -6px; left: 50%; margin-left: -5px; transform: rotate(225deg); }
+  .ab12-tip--dn { position: absolute; top: calc(100% + 9px); left: 50%; transform: translateX(-50%); width: auto; white-space: nowrap; padding: 6px 10px; font-family: var(--ds-font-mono); font-size: 11.5px; }
+  .ab12-tip--dn::before { left: 50%; margin-left: -5px; }
+  .ab12-tip--static { position: relative; box-shadow: none; width: auto; margin-top: 10px; }
+  .ab12-nw { white-space: nowrap; }
+
+  /* week */
+  .ab12-thesis { padding: 18px 20px; margin-bottom: 22px; }
+  .ab12-thesis__k { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-family: var(--ds-font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-teal); }
+  .ab12-weekgrid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+  .ab12-cgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ab12-ccard { padding: 15px; }
+  .ab12-ccard__ic { width: 30px; height: 30px; border-radius: 8px; background: rgba(155,140,240,.1); display: grid; place-items: center; color: var(--ds-violet); }
+  .ab12-rows { display: flex; flex-direction: column; gap: 9px; }
+  .ab12-wr { display: grid; grid-template-columns: 34px minmax(0, 1fr) 96px 212px 16px; gap: 14px; align-items: center; padding: 13px 15px; background: var(--ds-panel);
+    border: 1px solid var(--ds-line); border-radius: 10px; font-size: 13px; }
+  .ab12-wr__id { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-dim); }
+  .ab12-wr__t { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; min-width: 0; }
+  .ab12-wr__t b { font-size: 13.5px; }
+  .ab12-st { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+  .ab12-dots { position: relative; display: inline-flex; }
+  .ab12-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 11.5px; color: var(--ds-dim); }
+  .ab12-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .ab12-roll__big { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+  .ab12-roll__big b { font-family: var(--ds-font-mono); font-size: 26px; font-weight: 700; }
+  .ab12-roll__line { margin-top: 12px; font-size: 12.5px; color: var(--ds-dim); line-height: 1.6; }
+  .ab12-roll__line b { color: var(--ds-text); font-family: var(--ds-font-mono); font-weight: 600; }
+  .ab12-split { display: flex; gap: 14px; margin-top: 10px; font-size: 12px; }
+  .ab12-provbig { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px; border-radius: var(--ds-radius-sm); border: 1px dashed rgba(155,140,240,.4);
+    background: rgba(155,140,240,.08); color: var(--ds-violet); font-size: 11.5px; }
+
+  /* mistakes */
+  .ab12-mhead { border-bottom: 1px solid var(--ds-line); padding-bottom: 16px; margin-bottom: 20px; }
+  .ab12-stat { text-align: right; }
+  .ab12-stat b { display: block; font-family: var(--ds-font-mono); font-size: 22px; font-weight: 700; }
+  .ab12-stat span { font-size: 11px; color: var(--ds-dim); }
+  .ab12-weak { padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .ab12-weak__ic { width: 40px; height: 40px; border-radius: 10px; background: rgba(240,180,41,.12); display: grid; place-items: center; flex: none; color: var(--ds-warn); }
+  .ab12-weak__k { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-violet); font-family: var(--ds-font-mono); margin-bottom: 3px; }
+  .ab12-weak__foot { flex-basis: 100%; display: flex; align-items: center; gap: 8px; padding-top: 10px; border-top: 1px solid rgba(155,140,240,.25); font-size: 12px; color: var(--ds-dim); }
+  .ab12-filters { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .ab12-mt td { vertical-align: top; }
+  .ab12-det { font-size: 12px; line-height: 1.5; }
+  .ab12-det__m { color: var(--ds-err); } .ab12-det__r { color: var(--ds-dim); margin-top: 3px; } .ab12-det__i { color: var(--ds-ok); margin-top: 3px; }
+  .ab12-concepts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+  .ab12-concepts__k { font-family: var(--ds-font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--ds-dim); margin-right: 2px; }
+  .ab12-clink { color: var(--ds-teal); }
+  .ab12-cat { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .ab12-src { display: inline-flex; align-items: center; gap: 5px; height: 19px; padding: 0 7px; border-radius: var(--ds-radius-sm); font-size: 10.5px; border: 1px solid var(--ds-line-2); background: var(--ds-inset); color: var(--ds-text); cursor: default; font-family: var(--ds-font-sans); }
+  .ab12-src--sugg { border-style: dashed; background: transparent; color: var(--ds-dim); }
+  .ab12-catsugg { border-style: dashed; background: transparent; color: var(--ds-dim); }
+  .ab12-edit { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .ab12-sugg { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: var(--ds-radius); border: 1px dashed rgba(106,166,255,.35); background: rgba(106,166,255,.1); font-size: 13px; color: var(--ds-text); }
+  .ab12-cats { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ab12-cat--on { color: var(--ds-teal); border-color: var(--ds-teal); background: rgba(53,208,192,.12); }
+  .ab12-ta { width: 100%; min-height: 54px; resize: none; background: var(--ds-input-bg); border: 1px solid var(--ds-line-2); border-radius: 8px; color: var(--ds-text);
+    font-family: var(--ds-font-sans); font-size: 12.5px; line-height: 1.5; padding: 8px 10px; display: block; }
+  .ab12-fl { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--ds-dim); }
+  .ab12-fl span:last-child { font-family: var(--ds-font-mono); font-size: 11px; }
+  .ab12-cedit { display: inline-flex; align-items: center; gap: 6px; }
+  .ab12-x { display: inline-grid; place-items: center; width: 14px; height: 14px; color: var(--ds-dim); }
+
+  /* progress */
+  .ab12-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .ab12-jrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 14px; margin-bottom: 20px; align-items: stretch; }
+  .ab12-kpi__l { display: flex; align-items: center; gap: 6px; }
+  .ab12-js { padding: 13px 15px; display: flex; flex-direction: column; gap: 12px; }
+  .ab12-js__kpis { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 16px; }
+  .ab12-js__v { font-family: var(--ds-font-mono); font-size: 22px; font-weight: 600; line-height: 1; margin-top: 6px; }
+  .ab12-langbar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: #1b2028; margin-top: 10px; }
+  .ab12-langbar span { display: block; height: 100%; }
+  .ab12-langs { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 11.5px; color: var(--ds-dim); }
+  .ab12-langs span { display: inline-flex; align-items: center; gap: 5px; }
+  .ab12-langs i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+  .ab12-note { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ds-dim); }
+  .ab12-mix__leg { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 11.5px; color: var(--ds-dim); margin-bottom: 14px; }
+  .ab12-mix__leg span { display: inline-flex; align-items: center; gap: 6px; }
+  .ab12-sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: none; }
+  .ab12-mixr { display: grid; grid-template-columns: 84px minmax(0, 1fr) 176px; gap: 12px; align-items: center; font-size: 12.5px; margin-bottom: 11px; }
+  .ab12-mixr__l { display: flex; align-items: center; gap: 8px; color: var(--ds-text); }
+  .ab12-mixr__n { font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-dim); text-align: right; }
+  .ab12-mixr__n b { color: var(--ds-text); }
+  .ab12-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: #1b2028; }
+  .ab12-bar span { display: block; height: 100%; }
+  .ab12-p--judge { background: var(--ds-teal); }
+  .ab12-p--self { background: var(--ds-dim); }
+  .ab12-p--ai { background: var(--ds-violet); }
+  .ab12-p--ovr { background: repeating-linear-gradient(45deg, var(--ds-violet) 0 3px, rgba(155,140,240,.25) 3px 6px); }
+  .ab12-crop { padding: 10px 14px; border: 1px dashed var(--ds-line-2); border-radius: var(--ds-radius); font-family: var(--ds-font-mono); font-size: 10.5px; color: var(--ds-dim); margin-bottom: 20px; }
+  .ab12-absent { border: 1px dashed var(--ds-line-2); border-radius: var(--ds-radius); display: grid; place-items: center; padding: 16px; font-family: var(--ds-font-mono); font-size: 10.5px; color: var(--ds-dim); text-align: center; }
+
+  /* narrow */
+  .ab12-nbody { padding: 14px 12px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .ab12-nbody h1 { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
+  .ab12-nwr { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--ds-panel); border: 1px solid var(--ds-line); border-radius: 10px; }
+  .ab12-ncard { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-top: 1px solid var(--ds-line); }
+  .ab12-ncard:first-child { border-top: none; }
+  .ab12-nsheet { background: var(--ds-panel); min-height: 640px; display: flex; flex-direction: column; }
+  .ab12-nsheet__h { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--ds-line); }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5" /><path d="M6 10.2V19h12v-8.8" /></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7 9 5z" /><path d="M9 5v12M15 7v12" /></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4" /></symbol>
+  <symbol id="i-journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 3v18M12.5 8h3.5M12.5 12h3.5" /></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.4" /><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" /></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V11M10 19V5M16 19v-6" /><path d="M3 21h18" /></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A2 2 0 0 1 7 3h12v15H7a2 2 0 0 0-2 2z" /><path d="M5 4.5V19" /></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6" /><path d="M10 20a2 2 0 0 0 4 0" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></symbol>
+  <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" /></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" /></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z" /><path d="M12 10v4M12 17h.01" /></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" /></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5z" /><path d="M3 12.5 12 17l9-4.5M3 17 12 21.5 21 17" /></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2" /><rect x="3" y="14" width="18" height="7" rx="2" /><path d="M7 7.5h.01M7 17.5h.01" /></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4" /></symbol>
+  <symbol id="i-spinner" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 1-9 9" /></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9" /><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z" /></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></symbol>
+  <symbol id="i-flagx" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" /><path d="M14 16l5 5M19 16l-5 5" /></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" /></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" /></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 16a8 8 0 1 1 16 0" /><path d="M12 16l4-5" /></symbol>
+  <symbol id="i-off" viewBox="0 0 24 24"><path d="M12 3v8" /><path d="M6.4 7.4a8 8 0 1 0 11.2 0" /></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5h16l-6 7.5V19l-4 2v-8.5z" /></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z" /><path d="M14 3v5h5" /></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14" /></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+  <symbol id="i-list2" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" /></symbol>
+  <symbol id="i-diff" viewBox="0 0 24 24"><path d="M6 3v12M6 9h6M18 21V9M12 15h6" /><circle cx="6" cy="18" r="2.4" /><circle cx="18" cy="6" r="2.4" /></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 1.5M9.5 2.5h5" /></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-3.8 2.5-5 .3 1.6 1.2 2.6 2.5 3 .2-2.8-.8-5.5 0-8z" /></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.6 3 8.3 7 10 4-1.7 7-5.4 7-10V6z" /></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></symbol>
+  <symbol id="i-dash" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" /></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M18 5l2 2M15 8l2 2" /></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 11V5.5a1.5 1.5 0 0 1 3 0V11M11 10V4a1.5 1.5 0 0 1 3 0v6M14 10V5.5a1.5 1.5 0 0 1 3 0V13c0 4-2.5 8-7 8-3 0-4.5-1.5-6-4l-1.5-3a1.5 1.5 0 0 1 2.6-1.5L8 14" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · M3 board</div>
+  <h1>AB12 · Week / Mistakes / Progress deltas</h1>
+  <p class="bd-lede">
+    Three v1 screens, one board, <b>deltas only</b> — the layout is otherwise v1 parity (<code class="ds-mono">web/src/screens/{Week,Mistakes,Progress}.tsx</code>,
+    <code class="ds-mono">ProgressViews.tsx</code>). <b>Week</b> gets real five-touch dots (today a placeholder at <code class="ds-mono">aggregate.go:120</code>), grading states and a
+    judge-checked rollup. <b>Mistakes</b> gets a <b>source chip</b> on every category (You · Judge · Suggested · xLearn AI) and up to three <b>concepts to revise</b>, withheld while
+    the item is live. <b>Progress</b> gets the grade mix segmented by <b>provenance</b>, <b>Judge-checked %</b> and <b>judge stats</b>. Provenance chips use AB06's vocabulary. Anything
+    AI is flagged <b>from M4</b>; nothing else shows AI.
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-m3-02.md">ds-m3-02</a></span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-m3-13.md">m3-13</a> task 1 (Week, Mistakes, Progress)</span>
+    <span><b>Frozen before</b>the M3 UI sprint</span>
+    <span><b>Sources</b><a href="../../../docs/v2/research/t4-judge-contract.md#8-learner-flows-and-v2-artboards-needed">t4 §8</a> (changed v1 boards) ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#63-mistake-pre-fill-two-tiers-data-only">§6.3</a> ·
+      <a href="../../../docs/v2/research/t4-judge-contract.md#64-concepts-to-revise">§6.4</a> ·
+      <a href="../../../docs/adr/0029-judge-contract-and-learning-signal.md#4-learning-loop">ADR-0029 §4</a> ·
+      <a href="../../../docs/v2/rollout-plan.md#10-public-dashboard-tasks">rollout §10</a> P7 / P8 · D2 · ADR-0013 · <a href="../../../docs/v2/sprints/sprint-m3-10.md">m3-10</a> (fields) ·
+      <a href="AB06-public-profile-v2.html">AB06</a> (provenance words)</span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB12-W1">W1 touch dots</a><a href="#AB12-W2">W2 row chips</a><a href="#AB12-W3">W3 provisional</a><a href="#AB12-W4">W4 rollup</a><a href="#AB12-WN">Week 390</a>
+    <a href="#AB12-M1">M1 source chip</a><a href="#AB12-M2">M2 concepts</a><a href="#AB12-M3">M3 edit</a><a href="#AB12-M4">M4 weak area</a><a href="#AB12-M5">M5 pre-judge</a><a href="#AB12-MN">Mistakes 390</a>
+    <a href="#AB12-P1">P1 grade mix</a><a href="#AB12-P2">P2 judge stats</a><a href="#AB12-P3">P3 pre-judge</a><a href="#AB12-P4">P4 honour</a><a href="#AB12-PN">Progress 390</a>
+  </nav>
+</header>
+
+<!-- ======================================================== rules -->
+<section class="bd-section" aria-labelledby="sec-rules">
+  <h2 class="bd-section__h" id="sec-rules">Board-wide rules <small>AB06 vocabulary · P7 · ADR-0027 §1 · t4 §6.4</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <div class="bd-strip" style="align-items:flex-start">
+      <div class="ab12-col" style="gap:7px;width:100%">
+        <span><b>Provenance chips</b> (a grade's <code class="ds-mono">graded_by</code> + <code class="ds-mono">trust</code>, from <code class="ds-mono">userState.problems[id].provenance</code> and <code class="ds-mono">proj_outcome_mix_v2</code>):</span>
+        <div class="bd-scroll" style="width:100%"><table class="xl-table" style="font-size:12px">
+          <thead><tr><th>Chip</th><th>Data</th><th>Judge-checked %</th></tr></thead>
+          <tbody>
+            <tr><td><span class="ds-chip ds-chip--xs ab12-pv">judge ✓</span></td><td><code class="ds-mono">auto ∧ checked</code>, a passing submit</td><td>counts</td></tr>
+            <tr><td><span class="ds-chip ds-chip--xs ab12-pv">judge</span></td><td><code class="ds-mono">auto ∧ checked</code>, no pass (time limit, give-up)</td><td>counts</td></tr>
+            <tr><td><span class="ds-chip ds-chip--xs ab12-pv">self · honour</span></td><td><code class="ds-mono">self ∧ honor</code> (self path, picker)</td><td>doesn't count</td></tr>
+            <tr><td><span class="ds-chip ds-chip--xs ab12-pv">honour</span></td><td><code class="ds-mono">auto ∧ honor</code> (public-key probes, in-process tests)</td><td>doesn't count</td></tr>
+            <tr><td><span class="ds-chip ds-chip--xs ab12-pv">AI</span> <span class="bd-tag bd-tag--flag">from M4</span></td><td><code class="ds-mono">graded_by=ai</code></td><td>doesn't count</td></tr>
+            <tr><td><span class="ds-chip ds-chip--xs ab12-pv">override · honour</span> <span class="bd-tag bd-tag--flag">from M4</span></td><td><code class="ds-mono">graded_by=override</code></td><td>doesn't count</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+    <div class="bd-strip" style="align-items:flex-start">
+      <div class="ab12-col" style="gap:6px">
+        <span><b>Withheld while live</b> (ADR-0027 §1, t4 §6.4): an item with an open counted attempt or a due or live touch shows <span class="xl-lock"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span>
+          (or "… while live") instead of its pattern, and <span class="xl-lock"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-lock"/></svg> Concepts hidden while this problem's review is due</span> instead of its concepts.
+          Locks render <b>only from server markers</b> (<code class="ds-mono">withhold()</code>'s stripped fields; <code class="ds-mono">conceptsWithheld</code> on mistakes, m3-13) — the SPA never infers them.</span>
+        <span><b>The arena never shows here</b> (D10): no arena marker, count or activity on Week, Mistakes or Progress. Arena submits and Runs are never counted in judge stats.</span>
+        <span><b>From M4, flagged:</b> the list-level provisional chip (W3), the xLearn AI source chip (M1) and the AI / override segments (P1) are typed now and drawn with <span class="bd-tag bd-tag--flag">from M4</span>; M3 never produces them. Their cards are AB16's.</span>
+        <span><b>Dates</b>: the board's "today" is <b>Wed, Oct 21</b>. Sample rows, counts and text throughout.</span>
+      </div>
+    </div>
+  </div>
+  <div class="bd-strip" style="margin-top:14px"><span><b>A11y on every frame.</b> Text <code class="ds-mono">--ds-text</code> 15:1 and <code class="ds-mono">--ds-dim</code> 7.2:1 on the panels; <code class="ds-mono">--ds-muted</code> only for non-essential meta; badge and chip text ≥ 5.5:1 on its tint. Every tone travels with a word or an icon, never colour alone.
+    The drawn focus ring (<code class="ds-mono">bd-focus</code>, the app's <code class="ds-mono">:focus-visible</code>) marks where focus lands first in a frame; each frame's notes give its focus order. Status changes are <code class="ds-mono">aria-live="polite"</code>; nothing steals focus; <code class="ds-mono">ds-spin</code> becomes a static icon under reduced motion. Touch targets ≥ 24 px with 8 px spacing (WCAG 2.5.8); 44 px rows in the 390 px sheets.</span></div>
+</section>
+
+<!-- ======================================================== WEEK -->
+<section class="bd-section" aria-labelledby="sec-w">
+  <h2 class="bd-section__h" id="sec-w">Week <small>/xlearn/dsa/week/:n · W1–W4 · m3-13 fills ADR-0013's userState in place + two additive keys</small></h2>
+
+  <!-- W1 -->
+  <article class="bd-frame" id="AB12-W1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB12-W1</span><span class="bd-frame__title">· Wired touch dots</span><span class="bd-frame__state">· Week 2 · a dot's tooltip open · legend under the list</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--change">fills aggregate.go:120</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" aria-label="Collapse sidebar"><aside class="xl-side"><div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div><nav class="xl-nav"><a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a><a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a><a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a></nav><div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div></aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab12-top"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><a>week</a><span class="xl-crumb__sep">/</span><b>2</b></div><span class="ab12-flex"></span><span class="ab12-topsw"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span><span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span><span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span></div>
+            <div class="xl-content">
+              <div class="xl-page-h">
+                <div><div class="xl-eyebrow">Week 2 of 16 · Phase 1 Fundamentals</div><h1 style="margin-top:6px">Two Pointers &amp; Sliding Window</h1></div>
+                <div class="ab12-row"><span class="ds-btn ds-btn--secondary" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</span><span class="ds-btn ds-btn--primary" role="button">Start practicing <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+              </div>
+              <div class="ds-card ds-card--teal ab12-thesis"><div class="ab12-thesis__k"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-bulb"/></svg>What this week is really about</div><p style="font-size:14px;line-height:1.65;max-width:820px">Collapse nested loops into a single moving window — the mindset behind most array and string interview questions.</p></div>
+              <div class="ab12-weekgrid">
+                <div>
+                  <div class="xl-sect"><div class="xl-sect__h"><h2>Concepts</h2></div>
+                    <div class="ab12-cgrid">
+                      <div class="ds-card ab12-ccard"><div class="ab12-row" style="gap:9px;margin-bottom:8px"><span class="ab12-ccard__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-book"/></svg></span><b style="font-size:14px">Two Pointers</b></div><div class="ab12-teal" style="font-size:11.5px">Read concept →</div></div>
+                      <div class="ds-card ab12-ccard"><div class="ab12-row" style="gap:9px;margin-bottom:8px"><span class="ab12-ccard__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-book"/></svg></span><b style="font-size:14px">Sliding Window</b></div><div class="ab12-teal" style="font-size:11.5px">Read concept →</div></div>
+                    </div></div>
+                  <div class="xl-sect">
+                    <div class="xl-sect__h"><h2>Problems</h2><div class="ds-seg" role="group" aria-label="Filter problems"><button type="button" class="ds-seg__btn ds-seg__btn--on" aria-pressed="true">All</button><button type="button" class="ds-seg__btn" aria-pressed="false">Guided</button><button type="button" class="ds-seg__btn" aria-pressed="false">Reinforcement</button></div></div>
+                    <div class="ab12-rows">
+                      <div class="ab12-wr"><span class="ab12-wr__id">#12</span><span class="ab12-wr__t"><b>Longest Substring Without Repeating Characters</b><span class="xl-diff xl-diff--med">Medium</span><span class="xl-pat">Sliding Window</span></span>
+                        <span class="ab12-dots"><span class="xl-touch" role="img" aria-label="Touches: Day 1 passed Oct 3, Day 3 passed Oct 5, Day 7 passed Oct 9, Day 21 due Fri under mock conditions, Day 45 not yet scheduled"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass bd-focus" style="outline-offset:1px"></span><span class="xl-touch__d xl-touch__d--mock"></span><span class="xl-touch__d"></span></span><span class="ab12-tip ab12-tip--dn" role="tooltip" style="margin-left:10px">Day 7 · passed Oct 9</span></span>
+                        <span class="ab12-st"><span class="ds-badge ds-badge--ok"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-check"/></svg>Clean</span><span class="ds-chip ds-chip--xs ab12-pv">judge ✓</span></span><svg class="xl-ico xl-ico--sm ab12-dim" aria-hidden="true"><use href="#i-chevron"/></svg></div>
+                      <div class="ab12-wr"><span class="ab12-wr__id">#14</span><span class="ab12-wr__t"><b>Valid Palindrome</b><span class="xl-diff xl-diff--easy">Easy</span><span class="xl-pat">Two Pointers</span></span>
+                        <span class="ab12-dots"><span class="xl-touch" role="img" aria-label="Touches: Day 1, Day 3 and Day 7 passed; Day 21 due Thursday under mock conditions; Day 45 not yet scheduled"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--mock"></span><span class="xl-touch__d"></span></span></span>
+                        <span class="ab12-st"><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs ab12-pv">self · honour</span></span><svg class="xl-ico xl-ico--sm ab12-dim" aria-hidden="true"><use href="#i-chevron"/></svg></div>
+                      <div class="ab12-wr"><span class="ab12-wr__id">#15</span><span class="ab12-wr__t"><b>Two Sum II</b><span class="xl-diff xl-diff--med">Medium</span><span class="xl-pat">Two Pointers</span><span class="ds-chip ds-chip--xs ds-mono ab12-violet"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-refresh"/></svg> reinforcement</span></span>
+                        <span class="ab12-dots"><span class="xl-touch" role="img" aria-label="Touches: not started"><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></span></span>
+                        <span class="ab12-st"><span class="ds-chip ds-chip--sm ds-mono">Not started</span></span><svg class="xl-ico xl-ico--sm ab12-dim" aria-hidden="true"><use href="#i-chevron"/></svg></div>
+                      <div class="ab12-wr"><span class="ab12-wr__id">#16</span><span class="ab12-wr__t"><b>3Sum</b><span class="xl-diff xl-diff--med">Medium</span><span class="xl-lock"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span></span>
+                        <span class="ab12-dots"><span class="xl-touch" role="img" aria-label="Touches: Day 1 due today, restarted after Day 3 failed on Oct 20; Day 7, 21 and 45 not yet scheduled"><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d xl-touch__d--fail"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></span></span>
+                        <span class="ab12-st"><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs ab12-pv">judge ✓</span></span><svg class="xl-ico xl-ico--sm ab12-dim" aria-hidden="true"><use href="#i-chevron"/></svg></div>
+                      <div class="ab12-wr"><span class="ab12-wr__id">#17</span><span class="ab12-wr__t"><b>Container With Most Water</b><span class="xl-diff xl-diff--med">Medium</span><span class="xl-pat">Two Pointers</span></span>
+                        <span class="ab12-dots"><span class="xl-touch" role="img" aria-label="Touches: not started"><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></span></span>
+                        <span class="ab12-st"><span class="ds-chip ds-chip--sm ds-mono">Not started</span></span><svg class="xl-ico xl-ico--sm ab12-dim" aria-hidden="true"><use href="#i-chevron"/></svg></div>
+                      <div class="ab12-wr"><span class="ab12-wr__id">#18</span><span class="ab12-wr__t"><b>Minimum Window Substring</b><span class="xl-diff xl-diff--hard">Hard</span><span class="xl-pat">Sliding Window</span></span>
+                        <span class="ab12-dots"><span class="xl-touch" role="img" aria-label="Touches: Day 1 passed Oct 20, Day 3 due Thu, later levels not yet scheduled"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></span></span>
+                        <span class="ab12-st"><span class="ds-badge ds-badge--err"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-flagx"/></svg>Miss</span><span class="ds-chip ds-chip--xs ab12-pv">judge</span></span><svg class="xl-ico xl-ico--sm ab12-dim" aria-hidden="true"><use href="#i-chevron"/></svg></div>
+                    </div>
+                    <div class="ab12-legend" aria-label="Touch dot legend"><span class="ab12-cap" style="margin-right:2px">D1 · D3 · D7 · D21 · D45</span><span><span class="xl-touch__d xl-touch__d--pass"></span> passed</span><span><span class="xl-touch__d xl-touch__d--fail"></span> failed</span><span><span class="xl-touch__d xl-touch__d--due"></span> due today</span><span><span class="xl-touch__d xl-touch__d--mock"></span> mock conditions (D21, D45)</span><span><span class="xl-touch__d"></span> not yet</span></div>
+                  </div>
+                </div>
+                <div class="ab12-col" style="gap:16px">
+                  <div class="xl-panel"><div class="xl-panel__b">
+                    <div style="font-size:12px;color:var(--ds-dim);margin-bottom:10px">Week 2 progress</div>
+                    <div class="ab12-roll__big"><b>3</b><span class="ab12-mut">/ 5 core passed</span></div>
+                    <div class="ds-meter"><div class="ds-meter__fill" style="width:60%"></div></div>
+                    <div class="ab12-roll__line"><span class="ab12-nw">Core <b>5</b></span> · <span class="ab12-nw">concluded <b>4</b></span> · <span class="ab12-nw">passed <b>3</b></span> · <span class="ab12-nw">judge-checked <b>3 of 4</b></span></div>
+                    <div class="ab12-split"><span><b class="ab12-ok">1</b> <span class="ab12-mut">Easy</span></span><span><b class="ab12-warn">2</b> <span class="ab12-mut">Med</span></span><span><b class="ab12-err">0</b> <span class="ab12-mut">Hard</span></span></div>
+                  </div></div>
+                  <div class="xl-panel"><div class="xl-panel__b">
+                    <div style="font-size:12px;color:var(--ds-dim);margin-bottom:10px">Suggested for today</div>
+                    <div class="ab12-row" style="gap:10px;padding:10px;border-radius:8px;background:#101a1c;border:1px solid rgba(53,208,192,.3);flex-wrap:nowrap"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg><span class="ab12-flex"><b style="font-size:12.5px">Review #16 · 3Sum · Day 1</b><br><span class="ab12-help" style="font-size:11px">due today — reviews come first</span></span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></div>
+                  </div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <span class="xl-fab" aria-label="Open Your AI coach (your key)"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-spark"/></svg></span>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Data (ADR-0013, filled in place)</h4>
+        <ul><li><code>GET /api/paths/dsa/weeks/2</code> → <code>userState.problems[id].touches[5]{level, dueDate, result}</code>, today <code>emptyTouches()</code> (<code>aggregate.go:120</code>). m3-13 fills them from review (one batched ladder read, e.g. <code>GET /revisions/ladders?ids=</code>), dated from <code>anchor_at</code> (D2). Same fields, no client contract change.</li>
+          <li><code>result</code>: <code>pass</code> (✓ fill) · <code>fail</code> (✗) · <code>due</code> (ring: due today or overdue) · <code>mock</code> (dashed violet: a D21 / D45 level, which runs under mock conditions) · <code>none</code> (neutral: not yet due, or no ladder).</li>
+          <li>Review down → neutral dots and the response isn't cached (the <code>populated</code> rule, extended). Sample dates.</li></ul></section>
+      <section><h4>Tooltip · reading</h4>
+        <ul><li>Each dot has a tooltip on hover and focus: "Day 7 · passed Oct 9" · "Day 21 · due Thu" · "Day 3 · failed Oct 20 · back to Day 1" · "Day 1 · due today" · "Day 45 · not yet".</li>
+          <li>#16 shows a restart: its Day 3 failed yesterday, so the ladder restarts at Day 1 (due today) and the D3 dot keeps the ✗ until that level passes again. Due → the pattern is withheld.</li>
+          <li>The row status is W2's chip set; the grade's provenance mini-chip follows it.</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>D2 (touches from <code>anchor_at</code>) · t4 §8 ("wire the touch dots") · ADR-0013. Dot shapes differ, not just colours (fill ✓, ✗, ring, dashed, hollow).</li>
+          <li>The dot group is one <code>role="img"</code> with a full sentence label; each dot is focusable only via the row's "Touches" disclosure for keyboard users (arrow keys move across dots, the tooltip follows focus). Legend is visible text.</li>
+          <li>&lt; 1024 px: WN.</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide" style="margin-top:22px">
+    <!-- W2 -->
+    <article class="bd-frame" id="AB12-W2">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB12-W2</span><span class="bd-frame__title">· Row status chips</span><span class="bd-frame__state">· (a) open and pending states · pattern withheld</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--change">replaces v1 StatusChip</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab12-rows">
+        <div class="ab12-wr" style="grid-template-columns:34px minmax(0,1fr) auto"><span class="ab12-wr__id">#17</span><span class="ab12-wr__t"><b>Container With Most Water</b><span class="xl-pat">Two Pointers</span></span><span class="ab12-st"><span class="ds-chip ds-chip--sm ds-mono">Not started</span></span></div>
+        <div class="ab12-wr" style="grid-template-columns:34px minmax(0,1fr) auto"><span class="ab12-wr__id">#16</span><span class="ab12-wr__t"><b>3Sum</b><span class="xl-lock"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while live</span></span><span class="ab12-st"><span class="ds-badge ds-badge--info" role="timer" aria-live="off" aria-label="In progress, 31 minutes 12 seconds left"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-clock"/></svg>In progress · 31:12 left</span></span></div>
+        <div class="ab12-wr" style="grid-template-columns:34px minmax(0,1fr) auto"><span class="ab12-wr__id">#18</span><span class="ab12-wr__t"><b>Minimum Window Substring</b><span class="xl-lock"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while live</span></span><span class="ab12-st"><span class="ds-badge ds-badge--info"><svg class="xl-ico ab12-i12 ds-spin" aria-hidden="true"><use href="#i-spinner"/></svg>Grading…</span></span></div>
+        <div class="ab12-wr" style="grid-template-columns:34px minmax(0,1fr) auto"><span class="ab12-wr__id">#12</span><span class="ab12-wr__t"><b>Longest Substring Without Repeating Characters</b><span class="xl-lock"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while live</span></span><span class="ab12-st"><a class="ds-badge ds-badge--warn"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-alert"/></svg>Needs your grade</a></span></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Status from practice via the additive <code>attemptState</code> (<code>awaiting_evaluation | provisional | self_grade_pending | null</code>) and the open attempt's <code>deadlineAt</code>. "Not started" keeps v1's mono chip (v1 "Available"). "In progress · 31:12 left" = D15's server clock. "Grading…" = <code>awaiting_evaluation</code>. "Needs your grade" (<code>ds-badge--warn</code>) links to the Workspace picker (AB07-F11). All three are live, so the pattern is withheld. Chips grow to fit (v1's fixed 96 px becomes a minimum).</li></ul></aside>
+    </article>
+    <article class="bd-frame" id="AB12-W2b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB12-W2b</span><span class="bd-frame__title">· Row status chips</span><span class="bd-frame__state">· (b) concluded · grade + provenance mini-chip</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--change">replaces v1 "Solved"</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab12-rows">
+        <div class="ab12-wr" style="grid-template-columns:34px minmax(0,1fr) auto"><span class="ab12-wr__id">#12</span><span class="ab12-wr__t"><b>Longest Substring Without Repeating…</b><span class="xl-pat">Sliding Window</span></span><span class="ab12-st"><span class="ds-badge ds-badge--ok"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-check"/></svg>Clean</span><span class="ds-chip ds-chip--xs ab12-pv">judge ✓</span></span></div>
+        <div class="ab12-wr" style="grid-template-columns:34px minmax(0,1fr) auto"><span class="ab12-wr__id">#14</span><span class="ab12-wr__t"><b>Valid Palindrome</b><span class="xl-pat">Two Pointers</span></span><span class="ab12-st"><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs ab12-pv">self · honour</span></span></div>
+        <div class="ab12-wr" style="grid-template-columns:34px minmax(0,1fr) auto"><span class="ab12-wr__id">#16</span><span class="ab12-wr__t"><b>3Sum</b><span class="xl-pat">Two Pointers</span></span><span class="ab12-st"><span class="ds-badge ds-badge--info">Assisted</span><span class="ds-chip ds-chip--xs ab12-pv">judge ✓</span></span></div>
+        <div class="ab12-wr" style="grid-template-columns:34px minmax(0,1fr) auto"><span class="ab12-wr__id">#18</span><span class="ab12-wr__t"><b>Minimum Window Substring</b><span class="xl-pat">Sliding Window</span></span><span class="ab12-st"><span class="ds-badge ds-badge--err"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-flagx"/></svg>Miss</span><span class="ds-chip ds-chip--xs ab12-pv">judge</span></span></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Grade from <code>lastOutcome</code>; provenance from the additive <code>provenance{gradedBy, trust}</code>. Words, icon and tone, then the mini-chip (AB06 / AB04 wording, board-wide table). v1's single "Solved" badge is gone: a concluded row always names its grade. Sample grades.</li></ul></aside>
+    </article>
+
+    <!-- W3 -->
+    <article class="bd-frame" id="AB12-W3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB12-W3</span><span class="bd-frame__title">· Provisional (list chip only)</span><span class="bd-frame__state">· attemptState = provisional</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--flag">from M4</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab12-rows">
+        <div class="ab12-wr" style="grid-template-columns:34px minmax(0,1fr) auto"><span class="ab12-wr__id">#16</span><span class="ab12-wr__t"><b>3Sum</b><span class="xl-diff xl-diff--med">Medium</span></span>
+          <span class="ab12-st"><a class="ab12-provbig" role="timer" aria-live="off" aria-label="Rough, graded by xLearn AI, provisional, auto-accepts in 23 minutes 41 seconds"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-spark"/></svg>Rough · AI · provisional · auto-accepts in 23:41</a></span></div>
+        <p class="ab12-help" style="margin:0">The card behind the chip (accept, dispute, compare) is <a href="AB16-ai-suggestion-dispute.html">AB16</a>'s.</p>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Typed now from <code>attemptState = provisional</code> (+ its <code>accept_deadline_at</code>); <b>M3 never produces it</b>. One chip, dashed violet (a suggestion, not a settled grade), linking to the Workspace concluded area (AB16-F1). The countdown is <code>role="timer"</code>, <code>aria-live="off"</code>; at 0 the week refetches. Rollup: provisional rows count as concluded only once accepted.</li></ul></aside>
+    </article>
+
+    <!-- W4 -->
+    <article class="bd-frame" id="AB12-W4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB12-W4</span><span class="bd-frame__title">· Week rollup</span><span class="bd-frame__state">· (a) M3 · (b) no judge result yet</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--change">evolves v1 RightRail</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab12-row" style="align-items:flex-start;gap:16px">
+        <div class="xl-panel" style="width:320px"><div class="xl-panel__b">
+          <div class="ab12-row" style="margin-bottom:10px"><span style="font-size:12px;color:var(--ds-dim)">Week 2 progress</span><span class="ab12-flex"></span><span class="ab12-cap">(a)</span></div>
+          <div class="ab12-roll__big"><b>3</b><span class="ab12-mut">/ 5 core passed</span></div>
+          <div class="ds-meter" role="img" aria-label="3 of 5 core problems passed"><div class="ds-meter__fill" style="width:60%"></div></div>
+          <div class="ab12-roll__line"><span class="ab12-nw">Core <b>5</b></span> · <span class="ab12-nw">concluded <b>4</b></span> · <span class="ab12-nw">passed <b>3</b></span> · <span class="ab12-nw">judge-checked <b>3 of 4</b></span></div>
+          <div class="ab12-split"><span><b class="ab12-ok">1</b> <span class="ab12-mut">Easy</span></span><span><b class="ab12-warn">2</b> <span class="ab12-mut">Med</span></span><span><b class="ab12-err">0</b> <span class="ab12-mut">Hard</span></span></div>
+        </div></div>
+        <div class="xl-panel" style="width:320px"><div class="xl-panel__b">
+          <div class="ab12-row" style="margin-bottom:10px"><span style="font-size:12px;color:var(--ds-dim)">Week 2 progress</span><span class="ab12-flex"></span><span class="ab12-cap">(b)</span></div>
+          <div class="ab12-roll__big"><b>3</b><span class="ab12-mut">/ 5 core passed</span></div>
+          <div class="ds-meter"><div class="ds-meter__fill" style="width:60%"></div></div>
+          <div class="ab12-roll__line">Core <b>5</b> · concluded <b>4</b> · passed <b>3</b></div>
+          <div class="ab12-split"><span><b class="ab12-ok">1</b> <span class="ab12-mut">Easy</span></span><span><b class="ab12-warn">2</b> <span class="ab12-mut">Med</span></span><span><b class="ab12-err">0</b> <span class="ab12-mut">Hard</span></span></div>
+        </div></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li><b>Core</b> = non-reinforcement items · <b>concluded</b> = a concluded counted attempt · <b>passed</b> = grade ≠ Miss (t4 §11.4 #4) · <b>judge-checked N of M</b> = concluded rows with <code>gradedBy=auto ∧ trust=checked</code>, of the concluded. The meter and headline move from v1's "solved" to <b>passed</b>; the split counts passed rows per difficulty token.</li>
+        <li>(b) Before any judge-graded result (or judge off for the account) the judge-checked clause is omitted, never "0 of 4". Arena activity never enters (D10). Sample counts match W1.</li></ul></aside>
+    </article>
+  </div>
+
+  <!-- Week narrow -->
+  <h3 class="bd-section__h" id="AB12-WN" style="margin-top:30px;font-size:15px">Week · 390 px <small>rows stack · dots and status on one line · rollup above the list</small></h3>
+  <div class="bd-narrow-row">
+    <article class="bd-frame bd-narrow" id="AB12-WN1">
+      <header class="bd-frame__label"><span class="bd-frame__id">WN1 · AB12-W1/W4</span><span class="bd-frame__state">· Week 2</span></header>
+      <div class="bd-frame__body">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" checked aria-label="Collapse sidebar"><aside class="xl-side"><div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div><nav class="xl-nav"><a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a><a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a><a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a></nav><div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div></aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab12-top" style="padding:0 12px;gap:8px"><div class="xl-crumb"><a>dsa</a><span class="xl-crumb__sep">/</span><a>week</a><span class="xl-crumb__sep">/</span><b>2</b></div><span class="ab12-flex"></span><span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span></div>
+            <div class="ab12-nbody">
+              <div><div class="xl-eyebrow">Week 2 of 16</div><h1 style="margin-top:4px">Two Pointers &amp; Sliding Window</h1></div>
+              <div class="xl-panel" style="padding:12px"><div class="ab12-roll__big" style="margin-bottom:8px"><b style="font-size:20px">3</b><span class="ab12-mut">/ 5 core passed</span></div><div class="ds-meter"><div class="ds-meter__fill" style="width:60%"></div></div><div class="ab12-roll__line" style="margin-top:8px;font-size:12px"><span class="ab12-nw">Core <b>5</b></span> · <span class="ab12-nw">concluded <b>4</b></span> · <span class="ab12-nw">passed <b>3</b></span> · <span class="ab12-nw">judge-checked <b>3 of 4</b></span></div></div>
+              <div class="ab12-nwr"><div class="ab12-row" style="gap:7px"><span class="ab12-wr__id">#12</span><b style="font-size:13px">Longest Substring Without Repeating Characters</b></div><div class="ab12-row" style="gap:6px"><span class="xl-diff xl-diff--med">Medium</span><span class="xl-pat">Sliding Window</span></div>
+                <div class="ab12-row" style="justify-content:space-between"><span class="xl-touch" role="img" aria-label="Touches: Day 1, 3 and 7 passed; Day 21 due Fri"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--mock"></span><span class="xl-touch__d"></span></span><span class="ab12-row" style="gap:6px"><span class="ds-badge ds-badge--ok"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-check"/></svg>Clean</span><span class="ds-chip ds-chip--xs ab12-pv">judge ✓</span></span></div></div>
+              <div class="ab12-nwr"><div class="ab12-row" style="gap:7px"><span class="ab12-wr__id">#16</span><b style="font-size:13px">3Sum</b><span class="xl-diff xl-diff--med">Medium</span></div><span class="xl-lock" style="align-self:flex-start"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span>
+                <div class="ab12-row" style="justify-content:space-between"><span class="xl-touch" role="img" aria-label="Touches: Day 1 due today; Day 3 failed Oct 20"><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d xl-touch__d--fail"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></span><span class="ab12-row" style="gap:6px"><span class="ds-badge ds-badge--warn">Rough</span><span class="ds-chip ds-chip--xs ab12-pv">judge ✓</span></span></div></div>
+              <div class="ab12-nwr"><div class="ab12-row" style="gap:7px"><span class="ab12-wr__id">#18</span><b style="font-size:13px">Minimum Window Substring</b><span class="xl-diff xl-diff--hard">Hard</span></div>
+                <div class="ab12-row" style="justify-content:space-between"><span class="xl-touch" role="img" aria-label="Touches: Day 1 passed; Day 3 due Thu"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></span><span class="ab12-row" style="gap:6px"><span class="ds-badge ds-badge--err"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-flagx"/></svg>Miss</span><span class="ds-chip ds-chip--xs ab12-pv">judge</span></span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>The right rail moves above the list (rollup first, "Suggested for today" after it). A row = title, then chips, then dots (left) and status (right). Dot tooltips open on tap and close on the next tap.</li></ul></aside>
+    </article>
+    <article class="bd-frame bd-narrow" id="AB12-WN2">
+      <header class="bd-frame__label"><span class="bd-frame__id">WN2 · AB12-W2/W3</span><span class="bd-frame__state">· long status chips wrap</span></header>
+      <div class="bd-frame__body"><div class="ab12-nbody">
+        <div class="ab12-nwr"><div class="ab12-row" style="gap:7px"><span class="ab12-wr__id">#16</span><b style="font-size:13px">3Sum</b><span class="xl-diff xl-diff--med">Medium</span></div><span class="xl-lock" style="align-self:flex-start"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while live</span>
+          <div class="ab12-row" style="justify-content:space-between"><span class="xl-touch" aria-hidden="true"><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></span><span class="ds-badge ds-badge--info"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-clock"/></svg>31:12 left</span></div></div>
+        <div class="ab12-nwr"><div class="ab12-row" style="gap:7px"><span class="ab12-wr__id">#12</span><b style="font-size:13px">Longest Substring Without Repeating Characters</b></div>
+          <div class="ab12-row" style="justify-content:flex-end"><a class="ds-badge ds-badge--warn"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-alert"/></svg>Needs your grade</a></div></div>
+        <div class="ab12-nwr"><div class="ab12-row" style="gap:7px"><span class="ab12-wr__id">#16</span><b style="font-size:13px">3Sum</b><span class="bd-tag bd-tag--flag">from M4</span></div>
+          <a class="ab12-provbig" style="align-self:flex-start"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-spark"/></svg>Rough · AI · provisional · 23:41</a></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>"In progress · 31:12 left" shortens to "31:12 left"; the provisional chip drops "auto-accepts in" — both keep the full phrase as the accessible name.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<!-- ======================================================== MISTAKES -->
+<section class="bd-section" aria-labelledby="sec-m">
+  <h2 class="bd-section__h" id="sec-m">Mistakes <small>/xlearn/dsa/mistakes · M1–M5 · m3-10's categorySource / categorySuggested / concepts</small></h2>
+
+  <!-- M1 -->
+  <article class="bd-frame" id="AB12-M1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB12-M1</span><span class="bd-frame__title">· Category source chip</span><span class="bd-frame__state">· You · Judge · Suggested · xLearn AI · precedence tooltip open</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">R-JG4</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" aria-label="Collapse sidebar"><aside class="xl-side"><div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div><nav class="xl-nav"><a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a><a class="xl-nav__item" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a><a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a></nav><div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div></aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab12-top"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><b>mistakes</b></div><span class="ab12-flex"></span><span class="ab12-topsw"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span><span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span><span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span></div>
+            <div class="xl-content">
+              <div class="xl-page-h ab12-mhead">
+                <div><div class="xl-eyebrow">Learn from every miss</div><h1 style="margin-top:6px;font-size:26px">Mistake journal</h1><p style="margin:8px 0 0;font-size:13.5px;color:var(--ds-dim);max-width:640px">Every below-Clean outcome lands here. An entry closes after <b style="color:var(--ds-text)">two successful revisits</b>.</p></div>
+                <div class="ab12-row" style="gap:16px"><div class="ab12-stat"><b class="ab12-warn">4</b><span>open</span></div><div class="ab12-stat"><b class="ab12-ok">1</b><span>closed</span></div></div>
+              </div>
+              <div class="ab12-filters">
+                <div class="ab12-row" role="group" aria-label="Filter by category" style="gap:7px;flex:1"><span class="ds-chip ds-chip--sm ds-chip--warn" role="button" aria-pressed="true">All <span class="ds-mono" style="opacity:.7">5</span></span><span class="ds-chip ds-chip--sm" role="button">Misread <span class="ds-mono" style="opacity:.7">1</span></span><span class="ds-chip ds-chip--sm" role="button">Wrong pattern <span class="ds-mono" style="opacity:.7">1</span></span><span class="ds-chip ds-chip--sm" role="button">Right pattern, wrong state <span class="ds-mono" style="opacity:.7">1</span></span><span class="ds-chip ds-chip--sm" role="button">Off-by-one / boundary <span class="ds-mono" style="opacity:.7">1</span></span><span class="ds-chip ds-chip--sm" role="button">Complexity misjudged <span class="ds-mono" style="opacity:.7">1</span></span><span class="ab12-help">+3 more</span></div>
+                <div class="ds-seg" role="group" aria-label="Filter by status"><button type="button" class="ds-seg__btn ds-seg__btn--on" aria-pressed="true">All</button><button type="button" class="ds-seg__btn" aria-pressed="false">Open</button><button type="button" class="ds-seg__btn" aria-pressed="false">Closed</button></div>
+              </div>
+              <div class="xl-panel" style="overflow:visible">
+                <table class="xl-table ab12-mt">
+                  <thead><tr><th style="width:150px">Problem</th><th style="width:140px">Pattern</th><th>My mistake → root cause → correct insight</th><th style="width:236px">Category</th><th style="width:88px">Revisit</th><th style="width:112px">Status</th></tr></thead>
+                  <tbody>
+                    <tr><td><b style="display:block">3Sum</b><span class="ab12-mono" style="font-size:11px;color:var(--ds-dim)">#16</span></td>
+                      <td><span class="xl-lock"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span></td>
+                      <td style="max-width:0"><div class="ab12-det"><div class="ab12-det__m">✗ Three nested loops timed out on the large inputs</div><div class="ab12-det__r">↳ Didn't read n ≤ 3000 before picking an approach</div><div class="ab12-det__i">✓ n ≤ 3000 allows O(n²): sort, then close in with two pointers</div></div>
+                        <div class="ab12-concepts"><span class="xl-lock"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-lock"/></svg> Concepts hidden while this problem's review is due</span></div></td>
+                      <td><div class="ab12-anchor"><div class="ab12-cat"><button type="button" class="ab12-src bd-focus" aria-describedby="m1-tip" aria-expanded="true"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</button><span class="ds-chip ds-chip--sm">Complexity misjudged</span></div>
+                        <div class="ab12-tip ab12-tip--abs" role="tooltip" id="m1-tip">Your choice always wins. Then judge rules, then xLearn AI; <i>suggested</i> categories don't count toward your weak area.</div></div></td>
+                      <td class="ab12-mono ab12-nw" style="font-size:11.5px">today</td><td class="ab12-nw"><span class="ds-badge ds-badge--warn ds-mono">Open · 0/2</span></td></tr>
+                    <tr><td><b style="display:block">Minimum Window Substring</b><span class="ab12-mono" style="font-size:11px;color:var(--ds-dim)">#18</span></td>
+                      <td><span class="xl-pat">Sliding Window</span></td>
+                      <td style="max-width:0"><div class="ab12-det"><span style="color:var(--ds-dim)">Not yet written up — add your root cause &amp; insight.</span></div>
+                        <div class="ab12-concepts"><span class="ab12-concepts__k">Revise</span><a class="ds-chip ds-chip--xs ab12-clink">Sliding Window</a><a class="ds-chip ds-chip--xs ab12-clink">Hashing &amp; Frequency Maps</a></div></td>
+                      <td><div class="ab12-cat"><span class="ab12-src ab12-src--sugg">Suggested</span><span class="ds-chip ds-chip--sm ab12-catsugg">Misread</span><a style="font-size:11.5px">Confirm</a></div></td>
+                      <td class="ab12-mono ab12-nw" style="font-size:11.5px">Thu</td><td class="ab12-nw"><span class="ds-badge ds-badge--warn ds-mono">Open · 1/2</span></td></tr>
+                    <tr><td><b style="display:block">Group Anagrams</b><span class="ab12-mono" style="font-size:11px;color:var(--ds-dim)">#5</span></td>
+                      <td><span class="xl-pat">Hashing</span></td>
+                      <td style="max-width:0"><div class="ab12-det"><div class="ab12-det__m">✗ Joined letter counts without a separator, so different words shared a key</div><div class="ab12-det__i">✓ Use a [26]int array as the map key</div></div>
+                        <div class="ab12-concepts"><span class="ab12-concepts__k">Revise</span><a class="ds-chip ds-chip--xs ab12-clink">Hashing &amp; Frequency Maps</a></div></td>
+                      <td><div class="ab12-cat"><span class="ab12-src"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-spark"/></svg>xLearn AI</span><span class="ds-badge ds-badge--violet">Right pattern, wrong state</span><span class="bd-tag bd-tag--flag">from M4</span></div></td>
+                      <td class="ab12-mono ab12-nw" style="font-size:11.5px">in 6 days</td><td class="ab12-nw"><span class="ds-badge ds-badge--warn ds-mono">Open · 1/2</span></td></tr>
+                    <tr><td><b style="display:block">Top K Frequent Elements</b><span class="ab12-mono" style="font-size:11px;color:var(--ds-dim)">#7</span></td>
+                      <td><span class="xl-pat">Heap / Bucket Sort</span></td>
+                      <td style="max-width:0"><div class="ab12-det"><div class="ab12-det__m">✗ Sorted the whole frequency map: O(n log n) and ran out of time</div><div class="ab12-det__r">↳ Missed that counts are bounded by n</div><div class="ab12-det__i">✓ Bucket by count for O(n)</div></div>
+                        <div class="ab12-concepts"><span class="ab12-concepts__k">Revise</span><a class="ds-chip ds-chip--xs ab12-clink">Hashing &amp; Frequency Maps</a></div></td>
+                      <td><div class="ab12-cat"><span class="ab12-src"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-user"/></svg>You</span><span class="ds-chip ds-chip--sm">Wrong pattern</span></div></td>
+                      <td class="ab12-mono ab12-nw" style="font-size:11.5px">in 3 days</td><td class="ab12-nw"><span class="ds-badge ds-badge--warn ds-mono">Open · 1/2</span></td></tr>
+                    <tr><td><b style="display:block">Subarray Sum Equals K</b><span class="ab12-mono" style="font-size:11px;color:var(--ds-dim)">#9</span></td>
+                      <td><span class="xl-pat">Prefix Sum</span></td>
+                      <td style="max-width:0"><div class="ab12-det"><div class="ab12-det__m">✗ Forgot to seed the map with sum 0 → count 1</div><div class="ab12-det__i">✓ Seed prefix[0] so subarrays starting at index 0 count</div></div>
+                        <div class="ab12-concepts"><span class="ab12-concepts__k">Revise</span><a class="ds-chip ds-chip--xs ab12-clink">Prefix Sums</a><a class="ds-chip ds-chip--xs ab12-clink">Hashing &amp; Frequency Maps</a></div></td>
+                      <td><div class="ab12-cat"><span class="ab12-src"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span><span class="ds-badge ds-badge--warn">Off-by-one / boundary</span></div></td>
+                      <td class="ab12-mono ab12-nw" style="font-size:11.5px">—</td><td class="ab12-nw"><span class="ds-badge ds-badge--ok ds-mono">Closed</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style="margin-top:12px;font-size:11.5px;color:var(--ds-dim);display:flex;align-items:center;gap:8px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg>A closed entry that fails a future review re-opens automatically and re-enters the revision queue at Day 1.</div>
+            </div>
+          </div>
+          <span class="xl-fab" aria-label="Open Your AI coach (your key)"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-spark"/></svg></span>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Source chip (before the category)</h4>
+        <ul><li><b>You</b> — <code>categorySource = learner</code>; locks the field (a later rule never overwrites it). <b>Judge</b> — <code>rule_strong</code>, e.g. <code>tle_perf_only</code> → Complexity misjudged (#16), <code>wa_edge_only</code> → Off-by-one (#9): pre-fills the category and counts toward the weak area.
+            <b>Suggested</b> — <code>rule_weak</code>, e.g. <code>sample_failed</code> → Misread (#18): a dashed ghost chip on a dashed category, plus <b>Confirm</b> (→ M3), and it doesn't count until confirmed.
+            <b>xLearn AI</b> — <code>analyzer</code> (≥ 0.6), <b>from M4</b>, typed now.</li>
+          <li>Tooltip (hover / focus on any source chip): "Your choice always wins. Then judge rules, then xLearn AI; <i>suggested</i> categories don't count toward your weak area." — t4 §6.3 precedence learner &gt; strong &gt; analyzer &gt; weak.</li></ul></section>
+      <section><h4>Concepts and withholding</h4>
+        <ul><li>≤ 3 concept chips per entry under the text ("Revise"), primary first, each linking to <code>/xlearn/dsa/concept/:slug</code> (M2).</li>
+          <li>#16 is live (its Day 1 review is due today): the pattern cell and the concepts line show locks, rendered only from the server's stripped <code>pattern</code> and the additive <code>conceptsWithheld</code> marker (m3-13). Sample rows and text.</li></ul></section>
+      <section><h4>Decision · a11y</h4>
+        <ul><li>t4 §6.3 (sources, precedence, weak rules suggested) · §6.4 (concepts, withheld while live) · ADR-0029 §4 · PRD R-JG4. The weak-area banner (M4) is above this table in the live page; drawn separately.</li>
+          <li>The source chip is a <code>button</code> with the tooltip as <code>aria-describedby</code>; the category cell reads "Category: Complexity misjudged, set by the judge". Words carry the source; the dashed style only repeats "Suggested".</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide" style="margin-top:22px">
+    <!-- M2 -->
+    <article class="bd-frame" id="AB12-M2">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB12-M2</span><span class="bd-frame__title">· Concepts to revise</span><span class="bd-frame__state">· (a) not live · (b) live</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">t4 §6.4</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad ab12-col" style="gap:14px">
+        <div class="ds-card ab12-col" style="gap:8px"><div class="ab12-row"><span class="ab12-cap">(a)</span><b>#16 3Sum</b><span class="ab12-help">· concluded, no review due</span></div>
+          <div class="ab12-concepts" style="margin-top:0"><span class="ab12-concepts__k">Revise</span><a class="ds-chip ds-chip--xs ab12-clink">Two pointers</a><a class="ds-chip ds-chip--xs ab12-clink">Sorting to skip duplicates</a><a class="ds-chip ds-chip--xs ab12-clink">Complexity from constraints</a></div>
+          <span class="ab12-help">From the item's concepts (primary first) and the failed checks; 3 at most.</span></div>
+        <div class="ds-card ab12-col" style="gap:8px"><div class="ab12-row"><span class="ab12-cap">(b)</span><b>#16 3Sum</b><span class="ab12-help">· Day 1 review due today</span></div>
+          <div class="ab12-concepts" style="margin-top:0"><span class="xl-lock"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-lock"/></svg> Concepts hidden while this problem's review is due</span></div></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li><code>concepts[≤3]</code> + <code>conceptsSource</code> (item / checks / analyzer / learner). Chips use AB07-F9's names for #16, in the same order. (b) When <code>conceptsWithheld</code> is true the line is the lock only — no chips at all, although the BFF strips only the primary (the others could point at it; see "Decisions to confirm"). The lock text doesn't say which concept or how many.</li></ul></aside>
+    </article>
+
+    <!-- M3 -->
+    <article class="bd-frame" id="AB12-M3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB12-M3</span><span class="bd-frame__title">· Entry edit</span><span class="bd-frame__state">· #18 · a weak-rule suggestion</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">R-JG4</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <section class="xl-panel ab12-edit" aria-labelledby="m3-h">
+          <div class="ab12-row"><svg class="xl-ico xl-ico--sm ab12-violet" aria-hidden="true"><use href="#i-edit"/></svg><b id="m3-h" style="font-size:14px">Edit entry · #18 Minimum Window Substring</b></div>
+          <div class="ab12-sugg" role="note"><svg class="xl-ico xl-ico--sm ab12-info" aria-hidden="true"><use href="#i-server"/></svg><span class="ab12-flex">Suggested by the judge: <b>Misread</b> (a sample test failed)</span><span class="ds-btn ds-btn--secondary ds-btn--sm bd-focus" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Use suggestion</span></div>
+          <span class="ab12-cap">Category</span>
+          <div class="ab12-cats" role="radiogroup" aria-label="Mistake category">
+            <span class="ds-chip ds-chip--sm ab12-catsugg" role="radio" aria-checked="false">Misread · suggested</span><span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Wrong pattern</span><span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Right pattern, wrong state</span><span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Off-by-one / boundary</span>
+            <span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Language bug</span><span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Complexity misjudged</span><span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Communication</span><span class="ds-chip ds-chip--sm" role="radio" aria-checked="false">Time management</span>
+          </div>
+          <span class="ab12-help">Picking a category — the suggestion or any other — makes it yours (<b>You</b>). The judge won't change it later.</span>
+          <div class="ab12-fl"><label for="m3-a">My mistake</label><span>0 / 2 KiB</span></div><textarea class="ab12-ta" id="m3-a" placeholder="What went wrong?"></textarea>
+          <div class="ab12-fl"><label for="m3-b">Root cause</label><span>0 / 2 KiB</span></div><textarea class="ab12-ta" id="m3-b" placeholder="Why did it happen?"></textarea>
+          <div class="ab12-fl"><label for="m3-c">Correct insight</label><span>0 / 2 KiB</span></div><textarea class="ab12-ta" id="m3-c" placeholder="What will you do next time?"></textarea>
+          <span class="ab12-cap">Concepts to revise · up to 3</span>
+          <div class="ab12-row" style="gap:6px"><span class="ds-chip ds-chip--xs ab12-cedit">Sliding Window <span class="ab12-x" role="button" aria-label="Remove Sliding Window"><svg class="xl-ico" style="width:10px;height:10px" aria-hidden="true"><use href="#i-close"/></svg></span></span><span class="ds-chip ds-chip--xs ab12-cedit">Hashing &amp; Frequency Maps <span class="ab12-x" role="button" aria-label="Remove Hashing &amp; Frequency Maps"><svg class="xl-ico" style="width:10px;height:10px" aria-hidden="true"><use href="#i-close"/></svg></span></span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-plus"/></svg> Add concept</span></div>
+          <div class="ab12-row" style="justify-content:flex-end"><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button">Cancel</span><span class="ds-btn ds-btn--primary ds-btn--sm" role="button">Save</span></div>
+        </section>
+        <div class="ab12-row" style="margin-top:12px"><span class="ab12-cap">after Use suggestion + Save</span><span class="ab12-src"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-user"/></svg>You</span><span class="ds-chip ds-chip--sm">Misread</span></div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Opened from a row's <b>Confirm</b> or its edit action. <b>Weak rule</b> → "Suggested by the judge: <b>Misread</b> (a sample test failed)" (<code>sample_failed</code> → misread, t4 §6.3) with <b>[Use suggestion]</b>, from <code>categorySuggested</code>. A <b>strong</b> rule (<code>tle_perf_only</code>) never shows this box: it pre-fills as a <b>Judge</b> chip (M1).</li>
+        <li>Save → <code>PATCH /api/mistakes/{id} {category, mistake, rootCause, insight, concepts}</code>: a category sets <code>category_source = learner</code> (chip → <b>You</b>, locked); concepts (≤ 3, ref shape) set <code>concepts_source = learner</code> (R-JG4). 2 KiB per prose field (review's cap), counted live; over it, Save is disabled with "Keep each field under 2 KiB." Radiogroup with arrow keys; focus starts on Use suggestion.</li></ul></aside>
+    </article>
+
+    <!-- M4 -->
+    <article class="bd-frame" id="AB12-M4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB12-M4</span><span class="bd-frame__title">· Weak-area banner</span><span class="bd-frame__state">· counts learner, judge-rule and xLearn AI categories</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--change">adds a footnote</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <div class="ds-card ds-card--violet ab12-weak">
+          <span class="ab12-weak__ic"><svg class="xl-ico" aria-hidden="true"><use href="#i-alert"/></svg></span>
+          <div style="flex:1;min-width:220px"><div class="ab12-weak__k">This week's weak area</div><div style="font-size:15px;font-weight:600">Complexity misjudged — <span class="ab12-warn">3 open entries</span> to drill</div><div style="font-size:12.5px;color:var(--ds-dim);margin-top:3px">Your most-missed area this week — your next reviews will surface these before you fail them.</div></div>
+          <span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-filter"/></svg> Show these 3</span>
+          <div class="ab12-weak__foot"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg>2 suggested categories aren't counted — confirm them to include them.</div>
+        </div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>v1 banner unchanged; the counting rule is server-side (m3-10): <b>learner, strong-rule and xLearn AI</b> categories count, weak-rule suggestions don't (t4 §6.3 — this switches the weak area on in M3). The footnote appears when at least one open entry has an unconfirmed suggestion; its number is that count. "confirm them" filters the table to Suggested entries. Hidden when nothing counts (v1 parity). Sample counts from a fuller journal than M1's.</li></ul></aside>
+    </article>
+
+    <!-- M5 -->
+    <article class="bd-frame" id="AB12-M5">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB12-M5</span><span class="bd-frame__title">· Before any judge signal</span><span class="bd-frame__state">· M2 data, or judge off for the account</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">parity</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <div class="xl-panel" style="overflow:hidden">
+          <table class="xl-table">
+            <thead><tr><th>Problem</th><th>Category</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td><b style="display:block">Top K Frequent Elements</b><span class="ab12-mono" style="font-size:11px;color:var(--ds-dim)">#7</span></td><td><div class="ab12-cat"><span class="ab12-src"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-user"/></svg>You</span><span class="ds-chip ds-chip--sm">Wrong pattern</span></div></td><td class="ab12-nw"><span class="ds-badge ds-badge--warn ds-mono">Open · 1/2</span></td></tr>
+              <tr><td><b style="display:block">Group Anagrams</b><span class="ab12-mono" style="font-size:11px;color:var(--ds-dim)">#5</span></td><td><span class="ds-chip ds-chip--sm" style="cursor:pointer">Categorise… <svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-chevdown"/></svg></span></td><td class="ab12-nw"><span class="ds-badge ds-badge--warn ds-mono">Open · 0/2</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>v1 parity: every category is the learner's (<b>You</b>). An auto-opened, uncategorised entry keeps v1's "Categorise…" select and <b>no source chip</b> — never an empty one. No Judge / Suggested chips, no footnote, no concepts line until data carries them. Columns cropped to the delta.</li></ul></aside>
+    </article>
+  </div>
+
+  <!-- Mistakes narrow -->
+  <h3 class="bd-section__h" id="AB12-MN" style="margin-top:30px;font-size:15px">Mistakes · 390 px <small>the table becomes cards · edit is a full-screen sheet</small></h3>
+  <div class="bd-narrow-row">
+    <article class="bd-frame bd-narrow" id="AB12-MN1">
+      <header class="bd-frame__label"><span class="bd-frame__id">MN1 · AB12-M1/M2</span><span class="bd-frame__state">· entry cards</span></header>
+      <div class="bd-frame__body"><div class="ab12-nbody">
+        <div><div class="xl-eyebrow">Learn from every miss</div><h1 style="margin-top:4px">Mistake journal</h1></div>
+        <div class="xl-panel">
+          <div class="ab12-ncard"><div class="ab12-row"><b>3Sum</b><span class="ab12-mono ab12-dim" style="font-size:11px">#16</span><span class="ab12-flex"></span><span class="ds-badge ds-badge--warn ds-mono">Open · 0/2</span></div>
+            <div class="ab12-cat"><span class="ab12-src"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-server"/></svg>Judge</span><span class="ds-chip ds-chip--sm">Complexity misjudged</span></div>
+            <div class="ab12-det"><div class="ab12-det__m">✗ Three nested loops timed out on the large inputs</div></div>
+            <span class="xl-lock" style="align-self:flex-start"><svg class="xl-ico ab12-i12" aria-hidden="true"><use href="#i-lock"/></svg> Concepts hidden while this problem's review is due</span>
+            <span class="ab12-help">Revisit today</span></div>
+          <div class="ab12-ncard"><div class="ab12-row"><b>Minimum Window Substring</b><span class="ab12-mono ab12-dim" style="font-size:11px">#18</span></div>
+            <div class="ab12-cat"><span class="ab12-src ab12-src--sugg">Suggested</span><span class="ds-chip ds-chip--sm ab12-catsugg">Misread</span><a style="font-size:12px">Confirm</a></div>
+            <div class="ab12-concepts" style="margin-top:0"><span class="ab12-concepts__k">Revise</span><a class="ds-chip ds-chip--xs ab12-clink">Sliding Window</a><a class="ds-chip ds-chip--xs ab12-clink">Hashing &amp; Frequency Maps</a></div>
+            <span class="ab12-help">Revisit Thu · Open · 1/2</span></div>
+        </div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>One card per entry: problem + status, source + category, the first line of the write-up, concepts (or the lock), revisit. The precedence tooltip opens on tap as a small popover.</li></ul></aside>
+    </article>
+    <article class="bd-frame bd-narrow" id="AB12-MN2">
+      <header class="bd-frame__label"><span class="bd-frame__id">MN2 · AB12-M3</span><span class="bd-frame__state">· edit sheet</span></header>
+      <div class="bd-frame__body">
+        <div class="ab12-nsheet" role="dialog" aria-modal="true" aria-labelledby="mn2-h">
+          <div class="ab12-nsheet__h"><span class="ds-iconbtn" role="button" aria-label="Close"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span><b id="mn2-h" style="font-size:14px">Edit · #18 Minimum Window Substring</b></div>
+          <div class="ab12-nbody">
+            <div class="ab12-sugg" role="note" style="font-size:12.5px"><span>Suggested by the judge: <b>Misread</b> (a sample test failed)</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Use suggestion</span></div>
+            <span class="ab12-cap">Category</span>
+            <div class="ab12-cats"><span class="ds-chip ab12-catsugg">Misread · suggested</span><span class="ds-chip">Wrong pattern</span><span class="ds-chip">Off-by-one / boundary</span><span class="ds-chip">Complexity misjudged</span><span class="ab12-help">+4 more</span></div>
+            <div class="ab12-fl"><label for="mn2-a">My mistake</label><span>0 / 2 KiB</span></div><textarea class="ab12-ta" id="mn2-a" placeholder="What went wrong?"></textarea>
+            <div class="ab12-fl"><label for="mn2-b">Root cause</label><span>0 / 2 KiB</span></div><textarea class="ab12-ta" id="mn2-b" placeholder="Why did it happen?"></textarea>
+            <span class="ds-btn ds-btn--primary ds-btn--lg ds-btn--block" role="button">Save</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Full-screen sheet; chips use the 26 px size (44 px row spacing). Save sticks to the bottom above the keyboard.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<!-- ======================================================== PROGRESS -->
+<section class="bd-section" aria-labelledby="sec-p">
+  <h2 class="bd-section__h" id="sec-p">Progress <small>/xlearn/dsa/progress · P1–P4 · m3-10's judgeCheckedPct + judgeStats · P7 / P8</small></h2>
+
+  <!-- P1 -->
+  <article class="bd-frame" id="AB12-P1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB12-P1</span><span class="bd-frame__title">· Grade mix with provenance + judge-checked %</span><span class="bd-frame__state">· M3 · 48 first attempts · ⓘ open</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">P7</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <input type="checkbox" class="xl-collapse-cb" aria-label="Collapse sidebar"><aside class="xl-side"><div class="xl-brand" aria-label="xLearn — home"><div class="xl-brand__mark">x</div><div class="xl-brand__name">x<b>Learn</b></div></div><nav class="xl-nav"><a class="xl-nav__item" aria-label="Today"><svg class="xl-ico" aria-hidden="true"><use href="#i-today"/></svg> Today</a><a class="xl-nav__item" aria-label="Roadmap"><svg class="xl-ico" aria-hidden="true"><use href="#i-map"/></svg> Roadmap</a><a class="xl-nav__item" aria-label="Problems"><svg class="xl-ico" aria-hidden="true"><use href="#i-list"/></svg> Problems</a><a class="xl-nav__item xl-nav__item--active" aria-current="page" aria-label="Progress"><svg class="xl-ico" aria-hidden="true"><use href="#i-chart"/></svg> Progress</a><div class="xl-nav__cap">Practice loop</div><a class="xl-nav__item" aria-label="Revision"><svg class="xl-ico" aria-hidden="true"><use href="#i-refresh"/></svg> Revision</a><a class="xl-nav__item" aria-label="Mistakes"><svg class="xl-ico" aria-hidden="true"><use href="#i-journal"/></svg> Mistakes</a><a class="xl-nav__item" aria-label="Mock interview"><svg class="xl-ico" aria-hidden="true"><use href="#i-target"/></svg> Mock interview</a></nav><div class="xl-side__foot" style="padding:8px"><span class="xl-nav__item xl-collapse-btn" style="width:100%"><svg class="xl-ico xl-collapse-ico" aria-hidden="true"><use href="#i-chevron"/></svg><span class="xl-collapse-lbl">Collapse</span></span></div></aside>
+          <div class="xl-main">
+            <div class="xl-topbar ab12-top"><div class="xl-crumb"><a>xlearn</a><span class="xl-crumb__sep">/</span><a>dsa</a><span class="xl-crumb__sep">/</span><b>progress</b></div><span class="ab12-flex"></span><span class="ab12-topsw"><span class="xl-pathsw__ic">DSA</span><span class="xl-pathsw__t">Data Structures &amp; Algorithms</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></span><span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span><span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span></div>
+            <div class="xl-content" style="padding-bottom:96px">
+              <div class="xl-page-h" style="border-bottom:1px solid var(--ds-line);padding-bottom:16px;margin-bottom:20px"><div><div class="xl-eyebrow">Progress &amp; stats</div><h1 style="margin-top:6px;font-size:26px">Your progress</h1><p style="margin:8px 0 0;font-size:13.5px;color:var(--ds-dim)">The numbers that predict interview-readiness: coverage, retention, and mock trend.</p></div></div>
+              <div class="ab12-tiles">
+                <div class="xl-stat"><div class="xl-stat__l">Problems solved</div><div class="xl-stat__v">44<span style="font-size:13px;color:var(--ds-dim)"> / 151</span></div><div class="ds-meter" style="margin-top:10px"><div class="ds-meter__fill" style="width:29%"></div></div></div>
+                <div class="xl-stat"><div class="xl-stat__l"><span class="ab12-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-flame"/></svg></span> Current streak</div><div class="xl-stat__v ab12-warn">9<span style="font-size:13px;color:var(--ds-dim)"> days</span></div><div class="xl-stat__d">Longest: 14 days</div></div>
+                <div class="xl-stat"><div class="xl-stat__l"><span class="ab12-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg></span> Day-7 retention <span class="ds-chip ds-chip--xs ab12-pv" style="margin-left:auto">honour</span></div><div class="xl-stat__v ab12-ok">78%</div><div class="xl-stat__d">7 of 9 Day-7 reviews passed</div></div>
+                <div class="xl-stat"><div class="xl-stat__l"><span class="ab12-violet"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-target"/></svg></span> Mock average</div><div class="xl-stat__v">24<span style="font-size:13px;color:var(--ds-dim)"> / 35</span></div><div class="xl-stat__d">Best: 27 · Last: 26 <span class="ab12-ok">▲</span></div></div>
+              </div>
+              <div class="ab12-jrow">
+                <div class="xl-stat" style="position:relative">
+                  <div class="xl-stat__l">Judge-checked <span class="ds-iconbtn bd-focus" role="button" tabindex="0" aria-describedby="p1-tip" aria-expanded="true" style="padding:0;border-radius:4px"><svg class="xl-ico xl-ico--sm ab12-text" aria-hidden="true"><use href="#i-info"/></svg></span></div>
+                  <div class="xl-stat__v ab12-teal">62%</div><div class="xl-stat__d">30 of 48 first attempts</div>
+                  <div class="ab12-tip ab12-tip--static" role="tooltip" id="p1-tip">Share of concluded attempts graded by the judge on checked tests. Self-reported, honour-probe, override and flagged grades don't count.</div>
+                </div>
+                <div class="xl-panel ab12-js" aria-labelledby="p1-js">
+                  <div class="ab12-row"><span class="ab12-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-server"/></svg></span><b id="p1-js" style="font-size:14px">Judge stats</b><span class="ab12-flex"></span><span class="ab12-help">only you see these</span></div>
+                  <div class="ab12-js__kpis">
+                    <div><div class="ab12-cap">Counted submits</div><div class="ab12-js__v">214</div></div>
+                    <div><div class="ab12-cap">First-submit acceptance</div><div class="ab12-js__v">38%</div></div>
+                    <div><div class="ab12-cap">Languages</div><div class="ab12-langbar" role="img" aria-label="Go 71%, Python 21%, C++ 8%"><span style="width:71%;background:var(--ds-teal)"></span><span style="width:21%;background:var(--ds-info)"></span><span style="width:8%;background:var(--ds-violet)"></span></div>
+                      <div class="ab12-langs"><span><i style="background:var(--ds-teal)"></i>Go 71%</span><span><i style="background:var(--ds-info)"></i>Python 21%</span><span><i style="background:var(--ds-violet)"></i>C++ 8%</span></div></div>
+                  </div>
+                  <div class="ab12-note"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg>Arena submits and Runs aren't counted here.</div>
+                </div>
+              </div>
+              <div class="ab12-crop">frame cropped · Revision activity heatmap, Completion by phase and Pattern mastery are unchanged (v1 parity)</div>
+              <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:20px;align-items:start">
+                <div class="xl-panel"><div class="xl-panel__h"><span class="ab12-violet"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-target"/></svg></span><h3>Mock rubric trend</h3></div><div class="xl-panel__b"><div class="ab12-absent" style="height:150px">unchanged (v1 parity) · cropped</div></div></div>
+                <div class="xl-panel">
+                  <div class="xl-panel__h"><span class="ab12-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-flag"/></svg></span><h3>Outcome mix</h3><span style="margin-left:auto;font-size:11px;color:var(--ds-dim)">48 first attempts</span></div>
+                  <div class="xl-panel__b">
+                    <div class="ab12-mix__leg" aria-label="Provenance legend"><span><i class="ab12-sw ab12-p--judge"></i>judge <b class="ab12-text ab12-mono">30</b></span><span><i class="ab12-sw ab12-p--self"></i>self · honour <b class="ab12-text ab12-mono">18</b></span><span><i class="ab12-sw ab12-p--ai"></i>AI <span class="bd-tag bd-tag--flag">from M4</span></span><span><i class="ab12-sw ab12-p--ovr"></i>override · honour <span class="bd-tag bd-tag--flag">from M4</span></span></div>
+                    <div class="ab12-mixr"><span class="ab12-mixr__l"><span class="ds-dot ds-dot--ok"></span>Clean</span><span class="ab12-bar" role="img" aria-label="Clean 18: judge 12, self 6"><span class="ab12-p--judge" style="width:25%"></span><span class="ab12-p--self" style="width:12.5%"></span></span><span class="ab12-mixr__n"><b>18</b> · judge 12 · self 6</span></div>
+                    <div class="ab12-mixr"><span class="ab12-mixr__l"><span class="ds-dot ds-dot--progressing"></span>Rough</span><span class="ab12-bar" role="img" aria-label="Rough 14: judge 8, self 6"><span class="ab12-p--judge" style="width:16.7%"></span><span class="ab12-p--self" style="width:12.5%"></span></span><span class="ab12-mixr__n"><b>14</b> · judge 8 · self 6</span></div>
+                    <div class="ab12-mixr"><span class="ab12-mixr__l"><span class="ds-dot" style="background:var(--ds-info)"></span>Assisted</span><span class="ab12-bar" role="img" aria-label="Assisted 8: judge 5, self 3"><span class="ab12-p--judge" style="width:10.4%"></span><span class="ab12-p--self" style="width:6.3%"></span></span><span class="ab12-mixr__n"><b>8</b> · judge 5 · self 3</span></div>
+                    <div class="ab12-mixr" style="margin-bottom:0"><span class="ab12-mixr__l"><span class="ds-dot ds-dot--failed"></span>Miss</span><span class="ab12-bar" role="img" aria-label="Miss 8: judge 5, self 3"><span class="ab12-p--judge" style="width:10.4%"></span><span class="ab12-p--self" style="width:6.3%"></span></span><span class="ab12-mixr__n"><b>8</b> · judge 5 · self 3</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <span class="xl-fab" aria-label="Open Your AI coach (your key)"><svg class="xl-ico xl-ico--lg" aria-hidden="true"><use href="#i-spark"/></svg></span>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Grade mix (P7)</h4>
+        <ul><li>From m2-02's <code>proj_outcome_mix_v2</code> (<code>graded_by</code>, <code>trust</code>) through <code>outcomeMix</code>: one row per grade (v1's labels and dots), its bar segmented by provenance. Every bar is scaled to the <b>48 first attempts</b>, so bar length still shows the mix. Segment fills: judge <code>--ds-teal</code>, self · honour <code>--ds-dim</code>, AI <code>--ds-violet</code>, override hatched violet — tokens only, and the counts are printed beside every bar.</li>
+          <li>AI and override are typed now and drawn only in the legend with <b>from M4</b>; a segment with 0 isn't drawn.</li></ul></section>
+      <section><h4>Judge-checked % · judge stats</h4>
+        <ul><li><code>judgeCheckedPct</code> (m3-10): <code>auto ∧ trust=checked</code> over first-attempt conclusions, rounded down (30 / 48 → 62%, AB06-F2's figure). ⓘ copy as drawn; <code>null</code> → P3.</li>
+          <li><code>judgeStats</code> → P2 (drawn here in place). <b>Authed only</b>: AB06 has no public judge-stats slot (owner decision, journal rm-6 / ask-2 option a); <code>/public/stats</code> carries <code>judgeCheckedPct</code> only (P10 allowlist).</li>
+          <li>The Day-7 retention tile carries <span class="ds-chip ds-chip--xs ab12-pv">honour</span> (P4). Sample figures.</li></ul></section>
+      <section><h4>Decision · a11y</h4>
+        <ul><li>rollout §10 P7 (M3 checked) · P8 · ADR-0027 §1 (trust label) · AB06 vocabulary. The new row sits between the v1 tiles and the heatmap; nothing else moves.</li>
+          <li>Each bar is <code>role="img"</code> with its full breakdown; the legend and counts are text. ⓘ is a focusable button with the definition as <code>aria-describedby</code> (hover and focus). Teal 62% on the tile 9:1.</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide" style="margin-top:22px">
+    <!-- P2 -->
+    <article class="bd-frame" id="AB12-P2">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB12-P2</span><span class="bd-frame__title">· Judge stats</span><span class="bd-frame__state">· authed Progress only</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">P8</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <div class="xl-panel ab12-js">
+          <div class="ab12-row"><span class="ab12-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-server"/></svg></span><b style="font-size:14px">Judge stats</b><span class="ab12-flex"></span><span class="ab12-help">only you see these</span></div>
+          <div class="ab12-js__kpis">
+            <div><div class="ab12-cap">Counted submits</div><div class="ab12-js__v">214</div></div>
+            <div><div class="ab12-cap">First-submit acceptance</div><div class="ab12-js__v">38%</div></div>
+            <div><div class="ab12-cap">Languages</div><div class="ab12-langbar" role="img" aria-label="Go 71%, Python 21%, C++ 8%"><span style="width:71%;background:var(--ds-teal)"></span><span style="width:21%;background:var(--ds-info)"></span><span style="width:8%;background:var(--ds-violet)"></span></div>
+              <div class="ab12-langs"><span><i style="background:var(--ds-teal)"></i>Go 71%</span><span><i style="background:var(--ds-info)"></i>Python 21%</span><span><i style="background:var(--ds-violet)"></i>C++ 8%</span></div></div>
+          </div>
+          <div class="ab12-note"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg>Arena submits and Runs aren't counted here.</div>
+        </div>
+      </div></div>
+      <aside class="bd-notes"><ul><li><code>judgeStats{countedSubmits, judgedAttempts, firstSubmitAcceptancePct, languages[{language, attempts}]}</code> (m3-10 <code>GET /progress/judge-stats?path=dsa</code> via the Progress aggregate). Counted = course, touch (and mock from M6a) submits; <b>never arena submits or Runs</b>. First-submit acceptance = judged attempts whose first counted submit was accepted. Languages = share of judged attempts, whole percents, largest first.</li>
+        <li><b>Signed-in view only.</b> AB06 (frozen) has no public slot for judge stats; the owner kept them authed-only (rm-6 / ask-2 option a); the ADR-0027 §7 amendment lands with m3-10's follow-up. "only you see these" states it on the page. Hidden before any judge-graded result (P3).</li></ul></aside>
+    </article>
+
+    <!-- P3 -->
+    <article class="bd-frame" id="AB12-P3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB12-P3</span><span class="bd-frame__title">· Before judge-graded results</span><span class="bd-frame__state">· judgeCheckedPct = null · judge stats hidden</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--parity">AB06-F3 wording</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <div class="ab12-jrow" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr);margin-bottom:0">
+          <div class="xl-stat" style="position:relative">
+            <div class="xl-stat__l">Judge-checked <span class="ds-iconbtn bd-focus" role="button" tabindex="0" aria-describedby="p3-tip" aria-expanded="true" style="padding:0;border-radius:4px"><svg class="xl-ico xl-ico--sm ab12-text" aria-hidden="true"><use href="#i-info"/></svg></span></div>
+            <div class="xl-stat__v ab12-dim" aria-label="Not available yet">—</div><div class="xl-stat__d">arrives with the code judge</div>
+            <div class="ab12-tip ab12-tip--static" role="tooltip" id="p3-tip">Judge-checked results arrive with the code judge.</div>
+          </div>
+          <div class="ab12-absent">Judge stats: not rendered (no gap, no placeholder) until the first judge-graded result</div>
+        </div>
+      </div></div>
+      <aside class="bd-notes"><ul><li><code>judgeCheckedPct: null</code> (no <code>graded_by=auto</code> conclusion yet, or judge off) → "—" with AB06-F3's tooltip and sub-line, never "0%". <code>judgeStats</code> null → the tile isn't rendered and the Judge-checked tile takes the row alone. The grade mix shows only <span class="ds-chip ds-chip--xs ab12-pv">self · honour</span> segments.</li></ul></aside>
+    </article>
+
+    <!-- P4 -->
+    <article class="bd-frame" id="AB12-P4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB12-P4</span><span class="bd-frame__title">· Honour labels</span><span class="bd-frame__state">· trust = honor · mock best + average kept</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">P4</span></span></header>
+      <div class="bd-frame__body"><div class="bd-pad">
+        <div class="ab12-row" style="align-items:stretch;gap:14px;flex-wrap:nowrap">
+          <div class="xl-stat" style="flex:1;position:relative">
+            <div class="xl-stat__l"><span class="ab12-ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg></span> Day-7 retention <span class="ds-chip ds-chip--xs ab12-pv bd-focus" role="button" tabindex="0" aria-describedby="p4-tip" aria-expanded="true" style="margin-left:auto">honour</span></div>
+            <div class="xl-stat__v ab12-ok">78%</div><div class="xl-stat__d">7 of 9 Day-7 reviews passed</div>
+            <div class="ab12-tip ab12-tip--static" role="tooltip" id="p4-tip">Checked on your honour: the pattern and complexity answers match a public key. Not included in judge-checked %.</div>
+          </div>
+          <div class="xl-stat" style="flex:1"><div class="xl-stat__l"><span class="ab12-violet"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-target"/></svg></span> Mock average</div><div class="xl-stat__v">24<span style="font-size:13px;color:var(--ds-dim)"> / 35</span></div><div class="xl-stat__d">Best: 27 · Last: 26 <span class="ab12-ok">▲</span></div></div>
+        </div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Touch and probe results label <span class="ds-chip ds-chip--xs ab12-pv">honour</span> wherever <code>trust=honor</code> (P4, AB16-F15's meaning) — here the Day-7 retention tile, because DSA reviews' pattern and complexity probes are public-key. The authed Progress keeps <b>mock best and average</b>: D31 (mock count only) applies to the public profile, not here. v1's tile gains "Best: 27".</li></ul></aside>
+    </article>
+  </div>
+
+  <!-- Progress narrow -->
+  <h3 class="bd-section__h" id="AB12-PN" style="margin-top:30px;font-size:15px">Progress · 390 px <small>tiles in two columns · judge tiles stack · grade rows keep their counts</small></h3>
+  <div class="bd-narrow-row">
+    <article class="bd-frame bd-narrow" id="AB12-PN1">
+      <header class="bd-frame__label"><span class="bd-frame__id">PN1 · AB12-P1/P2</span><span class="bd-frame__state">· judge row</span></header>
+      <div class="bd-frame__body"><div class="ab12-nbody">
+        <div><div class="xl-eyebrow">Progress &amp; stats</div><h1 style="margin-top:4px">Your progress</h1></div>
+        <div class="xl-stat"><div class="xl-stat__l">Judge-checked <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></div><div class="xl-stat__v ab12-teal">62%</div><div class="xl-stat__d">30 of 48 first attempts</div></div>
+        <div class="xl-panel ab12-js">
+          <div class="ab12-row"><b style="font-size:14px">Judge stats</b><span class="ab12-flex"></span><span class="ab12-help">only you see these</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><div class="ab12-cap">Counted submits</div><div class="ab12-js__v">214</div></div><div><div class="ab12-cap">First-submit acc.</div><div class="ab12-js__v">38%</div></div></div>
+          <div><div class="ab12-cap">Languages</div><div class="ab12-langbar"><span style="width:71%;background:var(--ds-teal)"></span><span style="width:21%;background:var(--ds-info)"></span><span style="width:8%;background:var(--ds-violet)"></span></div><div class="ab12-langs"><span><i style="background:var(--ds-teal)"></i>Go 71%</span><span><i style="background:var(--ds-info)"></i>Python 21%</span><span><i style="background:var(--ds-violet)"></i>C++ 8%</span></div></div>
+          <div class="ab12-note"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg>Arena submits and Runs aren't counted here.</div>
+        </div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>"First-submit acceptance" shortens to "First-submit acc." with the full name as the accessible label. The ⓘ opens the definition as a popover on tap.</li></ul></aside>
+    </article>
+    <article class="bd-frame bd-narrow" id="AB12-PN2">
+      <header class="bd-frame__label"><span class="bd-frame__id">PN2 · AB12-P1</span><span class="bd-frame__state">· outcome mix</span></header>
+      <div class="bd-frame__body"><div class="ab12-nbody">
+        <div class="xl-panel">
+          <div class="xl-panel__h"><h3>Outcome mix</h3><span style="margin-left:auto;font-size:11px;color:var(--ds-dim)">48 first attempts</span></div>
+          <div class="xl-panel__b">
+            <div class="ab12-mix__leg"><span><i class="ab12-sw ab12-p--judge"></i>judge 30</span><span><i class="ab12-sw ab12-p--self"></i>self · honour 18</span></div>
+            <div class="ab12-col" style="gap:4px;margin-bottom:10px"><div class="ab12-row" style="justify-content:space-between"><span class="ab12-mixr__l"><span class="ds-dot ds-dot--ok"></span>Clean</span><span class="ab12-mixr__n"><b>18</b> · judge 12 · self 6</span></div><span class="ab12-bar"><span class="ab12-p--judge" style="width:25%"></span><span class="ab12-p--self" style="width:12.5%"></span></span></div>
+            <div class="ab12-col" style="gap:4px;margin-bottom:10px"><div class="ab12-row" style="justify-content:space-between"><span class="ab12-mixr__l"><span class="ds-dot ds-dot--progressing"></span>Rough</span><span class="ab12-mixr__n"><b>14</b> · judge 8 · self 6</span></div><span class="ab12-bar"><span class="ab12-p--judge" style="width:16.7%"></span><span class="ab12-p--self" style="width:12.5%"></span></span></div>
+            <div class="ab12-col" style="gap:4px;margin-bottom:10px"><div class="ab12-row" style="justify-content:space-between"><span class="ab12-mixr__l"><span class="ds-dot" style="background:var(--ds-info)"></span>Assisted</span><span class="ab12-mixr__n"><b>8</b> · judge 5 · self 3</span></div><span class="ab12-bar"><span class="ab12-p--judge" style="width:10.4%"></span><span class="ab12-p--self" style="width:6.3%"></span></span></div>
+            <div class="ab12-col" style="gap:4px"><div class="ab12-row" style="justify-content:space-between"><span class="ab12-mixr__l"><span class="ds-dot ds-dot--failed"></span>Miss</span><span class="ab12-mixr__n"><b>8</b> · judge 5 · self 3</span></div><span class="ab12-bar"><span class="ab12-p--judge" style="width:10.4%"></span><span class="ab12-p--self" style="width:6.3%"></span></span></div>
+          </div>
+        </div>
+      </div></div>
+      <aside class="bd-notes"><ul><li>Each grade row stacks label + counts over its bar. The M4 legend entries are left out on phones until they carry data.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB12 · Week / Mistakes / Progress deltas · drafted in ds-m3-02 · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only, never imported by <code class="ds-mono">web/</code>.
+  Layout, copy and classes not listed as deltas are v1's (<code class="ds-mono">Week.tsx</code>, <code class="ds-mono">Mistakes.tsx</code>, <code class="ds-mono">Progress.tsx</code>, <code class="ds-mono">ProgressViews.tsx</code>). Provenance words are AB06's / AB04's; the "honour" meaning is AB16-F15's.
+  Sample data: seeded DSA items, "today" Wed, Oct 21; counts, grades, dates, write-ups and judge stats are samples.
+</footer>
+</main>
+</body>
+</html>
