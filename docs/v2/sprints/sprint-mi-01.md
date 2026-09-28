@@ -9,16 +9,16 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ⛔ MI-2 and MI-3 landed (infra#32, infra#33), no pod rolled; task 5 blocked by a **pre-existing** fault: airlift's Longhorn volume, faulted since 2026-09-26 (owner decision)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | MI-2 prune-guard PR (merged first) | I | ⬜ |
-| 2 | `hack/chart-diff.sh` | I | ⬜ |
-| 3 | Chart 0.3.0 knob union (§2.1), all default-off | I | ⬜ |
-| 4 | Knob renders + byte-identical proof, merge MI-3 | I | ⬜ |
-| 5 | Verify the host | H | ⬜ |
-| 6 | Record | X | ⬜ |
+| 1 | MI-2 prune-guard PR (merged first) | I | ✅ infra#32 (`17a48d3`), 2026-09-27; annotation live on all three, `databases`/`messaging` Ready, PG and NATS not restarted |
+| 2 | `hack/chart-diff.sh` | I | ✅ in infra#33; 11/11 identical on the untouched 0.2.2 chart; `--self-test` exits 1 (mutation caught in 11/11) |
+| 3 | Chart 0.3.0 knob union (§2.1), all default-off | I | ✅ in infra#33; 11/11 identical vs `origin/main` 0.2.2 |
+| 4 | Knob renders + byte-identical proof, merge MI-3 | I | ✅ infra#33 (`77334fd`), 2026-09-28; 20 fixtures pass `--knobs`; 11 Deployments on `project-0.3.0` with generations unchanged; 39/40 pods identical (the 40th is airlift's pre-existing churn, below). 14/15 HelmReleases Ready: `airlift` `UpgradeFailed` because Helm's wait hit its faulted volume |
+| 5 | Verify the host | H | ⛔ `host-verify --cluster` 42 pass / 0 warn / **4 fail**, all from airlift's Longhorn volume `pvc-3b8149c5…`, faulted since 2026-09-26T09:33Z (before this sprint): `cluster.pods` (airlift), `cluster.longhorn`, `cluster.flux-ks` (`apps`), `cluster.flux-hr` (airlift). PG, NATS and CNPG healthy. Recovering the volume and clearing the stalled HelmRelease is an owner decision |
+| 6 | Record | X | ✅ this file + [`../status.md`](../status.md) (docs PR `docs/mi-01-status`) |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + MI track rows MI-2, MI-3).
@@ -26,9 +26,9 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] MI-0 H0 reboot done (Fri 2026-09-25) and `host-verify --cluster` green. *MI-2 may go first if MI-0 slips: it depends on nothing ([rollout §2](../rollout-plan.md)).*
-- [ ] infra#28 merged, local `../infra` `main` synced (✅ 2026-09-24)
-- [ ] No open peer PR in `../infra` touches `charts/project/`, `infrastructure/database/cluster/`, `infrastructure/messaging/` or `hack/` (parallel sessions: `gh pr list -R sujaykumarsuman/infra`, `git worktree list`, ListAgents)
+- [x] MI-0 H0 reboot done (Fri 2026-09-25) and `host-verify --cluster` green (46/0/0 on 2026-09-25, per status.md). *MI-2 may go first if MI-0 slips: it depends on nothing ([rollout §2](../rollout-plan.md)).*
+- [x] infra#28 merged, local `../infra` `main` synced (✅ 2026-09-24; re-checked 2026-09-27: `main` = `origin/main` `4736984`)
+- [x] (2026-09-27: no open infra PR; infra had one worktree; peer lanes were docs and design only) No open peer PR in `../infra` touches `charts/project/`, `infrastructure/database/cluster/`, `infrastructure/messaging/` or `hack/` (parallel sessions: `gh pr list -R sujaykumarsuman/infra`, `git worktree list`, ListAgents)
 
 ## Goal
 
@@ -193,12 +193,12 @@ refreshes the node copy. Expect no FAIL. If [mi-02](sprint-mi-02.md) has merged 
 
 ## Acceptance criteria
 
-- [ ] The prune annotation is live on `Cluster databases/projects-pgstore`, `Namespace databases` and `Namespace messaging`. The `databases` and `messaging` Kustomizations are Ready, and `projects-pgstore-1` and `nats-0` weren't restarted.
-- [ ] `hack/chart-diff.sh` reports **11/11 identical** against `origin/main` (only `helm.sh/chart` masked; projects-hub rendered with its printed `valuesFrom` placeholder), and `--self-test` exits 1.
-- [ ] Every §2.1 knob renders **only when set**: each `ci/knob-*.yaml` puts its field at the asserted path, the default render omits it, and `helm lint --strict` is clean.
-- [ ] After the MI-3 merge, all 15 HelmReleases are Ready, the 11 chart releases are on `project-0.3.0`, and **no pod restarted** (pod start times unchanged).
-- [ ] `host-verify --cluster` shows no FAIL after both merges.
-- [ ] `docs/v2/status.md` shows MI-2 and MI-3 ✅ with their PR numbers.
+- [x] The prune annotation is live on `Cluster databases/projects-pgstore`, `Namespace databases` and `Namespace messaging`. The `databases` and `messaging` Kustomizations are Ready, and `projects-pgstore-1` and `nats-0` weren't restarted.
+- [x] `hack/chart-diff.sh` reports **11/11 identical** against `origin/main` (only `helm.sh/chart` masked; projects-hub rendered with its printed `valuesFrom` placeholder), and `--self-test` exits 1.
+- [x] Every §2.1 knob renders **only when set**: each `ci/knob-*.yaml` puts its field at the asserted path, the default render omits it, and `helm lint --strict` is clean.
+- [ ] After the MI-3 merge, all 15 HelmReleases are Ready, the 11 chart releases are on `project-0.3.0`, and **no pod restarted** (pod start times unchanged). *2026-09-28: 11/11 on `project-0.3.0` ✅; no pod rolled ✅ (Deployment generations unchanged; the only changed pod is airlift's, recreated every ~2 min since before the merge); **14/15 Ready** ⛔: `airlift` `UpgradeFailed`/`Stalled` because Helm waited on a Deployment its faulted volume keeps down.*
+- [ ] `host-verify --cluster` shows no FAIL after both merges. *⛔ 4 FAIL, all airlift (see task 5).*
+- [x] `docs/v2/status.md` shows MI-2 and MI-3 ✅ with their PR numbers.
 
 ## Release
 
