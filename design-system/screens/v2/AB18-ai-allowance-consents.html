@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB18 · AI allowance meter + Settings AI consents — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB18 board-local layout (prefix ab18-). Tokens only; never restyles a ds-, xl- or bd- class.
+     Settings look-alikes follow AB22 / AB01-F13 (live: .xl-settings / .xl-set-* in web/src/styles/app.css). */
+  .ab18-flex { flex: 1; }
+  .ab18-gap { margin-bottom: 22px; }
+  .ab18-ok { color: var(--ds-ok); } .ab18-err { color: var(--ds-err); } .ab18-warn { color: var(--ds-warn); } .ab18-teal { color: var(--ds-teal); }
+  .ab18-info { color: var(--ds-info); } .ab18-violet { color: var(--ds-violet); } .ab18-dimc { color: var(--ds-dim); }
+  .ab18-ic { display: inline-flex; flex: none; }
+  .ab18-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
+  .ab18-col { display: flex; flex-direction: column; gap: 12px; }
+  .ab18-cap { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab18-small { font-size: 12px; line-height: 1.5; color: var(--ds-dim); }
+  .ab18-small b { color: var(--ds-text); font-weight: 600; }
+  /* plain-shell top bar pieces (AB22) */
+  .ab18-brand { display: inline-flex; align-items: center; gap: 9px; }
+  .ab18-mark { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, #35d0c0, #2a9d92); display: grid; place-items: center;
+    color: #06231f; font-family: var(--ds-font-mono); font-weight: 700; font-size: 14px; flex: none; }
+  .ab18-name { font-size: 15px; font-weight: 700; letter-spacing: -.2px; }
+  .ab18-name b { color: var(--ds-teal); }
+  /* settings (AB22 look-alike) */
+  .ab18-set { max-width: 1060px; margin: 0 auto; width: 100%; }
+  .ab18-set__h h1 { font-size: 28px; font-weight: 700; letter-spacing: -.4px; margin-top: 8px; }
+  .ab18-set__h p { font-size: 13.5px; color: var(--ds-dim); margin-top: 6px; }
+  .ab18-set__grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 30px; align-items: start; margin-top: 24px; }
+  .ab18-rail { display: flex; flex-direction: column; gap: 16px; }
+  .ab18-pf { border: 1px solid var(--ds-line); border-radius: 16px; background: var(--ds-panel); padding: 22px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .ab18-av { width: 84px; height: 84px; font-size: 32px; }
+  .ab18-pf b { font-size: 18px; }
+  .ab18-pf__h { font-size: 12.5px; color: var(--ds-dim); font-family: var(--ds-font-mono); }
+  .ab18-railnav { display: flex; flex-direction: column; gap: 4px; }
+  .ab18-railitem { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border-radius: 999px; color: var(--ds-dim); font-size: 13.5px; font-weight: 550; white-space: nowrap; }
+  .ab18-railitem--on { background: rgba(53,208,192,.1); color: var(--ds-teal); }
+  .ab18-card { border: 1px solid var(--ds-line); border-radius: 14px; background: var(--ds-panel); overflow: hidden; }
+  .ab18-card__h { display: flex; align-items: center; gap: 12px; padding: 15px 18px; border-bottom: 1px solid var(--ds-line); }
+  .ab18-card__h h3 { font-size: 14.5px; font-weight: 650; }
+  .ab18-card__h p { font-size: 12px; color: var(--ds-dim); margin-top: 2px; }
+  .ab18-card__ic { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; background: rgba(53,208,192,.14); color: var(--ds-teal); }
+  .ab18-card__b { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .ab18-sub { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  /* allowance block */
+  .ab18-allow { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px solid var(--ds-line-2); border-radius: 14px; background: var(--ds-panel-2); }
+  .ab18-allow__t { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 10px; font-size: 13.5px; color: var(--ds-text); }
+  .ab18-allow__t b { font-weight: 650; }
+  .ab18-pct { font-family: var(--ds-font-mono); font-variant-numeric: tabular-nums; }
+  .ab18-allow__d { font-size: 12.5px; color: var(--ds-dim); line-height: 1.55; }
+  .ab18-allow__d b { color: var(--ds-text); font-weight: 600; }
+  .ab18-fill { display: block; height: 100%; border-radius: 4px; }
+  .ab18-fill--warn { background: var(--ds-warn); }
+  .ab18-fill--err { background: var(--ds-err); }
+  .ab18-fill--muted { background: var(--ds-line-2); }
+  .ab18-msg { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; line-height: 1.55; color: var(--ds-text); }
+  .ab18-msg .ab18-ic { margin-top: 2px; }
+  .ab18-msg b { font-weight: 650; }
+  .ab18-dim { opacity: .55; }
+  /* consent toggles (AB22 row look-alike) */
+  .ab18-trow { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; padding: 14px 16px; border: 1px solid var(--ds-line-2); border-radius: 14px; background: var(--ds-panel-2); }
+  .ab18-trow__main { flex: 1; min-width: 200px; }
+  .ab18-trow__t { font-size: 13.5px; font-weight: 650; color: var(--ds-text); display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .ab18-trow__d { font-size: 12px; color: var(--ds-dim); margin-top: 3px; line-height: 1.5; }
+  .ab18-trow--off { opacity: .55; }
+  .ab18-trow--child { margin-left: 22px; }
+  .ab18-state { font-size: 12.5px; font-weight: 600; min-width: 28px; }
+  .ab18-hint { display: flex; align-items: flex-start; gap: 8px; padding: 11px 14px; background: var(--ds-inset); border: 1px solid var(--ds-line); border-radius: 12px; font-size: 12.5px; color: var(--ds-dim); line-height: 1.55; }
+  .ab18-hint b { color: var(--ds-text); font-weight: 600; }
+  .ab18-hint .ab18-ic { margin-top: 1px; }
+  .ab18-meta { font-family: var(--ds-font-mono); font-size: 11px; color: var(--ds-dim); }
+  /* toast */
+  .ab18-toast { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--ds-line-2); background: var(--ds-panel-2); box-shadow: 0 18px 40px rgba(0,0,0,.45); font-size: 13px; color: var(--ds-text); max-width: 520px; }
+  .ab18-toast--err { border-color: rgba(242,109,109,.35); }
+  .ab18-toastwrap { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+  /* the two names */
+  .ab18-names { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .ab18-name2 { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab18-name2 h3 { font-size: 15px; font-weight: 650; display: flex; align-items: center; gap: 10px; }
+  .ab18-name2 p { font-size: 13px; color: var(--ds-dim); line-height: 1.5; }
+  /* badges elsewhere */
+  .ab18-where { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .ab18-place { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 12px; border: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab18-place h4 { font-size: 13px; font-weight: 600; }
+  .ab18-dock { border: 1px solid var(--ds-line-2); border-radius: 10px; overflow: hidden; background: var(--ds-inset); }
+  .ab18-dock__h { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--ds-line); }
+  .ab18-dock__b { padding: 12px; font-size: 12.5px; color: var(--ds-dim); }
+  .ab18-sel { display: flex; align-items: center; justify-content: space-between; height: 36px; padding: 0 12px; border-radius: var(--ds-radius); border: 1px solid var(--ds-line-2); background: var(--ds-input-bg); font-size: 13px; color: var(--ds-dim); }
+  /* narrow */
+  .ab18-m { display: flex; flex-direction: column; min-height: 760px; background: var(--ds-bg); }
+  .ab18-mbar { display: flex; align-items: center; gap: 10px; height: 50px; padding: 0 14px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab18-mbar b { font-size: 14px; }
+  .ab18-mtabs { display: flex; gap: 6px; overflow-x: auto; padding: 10px 12px; border-bottom: 1px solid var(--ds-line); }
+  .ab18-mtabs .ab18-railitem { flex: none; height: 34px; font-size: 12.5px; padding: 0 12px; }
+  .ab18-mpad { padding: 14px 12px 20px; display: flex; flex-direction: column; gap: 12px; }
+  /* the board itself viewed narrow: desktop frames reflow instead of squashing */
+  @media (max-width: 720px) {
+    .ab18-names, .ab18-where { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6" /><path d="M10 20a2 2 0 0 0 4 0" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M18 5l2 2M15 8l2 2" /></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z" /><path d="M12 10v4M12 17h.01" /></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.5h.01" /></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14" /></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6" /></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" /></symbol>
+  <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></symbol>
+  <symbol id="i-journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 3v18M12.5 8h3.5M12.5 12h3.5" /></symbol>
+  <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5" /><path d="M6 10.2V19h12v-8.8" /></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4" /></symbol>
+  <symbol id="i-chip" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /><path d="M9 2.5v3.5M15 2.5v3.5M9 18v3.5M15 18v3.5M2.5 9h3.5M2.5 15h3.5M18 9h3.5M18 15h3.5" /></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v6c0 4.5 3.2 7.8 7.5 9 4.3-1.2 7.5-4.5 7.5-9V6z" /><path d="m9 12 2 2 4-4" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · M4 board</div>
+  <h1>AB18 · AI allowance meter + Settings AI consents</h1>
+  <p class="bd-lede">
+    How much <b>xLearn AI (included)</b> the learner has left, and the three switches that govern it. The allowance is a <b>percentage,
+    never money</b> (ADR-0031 §5). When it runs out, or xLearn AI pauses for everyone, grading still works and the learner picks mistakes
+    and grades themselves (D14). The consents are the <b>Settings twins of AB19's acceptance step</b> — the same labels and the same
+    retention sentence — plus a separate behavioral opt-in. All three are <b>unticked until the learner chooses</b> and <b>free to switch off</b>
+    with no confirmation. Degraded states say what still works and never promise that anyone was told (D34).
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-m4-01.md">ds-m4-01</a></span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-m4-06.md">m4-06</a> task 3–5 (on <a href="../../../docs/v2/sprints/sprint-m4-05.md">m4-05</a>'s allowance + consents API and <a href="../../../docs/v2/sprints/sprint-m4-02.md">m4-02</a>'s caps, breaker, per-account disable)</span>
+    <span><b>Frozen before</b>M4 (<a href="../../../docs/v2/sprints/sprint-m4-01.md">m4-01</a> entry gate)</span>
+    <span><b>Sources</b><a href="../../../docs/adr/0031-platform-ai-and-two-tier-keys.md#4-retention-and-privacy-owner-d24">ADR-0031 §4</a> ·
+      <a href="../../../docs/adr/0031-platform-ai-and-two-tier-keys.md#5-spend-owner-d25">§5</a> ·
+      <a href="../../../docs/adr/0031-platform-ai-and-two-tier-keys.md#7-coach-byo-changes">§7</a> ·
+      <a href="../../../docs/v2/research/t5-platform-ai.md#6-budgets-metering-and-abuse-controls">t5 §6</a> ·
+      <a href="../../../docs/v2/research/t5-platform-ai.md#8-privacy-and-residency">t5 §8</a> ·
+      <a href="../../../docs/adr/0033-invite-only-admission-and-owner-admin.md#6-the-acceptance-step-onboarding-step-0-l-a">ADR-0033 §6</a> ·
+      <a href="../../../docs/adr/0035-v2-operations-nats-auth-limits-capacity.md#4-limits-inventory">ADR-0035 §4</a> L17 · PRD §5.6 R-AI4–R-AI6 · D34 · <a href="AB19-invite-acceptance.html#AB19-F9">AB19-F9</a></span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB18-F1">F1</a><a href="#AB18-F2">F2</a><a href="#AB18-F3">F3</a><a href="#AB18-F4">F4</a><a href="#AB18-F5">F5</a><a href="#AB18-F6">F6</a>
+    <a href="#AB18-F7">F7</a><a href="#AB18-F8">F8</a><a href="#AB18-F9">F9</a><a href="#AB18-F10">F10</a><a href="#AB18-F11">F11 · 390 px</a>
+  </nav>
+</header>
+
+<!-- ======================================================== rules -->
+<section class="bd-section" aria-labelledby="sec-rules">
+  <h2 class="bd-section__h" id="sec-rules">Board-wide rules <small>ADR-0031 §4–§5 · t5 §6 · t5 §8 · m4-05 task 4</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <div class="bd-strip" style="align-items:flex-start">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span><b>The meter reads percentages only.</b> <code class="ds-mono">GET /api/me/ai-allowance</code> → <code class="ds-mono">{state: ok|low|paused|off, reason, used_pct, resets_at, day_used_pct, day_resets_at, analyses_left_today, finals_left_today, global_paused}</code>. The API never returns money to the browser; the SPA's type admits no money field. <b>No currency symbol or amount appears in any state.</b></span>
+        <span><b>What drives what:</b> <code class="ds-mono">state</code> → F1 (ok), F2 (low, from the server, never a client threshold), F3/F4 (paused, by <code class="ds-mono">reason</code> <code class="ds-mono">account_month</code> / <code class="ds-mono">account_day</code>); <code class="ds-mono">global_paused</code> → F5; <code class="ds-mono">state=off, reason=ai_disabled</code> → F6; <code class="ds-mono">off, no_consent</code> → F8.</span>
+        <span><b>Times</b> come from the server in UTC and render in the account's time zone: "resets Jan 1" (month) and "back at 05:30 tomorrow" (day, 00:00 UTC in IST).</span>
+      </div>
+    </div>
+    <div class="bd-strip" style="align-items:flex-start">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span><b>Consents</b> (<code class="ds-mono">GET/PATCH /api/me/consents</code>, kinds <code class="ds-mono">ai_review_graded</code>, <code class="ds-mono">ai_review_passing</code>, <code class="ds-mono">ai_behavioral</code>, version <code class="ds-mono">ai-consent@1</code>): real <code class="ds-mono">&lt;button role="switch" aria-checked&gt;</code>, unticked for an account that never chose; the second is disabled until the first is on; turning the first off turns the second off.</span>
+        <span><b>Effective for new work at once:</b> after each change the gateway refreshes judge's account cache. Nothing already sent is recalled; copies at the provider expire on its own schedule (up to 30 days).</span>
+        <span><b>Same words as AB19:</b> the two consent labels and the retention sentence are AB19-F9's, verbatim. Helper lines, the behavioral toggle and the "Last changed" line are Settings-only.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== F1 -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · Settings → xLearn AI (included) <small>F1 · the whole tab</small></h2>
+  <article class="bd-frame ab18-gap" id="AB18-F1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB18-F1</span><span class="bd-frame__title">· Settings → "xLearn AI (included)"</span><span class="bd-frame__state">· /xlearn/settings?tab=xlearn-ai · allowance ok · consents chosen</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new tab</span><span class="bd-tag">ADR-0031 §5 · R-AI4 · R-AI5</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <div class="xl-main">
+            <div class="xl-topbar">
+              <span class="ab18-brand"><span class="ab18-mark">x</span><span class="ab18-name">x<b>Learn</b></span></span>
+              <span class="ab18-flex"></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">S</span>
+            </div>
+            <div class="xl-content">
+              <div class="ab18-set">
+                <div class="ab18-set__h"><div class="xl-eyebrow">Account</div><h1>Settings</h1><p>Your profile, study pace, AI coach and reminders — tuned to how you learn.</p></div>
+                <div class="ab18-set__grid">
+                  <aside class="ab18-rail">
+                    <div class="ab18-pf"><span class="ds-avatar ab18-av">S</span><b>Sam Rivera</b><span class="ab18-pf__h">@samr</span></div>
+                    <nav class="ab18-railnav" aria-label="Settings sections" role="tablist" aria-orientation="vertical">
+                      <span class="ab18-railitem" role="tab"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Study budget</span>
+                      <span class="ab18-railitem ab18-railitem--on" role="tab" aria-selected="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chip"/></svg> xLearn AI</span>
+                      <span class="ab18-railitem" role="tab"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach</span>
+                      <span class="ab18-railitem" role="tab"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-bell"/></svg> Reminders</span>
+                      <span class="ab18-railitem" role="tab"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eye"/></svg> Profile &amp; visibility</span>
+                      <span class="ab18-railitem" role="tab"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-key"/></svg> Sign-in &amp; security</span>
+                    </nav>
+                  </aside>
+                  <section class="ab18-card" role="tabpanel" aria-labelledby="f1-h">
+                    <div class="ab18-card__h">
+                      <span class="ab18-card__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chip"/></svg></span>
+                      <div class="ab18-flex"><h3 id="f1-h">xLearn AI (included)</h3><p>Included — reviews your submissions. No key needed.</p></div>
+                      <span class="ds-badge ds-badge--ok">● On</span>
+                    </div>
+                    <div class="ab18-card__b">
+                      <div class="ab18-sub">Allowance</div>
+                      <div class="ab18-allow">
+                        <div class="ab18-allow__t"><b>This month: <span class="ab18-pct">38%</span> used</b><span class="ab18-small">· resets Jan 1</span></div>
+                        <div class="ds-meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="38" aria-label="xLearn AI used this month" aria-valuetext="38% used, resets January 1"><div class="ds-meter__fill" style="width:38%"></div></div>
+                        <div class="ab18-allow__d">Covers AI suggestions on your graded work and improvement notes on passing solutions. No key needed.</div>
+                      </div>
+                      <div class="ab18-sub" style="margin-top:6px">Your choices</div>
+                      <div class="ab18-trow">
+                        <div class="ab18-trow__main"><div class="ab18-trow__t">xLearn AI reviews my graded work</div><div class="ab18-trow__d">Mistake suggestions, concepts and AI grades on your submissions. Off: you pick them yourself.</div></div>
+                        <span class="ds-toggle ds-toggle--on bd-focus" role="switch" aria-checked="true" aria-label="xLearn AI reviews my graded work" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab18-state ab18-teal">On</span>
+                      </div>
+                      <div class="ab18-trow ab18-trow--child">
+                        <div class="ab18-trow__main"><div class="ab18-trow__t">…and also reviews my passing solutions for improvement notes</div><div class="ab18-trow__d">Improvement notes on solutions that already pass. Never changes your grade.</div></div>
+                        <span class="ds-toggle ds-toggle--on" role="switch" aria-checked="true" aria-label="xLearn AI also reviews my passing solutions for improvement notes" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab18-state ab18-teal">On</span>
+                      </div>
+                      <div class="ab18-trow">
+                        <div class="ab18-trow__main"><div class="ab18-trow__t">xLearn AI may review my behavioral answers</div><div class="ab18-trow__d">A separate choice. There is no behavioral course yet.</div></div>
+                        <span class="ds-toggle" role="switch" aria-checked="false" aria-label="xLearn AI may review my behavioral answers" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab18-state ab18-dimc">Off</span>
+                      </div>
+                      <div class="ab18-hint"><span class="ab18-ic ab18-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-shield"/></svg></span><span>If on, your work is sent to Anthropic, processed outside India, kept by them for up to 30 days and never used for training. <a href="AB20-privacy-notice.html#AB20-F4">Privacy notice →</a></span></div>
+                      <div class="ab18-meta">Last changed Dec 3, 2026 · consent v1</div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li>New rail tab <b>xLearn AI</b> (<code>?tab=xlearn-ai</code>), before "Your AI coach"; the card heading carries the full name "xLearn AI (included)" (AB01-F13's pattern: short rail label, full heading). Badge: <b>On</b> (ok) · <b>Paused</b> (warn, F3–F5) · <b>Off</b> (neutral, F6, F8).</li>
+          <li>Allowance: <code>state=ok</code>, <code>used_pct: 38</code>, <code>resets_at</code> → "resets Jan 1". Two blocks: <b>Allowance</b> (F1–F6) and <b>Your choices</b> (F7–F8).</li>
+          <li>Presence: when the allowance is <b>absent</b> (a 404 outside the cohort, or <code>off</code> with <code>platform_disabled</code> / <code>not_cohort</code>), the Allowance block and the header badge are absent — but <b>Your choices still render</b>, so a consent can always be withdrawn (Decisions to confirm).</li></ul></section>
+      <section><h4>Writes</h4>
+        <ul><li>Each switch → <code>PATCH /api/me/consents</code> with one kind; optimistic with rollback (F8). The gateway then refreshes judge's cache, so the change holds for the very next call.</li>
+          <li>"Last changed … · consent v1" from the consent read (<code>granted_at</code> / <code>withdrawn_at</code>, <code>ai-consent@1</code>).</li>
+          <li><b>Privacy notice →</b> opens AB20's in-app view; l-05 adds the link with the AB20 page (until then the sentence ends without it).</li></ul></section>
+      <section><h4>Decision · a11y · narrow</h4>
+        <ul><li>ADR-0031 §5 (percentage, never money) · §4 (three toggles) · §7 (names) · R-AI4–R-AI6.</li>
+          <li>The meter is <code>role="meter"</code> with <code>aria-valuetext</code> "38% used, resets January 1"; the percentage is also text, so colour never carries it. Switches: <span class="xl-kbd">Space</span> / <span class="xl-kbd">Enter</span>; each sits beside its state word; the child switch is indented and its name repeats the whole sentence. Text 15:1, dim 6.8:1, teal 9.0:1.</li>
+          <li>&lt; 1024 px: F11 N1.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ======================================================== F2–F6 -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · The allowance block in every state <small>F2–F6 · same slot as F1's "Allowance"</small></h2>
+  <div class="bd-grid bd-grid--wide ab18-gap">
+    <!-- F2 -->
+    <article class="bd-frame" id="AB18-F2">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB18-F2</span><span class="bd-frame__title">· Low</span><span class="bd-frame__state">· <code class="ds-mono">state=low</code> · 80% or more</span><span class="bd-frame__tags"><span class="bd-tag">ADR-0031 §5 degrade order</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="ab18-allow">
+            <div class="ab18-allow__t"><b>This month: <span class="ab18-pct ab18-warn">86%</span> used</b><span class="ab18-small">· resets Jan 1</span><span class="ab18-flex"></span><span class="ds-badge ds-badge--warn">Low</span></div>
+            <div class="ds-meter" role="meter" aria-valuenow="86" aria-valuemin="0" aria-valuemax="100" aria-valuetext="86% used, low, resets January 1"><span class="ab18-fill ab18-fill--warn" style="width:86%"></span></div>
+            <div class="ab18-msg"><span class="ab18-ic ab18-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span>86% used — improvement notes pause first; suggestions on graded work continue until 100%.</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li><code>state=low</code> when either account scope (month or day) is at 80% or more (m4-05). The server decides; the SPA never compares the number itself. Header badge <b>Paused</b> doesn't show yet; the block's own "Low" badge does.</li>
+          <li>ADR-0031 §5 degrade order: advisory (pass notes) → counted (analyzer, Feedback) → final (Score). Warn 9.6:1; the word "Low" and the sentence carry it.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F3 -->
+    <article class="bd-frame" id="AB18-F3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB18-F3</span><span class="bd-frame__title">· Paused for this account</span><span class="bd-frame__state">· <code class="ds-mono">state=paused</code>, <code class="ds-mono">reason=account_month</code></span><span class="bd-frame__tags"><span class="bd-tag">R-AI5 · D14</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="ab18-allow">
+            <div class="ab18-allow__t"><b>This month: <span class="ab18-pct ab18-err">100%</span> used</b><span class="ab18-small">· resets Jan 1</span><span class="ab18-flex"></span><span class="ds-badge ds-badge--warn">Paused</span></div>
+            <div class="ds-meter" role="meter" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-valuetext="100% used, paused until January 1"><span class="ab18-fill ab18-fill--err" style="width:100%"></span></div>
+            <div class="ab18-msg"><span class="ab18-ic ab18-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg></span><span><b>xLearn AI is paused for your account until Jan 1.</b> You'll pick mistakes and grades yourself until then — nothing else changes.</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li><code>paused</code> iff <code>Reserve</code> would refuse a <code>counted</code> job for this account now; <code>reason=account_month</code>. Meter full in <code>--ds-err</code>. Every AI surface falls back to manual: AB16-F11/F12, AB17-F8 b, and the AB18-F10 badges.</li>
+          <li>R-AI5 · D14 (manual entry). No upsell, no "ask for more": v2 has no such path. Err 6.2:1 on panel-2; the bold sentence says it in words.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F4 -->
+    <article class="bd-frame" id="AB18-F4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB18-F4</span><span class="bd-frame__title">· Daily limit reached</span><span class="bd-frame__state">· <code class="ds-mono">state=paused</code>, <code class="ds-mono">reason=account_day</code></span><span class="bd-frame__tags"><span class="bd-tag">L17</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="ab18-allow">
+            <div class="ab18-allow__t"><b>This month: <span class="ab18-pct">54%</span> used</b><span class="ab18-small">· resets Jan 1</span><span class="ab18-flex"></span><span class="ds-badge ds-badge--warn">Paused today</span></div>
+            <div class="ds-meter" role="meter" aria-valuenow="54" aria-valuemin="0" aria-valuemax="100" aria-valuetext="54% used this month"><div class="ds-meter__fill" style="width:54%"></div></div>
+            <div class="ab18-msg"><span class="ab18-ic ab18-warn"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span><span>Today's xLearn AI reviews are used up — they're back at <span class="ab18-pct">05:30</span> tomorrow.</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>A day scope ran out first: the daily share, ≤ 20 analyses or ≤ 6 AI finals a day (ADR-0035 §4 L17), reported as <code>day_used_pct</code>, <code>analyses_left_today</code>, <code>finals_left_today</code>. The month meter is unchanged (teal).</li>
+          <li><code>day_resets_at</code> is 00:00 UTC, shown in the account's zone (05:30 in India); "tomorrow" / "today" is computed in that zone too (Decisions to confirm).</li></ul>
+      </aside>
+    </article>
+
+    <!-- F5 -->
+    <article class="bd-frame" id="AB18-F5">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB18-F5</span><span class="bd-frame__title">· Paused for everyone</span><span class="bd-frame__state">· <code class="ds-mono">global_paused=true</code> (breaker or app cap)</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">AB11-style badge</span><span class="bd-tag">ADR-0031 §5 · D34</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="ab18-allow">
+            <div class="ab18-row"><span class="xl-tag" role="status"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg> xLearn AI paused</span></div>
+            <div class="ab18-msg"><span>xLearn AI is paused for everyone right now. Grading still works — you'll fill in mistakes yourself. It resumes on its own.</span></div>
+            <div class="ab18-allow__t ab18-dim"><span class="ab18-small">This month: <span class="ab18-pct">38%</span> used · resets Jan 1</span></div>
+            <div class="ds-meter ab18-dim" aria-hidden="true"><div class="ds-meter__fill" style="width:38%"></div></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li><code>global_paused</code>: the provider breaker is open, or the app cap / daily guard is reached. Badge in AB11-F1's muted style with its text "xLearn AI paused"; this detail line is the Settings copy (AB11's popover keeps "xLearn AI is paused. You can grade manually — nothing is blocked.").</li>
+          <li><b>No reason, no provider name, no money, no "we've been told"</b>: nothing alerts (D34); the owner sees the breaker on demand. The learner's own meter stays visible, dimmed. "It resumes on its own" is true: the breaker closes at reset or by the owner's action.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F6 -->
+    <article class="bd-frame" id="AB18-F6">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB18-F6</span><span class="bd-frame__title">· Off for this account</span><span class="bd-frame__state">· <code class="ds-mono">state=off</code>, <code class="ds-mono">reason=ai_disabled</code></span><span class="bd-frame__tags"><span class="bd-tag">t5 §6</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="ab18-allow">
+            <div class="ab18-row"><span class="ds-chip ds-chip--sm">Off for your account</span></div>
+            <div class="ab18-msg"><span class="ab18-ic ab18-dimc"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span>xLearn AI is turned off for your account for now. You can keep practising — grading suggestions are manual.</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>judge's per-account <code>ai_disabled</code> (<code>llm_account_limit</code>): set by the owner, or automatically pending the owner's review (t5 §6's flag-based throttle). The copy is the same for both and <b>never says why</b> or what was detected. No meter (nothing can be used).</li>
+          <li>Your choices (F7) stay editable. The header badge reads <b>Off</b>. Neutral chip, dim icon; the sentence carries it.</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- ======================================================== F7–F9 -->
+<section class="bd-section" aria-labelledby="sec-c">
+  <h2 class="bd-section__h" id="sec-c">C · Your choices and the two names <small>F7–F9</small></h2>
+  <div class="bd-grid bd-grid--wide ab18-gap">
+    <!-- F7 -->
+    <article class="bd-frame" id="AB18-F7">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB18-F7</span><span class="bd-frame__title">· Settings AI consents</span><span class="bd-frame__state">· an account that never chose · all unticked</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">Settings twin of AB19-F9</span><span class="bd-tag">ADR-0031 §4 · t5 §8 · R-AI6</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab18-col">
+          <div class="ab18-sub">Your choices</div>
+          <div class="ab18-trow">
+            <div class="ab18-trow__main"><div class="ab18-trow__t">xLearn AI reviews my graded work</div><div class="ab18-trow__d">Mistake suggestions, concepts and AI grades on your submissions. Off: you pick them yourself.</div></div>
+            <span class="ds-toggle" role="switch" aria-checked="false" aria-label="xLearn AI reviews my graded work" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab18-state ab18-dimc">Off</span>
+          </div>
+          <div class="ab18-trow ab18-trow--child ab18-trow--off">
+            <div class="ab18-trow__main"><div class="ab18-trow__t">…and also reviews my passing solutions for improvement notes</div><div class="ab18-trow__d" id="f7-c2h">Improvement notes on solutions that already pass. Never changes your grade. Available once the first is on.</div></div>
+            <span class="ds-toggle" role="switch" aria-checked="false" aria-disabled="true" aria-describedby="f7-c2h" aria-label="xLearn AI also reviews my passing solutions for improvement notes" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab18-state ab18-dimc">Off</span>
+          </div>
+          <div class="ab18-trow">
+            <div class="ab18-trow__main"><div class="ab18-trow__t">xLearn AI may review my behavioral answers</div><div class="ab18-trow__d">A separate choice. There is no behavioral course yet.</div></div>
+            <span class="ds-toggle" role="switch" aria-checked="false" aria-label="xLearn AI may review my behavioral answers" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab18-state ab18-dimc">Off</span>
+          </div>
+          <div class="ab18-hint"><span class="ab18-ic ab18-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-shield"/></svg></span><span>If on, your work is sent to Anthropic, processed outside India, kept by them for up to 30 days and never used for training. <a href="AB20-privacy-notice.html#AB20-F4">Privacy notice →</a></span></div>
+          <div class="ab18-meta">Not chosen yet · consent v1</div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>Three <code>ds-toggle</code>s as <code>&lt;button role="switch" aria-checked&gt;</code>, <b>unticked</b> for an account with no live grant (never pre-ticked; the only "on" is a recorded grant, as AB19-F11). The second is <code>aria-disabled</code> until the first is on, with its reason in the helper (still focusable, so a screen reader hears why).</li>
+          <li>Labels = AB19-F9's two consents, word for word; the retention sentence = AB19-F9's. The helper lines, the third toggle and the meta line are Settings-only.</li>
+          <li>Kinds: <code>ai_review_graded</code> (Analyze, Score, Feedback) · <code>ai_review_passing</code> (D16/D26 pass review; needs graded too) · <code>ai_behavioral</code> (C4, no v2.0 course uses it).</li></ul>
+        <h4>Decision · a11y</h4>
+        <ul><li>ADR-0031 §4 · t5 §8 ("two unticked, explicit choices" + a third opt-in) · R-AI6 · ADR-0033 §6 (the acceptance twins). The consents are never bundled with anything else on the page; each switch has its own full-sentence name.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F8 -->
+    <article class="bd-frame" id="AB18-F8">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB18-F8</span><span class="bd-frame__title">· Just switched off</span><span class="bd-frame__state">· no confirm · toast · <code class="ds-mono">state=off</code>, <code class="ds-mono">reason=no_consent</code></span><span class="bd-frame__tags"><span class="bd-tag">t5 §8 "free and easy to withdraw"</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab18-col">
+          <div class="ab18-allow">
+            <div class="ab18-row"><span class="ds-chip ds-chip--sm">Off</span></div>
+            <div class="ab18-msg"><span class="ab18-ic ab18-dimc"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><span>xLearn AI reviews are off. Nothing is used while they're off.</span></div>
+          </div>
+          <div class="ab18-trow">
+            <div class="ab18-trow__main"><div class="ab18-trow__t">xLearn AI reviews my graded work</div><div class="ab18-trow__d">Mistake suggestions, concepts and AI grades on your submissions. Off: you pick them yourself.</div></div>
+            <span class="ds-toggle bd-focus" role="switch" aria-checked="false" aria-label="xLearn AI reviews my graded work" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab18-state ab18-dimc">Off</span>
+          </div>
+          <div class="ab18-trow ab18-trow--child ab18-trow--off">
+            <div class="ab18-trow__main"><div class="ab18-trow__t">…and also reviews my passing solutions for improvement notes</div><div class="ab18-trow__d">Improvement notes on solutions that already pass. Never changes your grade. Available once the first is on.</div></div>
+            <span class="ds-toggle" role="switch" aria-checked="false" aria-disabled="true" aria-label="xLearn AI also reviews my passing solutions for improvement notes" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span><span class="ab18-state ab18-dimc">Off</span>
+          </div>
+          <div class="ab18-toastwrap">
+            <div class="ab18-toast" role="status"><span class="ab18-ic ab18-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span><span>xLearn AI reviews are off. You'll pick mistakes and grades yourself.</span><span class="ds-iconbtn" role="button" aria-label="Dismiss"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+            <div class="ab18-toast ab18-toast--err" role="alert"><span class="ab18-ic ab18-err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span>Couldn't save that change — your choice is as it was. Try again.</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>Turning <b>the first off</b> is immediate: <b>no confirm dialog</b>. It also turns the second off (withdrawing graded withdraws passing, m4-05 <code>SetConsents</code>), and the second becomes disabled. The allowance block reads <code>off</code> / <code>no_consent</code>. The toast is <code>role="status"</code> and leaves focus on the switch.</li>
+          <li>Optimistic with rollback: on a failed <code>PATCH</code> the switch returns and the error toast (<code>role="alert"</code>) says so. Turning a switch <b>on</b> is just as immediate, with no toast.</li>
+          <li>Effective for new work at once; work already sent isn't recalled (provider copies expire on its schedule).</li></ul>
+        <h4>Decision</h4>
+        <ul><li>t5 §8 (free, specific, withdrawable; routes to D14 manual entry and v1 self-scoring) · ADR-0031 §4.</li></ul>
+      </aside>
+    </article>
+  </div>
+
+  <!-- F9 -->
+  <article class="bd-frame ab18-gap" id="AB18-F9">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB18-F9</span><span class="bd-frame__title">· The two names</span><span class="bd-frame__state">· Settings sections side by side</span><span class="bd-frame__tags"><span class="bd-tag">ADR-0031 §7</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad">
+        <div class="ab18-names">
+          <div class="ab18-name2">
+            <h3><span class="ab18-card__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chip"/></svg></span>xLearn AI (included)</h3>
+            <p>Included — reviews your submissions.</p>
+            <span class="ab18-small">Allowance and your choices · this board (F1–F8)</span>
+            <a style="font-size:13px">Open <span class="ab18-ic" style="vertical-align:-3px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></span></a>
+          </div>
+          <div class="ab18-name2">
+            <h3><span class="ab18-card__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg></span>Your AI coach (your key)</h3>
+            <p>Your own key — chat with a coach, billed by your provider.</p>
+            <span class="ab18-small">Keys, default models and usage · <a href="AB01-coach-states.html#AB01-F13">AB01-F13</a> (not redrawn)</span>
+            <a style="font-size:13px">Open <span class="ab18-ic" style="vertical-align:-3px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Names</h4>
+        <ul><li><b>"xLearn AI (included)"</b> is the platform AI (the owner's key; the allowance). <b>"Your AI coach (your key)"</b> is BYO (the learner's key, the learner's provider bill). Rail labels stay short ("xLearn AI", "Your AI coach"); card headings carry the full names.</li></ul></section>
+      <section><h4>Never mixed</h4>
+        <ul><li>The allowance never counts coach use, and the coach card never shows the allowance. xLearn AI never falls back to the learner's key (t5 §2), and a coach key is never needed for xLearn AI.</li></ul></section>
+      <section><h4>Decision · a11y</h4>
+        <ul><li>ADR-0031 §7 · t5 §9. Two cards in the reading order of the rail; each "Open" link names its section in its accessible name.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ======================================================== F10 -->
+<section class="bd-section" aria-labelledby="sec-d">
+  <h2 class="bd-section__h" id="sec-d">D · AI-off badges elsewhere <small>F10 · low fidelity</small></h2>
+  <article class="bd-frame ab18-gap" id="AB18-F10">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB18-F10</span><span class="bd-frame__title">· AI-off badges elsewhere</span><span class="bd-frame__state">· where suggestions would appear</span><span class="bd-frame__tags"><span class="bd-tag">low fidelity</span><span class="bd-tag">m4-06 task 5 · AB11</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad">
+        <div class="ab18-where">
+          <div class="ab18-place">
+            <h4>Results dock (AB08)</h4>
+            <div class="ab18-dock">
+              <div class="ab18-dock__h"><div class="ds-tabs" role="tablist"><span class="ds-tab" role="tab">Samples</span><span class="ds-tab" role="tab">Submission</span><span class="ds-tab ds-tab--active" role="tab" aria-selected="true">Feedback</span></div><span class="ab18-flex"></span></div>
+              <div class="ab18-dock__b ab18-col"><span class="xl-tag" style="align-self:flex-start"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg> xLearn AI off · manual</span><span>Pick a mistake category and add notes yourself.</span></div>
+            </div>
+          </div>
+          <div class="ab18-place">
+            <h4>Today (AB05)</h4>
+            <div class="ds-card" style="padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+              <div class="ab18-row"><b style="font-size:13.5px">Today</b><span class="ab18-flex"></span><span class="xl-tag"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg> xLearn AI paused</span></div>
+              <span class="ab18-small">Reviews first · 3 due</span>
+            </div>
+          </div>
+          <div class="ab18-place">
+            <h4>Mistake entry (Mistakes journal)</h4>
+            <div class="ds-card" style="padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+              <div class="ab18-row"><span style="font-family:var(--ds-font-mono);font-size:12px;color:var(--ds-dim)">#16</span><b style="font-size:13.5px">3Sum</b></div>
+              <div class="ab18-sel" role="button" aria-haspopup="listbox"><span>pick a category</span><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-chevdown"/></svg></div>
+              <span class="ab18-small">No AI chip, no suggestion slot.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Driven by</h4>
+        <ul><li>The allowance (<code>state</code>, <code>global_paused</code>, <code>ai_disabled</code>) and the consents. "xLearn AI off · manual" for <code>off</code> (no consent, per-account disable); "xLearn AI paused" for <code>paused</code> or <code>global_paused</code>. The mistake entry simply shows the plain picker.</li>
+          <li><b>Absent entirely</b> when the allowance is absent (a 404, or <code>off</code> with <code>platform_disabled</code> / <code>not_cohort</code>): presence by config, nothing to feature-detect.</li></ul></section>
+      <section><h4>Style</h4>
+        <ul><li>AB11-F1's muted look for the xLearn AI badge (an <code>xl-tag</code> with a pause icon), informational, never modal, never a toast that steals focus. Status changes announce once through <code>aria-live="polite"</code> ("xLearn AI is paused"), as AB11-F5.</li></ul></section>
+      <section><h4>Decision · a11y</h4>
+        <ul><li>m4-06 task 5 · AB11 (the placeholder it drew for M4) · D34 (in-app badges, no alert). Badge text dim 6.8:1 on inset.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- =================================================== narrow -->
+<section class="bd-section" id="AB18-F11" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">AB18-F11 · &lt; 1024 px / 390 px <small>m4-06 task 4</small></h2>
+  <p class="bd-section__p">The rail becomes a horizontal tab strip (AB22-F6); the meter and the switches stack full width with each helper under its switch; badges collapse to an icon and a short label. <b>N1</b> the tab · <b>N2</b> compact badges.</p>
+  <div class="bd-narrow-row">
+    <!-- N1 -->
+    <article class="bd-frame bd-narrow" aria-label="N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1</span><span class="bd-frame__title">· Settings → xLearn AI</span></header>
+      <div class="bd-frame__body">
+        <div class="ab18-m">
+          <div class="ab18-mbar"><span class="ds-iconbtn" aria-label="Back"><svg class="xl-ico" aria-hidden="true"><use href="#i-back"/></svg></span><b>Settings</b></div>
+          <div class="ab18-mtabs" role="tablist"><span class="ab18-railitem" role="tab">Study budget</span><span class="ab18-railitem ab18-railitem--on" role="tab" aria-selected="true">xLearn AI</span><span class="ab18-railitem" role="tab">Your AI coach</span><span class="ab18-railitem" role="tab">Reminders</span></div>
+          <div class="ab18-mpad">
+            <div class="ab18-row"><b style="font-size:15px">xLearn AI (included)</b><span class="ab18-flex"></span><span class="ds-badge ds-badge--ok">● On</span></div>
+            <div class="ab18-allow">
+              <div class="ab18-allow__t"><b>This month: <span class="ab18-pct">38%</span> used</b><span class="ab18-small">· resets Jan 1</span></div>
+              <div class="ds-meter" role="meter" aria-valuenow="38" aria-valuemin="0" aria-valuemax="100" aria-valuetext="38% used, resets January 1"><div class="ds-meter__fill" style="width:38%"></div></div>
+              <div class="ab18-allow__d">Covers AI suggestions on your graded work and improvement notes on passing solutions. No key needed.</div>
+            </div>
+            <div class="ab18-trow" style="flex-wrap:nowrap;align-items:flex-start">
+              <div class="ab18-trow__main" style="min-width:0"><div class="ab18-trow__t">xLearn AI reviews my graded work</div><div class="ab18-trow__d">Mistake suggestions, concepts and AI grades on your submissions. Off: you pick them yourself.</div></div>
+              <span class="ds-toggle ds-toggle--on" role="switch" aria-checked="true" aria-label="xLearn AI reviews my graded work" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span>
+            </div>
+            <div class="ab18-trow" style="flex-wrap:nowrap;align-items:flex-start">
+              <div class="ab18-trow__main" style="min-width:0"><div class="ab18-trow__t">…and also reviews my passing solutions for improvement notes</div><div class="ab18-trow__d">Improvement notes on solutions that already pass. Never changes your grade.</div></div>
+              <span class="ds-toggle ds-toggle--on" role="switch" aria-checked="true" aria-label="xLearn AI also reviews my passing solutions for improvement notes" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span>
+            </div>
+            <div class="ab18-trow" style="flex-wrap:nowrap;align-items:flex-start">
+              <div class="ab18-trow__main" style="min-width:0"><div class="ab18-trow__t">xLearn AI may review my behavioral answers</div><div class="ab18-trow__d">A separate choice. There is no behavioral course yet.</div></div>
+              <span class="ds-toggle" role="switch" aria-checked="false" aria-label="xLearn AI may review my behavioral answers" tabindex="0"><span class="ds-toggle__track"><span class="ds-toggle__knob"></span></span></span>
+            </div>
+            <div class="ab18-hint"><span>If on, your work is sent to Anthropic, processed outside India, kept by them for up to 30 days and never used for training. <a href="AB20-privacy-notice.html#AB20-F4">Privacy notice →</a></span></div>
+            <div class="ab18-meta">Last changed Dec 3, 2026 · consent v1</div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>The child switch loses its indent; its label's leading "…and also" keeps the link to the first. State words hide; <code>aria-checked</code> and the knob position carry it, as AB22-F6.</li></ul></aside>
+    </article>
+
+    <!-- N2 -->
+    <article class="bd-frame bd-narrow" aria-label="N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2</span><span class="bd-frame__title">· Badges, compact</span></header>
+      <div class="bd-frame__body">
+        <div class="ab18-m" style="min-height:420px">
+          <div class="ab18-mbar"><b>Today</b><span class="ab18-flex"></span><span class="xl-tag" aria-label="xLearn AI paused"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg> AI paused</span></div>
+          <div class="ab18-mpad">
+            <div class="ab18-allow">
+              <div class="ab18-row"><span class="xl-tag"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg> xLearn AI paused</span></div>
+              <div class="ab18-msg"><span>xLearn AI is paused for everyone right now. Grading still works — you'll fill in mistakes yourself. It resumes on its own.</span></div>
+            </div>
+            <div class="ab18-dock">
+              <div class="ab18-dock__h"><span class="ab18-small" style="padding:4px 6px">Feedback</span><span class="ab18-flex"></span><span class="xl-tag" aria-label="xLearn AI off, manual"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg> AI off</span></div>
+              <div class="ab18-dock__b">Pick a mistake category and add notes yourself.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>In top bars and dock headers the badge shortens to the icon + "AI paused" / "AI off"; its accessible name keeps the full text. Inside a page body it keeps the full label.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB18 · drafted in ds-m4-01 on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> (linked, never copied). Static HTML, no JS runtime; preview-only — never imported by <code class="ds-mono">web/</code>.
+  Sample account: Sam Rivera (@samr), India (IST); dates are December 2026. Percentages are sample data; the allowance never shows money.
+  The merge of ds-m4-01 is the freeze (D40); any change is a follow-up design PR.
+</footer>
+</main>
+</body>
+</html>

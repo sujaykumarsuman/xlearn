@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB17 · Pointer notes + "correct, with improvements" — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB17 board-local layout (prefix ab17-). Tokens only; never restyles a ds-, xl- or bd- class. */
+  .ab17-flex { flex: 1; }
+  .ab17-gap { margin-bottom: 22px; }
+  .ab17-ok { color: var(--ds-ok); } .ab17-err { color: var(--ds-err); } .ab17-warn { color: var(--ds-warn); }
+  .ab17-info { color: var(--ds-info); } .ab17-teal { color: var(--ds-teal); } .ab17-violet { color: var(--ds-violet); } .ab17-dimc { color: var(--ds-dim); }
+  .ab17-ic { display: inline-flex; flex: none; }
+  .ab17-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
+  .ab17-col { display: flex; flex-direction: column; gap: 12px; }
+  .ab17-id { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-dim); }
+  .ab17-title { font-size: 14px; font-weight: 600; color: var(--ds-text); }
+  .ab17-cap { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab17-small { font-size: 12px; line-height: 1.5; color: var(--ds-dim); }
+  .ab17-small b { color: var(--ds-text); font-weight: 600; }
+  .ab17-hud { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 10px 14px; border-bottom: 1px solid var(--ds-line); }
+  .ab17-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .ab17-head { display: flex; align-items: flex-start; gap: 10px; font-size: 17px; font-weight: 700; letter-spacing: -.2px; }
+  .ab17-head > svg { margin-top: 3px; }
+  .ab17-dots { display: flex; flex-direction: column; gap: 4px; }
+  .ab17-links { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; font-size: 13px; }
+  /* the notes slot */
+  .ab17-slot { border: 1px solid var(--ds-line-2); border-radius: var(--ds-radius); background: var(--ds-inset); overflow: hidden; }
+  .ab17-toggle { display: flex; align-items: center; gap: 9px; width: 100%; padding: 11px 13px; background: none; border: none; color: var(--ds-text); font-family: var(--ds-font-sans); font-size: 13px; text-align: left; cursor: pointer; }
+  .ab17-toggle b { font-weight: 600; }
+  .ab17-toggle .ab17-sub { color: var(--ds-dim); font-size: 12px; }
+  .ab17-open { border-top: 1px solid var(--ds-line); padding: 12px 13px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .ab17-notes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .ab17-note { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--ds-line-2); background: var(--ds-panel-2); font-size: 13px; line-height: 1.55; color: var(--ds-text); }
+  .ab17-note--on { border-color: rgba(53,208,192,.45); background: rgba(53,208,192,.1); }
+  .ab17-note code { font-family: var(--ds-font-mono); font-size: 12px; padding: 0 4px; border-radius: 4px; background: var(--ds-inset); border: 1px solid var(--ds-line-2); }
+  .ab17-lr { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 6px; font-family: var(--ds-font-mono); font-size: 11.5px; font-weight: 600; color: var(--ds-teal); background: rgba(53,208,192,.1); border: 1px solid rgba(53,208,192,.45); white-space: nowrap; cursor: pointer; }
+  .ab17-lr--off { color: var(--ds-dim); background: var(--ds-inset); border-color: var(--ds-line-2); }
+  .ab17-exh { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ds-dim); margin-bottom: 6px; }
+  .ab17-ex { padding: 8px 0; }
+  .ab17-ln { display: grid; grid-template-columns: 34px minmax(0, 1fr); padding: 0 14px 0 0; }
+  .ab17-ln > span:first-child { color: var(--ds-dim); text-align: right; padding-right: 12px; user-select: none; }
+  .ab17-hl { background: rgba(53,208,192,.1); box-shadow: inset 2px 0 0 var(--ds-teal); }
+  .ab17-revisit { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 11px 12px; border-radius: 8px; border: 1px dashed rgba(155,140,240,.4); background: rgba(155,140,240,.08); font-size: 13px; color: var(--ds-text); }
+  .ab17-foot { font-size: 12px; color: var(--ds-dim); display: flex; align-items: center; gap: 7px; }
+  .ab17-quiet { display: flex; align-items: center; gap: 8px; padding: 10px 13px; border-radius: var(--ds-radius); border: 1px solid var(--ds-line); background: var(--ds-inset); font-size: 12.5px; color: var(--ds-dim); }
+  .ab17-quiet a { font-weight: 600; }
+  /* revision card + queue rows (AB03 vocabulary) */
+  .ab17-rev { display: flex; flex-direction: column; gap: 10px; }
+  .ab17-sep { height: 1px; background: var(--ds-line); }
+  .ab17-qrow { display: flex; flex-direction: column; gap: 10px; }
+  .ab17-due { font-size: 11.5px; color: var(--ds-dim); }
+  /* live HUD look-alike (AB04) */
+  .ab17-live { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab17-clock { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 11px; border-radius: var(--ds-radius); border: 1px solid var(--ds-line-2); background: var(--ds-inset); }
+  .ab17-clock b { font-size: 16px; color: var(--ds-teal); }
+  .ab17-ph { border-radius: 8px; border: 1px dashed var(--ds-line-2); background: var(--ds-inset); color: var(--ds-dim); font-size: 12px; display: grid; place-items: center; }
+  /* placements strip */
+  .ab17-places { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .ab17-place { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 12px; border: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab17-place h4 { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .ab17-never { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; border: 1px solid rgba(242,109,109,.35); background: rgba(242,109,109,.1); font-size: 13px; color: var(--ds-text); line-height: 1.55; }
+  .ab17-never b { font-weight: 700; }
+  .ab17-pub { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--ds-line-2); background: var(--ds-inset); font-size: 12.5px; color: var(--ds-dim); }
+  .ab17-pub b { color: var(--ds-text); }
+  .ab17-strike { text-decoration: line-through; color: var(--ds-dim); }
+  .ab17-coach { border-radius: 10px; border: 1px solid var(--ds-line); background: var(--ds-panel-2); overflow: hidden; }
+  .ab17-coach__top { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--ds-line); font-size: 13px; font-weight: 600; }
+  .ab17-coach__b { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; font-size: 12px; color: var(--ds-dim); }
+  /* narrow */
+  .ab17-m { display: flex; flex-direction: column; min-height: 700px; background: var(--ds-bg); }
+  .ab17-mbar { display: flex; align-items: center; gap: 10px; height: 50px; padding: 0 14px; border-bottom: 1px solid var(--ds-line); background: var(--ds-panel); }
+  .ab17-mbar b { font-size: 14px; }
+  .ab17-mpad { padding: 14px 12px 20px; display: flex; flex-direction: column; gap: 12px; }
+  /* frame-body splits */
+  .ab17-split { display: grid; gap: 22px; align-items: start; }
+  .ab17-split--a { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+  .ab17-split--b { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+  /* the board itself viewed narrow: desktop frames reflow instead of squashing */
+  @media (max-width: 720px) {
+    .ab17-split--a, .ab17-split--b, .ab17-places { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></symbol>
+  <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" /></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6" /></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.5h.01" /></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5z" /><path d="M3 12.5 12 17l9-4.5M3 17 12 21.5 21 17" /></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14" /></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></symbol>
+  <symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M3 3l18 18" /><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7c1.9 0 3.5-.6 4.9-1.4" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.4" /><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" /></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · M4 board</div>
+  <h1>AB17 · Pointer notes + "correct, with improvements"</h1>
+  <p class="bd-lede">
+    The D26 pass review. xLearn AI looks at <b>course passes</b> and at a <b>revision-touch pass whose solution is materially different</b> from the
+    last one it reviewed. When a solution is correct but improvable, the item is marked <b>"correct, with improvements"</b> and gets up to
+    <b>three pointer notes</b> tied to lines of the learner's own code, plus an <b>optional revisit</b> that sits off the five-touch ladder.
+    Notes are <b>advisory</b>: they never change the grade, pass/fail or the revision schedule. They are <b>private</b> (C3, per account and item,
+    erased with the account), <b>collapsed by default</b>, <b>hidden while the item is live</b>, and <b>never on the public profile</b>.
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-m4-01.md">ds-m4-01</a></span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-m4-06.md">m4-06</a> task 3 (on <a href="../../../docs/v2/sprints/sprint-m4-03.md">m4-03</a>'s analyzer on passes and its routes)</span>
+    <span><b>Frozen before</b>M4 (<a href="../../../docs/v2/sprints/sprint-m4-01.md">m4-01</a> entry gate)</span>
+    <span><b>Sources</b><a href="../../../docs/adr/0031-platform-ai-and-two-tier-keys.md#6-scope-of-ai-review-of-passing-solutions-owner-d26-refines-d16">ADR-0031 §6</a> (D26) ·
+      <a href="../../../docs/adr/0029-judge-contract-and-learning-signal.md#3-conclusion-practice-the-single-writer">ADR-0029 §3</a> (D16) ·
+      <a href="../../../docs/v2/research/t5-platform-ai.md#7-quality-calibration-regression-and-injection-defences">t5 §7</a> item 2 ·
+      <a href="../../../docs/v2/research/t5-platform-ai.md#8-privacy-and-residency">t5 §8</a> ·
+      <a href="../../../docs/v2/research/t5-platform-ai.md#9-coach-and-byo-changes-in-v2">t5 §9</a> ·
+      <a href="../../../docs/adr/0027-content-evalpack-and-user-data-model.md#1-the-publicprivate-rule">ADR-0027 §1</a> · PRD §5.6 R-AI3 (refined) · P10</span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB17-F1">F1</a><a href="#AB17-F2">F2</a><a href="#AB17-F3">F3</a><a href="#AB17-F4">F4</a><a href="#AB17-F5">F5</a>
+    <a href="#AB17-F6">F6</a><a href="#AB17-F7">F7</a><a href="#AB17-F8">F8</a><a href="#AB17-F9">F9</a><a href="#AB17-F10">F10 · 390 px</a>
+  </nav>
+</header>
+
+<!-- ======================================================== rules -->
+<section class="bd-section" aria-labelledby="sec-rules">
+  <h2 class="bd-section__h" id="sec-rules">Board-wide rules <small>D26 · D16 · t5 §7 item 2 · t5 §8 · ADR-0027 §1</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <div class="bd-strip" style="align-items:flex-start">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span><b>What is reviewed (D26):</b> a course pass, and a touch pass whose normalized-code fingerprint differs from the last reviewed solution by more than the tuned threshold. A near-identical touch pass is not re-reviewed (F6). The tier is <b>advisory</b>, so it is the first thing paused when spend runs ahead of pace (F8).</span>
+        <span><b>Shape (t5 §7 item 2):</b> <code class="ds-mono">pass_review{pointer_notes[≤3]{note, lines|null}, revisit{suggested, reason|null}}</code>. A note is ≤ 240 characters; <code class="ds-mono">lines</code> always falls inside the submission (validator-enforced), and a note with <code class="ds-mono">lines: null</code> has no tag. Notes render as <b>plain text</b>: no Markdown, no HTML.</span>
+      </div>
+    </div>
+    <div class="bd-strip" style="align-items:flex-start">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span><b>Private (t5 §8):</b> class C3, stored per (account, item) in judge, erased with the account; never in events, digests or the public route. The BFF answers <code class="ds-mono">{state: "withheld"}</code> while the item is live, and the SPA doesn't even fetch then.</span>
+        <span><b>Never touches</b> pass/fail, the grade or the five-touch ladder; the optional revisit is off the ladder and can be removed any time.</span>
+        <span><b>Data:</b> <code class="ds-mono">GET /api/problems/{id}/pointer-notes</code> → <code class="ds-mono">{state: available|none|withheld, notes[≤3]{note, lines}, revisit_suggested, revisit_reason, updated_at}</code> · <code class="ds-mono">GET /api/attempts/{id}/analysis</code> → <code class="ds-mono">status, reason, improvements, baseline_reviewed_at</code> · <code class="ds-mono">POST</code>/<code class="ds-mono">DELETE /api/problems/{id}/optional-revisit</code>.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== A -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · A course pass with improvements <small>F1–F3</small></h2>
+
+  <div class="bd-grid bd-grid--wide ab17-gap">
+    <!-- F1 -->
+    <article class="bd-frame" id="AB17-F1">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB17-F1</span><span class="bd-frame__title">· Course pass · notes collapsed</span><span class="bd-frame__state">· default · Workspace concluded card</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag">D26 · t5 §9</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="xl-panel">
+            <div class="ab17-hud"><span class="ab17-id">#238</span><span class="ab17-title">Product of Array Except Self</span><span class="xl-diff xl-diff--med">Medium</span><span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Prefix Sums</span><span class="ab17-flex"></span><span class="ds-badge ds-badge--ok">Concluded</span></div>
+            <div class="ab17-body">
+              <div class="ab17-row"><span class="ds-badge ds-badge--ok">Clean</span><span class="ds-chip ds-chip--xs ds-chip--ok">judge-checked</span><span class="ab17-small">Hidden tests <b>40/40</b> · passed at 14:10</span><span class="ab17-flex"></span><span class="ds-badge ds-badge--info">correct, with improvements</span></div>
+              <div class="ab17-row"><div class="ab17-dots"><div class="xl-touch"><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div><div class="xl-touch__lab"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div></div><span class="ab17-small">Enters revision · Day 1 review <b>Fri, Dec 4</b></span></div>
+              <div class="ab17-slot">
+                <button type="button" class="ab17-toggle" aria-expanded="false" aria-controls="f1-notes"><svg class="xl-ico xl-ico--sm ab17-violet" aria-hidden="true"><use href="#i-spark"/></svg><span>xLearn AI · <b>2 improvement notes</b></span><span class="ab17-flex"></span><svg class="xl-ico xl-ico--sm ab17-dimc" aria-hidden="true"><use href="#i-chevron"/></svg></button>
+                <div id="f1-notes" hidden></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>A <b>course pass</b> (here Clean, judge-checked) → m4-03's analyzer runs on the pass once (<code>evaluation_analyzed</code>) and stores <code>pass_review</code> per (account, item). <code>improvements: true</code> → the <b>"correct, with improvements"</b> chip on the card, the revision item and the Week row.</li>
+          <li><b>Collapsed by default</b> on every surface: one row with the count; nothing of the notes is read until the learner opens it.</li>
+          <li>The review lands after the conclusion; until then the slot reads "xLearn AI is reviewing your solution…" (F4 b).</li></ul>
+        <h4>Decision · a11y</h4>
+        <ul><li>D26 · t5 §9 ("collapsed by default"). The row is a real <code>&lt;button aria-expanded="false" aria-controls&gt;</code>; <span class="xl-kbd">Enter</span> / <span class="xl-kbd">Space</span> opens it. The info chip reads its words (7.1:1 on its tint); the grade is never implied by it.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F3 -->
+    <article class="bd-frame" id="AB17-F3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB17-F3</span><span class="bd-frame__title">· Optional revisit added</span><span class="bd-frame__state">· off the ladder · problem page and queue</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag">D16</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab17-col">
+          <div class="ab17-cap">a · the problem page's revision card</div>
+          <div class="ds-card ab17-rev" style="padding:13px 14px">
+            <div class="ab17-row"><svg class="xl-ico xl-ico--sm ab17-teal" aria-hidden="true"><use href="#i-refresh"/></svg><b style="font-size:13px">Revision</b><span class="ab17-flex"></span><span class="ab17-due">Day 1 review · Fri, Dec 4</span></div>
+            <div class="ab17-dots"><div class="xl-touch"><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div><div class="xl-touch__lab"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div></div>
+            <div class="ab17-sep"></div>
+            <div class="ab17-row"><svg class="xl-ico xl-ico--sm ab17-violet" aria-hidden="true"><use href="#i-cal"/></svg><span style="font-size:13px">Optional revisit · <b>Thu, Dec 17</b></span><span class="ds-chip ds-chip--xs">optional</span><span class="ab17-flex"></span><a style="font-size:12.5px">Remove</a></div>
+            <div class="ab17-small">Try it with O(1) extra space. It doesn't count toward your five reviews.</div>
+          </div>
+          <div class="ab17-cap">b · the Revision queue on Thu, Dec 17</div>
+          <div class="ds-card ab17-qrow" style="padding:13px 14px">
+            <div class="ab17-row"><span class="ab17-id">#238</span><b style="font-size:14px">Product of Array Except Self</b><span class="xl-diff xl-diff--med">Medium</span><span class="ds-chip ds-chip--xs">optional</span><span class="ab17-flex"></span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Open</span></div>
+            <div class="ab17-row"><span class="ab17-due">Optional revisit · try it with O(1) extra space</span><span class="ab17-flex"></span><a style="font-size:12.5px">Remove</a></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li><b>Add optional revisit</b> (F2) → <code>POST /api/problems/{id}/optional-revisit</code> (idempotent); the server sets <code>due_on</code> (here two weeks out). It appears in <code>optional[]</code> on <code>GET /api/revision/due</code>, listed <b>apart from</b> the five-touch dots, with the <code>optional</code> chip and the revisit reason.</li>
+          <li><b>Remove</b> → <code>DELETE</code>; no confirm (nothing is lost). Opening it on the day is a practice session in the arena: nothing counts, no dot moves, no grade.</li></ul>
+        <h4>Decision · a11y</h4>
+        <ul><li>D16 ("optional revisit, which does not affect the grade or the ladder") · ADR-0029 §3. The separator line and the words "doesn't count toward your five reviews" carry the difference, not colour. Remove is a link-styled button with the item's name in its label.</li></ul>
+      </aside>
+    </article>
+  </div>
+
+  <!-- F2 -->
+  <article class="bd-frame ab17-gap" id="AB17-F2">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB17-F2</span><span class="bd-frame__title">· Notes expanded</span><span class="bd-frame__state">· "L12–18" selected · the learner's own submission</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag">D16 · D26 · R-AI3</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad ab17-split ab17-split--a">
+        <div class="ab17-slot">
+          <button type="button" class="ab17-toggle" aria-expanded="true" aria-controls="f2-notes"><svg class="xl-ico xl-ico--sm ab17-violet" aria-hidden="true"><use href="#i-spark"/></svg><span>xLearn AI · <b>2 improvement notes</b></span><span class="ab17-flex"></span><svg class="xl-ico xl-ico--sm ab17-dimc" aria-hidden="true"><use href="#i-chevdown"/></svg></button>
+          <div class="ab17-open" id="f2-notes">
+            <ol class="ab17-notes">
+              <li class="ab17-note ab17-note--on"><span class="ab17-lr" role="button" aria-pressed="true" aria-label="Show lines 12 to 18">L12–18</span><span><code>suffix</code> is a second O(n) array. Keep the prefix products in <code>out</code>, then sweep right to left with one running product: same O(n) time, O(1) extra space (the output doesn't count).</span></li>
+              <li class="ab17-note"><span class="ab17-lr ab17-lr--off" role="button" aria-pressed="false" aria-label="Show lines 4 to 6">L4–6</span><span>Three slices of length n are allocated up front. Once the suffix is a running variable, only <code>out</code> is needed — fewer allocations matter at n = 10⁵.</span></li>
+            </ol>
+            <div>
+              <div class="ab17-exh"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg> Your submission · Go · lines 12–18 of 20 · read-only</div>
+              <pre class="xl-code ab17-ex" aria-label="Your submission, lines 12 to 18"><span class="ab17-ln ab17-hl"><span>12</span><span>	suffix[n-<span class="n">1</span>] = <span class="n">1</span></span></span><span class="ab17-ln ab17-hl"><span>13</span><span>	<span class="k">for</span> i := n - <span class="n">2</span>; i &gt;= <span class="n">0</span>; i-- {</span></span><span class="ab17-ln ab17-hl"><span>14</span><span>		suffix[i] = suffix[i+<span class="n">1</span>] * nums[i+<span class="n">1</span>]</span></span><span class="ab17-ln ab17-hl"><span>15</span><span>	}</span></span><span class="ab17-ln ab17-hl"><span>16</span><span>	<span class="k">for</span> i := <span class="n">0</span>; i &lt; n; i++ {</span></span><span class="ab17-ln ab17-hl"><span>17</span><span>		out[i] = prefix[i] * suffix[i]</span></span><span class="ab17-ln ab17-hl"><span>18</span><span>	}</span></span></pre>
+            </div>
+            <div class="ab17-revisit"><svg class="xl-ico xl-ico--sm ab17-violet" aria-hidden="true"><use href="#i-cal"/></svg><span class="ab17-flex">Optional revisit suggested: try it with O(1) extra space.</span><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-plus"/></svg> Add optional revisit</span><span class="ds-btn ds-btn--ghost ds-btn--sm" role="button">Not now</span></div>
+            <div class="ab17-foot"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg> Notes never change your grade or your revision schedule.</div>
+          </div>
+        </div>
+        <div class="ab17-col">
+          <div class="bd-strip" style="align-items:flex-start"><div style="display:flex;flex-direction:column;gap:6px">
+            <span><b>The excerpt is the learner's own code</b> — the submission that passed, read from the attempt, never a reference solution. At most <b>8 lines</b> show; a longer range shows its first 8 and "+ N more lines".</span>
+            <span><b>Tags switch the excerpt.</b> The first note with lines is selected on open. A note with <code class="ds-mono">lines: null</code> has no tag and leaves the excerpt as it is.</span>
+            <span><b>No code from the model:</b> notes are prose (≤ 240), never a code block; the analyzer schema allows no block over 8 lines and the UI shows none.</span>
+          </div></div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li><code>state=available</code>: up to 3 <code>notes{note, lines}</code> in the model's order, plus <code>revisit_suggested</code> and <code>revisit_reason</code> ("try it with O(1) extra space"). No revisit suggested → the revisit row is absent.</li>
+          <li>The excerpt comes from the learner's stored submission for the reviewed attempt; line numbers are the submission's own. Syntax colours are the theme's <code>xl-code</code> classes.</li></ul></section>
+      <section><h4>Actions</h4>
+        <ul><li><b>Add optional revisit</b> → F3. <b>Not now</b> hides the revisit row for this item (the notes stay); it doesn't come back unless a later review suggests it again.</li>
+          <li>Collapsing keeps the selected tag for the session only.</li></ul></section>
+      <section><h4>Decision · a11y</h4>
+        <ul><li>D16 / D26 · R-AI3 (refined) · t5 §7 item 2. Notes are an ordered list; each tag is a toggle button (<code>aria-pressed</code>) naming its lines; the excerpt is a <code>&lt;pre&gt;</code> labelled with its range, and the highlighted lines also carry a 2 px teal edge (not colour alone). Note text 15:1, line numbers dim 6.8:1.</li>
+          <li>&lt; 1024 px: F10.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ======================================================== B -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · Touches, live items and quiet states <small>F4–F8</small></h2>
+
+  <div class="bd-grid bd-grid--wide ab17-gap">
+    <!-- F4 -->
+    <article class="bd-frame" id="AB17-F4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB17-F4</span><span class="bd-frame__title">· Touch pass, materially different</span><span class="bd-frame__state">· touch result + revision row · Day 7</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">evolves AB03 / AB04</span><span class="bd-tag">D26</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab17-col">
+          <div class="ab17-cap">a · touch result, after conclusion</div>
+          <div class="xl-panel">
+            <div class="ab17-hud"><span class="ab17-id">#238</span><span class="ab17-title">Product of Array Except Self</span><span class="xl-diff xl-diff--med">Medium</span><span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Prefix Sums</span><span class="ab17-flex"></span><span class="ds-badge ds-badge--ok">Concluded</span></div>
+            <div class="ab17-body" role="status">
+              <div class="ab17-head ab17-ok"><svg class="xl-ico" aria-hidden="true"><use href="#i-check"/></svg> Passed — advances to Day 21</div>
+              <div class="ab17-row"><div class="ab17-dots"><div class="xl-touch"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div><div class="xl-touch__lab"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div></div><span class="ab17-flex"></span><span class="ds-badge ds-badge--info">correct, with improvements</span></div>
+              <div class="ab17-slot">
+                <button type="button" class="ab17-toggle" aria-expanded="false"><svg class="xl-ico xl-ico--sm ab17-violet" aria-hidden="true"><use href="#i-spark"/></svg><span>xLearn AI · <b>1 improvement note</b> <span class="ab17-sub">· From this review's solution</span></span><span class="ab17-flex"></span><svg class="xl-ico xl-ico--sm ab17-dimc" aria-hidden="true"><use href="#i-chevron"/></svg></button>
+              </div>
+            </div>
+          </div>
+          <div class="ab17-cap">b · the same slot while the review runs</div>
+          <div class="ab17-quiet" role="status"><svg class="xl-ico xl-ico--sm ab17-violet ds-spin" aria-hidden="true"><use href="#i-retry"/></svg> xLearn AI is reviewing your solution…</div>
+          <div class="ab17-cap">c · the Revision queue row (AB03), upcoming</div>
+          <div class="ds-card ab17-qrow" style="padding:13px 14px">
+            <div class="ab17-row"><span class="ab17-id">#238</span><b style="font-size:14px">Product of Array Except Self</b><span class="xl-diff xl-diff--med">Medium</span><span class="xl-pat"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-layers"/></svg> Prefix Sums</span><span class="ds-badge ds-badge--info">correct, with improvements</span></div>
+            <div class="ab17-row"><div class="xl-touch"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div><span class="ab17-due">Day 21 review · Thu, Dec 24</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>The Day 7 touch passed with a solution whose fingerprint differs materially from the Dec 3 one → a new pass review; its notes <b>replace</b> the old ones (one set per item) and read <b>"From this review's solution"</b>. <code>GET /api/attempts/{id}/analysis</code> → <code>improvements</code>.</li>
+          <li>Shown only <b>after the touch concluded</b>, collapsed. (b) is the bounded pending state while <code>status=queued</code> (5 s, then 15 s, stop after 5 min → the slot disappears).</li>
+          <li>(c) The chip rides the item on the Revision queue (<code>improvements</code> per item on <code>GET /api/revision/due</code>) and the Week row. On a <b>due</b> row the chip stays (it names no pattern, concept or note) but the row keeps AB03's "Pattern hidden while due" and no notes.</li></ul>
+        <h4>Decision · a11y</h4>
+        <ul><li>D26 (materially different fingerprint) · ADR-0031 §6. The pass headline and the dots are the touch's; the chip never affects them.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F5 -->
+    <article class="bd-frame" id="AB17-F5">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB17-F5</span><span class="bd-frame__title">· Live touch or open attempt</span><span class="bd-frame__state">· notes withheld · <code class="ds-mono">xl-lock</code></span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag">t5 §8 · ADR-0027 §1</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab17-col">
+          <div class="ab17-cap">a · during a live touch</div>
+          <div class="xl-panel">
+            <div class="ab17-live"><span class="ab17-id">#238</span><span class="ab17-title">Product of Array Except Self</span><span class="xl-diff xl-diff--med">Medium</span><span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Pattern hidden while due</span><span class="ab17-flex"></span><span class="ab17-clock xl-timer"><svg class="xl-ico xl-ico--sm ab17-dimc" aria-hidden="true"><use href="#i-clock"/></svg><b class="xl-timer__t">14:52</b></span></div>
+            <div class="ab17-body">
+              <div class="ab17-ph" style="height:120px">— the re-solve step (AB04-F5) —</div>
+              <span class="xl-lock" style="align-self:flex-start"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Notes are hidden during this review — they come back when you finish.</span>
+            </div>
+          </div>
+          <div class="ab17-cap">b · the arena study view while this problem's review is due</div>
+          <div class="ds-card" style="padding:13px 14px;display:flex;flex-direction:column;gap:10px">
+            <div class="ab17-row"><span class="ab17-id">#238</span><b style="font-size:13.5px">Product of Array Except Self</b><span class="ds-chip ds-chip--xs">Arena · nothing here counts</span></div>
+            <span class="xl-lock" style="align-self:flex-start"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Notes are hidden while this problem's review is due — they come back when you finish it.</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <h4>State</h4>
+        <ul><li>Live = a live touch, a due touch, or an open counted attempt on the item (T1's <code>withhold()</code>). The slot shows the lock line only: <b>not expandable</b>, no count, no "correct, with improvements" chip in the live HUD. The component <b>doesn't fetch</b> while live; the BFF answers <code>{state: "withheld"}</code> anyway (m4-03).</li>
+          <li>The coach is <code>locked</code> during a live touch (AB01), so notes can't leak through it either.</li>
+          <li>(b) is the same rule on a surface outside the touch; its wording adds "is due … finish it" (Decisions to confirm).</li></ul>
+        <h4>Decision · a11y</h4>
+        <ul><li>t5 §8 (withheld during live touches) · t5 §9 · ADR-0027 §1. The lock text is theme-muted (known debt, 3.4:1) with the lock icon; it is a static line, not a control.</li></ul>
+      </aside>
+    </article>
+  </div>
+
+  <div class="bd-grid ab17-gap">
+    <!-- F6 -->
+    <article class="bd-frame" id="AB17-F6">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB17-F6</span><span class="bd-frame__title">· Near-identical resubmission</span><span class="bd-frame__state">· Day 3 touch pass</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag">D26</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab17-col">
+          <div class="ab17-row"><span class="ds-badge ds-badge--ok">Passed</span><span class="ab17-small">advances to Day 7</span><span class="ab17-flex"></span><span class="ds-badge ds-badge--info">correct, with improvements</span></div>
+          <div class="ab17-quiet"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg> Same approach as your Dec 3 solution — its notes still apply.</div>
+          <div class="ab17-slot"><button type="button" class="ab17-toggle" aria-expanded="false"><svg class="xl-ico xl-ico--sm ab17-violet" aria-hidden="true"><use href="#i-spark"/></svg><span>xLearn AI · <b>2 improvement notes</b></span><span class="ab17-flex"></span><svg class="xl-ico xl-ico--sm ab17-dimc" aria-hidden="true"><use href="#i-chevron"/></svg></button></div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li><code>reason=fingerprint_same</code> + <code>baseline_reviewed_at</code> (Dec 3): not re-reviewed, nothing spent. The notes shown are the last reviewed solution's; line tags still point at <b>that</b> submission's excerpt, labelled with its date.</li>
+          <li>D26. The date is the learner's local date.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F7 -->
+    <article class="bd-frame" id="AB17-F7">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB17-F7</span><span class="bd-frame__title">· Reviewed, nothing to improve</span><span class="bd-frame__state">· <code class="ds-mono">state=none</code></span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag">t5 §4</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab17-col">
+          <div class="ab17-row"><span class="ds-badge ds-badge--ok">Clean</span><span class="ds-chip ds-chip--xs ds-chip--ok">judge-checked</span></div>
+          <div class="ab17-small ab17-row" style="gap:7px"><svg class="xl-ico xl-ico--sm ab17-violet" aria-hidden="true"><use href="#i-spark"/></svg> Reviewed by xLearn AI · no improvement notes</div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>A done review with no notes (<code>improvements: false</code>, notes <code>state=none</code>): an optimal solution legitimately gets none (t5 §4: "no pointer is correct"). One quiet line, no chip, no expander, no revisit.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F8 -->
+    <article class="bd-frame" id="AB17-F8">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB17-F8</span><span class="bd-frame__title">· Notes unavailable</span><span class="bd-frame__state">· three muted variants</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag">ADR-0031 §4 · §5</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad ab17-col">
+          <div class="ab17-cap">a · passing-solution consent off</div>
+          <div class="ab17-quiet"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eyeoff"/></svg> Improvement notes are off · <a>Settings</a></div>
+          <div class="ab17-cap">b · paused (advisory work shed, or the allowance paused)</div>
+          <div class="ab17-quiet"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-pause"/></svg> Improvement notes are paused for now.</div>
+          <div class="ab17-cap">c · xLearn AI off</div>
+          <div class="ab17-row"><span class="ds-badge ds-badge--ok">Clean</span><span class="ds-chip ds-chip--xs ds-chip--ok">judge-checked</span><span class="ab17-small">— nothing else</span></div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>(a) <code>reason=no_consent</code>: "…and also reviews my passing solutions" is off (AB18-F7); <b>Settings</b> opens that tab. (b) <code>budget_exhausted</code> or advisory shedding (ADR-0031 §5: advisory goes first). (c) platform AI absent for the account (kill switch, or outside the cohort): only the provenance chip.</li>
+          <li>No blame, no reason, no provider name, and no "correct, with improvements" chip: nothing was reviewed. A later pass may be reviewed normally.</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- ======================================================== C -->
+<section class="bd-section" aria-labelledby="sec-c">
+  <h2 class="bd-section__h" id="sec-c">C · Where notes appear <small>F9 · low fidelity</small></h2>
+  <!-- F9 -->
+  <article class="bd-frame ab17-gap" id="AB17-F9">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB17-F9</span><span class="bd-frame__title">· Where notes appear</span><span class="bd-frame__state">· three private places · never public</span><span class="bd-frame__tags"><span class="bd-tag">low fidelity</span><span class="bd-tag">t5 §8 · P10</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-pad ab17-col">
+        <div class="ab17-places">
+          <div class="ab17-place">
+            <h4><svg class="xl-ico xl-ico--sm ab17-teal" aria-hidden="true"><use href="#i-code"/></svg> Problem page, after conclusion</h4>
+            <div class="ab17-ph" style="height:70px">— Workspace concluded card (AB07) —</div>
+            <div class="ab17-slot"><button type="button" class="ab17-toggle" aria-expanded="false"><svg class="xl-ico xl-ico--sm ab17-violet" aria-hidden="true"><use href="#i-spark"/></svg><span>xLearn AI · <b>2 improvement notes</b></span></button></div>
+            <span class="ab17-small">Also in the results dock's Feedback tab (AB08), labelled "xLearn AI (included) · suggestion".</span>
+          </div>
+          <div class="ab17-place">
+            <h4><svg class="xl-ico xl-ico--sm ab17-teal" aria-hidden="true"><use href="#i-target"/></svg> Arena study view</h4>
+            <div class="ab17-ph" style="height:70px">— arena, nothing counts (AB10) —</div>
+            <div class="ab17-slot"><button type="button" class="ab17-toggle" aria-expanded="false"><svg class="xl-ico xl-ico--sm ab17-violet" aria-hidden="true"><use href="#i-spark"/></svg><span>xLearn AI · <b>2 improvement notes</b></span></button></div>
+            <span class="ab17-small">Only after the course conclusion, and never while a review of this problem is due (F5 b).</span>
+          </div>
+          <div class="ab17-place">
+            <h4><svg class="xl-ico xl-ico--sm ab17-teal" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach, review mode</h4>
+            <div class="ab17-coach">
+              <div class="ab17-coach__top"><svg class="xl-ico xl-ico--sm ab17-teal" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach <span class="ab17-small">(your key)</span></div>
+              <div class="ab17-coach__b"><div class="ab17-row"><span class="ds-badge ds-badge--ok"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg> Review</span><span>includes your xLearn AI notes</span></div><span>problem · #238 Product of Array Except Self</span></div>
+            </div>
+            <span class="ab17-small">AB01-F6's Review badge gains this line when the item has notes.</span>
+          </div>
+        </div>
+        <div class="ab17-split ab17-split--b">
+          <div class="ab17-never"><svg class="xl-ico ab17-err" aria-hidden="true"><use href="#i-eyeoff"/></svg><span><b>Never on your public profile.</b> Notes, the "correct, with improvements" mark and the optional revisit are yours alone. They never reach <code class="ds-mono">/public/stats</code>, events, digests or anyone else's screen.</span></div>
+          <div class="ab17-pub"><div class="ab17-row"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-globe"/></svg><b>projects.sujaykumar.dev/xlearn/u/samr</b></div><span>Public shape (P10 allowlist): name, streak, activity, per-course solved counts, provenance mix.</span><span class="ab17-strike">item ids · notes · code · prose · per-item marks</span></div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Placements</h4>
+        <ul><li><b>Problem page</b> after conclusion (Workspace concluded card) and the dock's Feedback tab (m4-06 task 5).</li>
+          <li><b>Arena study view</b> (m3-12's <code>Arena.tsx</code>): after the course conclusion, never while live.</li>
+          <li><b>Coach review mode</b>: the coach prompt includes notes only in <code>review</code> mode (t5 §9); the badge line tells the learner so. m4-06 builds this line from this frame (AB01-F6 has no line yet).</li></ul></section>
+      <section><h4>Never</h4>
+        <ul><li>Not on the public profile (AB06), the public route or its caches; P10's allowlist test plus a case proving notes never reach <code>/public/stats</code> (m4-06 task 5).</li>
+          <li>Not in events (enums and refs only), not in any digest, not in the owner's views.</li></ul></section>
+      <section><h4>Decision · a11y</h4>
+        <ul><li>t5 §8 (C3, learner-private) · rollout §10 P10 · ADR-0031 §6. The "Never" callout uses err tint with its heading word; err 6.2:1 on the tint.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- =================================================== narrow -->
+<section class="bd-section" id="AB17-F10" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">AB17-F10 · &lt; 1024 px / 390 px <small>m4-06 task 3</small></h2>
+  <p class="bd-section__p">Notes become a <b>full-width accordion under the result</b>. The code excerpt <b>scrolls sideways inside its own box</b>; the page never does. <b>N1</b> notes open · <b>N2</b> live touch · <b>N3</b> optional revisit on the problem page.</p>
+  <div class="bd-narrow-row">
+    <!-- N1 -->
+    <article class="bd-frame bd-narrow" aria-label="N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1</span><span class="bd-frame__title">· F2 as an accordion</span></header>
+      <div class="bd-frame__body">
+        <div class="ab17-m">
+          <div class="ab17-mbar"><span class="ds-iconbtn" aria-label="Back"><svg class="xl-ico" aria-hidden="true"><use href="#i-back"/></svg></span><b>#238 · Concluded</b></div>
+          <div class="ab17-mpad">
+            <div class="ab17-row"><span class="ds-badge ds-badge--ok">Clean</span><span class="ds-chip ds-chip--xs ds-chip--ok">judge-checked</span><span class="ds-badge ds-badge--info">correct, with improvements</span></div>
+            <div class="ab17-slot">
+              <button type="button" class="ab17-toggle" aria-expanded="true"><svg class="xl-ico xl-ico--sm ab17-violet" aria-hidden="true"><use href="#i-spark"/></svg><span>xLearn AI · <b>2 improvement notes</b></span><span class="ab17-flex"></span><svg class="xl-ico xl-ico--sm ab17-dimc" aria-hidden="true"><use href="#i-chevdown"/></svg></button>
+              <div class="ab17-open">
+                <ol class="ab17-notes">
+                  <li class="ab17-note ab17-note--on" style="grid-template-columns:minmax(0,1fr)"><span class="ab17-lr" role="button" aria-pressed="true" style="justify-self:start">L12–18</span><span><code>suffix</code> is a second O(n) array. Keep the prefix products in <code>out</code>, then sweep right to left with one running product: same O(n) time, O(1) extra space.</span></li>
+                </ol>
+                <pre class="xl-code ab17-ex" aria-label="Your submission, lines 12 to 18"><span class="ab17-ln ab17-hl"><span>13</span><span>	<span class="k">for</span> i := n - <span class="n">2</span>; i &gt;= <span class="n">0</span>; i-- {</span></span><span class="ab17-ln ab17-hl"><span>14</span><span>		suffix[i] = suffix[i+<span class="n">1</span>] * nums[i+<span class="n">1</span>]</span></span><span class="ab17-ln ab17-hl"><span>15</span><span>	}</span></span></pre>
+                <span class="ab17-small">+ note 2 (L4–6) below; the excerpt scrolls sideways in its box.</span>
+                <span class="ds-btn ds-btn--secondary ds-btn--block" role="button">Add optional revisit</span>
+                <div class="ab17-foot"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg> Notes never change your grade or your revision schedule.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Tags sit above each note; the excerpt keeps <code>white-space: pre</code> and scrolls inside <code>xl-code</code>'s own overflow.</li></ul></aside>
+    </article>
+
+    <!-- N2 -->
+    <article class="bd-frame bd-narrow" aria-label="N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2</span><span class="bd-frame__title">· F5 during a live touch</span></header>
+      <div class="bd-frame__body">
+        <div class="ab17-m" style="min-height:420px">
+          <div class="ab17-mbar"><b>#238 · Day 7 review</b><span class="ab17-flex"></span><span class="ab17-clock xl-timer"><b class="xl-timer__t">14:52</b></span></div>
+          <div class="ab17-mpad">
+            <div class="ab17-ph" style="height:180px">— re-solve step —</div>
+            <span class="xl-lock"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg> Notes are hidden during this review — they come back when you finish.</span>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>The lock line wraps; nothing expands.</li></ul></aside>
+    </article>
+
+    <!-- N3 -->
+    <article class="bd-frame bd-narrow" aria-label="N3">
+      <header class="bd-frame__label"><span class="bd-frame__id">N3</span><span class="bd-frame__title">· F3 on the problem page</span></header>
+      <div class="bd-frame__body">
+        <div class="ab17-m" style="min-height:420px">
+          <div class="ab17-mbar"><span class="ds-iconbtn" aria-label="Back"><svg class="xl-ico" aria-hidden="true"><use href="#i-back"/></svg></span><b>#238 · Revision</b></div>
+          <div class="ab17-mpad">
+            <div class="ds-card ab17-rev" style="padding:13px 14px">
+              <div class="ab17-dots"><div class="xl-touch"><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span><span class="xl-touch__d"></span></div><div class="xl-touch__lab"><span>D1</span><span>D3</span><span>D7</span><span>D21</span><span>D45</span></div></div>
+              <span class="ab17-due">Day 1 review · Fri, Dec 4</span>
+              <div class="ab17-sep"></div>
+              <div class="ab17-row"><span style="font-size:13px">Optional revisit · <b>Thu, Dec 17</b></span><span class="ds-chip ds-chip--xs">optional</span></div>
+              <div class="ab17-row"><span class="ab17-small ab17-flex">It doesn't count toward your five reviews.</span><a style="font-size:12.5px">Remove</a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>The optional row stacks under the dots, still apart from them.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB17 · drafted in ds-m4-01 on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> (linked, never copied). Static HTML, no JS runtime; preview-only — never imported by <code class="ds-mono">web/</code>.
+  Sample data: #238 Product of Array Except Self (DSA), passed Thu, Dec 3, 2026; the code excerpt is the sample learner's own submission.
+  The merge of ds-m4-01 is the freeze (D40); any change is a follow-up design PR.
+</footer>
+</main>
+</body>
+</html>
