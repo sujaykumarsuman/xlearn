@@ -11,27 +11,27 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done 2026-09-28 (run r-16). infra#39 (`9114a28`, the guards with both bindings at `[Warn, Audit]`), infra#40 (`b422389`, the classifier pinned to the first run's strings) and infra#41 (`9ad2185`, the `[Deny]` flip). Deny phase 24 pass / 0 fail, E1 handed to mi-10; `host-verify --cluster` 64 pass / 1 warn (TR-STEAL) / 0 fail.
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | MI-4 guard objects + `clusters/vps/sandbox.yaml` (`sandbox-guards`), binding at `[Warn, Audit]` | I | ⬜ |
-| 2 | VAP proof corpus + `hack/sandbox-vap-test.sh` (server dry-run only) | I | ⬜ |
-| 3 | Prove on the node, Warn phase: bad shapes warn, the runner shape is clean, other namespaces untouched | H | ⬜ |
-| 4 | Flip the binding to `[Deny]` | I | ⬜ |
-| 5 | Prove on the node, Deny phase: ≥ 8 bad shapes denied, CONNECT exec/attach denied, runner shape admitted | H | ⬜ |
-| 6 | `host-verify --cluster`: expected policies + VAP bindings present; `apps` unaffected | H | ⬜ |
-| 7 | Record (status.md MI-4 row, decisions, spike hand-off) | X | ⬜ |
+| 1 | MI-4 guard objects + `clusters/vps/sandbox.yaml` (`sandbox-guards`), binding at `[Warn, Audit]` | I | ✅ infra#39. The cluster-scoped objects passed a server dry run (every CEL expression compiled); the namespaced ones were schema-checked in `default`. The 10 rules are 27 validations in rule order, each message tagged (`[R2 hostPID] …`). `sandbox-guards` Ready at `9114a28`; both VAPs' `status.typeChecking` is empty |
+| 2 | VAP proof corpus + `hack/sandbox-vap-test.sh` (server dry-run only) | I | ✅ infra#39 + infra#40. 22 Pods (G1, B1–B14 with B3b/B4b/B5b/B9b/B11b, Q1, C1) built by `hack/sandbox-vap-corpus.sh` from chart 0.3.0 and `runner-values.yaml` (mi-10 task 4's values), embedded byte-identically; X1/X2 and E1 in the script. `host-lint` proves the copies and that the script writes nothing |
+| 3 | Prove on the node, Warn phase: bad shapes warn, the runner shape is clean, other namespaces untouched | H | ✅ 24 pass / 0 fail, E1 SKIPPED. G1 has no VAP warning; its PSA warning is `SYS_ADMIN` only (`procMount: Unmasked` relaxed under `hostUsers: false`). C1 has no warning; Q1 is denied by the LimitRange; X1/X2 warn before NotFound. Table in infra#40 |
+| 4 | Flip the binding to `[Deny]` | I | ✅ infra#41 (2 lines) |
+| 5 | Prove on the node, Deny phase: ≥ 8 bad shapes denied, CONNECT exec/attach denied, runner shape admitted | H | ✅ 24 pass / 0 fail. All 19 B shapes are denied by `xlearn-runner-pod-shape` under their intended rule (8/8 required; B1 `[R1 privileged]`, B2 `[R2 hostPID]`). **X1/X2 CONNECT denied by `xlearn-runner-no-exec`** with no pod. E1 HANDED to mi-10. G1 admitted, C1 clean, Q1 LimitRange. Table in infra#41 |
+| 6 | `host-verify --cluster`: expected policies + VAP bindings present; `apps` unaffected | H | ✅ 64 / 1 (TR-STEAL) / 0: `cluster.netpol` 3/3, `cluster.vap` both policies and bindings (`["Deny"]`). The `--netpol-file` negative check FAILs `cluster.netpol` as it must. `sandbox-guards` has no `dependsOn`, and none point at it |
+| 7 | Record (status.md MI-4 row, decisions, spike hand-off) | X | ✅ this PR |
 
 > **Keep this current.** Set a task to 🔄 when you start it, to ✅ when its acceptance bullet passes, and to ⛔ if it's blocked (say why).
 > Update the _Overall_ line to match, and mirror the sprint's state into [`../status.md`](../status.md): the Sprint board row, the MI table row **MI-4**, and the decisions log. Full rules: [status protocol](README.md#status-protocol-way-of-working).
 
 ## Entry gates
 
-- [ ] MI-3 chart 0.3.0 is merged ([mi-01](sprint-mi-01.md)). Its `runtimeClassName`, `priorityClassName`, `hostUsers`, `automountServiceAccountToken`, `dnsPolicy` and `image.digest` knobs render the runner shape used as the positive control.
-- [ ] The MI-8 `host-verify --cluster` extension is merged ([mi-02](sprint-mi-02.md)), including `hack/expected-netpol.tsv` and the NetworkPolicy presence check.
-- [ ] Local `../infra` `main` is synced. Peer check: no open PR touches `infrastructure/sandbox/`, `clusters/vps/sandbox.yaml` or `hack/expected-netpol.tsv` ([mi-03](sprint-mi-03.md) also edits the `.tsv`, so rebase whichever merges second).
-- [ ] Read [t3 §16.1](../research/t3-sandbox.md#161-p0p2-spk-01-arm64-multipass)'s "VAP diff" ([spk-01](sprint-spk-01.md), 2026-09-25). Tasks 1 and 2 below already fold it in as **hard requirements**, not a soft input: the B1/B2/B9 companion fields, the rule order, corpus row E1 and the PSA classifier note.
+- [x] MI-3 chart 0.3.0 is merged ([mi-01](sprint-mi-01.md)). ✅ infra `origin/main` `600bf10`: `Chart.yaml` `version: 0.3.0`. Its `runtimeClassName`, `priorityClassName`, `hostUsers`, `automountServiceAccountToken`, `dnsPolicy` and `image.digest` knobs render the runner shape used as the positive control.
+- [x] The MI-8 `host-verify --cluster` extension is merged ([mi-02](sprint-mi-02.md)), including `hack/expected-netpol.tsv` and the NetworkPolicy presence check. ✅ infra#36/#37.
+- [x] Local `../infra` `main` is synced. ✅ 2026-09-28: own worktree at `origin/main`; no open infra PR; xlearn's only open PR was design (#78). Peer check: no open PR touches `infrastructure/sandbox/`, `clusters/vps/sandbox.yaml` or `hack/expected-netpol.tsv` ([mi-03](sprint-mi-03.md) also edits the `.tsv`, so rebase whichever merges second).
+- [x] Read [t3 §16.1](../research/t3-sandbox.md#161-p0p2-spk-01-arm64-multipass)'s "VAP diff" ([spk-01](sprint-spk-01.md), 2026-09-25). Tasks 1 and 2 below already fold it in as **hard requirements**, not a soft input: the B1/B2/B9 companion fields, the rule order, corpus row E1 and the PSA classifier note.
 
 ## Goal
 
@@ -233,14 +233,14 @@ In xlearn's `docs/v2/status.md`:
 
 ## Acceptance criteria
 
-- [ ] `sandbox-guards` is Ready and off the `apps` path. `xlearn-runner` exists with PSA `privileged`/`baseline`/`baseline` and **no pods**.
-- [ ] The VAP denies **≥ 8/8 required bad shapes** (and the rest of B1–B14) and exec/attach CONNECT, or records why X1/X2 can't be proven here and hands them to mi-10.
-- [ ] spk-01's diff is in: the `validations` list follows task 1's order; B1, B2 and B9/B9b carry their companion fields, reach the VAP and are denied under their intended rule; E1 is in the corpus and handed to mi-10; PSA warnings are matched on the whole line (`"baseline:latest"`).
-- [ ] The chart-rendered runner shape (G1, extracted as a Pod) is **admitted** with no VAP warning (expected PSA baseline warnings recorded), and a pod in another namespace is **unaffected**. Every corpus result is classified by source, and no case passes on a ServiceAccount, PSA-enforce or quota error.
-- [ ] Both VAPs show no `status.typeChecking` warnings.
-- [ ] RuntimeClass `xlearn-judge`, PriorityClass `xlearn-sandbox-lowest` (−1000, `Never`), the ResourceQuota (pods 2, 500m/1Gi req, 2/3Gi lim, PVCs 0, services 1, NodePorts 0, LBs 0) and the LimitRange are live. Q1 is denied.
-- [ ] `default-deny-all` (no DNS) and `judge-to-runner` (ns `xlearn` AND `xlearn-judge` → TCP 8090) are present, and the `host-verify --cluster` NetworkPolicy and VAP-binding checks are green. `host-lint.sh` is clean (embedded `.tsv` and corpus equal their files), and the `--netpol-file` negative check FAILs as it should.
-- [ ] Status and decisions are recorded, including the folded spike diff and the E1 hand-off to mi-10.
+- [x] `sandbox-guards` is Ready and off the `apps` path. `xlearn-runner` exists with PSA `privileged`/`baseline`/`baseline` and **no pods**.
+- [x] The VAP denies **≥ 8/8 required bad shapes** (and the rest of B1–B14) and exec/attach CONNECT, or records why X1/X2 can't be proven here and hands them to mi-10.
+- [x] spk-01's diff is in: the `validations` list follows task 1's order; B1, B2 and B9/B9b carry their companion fields, reach the VAP and are denied under their intended rule; E1 is in the corpus and handed to mi-10; PSA warnings are matched on the whole line (`"baseline:latest"`).
+- [x] The chart-rendered runner shape (G1, extracted as a Pod) is **admitted** with no VAP warning (expected PSA baseline warnings recorded), and a pod in another namespace is **unaffected**. Every corpus result is classified by source, and no case passes on a ServiceAccount, PSA-enforce or quota error.
+- [x] Both VAPs show no `status.typeChecking` warnings.
+- [x] RuntimeClass `xlearn-judge`, PriorityClass `xlearn-sandbox-lowest` (−1000, `Never`), the ResourceQuota (pods 2, 500m/1Gi req, 2/3Gi lim, PVCs 0, services 1, NodePorts 0, LBs 0) and the LimitRange are live. Q1 is denied.
+- [x] `default-deny-all` (no DNS) and `judge-to-runner` (ns `xlearn` AND `xlearn-judge` → TCP 8090) are present, and the `host-verify --cluster` NetworkPolicy and VAP-binding checks are green. `host-lint.sh` is clean (embedded `.tsv` and corpus equal their files), and the `--netpol-file` negative check FAILs as it should.
+- [x] Status and decisions are recorded, including the folded spike diff and the E1 hand-off to mi-10.
 
 ## Release
 
