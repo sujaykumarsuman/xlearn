@@ -8,6 +8,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AssessmentEventDeadLetter struct {
+	EventID   string
+	Subject   string
+	Durable   string
+	ErrClass  string
+	StreamSeq pgtype.Int8
+	At        pgtype.Timestamptz
+}
+
 type AssessmentInbox struct {
 	EventID    string
 	ConsumedAt pgtype.Timestamptz

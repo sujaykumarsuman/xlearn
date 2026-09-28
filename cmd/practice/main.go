@@ -21,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/config"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/httpx"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/slogx"
@@ -79,7 +80,13 @@ func run() int {
 
 	// Outbox relay: drains practice events to JetStream (XLEARN_PRACTICE). With no
 	// NATS_URL (local dev) it falls back to the log publisher so the outbox drains.
-	pub := newPublisher(ctx, cfg.NATS.URL, logger)
+	// With NATS_URL set an init error is fatal (fail closed): the log publisher would
+	// mark rows sent without delivering them.
+	pub, err := newPublisher(ctx, cfg.NATS.URL, logger)
+	if err != nil {
+		logger.Error("nats publisher init failed; refusing to start (NATS_URL is set)", "err", err)
+		return 1
+	}
 	if closer, ok := pub.(interface{ Close() }); ok {
 		defer closer.Close()
 	}
@@ -113,26 +120,32 @@ func run() int {
 }
 
 // newPublisher builds the JetStream publisher when NATS_URL is set, else the log
-// publisher (local dev / no broker). A failed NATS connect is non-fatal — the relay
-// buffers in the outbox and retries once the broker is reachable.
-func newPublisher(ctx context.Context, natsURL string, logger *slog.Logger) events.Publisher {
+// publisher (local dev / no broker). An unreachable broker is not an error — the
+// connection retries and the relay buffers in the outbox — but an init error with
+// NATS_URL set (a bad or missing nkey seed, bad options) is returned so the service
+// exits: it never falls back to the log publisher, which would mark rows sent.
+func newPublisher(ctx context.Context, natsURL string, logger *slog.Logger) (events.Publisher, error) {
 	if natsURL == "" {
 		logger.Warn("NATS_URL not set; using the log publisher (events are not delivered to JetStream)")
-		return events.NewLogPublisher(logger, practice.StreamPractice)
+		return events.NewLogPublisher(logger, practice.StreamPractice), nil
 	}
 	natsCtx, cancel := context.WithTimeout(ctx, natsTimeout)
 	defer cancel()
-	pub, err := events.NewNatsPublisher(natsCtx, natsURL, practice.StreamPractice, practice.StreamSubjects, logger)
-	if err != nil {
-		logger.Error("nats publisher init failed; falling back to log publisher", "err", err)
-		return events.NewLogPublisher(logger, practice.StreamPractice)
-	}
-	return pub
+	return events.NewNatsPublisher(natsCtx, practice.ServiceName, natsURL, practice.StreamPractice, logger)
 }
 
-// newPool opens a pgxpool and pins search_path to the service's schema (defence in
-// depth; all SQL is schema-qualified anyway).
+// newPool opens a pgxpool from poolConfig.
 func newPool(ctx context.Context, db practice.DBConfig) (*pgxpool.Pool, error) {
+	poolCfg, err := poolConfig(db)
+	if err != nil {
+		return nil, err
+	}
+	return pgxpool.NewWithConfig(ctx, poolCfg)
+}
+
+// poolConfig pins search_path to the service's schema (defence in depth; all SQL is
+// schema-qualified anyway) and MaxConns to PG_MAX_CONNS (default 4, L21).
+func poolConfig(db practice.DBConfig) (*pgxpool.Config, error) {
 	poolCfg, err := pgxpool.ParseConfig(db.DSN())
 	if err != nil {
 		return nil, err
@@ -140,7 +153,8 @@ func newPool(ctx context.Context, db practice.DBConfig) (*pgxpool.Pool, error) {
 	if db.SearchPath != "" {
 		poolCfg.ConnConfig.RuntimeParams["search_path"] = db.SearchPath
 	}
-	return pgxpool.NewWithConfig(ctx, poolCfg)
+	poolCfg.MaxConns = config.PGMaxConns(config.DefaultPGMaxConns)
+	return poolCfg, nil
 }
 
 // version is stamped at build time with -ldflags "-X main.version=vX.Y.Z" (see

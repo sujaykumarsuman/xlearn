@@ -74,7 +74,7 @@ func TestProjectionHandlerDropsMalformedEnvelope(t *testing.T) {
 		return false, nil
 	}}
 	h := &projectionHandler{store: fs, log: testLogger()}
-	err := h.Handle(context.Background(), events.Event{ID: "x", Subject: "xlearn.practice.x", Data: []byte("not json")})
+	err := h.Handle(context.Background(), events.Event{ID: "x", Subject: "xlearn.practice.attempt_logged", Data: []byte("not json")})
 	if err != nil {
 		t.Fatalf("malformed envelope must ack (drop), got %v", err)
 	}

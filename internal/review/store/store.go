@@ -19,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 	"github.com/sujaykumarsuman/xlearn/internal/review/store/gen"
 )
 
@@ -227,6 +228,10 @@ type Store interface {
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]OutboxRow, error)
 	MarkOutboxSent(ctx context.Context, eventID string) error
 	Ping(ctx context.Context) error
+
+	// RecordDeadLetter is the consumers' dead-letter sink (events.DeadLetterSink):
+	// one ids-only review.event_dead_letter row per (durable, event_id).
+	RecordDeadLetter(ctx context.Context, dl events.DeadLetter) error
 }
 
 // PgStore is the pgxpool-backed Store.

@@ -96,6 +96,21 @@ jobs:
           XLEARN_TEST_DATABASE_URL: postgres://xlearn_curriculum:pw@localhost:5432/xlearndb?sslmode=disable
         run: go test -race -count=1 -p 1 ./internal/curriculum/... ./internal/course/... ./cmd/contentlint/
 
+  # NATS-auth integration test (mi-05, ADR-0035 §2 "Verification before any seed is
+  # mounted"): boots the prod minor (nats:2.14, deploy/local/nats-acl.compose.yml) with
+  # the authorization block rendered from topology.go for throwaway nkeys, then drives
+  # the real client code through every allowed/denied case for the 6 services + ops and
+  # the three legacy stages (N1 allow, N3 deny, N4 none). The golden render itself is
+  # pinned in the `go` job (TestACLGolden), so a stale golden fails there.
+  nats-acl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: make nats-acl-test
+
   # Core-loop e2e over REAL JetStream + the transactional outbox (events.md Flows 1-4).
   # NATS runs IN-PROCESS (an embedded nats-server with JetStream), so the job needs only
   # a Postgres — the outbox → relay → JetStream → durable-consumer path is the production

@@ -15,15 +15,21 @@ import (
 // own emissions (mock_completed) and SUBSCRIBES to XLEARN_PRACTICE (xlearn.practice.*)
 // and XLEARN_REVIEW (xlearn.review.*) as durable pull consumers named DurableName —
 // the progress-projection consumers that upsert the coverage / mastery / heatmap /
-// outcome-mix read model (S09, ADR-0018).
+// outcome-mix read model (S09, ADR-0018). The streams' subjects and limits and both
+// durables are declared in internal/platform/events/topology.go (the single source of
+// truth, ADR-0035 §1); these names must resolve there (Subscribe refuses otherwise).
 const (
+	// ServiceName is assessment's identity on NATS (topology owner, connection names,
+	// nkey user in the rendered ACL).
+	ServiceName = "assessment"
+
 	// StreamAssessment is assessment's own stream; the relay publishes mock_completed
-	// here. main uses StreamAssessment + StreamSubjects to provision it.
-	StreamAssessment = "XLEARN_ASSESSMENT"
+	// here. main passes it to the NATS publisher.
+	StreamAssessment = events.StreamAssessment
 
 	// StreamPractice / StreamReview are the streams assessment consumes for projections.
-	StreamPractice = "XLEARN_PRACTICE"
-	StreamReview   = "XLEARN_REVIEW"
+	StreamPractice = events.StreamPractice
+	StreamReview   = events.StreamReview
 
 	// PracticeSubjectFilter / ReviewSubjectFilter are the wildcards the durable
 	// consumers bind to.
@@ -35,8 +41,8 @@ const (
 	DurableName = "assessment"
 )
 
-// StreamSubjects are the subjects the XLEARN_ASSESSMENT stream captures.
-var StreamSubjects = []string{"xlearn.assessment.*"}
+// StreamSubjects are the subjects the XLEARN_ASSESSMENT stream captures (from the table).
+var StreamSubjects = events.MustStream(StreamAssessment).Subjects
 
 // Service is the assessment HTTP application: the mock lifecycle + rubric endpoints
 // plus the k8s probes. It verifies the gateway-minted JWT on every user route
@@ -104,9 +110,13 @@ func (s *Service) NewOutboxRelay(pub events.Publisher, opts ...events.RelayOptio
 // that history has no value and would only flood the inbox — so the durable starts at
 // the stream head. A later restart still resumes from its committed offset (offline
 // catch-up); S09 backfills pre-existing history via a separate replay (events.md).
+//
+// A message that fails its last delivery is recorded in assessment.event_dead_letter
+// (ADR-0035 §1.2).
 func (s *Service) StartProjectionConsumer(ctx context.Context, consumer events.Consumer, filterSubject string) (events.Subscription, error) {
 	h := &projectionHandler{store: s.store, log: s.log}
-	return consumer.Subscribe(ctx, DurableName, filterSubject, h, events.WithDeliverNew())
+	return consumer.Subscribe(ctx, DurableName, filterSubject, h,
+		events.WithDeliverNew(), events.WithDeadLetter(s.store))
 }
 
 // outboxSource adapts the assessment store to events.OutboxSource.

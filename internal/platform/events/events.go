@@ -6,7 +6,10 @@
 // This package ships the event envelope, the Publisher/Consumer/Handler seams, the
 // Relay (relay.go), the JetStream NatsPublisher (nats.go, S05), the durable pull
 // NatsConsumer (consumer.go, S06 — review is the first consumer) and the no-broker
-// LogPublisher fallback.
+// LogPublisher fallback. Since mi-05 (N0, ADR-0035): topology.go is the single source
+// of truth for streams and durables, acl.go renders the per-service NATS authorization
+// block from it, dial.go holds the shared client options (nkey seed, inbox prefix,
+// ErrorHandler), and deadletter.go the last-delivery dead-letter hook.
 package events
 
 import "context"
@@ -54,6 +57,14 @@ type SubscribeConfig struct {
 	// stream (e.g. a notifications worker attached to a long-lived stream) so it doesn't
 	// flood on stale history.
 	DeliverNew bool
+
+	// DeadLetter, when set, records the event on its last failing delivery before the
+	// message is terminated (WithDeadLetter).
+	DeadLetter DeadLetterSink
+
+	// MaxDeliver overrides the redelivery budget and shortens the backoff (test-only;
+	// WithMaxDeliver). Zero keeps the production budget.
+	MaxDeliver int
 }
 
 // SubscribeOption configures a Subscribe call.

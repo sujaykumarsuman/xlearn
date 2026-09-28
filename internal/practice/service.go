@@ -11,13 +11,17 @@ import (
 	"github.com/sujaykumarsuman/xlearn/internal/practice/store"
 )
 
-// StreamPractice is practice's JetStream stream; StreamSubjects is the wildcard it
-// captures (events.md). main uses these to provision the stream on the NATS
-// publisher.
-const StreamPractice = "XLEARN_PRACTICE"
+// ServiceName is practice's identity on NATS: its stream owner name in topology.go,
+// its connection names and its nkey user in the rendered ACL.
+const ServiceName = "practice"
 
-// StreamSubjects are the subjects the XLEARN_PRACTICE stream captures.
-var StreamSubjects = []string{"xlearn.practice.*"}
+// StreamPractice is practice's JetStream stream (events.md). Its subjects and limits
+// live in internal/platform/events/topology.go, the single source of truth; main
+// passes the name to the NATS publisher, which provisions it from the table.
+const StreamPractice = events.StreamPractice
+
+// StreamSubjects are the subjects the XLEARN_PRACTICE stream captures (from the table).
+var StreamSubjects = events.MustStream(StreamPractice).Subjects
 
 // Service is the practice HTTP application: the guided-flow endpoints (state, start,
 // reveal, outcome) plus the k8s probes. It verifies the gateway-minted JWT on every

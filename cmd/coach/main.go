@@ -28,6 +28,7 @@ import (
 	"github.com/sujaykumarsuman/xlearn/internal/coach"
 	"github.com/sujaykumarsuman/xlearn/internal/coach/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/config"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/httpx"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/secrets"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/slogx"
@@ -149,6 +150,16 @@ func loadCipher(cfg coach.Config, logger *slog.Logger) (*secrets.Cipher, error) 
 // newPool opens a pgxpool and pins search_path to the service's schema (defence in
 // depth; all SQL is schema-qualified anyway).
 func newPool(ctx context.Context, db coach.DBConfig) (*pgxpool.Pool, error) {
+	poolCfg, err := poolConfig(db)
+	if err != nil {
+		return nil, err
+	}
+	return pgxpool.NewWithConfig(ctx, poolCfg)
+}
+
+// poolConfig pins search_path to the service's schema and MaxConns to PG_MAX_CONNS
+// (default 4, L21).
+func poolConfig(db coach.DBConfig) (*pgxpool.Config, error) {
 	poolCfg, err := pgxpool.ParseConfig(db.DSN())
 	if err != nil {
 		return nil, err
@@ -156,7 +167,8 @@ func newPool(ctx context.Context, db coach.DBConfig) (*pgxpool.Pool, error) {
 	if db.SearchPath != "" {
 		poolCfg.ConnConfig.RuntimeParams["search_path"] = db.SearchPath
 	}
-	return pgxpool.NewWithConfig(ctx, poolCfg)
+	poolCfg.MaxConns = config.PGMaxConns(config.DefaultPGMaxConns)
+	return poolCfg, nil
 }
 
 // version is stamped at build time with -ldflags "-X main.version=vX.Y.Z" (see

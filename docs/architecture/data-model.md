@@ -54,6 +54,7 @@ since FKs can't cross ownership.
 | `weak_area_snapshot` | `id`, `account_id`, `week_of`, `top_category`, `counts_json` | Weekly weak-area ([R-MJ3](../prd/xlearn-prd.md#64-mistake-journal)). |
 | `reminder` | `id`, `account_id`, `kind`, `due_at`, `delivered_at` | Notifications worker (v1 in-app). |
 | `outbox` | … | as above. |
+| `event_dead_letter` | PK (`durable`, `event_id`); `subject`, `err_class`, `stream_seq`, `at` | mi-05 (`00004`): an event whose handler failed its last delivery on review's durables (`review`, `notifications`); ids only, erase-safe; read on demand ([events.md](events.md#reliability-notes), [ADR-0035 §1.2](../adr/0035-v2-operations-nats-auth-limits-capacity.md)). |
 
 ## schema `assessment`
 
@@ -66,6 +67,7 @@ since FKs can't cross ownership.
 | `proj_mastery` | `account_id`, `problem_id`, `best_outcome`, `best_rank`, `clean_solves`, `solve_count` | Per-problem solve quality; the gateway rolls it up **by pattern**. |
 | `proj_outcome_mix` | `account_id`, `outcome`, `cnt` | First-solve outcome mix. |
 | `inbox` | `event_id`, `consumed_at` | Idempotency/dedupe for consumed events. |
+| `event_dead_letter` | PK (`durable`, `event_id`); `subject`, `err_class`, `stream_seq`, `at` | mi-05 (`00003`): an event whose handler failed its last delivery on assessment's durables (on `XLEARN_PRACTICE` and `XLEARN_REVIEW`); ids only, erase-safe; read on demand. |
 
 > The `proj_*` tables are keyed at the **event grain** (per problem / day / outcome), because the
 > practice/review events carry only a bare `problem_id` — the by-week / by-phase / by-pattern

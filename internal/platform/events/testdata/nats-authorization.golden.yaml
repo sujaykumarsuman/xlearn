@@ -1,0 +1,152 @@
+# Code generated from internal/platform/events/topology.go by acl.go
+# (make nats-acl-render; golden: go test ./internal/platform/events -run Golden -update).
+# DO NOT EDIT. ADR-0035 §2 ACL table. LEGACY=allow.
+# Every $-prefixed subject is quoted: NATS conf reads an unquoted $x as a variable.
+# Values fragment for the nats chart (../infra infrastructure/messaging/release.yaml):
+# merge `merge:` under spec.values.config (the chart's config.merge key).
+config:
+  merge:
+    authorization:
+      users:
+        # practice: owns XLEARN_PRACTICE
+        - nkey: "<NKEY_PUB:practice>"
+          permissions:
+            publish:
+              allow:
+                - "xlearn.practice.>"
+                - "$JS.API.INFO"
+                - "$JS.API.STREAM.CREATE.XLEARN_PRACTICE"
+                - "$JS.API.STREAM.UPDATE.XLEARN_PRACTICE"
+                - "$JS.API.STREAM.INFO.XLEARN_PRACTICE"
+              deny:
+                - "$JS.API.STREAM.DELETE.>"
+                - "$JS.API.STREAM.PURGE.>"
+                - "$JS.API.STREAM.MSG.DELETE.>"
+            subscribe:
+              allow:
+                - "_INBOX_practice.>"
+        # review: owns XLEARN_REVIEW; consumes XLEARN_PRACTICE/review; consumes XLEARN_REVIEW/notifications
+        - nkey: "<NKEY_PUB:review>"
+          permissions:
+            publish:
+              allow:
+                - "xlearn.review.>"
+                - "$JS.API.INFO"
+                - "$JS.API.STREAM.CREATE.XLEARN_REVIEW"
+                - "$JS.API.STREAM.UPDATE.XLEARN_REVIEW"
+                - "$JS.API.STREAM.INFO.XLEARN_REVIEW"
+                - "$JS.API.CONSUMER.CREATE.XLEARN_PRACTICE.review"
+                - "$JS.API.CONSUMER.CREATE.XLEARN_PRACTICE.review.>"
+                - "$JS.API.CONSUMER.INFO.XLEARN_PRACTICE.review"
+                - "$JS.API.CONSUMER.MSG.NEXT.XLEARN_PRACTICE.review"
+                - "$JS.ACK.XLEARN_PRACTICE.review.>"
+                - "$JS.API.CONSUMER.CREATE.XLEARN_REVIEW.notifications"
+                - "$JS.API.CONSUMER.CREATE.XLEARN_REVIEW.notifications.>"
+                - "$JS.API.CONSUMER.INFO.XLEARN_REVIEW.notifications"
+                - "$JS.API.CONSUMER.MSG.NEXT.XLEARN_REVIEW.notifications"
+                - "$JS.ACK.XLEARN_REVIEW.notifications.>"
+              deny:
+                - "$JS.API.STREAM.DELETE.>"
+                - "$JS.API.STREAM.PURGE.>"
+                - "$JS.API.STREAM.MSG.DELETE.>"
+            subscribe:
+              allow:
+                - "_INBOX_review.>"
+        # assessment: owns XLEARN_ASSESSMENT; consumes XLEARN_PRACTICE/assessment; consumes XLEARN_REVIEW/assessment
+        - nkey: "<NKEY_PUB:assessment>"
+          permissions:
+            publish:
+              allow:
+                - "xlearn.assessment.>"
+                - "$JS.API.INFO"
+                - "$JS.API.STREAM.CREATE.XLEARN_ASSESSMENT"
+                - "$JS.API.STREAM.UPDATE.XLEARN_ASSESSMENT"
+                - "$JS.API.STREAM.INFO.XLEARN_ASSESSMENT"
+                - "$JS.API.CONSUMER.CREATE.XLEARN_PRACTICE.assessment"
+                - "$JS.API.CONSUMER.CREATE.XLEARN_PRACTICE.assessment.>"
+                - "$JS.API.CONSUMER.INFO.XLEARN_PRACTICE.assessment"
+                - "$JS.API.CONSUMER.MSG.NEXT.XLEARN_PRACTICE.assessment"
+                - "$JS.ACK.XLEARN_PRACTICE.assessment.>"
+                - "$JS.API.CONSUMER.CREATE.XLEARN_REVIEW.assessment"
+                - "$JS.API.CONSUMER.CREATE.XLEARN_REVIEW.assessment.>"
+                - "$JS.API.CONSUMER.INFO.XLEARN_REVIEW.assessment"
+                - "$JS.API.CONSUMER.MSG.NEXT.XLEARN_REVIEW.assessment"
+                - "$JS.ACK.XLEARN_REVIEW.assessment.>"
+              deny:
+                - "$JS.API.STREAM.DELETE.>"
+                - "$JS.API.STREAM.PURGE.>"
+                - "$JS.API.STREAM.MSG.DELETE.>"
+            subscribe:
+              allow:
+                - "_INBOX_assessment.>"
+        # judge: owns XLEARN_JUDGE
+        - nkey: "<NKEY_PUB:judge>"
+          permissions:
+            publish:
+              allow:
+                - "xlearn.judge.>"
+                - "$JS.API.INFO"
+                - "$JS.API.STREAM.CREATE.XLEARN_JUDGE"
+                - "$JS.API.STREAM.UPDATE.XLEARN_JUDGE"
+                - "$JS.API.STREAM.INFO.XLEARN_JUDGE"
+              deny:
+                - "$JS.API.STREAM.DELETE.>"
+                - "$JS.API.STREAM.PURGE.>"
+                - "$JS.API.STREAM.MSG.DELETE.>"
+            subscribe:
+              allow:
+                - "_INBOX_judge.>"
+        # identity: owns XLEARN_IDENTITY
+        - nkey: "<NKEY_PUB:identity>"
+          permissions:
+            publish:
+              allow:
+                - "xlearn.identity.>"
+                - "$JS.API.INFO"
+                - "$JS.API.STREAM.CREATE.XLEARN_IDENTITY"
+                - "$JS.API.STREAM.UPDATE.XLEARN_IDENTITY"
+                - "$JS.API.STREAM.INFO.XLEARN_IDENTITY"
+              deny:
+                - "$JS.API.STREAM.DELETE.>"
+                - "$JS.API.STREAM.PURGE.>"
+                - "$JS.API.STREAM.MSG.DELETE.>"
+            subscribe:
+              allow:
+                - "_INBOX_identity.>"
+        # coach: owns XLEARN_COACH
+        - nkey: "<NKEY_PUB:coach>"
+          permissions:
+            publish:
+              allow:
+                - "xlearn.coach.>"
+                - "$JS.API.INFO"
+                - "$JS.API.STREAM.CREATE.XLEARN_COACH"
+                - "$JS.API.STREAM.UPDATE.XLEARN_COACH"
+                - "$JS.API.STREAM.INFO.XLEARN_COACH"
+              deny:
+                - "$JS.API.STREAM.DELETE.>"
+                - "$JS.API.STREAM.PURGE.>"
+                - "$JS.API.STREAM.MSG.DELETE.>"
+            subscribe:
+              allow:
+                - "_INBOX_coach.>"
+        # ops: break-glass only (offline seed); all of $JS.API.>, purge included
+        - nkey: "<NKEY_PUB:ops>"
+          permissions:
+            publish:
+              allow:
+                - "$JS.API.>"
+            subscribe:
+              allow:
+                - "_INBOX.>"
+        # legacy (N1): anonymous clients map here via no_auth_user; the password is never used
+        - user: "legacy"
+          password: "<LEGACY_PASSWORD>"
+          permissions:
+            publish:
+              allow:
+                - ">"
+            subscribe:
+              allow:
+                - ">"
+    no_auth_user: "legacy"

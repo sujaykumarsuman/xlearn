@@ -2,6 +2,8 @@ package events
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 )
@@ -24,6 +26,29 @@ type Relay struct {
 	log      *slog.Logger
 	interval time.Duration
 	batch    int32
+
+	// oversize remembers the event ids already logged as over MaxEnvelopeBytes, so
+	// each is logged once per process rather than on every tick. drain runs on the
+	// Run goroutine only, so it needs no lock.
+	oversize map[string]struct{}
+}
+
+// MaxEnvelopeBytes caps one event envelope (L20, ADR-0035 §4): the relay refuses to
+// publish a larger outbox row. v1 events are ~0.4 KiB (prod /jsz, 2026-09-24), far
+// below; NATS' own max_payload (1 MiB) stays as the outer bound.
+const MaxEnvelopeBytes = 16 << 10
+
+// ErrEnvelopeTooLarge is returned by CheckEnvelope for an envelope over the cap.
+var ErrEnvelopeTooLarge = errors.New("events: envelope exceeds MaxEnvelopeBytes")
+
+// CheckEnvelope reports ErrEnvelopeTooLarge when the encoded envelope b is over
+// MaxEnvelopeBytes. Producers call it before writing an outbox row (m1-02's v2
+// envelope type does); the relay applies it again as the backstop.
+func CheckEnvelope(b []byte) error {
+	if len(b) > MaxEnvelopeBytes {
+		return fmt.Errorf("%w: %d > %d bytes", ErrEnvelopeTooLarge, len(b), MaxEnvelopeBytes)
+	}
+	return nil
 }
 
 // RelayOption configures a Relay.
@@ -37,7 +62,7 @@ func WithBatch(n int32) RelayOption { return func(r *Relay) { r.batch = n } }
 
 // NewRelay builds a Relay over src publishing to pub.
 func NewRelay(src OutboxSource, pub Publisher, log *slog.Logger, opts ...RelayOption) *Relay {
-	r := &Relay{src: src, pub: pub, log: log, interval: 5 * time.Second, batch: 100}
+	r := &Relay{src: src, pub: pub, log: log, interval: 5 * time.Second, batch: 100, oversize: map[string]struct{}{}}
 	for _, o := range opts {
 		o(r)
 	}
@@ -67,6 +92,17 @@ func (r *Relay) drain(ctx context.Context) {
 		return
 	}
 	for _, e := range rows {
+		if err := CheckEnvelope(e.Data); err != nil {
+			// Over the L20 cap: never published, left unsent (a Postgres row, so
+			// nothing is lost), and the batch carries on — one oversize row must not
+			// stall the rows behind it. Logged once per event id per process.
+			if _, seen := r.oversize[e.ID]; !seen {
+				r.oversize[e.ID] = struct{}{}
+				r.log.Error("outbox relay: envelope over the cap; left unsent",
+					"event_id", e.ID, "subject", e.Subject, "bytes", len(e.Data), "max_bytes", MaxEnvelopeBytes)
+			}
+			continue
+		}
 		if err := r.pub.Publish(ctx, e); err != nil {
 			// Leave the row unsent; the next tick retries (backoff via interval).
 			r.log.Warn("outbox relay: publish failed; will retry", "subject", e.Subject, "event_id", e.ID, "err", err)
@@ -80,10 +116,10 @@ func (r *Relay) drain(ctx context.Context) {
 }
 
 // LogPublisher is the no-broker fallback Publisher: it logs each event and reports
-// success so the outbox drains rather than growing unbounded. It is used in local dev
-// (no NATS_URL) and by producers whose JetStream stream isn't provisioned yet (e.g.
-// identity's account_created — events.md: reserved, no consumer). Production practice
-// uses NatsPublisher (S05); swap other producers to it as their streams land.
+// success so the outbox drains rather than growing unbounded. It is used ONLY when
+// NATS_URL is unset (local dev, and identity in prod until mi-06's N2 PR gives it
+// NATS_URL and its seed together). With NATS_URL set, a publisher init error is fatal
+// (fail closed, mi-05): falling back here would mark rows sent without delivering them.
 type LogPublisher struct {
 	log    *slog.Logger
 	stream string

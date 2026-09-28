@@ -14,14 +14,20 @@ import (
 
 // JetStream topology (events.md / ADR-0014). review OWNS XLEARN_REVIEW for its own
 // emissions and SUBSCRIBES to XLEARN_PRACTICE (subjects xlearn.practice.*) as a
-// durable pull consumer named DurableName.
+// durable pull consumer named DurableName. The streams' subjects and limits and both
+// durables are declared in internal/platform/events/topology.go (the single source of
+// truth, ADR-0035 §1); these names must resolve there (Subscribe refuses otherwise).
 const (
+	// ServiceName is review's identity on NATS (topology owner, connection names,
+	// nkey user in the rendered ACL).
+	ServiceName = "review"
+
 	// StreamReview is review's own stream; the relay publishes revision_scheduled /
-	// revision_due here. main uses StreamReview + StreamSubjects to provision it.
-	StreamReview = "XLEARN_REVIEW"
+	// revision_due / mistake_* here. main passes it to the NATS publisher.
+	StreamReview = events.StreamReview
 
 	// StreamPractice is the practice stream review consumes.
-	StreamPractice = "XLEARN_PRACTICE"
+	StreamPractice = events.StreamPractice
 
 	// PracticeSubjectFilter is the wildcard the durable consumer binds to.
 	PracticeSubjectFilter = "xlearn.practice.*"
@@ -34,14 +40,14 @@ const (
 	// review's OWN stream (XLEARN_REVIEW): a cleanly separable second consumer that
 	// reads back revision_due to write reminders (ADR-0016). A distinct durable name
 	// keeps it lift-and-shift ready for a future standalone notifications service.
-	NotificationsDurable = "notifications"
+	NotificationsDurable = notifications.Durable
 
 	// RevisionDueSubjectFilter is the subject the notifications consumer binds to.
-	RevisionDueSubjectFilter = "xlearn.review.revision_due"
+	RevisionDueSubjectFilter = notifications.SubjectRevisionDue
 )
 
-// StreamSubjects are the subjects the XLEARN_REVIEW stream captures.
-var StreamSubjects = []string{"xlearn.review.*"}
+// StreamSubjects are the subjects the XLEARN_REVIEW stream captures (from the table).
+var StreamSubjects = events.MustStream(StreamReview).Subjects
 
 // Service is the review HTTP application: the Revision queue endpoints (due queue +
 // auto-score) plus the k8s probes. It verifies the gateway-minted JWT on every user
@@ -116,10 +122,11 @@ func (s *Service) NewOutboxRelay(pub events.Publisher, opts ...events.RelayOptio
 
 // StartConsumers binds the durable pull consumer on XLEARN_PRACTICE and routes each
 // practice event to the right handler. It returns the running subscription (Stop it
-// on shutdown). Handlers dedupe on event_id via the inbox (idempotent).
+// on shutdown). Handlers dedupe on event_id via the inbox (idempotent). A message that
+// fails its last delivery is recorded in review.event_dead_letter (ADR-0035 §1.2).
 func (s *Service) StartConsumers(ctx context.Context, consumer events.Consumer) (events.Subscription, error) {
 	h := &practiceHandler{store: s.store, log: s.log}
-	return consumer.Subscribe(ctx, DurableName, PracticeSubjectFilter, h)
+	return consumer.Subscribe(ctx, DurableName, PracticeSubjectFilter, h, events.WithDeadLetter(s.store))
 }
 
 // StartNotifications binds the in-app reminder worker as a durable consumer on review's
@@ -132,7 +139,8 @@ func (s *Service) StartNotifications(ctx context.Context, consumer events.Consum
 	// due-review is not worth an in-app reminder — the notifications durable must start
 	// at the stream head on first deploy, not replay every past event (ADR-0016). A
 	// later restart still resumes from its committed offset (offline catch-up).
-	return consumer.Subscribe(ctx, NotificationsDurable, RevisionDueSubjectFilter, h, events.WithDeliverNew())
+	return consumer.Subscribe(ctx, NotificationsDurable, RevisionDueSubjectFilter, h,
+		events.WithDeliverNew(), events.WithDeadLetter(s.store))
 }
 
 // outboxSource adapts the review store to events.OutboxSource.
