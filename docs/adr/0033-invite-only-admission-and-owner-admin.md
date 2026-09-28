@@ -227,6 +227,8 @@ The kubeconfig is already the root of trust, so the CLI adds no web surface and 
 | 14 | Interviewer | `aud=coach`; one non-terminal interview; ≤ 2 starts a day; EU/EEA voice gate from `account.region` | M6 |
 | 15 | Same origin | Admin consoles to `ops.sujaykumar.dev` (MI-5b); xLearn CSP; `Sec-Fetch-Site` + JSON checks; Permissions-Policy | MI-5b before the first non-owner account; M1b (CSP, checks); M6b (Permissions-Policy) |
 
+> **Clarified 2026-09-28 (mi-03, MI-5a live in infra#44):** row 7's gateway admits Traefik **plus same-namespace pods on :8080 for in-cluster JWKS** (every JWT-verifying service fetches `xlearn-gateway:8080/.well-known/jwks.json`); the decision is unchanged ([services.md, Network fences](../architecture/services.md#network-fences-v2)).
+
 ### 13. Public-dashboard authz deltas
 
 | Task | Change | Milestone |
