@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB21 · Erase account — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB21 board-local layout (prefix ab21-). Tokens only; never restyles a ds-, xl- or bd- class.
+     Settings look-alikes (live: .xl-settings / .xl-set-* / .xl-rail in web/src/styles/app.css, drawn as in AB22-F1) are board-prefixed.
+     Danger = --ds-err. Every rgba() tint is one theme.css already uses for the same token. */
+  .ab21-flex { flex: 1; }
+  .ab21-ic { display: inline-flex; flex: none; }
+  .ab21-teal { color: var(--ds-teal); } .ab21-dimc { color: var(--ds-dim); } .ab21-errc { color: var(--ds-err); } .ab21-okc { color: var(--ds-ok); } .ab21-warnc { color: var(--ds-warn); }
+  .ab21-mono { font-family: var(--ds-font-mono); }
+  .ab21-nowrap { white-space: nowrap; }
+
+  /* plain-shell top bar pieces (AB01-F13, AB22) */
+  .ab21-brand { display: inline-flex; align-items: center; gap: 9px; }
+  .ab21-name { font-size: 15px; font-weight: 700; letter-spacing: -.2px; }
+  .ab21-name b { color: var(--ds-teal); }
+
+  /* settings */
+  .ab21-set { max-width: 1060px; margin: 0 auto; width: 100%; }
+  .ab21-set__h h1 { font-size: 28px; font-weight: 700; letter-spacing: -.4px; margin-top: 8px; }
+  .ab21-set__h p { font-size: 13.5px; color: var(--ds-dim); margin-top: 6px; }
+  .ab21-set__grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 30px; align-items: start; margin-top: 24px; }
+  .ab21-rail { display: flex; flex-direction: column; gap: 16px; }
+  .ab21-pf { border: 1px solid var(--ds-line); border-radius: 16px; background: var(--ds-panel); padding: 22px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .ab21-av { width: 84px; height: 84px; font-size: 32px; }
+  .ab21-pf b { font-size: 18px; }
+  .ab21-pf__h { font-size: 12.5px; color: var(--ds-dim); font-family: var(--ds-font-mono); }
+  .ab21-railnav { display: flex; flex-direction: column; gap: 4px; }
+  .ab21-railitem { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border-radius: 999px; color: var(--ds-dim); font-size: 13.5px; font-weight: 550; white-space: nowrap; }
+  .ab21-railitem--on { background: rgba(53,208,192,.1); color: var(--ds-teal); }
+  .ab21-content { display: flex; flex-direction: column; gap: 18px; }
+  .ab21-card { border: 1px solid var(--ds-line); border-radius: 14px; background: var(--ds-panel); overflow: hidden; }
+  .ab21-card--danger { border-color: rgba(242,109,109,.35); }
+  .ab21-card__h { display: flex; align-items: center; gap: 12px; padding: 15px 18px; border-bottom: 1px solid var(--ds-line); }
+  .ab21-card__h h3 { font-size: 14.5px; font-weight: 650; }
+  .ab21-card__h p { font-size: 12px; color: var(--ds-dim); margin-top: 2px; }
+  .ab21-card__ic { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; background: rgba(53,208,192,.14); color: var(--ds-teal); }
+  .ab21-card__ic--err { background: rgba(242,109,109,.1); color: var(--ds-err); }
+  .ab21-card__ic--dim { background: var(--ds-inset); color: var(--ds-dim); }
+  .ab21-card__b { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .ab21-p { font-size: 13.5px; line-height: 1.6; color: var(--ds-text); }
+  .ab21-p code, .ab21-code { font-family: var(--ds-font-mono); font-size: 12.5px; padding: 1px 6px; border-radius: 6px; background: var(--ds-inset); border: 1px solid var(--ds-line-2); color: var(--ds-text); overflow-wrap: anywhere; }
+  .ab21-sub { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); }
+  .ab21-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; padding: 12px 0; border-top: 1px solid var(--ds-line); }
+  .ab21-row:first-child { border-top: none; padding-top: 0; }
+  .ab21-row__main { flex: 1; min-width: 200px; }
+  .ab21-row__t { font-size: 13.5px; font-weight: 650; color: var(--ds-text); }
+  .ab21-row__d { font-size: 12px; color: var(--ds-dim); margin-top: 2px; }
+  .ab21-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .ab21-list li { padding: 10px 12px; border: 1px solid var(--ds-line-2); border-radius: 12px; background: var(--ds-panel-2); font-size: 12.5px; line-height: 1.5; color: var(--ds-dim); }
+  .ab21-list li b { display: block; font-size: 13px; font-weight: 650; color: var(--ds-text); margin-bottom: 1px; }
+  .ab21-stays { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.55; color: var(--ds-dim); }
+  .ab21-stays li { margin: 4px 0; }
+  .ab21-stays li::marker { color: var(--ds-dim); }
+  .ab21-hint { display: flex; align-items: flex-start; gap: 8px; padding: 11px 14px; background: var(--ds-inset); border: 1px solid var(--ds-line); border-radius: 12px; font-size: 12.5px; color: var(--ds-dim); line-height: 1.5; }
+  .ab21-hint b { color: var(--ds-text); font-weight: 600; }
+  .ab21-hint .ab21-ic { margin-top: 1px; }
+  .ab21-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; }
+  .ab21-link { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; }
+  /* danger buttons (theme.css has none): filled for the final confirm, outlined for the card trigger */
+  .ab21-danger { background: var(--ds-err); border-color: var(--ds-err); color: var(--ds-bg); }
+  .ab21-danger-o { background: rgba(242,109,109,.08); border-color: rgba(242,109,109,.35); color: var(--ds-err); }
+  .ab21-off { opacity: .5; }
+  .ab21-spin { width: 15px; height: 15px; flex: none; }
+
+  /* modal stages */
+  .ab21-stage { position: relative; min-height: 470px; overflow: hidden; }
+  .ab21-stage--short { min-height: 420px; }
+  .ab21-mbody { font-size: 13.5px; line-height: 1.6; color: var(--ds-text); }
+  .ab21-confirm { margin-top: 14px; }
+  .ab21-clabel { font-size: 12.5px; color: var(--ds-text); }
+  .ab21-err { display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; line-height: 1.5; color: var(--ds-err); }
+  .ab21-err .ab21-ic { margin-top: 2px; }
+  .ab21-alertbar { display: flex; align-items: flex-start; gap: 8px; margin: 0 18px 14px; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--ds-err); background: rgba(242,109,109,.08); color: var(--ds-err); font-size: 12.5px; line-height: 1.5; }
+  .ab21-alertbar .ab21-ic { margin-top: 1px; }
+  .ab21-strip { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--ds-err); background: rgba(242,109,109,.08); color: var(--ds-err); font-size: 12.5px; line-height: 1.5; }
+
+  /* auth card (F6) */
+  .ab21-addr { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-bottom: 1px solid var(--ds-line); background: var(--ds-inset); font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-dim); }
+  .ab21-addr b { color: var(--ds-text); font-weight: 500; }
+  .ab21-cardstage { display: flex; justify-content: center; padding: 26px 24px 30px; }
+  .ab21-authcard { width: 100%; max-width: 410px; }
+  .ab21-authh { font-size: 24px; font-weight: 700; }
+  .ab21-banner { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; padding: 11px 13px; border-radius: 9px; font-size: 12.5px; line-height: 1.5; border: 1px solid rgba(87,211,154,.35); background: rgba(87,211,154,.08); color: var(--ds-text); }
+  .ab21-banner .ab21-ic { margin-top: 1px; color: var(--ds-ok); }
+  .ab21-form { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+  .ab21-or { display: flex; align-items: center; gap: 10px; margin: 16px 0; font-size: 11px; color: var(--ds-dim); }
+  .ab21-or::before, .ab21-or::after { content: ""; flex: 1; height: 1px; background: var(--ds-line); }
+
+  /* narrow */
+  .ab21-set--narrow .ab21-set__grid { grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 16px; }
+  .ab21-railnav--row { flex-direction: row; overflow-x: auto; }
+  .ab21-railnav--row .ab21-railitem { flex: none; height: 36px; font-size: 13px; }
+  .ab21-list--one { grid-template-columns: minmax(0, 1fr); }
+  .ab21-sheetstage { position: relative; height: 600px; overflow: hidden; background: var(--ds-bg); }
+  .ab21-sheetback { position: absolute; inset: 0; display: flex; align-items: flex-end; background: rgba(6,9,13,.66); }
+  .ab21-sheet { width: 100%; background: var(--ds-panel); border: 1px solid var(--ds-line); border-bottom: none; border-radius: 16px 16px 0 0; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+  .ab21-grab { width: 36px; height: 4px; border-radius: 2px; background: var(--ds-line-2); margin: 8px auto 0; }
+  .ab21-sheet__foot { display: flex; gap: 8px; padding: 14px 16px 18px; border-top: 1px solid var(--ds-line); }
+  .ab21-sheet__foot .ab21-half { flex: 1; }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6" /><path d="M10 20a2 2 0 0 0 4 0" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M18 5l2 2M15 8l2 2" /></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z" /><path d="M12 10v4M12 17h.01" /></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.5h.01" /></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2" /><path d="m7 9 3 3-3 3M13 15h4" /></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3.5 6.5 8.5 6 8.5-6" /></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v6c0 4.5 3.2 7.8 7.5 9 4.3-1.2 7.5-4.5 7.5-9V6z" /><path d="m9 12 2 2 4-4" /></symbol>
+  <symbol id="i-gh" viewBox="0 0 16 16"><path fill="currentColor" stroke="none" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · L board</div>
+  <h1>AB21 · Erase account</h1>
+  <p class="bd-lede">
+    The erase section of Settings: the <b>last card of "Sign-in &amp; security"</b>. An eligible <b>tester</b> sees what's erased, what stays for a while, and the
+    <b>60-day username hold</b>; erasing needs a session <b>under 5 minutes old</b> and a <b>typed confirmation</b>, and can't be undone — xLearn keeps no
+    off-node backups. The <b>owner is never erased on the web</b> (no button), and learners see a tester-only note until the L exit.
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-l-01.md">ds-l-01</a></span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-l-02.md">l-02</a> (<code class="ds-mono">DELETE /api/me</code>, <code class="ds-mono">Settings.tsx</code>, the F6 banner in <code class="ds-mono">Auth.tsx</code>) · <a href="../../../docs/v2/sprints/sprint-l-04.md">l-04</a> (opens it to every non-owner)</span>
+    <span><b>Frozen before</b><b>L-E</b></span>
+    <span><b>Sources</b>
+      <a href="../../../docs/adr/0033-invite-only-admission-and-owner-admin.md#7-roles-and-status-live-in-identitys-database-never-in-the-jwt">ADR-0033 §7</a> ·
+      <a href="../../../docs/adr/0033-invite-only-admission-and-owner-admin.md#9-erase-and-abuse-controls">§9</a> ·
+      <a href="../../../docs/adr/0035-v2-operations-nats-auth-limits-capacity.md#4-limits-inventory">ADR-0035 §4</a> L8, L5 ·
+      <a href="../../../docs/adr/0027-content-evalpack-and-user-data-model.md#6-account-erase-v20">ADR-0027 §6</a> (as amended: no erase ledger) ·
+      <a href="../../../docs/adr/0034-v2-release-labelling-gating-and-rollback.md#44-reversibility-by-step">ADR-0034 §4.2, §4.4</a> ·
+      R-AC5 · R-AD6 · P11 · D12</span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB21-F1">F1</a><a href="#AB21-F2">F2</a><a href="#AB21-F3">F3</a><a href="#AB21-F4">F4</a><a href="#AB21-F5">F5</a><a href="#AB21-F6">F6</a><a href="#AB21-F7">F7</a><a href="#AB21-F8">F8</a><a href="#AB21-F9">F9</a><a href="#AB21-F10">F10 · 390 px</a>
+  </nav>
+</header>
+
+<section class="bd-section" aria-labelledby="sec-rules">
+  <h2 class="bd-section__h" id="sec-rules">Board-wide rules <small>which frame the card shows</small></h2>
+  <div class="bd-strip">
+    <span><span class="bd-num">1</span> <code class="ds-mono">GET /api/me</code> → <code class="ds-mono">erase_web</code>: <b>allowed</b> → F1 · <b>owner_cli_only</b> → F7 · <b>not_available</b> → F8</span>
+    <span><span class="bd-num">2</span> <b>Fresh session:</b> past <code class="ds-mono">session_fresh_until</code> (created + 5 min) or <code class="ds-mono">403 reauth_required</code> → F2</span>
+    <span><span class="bd-num">3</span> <b>Typed confirmation</b>, checked in the browser <b>and</b> on the server (trimmed, case-insensitive)</span>
+    <span><span class="bd-num">4</span> <b>One open erase</b> per account (<code class="ds-mono">409 erase_in_progress</code>)</span>
+    <span><span class="bd-num">5</span> After <code class="ds-mono">202</code>: the session is gone, the profile 404s at once (P11), the username is held 60 days</span>
+    <span><span class="bd-num">6</span> Always say <b>"no off-node backups"</b> (never drop "off-node": the host's weekly image exists), and never promise the leftovers are anonymous</span>
+  </div>
+</section>
+
+<!-- ============================================ A · F1 -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · The erase card <small>F1 · tester, eligible</small></h2>
+  <article class="bd-frame" id="AB21-F1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB21-F1</span><span class="bd-frame__title">· Erase card (tester, eligible)</span><span class="bd-frame__state">· <code class="ds-mono">/xlearn/settings?tab=account</code> · fresh session · ADR-0033 §9 · R-AC5 · D12</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new card</span><span class="bd-tag bd-tag--flag">placement: to confirm</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <div class="xl-main">
+            <div class="xl-topbar">
+              <span class="ab21-brand"><span class="xl-brand__mark" style="width:26px;height:26px;font-size:14px">x</span><span class="ab21-name">x<b>Learn</b></span></span>
+              <span class="ab21-flex"></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">A</span>
+            </div>
+            <div class="xl-content">
+              <div class="ab21-set">
+                <div class="ab21-set__h"><div class="xl-eyebrow">Account</div><h1>Settings</h1><p>Your profile, study pace, AI coach and reminders — tuned to how you learn.</p></div>
+                <div class="ab21-set__grid">
+                  <aside class="ab21-rail">
+                    <div class="ab21-pf"><span class="ds-avatar ab21-av">A</span><b>Asha Rao</b><span class="ab21-pf__h">@asha</span></div>
+                    <nav class="ab21-railnav" aria-label="Settings sections" role="tablist" aria-orientation="vertical">
+                      <span class="ab21-railitem" role="tab"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg> Study budget</span>
+                      <span class="ab21-railitem" role="tab"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-spark"/></svg> Your AI coach</span>
+                      <span class="ab21-railitem" role="tab"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-bell"/></svg> Reminders</span>
+                      <span class="ab21-railitem" role="tab"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-eye"/></svg> Profile &amp; visibility</span>
+                      <span class="ab21-railitem ab21-railitem--on" role="tab" aria-selected="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-key"/></svg> Sign-in &amp; security</span>
+                    </nav>
+                  </aside>
+                  <div class="ab21-content" role="tabpanel">
+                    <!-- existing card, condensed -->
+                    <section class="ab21-card" aria-labelledby="f1-si">
+                      <div class="ab21-card__h"><span class="ab21-card__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-key"/></svg></span><div class="ab21-flex"><h3 id="f1-si">Sign-in &amp; security</h3><p>How you sign in to xLearn.</p></div><span class="bd-tag">existing · condensed</span></div>
+                      <div class="ab21-card__b" style="gap:0">
+                        <div class="ab21-row"><div class="ab21-row__main"><div class="ab21-row__t">Username</div><div class="ab21-row__d">Live at <span class="ab21-mono ab21-teal">/xlearn/u/asha</span></div></div><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Change username</span></div>
+                        <div class="ab21-row"><div class="ab21-row__main"><div class="ab21-row__t">Password</div><div class="ab21-row__d">Set</div></div><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button">Change password</span></div>
+                        <div class="ab21-row"><div class="ab21-row__main"><div class="ab21-row__t">GitHub</div><div class="ab21-row__d">Not connected</div></div><span class="ds-btn ds-btn--secondary ds-btn--sm" role="button"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gh"/></svg> Connect GitHub</span></div>
+                      </div>
+                    </section>
+                    <!-- the erase card: last card of the section -->
+                    <section class="ab21-card ab21-card--danger" aria-labelledby="f1-er">
+                      <div class="ab21-card__h"><span class="ab21-card__ic ab21-card__ic--err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-trash"/></svg></span><div class="ab21-flex"><h3 id="f1-er">Erase account</h3><p>Permanent. Only you can start it, from a fresh sign-in.</p></div></div>
+                      <div class="ab21-card__b">
+                        <p class="ab21-p">Permanently erase your xLearn account and everything in it. This can't be undone — xLearn keeps no <span class="ab21-nowrap">off-node</span> backups.</p>
+                        <div class="ab21-sub">What's erased</div>
+                        <ul class="ab21-list">
+                          <li><b>Sign-in</b>email, password, GitHub link, sessions</li>
+                          <li><b>Profile and settings</b>name, username, time zone, study budget, reminders</li>
+                          <li><b>Learning</b>attempts, timers, outcomes, revision schedule, mistake journal, weak areas</li>
+                          <li><b>Mocks and progress</b>mock sessions, scores, progress, your public profile</li>
+                          <li><b>Coach</b>your saved AI keys, coach chats</li>
+                        </ul>
+                        <div class="ab21-sub">What stays for a while</div>
+                        <ul class="ab21-stays">
+                          <li>A weekly server image kept by the host may hold your data for up to about 7 days, and a pre-release snapshot for up to 1 day. If one is ever restored, the owner re-runs the erases made since it was taken.</li>
+                          <li>Some internal event records keep a random account id, and older sign-up records also keep your display name, until the owner removes them on request.</li>
+                          <li>If xLearn AI was on, copies Anthropic holds expire on its schedule (up to 30 days).</li>
+                        </ul>
+                        <div class="ab21-hint"><span class="ab21-ic ab21-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span><span>Your username <b>@asha</b> is held for 60 days, then anyone can claim it.</span></div>
+                        <div class="ab21-actions">
+                          <button type="button" class="ds-btn ds-btn--sm ab21-danger-o"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-trash"/></svg> Erase my account…</button>
+                          <span class="ab21-flex"></span>
+                          <a class="ab21-link" href="AB20-privacy-notice.html#pn-choices"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-shield"/></svg> Privacy notice</a>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Placement · state</h4>
+        <ul><li>The <b>last card</b> of the existing <b>Sign-in &amp; security</b> tab (<code>?tab=account</code>, <code>Settings.tsx</code>'s rail), under today's card (drawn condensed). The alternative, its own rail item, is <b>flagged</b> (Decisions to confirm #4). The rail includes AB22's Profile &amp; visibility.</li>
+          <li>Shown when <code>/api/me</code> → <code>erase_web: "allowed"</code> (role <code>tester</code> at L-E; every non-owner from l-04) and <code>now &lt; session_fresh_until</code>. Otherwise F2 / F7 / F8.</li>
+          <li><b>Erase my account…</b> opens F3. The ellipsis says a confirm follows.</li></ul></section>
+      <section><h4>Copy</h4>
+        <ul><li>"xLearn keeps <b>no off-node backups</b>" (D12) — "off-node" always stays in, because the host's weekly image exists.</li>
+          <li><b>What's erased</b> follows ADR-0027 §6 across every owning service (R-AC5). <b>What stays</b> is the flagged wording (Decisions to confirm #6–#8): the weekly image (~7 days) and the pre-release snapshot (1 day, ADR-0034 §4.3), re-run after a restore (§4.2 step 3; no erase ledger, D12); the random account id and the display name in older <code>account_created</code> events until a re-seal on request; Anthropic's own retention (ADR-0031 §4). Never a promise that the leftovers are anonymous.</li>
+          <li>"Held for 60 days" is the username cooldown (P11, <code>released_username</code>). The <b>Privacy notice</b> link opens AB20 §6 (and is how AB20-F4 is reached from Settings).</li></ul></section>
+      <section><h4>a11y · narrow</h4>
+        <ul><li>The card is a <code>section</code> with its <code>h3</code>; the lists are real lists. Danger is never colour alone: the trash icon and the words "Erase" / "Permanently" carry it.</li>
+          <li>Contrast: text 15:1; dim 6.8:1; err on its tint 5.7:1 (the outlined trigger); teal 9:1.</li>
+          <li>&lt; 1024 px: F10 (N1).</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ============================================ B · card states -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · When erase isn't offered <small>F2 · F7 · F8 · the card, no modal</small></h2>
+  <div class="bd-grid">
+    <!-- F2 -->
+    <article class="bd-frame" id="AB21-F2">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB21-F2</span><span class="bd-frame__title">· Sign in again</span><span class="bd-frame__state">· session older than 5 min · L8</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <section class="ab21-card ab21-card--danger">
+            <div class="ab21-card__h"><span class="ab21-card__ic ab21-card__ic--err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-trash"/></svg></span><div class="ab21-flex"><h3>Erase account</h3><p>Permanent. Only you can start it, from a fresh sign-in.</p></div></div>
+            <div class="ab21-card__b">
+              <p class="ab21-p">Permanently erase your xLearn account and everything in it. This can't be undone — xLearn keeps no <span class="ab21-nowrap">off-node</span> backups.</p>
+              <div class="ab21-hint" role="status"><span class="ab21-ic ab21-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg></span><span>For your security, sign in again to erase your account. You'll come straight back here.</span></div>
+              <div class="ab21-actions"><button type="button" class="ds-btn ds-btn--secondary ds-btn--sm">Sign in again</button></div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>When <code>now ≥ session_fresh_until</code> (session <code>created_at</code> + 5 min), or when <code>DELETE /api/me</code> answers <code>403 reauth_required</code> (F3 then closes and the card switches to this). The What's erased / What stays lists stay as in F1 (not repeated here).</li>
+          <li><b>Sign in again</b> signs out, then returns to Settings → Sign-in &amp; security after login (<code>?tab=account</code>; no PII in the URL). The new session is fresh for 5 minutes → F1.</li>
+          <li>identity reads the session's own <code>created_at</code>; no client clock or header is trusted.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F7 -->
+    <article class="bd-frame" id="AB21-F7">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB21-F7</span><span class="bd-frame__title">· Owner refused</span><span class="bd-frame__state">· role owner · ADR-0033 §7</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <section class="ab21-card">
+            <div class="ab21-card__h"><span class="ab21-card__ic ab21-card__ic--dim"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-terminal"/></svg></span><div class="ab21-flex"><h3>Erase account</h3><p>Not available from the web for this account.</p></div><span class="xl-tag">Owner</span></div>
+            <div class="ab21-card__b">
+              <p class="ab21-p">The owner account can't be erased from the web. Use the admin CLI: <code>identity admin account erase</code>.</p>
+            </div>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li><code>erase_web: "owner_cli_only"</code>. <b>No button, no modal, no link</b> — so no XSS can wipe the owner. If <code>DELETE /api/me</code> is called anyway: <code>403 erase_owner_cli_only</code>.</li>
+          <li>The CLI (<code>identity admin account erase &lt;user&gt; --confirm &lt;user&gt;</code>, via <code>kubectl exec</code>) is the only path for the owner and for suspended accounts (ADR-0033 §8).</li>
+          <li>Neutral styling (no danger colour): nothing here can be acted on.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F8 -->
+    <article class="bd-frame" id="AB21-F8">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB21-F8</span><span class="bd-frame__title">· Tester-only note</span><span class="bd-frame__state">· a learner before the L exit · ADR-0033 §7, §9</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--flag">until l-04 (L exit)</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <section class="ab21-card">
+            <div class="ab21-card__h"><span class="ab21-card__ic ab21-card__ic--dim"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span><div class="ab21-flex"><h3>Erase account</h3><p>Not open to this account on the web yet.</p></div></div>
+            <div class="ab21-card__b">
+              <p class="ab21-p">Erasing from the web is open to tester accounts for now. To erase this account, <a href="mailto:?subject=Erase%20my%20xLearn%20account">contact the owner</a>.</p>
+            </div>
+          </section>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li><code>erase_web: "not_available"</code> (role <code>learner</code> while the allow-list holds only <code>tester</code>). <b>No button.</b> Called anyway: <code>403 erase_not_available</code>.</li>
+          <li><b>Temporary:</b> <a href="../../../docs/v2/sprints/sprint-l-04.md">l-04</a> opens web erase to every non-owner at the L exit, and this frame disappears. In v2 the only learners are the rehearsal accounts, which erase themselves at the L exit.</li>
+          <li>"contact the owner" is the same <code>mailto:</code> as Request an invite (address left out), subject "Erase my xLearn account"; the owner runs the CLI erase.</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================ C · modal -->
+<section class="bd-section" aria-labelledby="sec-c">
+  <h2 class="bd-section__h" id="sec-c">C · The typed confirmation <small>F3 · F4 · F5 · F9 · ds-modal--md</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <!-- F3 -->
+    <article class="bd-frame" id="AB21-F3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB21-F3</span><span class="bd-frame__title">· Confirm modal</span><span class="bd-frame__state">· a · on open · b · exact match · L8 (typed confirmation)</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag bd-tag--flag">typed value: to confirm</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab21-stage">
+          <div class="ds-modal__backdrop">
+            <div class="ds-modal__panel ds-modal--md" role="alertdialog" aria-modal="true" aria-labelledby="f3-t" aria-describedby="f3-d">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="f3-t">Erase your account?</span><span class="ds-iconbtn" aria-label="Close"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+              <div class="ds-modal__body">
+                <p class="ab21-mbody" id="f3-d">This permanently erases your account, progress, revision schedule, mistakes, mock scores, coach chats and saved AI keys. Your public profile disappears immediately.</p>
+                <div class="ds-field ab21-confirm"><label class="ds-field__label ab21-clabel" for="f3-in">Type your username <b class="ab21-mono">asha</b> to confirm</label><input id="f3-in" class="ds-input ds-input--mono" type="text" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
+              </div>
+              <div class="ds-modal__footer"><button type="button" class="ds-btn ds-btn--secondary ds-btn--sm bd-focus">Cancel</button><button type="button" class="ds-btn ds-btn--sm ab21-danger" disabled><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-trash"/></svg> Erase account</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="bd-crop"><span>b</span><span>exact match typed — the danger button enables</span></div>
+        <div class="ab21-stage ab21-stage--short">
+          <div class="ds-modal__backdrop">
+            <div class="ds-modal__panel ds-modal--md" role="alertdialog" aria-modal="true" aria-labelledby="f3b-t">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="f3b-t">Erase your account?</span><span class="ds-iconbtn" aria-label="Close"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+              <div class="ds-modal__body">
+                <p class="ab21-mbody">This permanently erases your account, progress, revision schedule, mistakes, mock scores, coach chats and saved AI keys. Your public profile disappears immediately.</p>
+                <div class="ds-field ab21-confirm"><label class="ds-field__label ab21-clabel" for="f3b-in">Type your username <b class="ab21-mono">asha</b> to confirm</label><input id="f3b-in" class="ds-input ds-input--mono" type="text" value="asha"></div>
+              </div>
+              <div class="ds-modal__footer"><button type="button" class="ds-btn ds-btn--secondary ds-btn--sm">Cancel</button><button type="button" class="ds-btn ds-btn--sm ab21-danger bd-focus"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-trash"/></svg> Erase account</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li><code>role="alertdialog"</code>, focus trapped. <b>Cancel</b> has initial focus (the ring in <b>a</b>); <span class="xl-kbd">Esc</span>, the × and a backdrop click all cancel. Focus returns to <b>Erase my account…</b>.</li>
+          <li>The value to type is the <b>username</b>; an account with no username types its <b>email</b> ("Type your email <b>…</b> to confirm"). Flagged (Decisions to confirm #5).</li>
+          <li><b>Erase account</b> is disabled until the input matches <b>exactly</b>, compared trimmed and case-insensitive (<b>b</b>). <span class="xl-kbd">Enter</span> in the input submits only once it matches, never before. The server checks the same way.</li>
+          <li><b>Erase account</b> → <code>DELETE /api/me {"confirm":"asha"}</code> → F5 → F6. Danger button: dark text on <code>--ds-err</code>, 6.7:1.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F4 -->
+    <article class="bd-frame" id="AB21-F4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB21-F4</span><span class="bd-frame__title">· Mismatch</span><span class="bd-frame__state">· <code class="ds-mono">400 confirmation_mismatch</code> · L8</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab21-stage">
+          <div class="ds-modal__backdrop">
+            <div class="ds-modal__panel ds-modal--md" role="alertdialog" aria-modal="true" aria-labelledby="f4-t">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="f4-t">Erase your account?</span><span class="ds-iconbtn" aria-label="Close"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+              <div class="ds-modal__body">
+                <p class="ab21-mbody">This permanently erases your account, progress, revision schedule, mistakes, mock scores, coach chats and saved AI keys. Your public profile disappears immediately.</p>
+                <div class="ds-field ab21-confirm"><label class="ds-field__label ab21-clabel" for="f4-in">Type your username <b class="ab21-mono">asha-rao</b> to confirm</label><input id="f4-in" class="ds-input ds-input--mono ds-input--invalid bd-focus" type="text" value="asha" aria-invalid="true" aria-describedby="f4-e">
+                  <p class="ab21-err" id="f4-e" role="alert"><span class="ab21-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span>That doesn't match your username.</span></p></div>
+              </div>
+              <div class="ds-modal__footer"><button type="button" class="ds-btn ds-btn--secondary ds-btn--sm">Cancel</button><button type="button" class="ds-btn ds-btn--sm ab21-danger" disabled><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-trash"/></svg> Erase account</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>The browser already blocks a mismatch, so the server's <code>400 confirmation_mismatch</code> means the username changed elsewhere (another tab). The SPA refetches <code>/api/me</code>: the label shows the current username (here <b>asha-rao</b>), the input keeps what was typed and is marked invalid, and <b>Erase account</b> stays disabled until the new value matches.</li>
+          <li>Error under the input, <code>role="alert"</code>, <code>aria-describedby</code>; focus moves to the input. Nothing was erased.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F5 -->
+    <article class="bd-frame" id="AB21-F5">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB21-F5</span><span class="bd-frame__title">· Erasing</span><span class="bd-frame__state">· request in flight</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab21-stage">
+          <div class="ds-modal__backdrop">
+            <div class="ds-modal__panel ds-modal--md" role="alertdialog" aria-modal="true" aria-labelledby="f5-t" aria-busy="true">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="f5-t">Erase your account?</span><span class="ds-iconbtn ab21-off" aria-label="Close" aria-disabled="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+              <div class="ds-modal__body">
+                <p class="ab21-mbody">This permanently erases your account, progress, revision schedule, mistakes, mock scores, coach chats and saved AI keys. Your public profile disappears immediately.</p>
+                <div class="ds-field ab21-confirm"><label class="ds-field__label ab21-clabel" for="f5-in">Type your username <b class="ab21-mono">asha</b> to confirm</label><input id="f5-in" class="ds-input ds-input--mono" type="text" value="asha" readonly></div>
+              </div>
+              <div class="ds-modal__footer"><button type="button" class="ds-btn ds-btn--secondary ds-btn--sm" disabled>Cancel</button><button type="button" class="ds-btn ds-btn--sm ab21-danger" aria-disabled="true"><svg class="ab21-spin ds-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9"/></svg> Erasing…</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>The modal is <b>locked</b>: <code>aria-busy="true"</code>, input read-only, Cancel and × disabled, <span class="xl-kbd">Esc</span> ignored — the request can't be recalled once sent. The button reads <b>"Erasing…"</b> (announced through a polite live region).</li>
+          <li><code>202 {erase_request_id, username_available_at}</code> clears the session cookie → the SPA navigates to <code>/xlearn/auth?erased=1</code> (F6). Failures → F9, with the modal unlocked. The spinner stops under reduced motion.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F9 -->
+    <article class="bd-frame" id="AB21-F9">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB21-F9</span><span class="bd-frame__title">· Other errors</span><span class="bd-frame__state">· network drawn · 409 and 429 below · L8 (1 open per account) · L5</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab21-stage ab21-stage--short">
+          <div class="ds-modal__backdrop">
+            <div class="ds-modal__panel ds-modal--md" role="alertdialog" aria-modal="true" aria-labelledby="f9-t">
+              <div class="ds-modal__head"><span class="ds-modal__title" id="f9-t">Erase your account?</span><span class="ds-iconbtn" aria-label="Close"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+              <div class="ds-modal__body">
+                <div class="ds-field ab21-confirm" style="margin-top:0"><label class="ds-field__label ab21-clabel" for="f9-in">Type your username <b class="ab21-mono">asha</b> to confirm</label><input id="f9-in" class="ds-input ds-input--mono" type="text" value="asha"></div>
+              </div>
+              <div class="ab21-alertbar" role="alert"><span class="ab21-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span>Couldn't erase your account. Nothing was changed — try again.</span></div>
+              <div class="ds-modal__footer"><button type="button" class="ds-btn ds-btn--secondary ds-btn--sm">Cancel</button><button type="button" class="ds-btn ds-btn--sm ab21-danger bd-focus"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-trash"/></svg> Erase account</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="bd-pad" style="display:flex;flex-direction:column;gap:10px;border-top:1px dashed var(--ds-line-2)">
+          <div class="bd-tag" style="align-self:flex-start">a · 409 erase_in_progress</div>
+          <div class="ab21-strip" role="alert"><span class="ab21-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span>An erase is already in progress for this account.</span></div>
+          <div class="bd-tag" style="align-self:flex-start">b · 429</div>
+          <div class="ab21-strip" role="alert"><span class="ab21-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span>Too many requests — wait a moment and try again.</span></div>
+          <div class="bd-tag" style="align-self:flex-start">c · network / 5xx (drawn above)</div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Each error takes the alert slot above the footer (<code>role="alert"</code>); the typed value stays; <b>Erase account</b> retries (focus returns to it).</li>
+          <li><b>a</b> <code>409 erase_in_progress</code>: the one-open partial unique index caught a duplicate (a double click, a second tab). The first request carries on; in this state <b>Erase account</b> is hidden and only Cancel remains.</li>
+          <li><b>b</b> <code>429</code> from L5's mutating bucket, honouring <code>Retry-After</code>. <b>c</b> network or 5xx: "Nothing was changed" is true because identity deletes in one transaction.</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================ D · F6 -->
+<section class="bd-section" aria-labelledby="sec-d">
+  <h2 class="bd-section__h" id="sec-d">D · After the erase <small>F6 · signed out</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <article class="bd-frame" id="AB21-F6">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB21-F6</span><span class="bd-frame__title">· Erased (signed out)</span><span class="bd-frame__state">· <code class="ds-mono">/xlearn/auth?erased=1</code> · ADR-0033 §9 · P11 · D12</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab21-addr"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg><span>projects.sujaykumar.dev<b>/xlearn/auth</b></span></div>
+        <div class="ab21-cardstage">
+          <div class="ab21-authcard">
+            <h2 class="ab21-authh">Sign in to xLearn</h2>
+            <div class="ab21-banner" role="status" tabindex="-1">
+              <span class="ab21-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-check"/></svg></span>
+              <div>Your account has been erased. Your data is removed from xLearn's services within minutes; server images kept by the host may hold it for up to about 7 days. Your username is held for 60 days.</div>
+            </div>
+            <form class="ab21-form" aria-label="Sign in">
+              <div class="ds-field"><label class="ds-field__label" for="f6-id">Email or username</label><input id="f6-id" class="ds-input" type="text" placeholder="you@example.com or your-handle"></div>
+              <div class="ds-field"><label class="ds-field__label" for="f6-pw">Password</label><input id="f6-pw" class="ds-input" type="password" placeholder="••••••••••"></div>
+              <button type="button" class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg">Log in</button>
+            </form>
+            <div class="ab21-or">or</div>
+            <button type="button" class="ds-btn ds-btn--secondary ds-btn--block"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gh"/></svg> Continue with GitHub</button>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>After <code>202</code> the session cookie is already cleared; the SPA drops its caches and navigates to <code>/xlearn/auth?erased=1</code>. The banner sits on top of the mode's sign-in card (AB19-F1 in production, invite-only box below, not drawn); focus moves to it (<code>tabindex="-1"</code>, <code>role="status"</code>). It shows once: <code>?erased=1</code> is removed from the URL after the render, so a reload doesn't repeat it.</li>
+          <li>The public profile <b>404s on the very next request</b> ("No profile for @asha", identical to unknown, P11); the username stays unavailable for 60 days with no "recently erased" hint.</li>
+          <li>ok-tint banner, text 14:1, with a check icon.</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================ F10 narrow -->
+<section class="bd-section" id="AB21-F10" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">AB21-F10 · &lt; 1024 px (390 px shown) <small>card full width · modal as a bottom sheet</small></h2>
+  <p class="bd-section__p">The rail becomes a horizontal tab strip (AB22-F6). The erase card goes full width and "What's erased" stacks to one column. The confirmation opens as a <b>bottom sheet</b>: the input sits above the buttons, which split the width; the on-screen keyboard pushes the sheet up rather than covering the input.</p>
+  <div class="bd-narrow-row">
+    <article class="bd-frame bd-narrow" id="AB21-N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1 · AB21-F1</span><span class="bd-frame__state">· the card</span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad" style="padding:16px 14px">
+          <div class="ab21-set ab21-set--narrow">
+            <div class="ab21-set__h"><div class="xl-eyebrow">Account</div><h1 style="font-size:22px">Settings</h1></div>
+            <div class="ab21-set__grid">
+              <nav class="ab21-railnav ab21-railnav--row" aria-label="Settings sections"><span class="ab21-railitem">Profile &amp; visibility</span><span class="ab21-railitem ab21-railitem--on" aria-selected="true"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-key"/></svg> Sign-in &amp; security</span></nav>
+              <section class="ab21-card ab21-card--danger">
+                <div class="ab21-card__h" style="padding:13px 14px"><span class="ab21-card__ic ab21-card__ic--err"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-trash"/></svg></span><div class="ab21-flex"><h3>Erase account</h3></div></div>
+                <div class="ab21-card__b" style="padding:14px;gap:12px">
+                  <p class="ab21-p">Permanently erase your xLearn account and everything in it. This can't be undone — xLearn keeps no <span class="ab21-nowrap">off-node</span> backups.</p>
+                  <div class="ab21-sub">What's erased</div>
+                  <ul class="ab21-list ab21-list--one">
+                    <li><b>Sign-in</b>email, password, GitHub link, sessions</li>
+                    <li><b>Profile and settings</b>name, username, time zone, study budget, reminders</li>
+                    <li><b>Learning</b>attempts, timers, outcomes, revision schedule, mistake journal, weak areas</li>
+                    <li><b>Mocks and progress</b>mock sessions, scores, progress, your public profile</li>
+                    <li><b>Coach</b>your saved AI keys, coach chats</li>
+                  </ul>
+                  <div class="ab21-sub">What stays for a while</div>
+                  <ul class="ab21-stays">
+                    <li>A weekly server image kept by the host may hold your data for up to about 7 days, and a pre-release snapshot for up to 1 day. If one is ever restored, the owner re-runs the erases made since it was taken.</li>
+                    <li>Some internal event records keep a random account id, and older sign-up records also keep your display name, until the owner removes them on request.</li>
+                    <li>If xLearn AI was on, copies Anthropic holds expire on its schedule (up to 30 days).</li>
+                  </ul>
+                  <div class="ab21-hint"><span class="ab21-ic ab21-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span><span>Your username <b>@asha</b> is held for 60 days, then anyone can claim it.</span></div>
+                  <button type="button" class="ds-btn ds-btn--block ab21-danger-o"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-trash"/></svg> Erase my account…</button>
+                  <a class="ab21-link" href="AB20-privacy-notice.html#AB20-F5" style="align-self:center"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-shield"/></svg> Privacy notice</a>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>The tab strip scrolls sideways and keeps the active tab in view (drawn scrolled to the end). The trigger goes full width (44 px hit area). The Sign-in &amp; security card sits above, as on desktop (not drawn). F2, F7 and F8 stack the same way.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB21-N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2 · AB21-F3</span><span class="bd-frame__state">· bottom sheet</span></header>
+      <div class="bd-frame__body">
+        <div class="ab21-sheetstage">
+          <div class="ab21-sheetback">
+            <div class="ab21-sheet" role="alertdialog" aria-modal="true" aria-labelledby="n2-t">
+              <div class="ab21-grab" aria-hidden="true"></div>
+              <div class="ds-modal__head"><span class="ds-modal__title" id="n2-t">Erase your account?</span><span class="ds-iconbtn" aria-label="Close"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-close"/></svg></span></div>
+              <div class="ds-modal__body" style="padding:16px">
+                <p class="ab21-mbody">This permanently erases your account, progress, revision schedule, mistakes, mock scores, coach chats and saved AI keys. Your public profile disappears immediately.</p>
+                <div class="ds-field ab21-confirm"><label class="ds-field__label ab21-clabel" for="n2-in">Type your username <b class="ab21-mono">asha</b> to confirm</label><input id="n2-in" class="ds-input ds-input--mono" type="text" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
+              </div>
+              <div class="ab21-sheet__foot"><button type="button" class="ds-btn ds-btn--secondary ab21-half bd-focus">Cancel</button><button type="button" class="ds-btn ab21-danger ab21-half" disabled><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-trash"/></svg> Erase account</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Same content and rules as F3–F5 and F9 (Cancel focused, match gate, lock while erasing, the alert slot above the buttons). Buttons 42 px tall. No swipe-to-dismiss while erasing.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB21 · Erase account · drafted in ds-l-01 · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only, never imported by <code class="ds-mono">web/</code>.
+  Sample data: the tester persona Asha Rao (@asha); "asha-rao" in F4 stands for a username changed in another tab. The contact address behind "contact the owner" is left out on purpose.
+</footer>
+</main>
+</body>
+</html>

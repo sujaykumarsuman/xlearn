@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB20 · Privacy notice / terms — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB20 board-local layout (prefix ab20-). Tokens only; never restyles a ds-, xl- or bd- class.
+     Every rgba() tint is one theme.css already uses for the same token. */
+  .ab20-flex { flex: 1; }
+  .ab20-ic { display: inline-flex; flex: none; }
+  .ab20-teal { color: var(--ds-teal); } .ab20-dimc { color: var(--ds-dim); } .ab20-warnc { color: var(--ds-warn); }
+
+  /* public page shell (signed out): brand bar only */
+  .ab20-top { height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 28px; border-bottom: 1px solid var(--ds-line); background: var(--ds-bg); }
+  .ab20-brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ds-text); }
+  .ab20-brand__name { font-size: 15px; font-weight: 700; letter-spacing: -.2px; }
+  .ab20-brand__name b { color: var(--ds-teal); }
+
+  /* page: contents rail + the text at a readable measure */
+  .ab20-page { display: grid; grid-template-columns: 220px minmax(0, 68ch); gap: 64px; justify-content: center; padding: 44px 40px 60px; background: var(--ds-bg); }
+  .ab20-toc { position: sticky; top: 24px; align-self: start; }
+  .ab20-toc__h { font-family: var(--ds-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ds-dim); padding: 0 10px 8px; }
+  .ab20-toc ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .ab20-toc a { display: flex; gap: 8px; padding: 6px 10px; border-radius: 8px; color: var(--ds-dim); font-size: 13px; line-height: 1.35; }
+  .ab20-toc a span { font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-dim); min-width: 14px; }
+  .ab20-toc a[aria-current="true"] { background: rgba(53,208,192,.1); color: var(--ds-teal); }
+  .ab20-toc a[aria-current="true"] span { color: var(--ds-teal); }
+  .ab20-toc__sep { height: 1px; background: var(--ds-line); margin: 6px 10px; }
+
+  .ab20-doc { font-size: 16px; line-height: 1.65; color: var(--ds-text); max-width: 68ch; }
+  .ab20-doc h1 { font-size: 32px; font-weight: 700; letter-spacing: -.4px; line-height: 1.2; margin-top: 8px; }
+  .ab20-ver { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 12px; font-size: 13.5px; color: var(--ds-dim); }
+  .ab20-doc .ab20-lede { margin-top: 18px; font-size: 16.5px; color: var(--ds-text); }
+  .ab20-doc h2 { display: flex; align-items: baseline; gap: 12px; font-size: 20px; font-weight: 650; letter-spacing: -.2px; line-height: 1.3; margin: 38px 0 10px; }
+  .ab20-doc h2 .ab20-n { font-family: var(--ds-font-mono); font-size: 13px; font-weight: 600; color: var(--ds-teal); min-width: 16px; }
+  .ab20-doc p { margin: 0 0 12px; }
+  .ab20-doc ul { margin: 0 0 14px; padding-left: 22px; }
+  .ab20-doc li { margin: 7px 0; }
+  .ab20-doc li::marker { color: var(--ds-dim); }
+  .ab20-doc b { font-weight: 650; }
+  .ab20-doc a { color: var(--ds-teal); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  .ab20-doc code { font-family: var(--ds-font-mono); font-size: 14px; padding: 1px 6px; border-radius: 6px; background: var(--ds-inset); border: 1px solid var(--ds-line-2); overflow-wrap: anywhere; }
+  .ab20-dim { color: var(--ds-dim); }
+  .ab20-doc .ab20-sub { margin: 16px 0 6px; font-size: 16px; font-weight: 650; }
+  .ab20-callout { display: flex; gap: 12px; align-items: flex-start; margin: 4px 0 14px; padding: 14px 16px; border-radius: 12px; border: 1px solid rgba(240,180,41,.35); background: rgba(240,180,41,.08); }
+  .ab20-callout .ab20-ic { margin-top: 4px; color: var(--ds-warn); }
+  .ab20-callout p:last-child { margin-bottom: 0; }
+  .ab20-doc .ab20-endnote { margin: 40px 0 0; padding-top: 18px; border-top: 1px solid var(--ds-line); font-size: 14px; color: var(--ds-dim); }
+
+  /* F2 what-changed block */
+  .ab20-changed { margin: 22px 0 6px; padding: 16px 18px; border-radius: 12px; border: 1px solid rgba(53,208,192,.45); background: #101a1c; }
+  .ab20-changed h2 { margin: 0 0 4px; font-size: 17px; }
+  .ab20-changed__meta { font-size: 13.5px; color: var(--ds-dim); margin-bottom: 8px; }
+  .ab20-changed ul { margin-bottom: 0; }
+
+  /* in-app shell pieces (F4) */
+  .ab20-app { background: var(--ds-bg); }
+  .ab20-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ds-dim); }
+
+  /* 390 px */
+  .ab20-phone { width: 390px; background: var(--ds-bg); }
+  .ab20-phone .ab20-top { height: 52px; padding: 0 16px; }
+  .ab20-pdoc { padding: 22px 16px 28px; }
+  .ab20-pdoc h1 { font-size: 26px; }
+  .ab20-pdoc h2 { font-size: 18.5px; margin-top: 30px; }
+  .ab20-disc { margin: 18px 0 4px; border: 1px solid var(--ds-line-2); border-radius: 12px; background: var(--ds-panel); }
+  .ab20-disc summary { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 14px; font-size: 14px; font-weight: 600; color: var(--ds-text); cursor: pointer; list-style: none; }
+  .ab20-disc summary::-webkit-details-marker { display: none; }
+  .ab20-disc__chev { margin-left: auto; color: var(--ds-dim); }
+  .ab20-disc[open] .ab20-disc__chev { transform: rotate(180deg); }
+  .ab20-disc ol { list-style: none; margin: 0; padding: 4px 6px 10px; border-top: 1px solid var(--ds-line); }
+  .ab20-disc a { display: flex; gap: 8px; min-height: 40px; align-items: center; padding: 0 10px; border-radius: 8px; font-size: 14px; color: var(--ds-dim); text-decoration: none; }
+  .ab20-disc a span { font-family: var(--ds-font-mono); font-size: 12px; min-width: 14px; }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6H4c.5-.5 2-1.5 2-6" /><path d="M10 20a2 2 0 0 0 4 0" /></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z" /><path d="M12 10v4M12 17h.01" /></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6" /></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" /></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v6c0 4.5 3.2 7.8 7.5 9 4.3-1.2 7.5-4.5 7.5-9V6z" /><path d="m9 12 2 2 4-4" /></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="m13.5 6.5 4 4" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · L board</div>
+  <h1>AB20 · Privacy notice / terms</h1>
+  <p class="bd-lede">
+    The versioned page at <code class="ds-mono">/xlearn/privacy</code>: a new static SPA segment (it joins the course-slug guard), readable <b>before sign-in</b> — from the auth
+    page and the acceptance step — and from Settings. It carries the <b>full notice text</b>, version 1, drafted here: Anthropic, outside India, ≤ 30 days, no
+    training, the toggles, and D12's <b>~7-day data-loss window</b>. Below the notice sit the <b>Terms</b>. From version 2 the page opens with <b>"What changed"</b>.
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-l-01.md">ds-l-01</a> (notice text: agent draft, ships as drafted, D40)</span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-l-05.md">l-05</a> (<code class="ds-mono">web/src/screens/Privacy.tsx</code>, <code class="ds-mono">web/src/content/privacy-notice.md</code>, <code class="ds-mono">lib/notice.ts</code>)</span>
+    <span><b>Frozen before</b>L-A</span>
+    <span><b>Sources</b>
+      <a href="../../../docs/adr/0033-invite-only-admission-and-owner-admin.md#6-the-acceptance-step-onboarding-step-0-l-a">ADR-0033 §6</a> ·
+      <a href="../../../docs/adr/0031-platform-ai-and-two-tier-keys.md#4-retention-and-privacy-owner-d24">ADR-0031 §4</a> ·
+      <a href="../../../docs/adr/0028-object-storage-and-backups.md#2-off-node-backups-deferred">ADR-0028 §2</a> ·
+      <a href="../../../docs/adr/0027-content-evalpack-and-user-data-model.md#6-account-erase-v20">ADR-0027 §6</a> (as amended) ·
+      <a href="../../../docs/adr/0034-v2-release-labelling-gating-and-rollback.md#43-snapshot-rule">ADR-0034 §4.3</a> ·
+      R-PP1 · R-AC5 · R-AI8 · D12 · D24 · D33</span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB20-F1">F1 · notice</a><a href="#AB20-F2">F2 · what changed</a><a href="#AB20-F3">F3 · terms</a><a href="#AB20-F4">F4 · in-app</a><a href="#AB20-F5">F5 · 390 px</a>
+  </nav>
+</header>
+
+<section class="bd-section" aria-labelledby="sec-req">
+  <h2 class="bd-section__h" id="sec-req">Statements the notice must carry <small>checked against the text below</small></h2>
+  <div class="bd-strip">
+    <span><span class="bd-num">1</span> <b>Anthropic</b> processes xLearn AI work (§3)</span>
+    <span><span class="bd-num">2</span> <b>Outside India</b> (§3)</span>
+    <span><span class="bd-num">3</span> kept <b>≤ 30 days</b>, flagged up to 2 years (§3)</span>
+    <span><span class="bd-num">4</span> <b>never used for training</b> (§3)</span>
+    <span><span class="bd-num">5</span> <b>the toggles</b>: both AI choices, behavioral opt-in, profile visibility (§3, §4, §6)</span>
+    <span><span class="bd-num">6</span> <b>no off-node backups</b>, the host's weekly image, <b>up to about 7 days</b> lost (§5)</span>
+    <span><span class="bd-num">7</span> erase leftovers: 60-day username hold, weekly image ~7 days, pre-release snapshot 1 day, event records + display name (§6)</span>
+    <span><span class="bd-num">8</span> <b>18+</b> (§7) · <b>re-acceptance</b> on change (§8)</span>
+  </div>
+</section>
+
+<!-- ============================================ F1 -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · The notice page <small>F1 · signed out · desktop</small></h2>
+  <article class="bd-frame" id="AB20-F1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB20-F1</span><span class="bd-frame__title">· Notice page</span><span class="bd-frame__state">· <code class="ds-mono">/xlearn/privacy</code> · signed out · version 1 · ADR-0033 §6 · ADR-0031 §4 · D12 · D24</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new page</span><span class="bd-tag bd-tag--flag">agent-drafted text v1</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="ab20-top">
+          <span class="ab20-brand"><span class="xl-brand__mark" style="width:26px;height:26px;font-size:14px">x</span><span class="ab20-brand__name">x<b>Learn</b></span></span>
+          <span class="ab20-flex"></span>
+          <a class="ds-btn ds-btn--secondary ds-btn--sm" href="AB19-invite-acceptance.html#AB19-F1">Sign in</a>
+        </div>
+        <div class="ab20-page">
+          <nav class="ab20-toc" aria-label="Contents">
+            <div class="ab20-toc__h">Contents</div>
+            <ol>
+              <li><a href="#pn-who" aria-current="true"><span>1</span>Who runs xLearn</a></li>
+              <li><a href="#pn-stores"><span>2</span>What xLearn stores</a></li>
+              <li><a href="#pn-ai"><span>3</span>How AI is used</a></li>
+              <li><a href="#pn-public"><span>4</span>What's public</a></li>
+              <li><a href="#pn-loss"><span>5</span>Where your data lives</a></li>
+              <li><a href="#pn-choices"><span>6</span>Your choices</a></li>
+              <li><a href="#pn-age"><span>7</span>Age</a></li>
+              <li><a href="#pn-changes"><span>8</span>Changes</a></li>
+            </ol>
+            <div class="ab20-toc__sep"></div>
+            <ol><li><a href="#AB20-F3"><span>§</span>Terms</a></li></ol>
+          </nav>
+          <article class="ab20-doc" aria-labelledby="pn-title">
+            <div class="xl-eyebrow">xLearn</div>
+            <h1 id="pn-title">Privacy notice</h1>
+            <div class="ab20-ver"><span class="xl-tag">Version 1</span><span>Effective 1 Dec 2026</span></div>
+            <p class="ab20-lede">This notice explains what xLearn keeps about you, why it keeps it, where it lives, and the choices you have. You accept it when you join, and again whenever it changes.</p>
+
+            <h2 id="pn-who"><span class="ab20-n">1</span>Who runs xLearn</h2>
+            <p>xLearn is a personal project run by one person — its owner — not a company. The owner builds and runs the service and is responsible for the data in it. For any question or request about your data, <a href="mailto:?subject=xLearn%20privacy">email the owner</a> — the same address as <b>Request an invite</b> on the sign-in page.</p>
+
+            <h2 id="pn-stores"><span class="ab20-n">2</span>What xLearn stores</h2>
+            <p>Only what the course needs to work for you:</p>
+            <ul>
+              <li><b>Your account</b> — your email address, display name and username; a hash of your password (never the password itself); and the id of your GitHub account, if you connect one.</li>
+              <li><b>Your settings</b> — your time zone, study budget and reminders.</li>
+              <li><b>Your learning</b> — your attempts and the code and answers you submit, their timings and grades, your revision schedule, your mistake journal and your mock-interview scores.</li>
+              <li><b>Your coach</b> — your coach chats, and the AI keys you add yourself, stored encrypted.</li>
+              <li><b>Your answers when you join</b> — your region, your confirmation that you're 18 or older, the version of this notice you accepted, and your AI and profile choices, each with the date you made it.</li>
+            </ul>
+            <p>xLearn sets one cookie, to keep you signed in. There are no analytics, no ads and no tracking. Server logs record technical details such as the time and the IP address of a request, to keep the service running and to stop abuse; your code, answers and AI prompts are never written to them. Nothing is sold, or shared for marketing.</p>
+
+            <h2 id="pn-ai"><span class="ab20-n">3</span>How AI is used</h2>
+            <p>xLearn uses AI in two separate ways.</p>
+            <p class="ab20-sub">xLearn AI — only if you opt in</p>
+            <p>When you join you're offered two choices, both off: <b>"xLearn AI reviews my graded work"</b> and <b>"…and also reviews my passing solutions for improvement notes"</b>. If you turn them on, the work you submit is sent to <b>Anthropic</b>, the company that makes the Claude models, to suggest a grade and feedback. It is processed <b>outside India</b>. Anthropic may keep it for <b>up to 30 days</b> — content its safety systems flag may be kept for up to 2 years — and <b>never uses it to train its models</b>. Answers to behavioral questions are sent only after a separate opt-in in Settings. With xLearn AI off, you grade your own work and nothing is sent. xLearn itself never uses your work to train AI models.</p>
+            <p class="ab20-sub">Your coach — your own key</p>
+            <p>The coach uses an OpenAI or Anthropic key that you add yourself. Your messages go to that provider under your own account with them, and their terms apply. xLearn stores your key encrypted, and keeps your coach chats so you can come back to them.</p>
+
+            <h2 id="pn-public"><span class="ab20-n">4</span>What's public</h2>
+            <p>If you pick a username, you get a public profile at <code>projects.sujaykumar.dev/xlearn/u/&lt;username&gt;</code>. It shows your display name and username, a rough time-zone band (never your exact zone), the month you joined, and stats for the courses you leave visible — for example problems solved, your streak, activity and how many mock interviews you've done. It never shows your code, answers, feedback, mistakes or notes, and never your email. Courses are visible by default, except behavioral ones. You can hide any course, or make the whole profile private, in <b>Settings → Profile &amp; visibility</b>.</p>
+
+            <h2 id="pn-loss"><span class="ab20-n">5</span>Where your data lives — and what could be lost</h2>
+            <p>xLearn runs on a single rented server at a hosting provider, and everything above is stored there. Your password is stored only as a hash, and your AI keys are encrypted.</p>
+            <div class="ab20-callout">
+              <span class="ab20-ic"><svg class="xl-ico" aria-hidden="true"><use href="#i-alert"/></svg></span>
+              <div><p>xLearn keeps <b>no off-node backups</b> — no copy on any other machine. The only safety net is a <b>weekly image of the whole server</b> that the hosting provider keeps. If the server or its disk fails, <b>up to about 7 days</b> of your data may be lost: everything since the last weekly image.</p></div>
+            </div>
+
+            <h2 id="pn-choices"><span class="ab20-n">6</span>Your choices</h2>
+            <ul>
+              <li><b>xLearn AI</b> — both choices are off unless you tick them. Turn either off any time in Settings, and grading falls back to you straight away; copies Anthropic already holds expire on its schedule. Behavioral answers need their own opt-in.</li>
+              <li><b>Your profile</b> — make it private, or hide any course, in Settings → Profile &amp; visibility.</li>
+              <li><b>Your data</b> — to ask what xLearn holds about you, or to have something corrected, <a href="mailto:?subject=xLearn%20privacy">email the owner</a>.</li>
+              <li><b>Erasing your account</b> — in <b>Settings → Sign-in &amp; security → Erase account</b>. If your account can't erase from the web yet, email the owner and it is erased for you. Erasing removes your sign-in, profile and settings, all your learning, mocks and progress, your public profile, your coach chats and your saved AI keys from every part of xLearn within minutes. A few traces remain for a while:
+                <ul>
+                  <li>your username is held for <b>60 days</b>, so no one can take it over at once; then anyone can claim it;</li>
+                  <li>a <b>weekly server image</b> kept by the host may still hold your data for <b>up to about 7 days</b>, and a <b>pre-release snapshot</b> for <b>up to 1 day</b>. If one of them is ever restored, the owner re-runs the erases made since it was taken;</li>
+                  <li>some internal event records keep a random account id, and older sign-up records also keep your display name, until the owner removes them on request;</li>
+                  <li>if xLearn AI was on, copies Anthropic holds expire on its schedule, within 30 days (2 years for flagged content).</li>
+                </ul>
+              </li>
+            </ul>
+
+            <h2 id="pn-age"><span class="ab20-n">7</span>Age</h2>
+            <p>xLearn is for people <b>18 or older</b>. You confirm this when you join. If the owner learns that an account belongs to someone younger, the account is erased.</p>
+
+            <h2 id="pn-changes"><span class="ab20-n">8</span>Changes to this notice</h2>
+            <p>Every version of this notice is numbered and dated; this is <b>version 1, effective 1 Dec 2026</b>. When it changes, the top of this page says what changed, and you're asked to accept the new version before you carry on using xLearn.</p>
+
+            <p class="ab20-endnote">Version 1 · effective 1 Dec 2026 · Questions? <a href="mailto:?subject=xLearn%20privacy">Email the owner</a>. The <a href="#AB20-F3">Terms</a> follow below.</p>
+          </article>
+        </div>
+      </div>
+    </div>
+    <div class="bd-crop"><span>▼</span><span>the page continues with the Terms section — F3</span></div>
+    <div class="bd-pad" style="padding:14px 16px;border-top:1px solid var(--ds-line)">
+      <div class="bd-strip" role="note" aria-label="Board annotation">
+        <span class="bd-tag bd-tag--flag">board annotation · not page copy</span>
+        <span><b>Notice text v1 as drafted by the agent — it ships as drafted (D40); the owner may revise it with a content PR (owner review: v3 opening gates).</b></span>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Route · access</h4>
+        <ul><li><code>/xlearn/privacy</code>: a new static SPA segment; <code>privacy</code> joins the course-slug guard (ADR-0033 §6, ADR-0025). <b>Public</b>: no session, no API call, never behind <code>403 acceptance_required</code>.</li>
+          <li>Linked from the sign-in card footer (AB19-F1), the acceptance step (AB19-F9, new tab), re-acceptance (AB19-F12 → F2), Settings (F4) and the erase card (AB21-F1). Signed out, the brand bar offers <b>Sign in</b>; signed in, F4.</li></ul></section>
+      <section><h4>Version · text</h4>
+        <ul><li>"Version 1 · effective 1 Dec 2026" and the text come from <b>one place</b>: <code>web/src/lib/notice.ts</code> (<code>privacy-notice@1</code> + date) and <code>web/src/content/privacy-notice.md</code>. The acceptance step records the same version; l-05's parity test ties it to identity's <code>NoticeVersion</code>. A substantive text change bumps the version, which triggers AB19-F12 for everyone.</li>
+          <li>"Email the owner" is <code>mailto:</code> the same build-time address as <b>Request an invite</b> (l-05's <code>INVITE_REQUEST_MAILTO</code>); the board leaves it out. Subject "xLearn privacy".</li>
+          <li>"Off-node" always qualifies the backups statement (the host's weekly image exists), and the leftovers are never called anonymous (§5, §6).</li></ul></section>
+      <section><h4>Reading · a11y</h4>
+        <ul><li>Body <b>16 px</b> / 1.65, measure <b>≤ 68 ch</b>; one <code>h1</code>, then real <code>h2</code>s in order with anchors on the live page: <code>#who</code>, <code>#stores</code>, <code>#ai</code>, <code>#public</code>, <code>#data-loss</code>, <code>#choices</code>, <code>#age</code>, <code>#changes</code>, <code>#terms</code>, <code>#what-changed</code> (the board prefixes its ids with <code>pn-</code>).</li>
+          <li>Contents is a <code>&lt;nav aria-label="Contents"&gt;</code>; the current section carries <code>aria-current</code> while scrolling (sticky on desktop). Links in the text are underlined, so colour is not the only cue.</li>
+          <li>Contrast: text 15:1; dim 6.8:1; teal links 9:1; callout text 14:1 on the warn tint. &lt; 1024 px: F5.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ============================================ F2 + F3 -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · Later versions and the Terms <small>F2 · F3 · same page</small></h2>
+  <div class="bd-grid bd-grid--wide">
+    <article class="bd-frame" id="AB20-F2">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB20-F2</span><span class="bd-frame__title">· "What changed" block</span><span class="bd-frame__state">· version ≥ 2 · top of the page · ADR-0033 §6</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag">illustrative content</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad" style="padding:28px 30px">
+          <div class="ab20-doc">
+            <div class="xl-eyebrow">xLearn</div>
+            <h1 style="font-size:28px">Privacy notice</h1>
+            <div class="ab20-ver"><span class="xl-tag">Version 2</span><span>Effective 1 Mar 2027</span></div>
+            <section class="ab20-changed" id="pn-what-changed" aria-labelledby="pn-wc-h">
+              <h2 id="pn-wc-h"><svg class="xl-ico xl-ico--sm ab20-teal" aria-hidden="true"><use href="#i-pen"/></svg>What changed in version 2</h2>
+              <div class="ab20-changed__meta">Replaces version 1, effective 1 Dec 2026 – 28 Feb 2027.</div>
+              <ul>
+                <li><b>How AI is used</b> — adds voice mock interviews: what is sent, to whom, and how long it's kept.</li>
+                <li><b>Where your data lives</b> — names the second server that now keeps off-node backups, and the shorter data-loss window.</li>
+                <li><b>Your choices</b> — erasing your account from the web is open to every learner.</li>
+              </ul>
+            </section>
+            <p class="ab20-lede" style="margin-top:20px">This notice explains what xLearn keeps about you, why it keeps it, where it lives, and the choices you have. You accept it when you join, and again whenever it changes.</p>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Shown only from <b>version 2</b>, at the top of the page (anchor <code>#what-changed</code>); AB19-F12's <b>What changed</b> opens it in a new tab. 2–4 plain bullets, each naming the section it touches, plus the previous version's dates. Version 1 has no block.</li>
+          <li>The three bullets are <b>illustrative</b> placeholders for the shape; the real list is written with version 2. Sections that changed may also carry a small "Updated in version 2" tag.</li>
+          <li><code>section</code> with its own <code>h2</code>; teal-tint card (<code>ds-card--teal</code> colours), text 15:1.</li></ul>
+      </aside>
+    </article>
+
+    <article class="bd-frame" id="AB20-F3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB20-F3</span><span class="bd-frame__title">· Terms</span><span class="bd-frame__state">· same page, below the notice · D33 · R-CT1</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad" style="padding:28px 30px">
+          <div class="ab20-doc">
+            <h2 id="pn-terms" style="margin-top:0"><span class="ab20-n">§</span>Terms</h2>
+            <p>By using xLearn you agree to these terms, alongside the privacy notice above.</p>
+            <ul>
+              <li>xLearn is <b>invite-only</b>: you can join only through an invite link from the owner.</li>
+              <li><b>One account per person.</b></li>
+              <li><b>Invites are single-use</b> and meant for the person they were sent to. Please don't share or post them.</li>
+              <li>The owner may <b>suspend</b> an account that breaks these terms or puts the service or other learners at risk.</li>
+              <li>xLearn is provided <b>as is, without warranty</b> of any kind. It's a personal project, and it may change, pause or stop.</li>
+              <li>xLearn's course content and code are <b>MIT-licensed</b>.</li>
+            </ul>
+            <p class="ab20-endnote" style="margin-top:22px">Questions about these terms? <a href="mailto:?subject=xLearn%20terms">Email the owner</a>.</p>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>The last section of the same page (anchor <code>#terms</code>), under the same version and date; accepting the notice at AB19-F9 covers it. Contents lists it after §8.</li>
+          <li>Invite-only and single-use: D33, ADR-0033 §5. MIT: R-CT1 (the private eval pack is not public content, so it isn't mentioned). No waitlist, no web admin (D33).</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================ F4 -->
+<section class="bd-section" aria-labelledby="sec-c">
+  <h2 class="bd-section__h" id="sec-c">C · Inside the app <small>F4 · signed in</small></h2>
+  <article class="bd-frame" id="AB20-F4">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB20-F4</span><span class="bd-frame__title">· In-app view</span><span class="bd-frame__state">· signed in · reached from Settings · identical text</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="xl-app">
+          <div class="xl-main">
+            <div class="xl-topbar">
+              <span class="ab20-brand"><span class="xl-brand__mark" style="width:26px;height:26px;font-size:14px">x</span><span class="ab20-brand__name">x<b>Learn</b></span></span>
+              <span class="ab20-flex"></span>
+              <span class="ds-iconbtn" aria-label="Notifications"><svg class="xl-ico" aria-hidden="true"><use href="#i-bell"/></svg></span>
+              <span class="ds-avatar xl-topbar__avatar" aria-label="Account menu">A</span>
+            </div>
+            <div class="xl-content">
+              <div class="ab20-page" style="padding-top:8px;padding-bottom:12px">
+                <nav class="ab20-toc" aria-label="Contents">
+                  <a class="ab20-back" href="AB21-erase-account.html#AB21-F1" style="padding:0 10px 14px"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-back"/></svg> Settings</a>
+                  <div class="ab20-toc__h">Contents</div>
+                  <ol>
+                    <li><a href="#AB20-F4" aria-current="true"><span>1</span>Who runs xLearn</a></li>
+                    <li><a href="#AB20-F4"><span>2</span>What xLearn stores</a></li>
+                    <li><a href="#AB20-F4"><span>3</span>How AI is used</a></li>
+                    <li><a href="#AB20-F4"><span>4</span>What's public</a></li>
+                    <li><a href="#AB20-F4"><span>5</span>Where your data lives</a></li>
+                    <li><a href="#AB20-F4"><span>6</span>Your choices</a></li>
+                    <li><a href="#AB20-F4"><span>7</span>Age</a></li>
+                    <li><a href="#AB20-F4"><span>8</span>Changes</a></li>
+                  </ol>
+                  <div class="ab20-toc__sep"></div>
+                  <ol><li><a href="#AB20-F4"><span>§</span>Terms</a></li></ol>
+                </nav>
+                <article class="ab20-doc">
+                  <div class="xl-eyebrow">xLearn</div>
+                  <h1>Privacy notice</h1>
+                  <div class="ab20-ver"><span class="xl-tag">Version 1</span><span>Effective 1 Dec 2026</span></div>
+                  <p class="ab20-lede">This notice explains what xLearn keeps about you, why it keeps it, where it lives, and the choices you have. You accept it when you join, and again whenever it changes.</p>
+                  <h2><span class="ab20-n">1</span>Who runs xLearn</h2>
+                  <p>xLearn is a personal project run by one person — its owner — not a company. The owner builds and runs the service and is responsible for the data in it. For any question or request about your data, <a href="mailto:?subject=xLearn%20privacy">email the owner</a> — the same address as <b>Request an invite</b> on the sign-in page.</p>
+                  <h2><span class="ab20-n">2</span>What xLearn stores</h2>
+                  <p>Only what the course needs to work for you:</p>
+                </article>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bd-crop"><span>✂</span><span>cropped · the text continues exactly as F1</span></div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li>The same route, <code>/xlearn/privacy</code>, rendered inside the signed-in shell (brand bar, bell, avatar), with <b>← Settings</b> at the top of the contents rail. <b>Identical text</b> and anchors, from the same source.</li>
+          <li>Reached from <b>Settings → Sign-in &amp; security</b> ("Privacy notice", drawn on AB21-F1). Nothing else changes: no badge, no extra controls.</li></ul></section>
+      <section><h4>Decisions · a11y</h4>
+        <ul><li>ADR-0033 §6. The page never gates: someone with <code>acceptance.required</code> is sent to AB19 by AuthedShell, but can still open this page from there (new tab).</li>
+          <li>The brand bar keeps the signed-in bell and avatar; the contents rail and text are F1's, at the same measure.</li></ul></section>
+    </aside>
+  </article>
+</section>
+
+<!-- ============================================ F5 narrow -->
+<section class="bd-section" id="AB20-F5" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">AB20-F5 · &lt; 1024 px (390 px shown) <small>single column · contents disclosure</small></h2>
+  <p class="bd-section__p">One column with 16 px gutters. The contents rail collapses into a <b>"Contents"</b> disclosure under the version line (a native <code class="ds-mono">&lt;details&gt;</code>), closed by default. Body text stays 16 px.</p>
+  <div class="bd-narrow-row">
+    <article class="bd-frame bd-narrow" id="AB20-N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1 · AB20-F1</span><span class="bd-frame__state">· contents closed</span></header>
+      <div class="bd-frame__body">
+        <div class="ab20-phone">
+          <div class="ab20-top"><span class="ab20-brand"><span class="xl-brand__mark" style="width:26px;height:26px;font-size:14px">x</span><span class="ab20-brand__name">x<b>Learn</b></span></span><span class="ab20-flex"></span><a class="ds-btn ds-btn--secondary ds-btn--sm" href="AB19-invite-acceptance.html#AB19-N1">Sign in</a></div>
+          <div class="ab20-doc ab20-pdoc">
+            <div class="xl-eyebrow">xLearn</div>
+            <h1>Privacy notice</h1>
+            <div class="ab20-ver"><span class="xl-tag">Version 1</span><span>Effective 1 Dec 2026</span></div>
+            <details class="ab20-disc">
+              <summary><svg class="xl-ico xl-ico--sm ab20-dimc" aria-hidden="true"><use href="#i-list"/></svg>Contents<svg class="xl-ico xl-ico--sm ab20-disc__chev" aria-hidden="true"><use href="#i-chev"/></svg></summary>
+            </details>
+            <p class="ab20-lede">This notice explains what xLearn keeps about you, why it keeps it, where it lives, and the choices you have. You accept it when you join, and again whenever it changes.</p>
+            <h2><span class="ab20-n">1</span>Who runs xLearn</h2>
+            <p>xLearn is a personal project run by one person — its owner — not a company. The owner builds and runs the service and is responsible for the data in it. For any question or request about your data, <a href="mailto:?subject=xLearn%20privacy">email the owner</a> — the same address as <b>Request an invite</b> on the sign-in page.</p>
+            <h2><span class="ab20-n">5</span>Where your data lives — and what could be lost</h2>
+            <div class="ab20-callout">
+              <span class="ab20-ic"><svg class="xl-ico" aria-hidden="true"><use href="#i-alert"/></svg></span>
+              <div><p>xLearn keeps <b>no off-node backups</b> — no copy on any other machine. The only safety net is a <b>weekly image of the whole server</b> that the hosting provider keeps. If the server or its disk fails, <b>up to about 7 days</b> of your data may be lost: everything since the last weekly image.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>§2–§4 are skipped in this drawing (the text is F1's). The callout keeps its icon at the top-left and wraps; the profile URL in §4 breaks anywhere rather than scrolling sideways.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB20-N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2 · AB20-F1</span><span class="bd-frame__state">· contents open</span></header>
+      <div class="bd-frame__body">
+        <div class="ab20-phone">
+          <div class="ab20-top"><span class="ab20-brand"><span class="xl-brand__mark" style="width:26px;height:26px;font-size:14px">x</span><span class="ab20-brand__name">x<b>Learn</b></span></span><span class="ab20-flex"></span><a class="ds-btn ds-btn--secondary ds-btn--sm" href="AB19-invite-acceptance.html#AB19-N1">Sign in</a></div>
+          <div class="ab20-doc ab20-pdoc">
+            <div class="xl-eyebrow">xLearn</div>
+            <h1>Privacy notice</h1>
+            <div class="ab20-ver"><span class="xl-tag">Version 1</span><span>Effective 1 Dec 2026</span></div>
+            <details class="ab20-disc" open>
+              <summary><svg class="xl-ico xl-ico--sm ab20-dimc" aria-hidden="true"><use href="#i-list"/></svg>Contents<svg class="xl-ico xl-ico--sm ab20-disc__chev" aria-hidden="true"><use href="#i-chev"/></svg></summary>
+              <ol>
+                <li><a href="#AB20-N2"><span>1</span>Who runs xLearn</a></li>
+                <li><a href="#AB20-N2"><span>2</span>What xLearn stores</a></li>
+                <li><a href="#AB20-N2"><span>3</span>How AI is used</a></li>
+                <li><a href="#AB20-N2"><span>4</span>What's public</a></li>
+                <li><a href="#AB20-N2"><span>5</span>Where your data lives</a></li>
+                <li><a href="#AB20-N2"><span>6</span>Your choices</a></li>
+                <li><a href="#AB20-N2"><span>7</span>Age</a></li>
+                <li><a href="#AB20-N2"><span>8</span>Changes</a></li>
+                <li><a href="#AB20-N2"><span>§</span>Terms</a></li>
+              </ol>
+            </details>
+            <p class="ab20-lede">This notice explains what xLearn keeps about you, why it keeps it, where it lives, and the choices you have.</p>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Native <code>&lt;details&gt;</code>/<code>&lt;summary&gt;</code>: keyboard and screen readers get expanded/collapsed for free. Choosing an entry jumps to its heading and closes the list. Rows are 40 px tall (44 px hit area with the gap).</li>
+          <li>From version 2 the F2 block sits between the version line and Contents.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB20 · Privacy notice / terms · drafted in ds-l-01 · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only, never imported by <code class="ds-mono">web/</code>.
+  The notice text is the <b>agent-drafted version 1</b>: it ships as drafted (D40) through l-05; the owner reviews it at the v3 opening gates and may revise it with a content PR (a substantive change bumps the version).
+  Dates (effective 1 Dec 2026; version 2 on 1 Mar 2027) and the F2 bullets are illustrative. The contact address is left out on purpose.
+</footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB19 ★ · Invite acceptance — xLearn v2 board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  /* AB19 board-local layout (prefix ab19-). Tokens only; never restyles a ds-, xl- or bd- class.
+     The auth page mirrors the live .xl-auth / .xl-auth__left / .xl-auth__right / .xl-auth__card rules
+     (web/src/styles/app.css), board-prefixed. Every rgba() tint is one theme.css already uses for the same token. */
+  .ab19-flex { flex: 1; }
+  .ab19-ic { display: inline-flex; flex: none; }
+  .ab19-teal { color: var(--ds-teal); } .ab19-dimc { color: var(--ds-dim); } .ab19-errc { color: var(--ds-err); } .ab19-okc { color: var(--ds-ok); } .ab19-warnc { color: var(--ds-warn); } .ab19-infoc { color: var(--ds-info); }
+  .ab19-mono { font-family: var(--ds-font-mono); }
+
+  /* what the browser's address bar holds once the SPA has read the fragment */
+  .ab19-addr { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-bottom: 1px solid var(--ds-line); background: var(--ds-inset);
+    font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-dim); }
+  .ab19-addr b { color: var(--ds-text); font-weight: 500; }
+  .ab19-addr__note { margin-left: auto; font-family: var(--ds-font-sans); font-size: 11.5px; color: var(--ds-dim); }
+
+  /* auth page: two columns (left pitch + right card), as the live Auth screen */
+  .ab19-auth { display: flex; min-height: 820px; background: var(--ds-bg); }
+  .ab19-left { width: 600px; flex: none; position: relative; overflow: hidden; border-right: 1px solid var(--ds-line); padding: 56px 52px; display: flex; flex-direction: column;
+    background: radial-gradient(120% 90% at 15% 0%, rgba(53,208,192,.1) 0%, transparent 55%), var(--ds-bg); }
+  .ab19-brandrow { display: flex; align-items: center; gap: 10px; }
+  .ab19-brandname { font-size: 20px; font-weight: 700; }
+  .ab19-brandname b { color: var(--ds-teal); }
+  .ab19-pitch { margin: auto 0; max-width: 440px; }
+  .ab19-pitch h2 { font-size: 34px; font-weight: 700; line-height: 1.15; }
+  .ab19-pitch > p { font-size: 15px; color: var(--ds-dim); margin-top: 12px; line-height: 1.5; }
+  .ab19-feats { display: grid; gap: 14px; margin-top: 26px; }
+  .ab19-feat { display: flex; gap: 12px; align-items: flex-start; }
+  .ab19-feat__ic { flex: none; width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: rgba(53,208,192,.14); color: var(--ds-teal); }
+  .ab19-feat b { font-size: 13.5px; }
+  .ab19-feat__d { font-size: 12.5px; color: var(--ds-dim); }
+  .ab19-loop { margin-top: 26px; background: var(--ds-panel); border: 1px solid var(--ds-line); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--ds-dim); }
+  .ab19-loop b { color: var(--ds-text); }
+  .ab19-host { font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-dim); }
+  .ab19-right { flex: 1; display: grid; place-items: center; padding: 40px; }
+  .ab19-card { width: 100%; max-width: 410px; }
+  .ab19-cardstage { display: flex; justify-content: center; padding: 26px 24px 30px; }
+
+  /* card content */
+  .ab19-h { font-size: 24px; font-weight: 700; }
+  .ab19-h2 { font-size: 22px; font-weight: 700; margin-top: 6px; }
+  .ab19-sub { font-size: 13px; color: var(--ds-dim); margin-top: 4px; line-height: 1.5; }
+  .ab19-form { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+  .ab19-help { font-size: 11.5px; color: var(--ds-dim); line-height: 1.5; }
+  .ab19-center { text-align: center; margin-top: 8px; }
+  .ab19-or { display: flex; align-items: center; gap: 10px; margin: 16px 0; font-size: 11px; color: var(--ds-dim); }
+  .ab19-or::before, .ab19-or::after { content: ""; flex: 1; height: 1px; background: var(--ds-line); }
+  .ab19-note { display: flex; align-items: flex-start; gap: 10px; margin-top: 20px; padding: 12px 14px; border-radius: 12px; background: var(--ds-inset); border: 1px solid var(--ds-line);
+    font-size: 12.5px; color: var(--ds-dim); line-height: 1.5; }
+  .ab19-note b { color: var(--ds-text); font-weight: 600; }
+  .ab19-note .ab19-ic { margin-top: 1px; }
+  .ab19-linkrow { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font-weight: 600; }
+  .ab19-foot { margin-top: 18px; display: flex; justify-content: center; gap: 14px; font-size: 12px; color: var(--ds-dim); }
+  .ab19-banner { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; padding: 11px 13px; border-radius: 9px; font-size: 12.5px; line-height: 1.5; }
+  .ab19-banner .ab19-ic { margin-top: 1px; }
+  .ab19-banner b { font-weight: 600; }
+  .ab19-banner--teal { border: 1px solid rgba(53,208,192,.45); background: rgba(53,208,192,.1); color: var(--ds-text); }
+  .ab19-banner--info { border: 1px solid rgba(106,166,255,.35); background: rgba(106,166,255,.1); color: var(--ds-text); }
+  .ab19-banner--err { border: 1px solid var(--ds-err); background: rgba(242,109,109,.08); color: var(--ds-err); }
+  .ab19-banner--warn { border: 1px solid rgba(240,180,41,.35); background: rgba(240,180,41,.08); color: var(--ds-warn); }
+  .ab19-banner a { font-weight: 600; }
+  .ab19-bannerlink { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; }
+  .ab19-alert { display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; line-height: 1.5; color: var(--ds-err); }
+  .ab19-alert .ab19-ic { margin-top: 2px; }
+  .ab19-alert a { font-weight: 600; }
+
+  /* the Sign in / Sign up segment: the live pill is ds-seg--block ds-seg--pill (web/src/styles/theme.css only) — mirrored here */
+  .ab19-seg { display: flex; width: 100%; border-radius: 999px; margin-top: 16px; }
+  .ab19-segbtn { flex: 1; height: 38px; }
+
+  /* skeleton (F2) */
+  .ab19-skel { display: block; height: 38px; border-radius: var(--ds-radius); background: var(--ds-panel-2); border: 1px solid var(--ds-line); }
+  .ab19-skel--s { height: 12px; width: 38%; border-radius: 6px; }
+  .ab19-spin { width: 15px; height: 15px; flex: none; }
+
+  /* acceptance step */
+  .ab19-steps { display: flex; align-items: center; gap: 8px; margin-bottom: 22px; }
+  .ab19-steps__bar { flex: 1; height: 2px; background: var(--ds-line-2); }
+  .ab19-acc { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+  .ab19-check { display: flex; align-items: flex-start; gap: 11px; padding: 12px 13px; border: 1px solid var(--ds-line-2); border-radius: 11px; background: var(--ds-panel-2);
+    font-size: 13.5px; line-height: 1.45; color: var(--ds-text); cursor: pointer; }
+  .ab19-check--flat { padding: 9px 2px; border: none; background: none; }
+  .ab19-check--invalid { border-color: var(--ds-err); }
+  .ab19-check--off { cursor: not-allowed; color: var(--ds-dim); }
+  .ab19-check a { font-weight: 600; display: inline-flex; align-items: center; gap: 3px; }
+  .ab19-nowrap { white-space: nowrap; }
+  .ab19-map th code { text-transform: none; letter-spacing: 0; }
+  @media (min-width: 1300px) { .ab19-span2 { grid-column: span 2; } }
+  .ab19-check__t b { font-weight: 600; }
+  .ab19-check__h { display: block; margin-top: 3px; font-size: 11.5px; color: var(--ds-dim); }
+  .ab19-check__h--on { color: var(--ds-teal); }
+  /* native checkbox, styled with tokens (theme.css has no checkbox class) */
+  .ab19-cb { appearance: none; -webkit-appearance: none; margin: 1px 0 0; width: 18px; height: 18px; flex: none; border-radius: 5px; border: 1.5px solid var(--ds-dim);
+    background: var(--ds-input-bg); display: inline-grid; place-content: center; cursor: pointer; }
+  .ab19-cb::before { content: ""; width: 10px; height: 10px; background: #06231f; transform: scale(0);
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%); }
+  .ab19-cb:checked { background: var(--ds-teal); border-color: var(--ds-teal); }
+  .ab19-cb:checked::before { transform: scale(1); }
+  .ab19-cb:disabled { opacity: .45; cursor: not-allowed; }
+  .ab19-cb--invalid { border-color: var(--ds-err); }
+  .ab19-fielderr { display: flex; align-items: center; gap: 6px; margin: -3px 2px 2px; font-size: 12px; color: var(--ds-err); }
+  .ab19-selwrap { position: relative; }
+  .ab19-sel { appearance: none; -webkit-appearance: none; padding-right: 34px; cursor: pointer; }
+  .ab19-selchev { position: absolute; right: 11px; top: 50%; margin-top: -7.5px; pointer-events: none; color: var(--ds-dim); }
+  .ab19-fs { margin: 4px 0 0; padding: 8px 13px 13px; border: 1px solid var(--ds-line-2); border-radius: 12px; }
+  .ab19-fs legend { padding: 0 6px; font-size: 12.5px; font-weight: 600; color: var(--ds-text); }
+  .ab19-fs legend span { font-weight: 500; color: var(--ds-dim); }
+  .ab19-fs__help { margin-top: 6px; padding: 10px 12px; border-radius: 10px; background: var(--ds-inset); border: 1px solid var(--ds-line); font-size: 12px; line-height: 1.55; color: var(--ds-dim); }
+  .ab19-fs__help b { color: var(--ds-text); font-weight: 600; }
+  .ab19-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+
+  /* F8 flow */
+  .ab19-flow { display: flex; align-items: stretch; flex-wrap: wrap; gap: 10px; }
+  .ab19-node { flex: 1; min-width: 190px; padding: 11px 13px; border: 1px solid var(--ds-line-2); border-radius: 10px; background: var(--ds-panel-2); font-size: 12.5px; line-height: 1.5; color: var(--ds-dim); }
+  .ab19-node b { display: block; color: var(--ds-text); font-weight: 600; margin-bottom: 3px; }
+  .ab19-node code { font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-text); overflow-wrap: anywhere; }
+  .ab19-arrow { display: grid; place-items: center; color: var(--ds-dim); flex: none; }
+  .ab19-out code { font-family: var(--ds-font-mono); font-size: 11.5px; color: var(--ds-text); }
+
+  /* mode map */
+  .ab19-map { background: var(--ds-panel); border: 1px solid var(--ds-line); border-radius: var(--ds-radius-lg); overflow: hidden; }
+  .ab19-map code { font-family: var(--ds-font-mono); font-size: 12px; color: var(--ds-text); }
+  .ab19-map a { font-family: var(--ds-font-mono); font-size: 12px; }
+
+  /* 390 px phone frames */
+  .ab19-phone { width: 390px; display: flex; flex-direction: column; background: var(--ds-bg); }
+  .ab19-phone--fixed { height: 720px; }
+  .ab19-ptop { display: flex; align-items: center; gap: 9px; height: 52px; padding: 0 16px; border-bottom: 1px solid var(--ds-line); flex: none; }
+  .ab19-ptop .ab19-brandname { font-size: 15px; }
+  .ab19-pbody { padding: 20px 16px 24px; }
+  .ab19-pscroll { flex: 1; overflow: hidden; padding: 18px 16px 0; }
+  .ab19-pin { flex: none; padding: 12px 16px 16px; border-top: 1px solid var(--ds-line); background: var(--ds-panel); display: flex; flex-direction: column; gap: 8px; }
+</style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3.5 6.5 8.5 6 8.5-6" /></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z" /><path d="M12 10v4M12 17h.01" /></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.5h.01" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" /></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9" /></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14" /></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4" /></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1" /></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H4" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5 5 1.7-5 1.7L12 16l-1.7-4.6-5-1.7 5-1.7z" /><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v6c0 4.5 3.2 7.8 7.5 9 4.3-1.2 7.5-4.5 7.5-9V6z" /><path d="m9 12 2 2 4-4" /></symbol>
+  <symbol id="i-gh" viewBox="0 0 16 16"><path fill="currentColor" stroke="none" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" /></symbol>
+</svg>
+<main class="bd-canvas">
+
+<header class="bd-head">
+  <div class="xl-eyebrow">xLearn v2 · L board · hero ★</div>
+  <h1>AB19 ★ · Invite acceptance</h1>
+  <p class="bd-lede">
+    The pre-auth page in its v2 states — <b>invite-only</b> while <code class="ds-mono">closed</code>, an <b>invite link</b> while <code class="ds-mono">invite</code>, and
+    <b>one uniform</b> invite error — then the <b>acceptance step</b> every account passes once, before the path step: <b>18+</b>, the <b>privacy notice at its
+    version</b>, the <b>region</b>, and the two <b>unticked</b> xLearn AI consents. Built and rehearsed in v2, never opened (D35): production stays
+    <code class="ds-mono">SIGNUP_MODE=closed</code> apart from one L-exit rehearsal.
+  </p>
+  <div class="bd-meta">
+    <span><b>Drafted in</b><a href="../../../docs/v2/sprints/sprint-ds-l-01.md">ds-l-01</a> (BP3; the merge is the freeze, D40)</span>
+    <span><b>Consumed by</b><a href="../../../docs/v2/sprints/sprint-l-05.md">l-05</a> (<code class="ds-mono">Auth.tsx</code> modes, <code class="ds-mono">components/auth/InviteNotice.tsx</code> + <code class="ds-mono">Acceptance.tsx</code>) against <a href="../../../docs/v2/sprints/sprint-l-03.md">l-03</a>'s backend</span>
+    <span><b>Frozen before</b>L-A</span>
+    <span><b>Sources</b>
+      <a href="../../../docs/adr/0033-invite-only-admission-and-owner-admin.md#3-modes-enforcement-and-seats">ADR-0033 §3</a> ·
+      <a href="../../../docs/adr/0033-invite-only-admission-and-owner-admin.md#5-invites-mint-and-redeem">§5</a> ·
+      <a href="../../../docs/adr/0033-invite-only-admission-and-owner-admin.md#6-the-acceptance-step-onboarding-step-0-l-a">§6</a> · §7 ·
+      <a href="../../../docs/adr/0033-invite-only-admission-and-owner-admin.md#10-no-web-admin-no-waitlist">§10</a> ·
+      <a href="../../../docs/adr/0031-platform-ai-and-two-tier-keys.md#4-retention-and-privacy-owner-d24">ADR-0031 §4</a> ·
+      R-AD3 · R-AD4 · R-AD8 · R-AI6 · D13 · D24 · D33 · D35</span>
+  </div>
+  <nav class="bd-toc" aria-label="Frames">
+    <a href="#AB19-F1">F1</a><a href="#AB19-F1b">F1b</a><a href="#AB19-F2">F2</a><a href="#AB19-F3">F3</a><a href="#AB19-F4">F4</a><a href="#AB19-F5">F5</a><a href="#AB19-F6">F6</a><a href="#AB19-F7">F7</a><a href="#AB19-F8">F8</a>
+    <a href="#AB19-F9">F9 ★</a><a href="#AB19-F10">F10</a><a href="#AB19-F11">F11</a><a href="#AB19-F12">F12</a><a href="#AB19-F13">F13</a><a href="#AB19-F14">F14 · 390 px</a>
+  </nav>
+</header>
+
+<!-- ============================================ rules + mode map -->
+<section class="bd-section" aria-labelledby="sec-rules">
+  <h2 class="bd-section__h" id="sec-rules">Board-wide rules <small>apply to every frame</small></h2>
+  <div class="bd-strip">
+    <span><span class="bd-num">1</span> <b>The code rides only in the URL fragment.</b> The SPA stashes it in <code class="ds-mono">sessionStorage</code> and calls <code class="ds-mono">history.replaceState</code> before anything renders, so no frame shows a code.</span>
+    <span><span class="bd-num">2</span> <b>Invite errors never say why.</b> One <code class="ds-mono">invite_invalid</code> text for unknown, expired, used and revoked (F4).</span>
+    <span><span class="bd-num">3</span> <b>No create path while <code class="ds-mono">closed</code></b> (or <code class="ds-mono">invite</code> with no code): hidden, not disabled.</span>
+    <span><span class="bd-num">4</span> <b>Consents start unticked</b>, re-acceptance included; ticked only from an existing live grant (F11).</span>
+    <span><span class="bd-num">5</span> <b>No web admin and no waitlist</b> (D33): the only ask is a <code class="ds-mono">mailto:</code> "Request an invite".</span>
+  </div>
+  <div class="ab19-map bd-scroll" style="margin-top:18px">
+    <table class="xl-table" aria-label="Which frame each mode shows">
+      <thead><tr><th><code>GET /api/auth/config</code> → <code>signup</code></th><th>No invite in the link</th><th><code>#invite=&lt;code&gt;</code> in the link</th><th>Error redirects (<code>/xlearn/auth?error=…</code>)</th></tr></thead>
+      <tbody>
+        <tr><td><b><code>closed</code></b> (production today)</td><td><a href="#AB19-F1">F1</a> sign-in only</td><td><a href="#AB19-F1b">F1b</a> stashed, <b>not checked</b></td><td rowspan="2"><code>invite_required</code> → <a href="#AB19-F5">F5</a> · <code>invite_invalid</code> → <a href="#AB19-F4">F4</a> · <code>no_seats</code> → <a href="#AB19-F6">F6</a> · <code>signup_closed</code>, <code>account_exists_password</code> → today's copy</td></tr>
+        <tr><td><b><code>invite</code></b> (the L-exit rehearsal; v3 opening)</td><td><a href="#AB19-F1">F1</a> (same frame)</td><td><a href="#AB19-F2">F2</a> checking → <a href="#AB19-F3">F3</a> valid, or <a href="#AB19-F4">F4</a> invalid</td></tr>
+        <tr><td><b><code>open</code></b> (compose and dev only, needs <code>DEV_AUTH</code>)</td><td colspan="3">Today's page, unchanged (Sign in · Sign up pill); an invite in the link is ignored.</td></tr>
+        <tr><td><b>Signed in, not accepted</b></td><td colspan="3">Every account, once: <a href="#AB19-F9">F9</a> (first) · <a href="#AB19-F11">F11</a> (owner / tester) · <a href="#AB19-F12">F12</a> (after a notice-version bump). Until then the gateway answers <code>403 acceptance_required</code> on every non-onboarding API.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================ A · invite-only -->
+<section class="bd-section" aria-labelledby="sec-a">
+  <h2 class="bd-section__h" id="sec-a">A · Invite-only sign-in <small>F1</small></h2>
+  <p class="bd-section__p">The sign-in page with <b>no create path</b>: no Sign in / Sign up segment, no Create account, no waitlist. The form comes first; GitHub is for accounts already connected to it. Below: <b>"xLearn is invite-only."</b> and a <code class="ds-mono">mailto:</code> <b>Request an invite</b>.</p>
+
+  <article class="bd-frame" id="AB19-F1">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB19-F1</span><span class="bd-frame__title">· Auth · invite-only</span><span class="bd-frame__state">· <code class="ds-mono">closed</code>, or <code class="ds-mono">invite</code> with no stashed code · D13 · D33 · ADR-0033 §3, §10 · R-AD8</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--change">changed</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="ab19-addr"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg><span>projects.sujaykumar.dev<b>/xlearn/auth</b></span></div>
+        <div class="ab19-auth">
+          <div class="ab19-left">
+            <div class="ab19-brandrow"><span class="xl-brand__mark" style="width:36px;height:36px;font-size:19px">x</span><span class="ab19-brandname">x<b>Learn</b></span></div>
+            <div class="ab19-pitch">
+              <h2>Master the method,<br>not just the problems.</h2>
+              <p>A guided, self-paced course that enforces how you learn — timed attempts, gated hints, and spaced revision that actually sticks.</p>
+              <div class="ab19-feats">
+                <div class="ab19-feat"><span class="ab19-feat__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg></span><div><b>Guided problem stages</b><div class="ab19-feat__d">Attempt → hint → solution, gated by a timer.</div></div></div>
+                <div class="ab19-feat"><span class="ab19-feat__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg></span><div><b>Five-touch spaced revision</b><div class="ab19-feat__d">Re-solve on Day 1 · 3 · 7 · 21 · 45 — or reset.</div></div></div>
+                <div class="ab19-feat"><span class="ab19-feat__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-target"/></svg></span><div><b>Scored mock interviews</b><div class="ab19-feat__d">45-min rounds on a 7-dimension rubric.</div></div></div>
+              </div>
+              <div class="ab19-loop"><span class="xl-touch"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d xl-touch__d--mock"></span><span class="xl-touch__d xl-touch__d--mock"></span></span><span>The signature retention loop — <b>151 problems</b>, remembered.</span></div>
+            </div>
+            <div class="ab19-host">projects.sujaykumar.dev/xlearn</div>
+          </div>
+          <div class="ab19-right">
+            <div class="ab19-card">
+              <h2 class="ab19-h">Sign in to xLearn</h2>
+              <p class="ab19-sub">Use your email or username and password, or GitHub if your account is connected to it.</p>
+              <form class="ab19-form" aria-label="Sign in">
+                <div class="ds-field"><label class="ds-field__label" for="f1-id">Email or username</label><input id="f1-id" class="ds-input" type="text" placeholder="you@example.com or your-handle" autocomplete="username"></div>
+                <div class="ds-field"><label class="ds-field__label" for="f1-pw">Password</label><input id="f1-pw" class="ds-input" type="password" placeholder="••••••••••" autocomplete="current-password"></div>
+                <button type="button" class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg" style="margin-top:2px">Log in</button>
+              </form>
+              <div class="ab19-or">or</div>
+              <button type="button" class="ds-btn ds-btn--secondary ds-btn--block"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gh"/></svg> Continue with GitHub</button>
+              <p class="ab19-help ab19-center">Only for accounts already connected to GitHub.</p>
+              <div class="ab19-note">
+                <span class="ab19-ic ab19-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-mail"/></svg></span>
+                <div><b>xLearn is invite-only.</b> New accounts are created from an invite link.<br><a class="ab19-linkrow" href="mailto:?subject=xLearn%20invite%20request">Request an invite <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-ext"/></svg></a></div>
+              </div>
+              <div class="ab19-foot"><a href="AB20-privacy-notice.html#AB20-F1">Privacy notice</a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>State</h4>
+        <ul><li><code>GET /api/auth/config</code> → <code>{"signup":"closed"}</code>, or <code>{"signup":"invite"}</code> with <b>no stashed code</b> (a visitor during the L-exit rehearsal without a link): <b>the same frame for both</b>. l-03 reports the <b>effective</b> mode (<code>open</code> without <code>DEV_AUTH</code> reads <code>closed</code>).</li>
+          <li><b>No create path, hidden rather than disabled</b>: no Sign in / Sign up segment, no Create account button, no "Sign up" link. Sign-in errors keep today's copy (<code>invalid_credentials</code> "Incorrect email/username or password.").</li>
+          <li><b>Continue with GitHub</b> is for existing accounts. A GitHub account with no xLearn account gets today's <code>signup_closed</code> copy while <code>closed</code>, and F5 while <code>invite</code>.</li>
+          <li>The form now comes <b>before</b> GitHub (the plan's order; today GitHub is on top).</li></ul></section>
+      <section><h4>Request an invite · privacy</h4>
+        <ul><li><code>mailto:</code> the owner's public contact address with subject <b>"xLearn invite request"</b>. The address is l-05's build-time <code>INVITE_REQUEST_MAILTO</code> (<code>web/src/lib/contact.ts</code>); the board leaves it out. Opens the mail app; nothing is sent by xLearn.</li>
+          <li><b>No form, no waitlist, no admin link</b> (D33, ADR-0033 §10, R-AD8).</li>
+          <li>Footer <b>Privacy notice</b> → <code>/xlearn/privacy</code> (AB20), readable signed out.</li></ul></section>
+      <section><h4>a11y · narrow</h4>
+        <ul><li>Focus order: identifier → password → Log in → Continue with GitHub → Request an invite → Privacy notice. Real <code>&lt;label&gt;</code>s; Enter submits Log in.</li>
+          <li>Contrast: text 15:1; helper text in <code>--ds-dim</code> 6.8:1 (the live helpers use <code>--ds-muted</code>, 3.4:1: l-05 draws them in <code>--ds-dim</code>); teal links 9:1; primary button 8.6:1. Placeholders keep the theme's <code>--ds-muted</code>; the label carries the meaning.</li>
+          <li>&lt; 900 px the pitch panel drops, as today; &lt; 1024 px see N1.</li></ul></section>
+    </aside>
+  </article>
+
+</section>
+
+<!-- ============================================ B · invite link -->
+<section class="bd-section" aria-labelledby="sec-b">
+  <h2 class="bd-section__h" id="sec-b">B · Invite links <small>F1b – F8</small></h2>
+  <p class="bd-section__p">The owner mints a single-use link (<code class="ds-mono">…/xlearn/auth#invite=&lt;22 chars&gt;</code>, 7-day TTL, 30-day maximum) and sends it himself; xLearn sends no email. While <code class="ds-mono">closed</code> the link is only stashed (F1b). While <code class="ds-mono">invite</code> the page checks it, then opens on <b>Sign up</b> (F2, F3). Every invalid cause shows <b>one</b> text (F4).</p>
+  <div class="bd-grid">
+    <!-- F1b -->
+    <article class="bd-frame" id="AB19-F1b">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB19-F1b</span><span class="bd-frame__title">· Invite link while <code class="ds-mono">closed</code></span><span class="bd-frame__state">· stashed, not checked · ADR-0033 §5, §10</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab19-addr"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg><span>projects.sujaykumar.dev<b>/xlearn/auth</b></span><span class="ab19-addr__note">fragment dropped</span></div>
+        <div class="ab19-cardstage">
+          <div class="ab19-card">
+            <h2 class="ab19-h">Sign in to xLearn</h2>
+            <div class="ab19-banner ab19-banner--info" role="status">
+              <span class="ab19-ic ab19-infoc"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-info"/></svg></span>
+              <div>Invites aren't being accepted right now. Sign in if you already have an account.<br><a class="ab19-bannerlink" href="mailto:?subject=xLearn%20invite%20request">Request an invite <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-ext"/></svg></a></div>
+            </div>
+            <form class="ab19-form" aria-label="Sign in">
+              <div class="ds-field"><label class="ds-field__label" for="f1b-id">Email or username</label><input id="f1b-id" class="ds-input" type="text" placeholder="you@example.com or your-handle"></div>
+              <div class="ds-field"><label class="ds-field__label" for="f1b-pw">Password</label><input id="f1b-pw" class="ds-input" type="password" placeholder="••••••••••"></div>
+              <button type="button" class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg">Log in</button>
+            </form>
+            <div class="ab19-or">or</div>
+            <button type="button" class="ds-btn ds-btn--secondary ds-btn--block"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gh"/></svg> Continue with GitHub</button>
+            <div class="ab19-foot"><a href="AB20-privacy-notice.html#AB20-F1">Privacy notice</a></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li><code>#invite=&lt;code&gt;</code> arrives while the mode is <code>closed</code>: the code is stashed and the fragment dropped (<code>replaceState</code>) exactly as in F2, but <b>not checked</b> — no <code>/api/invites/check</code> call, so nothing is learnt about the code.</li>
+          <li>F1's card with an info note in place of the invite-only box (its <b>Request an invite</b> moves into the note). <b>No Create account.</b> The stash stays for the tab; nothing reads it while <code>closed</code>.</li>
+          <li><code>role="status"</code>; info-banner text 14:1 on its tint.</li></ul>
+      </aside>
+    </article>
+    <!-- F2 -->
+    <article class="bd-frame" id="AB19-F2">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB19-F2</span><span class="bd-frame__title">· Invite link · checking</span><span class="bd-frame__state">· ADR-0033 §5 (fragment, never logged)</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab19-addr"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg><span>projects.sujaykumar.dev<b>/xlearn/auth</b></span><span class="ab19-addr__note">fragment dropped</span></div>
+        <div class="ab19-cardstage">
+          <div class="ab19-card" aria-busy="true">
+            <h2 class="ab19-h">Welcome to xLearn</h2>
+            <div class="ab19-banner ab19-banner--teal" role="status" aria-live="polite">
+              <svg class="ab19-spin ds-spin ab19-teal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9"/></svg>
+              <div>Checking your invite…</div>
+            </div>
+            <div class="ab19-form" aria-hidden="true">
+              <span class="ab19-skel ab19-skel--s"></span><span class="ab19-skel"></span>
+              <span class="ab19-skel ab19-skel--s"></span><span class="ab19-skel"></span>
+              <span class="ab19-skel" style="height:42px;margin-top:4px"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>On mount the SPA matches <code>#invite=([A-Za-z0-9_-]{22})</code>, keeps the code in <code>sessionStorage["xl_invite"]</code> (in-memory fallback when storage is blocked) and <b>always</b> calls <code>history.replaceState</code> for any <code>#invite=</code> fragment, valid-looking or not. The fragment never reaches Traefik logs or a <code>Referer</code>.</li>
+          <li>Then <code>POST /api/invites/check {code}</code> → <code>{valid, expires_at}</code> only (L2: 5/min per IP). Valid → F3; not valid → F4.</li>
+          <li>If the check itself fails (429, 5xx, network) the banner reads "Couldn't check your invite — try again." with <b>[Try again]</b>; the invite is never shown as invalid for that, and Sign up stays hidden until a check succeeds.</li>
+          <li><code>aria-live="polite"</code> announces "Checking your invite…"; the form skeleton is <code>aria-hidden</code>. The spinner stops under <code>prefers-reduced-motion</code> (the text stays).</li></ul>
+      </aside>
+    </article>
+
+    <!-- F3 -->
+    <article class="bd-frame" id="AB19-F3">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB19-F3</span><span class="bd-frame__title">· Invite link · valid</span><span class="bd-frame__state">· opens on Sign up · ADR-0033 §5 · R-AD3</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab19-addr"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg><span>projects.sujaykumar.dev<b>/xlearn/auth</b></span><span class="ab19-addr__note">fragment dropped</span></div>
+        <div class="ab19-cardstage">
+          <div class="ab19-card">
+            <h2 class="ab19-h">Welcome to xLearn</h2>
+            <div class="ab19-banner ab19-banner--teal" role="status">
+              <span class="ab19-ic ab19-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-mail"/></svg></span>
+              <div>You've been invited to xLearn. This invite expires on <b class="ab19-nowrap">12 Oct 2026</b>.</div>
+            </div>
+            <div class="ds-seg ab19-seg" role="group" aria-label="Sign in or sign up">
+              <button type="button" class="ds-seg__btn ab19-segbtn" aria-pressed="false">Sign in</button>
+              <button type="button" class="ds-seg__btn ds-seg__btn--on ab19-segbtn" aria-pressed="true">Sign up</button>
+            </div>
+            <form class="ab19-form" style="margin-top:14px" aria-label="Create account">
+              <div class="ds-field"><label class="ds-field__label" for="f3-em">Email</label><input id="f3-em" class="ds-input" type="email" placeholder="you@example.com" autocomplete="email"></div>
+              <div class="ds-field"><label class="ds-field__label" for="f3-pw">Password</label><input id="f3-pw" class="ds-input" type="password" placeholder="••••••••••" autocomplete="new-password" aria-describedby="f3-pwh"><span class="ab19-help" id="f3-pwh">At least 8 characters.</span></div>
+              <button type="button" class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg">Create account</button>
+            </form>
+            <div class="ab19-or">or</div>
+            <button type="button" class="ds-btn ds-btn--secondary ds-btn--block"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gh"/></svg> Continue with GitHub</button>
+            <p class="ab19-help ab19-center" style="margin-top:14px">Next, you'll confirm you're 18 or older and accept the <a href="AB20-privacy-notice.html#AB20-F1">privacy notice</a>.</p>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Opens on <b>Sign up</b> (the segment keeps today's labels, Sign in · Sign up; the plan's "Create account" is the submit). Switching to Sign in keeps the banner and the stash.</li>
+          <li>The date is <code>expires_at</code> from the check, in the viewer's zone ("12 Oct 2026"). No code, id or inviter name is shown.</li>
+          <li><b>Create account</b> → <code>POST /api/auth/signup {email, password, invite}</code>: one transaction takes the seat lock, redeems the invite <b>before</b> checking the email, creates a <code>learner</code> (<code>admitted_via=invite</code>) → F9. Errors: F4, F6, F7; <code>weak_password</code> and <code>invalid_email</code> keep today's copy.</li>
+          <li><b>Continue with GitHub</b> posts the hidden <code>invite</code> field → F8.</li>
+          <li>Banner text 14:1 on the teal tint; <code>role="status"</code> when it appears. Focus starts on Email.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F4 -->
+    <article class="bd-frame" id="AB19-F4">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB19-F4</span><span class="bd-frame__title">· <code class="ds-mono">invite_invalid</code> (uniform)</span><span class="bd-frame__state">· every cause · ADR-0033 §5, §9</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab19-cardstage">
+          <div class="ab19-card">
+            <h2 class="ab19-h">Sign in to xLearn</h2>
+            <div class="ab19-banner ab19-banner--err" role="alert">
+              <span class="ab19-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span>
+              <div>This invite link isn't valid. It may have expired, already been used, or been revoked. Ask the person who invited you for a new link.<br><a class="ab19-bannerlink" href="mailto:?subject=xLearn%20invite%20request">Request an invite <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-ext"/></svg></a></div>
+            </div>
+            <form class="ab19-form" aria-label="Sign in">
+              <div class="ds-field"><label class="ds-field__label" for="f4-id">Email or username</label><input id="f4-id" class="ds-input" type="text" placeholder="you@example.com or your-handle"></div>
+              <div class="ds-field"><label class="ds-field__label" for="f4-pw">Password</label><input id="f4-pw" class="ds-input" type="password" placeholder="••••••••••"></div>
+              <button type="button" class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg">Log in</button>
+            </form>
+            <div class="ab19-or">or</div>
+            <button type="button" class="ds-btn ds-btn--secondary ds-btn--block"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gh"/></svg> Continue with GitHub</button>
+            <div class="ab19-foot"><a href="AB20-privacy-notice.html#AB20-F1">Privacy notice</a></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li><b>One frame, identical for every cause</b>: an unknown, expired, used or revoked code, at <b>check</b> (<code>{valid:false}</code>) or at <b>redeem</b> (<code>400 invite_invalid</code> on sign-up, <code>?error=invite_invalid</code> from the GitHub callback), and a GitHub email that differs from the invite's (F8). No date, no "used" or "revoked" state, no timing difference the UI adds.</li>
+          <li>Create account is <b>hidden</b>; Sign in stays. <code>clearInvite()</code> drops the stash.</li>
+          <li><code>role="alert"</code>; focus stays at the top of the card so the alert is read first. err 6.1:1 on the err tint, with an icon.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F5 -->
+    <article class="bd-frame" id="AB19-F5">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB19-F5</span><span class="bd-frame__title">· <code class="ds-mono">invite_required</code></span><span class="bd-frame__state">· <code class="ds-mono">/xlearn/auth?error=invite_required</code> · ADR-0033 §5</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab19-cardstage">
+          <div class="ab19-card">
+            <h2 class="ab19-h">Sign in to xLearn</h2>
+            <div class="ab19-banner ab19-banner--err" role="alert">
+              <span class="ab19-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span>
+              <div>You need an invite to create an account. Open the invite link you were sent, or sign in if you already have an account.</div>
+            </div>
+            <form class="ab19-form" aria-label="Sign in">
+              <div class="ds-field"><label class="ds-field__label" for="f5-id">Email or username</label><input id="f5-id" class="ds-input" type="text" placeholder="you@example.com or your-handle"></div>
+              <div class="ds-field"><label class="ds-field__label" for="f5-pw">Password</label><input id="f5-pw" class="ds-input" type="password" placeholder="••••••••••"></div>
+              <button type="button" class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg">Log in</button>
+            </form>
+            <div class="ab19-or">or</div>
+            <button type="button" class="ds-btn ds-btn--secondary ds-btn--block"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gh"/></svg> Continue with GitHub</button>
+            <div class="ab19-note">
+              <span class="ab19-ic ab19-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-mail"/></svg></span>
+              <div><b>xLearn is invite-only.</b> New accounts are created from an invite link.<br><a class="ab19-linkrow" href="mailto:?subject=xLearn%20invite%20request">Request an invite <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-ext"/></svg></a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>A <b>new</b> GitHub user with no invite returns from the callback to <code>?error=invite_required</code>; nothing is created. The same copy maps the API code <code>invite_required</code> (an email sign-up with no code, reachable only from a stale page).</li>
+          <li>F1's card (the invite-only box stays) with the error on top. <code>role="alert"</code>.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F6 -->
+    <article class="bd-frame" id="AB19-F6">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB19-F6</span><span class="bd-frame__title">· No seats</span><span class="bd-frame__state">· redeem refused · ADR-0033 §3</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--flag">code to confirm: no_seats</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab19-cardstage">
+          <div class="ab19-card">
+            <h2 class="ab19-h">Welcome to xLearn</h2>
+            <div class="ab19-banner ab19-banner--teal">
+              <span class="ab19-ic ab19-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-mail"/></svg></span>
+              <div>You've been invited to xLearn. This invite expires on <b class="ab19-nowrap">12 Oct 2026</b>.</div>
+            </div>
+            <div class="ds-seg ab19-seg" role="group" aria-label="Sign in or sign up">
+              <button type="button" class="ds-seg__btn ab19-segbtn" aria-pressed="false">Sign in</button>
+              <button type="button" class="ds-seg__btn ds-seg__btn--on ab19-segbtn" aria-pressed="true">Sign up</button>
+            </div>
+            <form class="ab19-form" style="margin-top:14px" aria-label="Create account">
+              <div class="ds-field"><label class="ds-field__label" for="f6-em">Email</label><input id="f6-em" class="ds-input" type="email" value="you@example.com"></div>
+              <div class="ds-field"><label class="ds-field__label" for="f6-pw">Password</label><input id="f6-pw" class="ds-input" type="password" value="correct-horse"></div>
+              <div class="ab19-banner ab19-banner--warn" role="alert" style="margin-top:2px">
+                <span class="ab19-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-clock"/></svg></span>
+                <div>xLearn is full right now, so this invite can't be used yet. It stays valid until 12 Oct 2026 — try again later, or ask the person who invited you.</div>
+              </div>
+              <button type="button" class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg">Create account</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Redeem re-checks <code>seats_used ≤ SEAT_CAP</code> under the seat lock (the invite already holds its seat, so lowering the cap freezes outstanding invites: the R0 <b>seat-freeze</b> lever). The transaction rolls back: <b>the invite is not consumed</b> and the stash is kept.</li>
+          <li>API code <b><code>no_seats</code></b> (email path) and <code>?error=no_seats</code> (GitHub path, same copy at the top of the card). l-03 defines the code; <b>flagged</b> (PR "Decisions to confirm" #1).</li>
+          <li>Amber, not red: the learner did nothing wrong. <code>role="alert"</code>; warn 9.3:1 on its tint, with an icon. The form keeps its values; Create account retries.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F7 -->
+    <article class="bd-frame" id="AB19-F7">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB19-F7</span><span class="bd-frame__title">· Email already registered</span><span class="bd-frame__state">· invite not consumed · ADR-0033 §5, §9</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--change">changed copy</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab19-cardstage">
+          <div class="ab19-card">
+            <h2 class="ab19-h">Welcome to xLearn</h2>
+            <div class="ab19-banner ab19-banner--teal">
+              <span class="ab19-ic ab19-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-mail"/></svg></span>
+              <div>You've been invited to xLearn. This invite expires on <b class="ab19-nowrap">12 Oct 2026</b>.</div>
+            </div>
+            <div class="ds-seg ab19-seg" role="group" aria-label="Sign in or sign up">
+              <button type="button" class="ds-seg__btn ab19-segbtn" aria-pressed="false">Sign in</button>
+              <button type="button" class="ds-seg__btn ds-seg__btn--on ab19-segbtn" aria-pressed="true">Sign up</button>
+            </div>
+            <form class="ab19-form" style="margin-top:14px" aria-label="Create account">
+              <div class="ds-field"><label class="ds-field__label" for="f7-em">Email</label><input id="f7-em" class="ds-input ds-input--invalid" type="email" value="you@example.com" aria-invalid="true" aria-describedby="f7-err"></div>
+              <div class="ds-field"><label class="ds-field__label" for="f7-pw">Password</label><input id="f7-pw" class="ds-input" type="password" value="correct-horse"></div>
+              <p class="ab19-alert" id="f7-err" role="alert"><span class="ab19-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span>An account with this email already exists. <a href="#AB19-F1">Sign in instead</a> — your invite hasn't been used.</span></p>
+              <button type="button" class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg">Create account</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Today's <code>email_taken</code> reaches the SPA only <b>after</b> the invite passed (the invite is checked before the email). The transaction rolls back, so <b>the invite is not consumed</b>. That an invite holder can learn an email is taken is the accepted leak (ADR-0033 §9).</li>
+          <li>"Sign in instead" switches the segment to Sign in with the email kept. Replaces today's "That email is already registered — switch to Sign in." in <code>invite</code> mode.</li>
+          <li>The field is <code>aria-invalid</code> with <code>aria-describedby</code> → the alert.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F8 -->
+    <article class="bd-frame ab19-span2" id="AB19-F8">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB19-F8</span><span class="bd-frame__title">· GitHub path with an invite</span><span class="bd-frame__state">· behaviour frame · ADR-0033 §5, §2 (no auto-link into password accounts)</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag bd-tag--flag">email mismatch: to confirm</span></span></header>
+      <div class="bd-frame__body">
+        <div class="bd-pad">
+          <div class="ab19-flow">
+            <div class="ab19-node"><b>1 · F3 · Continue with GitHub</b>The form posts to <code>/api/auth/github/start</code> with a hidden <code>&lt;input name="invite"&gt;</code> read from the stash.</div>
+            <div class="ab19-arrow"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></div>
+            <div class="ab19-node"><b>2 · identity</b>Keeps the invite in the existing HttpOnly <code>oauthTx</code> cookie (10 min) with the OAuth state. Never in the URL.</div>
+            <div class="ab19-arrow"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></div>
+            <div class="ab19-node"><b>3 · GitHub</b>The learner approves; GitHub returns to the callback with a verified email.</div>
+            <div class="ab19-arrow"><svg class="xl-ico" aria-hidden="true"><use href="#i-arrow"/></svg></div>
+            <div class="ab19-node"><b>4 · callback</b>Existing account? Sign in. New account? Redeem inside the create transaction (seat lock → invite → email → create).</div>
+          </div>
+          <div class="bd-scroll" style="margin-top:16px">
+            <table class="xl-table ab19-out" aria-label="GitHub callback outcomes">
+              <thead><tr><th>Case at the callback</th><th>Result</th><th>Lands on</th></tr></thead>
+              <tbody>
+                <tr><td><b>New</b> GitHub user, invite valid (and, if the invite names an email, GitHub's verified email equals it)</td><td>Account created (<code>learner</code>, <code>admitted_via=invite</code>); invite redeemed in the same transaction; stash cleared</td><td><a href="#AB19-F9">F9</a> acceptance step</td></tr>
+                <tr><td><b>Existing</b> account already connected to this GitHub id</td><td>Signs in. <b>The invite is untouched</b> (not redeemed; it stays valid)</td><td>The app, or F9 / F12 if acceptance is due</td></tr>
+                <tr><td><b>New</b> user, the invite names an email and GitHub's verified email <b>differs</b></td><td>Nothing created; the invite is not consumed</td><td><a href="#AB19-F4">F4</a> the <b>uniform</b> <code>invite_invalid</code> — conservative reading, flagged (Decisions to confirm #2)</td></tr>
+                <tr><td><b>New</b> user, invite unknown / expired / used / revoked</td><td>Nothing created</td><td><a href="#AB19-F4">F4</a> via <code>?error=invite_invalid</code></td></tr>
+                <tr><td><b>New</b> user, seats full</td><td>Nothing created; invite kept</td><td><a href="#AB19-F6">F6</a> via <code>?error=no_seats</code></td></tr>
+                <tr><td><b>New</b> user, no invite (cookie expired after 10 min, or none sent)</td><td>Nothing created</td><td><a href="#AB19-F5">F5</a> via <code>?error=invite_required</code></td></tr>
+                <tr><td>GitHub's email matches an account that has a <b>password</b></td><td>No auto-link (§2, v1.5.2)</td><td>Today's <code>account_exists_password</code> copy</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>No new screen: the outcomes land on F4 / F5 / F6 / F9 or the app. The hidden field is rendered only with a valid, checked code (l-05 test). On the email path the invite's email is <b>not</b> enforced (a typed email is unverified, ADR-0033 §5).</li>
+          <li>An existing account signing in through an invite link doesn't clear the stash; the next sign-up in that tab would reuse it (single use still holds at redeem).</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================ C · acceptance -->
+<section class="bd-section" aria-labelledby="sec-c">
+  <h2 class="bd-section__h" id="sec-c">C · The acceptance step ★ <small>F9 – F13 · onboarding step 0</small></h2>
+  <p class="bd-section__p">Every account passes it <b>once</b>, before the path step — the owner and testers included — and again (notice only) after a notice-version bump. Until it's done the gateway answers <code class="ds-mono">403 acceptance_required</code> on every non-onboarding API. It joins today's four onboarding steps (path, budget, username, coach), so the stepper reads <b>"Step 1 of 5"</b>.</p>
+
+  <article class="bd-frame" id="AB19-F9">
+    <header class="bd-frame__label"><span class="bd-frame__id">AB19-F9 ★</span><span class="bd-frame__title">· Acceptance step</span><span class="bd-frame__state">· first acceptance, invited learner · ADR-0033 §6 · ADR-0031 §4 · R-AD4 · R-AI6 · D24</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new · hero</span><span class="bd-tag bd-tag--flag">consents: from M4 (l-05, v1.17.0)</span></span></header>
+    <div class="bd-frame__body">
+      <div class="bd-desk">
+        <div class="ab19-addr"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-lock"/></svg><span>projects.sujaykumar.dev<b>/xlearn/auth</b></span></div>
+        <div class="ab19-auth" style="min-height:900px">
+          <div class="ab19-left">
+            <div class="ab19-brandrow"><span class="xl-brand__mark" style="width:36px;height:36px;font-size:19px">x</span><span class="ab19-brandname">x<b>Learn</b></span></div>
+            <div class="ab19-pitch">
+              <h2>Master the method,<br>not just the problems.</h2>
+              <p>A guided, self-paced course that enforces how you learn — timed attempts, gated hints, and spaced revision that actually sticks.</p>
+              <div class="ab19-feats">
+                <div class="ab19-feat"><span class="ab19-feat__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-code"/></svg></span><div><b>Guided problem stages</b><div class="ab19-feat__d">Attempt → hint → solution, gated by a timer.</div></div></div>
+                <div class="ab19-feat"><span class="ab19-feat__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-refresh"/></svg></span><div><b>Five-touch spaced revision</b><div class="ab19-feat__d">Re-solve on Day 1 · 3 · 7 · 21 · 45 — or reset.</div></div></div>
+                <div class="ab19-feat"><span class="ab19-feat__ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-target"/></svg></span><div><b>Scored mock interviews</b><div class="ab19-feat__d">45-min rounds on a 7-dimension rubric.</div></div></div>
+              </div>
+              <div class="ab19-loop"><span class="xl-touch"><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--pass"></span><span class="xl-touch__d xl-touch__d--due"></span><span class="xl-touch__d xl-touch__d--mock"></span><span class="xl-touch__d xl-touch__d--mock"></span></span><span>The signature retention loop — <b>151 problems</b>, remembered.</span></div>
+            </div>
+            <div class="ab19-host">projects.sujaykumar.dev/xlearn</div>
+          </div>
+          <div class="ab19-right">
+            <div class="ab19-card">
+              <div class="ab19-steps" aria-hidden="true"><span class="xl-touch__d xl-touch__d--due"></span><span class="ab19-steps__bar"></span><span class="xl-touch__d"></span><span class="ab19-steps__bar"></span><span class="xl-touch__d"></span><span class="ab19-steps__bar"></span><span class="xl-touch__d"></span><span class="ab19-steps__bar"></span><span class="xl-touch__d"></span></div>
+              <div class="xl-eyebrow">Step 1 of 5</div>
+              <h2 class="ab19-h2" id="f9-t">Before you start</h2>
+              <p class="ab19-sub">Confirm a few things once. The xLearn AI choices are optional.</p>
+              <form class="ab19-acc" aria-labelledby="f9-t">
+                <label class="ab19-check"><input type="checkbox" class="ab19-cb" aria-required="true"><span class="ab19-check__t">I'm 18 or older.</span></label>
+                <label class="ab19-check"><input type="checkbox" class="ab19-cb" aria-required="true"><span class="ab19-check__t">I've read the <a href="AB20-privacy-notice.html#AB20-F1" target="_blank" rel="noopener">privacy notice <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-ext"/></svg></a> (version 1, effective 1 Dec 2026) and agree to it.</span></label>
+                <div class="ds-field" style="margin-top:4px">
+                  <label class="ds-field__label" for="f9-region">Where do you live?</label>
+                  <div class="ab19-selwrap"><select id="f9-region" class="ds-input ab19-sel" aria-describedby="f9-regh"><option>India</option><option>Germany</option><option>United Kingdom</option><option>United States</option></select><svg class="xl-ico xl-ico--sm ab19-selchev" aria-hidden="true"><use href="#i-chev"/></svg></div>
+                  <span class="ab19-help" id="f9-regh">Some features depend on local law — for example, voice mock interviews.</span>
+                </div>
+                <fieldset class="ab19-fs" aria-describedby="f9-aih">
+                  <legend>xLearn AI <span>(optional)</span></legend>
+                  <label class="ab19-check ab19-check--flat"><input type="checkbox" class="ab19-cb"><span class="ab19-check__t"><b>xLearn AI reviews my graded work</b> — grade suggestions and feedback on work you submit.</span></label>
+                  <label class="ab19-check ab19-check--flat ab19-check--off"><input type="checkbox" class="ab19-cb" disabled aria-describedby="f9-c2h"><span class="ab19-check__t">…and also reviews my passing solutions for improvement notes.<span class="ab19-check__h" id="f9-c2h">Available once the first is ticked.</span></span></label>
+                  <p class="ab19-fs__help" id="f9-aih"><b>Off unless you tick them.</b> If on, your work is sent to Anthropic, processed outside India, kept by them for up to 30 days and never used for training. Change this any time in Settings. With these off, you grade your own work.</p>
+                </fieldset>
+                <div class="ab19-actions">
+                  <button type="button" class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg">Continue <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+                  <button type="button" class="ds-btn ds-btn--ghost ds-btn--block"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-logout"/></svg> Sign out</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="bd-notes bd-notes--cols">
+      <section><h4>Gate</h4>
+        <ul><li>Shown when <code>/api/me</code> → <code>acceptance: {required: true, mode: "first", notice_version: "privacy-notice@1", region, consents}</code>. It runs <b>before</b> the path step for <b>every</b> account, once. Until it's done the gateway answers <b><code>403 acceptance_required</code></b> on every non-onboarding API, and any such 403 mid-session routes the SPA back here.</li>
+          <li>Full screen, in the auth layout like steps 1–4 (the <code>.xl-auth__card</code> column). The stepper joins today's four steps: this is <b>Step 1 of 5</b>; path, budget, username and coach become 2–5.</li></ul></section>
+      <section><h4>Items</h4>
+        <ul><li><b>Required:</b> 18+ (an <b>attestation, not verification</b> — ADR-0033 Consequences); the notice at its version (the link opens AB20 in a new tab; version and date come from the one constant the server checks, <code>lib/notice.ts</code>); the <b>region</b>, pre-filled from the invite (<code>account.region</code>, <b>India</b> when none) and confirmed from the full ISO 3166-1 list (ADR-0032's EU/EEA voice gate reads it).</li>
+          <li><b>Optional, both unticked:</b> two <b>separate</b> consents, never bundled with the required items. The second is disabled until the first is ticked; unticking the first unticks and disables the second (withdrawing graded withdraws passing, m4-05 <code>SetConsents</code>). Withdrawable any time in Settings (AB18). Off → the learner grades their own work.</li></ul></section>
+      <section><h4>Submit</h4>
+        <ul><li><b>Continue</b> → <code>POST /api/onboarding/step {"step":"accept", "notice_version", "agree_notice": true, "age_18": true, "region", "consents": {"ai_review_graded", "ai_review_passing"}}</code>. Recorded with the notice version in <code>account_consent</code> (<code>privacy_notice</code>, <code>age_18</code>, the AI kinds) plus <code>accepted_at</code>; then Step 2 of 5.</li>
+          <li><b>Sign out</b> records nothing. There is <b>no erase entry here</b>: someone who declines signs out and asks the owner, at the notice's contact address, for a CLI erase (l-05 task 3).</li>
+          <li>The consent group lands with l-05 in <b>v1.17.0, after M4</b>, when M4's consent kinds exist.</li></ul></section>
+      <section><h4>a11y</h4>
+        <ul><li>Focus order: 18+ → notice box → privacy notice link → region → consent 1 → consent 2 (skipped while disabled; its hint explains) → Continue → Sign out. <span class="xl-kbd">Space</span> toggles a box; <span class="xl-kbd">Enter</span> submits Continue.</li>
+          <li>Every box is a native <code>&lt;input type="checkbox"&gt;</code> with its own <code>&lt;label&gt;</code>; the consents sit in a <code>&lt;fieldset&gt;</code> with a legend and the helper linked by <code>aria-describedby</code>.</li>
+          <li>Contrast: text 15:1; helpers <code>--ds-dim</code> 6.8:1; box border <code>--ds-dim</code> (non-text, ≥ 3:1); ticked box teal with a dark check 8.6:1. &lt; 1024 px: N3.</li></ul></section>
+    </aside>
+  </article>
+
+  <div class="bd-grid bd-grid--wide">
+    <!-- F10 -->
+    <article class="bd-frame" id="AB19-F10">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB19-F10</span><span class="bd-frame__title">· Acceptance · validation</span><span class="bd-frame__state">· Continue with a required box unticked · a11y</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab19-cardstage">
+          <div class="ab19-card">
+            <div class="xl-eyebrow">Step 1 of 5</div>
+            <h2 class="ab19-h2">Before you start</h2>
+            <form class="ab19-acc">
+              <label class="ab19-check ab19-check--invalid"><input type="checkbox" class="ab19-cb ab19-cb--invalid bd-focus" aria-invalid="true" aria-describedby="f10-e1"><span class="ab19-check__t">I'm 18 or older.</span></label>
+              <p class="ab19-fielderr" id="f10-e1"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg> Please confirm you're 18 or older.</p>
+              <label class="ab19-check ab19-check--invalid"><input type="checkbox" class="ab19-cb ab19-cb--invalid" aria-invalid="true" aria-describedby="f10-e2"><span class="ab19-check__t">I've read the <a href="AB20-privacy-notice.html#AB20-F1">privacy notice</a> (version 1, effective 1 Dec 2026) and agree to it.</span></label>
+              <p class="ab19-fielderr" id="f10-e2"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg> Please accept the privacy notice to continue.</p>
+              <div class="ds-field"><label class="ds-field__label" for="f10-r">Where do you live?</label><div class="ab19-selwrap"><select id="f10-r" class="ds-input ab19-sel"><option>India</option></select><svg class="xl-ico xl-ico--sm ab19-selchev" aria-hidden="true"><use href="#i-chev"/></svg></div></div>
+              <fieldset class="ab19-fs"><legend>xLearn AI <span>(optional)</span></legend>
+                <label class="ab19-check ab19-check--flat"><input type="checkbox" class="ab19-cb"><span class="ab19-check__t"><b>xLearn AI reviews my graded work</b> — grade suggestions and feedback on work you submit.</span></label>
+                <label class="ab19-check ab19-check--flat ab19-check--off"><input type="checkbox" class="ab19-cb" disabled><span class="ab19-check__t">…and also reviews my passing solutions for improvement notes.</span></label>
+              </fieldset>
+              <div class="ab19-actions"><button type="button" class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg">Continue <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>Errors appear <b>on submit</b>, inline under each missing item; <b>Continue stays enabled</b> (never a silently disabled button). Focus moves to the <b>first invalid</b> box (the ring shown).</li>
+          <li>Each box gets <code>aria-invalid</code> and <code>aria-describedby</code> → its error. An error clears as soon as its box is ticked.</li>
+          <li>Server 422s map to the same slots: <code>age_required</code>, <code>notice_required</code>, <code>invalid_region</code> (under the select), <code>requires_ai_review_graded</code> (under the fieldset). The optional consents never raise an error.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F11 -->
+    <article class="bd-frame" id="AB19-F11">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB19-F11</span><span class="bd-frame__title">· Acceptance · owner / tester</span><span class="bd-frame__state">· no invite · live grant · ADR-0033 §6, §7 · ADR-0031 §4</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--variant">variant: live grant</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab19-cardstage">
+          <div class="ab19-card">
+            <div class="xl-eyebrow">One more step</div>
+            <h2 class="ab19-h2">Before you continue</h2>
+            <p class="ab19-sub">xLearn now asks every account to confirm these once.</p>
+            <form class="ab19-acc">
+              <label class="ab19-check"><input type="checkbox" class="ab19-cb"><span class="ab19-check__t">I'm 18 or older.</span></label>
+              <label class="ab19-check"><input type="checkbox" class="ab19-cb"><span class="ab19-check__t">I've read the <a href="AB20-privacy-notice.html#AB20-F1">privacy notice</a> (version 1, effective 1 Dec 2026) and agree to it.</span></label>
+              <div class="ds-field"><label class="ds-field__label" for="f11-r">Where do you live?</label><div class="ab19-selwrap"><select id="f11-r" class="ds-input ab19-sel"><option>India</option></select><svg class="xl-ico xl-ico--sm ab19-selchev" aria-hidden="true"><use href="#i-chev"/></svg></div></div>
+              <fieldset class="ab19-fs"><legend>xLearn AI <span>(optional)</span></legend>
+                <label class="ab19-check ab19-check--flat"><input type="checkbox" class="ab19-cb" checked><span class="ab19-check__t"><b>xLearn AI reviews my graded work</b> — grade suggestions and feedback on work you submit.<span class="ab19-check__h ab19-check__h--on">On — you turned this on in Settings.</span></span></label>
+                <label class="ab19-check ab19-check--flat"><input type="checkbox" class="ab19-cb"><span class="ab19-check__t">…and also reviews my passing solutions for improvement notes.</span></label>
+              </fieldset>
+              <div class="ab19-actions">
+                <button type="button" class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg">Continue <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+                <button type="button" class="ds-btn ds-btn--ghost ds-btn--block"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-logout"/></svg> Sign out</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>The same form for accounts with <b>no invite</b> — the owner and CLI-minted testers pass it once too (ADR-0033 §6). Region defaults to <b>India</b>. With onboarding otherwise complete, the eyebrow reads <b>"One more step"</b> (no dots) and Continue goes straight into the app.</li>
+          <li><b>This is the only frame with a ticked consent:</b> a box is ticked only when <code>acceptance.consents</code> reports an existing <b>live grant</b> (here the owner turned xLearn AI on in Settings during M4), with the hint "On — you turned this on in Settings." Unticking it and pressing Continue <b>withdraws</b> the grant. Never pre-ticked without a grant.</li>
+          <li>18+ and the notice are never pre-ticked, whatever the account.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F12 -->
+    <article class="bd-frame" id="AB19-F12">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB19-F12</span><span class="bd-frame__title">· Re-acceptance</span><span class="bd-frame__state">· <code class="ds-mono">403 acceptance_required</code> after a notice bump · ADR-0033 §6</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span><span class="bd-tag bd-tag--flag">notice only: to confirm</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab19-cardstage">
+          <div class="ab19-card">
+            <div class="xl-eyebrow">One more step</div>
+            <h2 class="ab19-h2">Updated privacy notice</h2>
+            <div class="ab19-banner ab19-banner--info" role="status">
+              <span class="ab19-ic ab19-infoc"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-shield"/></svg></span>
+              <div>We've updated the privacy notice (version 2, effective 1 Mar 2027). Please review what changed and accept to keep using xLearn.<br><a class="ds-btn ds-btn--secondary ds-btn--sm" style="margin-top:9px" href="AB20-privacy-notice.html#AB20-F2" target="_blank" rel="noopener">What changed <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-ext"/></svg></a></div>
+            </div>
+            <form class="ab19-acc">
+              <label class="ab19-check"><input type="checkbox" class="ab19-cb"><span class="ab19-check__t">I've read the <a href="AB20-privacy-notice.html#AB20-F1">privacy notice</a> (version 2, effective 1 Mar 2027) and agree to it.</span></label>
+              <p class="ab19-help">Your age confirmation, region and xLearn AI choices stay as they are. You can change the AI choices any time in Settings.</p>
+              <div class="ab19-actions">
+                <button type="button" class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg">Continue <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+                <button type="button" class="ds-btn ds-btn--ghost ds-btn--block"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-logout"/></svg> Sign out</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>A notice-version bump (<code>NoticeVersion</code> → <code>privacy-notice@2</code>) makes every API return <code>403 acceptance_required</code>; the SPA refetches <code>/api/me</code> (<code>mode: "renotice"</code>) and routes here, mid-session too.</li>
+          <li><b>What changed</b> opens AB20-F2 (<code>/xlearn/privacy#what-changed</code>) in a new tab.</li>
+          <li><b>Only the notice box</b>, unticked. 18+, region and the consents keep their recorded values and are <b>not</b> shown as controls, so nothing is pre-ticked (conservative reading, flagged: Decisions to confirm #3). Payload <code>{step:"accept", notice_version, agree_notice:true}</code>.</li>
+          <li>No erase entry (see F9). Validation and failures as F10 / F13.</li></ul>
+      </aside>
+    </article>
+
+    <!-- F13 -->
+    <article class="bd-frame" id="AB19-F13">
+      <header class="bd-frame__label"><span class="bd-frame__id">AB19-F13</span><span class="bd-frame__title">· Save failed</span><span class="bd-frame__state">· network / 5xx on Continue</span><span class="bd-frame__tags"><span class="bd-tag bd-tag--new">new</span></span></header>
+      <div class="bd-frame__body">
+        <div class="ab19-cardstage">
+          <div class="ab19-card">
+            <div class="xl-eyebrow">Step 1 of 5</div>
+            <h2 class="ab19-h2">Before you start</h2>
+            <form class="ab19-acc">
+              <label class="ab19-check"><input type="checkbox" class="ab19-cb" checked><span class="ab19-check__t">I'm 18 or older.</span></label>
+              <label class="ab19-check"><input type="checkbox" class="ab19-cb" checked><span class="ab19-check__t">I've read the <a href="AB20-privacy-notice.html#AB20-F1">privacy notice</a> (version 1, effective 1 Dec 2026) and agree to it.</span></label>
+              <div class="ds-field"><label class="ds-field__label" for="f13-r">Where do you live?</label><div class="ab19-selwrap"><select id="f13-r" class="ds-input ab19-sel"><option>India</option></select><svg class="xl-ico xl-ico--sm ab19-selchev" aria-hidden="true"><use href="#i-chev"/></svg></div></div>
+              <fieldset class="ab19-fs"><legend>xLearn AI <span>(optional)</span></legend>
+                <label class="ab19-check ab19-check--flat"><input type="checkbox" class="ab19-cb"><span class="ab19-check__t"><b>xLearn AI reviews my graded work</b> — grade suggestions and feedback on work you submit.</span></label>
+                <label class="ab19-check ab19-check--flat ab19-check--off"><input type="checkbox" class="ab19-cb" disabled><span class="ab19-check__t">…and also reviews my passing solutions for improvement notes.</span></label>
+              </fieldset>
+              <p class="ab19-alert" role="alert" style="margin-top:6px"><span class="ab19-ic"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-alert"/></svg></span><span>Couldn't save your answers — check your connection and try again.</span></p>
+              <div class="ab19-actions" style="margin-top:6px"><button type="button" class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg">Continue <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes">
+        <ul><li>While saving, Continue reads <b>"Saving…"</b> and the form is <code>aria-busy</code>. On a network error or 5xx: this alert above Continue (<code>role="alert"</code>); <b>ticked boxes stay ticked</b>, the region stays; Continue retries.</li>
+          <li><code>409 notice_changed</code> (the version moved while the page was open) → refetch <code>/api/me</code> and re-render at the new version; the notice box is unticked because it's a new version, the other answers stay.</li></ul>
+      </aside>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================ D · narrow -->
+<section class="bd-section" id="AB19-F14" aria-labelledby="sec-n">
+  <h2 class="bd-section__h" id="sec-n">AB19-F14 · &lt; 1024 px (390 px shown) <small>auth card full width · items stacked · Continue pinned</small></h2>
+  <p class="bd-section__p">Below 900 px the pitch panel drops (as today) and a slim brand bar sits on top. The card goes full width with 16 px gutters. On the acceptance step the items stack, the consent fieldset follows the required items, and <b>Continue</b> (with Sign out) is <b>pinned</b> to the bottom while the form scrolls above it.</p>
+  <div class="bd-narrow-row">
+    <article class="bd-frame bd-narrow" id="AB19-N1">
+      <header class="bd-frame__label"><span class="bd-frame__id">N1 · AB19-F1</span><span class="bd-frame__state">· invite-only</span></header>
+      <div class="bd-frame__body">
+        <div class="ab19-phone">
+          <div class="ab19-ptop"><span class="xl-brand__mark" style="width:26px;height:26px;font-size:14px">x</span><span class="ab19-brandname">x<b>Learn</b></span></div>
+          <div class="ab19-pbody">
+            <h2 class="ab19-h" style="font-size:22px">Sign in to xLearn</h2>
+            <p class="ab19-sub">Use your email or username and password, or GitHub if your account is connected to it.</p>
+            <form class="ab19-form" aria-label="Sign in">
+              <div class="ds-field"><label class="ds-field__label" for="n1-id">Email or username</label><input id="n1-id" class="ds-input" type="text" placeholder="you@example.com or your-handle"></div>
+              <div class="ds-field"><label class="ds-field__label" for="n1-pw">Password</label><input id="n1-pw" class="ds-input" type="password" placeholder="••••••••••"></div>
+              <button type="button" class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg">Log in</button>
+            </form>
+            <div class="ab19-or">or</div>
+            <button type="button" class="ds-btn ds-btn--secondary ds-btn--block"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gh"/></svg> Continue with GitHub</button>
+            <p class="ab19-help ab19-center">Only for accounts already connected to GitHub.</p>
+            <div class="ab19-note">
+              <span class="ab19-ic ab19-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-mail"/></svg></span>
+              <div><b>xLearn is invite-only.</b> New accounts are created from an invite link.<br><a class="ab19-linkrow" href="mailto:?subject=xLearn%20invite%20request">Request an invite <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-ext"/></svg></a></div>
+            </div>
+            <div class="ab19-foot"><a href="AB20-privacy-notice.html#AB20-F5">Privacy notice</a></div>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>Buttons full width, 42 px tall; the links' hit areas padded to 44 px. F1b, F4 and F5 stack the same way with their banner on top.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB19-N2">
+      <header class="bd-frame__label"><span class="bd-frame__id">N2 · AB19-F3</span><span class="bd-frame__state">· valid invite</span></header>
+      <div class="bd-frame__body">
+        <div class="ab19-phone">
+          <div class="ab19-ptop"><span class="xl-brand__mark" style="width:26px;height:26px;font-size:14px">x</span><span class="ab19-brandname">x<b>Learn</b></span></div>
+          <div class="ab19-pbody">
+            <h2 class="ab19-h" style="font-size:22px">Welcome to xLearn</h2>
+            <div class="ab19-banner ab19-banner--teal" role="status">
+              <span class="ab19-ic ab19-teal"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-mail"/></svg></span>
+              <div>You've been invited to xLearn. This invite expires on <b class="ab19-nowrap">12 Oct 2026</b>.</div>
+            </div>
+            <div class="ds-seg ab19-seg" role="group" aria-label="Sign in or sign up">
+              <button type="button" class="ds-seg__btn ab19-segbtn" aria-pressed="false">Sign in</button>
+              <button type="button" class="ds-seg__btn ds-seg__btn--on ab19-segbtn" aria-pressed="true">Sign up</button>
+            </div>
+            <form class="ab19-form" style="margin-top:14px" aria-label="Create account">
+              <div class="ds-field"><label class="ds-field__label" for="n2-em">Email</label><input id="n2-em" class="ds-input" type="email" placeholder="you@example.com"></div>
+              <div class="ds-field"><label class="ds-field__label" for="n2-pw">Password</label><input id="n2-pw" class="ds-input" type="password" placeholder="••••••••••"><span class="ab19-help">At least 8 characters.</span></div>
+              <button type="button" class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg">Create account</button>
+            </form>
+            <div class="ab19-or">or</div>
+            <button type="button" class="ds-btn ds-btn--secondary ds-btn--block"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-gh"/></svg> Continue with GitHub</button>
+            <p class="ab19-help ab19-center" style="margin-top:14px">Next, you'll confirm you're 18 or older and accept the <a href="AB20-privacy-notice.html#AB20-F5">privacy notice</a>.</p>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>The banner wraps above the segment; F6 and F7 put their alert above Create account as on desktop.</li></ul></aside>
+    </article>
+
+    <article class="bd-frame bd-narrow" id="AB19-N3">
+      <header class="bd-frame__label"><span class="bd-frame__id">N3 · AB19-F9</span><span class="bd-frame__state">· acceptance · Continue pinned</span></header>
+      <div class="bd-frame__body">
+        <div class="ab19-phone ab19-phone--fixed">
+          <div class="ab19-ptop"><span class="xl-brand__mark" style="width:26px;height:26px;font-size:14px">x</span><span class="ab19-brandname">x<b>Learn</b></span><span class="ab19-flex"></span><span class="xl-eyebrow">Step 1 of 5</span></div>
+          <div class="ab19-pscroll">
+            <h2 class="ab19-h2" style="margin-top:0">Before you start</h2>
+            <p class="ab19-sub">Confirm a few things once. The xLearn AI choices are optional.</p>
+            <div class="ab19-acc">
+              <label class="ab19-check"><input type="checkbox" class="ab19-cb"><span class="ab19-check__t">I'm 18 or older.</span></label>
+              <label class="ab19-check"><input type="checkbox" class="ab19-cb"><span class="ab19-check__t">I've read the <a href="AB20-privacy-notice.html#AB20-F5">privacy notice</a> (version 1, effective 1 Dec 2026) and agree to it.</span></label>
+              <div class="ds-field" style="margin-top:4px"><label class="ds-field__label" for="n3-r">Where do you live?</label><div class="ab19-selwrap"><select id="n3-r" class="ds-input ab19-sel"><option>India</option></select><svg class="xl-ico xl-ico--sm ab19-selchev" aria-hidden="true"><use href="#i-chev"/></svg></div><span class="ab19-help">Some features depend on local law — for example, voice mock interviews.</span></div>
+              <fieldset class="ab19-fs"><legend>xLearn AI <span>(optional)</span></legend>
+                <label class="ab19-check ab19-check--flat"><input type="checkbox" class="ab19-cb"><span class="ab19-check__t"><b>xLearn AI reviews my graded work</b> — grade suggestions and feedback on work you submit.</span></label>
+                <label class="ab19-check ab19-check--flat ab19-check--off"><input type="checkbox" class="ab19-cb" disabled><span class="ab19-check__t">…and also reviews my passing solutions for improvement notes.<span class="ab19-check__h">Available once the first is ticked.</span></span></label>
+                <p class="ab19-fs__help"><b>Off unless you tick them.</b> If on, your work is sent to Anthropic, processed outside India, kept by them for up to 30 days and never used for training. Change this any time in Settings. With these off, you grade your own work.</p>
+              </fieldset>
+            </div>
+          </div>
+          <div class="ab19-pin">
+            <button type="button" class="ds-btn ds-btn--primary ds-btn--block ds-btn--lg">Continue <svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+            <button type="button" class="ds-btn ds-btn--ghost ds-btn--block ds-btn--sm"><svg class="xl-ico xl-ico--sm" aria-hidden="true"><use href="#i-logout"/></svg> Sign out</button>
+          </div>
+        </div>
+      </div>
+      <aside class="bd-notes"><ul><li>The step dots collapse into the "Step 1 of 5" eyebrow in the brand bar. The pinned bar is <code>position: sticky; bottom: 0</code> inside the page, so it never covers the last item once scrolled to the end; on submit errors (F10) the page scrolls the first invalid box into view above the bar.</li></ul></aside>
+    </article>
+  </div>
+</section>
+
+<footer class="bd-foot">
+  AB19 ★ · Invite acceptance · drafted in ds-l-01 (BP3) · static HTML on <code class="ds-mono">theme.css</code> + <code class="ds-mono">board.css</code> · preview-only, never imported by <code class="ds-mono">web/</code>.
+  Sample data: the 12 Oct 2026 expiry, notice version 1 effective 1 Dec 2026 and version 2 effective 1 Mar 2027 are illustrative; the real values come from the invite's <code class="ds-mono">expires_at</code> and <code class="ds-mono">lib/notice.ts</code>. The contact address behind <b>Request an invite</b> is left out on purpose (l-05's <code class="ds-mono">INVITE_REQUEST_MAILTO</code>).
+</footer>
+</main>
+</body>
+</html>
