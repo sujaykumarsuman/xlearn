@@ -9,7 +9,7 @@
 
 ## Status
 
-_Overall:_ 🔄 In progress (run r-28: tasks 1–5 in the feat PR; the tag follows its merge)
+_Overall:_ ✅ Done 2026-09-28 (run r-28) · [PR #95](https://github.com/sujaykumarsuman/xlearn/pull/95) (`b67ecdd`) · **`v1.6.0` live** · the owner login smoke is pending (production has no account)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
@@ -18,8 +18,8 @@ _Overall:_ 🔄 In progress (run r-28: tasks 1–5 in the feat PR; the tag follo
 | 3 | v2 envelope, consumers first (producers stay v1) | X | ✅ `events/envelope.go`, `Stream.CourseScoped`; three consumers on `DecodeEnvelope`; twin tests |
 | 4 | Contract-header migration lint (CI) | X | ✅ `hack/lint-migrations.sh` + baseline + 6 self-tests (CI `go` job, `make lint`) |
 | 5 | Verify (sqlc diff, tests, e2e golden = v1, compose replay) | X | ✅ unit + store (PG 18) + e2e green; 19-event replay = golden, v2 twin identical; compose v1.5.2 → branch → v1.5.2 (R-b) → branch |
-| ~~6~~ | ~~identity `NATS_URL` infra PR (identity becomes a NATS client in this tag)~~ | I | ➖ dropped 2026-09-28: owner decision, ADR-0035 §2; identity NATS_URL + seed move to mi-06 N2 |
-| 7 | Tag `v1.6.0` (release checklist) | X | ⬜ |
+| 6 | identity `NATS_URL` infra PR (moved to mi-06 N2) | I | ❌ Dropped 2026-09-28: owner decision (ADR-0035 §2); identity NATS_URL + seed land in mi-06's N2 PR |
+| 7 | Tag `v1.6.0` (release checklist) | X | ✅ 2026-09-28 · `v1.6.0` → `b67ecdd`; healthz `v1.6.0`, all 7 Deployments on `1.6.0`, ImagePolicies `1.6.0`, HelmReleases Ready; `host-verify --cluster` 64 pass / 1 warn (TR-STEAL) / 0 fail, `cluster.netpol` 12/12. Login/dashboard/coach smoke pending (no production account) |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + milestone + tag/floor rows).
@@ -27,10 +27,10 @@ _Overall:_ 🔄 In progress (run r-28: tasks 1–5 in the feat PR; the tag follo
 
 ## Entry gates
 
-- [ ] [m1-01](sprint-m1-01.md) and [m1-09](sprint-m1-09.md) merged (M1a curriculum: `internal/course`, `dsa/course.json`, frozen item schema, curriculum expand `00002`)
-- [ ] [mi-05](sprint-mi-05.md) merged (N0 rides `v1.6.0`; [mi-06](sprint-mi-06.md) needs it). Its review / assessment / identity migrations are numbered **before** this sprint's
-- [ ] MI-2a live ✅ (bounded ranges `>=1.0.0 <2.0.0`, `.release-line` = `1`)
-- [ ] No open peer PR adds a goose migration to practice, review, assessment, coach or identity (parallel sessions: `gh pr list`, `git worktree list`, ListAgents) — or it is sequenced before/after this one by agreement
+- [x] [m1-01](sprint-m1-01.md) and [m1-09](sprint-m1-09.md) merged (M1a curriculum: `internal/course`, `dsa/course.json`, frozen item schema, curriculum expand `00002`)
+- [x] [mi-05](sprint-mi-05.md) merged (N0 rides `v1.6.0`; [mi-06](sprint-mi-06.md) needs it). Its review / assessment / identity migrations are numbered **before** this sprint's
+- [x] MI-2a live ✅ (bounded ranges `>=1.0.0 <2.0.0`, `.release-line` = `1`)
+- [x] No open peer PR adds a goose migration to practice, review, assessment, coach or identity (parallel sessions: `gh pr list`, `git worktree list`, ListAgents) — or it is sequenced before/after this one by agreement
 
 ## Goal
 
@@ -247,34 +247,36 @@ N2 gate); no flag change.
 
 ## Acceptance criteria
 
-- [ ] No behaviour change: every v1 e2e green; the SPA is pixel-identical on compose.
-- [ ] Every consumer (review practice + notifications, assessment projections) accepts a v2-envelope fixture and
+- [x] No behaviour change: every v1 e2e green; the SPA is unchanged on compose (every API read surface the SPA calls
+      matched v1.5.2's, apart from m1-09's and m3-01's already-merged curriculum fields; no web change).
+- [x] Every consumer (review practice + notifications, assessment projections) accepts a v2-envelope fixture and
       produces the same rows as its v1 twin; v2-without-path dead-letters.
-- [ ] Backfills correct on a v1.5.2-shaped DB (totals, `grandfathered`, `key_default`, `mock_session_item`, `outbox.account_id`).
-- [ ] `v1.5.2` images run against the expanded schema (R-b safe).
-- [ ] `hack/lint-migrations.sh` in CI, self-tests green; no new migration carries a contract statement.
-- [ ] `sqlc diff` clean; CI green.
-- [ ] `v1.6.0` live and verified (healthz, images, ImagePolicies, HelmReleases Ready, smoke); identity connected
-      to NATS and `XLEARN_IDENTITY` exists.
+- [x] Backfills correct on a v1.5.2-shaped DB (totals, `grandfathered`, `key_default`, `mock_session_item`, `outbox.account_id`).
+- [x] `v1.5.2` images run against the expanded schema (R-b safe).
+- [x] `hack/lint-migrations.sh` in CI, self-tests green; no new migration carries a contract statement.
+- [x] `sqlc diff` clean; CI green.
+- [x] `v1.6.0` live and verified (healthz, images, ImagePolicies, HelmReleases Ready). The login smoke is pending:
+      production has no account. The "identity connected to NATS and `XLEARN_IDENTITY` exists" check is **not
+      applicable**, because task 6 was dropped: identity stays on the log publisher until mi-06's N2.
 
 ## Release
 
 **Tag `v1.6.0`** (ADR-0034 §1.6: M1a expand; gate state after: no behaviour change; rollback floor after: none).
 Release checklist ([ADR-0034](../../adr/0034-v2-release-labelling-gating-and-rollback.md) §6, verbatim, plus the ADR-0035 §2 standing rule):
 
-- [ ] Before the tag: peers' tags and PRs are checked (parallel sessions; `git ls-remote --tags origin`, `gh pr list`, `git worktree list`, ListAgents)
-- [ ] Before the tag: it is the next free version, and its major equals `.release-line`
-- [ ] Before the tag: ACL PRs for new streams and consumers are merged
-- [ ] Before the tag: a new service's image comes before its policy
-- [ ] Before the tag: for a contract: rehearsed in compose, floor marked
-- [ ] Before the tag: for a contract, erase or GA tag: `host-verify --cluster` is green (ADR-0035), the host has settled, and the snapshot is taken
-- [ ] Before the tag: from M6: no live interviews
-- [ ] After the tag (by looking, D34): `/xlearn/api/v1/healthz` reports the version
-- [ ] After the tag: `k3s kubectl get deploy -n xlearn` shows the new images
-- [ ] After the tag: every `xlearn-*` ImagePolicy's latest equals the tag, and the HelmReleases are Ready
-- [ ] After the tag: smoke-test login, the dashboard and coach
-- [ ] Record milestone → tag → floor → snapshot and any flag changes in `docs/v2/status.md`
-- [ ] (ADR-0035 §2 standing rule, not part of ADR-0034 §6) Every new in-cluster HTTP or NATS caller this tag introduces has its NetworkPolicy (ingress and egress) change in its own infra PR, merged before the tag
+- [x] Before the tag: peers' tags and PRs are checked (parallel sessions; `git ls-remote --tags origin`, `gh pr list`, `git worktree list`, ListAgents)
+- [x] Before the tag: it is the next free version, and its major equals `.release-line`
+- [x] Before the tag: ACL PRs for new streams and consumers are merged (n/a: none)
+- [x] Before the tag: a new service's image comes before its policy (n/a)
+- [x] Before the tag: for a contract: rehearsed in compose, floor marked (n/a: expand only)
+- [x] Before the tag: for a contract, erase or GA tag (n/a): `host-verify --cluster` is green (ADR-0035), the host has settled, and the snapshot is taken
+- [x] Before the tag: from M6: no live interviews (n/a)
+- [x] After the tag (by looking, D34): `/xlearn/api/v1/healthz` reports the version
+- [x] After the tag: `k3s kubectl get deploy -n xlearn` shows the new images
+- [x] After the tag: every `xlearn-*` ImagePolicy's latest equals the tag, and the HelmReleases are Ready
+- [ ] After the tag: smoke-test login, the dashboard and coach — ⛔ pending: production has no account (pending-smoke note)
+- [x] Record milestone → tag → floor → snapshot and any flag changes in `docs/v2/status.md`
+- [x] (ADR-0035 §2 standing rule, not part of ADR-0034 §6; n/a: no new caller once task 6 was dropped) Every new in-cluster HTTP or NATS caller this tag introduces has its NetworkPolicy (ingress and egress) change in its own infra PR, merged before the tag
 
 **For this tag:** ACL PRs — n/a (NATS is either still anonymous or, once [mi-06](sprint-mi-06.md)'s N1 is live,
 identity connects as `legacy`, which allows `>`; mi-05's golden already lists `XLEARN_IDENTITY`);
@@ -284,7 +286,7 @@ and `XLEARN_IDENTITY` exists (read-only: the NATS monitor `/jsz?streams=true` as
 
 ## Definition of Done
 
-CI green (incl. `sqlc diff` and the migration lint) · infra PR merged before the tag · `v1.6.0` tagged, deployed by
+CI green (incl. `sqlc diff` and the migration lint) · no infra PR (task 6 dropped) · `v1.6.0` tagged, deployed by
 Flux (no hand `kubectl`) and verified by the checklist · acceptance criteria met · statuses updated (this file +
 [`../status.md`](../status.md): board, M1 milestone, tag → floor, N0 note) · notable calls in the decisions log.
 
