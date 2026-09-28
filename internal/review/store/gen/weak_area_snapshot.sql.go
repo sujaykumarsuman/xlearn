@@ -12,7 +12,7 @@ import (
 )
 
 const getLatestWeakArea = `-- name: GetLatestWeakArea :one
-SELECT id, account_id, week_of, top_category, counts_json, computed_at FROM review.weak_area_snapshot
+SELECT id, account_id, week_of, top_category, counts_json, computed_at, path_slug FROM review.weak_area_snapshot
 WHERE account_id = $1
 ORDER BY week_of DESC
 LIMIT 1
@@ -30,18 +30,19 @@ func (q *Queries) GetLatestWeakArea(ctx context.Context, accountID pgtype.UUID) 
 		&i.TopCategory,
 		&i.CountsJson,
 		&i.ComputedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }
 
 const upsertWeakAreaSnapshot = `-- name: UpsertWeakAreaSnapshot :one
-INSERT INTO review.weak_area_snapshot (account_id, week_of, top_category, counts_json, computed_at)
-VALUES ($1, $2, $3, $4, now())
+INSERT INTO review.weak_area_snapshot (account_id, week_of, top_category, counts_json, computed_at, path_slug)
+VALUES ($1, $2, $3, $4, now(), $5)
 ON CONFLICT (account_id, week_of)
 DO UPDATE SET top_category = EXCLUDED.top_category,
              counts_json = EXCLUDED.counts_json,
              computed_at = now()
-RETURNING id, account_id, week_of, top_category, counts_json, computed_at
+RETURNING id, account_id, week_of, top_category, counts_json, computed_at, path_slug
 `
 
 type UpsertWeakAreaSnapshotParams struct {
@@ -49,17 +50,20 @@ type UpsertWeakAreaSnapshotParams struct {
 	WeekOf      pgtype.Date
 	TopCategory pgtype.Text
 	CountsJson  []byte
+	PathSlug    string
 }
 
 // Idempotent per (account, week_of): the weekly recompute upserts the same row so a
 // re-run of the tick never double-counts. top_category is NULL when the account has no
-// categorised open entries this week.
+// categorised open entries this week. The conflict target stays the v1
+// UNIQUE (account_id, week_of) until M1c; path_slug is written explicitly (m1-02).
 func (q *Queries) UpsertWeakAreaSnapshot(ctx context.Context, arg UpsertWeakAreaSnapshotParams) (ReviewWeakAreaSnapshot, error) {
 	row := q.db.QueryRow(ctx, upsertWeakAreaSnapshot,
 		arg.AccountID,
 		arg.WeekOf,
 		arg.TopCategory,
 		arg.CountsJson,
+		arg.PathSlug,
 	)
 	var i ReviewWeakAreaSnapshot
 	err := row.Scan(
@@ -69,6 +73,7 @@ func (q *Queries) UpsertWeakAreaSnapshot(ctx context.Context, arg UpsertWeakArea
 		&i.TopCategory,
 		&i.CountsJson,
 		&i.ComputedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }

@@ -13,9 +13,9 @@ SELECT pg_advisory_xact_lock(hashtextextended('review.mistake:' || sqlc.arg(acco
 -- redelivered event never opens a duplicate: on conflict it returns no row
 -- (pgx.ErrNoRows), which the caller reads as "already open — don't re-emit
 -- mistake_opened". A closed prior entry does not conflict, so a recurring problem
--- opens a fresh entry.
-INSERT INTO review.mistake_entry (account_id, problem_id, pattern, category, revisit_date, status, revisit_count)
-VALUES ($1, $2, $3, $4, $5, 'open', 0)
+-- opens a fresh entry. path_slug is the course (m1-02, M1a).
+INSERT INTO review.mistake_entry (account_id, problem_id, pattern, category, revisit_date, status, revisit_count, path_slug)
+VALUES ($1, $2, $3, $4, $5, 'open', 0, $6)
 ON CONFLICT (account_id, problem_id) WHERE status = 'open'
 DO NOTHING
 RETURNING *;
@@ -80,8 +80,8 @@ WHERE id = $1 AND account_id = $2;
 -- already has an open entry for the problem the partial unique index rejects it
 -- (mapped to 409 by the handler).
 INSERT INTO review.mistake_entry (
-    account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, path_slug
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING *;
 
 -- name: UpdateMistake :one

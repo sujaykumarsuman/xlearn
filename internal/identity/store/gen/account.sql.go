@@ -12,18 +12,21 @@ import (
 )
 
 const createAccount = `-- name: CreateAccount :one
-INSERT INTO identity.account (display_name, email)
-VALUES ($1, $2)
-RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username
+INSERT INTO identity.account (display_name, email, admitted_via)
+VALUES ($1, $2, $3)
+RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username, role, status, admitted_via, invite_id, accepted_at, region, profile_visibility
 `
 
 type CreateAccountParams struct {
 	DisplayName string
 	Email       pgtype.Text
+	AdmittedVia pgtype.Text
 }
 
+// admitted_via records how the account got in (m1-02, M1a; ADR-0033 §4): v1.6.0 only
+// creates accounts through dev login and open-mode signup, which write 'dev'.
 func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (IdentityAccount, error) {
-	row := q.db.QueryRow(ctx, createAccount, arg.DisplayName, arg.Email)
+	row := q.db.QueryRow(ctx, createAccount, arg.DisplayName, arg.Email, arg.AdmittedVia)
 	var i IdentityAccount
 	err := row.Scan(
 		&i.ID,
@@ -35,26 +38,39 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (I
 		&i.CreatedAt,
 		&i.PasswordHash,
 		&i.Username,
+		&i.Role,
+		&i.Status,
+		&i.AdmittedVia,
+		&i.InviteID,
+		&i.AcceptedAt,
+		&i.Region,
+		&i.ProfileVisibility,
 	)
 	return i, err
 }
 
 const createEmailAccount = `-- name: CreateEmailAccount :one
-INSERT INTO identity.account (display_name, email, password_hash)
-VALUES ($1, $2, $3)
-RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username
+INSERT INTO identity.account (display_name, email, password_hash, admitted_via)
+VALUES ($1, $2, $3, $4)
+RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username, role, status, admitted_via, invite_id, accepted_at, region, profile_visibility
 `
 
 type CreateEmailAccountParams struct {
 	DisplayName  string
 	Email        pgtype.Text
 	PasswordHash pgtype.Text
+	AdmittedVia  pgtype.Text
 }
 
 // Create an account from an email sign-up (ADR-0023): email is required + case-insensitively
 // unique (partial index), and password_hash is the pre-computed bcrypt hash.
 func (q *Queries) CreateEmailAccount(ctx context.Context, arg CreateEmailAccountParams) (IdentityAccount, error) {
-	row := q.db.QueryRow(ctx, createEmailAccount, arg.DisplayName, arg.Email, arg.PasswordHash)
+	row := q.db.QueryRow(ctx, createEmailAccount,
+		arg.DisplayName,
+		arg.Email,
+		arg.PasswordHash,
+		arg.AdmittedVia,
+	)
 	var i IdentityAccount
 	err := row.Scan(
 		&i.ID,
@@ -66,12 +82,19 @@ func (q *Queries) CreateEmailAccount(ctx context.Context, arg CreateEmailAccount
 		&i.CreatedAt,
 		&i.PasswordHash,
 		&i.Username,
+		&i.Role,
+		&i.Status,
+		&i.AdmittedVia,
+		&i.InviteID,
+		&i.AcceptedAt,
+		&i.Region,
+		&i.ProfileVisibility,
 	)
 	return i, err
 }
 
 const getAccount = `-- name: GetAccount :one
-SELECT id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username FROM identity.account
+SELECT id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username, role, status, admitted_via, invite_id, accepted_at, region, profile_visibility FROM identity.account
 WHERE id = $1
 `
 
@@ -88,12 +111,19 @@ func (q *Queries) GetAccount(ctx context.Context, id pgtype.UUID) (IdentityAccou
 		&i.CreatedAt,
 		&i.PasswordHash,
 		&i.Username,
+		&i.Role,
+		&i.Status,
+		&i.AdmittedVia,
+		&i.InviteID,
+		&i.AcceptedAt,
+		&i.Region,
+		&i.ProfileVisibility,
 	)
 	return i, err
 }
 
 const getAccountByEmail = `-- name: GetAccountByEmail :one
-SELECT id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username FROM identity.account
+SELECT id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username, role, status, admitted_via, invite_id, accepted_at, region, profile_visibility FROM identity.account
 WHERE lower(email) = lower($1)
 `
 
@@ -112,12 +142,19 @@ func (q *Queries) GetAccountByEmail(ctx context.Context, lower string) (Identity
 		&i.CreatedAt,
 		&i.PasswordHash,
 		&i.Username,
+		&i.Role,
+		&i.Status,
+		&i.AdmittedVia,
+		&i.InviteID,
+		&i.AcceptedAt,
+		&i.Region,
+		&i.ProfileVisibility,
 	)
 	return i, err
 }
 
 const getAccountByProviderIdentity = `-- name: GetAccountByProviderIdentity :one
-SELECT a.id, a.display_name, a.email, a.timezone, a.study_budget_json, a.reminders_json, a.created_at, a.password_hash, a.username
+SELECT a.id, a.display_name, a.email, a.timezone, a.study_budget_json, a.reminders_json, a.created_at, a.password_hash, a.username, a.role, a.status, a.admitted_via, a.invite_id, a.accepted_at, a.region, a.profile_visibility
 FROM identity.account a
 JOIN identity.oauth_identity oi ON oi.account_id = a.id
 WHERE oi.provider = $1 AND oi.provider_user_id = $2
@@ -141,12 +178,19 @@ func (q *Queries) GetAccountByProviderIdentity(ctx context.Context, arg GetAccou
 		&i.CreatedAt,
 		&i.PasswordHash,
 		&i.Username,
+		&i.Role,
+		&i.Status,
+		&i.AdmittedVia,
+		&i.InviteID,
+		&i.AcceptedAt,
+		&i.Region,
+		&i.ProfileVisibility,
 	)
 	return i, err
 }
 
 const getAccountByUsername = `-- name: GetAccountByUsername :one
-SELECT id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username FROM identity.account
+SELECT id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username, role, status, admitted_via, invite_id, accepted_at, region, profile_visibility FROM identity.account
 WHERE username IS NOT NULL AND lower(username) = lower($1)
 `
 
@@ -165,6 +209,13 @@ func (q *Queries) GetAccountByUsername(ctx context.Context, lower string) (Ident
 		&i.CreatedAt,
 		&i.PasswordHash,
 		&i.Username,
+		&i.Role,
+		&i.Status,
+		&i.AdmittedVia,
+		&i.InviteID,
+		&i.AcceptedAt,
+		&i.Region,
+		&i.ProfileVisibility,
 	)
 	return i, err
 }
@@ -173,7 +224,7 @@ const setAccountPassword = `-- name: SetAccountPassword :one
 UPDATE identity.account
 SET password_hash = $2
 WHERE id = $1
-RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username
+RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username, role, status, admitted_via, invite_id, accepted_at, region, profile_visibility
 `
 
 type SetAccountPasswordParams struct {
@@ -195,6 +246,13 @@ func (q *Queries) SetAccountPassword(ctx context.Context, arg SetAccountPassword
 		&i.CreatedAt,
 		&i.PasswordHash,
 		&i.Username,
+		&i.Role,
+		&i.Status,
+		&i.AdmittedVia,
+		&i.InviteID,
+		&i.AcceptedAt,
+		&i.Region,
+		&i.ProfileVisibility,
 	)
 	return i, err
 }
@@ -203,7 +261,7 @@ const setUsername = `-- name: SetUsername :one
 UPDATE identity.account
 SET username = $2
 WHERE id = $1
-RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username
+RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username, role, status, admitted_via, invite_id, accepted_at, region, profile_visibility
 `
 
 type SetUsernameParams struct {
@@ -228,6 +286,13 @@ func (q *Queries) SetUsername(ctx context.Context, arg SetUsernameParams) (Ident
 		&i.CreatedAt,
 		&i.PasswordHash,
 		&i.Username,
+		&i.Role,
+		&i.Status,
+		&i.AdmittedVia,
+		&i.InviteID,
+		&i.AcceptedAt,
+		&i.Region,
+		&i.ProfileVisibility,
 	)
 	return i, err
 }
@@ -239,7 +304,7 @@ SET display_name      = COALESCE($2, display_name),
     study_budget_json = COALESCE($4::jsonb, study_budget_json),
     reminders_json    = COALESCE($5::jsonb, reminders_json)
 WHERE id = $1
-RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username
+RETURNING id, display_name, email, timezone, study_budget_json, reminders_json, created_at, password_hash, username, role, status, admitted_via, invite_id, accepted_at, region, profile_visibility
 `
 
 type UpdateAccountParams struct {
@@ -272,6 +337,13 @@ func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (I
 		&i.CreatedAt,
 		&i.PasswordHash,
 		&i.Username,
+		&i.Role,
+		&i.Status,
+		&i.AdmittedVia,
+		&i.InviteID,
+		&i.AcceptedAt,
+		&i.Region,
+		&i.ProfileVisibility,
 	)
 	return i, err
 }

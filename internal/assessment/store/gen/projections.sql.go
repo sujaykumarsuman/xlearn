@@ -150,9 +150,9 @@ func (q *Queries) ListSolvedMastery(ctx context.Context, accountID pgtype.UUID) 
 
 const mockAggregate = `-- name: MockAggregate :one
 SELECT
-    COUNT(*)                               AS scored_count,
-    COALESCE(ROUND(AVG(total_35)), 0)::int AS average_35,
-    COALESCE(MAX(total_35), 0)::int        AS best_35
+    COUNT(*)                                                 AS scored_count,
+    COALESCE(ROUND(AVG(COALESCE(total, total_35))), 0)::int AS average_35,
+    COALESCE(MAX(COALESCE(total, total_35)), 0)::int        AS best_35
 FROM assessment.mock_session
 WHERE account_id = $1 AND status = 'scored'
 `
@@ -164,7 +164,9 @@ type MockAggregateRow struct {
 }
 
 // Scored-mock roll-up for the Progress + Dashboard tiles: how many, the average /35, and
-// the best /35. `last`/`delta` come from the ordered trend in Go.
+// the best /35. `last`/`delta` come from the ordered trend in Go. The total is read as
+// COALESCE(total, total_35) (m1-02, M1a: total is dual-written beside total_35, which
+// M1c drops).
 func (q *Queries) MockAggregate(ctx context.Context, accountID pgtype.UUID) (MockAggregateRow, error) {
 	row := q.db.QueryRow(ctx, mockAggregate, accountID)
 	var i MockAggregateRow

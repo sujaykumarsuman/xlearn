@@ -2,7 +2,6 @@ package notifications
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
@@ -22,8 +21,9 @@ const (
 // ReminderStore persists reminders idempotently (the review store satisfies it).
 type ReminderStore interface {
 	// HandleRevisionDue dedupes on eventID and writes one reminder at dueAt in one
-	// transaction, returning whether a row was newly written.
-	HandleRevisionDue(ctx context.Context, eventID, accountID, kind string, dueAt time.Time) (bool, error)
+	// transaction, returning whether a row was newly written. pathSlug is the event's
+	// course (the envelope's path_slug; "dsa" for a v1 event).
+	HandleRevisionDue(ctx context.Context, eventID, accountID, pathSlug, kind string, dueAt time.Time) (bool, error)
 }
 
 // AccountResolver resolves an account's timezone + study budget + reminder prefs (the
@@ -51,15 +51,9 @@ func NewHandler(store ReminderStore, accounts AccountResolver, log *slog.Logger)
 	return &Handler{store: store, accounts: accounts, log: log}
 }
 
-// envelope is the events.md envelope as the worker reads it off XLEARN_REVIEW.
-type envelope struct {
-	EventID   string          `json:"event_id"`
-	Subject   string          `json:"subject"`
-	AccountID string          `json:"account_id"`
-	Data      json.RawMessage `json:"data"`
-}
-
-// Handle processes one revision_due event.
+// Handle processes one revision_due event. It decodes v1 and v2 envelopes
+// (events.DecodeEnvelope, m1-02); a v2 revision_due without path_slug is an
+// events.ErrInvalidEnvelope, returned so the consumer dead-letters it at once.
 func (h *Handler) Handle(ctx context.Context, e events.Event) error {
 	// Belt-and-braces: the consumer is filtered to revision_due, so nothing else should
 	// reach this handler. Anything that does is acked (it can't be processed here), but
@@ -74,10 +68,11 @@ func (h *Handler) Handle(ctx context.Context, e events.Event) error {
 		}
 		return nil
 	}
-	var env envelope
-	if err := json.Unmarshal(e.Data, &env); err != nil {
-		h.log.Error("notifications: undecodable envelope; dropping", "err", err)
-		return nil
+	env, err := events.DecodeEnvelope(e.Data)
+	if err != nil {
+		// Malformed JSON or a v2 revision_due without path_slug can never succeed on
+		// redelivery: the consumer dead-letters it on this delivery.
+		return fmt.Errorf("notifications: %w", err)
 	}
 	eventID := env.EventID
 	if eventID == "" {
@@ -112,7 +107,7 @@ func (h *Handler) Handle(ctx context.Context, e events.Event) error {
 		h.log.Info("notifications: reminder suppressed by prefs", "account_id", env.AccountID)
 		return nil
 	}
-	wrote, err := h.store.HandleRevisionDue(ctx, eventID, env.AccountID, ReminderKind, dueAt)
+	wrote, err := h.store.HandleRevisionDue(ctx, eventID, env.AccountID, env.PathSlug, ReminderKind, dueAt)
 	if err != nil {
 		return fmt.Errorf("write reminder: %w", err)
 	}

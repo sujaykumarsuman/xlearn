@@ -1,0 +1,20 @@
+{
+  "event_id": "11111111-0000-4000-8000-000000000008",
+  "subject": "xlearn.assessment.mock_completed",
+  "occurred_at": "2026-09-21T12:00:00Z",
+  "version": 1,
+  "account_id": "0b5e7a3c-1d2f-4e6a-9b8c-7d6e5f4a3b2c",
+  "data": {
+    "mock_id": "33333333-0000-4000-8000-000000000001",
+    "total_35": 24,
+    "rubric": {
+      "communication": 4,
+      "problem_understanding": 4,
+      "brute_force": 3,
+      "optimisation": 3,
+      "code_quality": 4,
+      "edge_cases": 3,
+      "complexity": 3
+    }
+  }
+}

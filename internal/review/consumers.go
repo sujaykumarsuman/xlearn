@@ -11,20 +11,15 @@ import (
 	"github.com/sujaykumarsuman/xlearn/internal/review/store"
 )
 
-// envelope is the events.md envelope as review reads it off XLEARN_PRACTICE.
-// account_id is envelope-level; the per-event fields live in data.
-type envelope struct {
-	EventID    string          `json:"event_id"`
-	Subject    string          `json:"subject"`
-	OccurredAt string          `json:"occurred_at"`
-	AccountID  string          `json:"account_id"`
-	Data       json.RawMessage `json:"data"`
-}
-
 // practiceHandler routes a delivered practice event to the right store method. It is
 // the events.Handler bound to the durable consumer; the store dedupes on event_id via
 // the inbox, so a redelivered message is a safe no-op (at-least-once → effectively
 // once). A non-nil return triggers redelivery (nak); a nil return acks.
+//
+// It decodes v1 AND v2 envelopes (events.DecodeEnvelope, m1-02): a v1 event is DSA, a
+// v2 one carries its course in path_slug, and the course is written on every row the
+// store creates. A v2 practice event without path_slug is an events.ErrInvalidEnvelope,
+// returned so the consumer dead-letters it at once.
 type practiceHandler struct {
 	store store.Store
 	log   *slog.Logger
@@ -33,12 +28,26 @@ type practiceHandler struct {
 var _ events.Handler = (*practiceHandler)(nil)
 
 func (h *practiceHandler) Handle(ctx context.Context, e events.Event) error {
-	var env envelope
-	if err := json.Unmarshal(e.Data, &env); err != nil {
-		// A malformed payload can never succeed on redelivery — log and ack (return
-		// nil) so it does not wedge the consumer. The raw message stays on the stream.
-		h.log.Error("review consumer: undecodable envelope; dropping", "subject", e.Subject, "err", err)
+	switch e.Subject {
+	case store.SubjectProblemSolved, store.SubjectSolutionRevealedEarly:
+	default:
+		// A subject review deliberately doesn't act on (xlearn.practice.attempt_logged,
+		// assessment's) is listed under Ignores in topology.go: ack quietly. Anything
+		// else is a subject published before review learned it — never ack that
+		// silently (ADR-0035 §1.1): log ERROR, then ack so it can't wedge the durable.
+		if !events.Ignored(DurableName, e.Subject) {
+			h.log.Error("review consumer: unlisted subject; acked without handling",
+				"subject", e.Subject, "event_id", e.ID, "durable", DurableName)
+		}
 		return nil
+	}
+
+	env, err := events.DecodeEnvelope(e.Data)
+	if err != nil {
+		// Malformed JSON or a v2 practice event without path_slug can never succeed
+		// on redelivery: the consumer dead-letters it on this delivery (a row + ERROR
+		// log). The raw message stays on the stream.
+		return fmt.Errorf("review consumer: %s: %w", e.Subject, err)
 	}
 	eventID := env.EventID
 	if eventID == "" {
@@ -50,25 +59,13 @@ func (h *practiceHandler) Handle(ctx context.Context, e events.Event) error {
 	}
 	occurredAt := parseOccurredAt(env.OccurredAt)
 
-	switch e.Subject {
-	case store.SubjectProblemSolved:
-		return h.handleProblemSolved(ctx, eventID, env.AccountID, occurredAt, env.Data)
-	case store.SubjectSolutionRevealedEarly:
-		return h.handleSolutionRevealedEarly(ctx, eventID, env.AccountID, occurredAt, env.Data)
-	default:
-		// A subject review deliberately doesn't act on (xlearn.practice.attempt_logged,
-		// assessment's) is listed under Ignores in topology.go: ack quietly. Anything
-		// else is a subject published before review learned it — never ack that
-		// silently (ADR-0035 §1.1): log ERROR, then ack so it can't wedge the durable.
-		if !events.Ignored(DurableName, e.Subject) {
-			h.log.Error("review consumer: unlisted subject; acked without handling",
-				"subject", e.Subject, "event_id", eventID, "durable", DurableName)
-		}
-		return nil
+	if e.Subject == store.SubjectProblemSolved {
+		return h.handleProblemSolved(ctx, eventID, env.AccountID, env.PathSlug, occurredAt, env.Data)
 	}
+	return h.handleSolutionRevealedEarly(ctx, eventID, env.AccountID, env.PathSlug, occurredAt, env.Data)
 }
 
-func (h *practiceHandler) handleProblemSolved(ctx context.Context, eventID, accountID string, occurredAt time.Time, data []byte) error {
+func (h *practiceHandler) handleProblemSolved(ctx context.Context, eventID, accountID, pathSlug string, occurredAt time.Time, data []byte) error {
 	var d struct {
 		ProblemID  string `json:"problem_id"`
 		Outcome    string `json:"outcome"`
@@ -82,7 +79,7 @@ func (h *practiceHandler) handleProblemSolved(ctx context.Context, eventID, acco
 		h.log.Error("review consumer: problem_solved missing problem_id; dropping")
 		return nil
 	}
-	n, err := h.store.HandleProblemSolved(ctx, eventID, accountID, d.ProblemID, d.Outcome, d.FirstSolve, occurredAt)
+	n, err := h.store.HandleProblemSolved(ctx, eventID, accountID, pathSlug, d.ProblemID, d.Outcome, d.FirstSolve, occurredAt)
 	if err != nil {
 		return fmt.Errorf("handle problem_solved: %w", err)
 	}
@@ -92,7 +89,7 @@ func (h *practiceHandler) handleProblemSolved(ctx context.Context, eventID, acco
 	return nil
 }
 
-func (h *practiceHandler) handleSolutionRevealedEarly(ctx context.Context, eventID, accountID string, occurredAt time.Time, data []byte) error {
+func (h *practiceHandler) handleSolutionRevealedEarly(ctx context.Context, eventID, accountID, pathSlug string, occurredAt time.Time, data []byte) error {
 	var d struct {
 		ProblemID string `json:"problem_id"`
 	}
@@ -104,7 +101,7 @@ func (h *practiceHandler) handleSolutionRevealedEarly(ctx context.Context, event
 		h.log.Error("review consumer: solution_revealed_early missing problem_id; dropping")
 		return nil
 	}
-	n, err := h.store.HandleSolutionRevealedEarly(ctx, eventID, accountID, d.ProblemID, occurredAt)
+	n, err := h.store.HandleSolutionRevealedEarly(ctx, eventID, accountID, pathSlug, d.ProblemID, occurredAt)
 	if err != nil {
 		return fmt.Errorf("handle solution_revealed_early: %w", err)
 	}

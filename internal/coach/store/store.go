@@ -11,6 +11,12 @@
 // OpenAI), with exactly one marked the DEFAULT — the provider whose model the coach
 // answers with. The store maintains the "exactly one default" invariant (first key
 // becomes default; set-default moves it; delete promotes a survivor).
+//
+// v2 M1a (m1-02): the default also lives in coach.key_default(account_id, feature). Every
+// writer of api_key_config.is_default dual-writes the feature='coach' row with the same
+// meaning, in the same transaction, and every reader prefers key_default, falling back to
+// is_default (a default set by v1.5.2 during an R-b). m1-10 makes key_default the only
+// source; M1c drops is_default.
 package store
 
 import (
@@ -20,6 +26,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/sujaykumarsuman/xlearn/internal/coach/store/gen"
@@ -137,9 +144,13 @@ func (s *PgStore) ListKeys(ctx context.Context, accountID string) ([]KeyConfig, 
 	if err != nil {
 		return nil, fmt.Errorf("list api key configs: %w", err)
 	}
+	def, err := defaultKeyID(ctx, s.q, aid)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]KeyConfig, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, toKeyConfig(r))
+		out = append(out, toKeyConfig(r, def))
 	}
 	return out, nil
 }
@@ -150,17 +161,28 @@ func (s *PgStore) GetKey(ctx context.Context, accountID, provider string) (KeyCo
 	if err != nil {
 		return KeyConfig{}, ErrNotFound
 	}
-	row, err := s.q.GetApiKeyConfig(ctx, gen.GetApiKeyConfigParams{AccountID: aid, Provider: provider})
+	return getKey(ctx, s.q, aid, provider)
+}
+
+// getKey reads one (account, provider) config with its effective default flag, on the
+// pool or inside a transaction.
+func getKey(ctx context.Context, q *gen.Queries, aid pgtype.UUID, provider string) (KeyConfig, error) {
+	row, err := q.GetApiKeyConfig(ctx, gen.GetApiKeyConfigParams{AccountID: aid, Provider: provider})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return KeyConfig{}, ErrNotFound
 	}
 	if err != nil {
 		return KeyConfig{}, fmt.Errorf("get api key config: %w", err)
 	}
-	return toKeyConfig(row), nil
+	def, err := defaultKeyID(ctx, q, aid)
+	if err != nil {
+		return KeyConfig{}, err
+	}
+	return toKeyConfig(row, def), nil
 }
 
-// GetDefaultKey returns the account's default provider config or ErrNotFound.
+// GetDefaultKey returns the account's default provider config or ErrNotFound. It reads
+// key_default(feature='coach') first and falls back to is_default (m1-02).
 func (s *PgStore) GetDefaultKey(ctx context.Context, accountID string) (KeyConfig, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
@@ -173,23 +195,32 @@ func (s *PgStore) GetDefaultKey(ctx context.Context, accountID string) (KeyConfi
 	if err != nil {
 		return KeyConfig{}, fmt.Errorf("get default api key config: %w", err)
 	}
-	return toKeyConfig(row), nil
+	return toKeyConfig(row, row.ID), nil
 }
 
-// PutKey upserts a provider key; the account's first key becomes the default.
+// PutKey upserts a provider key; the account's first key becomes the default. One
+// transaction: the key row and its key_default dual-write (m1-02) commit together.
 func (s *PgStore) PutKey(ctx context.Context, k KeyConfig) (KeyConfig, error) {
 	aid, err := parseUUID(k.AccountID)
 	if err != nil {
 		return KeyConfig{}, fmt.Errorf("parse account id: %w", err)
 	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return KeyConfig{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := s.q.WithTx(tx)
+
 	// The first key an account connects becomes its default. A replacement keeps whatever
 	// default status the row already had (the upsert ORs is_default), so passing false for a
 	// non-first key never demotes an existing default.
-	n, err := s.q.CountApiKeyConfigs(ctx, aid)
+	n, err := qtx.CountApiKeyConfigs(ctx, aid)
 	if err != nil {
 		return KeyConfig{}, fmt.Errorf("count api key configs: %w", err)
 	}
-	row, err := s.q.UpsertApiKeyConfig(ctx, gen.UpsertApiKeyConfigParams{
+	first := n == 0
+	row, err := qtx.UpsertApiKeyConfig(ctx, gen.UpsertApiKeyConfigParams{
 		AccountID:    aid,
 		Provider:     k.Provider,
 		EncKey:       k.EncKey,
@@ -197,28 +228,63 @@ func (s *PgStore) PutKey(ctx context.Context, k KeyConfig) (KeyConfig, error) {
 		MaskedKey:    k.Masked,
 		DefaultModel: k.DefaultModel,
 		Name:         k.Name,
-		IsDefault:    n == 0,
+		IsDefault:    pgtype.Bool{Bool: first, Valid: true},
 	})
 	if err != nil {
 		return KeyConfig{}, fmt.Errorf("upsert api key config: %w", err)
 	}
-	return toKeyConfig(row), nil
+	// Dual-write key_default: the first key becomes the coach default; a replaced key
+	// that already is the default carries its (possibly new) model over.
+	if first {
+		err = qtx.UpsertKeyDefault(ctx, gen.UpsertKeyDefaultParams{AccountID: aid, KeyID: row.ID, Model: row.DefaultModel})
+	} else {
+		err = qtx.SyncKeyDefaultModel(ctx, gen.SyncKeyDefaultModelParams{KeyID: row.ID, Model: row.DefaultModel})
+	}
+	if err != nil {
+		return KeyConfig{}, fmt.Errorf("dual-write key default: %w", err)
+	}
+	def, err := defaultKeyID(ctx, qtx, aid)
+	if err != nil {
+		return KeyConfig{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return KeyConfig{}, fmt.Errorf("commit tx: %w", err)
+	}
+	return toKeyConfig(row, def), nil
 }
 
-// UpdateKeyMeta changes a provider's model + name without re-sealing the key.
+// UpdateKeyMeta changes a provider's model + name without re-sealing the key (and the
+// coach default's model with it when this key is the default; m1-02 dual-write).
 func (s *PgStore) UpdateKeyMeta(ctx context.Context, accountID, provider, model, name string) (KeyConfig, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return KeyConfig{}, ErrNotFound
 	}
-	row, err := s.q.UpdateApiKeyMeta(ctx, gen.UpdateApiKeyMetaParams{AccountID: aid, Provider: provider, DefaultModel: model, Name: name})
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return KeyConfig{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := s.q.WithTx(tx)
+
+	row, err := qtx.UpdateApiKeyMeta(ctx, gen.UpdateApiKeyMetaParams{AccountID: aid, Provider: provider, DefaultModel: model, Name: name})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return KeyConfig{}, ErrNotFound
 	}
 	if err != nil {
 		return KeyConfig{}, fmt.Errorf("update api key meta: %w", err)
 	}
-	return toKeyConfig(row), nil
+	if err := qtx.SyncKeyDefaultModel(ctx, gen.SyncKeyDefaultModelParams{KeyID: row.ID, Model: row.DefaultModel}); err != nil {
+		return KeyConfig{}, fmt.Errorf("dual-write key default model: %w", err)
+	}
+	def, err := defaultKeyID(ctx, qtx, aid)
+	if err != nil {
+		return KeyConfig{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return KeyConfig{}, fmt.Errorf("commit tx: %w", err)
+	}
+	return toKeyConfig(row, def), nil
 }
 
 // SetKeyEnabled flips a provider's enabled flag (ErrNotFound if not connected).
@@ -238,36 +304,61 @@ func (s *PgStore) SetKeyEnabled(ctx context.Context, accountID, provider string,
 }
 
 // SetDefault makes provider the account's default and returns the new default config.
+// One transaction: is_default and its key_default dual-write (m1-02) move together.
 func (s *PgStore) SetDefault(ctx context.Context, accountID, provider string) (KeyConfig, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return KeyConfig{}, ErrNotFound
 	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return KeyConfig{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := s.q.WithTx(tx)
+
 	// Verify the target provider is connected first — a single-statement default swap would
 	// otherwise blank the default when the provider has no row.
-	if _, err := s.q.GetApiKeyConfig(ctx, gen.GetApiKeyConfigParams{AccountID: aid, Provider: provider}); err != nil {
+	target, err := qtx.GetApiKeyConfig(ctx, gen.GetApiKeyConfigParams{AccountID: aid, Provider: provider})
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return KeyConfig{}, ErrNotFound
 		}
 		return KeyConfig{}, fmt.Errorf("get api key config: %w", err)
 	}
-	if _, err := s.q.SetDefaultProvider(ctx, gen.SetDefaultProviderParams{AccountID: aid, Provider: provider}); err != nil {
+	if _, err := qtx.SetDefaultProvider(ctx, gen.SetDefaultProviderParams{AccountID: aid, Provider: provider}); err != nil {
 		return KeyConfig{}, fmt.Errorf("set default provider: %w", err)
 	}
-	row, err := s.q.GetApiKeyConfig(ctx, gen.GetApiKeyConfigParams{AccountID: aid, Provider: provider})
-	if err != nil {
-		return KeyConfig{}, fmt.Errorf("get api key config: %w", err)
+	if err := qtx.UpsertKeyDefault(ctx, gen.UpsertKeyDefaultParams{AccountID: aid, KeyID: target.ID, Model: target.DefaultModel}); err != nil {
+		return KeyConfig{}, fmt.Errorf("dual-write key default: %w", err)
 	}
-	return toKeyConfig(row), nil
+	out, err := getKey(ctx, qtx, aid, provider)
+	if err != nil {
+		return KeyConfig{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return KeyConfig{}, fmt.Errorf("commit tx: %w", err)
+	}
+	return out, nil
 }
 
-// DeleteKey removes a provider's key, promoting a survivor to default if needed.
+// DeleteKey removes a provider's key, promoting a survivor to default if needed. One
+// transaction: the delete (whose ON DELETE CASCADE removes a key_default row pointing at
+// the key) and both promotions (is_default, then its key_default dual-write) commit
+// together.
 func (s *PgStore) DeleteKey(ctx context.Context, accountID, provider string) error {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return ErrNotFound
 	}
-	n, err := s.q.DeleteApiKeyConfig(ctx, gen.DeleteApiKeyConfigParams{AccountID: aid, Provider: provider})
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := s.q.WithTx(tx)
+
+	n, err := qtx.DeleteApiKeyConfig(ctx, gen.DeleteApiKeyConfigParams{AccountID: aid, Provider: provider})
 	if err != nil {
 		return fmt.Errorf("delete api key config: %w", err)
 	}
@@ -276,8 +367,16 @@ func (s *PgStore) DeleteKey(ctx context.Context, accountID, provider string) err
 	}
 	// If we removed the default, promote the earliest-created survivor so the account keeps
 	// exactly one default (a no-op — ErrNoRows — when a default remains or no keys are left).
-	if _, err := s.q.PromoteEarliestDefault(ctx, aid); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if _, err := qtx.PromoteEarliestDefault(ctx, aid); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("promote default: %w", err)
+	}
+	// The same promotion for key_default, in the same order (a no-op when a coach default
+	// remains or no keys are left).
+	if err := qtx.PromoteEarliestKeyDefault(ctx, aid); err != nil {
+		return fmt.Errorf("promote key default: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
 	}
 	return nil
 }
@@ -332,8 +431,23 @@ func (s *PgStore) AppendMessage(ctx context.Context, threadID, role, content str
 	return nil
 }
 
-// toKeyConfig maps the generated row to the plain-scalar domain type.
-func toKeyConfig(r gen.CoachApiKeyConfig) KeyConfig {
+// defaultKeyID returns the id of the account's effective coach default — key_default
+// first, then is_default (m1-02) — or an invalid UUID when it has none.
+func defaultKeyID(ctx context.Context, q *gen.Queries, aid pgtype.UUID) (pgtype.UUID, error) {
+	id, err := q.GetDefaultKeyID(ctx, aid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return pgtype.UUID{}, nil
+	}
+	if err != nil {
+		return pgtype.UUID{}, fmt.Errorf("get default key id: %w", err)
+	}
+	return id, nil
+}
+
+// toKeyConfig maps the generated row to the plain-scalar domain type. IsDefault is read
+// from the effective default id (key_default first, then is_default), never from the
+// row's own is_default alone, so the v1 JSON and the coach agree.
+func toKeyConfig(r gen.CoachApiKeyConfig, defaultID pgtype.UUID) KeyConfig {
 	return KeyConfig{
 		AccountID:    uuidString(r.AccountID),
 		Provider:     r.Provider,
@@ -343,6 +457,6 @@ func toKeyConfig(r gen.CoachApiKeyConfig) KeyConfig {
 		DefaultModel: r.DefaultModel,
 		Name:         r.Name,
 		Enabled:      r.Enabled,
-		IsDefault:    r.IsDefault,
+		IsDefault:    defaultID.Valid && r.ID.Valid && defaultID.Bytes == r.ID.Bytes,
 	}
 }

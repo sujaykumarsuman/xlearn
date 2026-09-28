@@ -42,8 +42,10 @@ type Querier interface {
 	// re-delivered event returns no row (pgx.ErrNoRows) → the handler no-ops instead of
 	// re-applying its side effects (effectively-once, ADR-0004).
 	InsertInbox(ctx context.Context, eventID string) (string, error)
+	// account_id is erase prep (m1-02, ADR-0027 §6): the envelope's account, as a column.
 	InsertOutbox(ctx context.Context, arg InsertOutboxParams) error
 	// Write one in-app reminder (the notifications worker, inside the dedupe tx).
+	// path_slug is the revision_due event's course (m1-02, M1a; nullable column).
 	InsertReminder(ctx context.Context, arg InsertReminderParams) (ReviewReminder, error)
 	// The durable auto-score record for one re-solve (R-SR2). auto_pass is computed by
 	// the service (pattern < 2 min AND solved in-timer AND complexity stated); mock_mode
@@ -88,11 +90,12 @@ type Querier interface {
 	// redelivered event never opens a duplicate: on conflict it returns no row
 	// (pgx.ErrNoRows), which the caller reads as "already open — don't re-emit
 	// mistake_opened". A closed prior entry does not conflict, so a recurring problem
-	// opens a fresh entry.
+	// opens a fresh entry. path_slug is the course (m1-02, M1a).
 	OpenMistake(ctx context.Context, arg OpenMistakeParams) (ReviewMistakeEntry, error)
 	// Re-anchor one touch to a fresh schedule (the fail → reset-to-Day-1 path, R-SR3):
 	// create it if missing, else overwrite due_date, re-open it to pending, and clear
-	// surfaced_at so the sweep re-surfaces it when due.
+	// surfaced_at so the sweep re-surfaces it when due. path_slug is written on insert only
+	// (a re-anchored row keeps its course).
 	ReanchorTouch(ctx context.Context, arg ReanchorTouchParams) (ReviewRevisionItem, error)
 	// Re-open a closed entry after a later fail (R-MJ4): status back to open, the clean
 	// revisit count reset to 0, and revisit_date re-anchored to the fresh Day-1 schedule.
@@ -105,7 +108,8 @@ type Querier interface {
 	// Idempotently schedule one touch. ON CONFLICT DO NOTHING so a re-delivered or
 	// out-of-order practice event never double-schedules or clobbers a touch already
 	// scored: on conflict the query returns no row (pgx.ErrNoRows), which the caller
-	// reads as "already scheduled — do not re-emit revision_scheduled".
+	// reads as "already scheduled — do not re-emit revision_scheduled". path_slug is the
+	// event's course (m1-02, M1a; 'dsa' for every v1 event).
 	ScheduleTouch(ctx context.Context, arg ScheduleTouchParams) (ReviewRevisionItem, error)
 	// The periodic sweep's scan (flow 4): touches that are due, not yet surfaced, and
 	// still PENDING, across all accounts. The status guard is load-bearing: a learner can
@@ -119,7 +123,8 @@ type Querier interface {
 	UpdateMistake(ctx context.Context, arg UpdateMistakeParams) (ReviewMistakeEntry, error)
 	// Idempotent per (account, week_of): the weekly recompute upserts the same row so a
 	// re-run of the tick never double-counts. top_category is NULL when the account has no
-	// categorised open entries this week.
+	// categorised open entries this week. The conflict target stays the v1
+	// UNIQUE (account_id, week_of) until M1c; path_slug is written explicitly (m1-02).
 	UpsertWeakAreaSnapshot(ctx context.Context, arg UpsertWeakAreaSnapshotParams) (ReviewWeakAreaSnapshot, error)
 }
 

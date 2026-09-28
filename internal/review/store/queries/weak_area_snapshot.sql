@@ -1,9 +1,10 @@
 -- name: UpsertWeakAreaSnapshot :one
 -- Idempotent per (account, week_of): the weekly recompute upserts the same row so a
 -- re-run of the tick never double-counts. top_category is NULL when the account has no
--- categorised open entries this week.
-INSERT INTO review.weak_area_snapshot (account_id, week_of, top_category, counts_json, computed_at)
-VALUES ($1, $2, $3, $4, now())
+-- categorised open entries this week. The conflict target stays the v1
+-- UNIQUE (account_id, week_of) until M1c; path_slug is written explicitly (m1-02).
+INSERT INTO review.weak_area_snapshot (account_id, week_of, top_category, counts_json, computed_at, path_slug)
+VALUES ($1, $2, $3, $4, now(), $5)
 ON CONFLICT (account_id, week_of)
 DO UPDATE SET top_category = EXCLUDED.top_category,
              counts_json = EXCLUDED.counts_json,

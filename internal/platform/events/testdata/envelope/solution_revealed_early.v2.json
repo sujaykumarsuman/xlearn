@@ -1,0 +1,11 @@
+{
+  "event_id": "11111111-0000-4000-8000-000000000002",
+  "subject": "xlearn.practice.solution_revealed_early",
+  "occurred_at": "2026-09-21T12:00:00Z",
+  "version": 2,
+  "account_id": "0b5e7a3c-1d2f-4e6a-9b8c-7d6e5f4a3b2c",
+  "path_slug": "dsa",
+  "data": {
+    "problem_id": "18"
+  }
+}

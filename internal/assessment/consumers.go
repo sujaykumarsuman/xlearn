@@ -11,16 +11,6 @@ import (
 	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 )
 
-// envelope is the events.md envelope as assessment reads it off XLEARN_PRACTICE /
-// XLEARN_REVIEW. account_id is envelope-level; the per-event fields live in data.
-type envelope struct {
-	EventID    string          `json:"event_id"`
-	Subject    string          `json:"subject"`
-	OccurredAt string          `json:"occurred_at"`
-	AccountID  string          `json:"account_id"`
-	Data       json.RawMessage `json:"data"`
-}
-
 // eventData is the union of the per-subject fields the projections read: problem_id +
 // outcome + first_solve (practice solves) and touch_level (review schedules). Unknown
 // fields are ignored (events are additive-only).
@@ -38,6 +28,11 @@ type eventData struct {
 // the events.Handler bound to the durable consumer: a non-nil return triggers
 // redelivery (nak); nil acks. Handlers are a pure function of the event log so a
 // drop-and-replay rebuild is deterministic (ADR-0017/0018).
+//
+// It decodes v1 AND v2 envelopes (events.DecodeEnvelope, m1-02): a v1 event is DSA, a
+// v2 one carries its course in path_slug (carried on ProjectionEvent). A v2 practice or
+// review event without path_slug is an events.ErrInvalidEnvelope, returned so the
+// consumer dead-letters it at once.
 type projectionHandler struct {
 	store store.Store
 	log   *slog.Logger
@@ -59,12 +54,12 @@ func (h *projectionHandler) Handle(ctx context.Context, e events.Event) error {
 		return nil
 	}
 
-	var env envelope
-	if err := json.Unmarshal(e.Data, &env); err != nil {
-		// A malformed payload can never succeed on redelivery — log and ack (return
-		// nil) so it does not wedge the consumer. The raw message stays on the stream.
-		h.log.Error("assessment consumer: undecodable envelope; dropping", "subject", e.Subject, "err", err)
-		return nil
+	env, err := events.DecodeEnvelope(e.Data)
+	if err != nil {
+		// Malformed JSON or a v2 event without path_slug can never succeed on
+		// redelivery: the consumer dead-letters it on this delivery (a row + ERROR log).
+		// The raw message stays on the stream.
+		return fmt.Errorf("assessment consumer: %s: %w", e.Subject, err)
 	}
 	eventID := env.EventID
 	if eventID == "" {
@@ -89,6 +84,7 @@ func (h *projectionHandler) Handle(ctx context.Context, e events.Event) error {
 		EventID:    eventID,
 		Subject:    e.Subject,
 		AccountID:  env.AccountID,
+		PathSlug:   env.PathSlug,
 		ProblemID:  d.ProblemID,
 		Outcome:    d.Outcome,
 		FirstSolve: d.FirstSolve,

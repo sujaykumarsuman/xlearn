@@ -12,7 +12,7 @@ import (
 )
 
 const listEnrollments = `-- name: ListEnrollments :many
-SELECT account_id, path_slug, status, started_at FROM identity.path_enrollment
+SELECT account_id, path_slug, status, started_at, public_visible FROM identity.path_enrollment
 WHERE account_id = $1
 ORDER BY started_at
 `
@@ -31,6 +31,7 @@ func (q *Queries) ListEnrollments(ctx context.Context, accountID pgtype.UUID) ([
 			&i.PathSlug,
 			&i.Status,
 			&i.StartedAt,
+			&i.PublicVisible,
 		); err != nil {
 			return nil, err
 		}
@@ -43,29 +44,33 @@ func (q *Queries) ListEnrollments(ctx context.Context, accountID pgtype.UUID) ([
 }
 
 const startEnrollment = `-- name: StartEnrollment :one
-INSERT INTO identity.path_enrollment (account_id, path_slug)
-VALUES ($1, $2)
+INSERT INTO identity.path_enrollment (account_id, path_slug, public_visible)
+VALUES ($1, $2, $3)
 ON CONFLICT (account_id, path_slug)
 DO UPDATE SET status = 'active'
-RETURNING account_id, path_slug, status, started_at
+RETURNING account_id, path_slug, status, started_at, public_visible
 `
 
 type StartEnrollmentParams struct {
-	AccountID pgtype.UUID
-	PathSlug  string
+	AccountID     pgtype.UUID
+	PathSlug      string
+	PublicVisible bool
 }
 
 // Idempotent: the first call records started_at (default now()); re-starting only
 // re-activates the row and keeps the ORIGINAL started_at (it is not in the SET),
-// so a learner's "current day" never resets on a repeat Start.
+// so a learner's "current day" never resets on a repeat Start. public_visible is the
+// course manifest's public_stats.default_visible (m1-02, M1a; D7), written on insert
+// only: a re-start never overwrites the learner's own choice (m2-03's toggle).
 func (q *Queries) StartEnrollment(ctx context.Context, arg StartEnrollmentParams) (IdentityPathEnrollment, error) {
-	row := q.db.QueryRow(ctx, startEnrollment, arg.AccountID, arg.PathSlug)
+	row := q.db.QueryRow(ctx, startEnrollment, arg.AccountID, arg.PathSlug, arg.PublicVisible)
 	var i IdentityPathEnrollment
 	err := row.Scan(
 		&i.AccountID,
 		&i.PathSlug,
 		&i.Status,
 		&i.StartedAt,
+		&i.PublicVisible,
 	)
 	return i, err
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/sujaykumarsuman/xlearn/internal/assessment/store/gen"
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 )
 
@@ -49,7 +50,25 @@ const (
 	// Session status values.
 	StatusLive   = "live"
 	StatusScored = "scored"
+
+	// MaxTotal is the v1 rubric's maximum total (7 dims x 5 = 35). m1-02 (M1a) writes it
+	// as mock_session.max_total, and readers default a NULL max_total to it.
+	MaxTotal = NumDimensions * MaxScore
+
+	// RubricID is the id the DSA manifest gives the v1 mock rubric
+	// (curriculum/courses/dsa/course.json mock.rubric.id; pinned by
+	// TestManifestGoldenMirror). New sessions record it with RubricSnapshot.
+	RubricID = "dsa-mock@1"
+
+	// ScoredBySelf is the only scorer v1 has: the learner's own rubric (m1-02; 'ai-byo'
+	// arrives with the AI scorer).
+	ScoredBySelf = "self"
 )
+
+// RubricSnapshot is the rubric a session is scored against, frozen on the session row
+// (mock_session.rubric_snapshot): the DSA manifest's mock.rubric, byte-for-byte the
+// literal migration 00004 backfills (pinned to the manifest by TestManifestGoldenMirror).
+const RubricSnapshot = `{"id": "dsa-mock@1", "dims": [{"id": "communication", "label": "Communication"}, {"id": "problem_understanding", "label": "Problem understanding"}, {"id": "brute_force", "label": "Brute force"}, {"id": "optimisation", "label": "Optimisation"}, {"id": "code_quality", "label": "Code quality"}, {"id": "edge_cases", "label": "Edge cases"}, {"id": "complexity", "label": "Complexity"}], "scale": [1, 5]}`
 
 // dimensionSet indexes Dimensions for O(1) membership checks.
 var dimensionSet = func() map[string]bool {
@@ -108,7 +127,9 @@ func TotalScore(scores map[string]int) int {
 	return t
 }
 
-// MockSession is one timed mock, with plain Go scalars. Total35 is nil until scored.
+// MockSession is one timed mock, with plain Go scalars. Total35 is nil until scored; it
+// reads COALESCE(total, total_35) (m1-02: total is dual-written beside total_35, which
+// M1c drops), and MaxTotal reads COALESCE(max_total, 35).
 type MockSession struct {
 	ID         string
 	AccountID  string
@@ -118,6 +139,8 @@ type MockSession struct {
 	Date       time.Time
 	Status     string
 	Total35    *int
+	MaxTotal   int
+	PathSlug   string
 	Notes      string
 	StartedAt  time.Time
 	DeadlineAt time.Time
@@ -218,22 +241,47 @@ var _ Store = (*PgStore)(nil)
 // Ping verifies the database is reachable (drives /readyz).
 func (s *PgStore) Ping(ctx context.Context) error { return s.pool.Ping(ctx) }
 
-// CreateMock starts a live session with a server-authoritative 45-minute window.
+// CreateMock starts a live session with a server-authoritative 45-minute window. The
+// session row and its ordinal-1 mock_session_item row are written in ONE transaction
+// (m1-02, M1a): the item is the session's problem, or NULL for a mixed set (problemID
+// "" — v1 never pins an item).
 func (s *PgStore) CreateMock(ctx context.Context, accountID, setID, problemID, difficulty string, startedAt, deadlineAt time.Time) (MockSession, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return MockSession{}, fmt.Errorf("parse account id: %w", err)
 	}
-	m, err := s.q.InsertMockSession(ctx, gen.InsertMockSessionParams{
-		AccountID:  aid,
-		SetID:      setID,
-		ProblemID:  problemID,
-		Difficulty: difficulty,
-		StartedAt:  tsz(startedAt),
-		DeadlineAt: tsz(deadlineAt),
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return MockSession{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := s.q.WithTx(tx)
+
+	m, err := qtx.InsertMockSession(ctx, gen.InsertMockSessionParams{
+		AccountID:      aid,
+		SetID:          setID,
+		ProblemID:      problemID,
+		Difficulty:     pgtype.Text{String: difficulty, Valid: true},
+		StartedAt:      tsz(startedAt),
+		DeadlineAt:     tsz(deadlineAt),
+		PathSlug:       course.DSASlug,
+		RubricID:       pgtype.Text{String: RubricID, Valid: true},
+		RubricSnapshot: []byte(RubricSnapshot),
+		MaxTotal:       i4(MaxTotal),
 	})
 	if err != nil {
 		return MockSession{}, fmt.Errorf("insert mock session: %w", err)
+	}
+	if err := qtx.InsertMockSessionItem(ctx, gen.InsertMockSessionItemParams{
+		SessionID: m.ID,
+		Ordinal:   1,
+		ItemID:    pgtype.Text{String: problemID, Valid: problemID != ""},
+		PathSlug:  m.PathSlug,
+	}); err != nil {
+		return MockSession{}, fmt.Errorf("insert mock session item: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return MockSession{}, fmt.Errorf("commit tx: %w", err)
 	}
 	return toMockSession(m), nil
 }
@@ -325,6 +373,7 @@ func (s *PgStore) ScoreMock(ctx context.Context, accountID, mockID string, score
 		AccountID: aid,
 		Total35:   i4(total),
 		Notes:     notes,
+		MaxTotal:  i4(MaxTotal),
 	}); err != nil {
 		// The FOR UPDATE lock + the status='live' read above guarantee this updates one
 		// row; ErrNoRows here would mean a concurrent scorer beat us despite the lock.
@@ -347,6 +396,11 @@ func (s *PgStore) ScoreMock(ctx context.Context, accountID, mockID string, score
 	// Reflect the committed transition without another round trip.
 	m.Status = StatusScored
 	m.Total35 = i4(total)
+	m.Total = i4(total)
+	if !m.MaxTotal.Valid {
+		m.MaxTotal = i4(MaxTotal)
+	}
+	m.ScoredBy = pgtype.Text{String: ScoredBySelf, Valid: true}
 	m.Notes = notes
 	out := make([]RubricScore, 0, NumDimensions)
 	for _, dim := range Dimensions {
@@ -371,7 +425,7 @@ func (s *PgStore) Trend(ctx context.Context, accountID string) ([]TrendPoint, er
 			MockID:     uuidString(r.ID),
 			SetID:      r.SetID,
 			ProblemID:  r.ProblemID,
-			Difficulty: r.Difficulty,
+			Difficulty: r.Difficulty.String,
 			Date:       r.Date.Time,
 			StartedAt:  r.StartedAt.Time,
 			Total35:    int(r.Total35.Int32),
@@ -421,23 +475,34 @@ func (s *PgStore) readRubric(ctx context.Context, q *gen.Queries, mockID pgtype.
 	return out, nil
 }
 
-// toMockSession maps the generated row to the plain-scalar domain type.
+// toMockSession maps the generated row to the plain-scalar domain type. The total reads
+// COALESCE(total, total_35) and the max COALESCE(max_total, 35) (m1-02, M1a), so a row
+// written by v1.5.2 (total_35 only) and one written by v1.7.0 (total only) read alike.
 func toMockSession(m gen.AssessmentMockSession) MockSession {
 	ms := MockSession{
 		ID:         uuidString(m.ID),
 		AccountID:  uuidString(m.AccountID),
 		SetID:      m.SetID,
 		ProblemID:  m.ProblemID,
-		Difficulty: m.Difficulty,
+		Difficulty: m.Difficulty.String,
 		Date:       m.Date.Time,
 		Status:     m.Status,
+		MaxTotal:   MaxTotal,
+		PathSlug:   m.PathSlug,
 		Notes:      m.Notes,
 		StartedAt:  m.StartedAt.Time,
 		DeadlineAt: m.DeadlineAt.Time,
 	}
-	if m.Total35.Valid {
+	switch {
+	case m.Total.Valid:
+		v := int(m.Total.Int32)
+		ms.Total35 = &v
+	case m.Total35.Valid:
 		v := int(m.Total35.Int32)
 		ms.Total35 = &v
+	}
+	if m.MaxTotal.Valid {
+		ms.MaxTotal = int(m.MaxTotal.Int32)
 	}
 	return ms
 }
@@ -473,10 +538,15 @@ func insertEvent(ctx context.Context, qtx *gen.Queries, subject, accountID strin
 	if err != nil {
 		return fmt.Errorf("marshal %s: %w", subject, err)
 	}
+	aid, err := parseUUID(accountID)
+	if err != nil {
+		return fmt.Errorf("outbox account id: %w", err)
+	}
 	if err := qtx.InsertOutbox(ctx, gen.InsertOutboxParams{
 		EventID:     mustUUID(eventID),
 		Subject:     subject,
 		PayloadJson: payload,
+		AccountID:   aid,
 	}); err != nil {
 		return fmt.Errorf("insert outbox %s: %w", subject, err)
 	}

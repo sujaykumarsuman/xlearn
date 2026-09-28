@@ -82,7 +82,9 @@ contract-header lint, and cuts `v1.6.0`. Production has 1 account and 19 events;
    the 19-event synthetic v1 fixture replay (+ its v2 twin) against golden projections; compose upgrade from `v1.5.2`
    images with seeded data → backfills correct; then **`v1.5.2` images on the expanded schema** boot and pass the smoke (R-b).
 7. **[X] PR** → conventional commit(s) `feat(m1a): …` with the attribution lines → CI green → squash-merge (see Ship).
-8. **[I] Infra PR** in `../infra` (its own PR, never folded into the tag): add `NATS_URL` to `apps/xlearn-identity.yaml`.
+8. ~~**[I] Infra PR**~~ — **DROPPED 2026-09-28** (owner decision, ADR-0035 §2; identity's `NATS_URL` + seed move to
+   mi-06's N2 PR, mi-06 task 4). Open no infra PR; the text below is kept for the record only.
+   ~~**[I] Infra PR** in `../infra` (its own PR, never folded into the tag): add `NATS_URL` to `apps/xlearn-identity.yaml`.~~
    This PR owns identity's prod `NATS_URL`; mi-06's identity N2 PR adds only the seed and inbox prefix. If MI-5 is live
    and its `messaging` NetworkPolicy doesn't admit identity on 4222, add identity in this PR; if MI-5 isn't live, there's
    nothing to change (MI-5 forward-declares identity). Merge before the tag.

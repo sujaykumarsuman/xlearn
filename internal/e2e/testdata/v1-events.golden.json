@@ -1,0 +1,58 @@
+{
+  "assessment": {
+    "heatmap": [
+      "{Date:2026-09-20 00:00:00 +0000 UTC Solves:2 Reviews:6}",
+      "{Date:2026-09-21 00:00:00 +0000 UTC Solves:1 Reviews:0}",
+      "{Date:2026-09-22 00:00:00 +0000 UTC Solves:1 Reviews:1}"
+    ],
+    "ladders": 2,
+    "mastery": [
+      "2026-09-20T10:00:01Z|{ProblemID:16 FirstSolvedAt:\u003cnil\u003e BestOutcome:clean BestRank:4 CleanSolves:1 SolveCount:1}",
+      "2026-09-20T11:20:01Z|{ProblemID:18 FirstSolvedAt:\u003cnil\u003e BestOutcome:miss BestRank:1 CleanSolves:0 SolveCount:1}",
+      "2026-09-21T09:00:01Z|{ProblemID:1 FirstSolvedAt:\u003cnil\u003e BestOutcome:rough BestRank:3 CleanSolves:0 SolveCount:1}",
+      "2026-09-22T09:30:01Z|{ProblemID:2 FirstSolvedAt:\u003cnil\u003e BestOutcome:clean BestRank:4 CleanSolves:1 SolveCount:1}"
+    ],
+    "outcome_mix": {
+      "clean": 2,
+      "miss": 1,
+      "rough": 1
+    },
+    "resets": 0,
+    "solved": 4
+  },
+  "mistake_entry": [
+    "18|open|-||0|dsa",
+    "1|open|-||0|dsa"
+  ],
+  "reminder": [
+    "revision_due|dsa"
+  ],
+  "review_outbox": [
+    "xlearn.review.mistake_opened|{\"category\": \"\", \"problem_id\": \"1\"}|t",
+    "xlearn.review.mistake_opened|{\"category\": \"\", \"problem_id\": \"18\"}|t",
+    "xlearn.review.revision_scheduled|{\"due_date\": \"2026-09-21T10:00:01Z\", \"problem_id\": \"16\", \"touch_level\": 1}|t",
+    "xlearn.review.revision_scheduled|{\"due_date\": \"2026-09-23T09:30:01Z\", \"problem_id\": \"2\", \"touch_level\": 1}|t",
+    "xlearn.review.revision_scheduled|{\"due_date\": \"2026-09-23T10:00:01Z\", \"problem_id\": \"16\", \"touch_level\": 2}|t",
+    "xlearn.review.revision_scheduled|{\"due_date\": \"2026-09-23T11:00:00Z\", \"problem_id\": \"18\", \"touch_level\": 2}|t",
+    "xlearn.review.revision_scheduled|{\"due_date\": \"2026-09-25T09:30:01Z\", \"problem_id\": \"2\", \"touch_level\": 2}|t",
+    "xlearn.review.revision_scheduled|{\"due_date\": \"2026-09-27T10:00:01Z\", \"problem_id\": \"16\", \"touch_level\": 3}|t",
+    "xlearn.review.revision_scheduled|{\"due_date\": \"2026-09-29T09:30:01Z\", \"problem_id\": \"2\", \"touch_level\": 3}|t",
+    "xlearn.review.revision_scheduled|{\"due_date\": \"2026-10-11T10:00:01Z\", \"problem_id\": \"16\", \"touch_level\": 4}|t",
+    "xlearn.review.revision_scheduled|{\"due_date\": \"2026-10-13T09:30:01Z\", \"problem_id\": \"2\", \"touch_level\": 4}|t",
+    "xlearn.review.revision_scheduled|{\"due_date\": \"2026-11-04T10:00:01Z\", \"problem_id\": \"16\", \"touch_level\": 5}|t",
+    "xlearn.review.revision_scheduled|{\"due_date\": \"2026-11-06T09:30:01Z\", \"problem_id\": \"2\", \"touch_level\": 5}|t"
+  ],
+  "revision_item": [
+    "16|1|2026-09-21T10:00:01Z|pending|dsa",
+    "16|2|2026-09-23T10:00:01Z|pending|dsa",
+    "16|3|2026-09-27T10:00:01Z|pending|dsa",
+    "16|4|2026-10-11T10:00:01Z|pending|dsa",
+    "16|5|2026-11-04T10:00:01Z|pending|dsa",
+    "18|2|2026-09-23T11:00:00Z|pending|dsa",
+    "2|1|2026-09-23T09:30:01Z|pending|dsa",
+    "2|2|2026-09-25T09:30:01Z|pending|dsa",
+    "2|3|2026-09-29T09:30:01Z|pending|dsa",
+    "2|4|2026-10-13T09:30:01Z|pending|dsa",
+    "2|5|2026-11-06T09:30:01Z|pending|dsa"
+  ]
+}

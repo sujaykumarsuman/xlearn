@@ -13,11 +13,43 @@ Domain events on **NATS JetStream**, published via the **transactional outbox** 
   limits) and live durable consumers (stream, name, filter, service, `Handles`/`Ignores`). The
   publisher builds its stream config from it; `Subscribe` refuses an undeclared (stream, durable,
   filter); the NATS ACL is rendered from it (see [Topology, limits and auth](#topology-limits-and-auth-mi-05-n0)).
-- **Envelope:** `{ event_id (uuid), subject, occurred_at (UTC), version (int), account_id, data {…} }`.
+- **Envelope:** `{ event_id (uuid), subject, occurred_at (UTC), version (int), account_id, data {…} }`
+  (v1); v2 appends `path_slug` — see [Envelope v2](#envelope-v2-m1-02) for the decode rule.
 - **Delivery:** at-least-once. Consumers **dedupe on `event_id`** (an `inbox`/offset table) → effectively
   once. Producers write the domain row **and** the `outbox` row in one transaction; a relay publishes.
 - **Compatibility:** events are **facts**, **additive-only**. Never repurpose a field; add `version` +
   new fields. Consumers ignore unknown fields.
+
+### Envelope v2 (m1-02)
+
+`internal/platform/events/envelope.go` ([ADR-0026 §3](../adr/0026-per-course-extensibility-model.md),
+[ADR-0034 §3](../adr/0034-v2-release-labelling-gating-and-rollback.md)):
+`Envelope{EventID, Subject, OccurredAt, Version, AccountID, PathSlug, Data}`, with
+`path_slug,omitempty`. The envelope is **append-only** and every decoder reads v1 **and** v2
+**forever**. **Consumers before producers:** in `v1.6.0` every consumer decodes both (review's practice
+consumer and notifications worker, assessment's projection consumer — all through `DecodeEnvelope`)
+while every producer still emits v1; producers switch to `NewEnvelope(EnvelopeV2, …)` one tag later
+(m1-03, `v1.7.0`).
+
+**Decode rule** (`DecodeEnvelope`):
+
+| Envelope | Result |
+|---|---|
+| `version` 1, or no `version` | v1: `PathSlug = "dsa"` (v1 is DSA-only), whatever the payload holds |
+| `version` ≥ 2, course-scoped subject, `path_slug` set | read the known fields; unknown fields (a v3's extras) ignored |
+| `version` ≥ 2, **course-scoped** subject, no `path_slug` | `ErrInvalidEnvelope` → the consumer **dead-letters it on its first delivery** (`event_dead_letter` row + ERROR log; D34, no alert) |
+| `version` ≥ 2, account-scoped subject (`identity.*`) | no `path_slug` expected |
+| malformed JSON, negative `version`, v2+ without `subject` | `ErrInvalidEnvelope` (dead-lettered at once; v1 consumers logged and acked it) |
+
+**Course-scoped** is a flag beside each subject in the registry (`Stream.CourseScoped` in
+`topology.go`, `events.CourseScoped`): every `practice.*`, `review.*` and `assessment.mock_completed`
+subject is course-scoped; `identity.account_created` is account-scoped. An unregistered subject is
+never a decode error — it takes the consumer's unlisted-subject path. `NewEnvelope` refuses a v1
+envelope with `path_slug`, a course-scoped v2 without it, and anything over `MaxEnvelopeBytes`. Consumers
+carry `PathSlug` into their store calls (review writes it on every `revision_item`, `mistake_entry` and
+`reminder` it creates; assessment carries it on `ProjectionEvent` until the M2b projections store it).
+Fixtures: `internal/platform/events/testdata/envelope/` (a v1 and v2 twin per subject, v2-without-path,
+an unknown v3); each consumer has a v1-vs-v2 twin test.
 
 ## Catalogue
 
@@ -120,7 +152,9 @@ sequenceDiagram
   `durable`, `err_class` ∈ timeout/db/decode/other, `stream_seq`, `at`), then `Term()`s the message
   and logs ERROR with the ids only. A sink error still ends in `Term()`. Rows are read on demand
   (`ListDeadLetters`; D34: no alerting) — review and assessment have the table today; practice,
-  identity, coach and judge add theirs when they first consume.
+  identity, coach and judge add theirs when they first consume. A handler error wrapping
+  `events.ErrInvalidEnvelope` (m1-02: an undecodable or course-scoped-v2-without-`path_slug` envelope)
+  dead-letters on its **first** delivery, `err_class` `decode`: no redelivery can fix it.
 - **Unlisted subjects:** each consumer's default branch acks a subject its durable lists under
   `Ignores` quietly and logs **ERROR** for anything else — never a silent ack (the subject registry).
 - **Envelope cap:** `events.MaxEnvelopeBytes` = 16 KiB (L20). The relay leaves a larger outbox row

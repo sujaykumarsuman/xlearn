@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -210,16 +211,22 @@ func (c *NatsConsumer) createConsumer(ctx context.Context, cfg jetstream.Consume
 // runs on a fresh, bounded context (not the subscription ctx) so it can finish and
 // ack during shutdown drain; on failure it naks WITH an escalating delay so a
 // transient outage never burns the redelivery budget in a hot loop. On the LAST
-// failing delivery it dead-letters instead (deadLetter).
+// failing delivery it dead-letters instead (deadLetter) — and at once, on the first
+// delivery, for an ErrInvalidEnvelope (m1-02: a v2 course-scoped event without
+// path_slug or undecodable JSON, which no redelivery can fix).
 func (c *NatsConsumer) dispatch(msg jetstream.Msg, h Handler, sub subscription) {
 	ctx, cancel := context.WithTimeout(context.Background(), handleTimeout)
 	defer cancel()
 
 	e := Event{ID: eventID(msg), Subject: msg.Subject(), Data: msg.Data()}
 	if err := h.Handle(ctx, e); err != nil {
+		if errors.Is(err, ErrInvalidEnvelope) {
+			c.deadLetter(msg, e, sub, err, "event dead-lettered: invalid envelope")
+			return
+		}
 		n := deliveryCount(msg)
 		if n >= sub.maxDeliver {
-			c.deadLetter(msg, e, sub, err)
+			c.deadLetter(msg, e, sub, err, "event dead-lettered after max deliveries")
 			return
 		}
 		delay := backoffIn(sub.backoff, n)
@@ -241,7 +248,7 @@ func (c *NatsConsumer) dispatch(msg jetstream.Msg, h Handler, sub subscription) 
 // (event_id, subject, durable, err_class, stream_seq — no payload, no error text). A
 // sink error is logged and the message is still terminated: the server won't
 // redeliver past MaxDeliver anyway.
-func (c *NatsConsumer) deadLetter(msg jetstream.Msg, e Event, sub subscription, herr error) {
+func (c *NatsConsumer) deadLetter(msg jetstream.Msg, e Event, sub subscription, herr error, reason string) {
 	dl := DeadLetter{
 		EventID:   e.ID,
 		Subject:   e.Subject,
@@ -265,7 +272,7 @@ func (c *NatsConsumer) deadLetter(msg jetstream.Msg, e Event, sub subscription, 
 	if terr := msg.Term(); terr != nil {
 		c.log.Error("term failed", ids...)
 	}
-	c.log.Error("event dead-lettered after max deliveries", ids...)
+	c.log.Error(reason, ids...)
 }
 
 // deliveryCount returns how many times this message has been delivered (1 on first

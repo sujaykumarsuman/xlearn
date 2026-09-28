@@ -12,7 +12,7 @@ import (
 )
 
 const getMockSession = `-- name: GetMockSession :one
-SELECT id, account_id, set_id, problem_id, difficulty, date, status, total_35, notes, started_at, deadline_at, created_at, updated_at FROM assessment.mock_session
+SELECT id, account_id, set_id, problem_id, difficulty, date, status, total_35, notes, started_at, deadline_at, created_at, updated_at, path_slug, rubric_id, rubric_snapshot, total, max_total, scored_by FROM assessment.mock_session
 WHERE id = $1 AND account_id = $2
 `
 
@@ -39,12 +39,18 @@ func (q *Queries) GetMockSession(ctx context.Context, arg GetMockSessionParams) 
 		&i.DeadlineAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
+		&i.RubricID,
+		&i.RubricSnapshot,
+		&i.Total,
+		&i.MaxTotal,
+		&i.ScoredBy,
 	)
 	return i, err
 }
 
 const getMockSessionForUpdate = `-- name: GetMockSessionForUpdate :one
-SELECT id, account_id, set_id, problem_id, difficulty, date, status, total_35, notes, started_at, deadline_at, created_at, updated_at FROM assessment.mock_session
+SELECT id, account_id, set_id, problem_id, difficulty, date, status, total_35, notes, started_at, deadline_at, created_at, updated_at, path_slug, rubric_id, rubric_snapshot, total, max_total, scored_by FROM assessment.mock_session
 WHERE id = $1 AND account_id = $2
 FOR UPDATE
 `
@@ -73,28 +79,42 @@ func (q *Queries) GetMockSessionForUpdate(ctx context.Context, arg GetMockSessio
 		&i.DeadlineAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
+		&i.RubricID,
+		&i.RubricSnapshot,
+		&i.Total,
+		&i.MaxTotal,
+		&i.ScoredBy,
 	)
 	return i, err
 }
 
 const insertMockSession = `-- name: InsertMockSession :one
-INSERT INTO assessment.mock_session (account_id, set_id, problem_id, difficulty, started_at, deadline_at)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, account_id, set_id, problem_id, difficulty, date, status, total_35, notes, started_at, deadline_at, created_at, updated_at
+INSERT INTO assessment.mock_session (
+    account_id, set_id, problem_id, difficulty, started_at, deadline_at,
+    path_slug, rubric_id, rubric_snapshot, max_total
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, account_id, set_id, problem_id, difficulty, date, status, total_35, notes, started_at, deadline_at, created_at, updated_at, path_slug, rubric_id, rubric_snapshot, total, max_total, scored_by
 `
 
 type InsertMockSessionParams struct {
-	AccountID  pgtype.UUID
-	SetID      string
-	ProblemID  string
-	Difficulty string
-	StartedAt  pgtype.Timestamptz
-	DeadlineAt pgtype.Timestamptz
+	AccountID      pgtype.UUID
+	SetID          string
+	ProblemID      string
+	Difficulty     pgtype.Text
+	StartedAt      pgtype.Timestamptz
+	DeadlineAt     pgtype.Timestamptz
+	PathSlug       string
+	RubricID       pgtype.Text
+	RubricSnapshot []byte
+	MaxTotal       pgtype.Int4
 }
 
 // Start a live mock session with the server clock (started_at / deadline_at are
 // computed by the caller so the 45-minute window is server-authoritative). status
 // defaults to 'live', total_35 stays NULL until scoring, date defaults to today.
+// m1-02 (M1a) also writes the course, the rubric the session is scored against (id +
+// snapshot) and its max total; the ordinal-1 mock_session_item row goes in the same tx.
 func (q *Queries) InsertMockSession(ctx context.Context, arg InsertMockSessionParams) (AssessmentMockSession, error) {
 	row := q.db.QueryRow(ctx, insertMockSession,
 		arg.AccountID,
@@ -103,6 +123,10 @@ func (q *Queries) InsertMockSession(ctx context.Context, arg InsertMockSessionPa
 		arg.Difficulty,
 		arg.StartedAt,
 		arg.DeadlineAt,
+		arg.PathSlug,
+		arg.RubricID,
+		arg.RubricSnapshot,
+		arg.MaxTotal,
 	)
 	var i AssessmentMockSession
 	err := row.Scan(
@@ -119,12 +143,77 @@ func (q *Queries) InsertMockSession(ctx context.Context, arg InsertMockSessionPa
 		&i.DeadlineAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
+		&i.RubricID,
+		&i.RubricSnapshot,
+		&i.Total,
+		&i.MaxTotal,
+		&i.ScoredBy,
 	)
 	return i, err
 }
 
+const insertMockSessionItem = `-- name: InsertMockSessionItem :exec
+INSERT INTO assessment.mock_session_item (session_id, ordinal, item_id, path_slug)
+VALUES ($1, $2, $3, $4)
+`
+
+type InsertMockSessionItemParams struct {
+	SessionID pgtype.UUID
+	Ordinal   int32
+	ItemID    pgtype.Text
+	PathSlug  string
+}
+
+// One ordered item of a session (m1-02, M1a; supersedes problem_id / set_id at M1c).
+// v1 sessions have exactly one row, ordinal 1; item_id is NULL for a mixed set
+// (problem_id ”).
+func (q *Queries) InsertMockSessionItem(ctx context.Context, arg InsertMockSessionItemParams) error {
+	_, err := q.db.Exec(ctx, insertMockSessionItem,
+		arg.SessionID,
+		arg.Ordinal,
+		arg.ItemID,
+		arg.PathSlug,
+	)
+	return err
+}
+
+const listMockSessionItems = `-- name: ListMockSessionItems :many
+SELECT session_id, ordinal, item_id, path_slug, contract_hash
+FROM assessment.mock_session_item
+WHERE session_id = $1
+ORDER BY ordinal
+`
+
+// A session's ordered items (tests and the M1b readers).
+func (q *Queries) ListMockSessionItems(ctx context.Context, sessionID pgtype.UUID) ([]AssessmentMockSessionItem, error) {
+	rows, err := q.db.Query(ctx, listMockSessionItems, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AssessmentMockSessionItem{}
+	for rows.Next() {
+		var i AssessmentMockSessionItem
+		if err := rows.Scan(
+			&i.SessionID,
+			&i.Ordinal,
+			&i.ItemID,
+			&i.PathSlug,
+			&i.ContractHash,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listScoredMocks = `-- name: ListScoredMocks :many
-SELECT id, set_id, problem_id, difficulty, date, started_at, total_35
+SELECT id, set_id, problem_id, difficulty, date, started_at, COALESCE(total, total_35) AS total_35
 FROM assessment.mock_session
 WHERE account_id = $1 AND status = 'scored'
 ORDER BY started_at, created_at
@@ -134,13 +223,14 @@ type ListScoredMocksRow struct {
 	ID         pgtype.UUID
 	SetID      string
 	ProblemID  string
-	Difficulty string
+	Difficulty pgtype.Text
 	Date       pgtype.Date
 	StartedAt  pgtype.Timestamptz
 	Total35    pgtype.Int4
 }
 
-// An account's scored mocks oldest-first — the trend series (R-MK3).
+// An account's scored mocks oldest-first — the trend series (R-MK3). The total is read
+// as COALESCE(total, total_35) (m1-02, M1a).
 func (q *Queries) ListScoredMocks(ctx context.Context, accountID pgtype.UUID) ([]ListScoredMocksRow, error) {
 	rows, err := q.db.Query(ctx, listScoredMocks, accountID)
 	if err != nil {
@@ -171,7 +261,9 @@ func (q *Queries) ListScoredMocks(ctx context.Context, accountID pgtype.UUID) ([
 
 const markMockScored = `-- name: MarkMockScored :one
 UPDATE assessment.mock_session
-SET status = 'scored', total_35 = $3, notes = $4, updated_at = now()
+SET status = 'scored', total_35 = $3, notes = $4,
+    total = $3, max_total = COALESCE(max_total, $5), scored_by = 'self',
+    updated_at = now()
 WHERE id = $1 AND account_id = $2 AND status = 'live'
 RETURNING id
 `
@@ -181,16 +273,19 @@ type MarkMockScoredParams struct {
 	AccountID pgtype.UUID
 	Total35   pgtype.Int4
 	Notes     string
+	MaxTotal  pgtype.Int4
 }
 
 // Latch a live session to scored with its /35 total + notes. The status='live' guard
-// makes a double-submit idempotent at the SQL level (no row -> already scored).
+// makes a double-submit idempotent at the SQL level (no row -> already scored). m1-02
+// (M1a) dual-writes total / max_total / scored_by beside total_35.
 func (q *Queries) MarkMockScored(ctx context.Context, arg MarkMockScoredParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, markMockScored,
 		arg.ID,
 		arg.AccountID,
 		arg.Total35,
 		arg.Notes,
+		arg.MaxTotal,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)

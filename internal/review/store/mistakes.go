@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/review/store/gen"
 )
 
@@ -99,13 +100,14 @@ func lockJournal(ctx context.Context, qtx *gen.Queries, accountID, problemID str
 // actually inserted (not deduped by the one-open-entry index), appends a mistake_opened
 // outbox row. Callers must hold the journal advisory lock (lockJournal). Returns whether
 // a new entry was opened.
-func (s *PgStore) openMistakeTx(ctx context.Context, qtx *gen.Queries, aid pgtype.UUID, accountID, problemID, pattern string, revisitDate pgtype.Timestamptz) (bool, error) {
+func (s *PgStore) openMistakeTx(ctx context.Context, qtx *gen.Queries, aid pgtype.UUID, accountID, pathSlug, problemID, pattern string, revisitDate pgtype.Timestamptz) (bool, error) {
 	_, err := qtx.OpenMistake(ctx, gen.OpenMistakeParams{
 		AccountID:   aid,
 		ProblemID:   problemID,
 		Pattern:     pattern,
 		Category:    pgtype.Text{}, // uncategorised — the learner picks from the seeded picker
 		RevisitDate: revisitDate,
+		PathSlug:    pathSlug,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil // an open entry already exists — no duplicate, no re-emit
@@ -145,7 +147,7 @@ func (s *PgStore) recordCleanRevisitTx(ctx context.Context, qtx *gen.Queries, ai
 // the freshly-reset Day-1 due. It holds the journal advisory lock across the read +
 // mutation so the closed→open re-open can't race a concurrent open into a unique
 // violation that would roll back the whole failed re-solve.
-func (s *PgStore) recordFailedResolveTx(ctx context.Context, qtx *gen.Queries, aid pgtype.UUID, accountID, problemID, pattern string, revisitDate pgtype.Timestamptz) error {
+func (s *PgStore) recordFailedResolveTx(ctx context.Context, qtx *gen.Queries, aid pgtype.UUID, accountID, pathSlug, problemID, pattern string, revisitDate pgtype.Timestamptz) error {
 	if err := lockJournal(ctx, qtx, accountID, problemID); err != nil {
 		return err
 	}
@@ -166,7 +168,7 @@ func (s *PgStore) recordFailedResolveTx(ctx context.Context, qtx *gen.Queries, a
 		}
 		return nil
 	case errors.Is(err, pgx.ErrNoRows):
-		_, oerr := s.openMistakeTx(ctx, qtx, aid, accountID, problemID, pattern, revisitDate)
+		_, oerr := s.openMistakeTx(ctx, qtx, aid, accountID, pathSlug, problemID, pattern, revisitDate)
 		return oerr
 	default:
 		return fmt.Errorf("get latest mistake: %w", err)
@@ -244,6 +246,8 @@ func (s *PgStore) CreateMistake(ctx context.Context, accountID string, in Mistak
 		RevisitDate:  pgtype.Timestamptz{},
 		Status:       status,
 		RevisitCount: 0,
+		// The journal API is DSA-only until M1b's course-scoped routes (m1-02, M1a).
+		PathSlug: course.DSASlug,
 	})
 	if isUniqueViolation(err) {
 		return Mistake{}, ErrConflict
@@ -383,6 +387,9 @@ func (s *PgStore) SaveWeakAreaSnapshot(ctx context.Context, accountID string, we
 		WeekOf:      dateOf(weekOf),
 		TopCategory: textOrNull(topCategory),
 		CountsJson:  countsJSON,
+		// Every v1 snapshot is DSA (m1-02, M1a); the conflict target stays the v1
+		// (account_id, week_of) unique until M1c.
+		PathSlug: course.DSASlug,
 	}); err != nil {
 		return fmt.Errorf("upsert weak-area snapshot: %w", err)
 	}
@@ -431,7 +438,7 @@ func (s *PgStore) WeakAreaCurrent(ctx context.Context, accountID string) (WeakAr
 // --- notifications ---
 
 // HandleRevisionDue dedupes on eventID and writes one reminder, in one transaction.
-func (s *PgStore) HandleRevisionDue(ctx context.Context, eventID, accountID, kind string, dueAt time.Time) (bool, error) {
+func (s *PgStore) HandleRevisionDue(ctx context.Context, eventID, accountID, pathSlug, kind string, dueAt time.Time) (bool, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return false, fmt.Errorf("parse account id: %w", err)
@@ -454,6 +461,7 @@ func (s *PgStore) HandleRevisionDue(ctx context.Context, eventID, accountID, kin
 		AccountID: aid,
 		Kind:      kind,
 		DueAt:     tsz(dueAt),
+		PathSlug:  pgtype.Text{String: pathSlug, Valid: pathSlug != ""},
 	}); err != nil {
 		return false, fmt.Errorf("insert reminder: %w", err)
 	}

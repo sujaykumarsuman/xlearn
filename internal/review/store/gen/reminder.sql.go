@@ -12,20 +12,27 @@ import (
 )
 
 const insertReminder = `-- name: InsertReminder :one
-INSERT INTO review.reminder (account_id, kind, due_at)
-VALUES ($1, $2, $3)
-RETURNING id, account_id, kind, due_at, delivered_at, created_at
+INSERT INTO review.reminder (account_id, kind, due_at, path_slug)
+VALUES ($1, $2, $3, $4)
+RETURNING id, account_id, kind, due_at, delivered_at, created_at, path_slug
 `
 
 type InsertReminderParams struct {
 	AccountID pgtype.UUID
 	Kind      string
 	DueAt     pgtype.Timestamptz
+	PathSlug  pgtype.Text
 }
 
 // Write one in-app reminder (the notifications worker, inside the dedupe tx).
+// path_slug is the revision_due event's course (m1-02, M1a; nullable column).
 func (q *Queries) InsertReminder(ctx context.Context, arg InsertReminderParams) (ReviewReminder, error) {
-	row := q.db.QueryRow(ctx, insertReminder, arg.AccountID, arg.Kind, arg.DueAt)
+	row := q.db.QueryRow(ctx, insertReminder,
+		arg.AccountID,
+		arg.Kind,
+		arg.DueAt,
+		arg.PathSlug,
+	)
 	var i ReviewReminder
 	err := row.Scan(
 		&i.ID,
@@ -34,12 +41,13 @@ func (q *Queries) InsertReminder(ctx context.Context, arg InsertReminderParams) 
 		&i.DueAt,
 		&i.DeliveredAt,
 		&i.CreatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }
 
 const listDueReminders = `-- name: ListDueReminders :many
-SELECT id, account_id, kind, due_at, delivered_at, created_at FROM review.reminder
+SELECT id, account_id, kind, due_at, delivered_at, created_at, path_slug FROM review.reminder
 WHERE account_id = $1 AND delivered_at IS NULL AND due_at <= now()
 ORDER BY due_at ASC
 LIMIT $2
@@ -68,6 +76,7 @@ func (q *Queries) ListDueReminders(ctx context.Context, arg ListDueRemindersPara
 			&i.DueAt,
 			&i.DeliveredAt,
 			&i.CreatedAt,
+			&i.PathSlug,
 		); err != nil {
 			return nil, err
 		}

@@ -2,18 +2,20 @@
 -- Idempotently schedule one touch. ON CONFLICT DO NOTHING so a re-delivered or
 -- out-of-order practice event never double-schedules or clobbers a touch already
 -- scored: on conflict the query returns no row (pgx.ErrNoRows), which the caller
--- reads as "already scheduled — do not re-emit revision_scheduled".
-INSERT INTO review.revision_item (account_id, problem_id, touch_level, due_date, status)
-VALUES ($1, $2, $3, $4, 'pending')
+-- reads as "already scheduled — do not re-emit revision_scheduled". path_slug is the
+-- event's course (m1-02, M1a; 'dsa' for every v1 event).
+INSERT INTO review.revision_item (account_id, problem_id, touch_level, due_date, status, path_slug)
+VALUES ($1, $2, $3, $4, 'pending', $5)
 ON CONFLICT (account_id, problem_id, touch_level) DO NOTHING
 RETURNING *;
 
 -- name: ReanchorTouch :one
 -- Re-anchor one touch to a fresh schedule (the fail → reset-to-Day-1 path, R-SR3):
 -- create it if missing, else overwrite due_date, re-open it to pending, and clear
--- surfaced_at so the sweep re-surfaces it when due.
-INSERT INTO review.revision_item (account_id, problem_id, touch_level, due_date, status)
-VALUES ($1, $2, $3, $4, 'pending')
+-- surfaced_at so the sweep re-surfaces it when due. path_slug is written on insert only
+-- (a re-anchored row keeps its course).
+INSERT INTO review.revision_item (account_id, problem_id, touch_level, due_date, status, path_slug)
+VALUES ($1, $2, $3, $4, 'pending', $5)
 ON CONFLICT (account_id, problem_id, touch_level)
 DO UPDATE SET due_date = EXCLUDED.due_date,
              status = 'pending',

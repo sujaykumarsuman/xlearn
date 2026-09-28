@@ -12,7 +12,7 @@ import (
 )
 
 const getUserProblemState = `-- name: GetUserProblemState :one
-SELECT id, account_id, problem_id, status, first_solved_at, current_touch, last_outcome, created_at, updated_at FROM practice.user_problem_state
+SELECT id, account_id, problem_id, status, first_solved_at, current_touch, last_outcome, created_at, updated_at, path_slug FROM practice.user_problem_state
 WHERE account_id = $1 AND problem_id = $2
 `
 
@@ -34,12 +34,13 @@ func (q *Queries) GetUserProblemState(ctx context.Context, arg GetUserProblemSta
 		&i.LastOutcome,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }
 
 const listUserProblemStates = `-- name: ListUserProblemStates :many
-SELECT id, account_id, problem_id, status, first_solved_at, current_touch, last_outcome, created_at, updated_at FROM practice.user_problem_state
+SELECT id, account_id, problem_id, status, first_solved_at, current_touch, last_outcome, created_at, updated_at, path_slug FROM practice.user_problem_state
 WHERE account_id = $1
   AND problem_id = ANY($2::text[])
 `
@@ -68,6 +69,7 @@ func (q *Queries) ListUserProblemStates(ctx context.Context, arg ListUserProblem
 			&i.LastOutcome,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PathSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -83,7 +85,7 @@ const setStateAttempting = `-- name: SetStateAttempting :one
 UPDATE practice.user_problem_state
 SET status = 'attempting', updated_at = now()
 WHERE account_id = $1 AND problem_id = $2
-RETURNING id, account_id, problem_id, status, first_solved_at, current_touch, last_outcome, created_at, updated_at
+RETURNING id, account_id, problem_id, status, first_solved_at, current_touch, last_outcome, created_at, updated_at, path_slug
 `
 
 type SetStateAttemptingParams struct {
@@ -104,6 +106,7 @@ func (q *Queries) SetStateAttempting(ctx context.Context, arg SetStateAttempting
 		&i.LastOutcome,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }
@@ -115,7 +118,7 @@ SET status = 'solved',
     first_solved_at = COALESCE(first_solved_at, now()),
     updated_at = now()
 WHERE account_id = $1 AND problem_id = $2
-RETURNING id, account_id, problem_id, status, first_solved_at, current_touch, last_outcome, created_at, updated_at
+RETURNING id, account_id, problem_id, status, first_solved_at, current_touch, last_outcome, created_at, updated_at, path_slug
 `
 
 type SetStateSolvedParams struct {
@@ -139,27 +142,30 @@ func (q *Queries) SetStateSolved(ctx context.Context, arg SetStateSolvedParams) 
 		&i.LastOutcome,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }
 
 const upsertUserProblemState = `-- name: UpsertUserProblemState :one
-INSERT INTO practice.user_problem_state (account_id, problem_id, status)
-VALUES ($1, $2, 'available')
+INSERT INTO practice.user_problem_state (account_id, problem_id, status, path_slug)
+VALUES ($1, $2, 'available', $3)
 ON CONFLICT (account_id, problem_id)
 DO UPDATE SET updated_at = now()
-RETURNING id, account_id, problem_id, status, first_solved_at, current_touch, last_outcome, created_at, updated_at
+RETURNING id, account_id, problem_id, status, first_solved_at, current_touch, last_outcome, created_at, updated_at, path_slug
 `
 
 type UpsertUserProblemStateParams struct {
 	AccountID pgtype.UUID
 	ProblemID string
+	PathSlug  string
 }
 
 // Get-or-create the (account, problem) state row, touching updated_at so the row is
 // always returned (ON CONFLICT DO NOTHING would return nothing on the resume path).
+// path_slug is written explicitly (m1-02, M1a); a resume keeps the row's own value.
 func (q *Queries) UpsertUserProblemState(ctx context.Context, arg UpsertUserProblemStateParams) (PracticeUserProblemState, error) {
-	row := q.db.QueryRow(ctx, upsertUserProblemState, arg.AccountID, arg.ProblemID)
+	row := q.db.QueryRow(ctx, upsertUserProblemState, arg.AccountID, arg.ProblemID, arg.PathSlug)
 	var i PracticeUserProblemState
 	err := row.Scan(
 		&i.ID,
@@ -171,6 +177,7 @@ func (q *Queries) UpsertUserProblemState(ctx context.Context, arg UpsertUserProb
 		&i.LastOutcome,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PathSlug,
 	)
 	return i, err
 }

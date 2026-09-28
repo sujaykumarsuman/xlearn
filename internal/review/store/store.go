@@ -169,12 +169,14 @@ type Store interface {
 	// clean solve it schedules the five touches (Day 1/3/7/21/45 from occurredAt) and
 	// emits revision_scheduled per newly-scheduled touch, all in one transaction that
 	// also records eventID in the inbox. A re-delivered event (eventID already in the
-	// inbox) is a no-op. Returns the number of touches scheduled.
-	HandleProblemSolved(ctx context.Context, eventID, accountID, problemID, outcome string, firstSolve bool, occurredAt time.Time) (int, error)
+	// inbox) is a no-op. Returns the number of touches scheduled. pathSlug is the
+	// event's course (the envelope's path_slug; "dsa" for every v1 event), written on
+	// every row it creates (m1-02, M1a).
+	HandleProblemSolved(ctx context.Context, eventID, accountID, pathSlug, problemID, outcome string, firstSolve bool, occurredAt time.Time) (int, error)
 	// HandleSolutionRevealedEarly reacts to xlearn.practice.solution_revealed_early:
 	// it schedules the owed re-solve 3 days out (R-PF2) as the Day-3 touch and emits
 	// revision_scheduled, deduping on eventID. Returns 1 if newly scheduled, else 0.
-	HandleSolutionRevealedEarly(ctx context.Context, eventID, accountID, problemID string, occurredAt time.Time) (int, error)
+	HandleSolutionRevealedEarly(ctx context.Context, eventID, accountID, pathSlug, problemID string, occurredAt time.Time) (int, error)
 	// Score auto-scores a re-solve (R-SR2): records a touch_result, then on a pass
 	// advances to the next touch (emitting revision_scheduled) or, on a fail, resets
 	// the problem's ladder to Day 1 (R-SR3). One transaction.
@@ -220,8 +222,9 @@ type Store interface {
 
 	// HandleRevisionDue reacts to a revision_due event: dedupes on eventID (inbox) and
 	// writes one reminder scheduled at dueAt, all in one transaction. Returns true when
-	// a reminder was newly written (false on a duplicate delivery).
-	HandleRevisionDue(ctx context.Context, eventID, accountID, kind string, dueAt time.Time) (bool, error)
+	// a reminder was newly written (false on a duplicate delivery). pathSlug is the
+	// event's course (the reminder's nullable path_slug).
+	HandleRevisionDue(ctx context.Context, eventID, accountID, pathSlug, kind string, dueAt time.Time) (bool, error)
 	// ListDueReminders returns an account's undelivered, now-due reminders (Dashboard).
 	ListDueReminders(ctx context.Context, accountID string, limit int) ([]Reminder, error)
 
@@ -279,7 +282,7 @@ var _ Store = (*PgStore)(nil)
 func (s *PgStore) Ping(ctx context.Context) error { return s.pool.Ping(ctx) }
 
 // HandleProblemSolved schedules the five-touch ladder on the first clean solve.
-func (s *PgStore) HandleProblemSolved(ctx context.Context, eventID, accountID, problemID, outcome string, firstSolve bool, occurredAt time.Time) (int, error) {
+func (s *PgStore) HandleProblemSolved(ctx context.Context, eventID, accountID, pathSlug, problemID, outcome string, firstSolve bool, occurredAt time.Time) (int, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return 0, fmt.Errorf("parse account id: %w", err)
@@ -320,6 +323,7 @@ func (s *PgStore) HandleProblemSolved(ctx context.Context, eventID, accountID, p
 				ProblemID:  problemID,
 				TouchLevel: int32(level),
 				DueDate:    tsz(due),
+				PathSlug:   pathSlug,
 			})
 			switch {
 			case err == nil:
@@ -344,7 +348,7 @@ func (s *PgStore) HandleProblemSolved(ctx context.Context, eventID, accountID, p
 		if err := lockJournal(ctx, qtx, accountID, problemID); err != nil {
 			return 0, err
 		}
-		if _, err := s.openMistakeTx(ctx, qtx, aid, accountID, problemID, pattern, pgtype.Timestamptz{}); err != nil {
+		if _, err := s.openMistakeTx(ctx, qtx, aid, accountID, pathSlug, problemID, pattern, pgtype.Timestamptz{}); err != nil {
 			return 0, err
 		}
 	}
@@ -356,7 +360,7 @@ func (s *PgStore) HandleProblemSolved(ctx context.Context, eventID, accountID, p
 }
 
 // HandleSolutionRevealedEarly schedules the owed 3-day re-solve (R-PF2).
-func (s *PgStore) HandleSolutionRevealedEarly(ctx context.Context, eventID, accountID, problemID string, occurredAt time.Time) (int, error) {
+func (s *PgStore) HandleSolutionRevealedEarly(ctx context.Context, eventID, accountID, pathSlug, problemID string, occurredAt time.Time) (int, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return 0, fmt.Errorf("parse account id: %w", err)
@@ -386,6 +390,7 @@ func (s *PgStore) HandleSolutionRevealedEarly(ctx context.Context, eventID, acco
 		ProblemID:  problemID,
 		TouchLevel: OwedAttemptTouchLevel,
 		DueDate:    tsz(due),
+		PathSlug:   pathSlug,
 	})
 	switch {
 	case err == nil:
@@ -494,7 +499,7 @@ func (s *PgStore) Score(ctx context.Context, accountID, itemID string, in ScoreI
 		// revision_scheduled for it. If it is somehow missing, create it now.
 		if level < MaxTouchLevel {
 			next := level + 1
-			nextDue, err := s.ensureNextTouch(ctx, qtx, aid, item.ProblemID, next)
+			nextDue, err := s.ensureNextTouch(ctx, qtx, aid, item.PathSlug, item.ProblemID, next)
 			if err != nil {
 				return ScoreResult{}, err
 			}
@@ -525,6 +530,7 @@ func (s *PgStore) Score(ctx context.Context, accountID, itemID string, in ScoreI
 				ProblemID:  item.ProblemID,
 				TouchLevel: int32(l),
 				DueDate:    tsz(due),
+				PathSlug:   item.PathSlug,
 			}); err != nil {
 				return ScoreResult{}, fmt.Errorf("reanchor touch %d: %w", l, err)
 			}
@@ -541,7 +547,7 @@ func (s *PgStore) Score(ctx context.Context, accountID, itemID string, in ScoreI
 		// R-MJ4), re-anchored to the fresh Day-1 schedule, in this same transaction —
 		// so the ladder reset and the journal state change never diverge. failPattern
 		// was resolved outside the tx.
-		if err := s.recordFailedResolveTx(ctx, qtx, aid, accountID, item.ProblemID, failPattern, tsz(day1Due)); err != nil {
+		if err := s.recordFailedResolveTx(ctx, qtx, aid, accountID, item.PathSlug, item.ProblemID, failPattern, tsz(day1Due)); err != nil {
 			return ScoreResult{}, err
 		}
 	}
@@ -552,9 +558,9 @@ func (s *PgStore) Score(ctx context.Context, accountID, itemID string, in ScoreI
 	return res, nil
 }
 
-// ensureNextTouch returns the next touch's due date, scheduling it (anchored to now)
-// if it does not already exist.
-func (s *PgStore) ensureNextTouch(ctx context.Context, qtx *gen.Queries, aid pgtype.UUID, problemID string, level int) (time.Time, error) {
+// ensureNextTouch returns the next touch's due date, scheduling it (anchored to now, in
+// the scored touch's course) if it does not already exist.
+func (s *PgStore) ensureNextTouch(ctx context.Context, qtx *gen.Queries, aid pgtype.UUID, pathSlug, problemID string, level int) (time.Time, error) {
 	touch, err := qtx.GetTouch(ctx, gen.GetTouchParams{AccountID: aid, ProblemID: problemID, TouchLevel: int32(level)})
 	if err == nil {
 		return touch.DueDate.Time, nil
@@ -568,6 +574,7 @@ func (s *PgStore) ensureNextTouch(ctx context.Context, qtx *gen.Queries, aid pgt
 		ProblemID:  problemID,
 		TouchLevel: int32(level),
 		DueDate:    tsz(due),
+		PathSlug:   pathSlug,
 	}); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return time.Time{}, fmt.Errorf("schedule next touch: %w", err)
 	}
@@ -763,10 +770,15 @@ func insertEvent(ctx context.Context, qtx *gen.Queries, subject, accountID strin
 	if err != nil {
 		return fmt.Errorf("marshal %s: %w", subject, err)
 	}
+	aid, err := parseUUID(accountID)
+	if err != nil {
+		return fmt.Errorf("outbox account id: %w", err)
+	}
 	if err := qtx.InsertOutbox(ctx, gen.InsertOutboxParams{
 		EventID:     mustUUID(eventID),
 		Subject:     subject,
 		PayloadJson: payload,
+		AccountID:   aid,
 	}); err != nil {
 		return fmt.Errorf("insert outbox %s: %w", subject, err)
 	}

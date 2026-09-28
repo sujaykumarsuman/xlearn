@@ -1,7 +1,8 @@
 -- name: InsertReminder :one
 -- Write one in-app reminder (the notifications worker, inside the dedupe tx).
-INSERT INTO review.reminder (account_id, kind, due_at)
-VALUES ($1, $2, $3)
+-- path_slug is the revision_due event's course (m1-02, M1a; nullable column).
+INSERT INTO review.reminder (account_id, kind, due_at, path_slug)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: ListDueReminders :many

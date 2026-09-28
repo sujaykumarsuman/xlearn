@@ -3,22 +3,22 @@
 > **Milestone:** M1 — spine (**M1a expand**) · **Track:** product · **Order:** 11
 > **Prereqs:** [m1-09](sprint-m1-09.md) (and through it [m1-01](sprint-m1-01.md)) · [mi-05](sprint-mi-05.md) (N0)
 > **Unblocks:** [mi-06](sprint-mi-06.md) (N2 needs the N0 tag live) · [m1-03](sprint-m1-03.md) · [m1-10](sprint-m1-10.md)
-> **Release action:** **tag `v1.6.0`** (indicative: the next free minor at tag time, [ADR-0034](../../adr/0034-v2-release-labelling-gating-and-rollback.md) §1.6) · plus one **infra PR** (identity `NATS_URL`), merged before the tag
+> **Release action:** **tag `v1.6.0`** (indicative: the next free minor at tag time, [ADR-0034](../../adr/0034-v2-release-labelling-gating-and-rollback.md) §1.6). The identity `NATS_URL` infra PR planned here was **dropped 2026-09-28: owner decision, ADR-0035 §2; identity NATS_URL + seed move to mi-06 N2** (task 6).
 > **Calendar:** week 2 (by ≈ 2026-10-09)
 > **Execute with:** [`../prompts/prompt-m1-02.md`](../prompts/prompt-m1-02.md) — one prompt, one session.
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ 🔄 In progress (run r-28: tasks 1–5 in the feat PR; the tag follows its merge)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | practice / review / assessment / coach expand (+ contract prep) | X | ⬜ |
-| 2 | identity expand (role, status, admission, `admin_audit`, visibility) | X | ⬜ |
-| 3 | v2 envelope, consumers first (producers stay v1) | X | ⬜ |
-| 4 | Contract-header migration lint (CI) | X | ⬜ |
-| 5 | Verify (sqlc diff, tests, e2e golden = v1, compose replay) | X | ⬜ |
-| 6 | identity `NATS_URL` infra PR (identity becomes a NATS client in this tag) | I | ⬜ |
+| 1 | practice / review / assessment / coach expand (+ contract prep) | X | ✅ practice `00002`, review `00005`/`00006`, assessment `00004`, coach `00004`; dual-writes + `COALESCE` readers |
+| 2 | identity expand (role, status, admission, `admin_audit`, visibility) | X | ✅ identity `00005`; `admitted_via` backfilled `grandfathered`, new rows `dev` |
+| 3 | v2 envelope, consumers first (producers stay v1) | X | ✅ `events/envelope.go`, `Stream.CourseScoped`; three consumers on `DecodeEnvelope`; twin tests |
+| 4 | Contract-header migration lint (CI) | X | ✅ `hack/lint-migrations.sh` + baseline + 6 self-tests (CI `go` job, `make lint`) |
+| 5 | Verify (sqlc diff, tests, e2e golden = v1, compose replay) | X | ✅ unit + store (PG 18) + e2e green; 19-event replay = golden, v2 twin identical; compose v1.5.2 → branch → v1.5.2 (R-b) → branch |
+| ~~6~~ | ~~identity `NATS_URL` infra PR (identity becomes a NATS client in this tag)~~ | I | ➖ dropped 2026-09-28: owner decision, ADR-0035 §2; identity NATS_URL + seed move to mi-06 N2 |
 | 7 | Tag `v1.6.0` (release checklist) | X | ⬜ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
@@ -52,7 +52,10 @@ column on the M1c drop list write-optional, add the contract-header lint, and cu
 - The v2 envelope type in `internal/platform/events`; review (practice + notifications consumers) and
   assessment (projection consumer) decode v1 **and** v2, with v2 fixtures; producers still emit v1.
 - `hack/lint-migrations.sh` wired into `ci.yml`.
-- identity becomes a NATS client in this tag (mi-05's `XLEARN_IDENTITY` relay): its `NATS_URL` infra PR.
+- ~~identity becomes a NATS client in this tag (mi-05's `XLEARN_IDENTITY` relay): its `NATS_URL` infra PR.~~
+  **Dropped 2026-09-28** (owner decision, [ADR-0035](../../adr/0035-v2-operations-nats-auth-limits-capacity.md) §2): in
+  `v1.6.0` identity stays on the log publisher; it gets `NATS_URL` together with its seed in [mi-06](sprint-mi-06.md)'s
+  N2 PR (mi-06 task 4).
 - Tag `v1.6.0` — GitHub release title `v1.6.0 — v2 build · M1a`.
 
 **Out**
@@ -214,7 +217,12 @@ Sources: [ADR-0034](../../adr/0034-v2-release-labelling-gating-and-rollback.md) 
 - Rollback check (R-b): after the upgrade, start the **v1.5.2** images against the expanded schema → they boot
   and pass the smoke (goose ignores unknown versions; nothing they write violates the new CHECKs).
 
-### 6 · identity `NATS_URL` infra PR [I]
+### 6 · identity `NATS_URL` infra PR [I] — DROPPED
+
+> **dropped 2026-09-28: owner decision, ADR-0035 §2; identity NATS_URL + seed move to mi-06 N2.** ADR-0035 §2 (the MI-5 table: identity joins 4222 "at N2, after N0") and
+> [mi-06](sprint-mi-06.md) task 4 put identity's `NATS_URL` and its seed in one N2 PR; mi-05 followed them. m1-02 does
+> **not** own identity's prod `NATS_URL`, opens no infra PR, and its tag has no new NATS caller (so the ADR-0035 §2
+> NetworkPolicy standing rule has nothing to change). The original text below is kept for the record only.
 
 mi-05 made identity publish `XLEARN_IDENTITY` through its outbox; with no `NATS_URL` identity falls back to the
 log publisher and marks events sent. One PR in `../infra`, **its own task, merged before the tag**:

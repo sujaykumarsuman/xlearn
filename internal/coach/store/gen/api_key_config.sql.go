@@ -75,13 +75,19 @@ func (q *Queries) GetApiKeyConfig(ctx context.Context, arg GetApiKeyConfigParams
 }
 
 const getDefaultApiKeyConfig = `-- name: GetDefaultApiKeyConfig :one
-SELECT id, account_id, provider, enc_key, enc_data_key, masked_key, default_model, enabled, created_at, updated_at, name, is_default FROM coach.api_key_config
-WHERE account_id = $1 AND is_default
+SELECT k.id, k.account_id, k.provider, k.enc_key, k.enc_data_key, k.masked_key, k.default_model, k.enabled, k.created_at, k.updated_at, k.name, k.is_default FROM coach.api_key_config AS k
+WHERE k.account_id = $1
+  AND k.id = COALESCE(
+      (SELECT d.key_id FROM coach.key_default AS d WHERE d.account_id = $1 AND d.feature = 'coach'),
+      (SELECT c.id FROM coach.api_key_config AS c WHERE c.account_id = $1 AND c.is_default
+       ORDER BY c.created_at, c.provider LIMIT 1))
 LIMIT 1
 `
 
 // The account's DEFAULT provider key — the one the coach answers with. ErrNoRows when the
-// account has no keys at all.
+// account has no keys at all. m1-02 (M1a): key_default(feature='coach') is preferred and
+// is_default is the fallback (an account whose default predates key_default, e.g. one
+// set by v1.5.2 during an R-b).
 func (q *Queries) GetDefaultApiKeyConfig(ctx context.Context, accountID pgtype.UUID) (CoachApiKeyConfig, error) {
 	row := q.db.QueryRow(ctx, getDefaultApiKeyConfig, accountID)
 	var i CoachApiKeyConfig
@@ -100,6 +106,24 @@ func (q *Queries) GetDefaultApiKeyConfig(ctx context.Context, accountID pgtype.U
 		&i.IsDefault,
 	)
 	return i, err
+}
+
+const getDefaultKeyID = `-- name: GetDefaultKeyID :one
+SELECT COALESCE(
+    (SELECT d.key_id FROM coach.key_default AS d WHERE d.account_id = $1 AND d.feature = 'coach'),
+    (SELECT c.id FROM coach.api_key_config AS c WHERE c.account_id = $1 AND c.is_default
+     ORDER BY c.created_at, c.provider LIMIT 1))::uuid AS key_id
+`
+
+// The id of the account's effective coach default: key_default first, then is_default
+// (m1-02, M1a). NULL when the account has no default. The store marks
+// KeyConfig.IsDefault from it, so the v1 JSON (keys[].is_default) reads the same source
+// as the coach.
+func (q *Queries) GetDefaultKeyID(ctx context.Context, accountID pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getDefaultKeyID, accountID)
+	var key_id pgtype.UUID
+	err := row.Scan(&key_id)
+	return key_id, err
 }
 
 const listApiKeyConfigs = `-- name: ListApiKeyConfigs :many
@@ -274,7 +298,7 @@ type UpsertApiKeyConfigParams struct {
 	MaskedKey    string
 	DefaultModel string
 	Name         string
-	IsDefault    bool
+	IsDefault    pgtype.Bool
 }
 
 // Store or replace the (account, provider) key with pre-sealed material, re-enabling it.

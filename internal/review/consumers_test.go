@@ -40,7 +40,7 @@ func TestConsumerRoutesProblemSolved(t *testing.T) {
 		occurredAt                             time.Time
 	}
 	st := &fakeStore{
-		problemSolved: func(_ context.Context, eventID, accountID, problemID, outcome string, firstSolve bool, occurredAt time.Time) (int, error) {
+		problemSolved: func(_ context.Context, eventID, accountID, _, problemID, outcome string, firstSolve bool, occurredAt time.Time) (int, error) {
 			got.eventID, got.accountID, got.problemID, got.outcome, got.firstSolve, got.occurredAt = eventID, accountID, problemID, outcome, firstSolve, occurredAt
 			return 5, nil
 		},
@@ -62,7 +62,7 @@ func TestConsumerRoutesProblemSolved(t *testing.T) {
 func TestConsumerRoutesSolutionRevealedEarly(t *testing.T) {
 	called := false
 	st := &fakeStore{
-		revealedEarly: func(_ context.Context, eventID, accountID, problemID string, _ time.Time) (int, error) {
+		revealedEarly: func(_ context.Context, eventID, accountID, _, problemID string, _ time.Time) (int, error) {
 			called = true
 			if eventID != "evt-2" || accountID != "acct-1" || problemID != "42" {
 				t.Fatalf("fields = %s/%s/%s", eventID, accountID, problemID)
@@ -81,7 +81,7 @@ func TestConsumerRoutesSolutionRevealedEarly(t *testing.T) {
 
 func TestConsumerIgnoresUnhandledSubject(t *testing.T) {
 	st := &fakeStore{
-		problemSolved: func(context.Context, string, string, string, string, bool, time.Time) (int, error) {
+		problemSolved: func(context.Context, string, string, string, string, string, bool, time.Time) (int, error) {
 			t.Fatalf("problemSolved should not be called for attempt_logged")
 			return 0, nil
 		},
@@ -94,16 +94,19 @@ func TestConsumerIgnoresUnhandledSubject(t *testing.T) {
 	}
 }
 
-func TestConsumerDropsMalformedEnvelope(t *testing.T) {
+// A malformed envelope can never succeed: the handler returns events.ErrInvalidEnvelope,
+// which the consumer dead-letters on this delivery (m1-02; v1 logged and acked it).
+func TestConsumerDeadLettersMalformedEnvelope(t *testing.T) {
 	st := &fakeStore{}
-	if err := testHandler(st).Handle(context.Background(), events.Event{Subject: store.SubjectProblemSolved, Data: []byte("not json")}); err != nil {
-		t.Fatalf("malformed envelope should be dropped (nil), got %v", err)
+	err := testHandler(st).Handle(context.Background(), events.Event{Subject: store.SubjectProblemSolved, Data: []byte("not json")})
+	if !errors.Is(err, events.ErrInvalidEnvelope) {
+		t.Fatalf("malformed envelope = %v, want ErrInvalidEnvelope (dead-letter)", err)
 	}
 }
 
 func TestConsumerPropagatesStoreError(t *testing.T) {
 	st := &fakeStore{
-		problemSolved: func(context.Context, string, string, string, string, bool, time.Time) (int, error) {
+		problemSolved: func(context.Context, string, string, string, string, string, bool, time.Time) (int, error) {
 			return 0, errors.New("db down")
 		},
 	}
@@ -119,7 +122,7 @@ func TestConsumerPropagatesStoreError(t *testing.T) {
 func TestConsumerFallsBackToEventIDHeader(t *testing.T) {
 	var gotID string
 	st := &fakeStore{
-		problemSolved: func(_ context.Context, eventID, _, _, _ string, _ bool, _ time.Time) (int, error) {
+		problemSolved: func(_ context.Context, eventID, _, _, _, _ string, _ bool, _ time.Time) (int, error) {
 			gotID = eventID
 			return 5, nil
 		},

@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/practice/store/gen"
 )
 
@@ -212,7 +213,8 @@ func (s *PgStore) StartAttempt(ctx context.Context, accountID, problemID string)
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.q.WithTx(tx)
 
-	ups, err := qtx.UpsertUserProblemState(ctx, gen.UpsertUserProblemStateParams{AccountID: aid, ProblemID: problemID})
+	// Every v1 practice row is DSA; M1b's course-scoped routes pass the course in.
+	ups, err := qtx.UpsertUserProblemState(ctx, gen.UpsertUserProblemStateParams{AccountID: aid, ProblemID: problemID, PathSlug: course.DSASlug})
 	if err != nil {
 		return State{}, fmt.Errorf("upsert state: %w", err)
 	}
@@ -240,7 +242,13 @@ func (s *PgStore) StartAttempt(ctx context.Context, accountID, problemID string)
 	}
 
 	// Fresh attempt: create it, enter the attempt stage, start the 15-min timer.
-	att, err := qtx.CreateAttempt(ctx, ups.ID)
+	// The attempt denormalises its problem state's account, course and problem (M1a).
+	att, err := qtx.CreateAttempt(ctx, gen.CreateAttemptParams{
+		UserProblemStateID: ups.ID,
+		AccountID:          ups.AccountID,
+		PathSlug:           pgtype.Text{String: ups.PathSlug, Valid: true},
+		ProblemID:          pgtype.Text{String: ups.ProblemID, Valid: true},
+	})
 	if err != nil {
 		return State{}, fmt.Errorf("create attempt: %w", err)
 	}
@@ -583,10 +591,15 @@ func insertEvent(ctx context.Context, qtx *gen.Queries, subject, accountID strin
 	if err != nil {
 		return fmt.Errorf("marshal %s: %w", subject, err)
 	}
+	aid, err := parseUUID(accountID)
+	if err != nil {
+		return fmt.Errorf("outbox account id: %w", err)
+	}
 	if err := qtx.InsertOutbox(ctx, gen.InsertOutboxParams{
 		EventID:     mustUUID(eventID),
 		Subject:     subject,
 		PayloadJson: payload,
+		AccountID:   aid,
 	}); err != nil {
 		return fmt.Errorf("insert outbox %s: %w", subject, err)
 	}

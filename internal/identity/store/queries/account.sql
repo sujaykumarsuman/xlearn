@@ -1,13 +1,15 @@
 -- name: CreateAccount :one
-INSERT INTO identity.account (display_name, email)
-VALUES ($1, $2)
+-- admitted_via records how the account got in (m1-02, M1a; ADR-0033 §4): v1.6.0 only
+-- creates accounts through dev login and open-mode signup, which write 'dev'.
+INSERT INTO identity.account (display_name, email, admitted_via)
+VALUES ($1, $2, $3)
 RETURNING *;
 
 -- name: CreateEmailAccount :one
 -- Create an account from an email sign-up (ADR-0023): email is required + case-insensitively
 -- unique (partial index), and password_hash is the pre-computed bcrypt hash.
-INSERT INTO identity.account (display_name, email, password_hash)
-VALUES ($1, $2, $3)
+INSERT INTO identity.account (display_name, email, password_hash, admitted_via)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: GetAccount :one

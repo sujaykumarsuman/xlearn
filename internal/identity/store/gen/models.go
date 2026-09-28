@@ -9,15 +9,30 @@ import (
 )
 
 type IdentityAccount struct {
-	ID              pgtype.UUID
-	DisplayName     string
-	Email           pgtype.Text
-	Timezone        string
-	StudyBudgetJson []byte
-	RemindersJson   []byte
-	CreatedAt       pgtype.Timestamptz
-	PasswordHash    pgtype.Text
-	Username        pgtype.Text
+	ID                pgtype.UUID
+	DisplayName       string
+	Email             pgtype.Text
+	Timezone          string
+	StudyBudgetJson   []byte
+	RemindersJson     []byte
+	CreatedAt         pgtype.Timestamptz
+	PasswordHash      pgtype.Text
+	Username          pgtype.Text
+	Role              string
+	Status            string
+	AdmittedVia       pgtype.Text
+	InviteID          pgtype.UUID
+	AcceptedAt        pgtype.Timestamptz
+	Region            pgtype.Text
+	ProfileVisibility string
+}
+
+type IdentityAdminAudit struct {
+	ID     pgtype.UUID
+	At     pgtype.Timestamptz
+	Verb   string
+	Target string
+	Detail []byte
 }
 
 type IdentityOauthIdentity struct {
@@ -45,10 +60,11 @@ type IdentityOutbox struct {
 }
 
 type IdentityPathEnrollment struct {
-	AccountID pgtype.UUID
-	PathSlug  string
-	Status    string
-	StartedAt pgtype.Timestamptz
+	AccountID     pgtype.UUID
+	PathSlug      string
+	Status        string
+	StartedAt     pgtype.Timestamptz
+	PublicVisible bool
 }
 
 type IdentitySession struct {

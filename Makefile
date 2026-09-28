@@ -13,7 +13,7 @@ MODULE  := github.com/sujaykumarsuman/xlearn
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X $(MODULE).Version=$(VERSION)
 
-.PHONY: all web build run test lint go-test go-lint web-test web-lint contentlint packlint install-hooks uninstall-hooks clean nats-acl-render nats-acl-test
+.PHONY: all web build run test lint go-test go-lint web-test web-lint lint-migrations contentlint packlint install-hooks uninstall-hooks clean nats-acl-render nats-acl-test
 
 all: build
 
@@ -48,6 +48,15 @@ go-lint:
 
 go-test:
 	go test -race ./...
+
+## ---- migrations (ADR-0034 §3; m1-02) ----
+# The contract-header lint over every post-v1.5.2 goose migration (hack/lint-migrations.sh:
+# a DROP / SET NOT NULL / type change / RENAME needs `-- xlearn:contract floor=vX.Y.Z` or a
+# reviewed `-- xlearn:relax <reason>` on its line), after its own self-tests. CI's `go` job
+# runs the same two commands.
+lint-migrations:
+	sh hack/lint-migrations.sh --self-test
+	sh hack/lint-migrations.sh
 
 ## ---- public content (curriculum/) ----
 # The public content checks (cmd/contentlint; t1 §7.2): schema + strict decode, id and
@@ -99,7 +108,7 @@ uninstall-hooks:
 	git config --unset core.hooksPath || true
 
 ## ---- aggregate ----
-lint: go-lint web-lint
+lint: go-lint lint-migrations web-lint
 test: go-test web-test
 
 clean:

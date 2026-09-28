@@ -18,8 +18,15 @@ type Querier interface {
 	// One (account, provider) key config. ErrNoRows when that provider isn't connected.
 	GetApiKeyConfig(ctx context.Context, arg GetApiKeyConfigParams) (CoachApiKeyConfig, error)
 	// The account's DEFAULT provider key — the one the coach answers with. ErrNoRows when the
-	// account has no keys at all.
+	// account has no keys at all. m1-02 (M1a): key_default(feature='coach') is preferred and
+	// is_default is the fallback (an account whose default predates key_default, e.g. one
+	// set by v1.5.2 during an R-b).
 	GetDefaultApiKeyConfig(ctx context.Context, accountID pgtype.UUID) (CoachApiKeyConfig, error)
+	// The id of the account's effective coach default: key_default first, then is_default
+	// (m1-02, M1a). NULL when the account has no default. The store marks
+	// KeyConfig.IsDefault from it, so the v1 JSON (keys[].is_default) reads the same source
+	// as the coach.
+	GetDefaultKeyID(ctx context.Context, accountID pgtype.UUID) (pgtype.UUID, error)
 	// Resolve an existing thread id for (account, page context). ErrNoRows when the account
 	// has never chatted on that page (GET /coach/thread returns empty history).
 	GetThread(ctx context.Context, arg GetThreadParams) (pgtype.UUID, error)
@@ -28,6 +35,8 @@ type Querier interface {
 	// All of an account's provider key configs (0..2), stable-ordered. Includes the sealed
 	// material (service-only — the HTTP layer returns only the masked view).
 	ListApiKeyConfigs(ctx context.Context, accountID pgtype.UUID) ([]CoachApiKeyConfig, error)
+	// An account's default rows (tests and m1-10's Settings panel).
+	ListKeyDefaults(ctx context.Context, accountID pgtype.UUID) ([]CoachKeyDefault, error)
 	// A thread's messages oldest-first (seq is the stable total order). Used both for
 	// GET /coach/thread history and to build the provider request's prior turns.
 	ListMessages(ctx context.Context, threadID pgtype.UUID) ([]ListMessagesRow, error)
@@ -35,6 +44,10 @@ type Querier interface {
 	// nothing (ErrNoRows) when a default already exists or no keys remain. Keeps exactly one
 	// default per account.
 	PromoteEarliestDefault(ctx context.Context, accountID pgtype.UUID) (string, error)
+	// After a delete: when the account has keys but no coach default left (the cascade
+	// removed it with its key), make the earliest-created key the default — the same order
+	// PromoteEarliestDefault uses for is_default, so the two stay equal.
+	PromoteEarliestKeyDefault(ctx context.Context, accountID pgtype.UUID) error
 	// Flip one provider's enabled flag (Settings toggle / provider-auth failure). Returns the
 	// affected row count so a no-op can 404.
 	SetApiKeyEnabled(ctx context.Context, arg SetApiKeyEnabledParams) (int64, error)
@@ -42,6 +55,9 @@ type Querier interface {
 	// (exactly one row matches $2 → exactly one default). The store verifies the target
 	// provider exists first, so an unknown provider can't blank the default.
 	SetDefaultProvider(ctx context.Context, arg SetDefaultProviderParams) (int64, error)
+	// Keep the coach default's model equal to its key's default_model when that key's model
+	// changes (a key replacement or a model switch). No row when the key isn't the default.
+	SyncKeyDefaultModel(ctx context.Context, arg SyncKeyDefaultModelParams) error
 	// Update a provider's model + name WITHOUT touching the sealed key (switch model / rename).
 	// ErrNoRows when that provider isn't connected.
 	UpdateApiKeyMeta(ctx context.Context, arg UpdateApiKeyMetaParams) (CoachApiKeyConfig, error)
@@ -50,6 +66,13 @@ type Querier interface {
 	// conflict the row keeps its default flag unless $8 promotes it. The raw key never reaches
 	// this layer as a column.
 	UpsertApiKeyConfig(ctx context.Context, arg UpsertApiKeyConfigParams) (CoachApiKeyConfig, error)
+	// coach.key_default (m1-02, M1a expand): the per-feature default key that replaces
+	// api_key_config.is_default. In v1.6.0 every writer of is_default dual-writes the
+	// feature='coach' row here with the same meaning; m1-10 makes this the only source
+	// (and adds the 'interview' feature); M1c drops is_default.
+	// Make key_id the account's coach default, with its model (dual-write of the first key
+	// and of set-default).
+	UpsertKeyDefault(ctx context.Context, arg UpsertKeyDefaultParams) error
 	// Get-or-create the thread for (account, page context). The no-op DO UPDATE makes the
 	// existing row's id come back via RETURNING on a conflict, so concurrent first-messages
 	// on the same page can't create duplicate threads (UNIQUE(account_id, page_context)).

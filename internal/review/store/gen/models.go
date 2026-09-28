@@ -36,6 +36,7 @@ type ReviewMistakeEntry struct {
 	RevisitCount int32
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
+	PathSlug     string
 }
 
 type ReviewOutbox struct {
@@ -44,6 +45,7 @@ type ReviewOutbox struct {
 	PayloadJson []byte
 	CreatedAt   pgtype.Timestamptz
 	SentAt      pgtype.Timestamptz
+	AccountID   pgtype.UUID
 }
 
 type ReviewReminder struct {
@@ -53,6 +55,7 @@ type ReviewReminder struct {
 	DueAt       pgtype.Timestamptz
 	DeliveredAt pgtype.Timestamptz
 	CreatedAt   pgtype.Timestamptz
+	PathSlug    pgtype.Text
 }
 
 type ReviewRevisionItem struct {
@@ -65,6 +68,7 @@ type ReviewRevisionItem struct {
 	Status     string
 	CreatedAt  pgtype.Timestamptz
 	UpdatedAt  pgtype.Timestamptz
+	PathSlug   string
 }
 
 type ReviewTouchResult struct {
@@ -85,4 +89,5 @@ type ReviewWeakAreaSnapshot struct {
 	TopCategory pgtype.Text
 	CountsJson  []byte
 	ComputedAt  pgtype.Timestamptz
+	PathSlug    string
 }

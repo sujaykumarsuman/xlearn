@@ -13,8 +13,8 @@ import (
 // database). Each method delegates to an overridable func so a test sets only what it
 // exercises.
 type fakeStore struct {
-	problemSolved func(ctx context.Context, eventID, accountID, problemID, outcome string, firstSolve bool, occurredAt time.Time) (int, error)
-	revealedEarly func(ctx context.Context, eventID, accountID, problemID string, occurredAt time.Time) (int, error)
+	problemSolved func(ctx context.Context, eventID, accountID, pathSlug, problemID, outcome string, firstSolve bool, occurredAt time.Time) (int, error)
+	revealedEarly func(ctx context.Context, eventID, accountID, pathSlug, problemID string, occurredAt time.Time) (int, error)
 	score         func(ctx context.Context, accountID, itemID string, in store.ScoreInput) (store.ScoreResult, error)
 	dueQueue      func(ctx context.Context, accountID string, limit int) ([]store.DueItem, error)
 	sweep         func(ctx context.Context, batch int) (int, error)
@@ -26,19 +26,19 @@ type fakeStore struct {
 	updateMistake   func(ctx context.Context, accountID, id string, in store.MistakePatch) (store.Mistake, error)
 	weakAreaCurrent func(ctx context.Context, accountID string) (store.WeakArea, bool, error)
 	listReminders   func(ctx context.Context, accountID string, limit int) ([]store.Reminder, error)
-	handleDue       func(ctx context.Context, eventID, accountID, kind string, dueAt time.Time) (bool, error)
+	handleDue       func(ctx context.Context, eventID, accountID, pathSlug, kind string, dueAt time.Time) (bool, error)
 
 	pingErr error
 
 	deadLetters []events.DeadLetter
 }
 
-func (f *fakeStore) HandleProblemSolved(ctx context.Context, eventID, accountID, problemID, outcome string, firstSolve bool, occurredAt time.Time) (int, error) {
-	return f.problemSolved(ctx, eventID, accountID, problemID, outcome, firstSolve, occurredAt)
+func (f *fakeStore) HandleProblemSolved(ctx context.Context, eventID, accountID, pathSlug, problemID, outcome string, firstSolve bool, occurredAt time.Time) (int, error) {
+	return f.problemSolved(ctx, eventID, accountID, pathSlug, problemID, outcome, firstSolve, occurredAt)
 }
 
-func (f *fakeStore) HandleSolutionRevealedEarly(ctx context.Context, eventID, accountID, problemID string, occurredAt time.Time) (int, error) {
-	return f.revealedEarly(ctx, eventID, accountID, problemID, occurredAt)
+func (f *fakeStore) HandleSolutionRevealedEarly(ctx context.Context, eventID, accountID, pathSlug, problemID string, occurredAt time.Time) (int, error) {
+	return f.revealedEarly(ctx, eventID, accountID, pathSlug, problemID, occurredAt)
 }
 
 func (f *fakeStore) Score(ctx context.Context, accountID, itemID string, in store.ScoreInput) (store.ScoreResult, error) {
@@ -81,8 +81,8 @@ func (f *fakeStore) WeakAreaCurrent(ctx context.Context, accountID string) (stor
 	return f.weakAreaCurrent(ctx, accountID)
 }
 
-func (f *fakeStore) HandleRevisionDue(ctx context.Context, eventID, accountID, kind string, dueAt time.Time) (bool, error) {
-	return f.handleDue(ctx, eventID, accountID, kind, dueAt)
+func (f *fakeStore) HandleRevisionDue(ctx context.Context, eventID, accountID, pathSlug, kind string, dueAt time.Time) (bool, error) {
+	return f.handleDue(ctx, eventID, accountID, pathSlug, kind, dueAt)
 }
 
 func (f *fakeStore) ListDueReminders(ctx context.Context, accountID string, limit int) ([]store.Reminder, error) {

@@ -1,6 +1,8 @@
 -- name: CreateAttempt :one
-INSERT INTO practice.attempt (user_problem_state_id)
-VALUES ($1)
+-- account_id / path_slug / problem_id denormalise the owning problem state (m1-02,
+-- M1a): v1.6.0 writes all three on insert.
+INSERT INTO practice.attempt (user_problem_state_id, account_id, path_slug, problem_id)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: GetOpenAttempt :one

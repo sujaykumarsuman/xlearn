@@ -12,10 +12,26 @@ WHERE account_id = $1 AND provider = $2;
 
 -- name: GetDefaultApiKeyConfig :one
 -- The account's DEFAULT provider key — the one the coach answers with. ErrNoRows when the
--- account has no keys at all.
-SELECT * FROM coach.api_key_config
-WHERE account_id = $1 AND is_default
+-- account has no keys at all. m1-02 (M1a): key_default(feature='coach') is preferred and
+-- is_default is the fallback (an account whose default predates key_default, e.g. one
+-- set by v1.5.2 during an R-b).
+SELECT k.* FROM coach.api_key_config AS k
+WHERE k.account_id = $1
+  AND k.id = COALESCE(
+      (SELECT d.key_id FROM coach.key_default AS d WHERE d.account_id = $1 AND d.feature = 'coach'),
+      (SELECT c.id FROM coach.api_key_config AS c WHERE c.account_id = $1 AND c.is_default
+       ORDER BY c.created_at, c.provider LIMIT 1))
 LIMIT 1;
+
+-- name: GetDefaultKeyID :one
+-- The id of the account's effective coach default: key_default first, then is_default
+-- (m1-02, M1a). NULL when the account has no default. The store marks
+-- KeyConfig.IsDefault from it, so the v1 JSON (keys[].is_default) reads the same source
+-- as the coach.
+SELECT COALESCE(
+    (SELECT d.key_id FROM coach.key_default AS d WHERE d.account_id = $1 AND d.feature = 'coach'),
+    (SELECT c.id FROM coach.api_key_config AS c WHERE c.account_id = $1 AND c.is_default
+     ORDER BY c.created_at, c.provider LIMIT 1))::uuid AS key_id;
 
 -- name: CountApiKeyConfigs :one
 -- How many providers the account has connected (drives "is this the first key?").
