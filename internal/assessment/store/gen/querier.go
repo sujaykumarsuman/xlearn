@@ -18,6 +18,9 @@ type Querier interface {
 	// Read + row-lock one session scoped to its owner, so concurrent score submits on the
 	// same session serialise (the second waits, re-reads status='scored', and no-ops).
 	GetMockSessionForUpdate(ctx context.Context, arg GetMockSessionForUpdateParams) (AssessmentMockSession, error)
+	// Record an event whose handler failed its last delivery (mi-05, ADR-0035 §1.2). Ids
+	// only. ON CONFLICT DO NOTHING: a replayed-then-dead-lettered event stays one row.
+	InsertDeadLetter(ctx context.Context, arg InsertDeadLetterParams) error
 	// Record a consumed event's id for idempotency. ON CONFLICT DO NOTHING so a
 	// re-delivered event returns no row (pgx.ErrNoRows) -> the handler no-ops instead of
 	// re-applying its side effects (effectively-once, ADR-0004). The S09 projection writes
@@ -31,6 +34,8 @@ type Querier interface {
 	// Record one dimension's score (1..5) for a session. Called once per dimension inside
 	// the scoring transaction; the UNIQUE (mock_session_id, dimension) is the backstop.
 	InsertRubricScore(ctx context.Context, arg InsertRubricScoreParams) error
+	// The on-demand read (D34: no alerting): newest first, capped.
+	ListDeadLetters(ctx context.Context, limit int32) ([]AssessmentEventDeadLetter, error)
 	// The per-day revision-activity rows on/after `since` (the heatmap window + the streak).
 	ListHeatmap(ctx context.Context, arg ListHeatmapParams) ([]ListHeatmapRow, error)
 	// The first-solve outcome mix (Clean/Rough/Assisted/Miss counts).

@@ -56,8 +56,14 @@ func (h *practiceHandler) Handle(ctx context.Context, e events.Event) error {
 	case store.SubjectSolutionRevealedEarly:
 		return h.handleSolutionRevealedEarly(ctx, eventID, env.AccountID, occurredAt, env.Data)
 	default:
-		// e.g. xlearn.practice.attempt_logged — captured by the xlearn.practice.*
-		// filter but not acted on by review (consumed by assessment). Ack + move on.
+		// A subject review deliberately doesn't act on (xlearn.practice.attempt_logged,
+		// assessment's) is listed under Ignores in topology.go: ack quietly. Anything
+		// else is a subject published before review learned it — never ack that
+		// silently (ADR-0035 §1.1): log ERROR, then ack so it can't wedge the durable.
+		if !events.Ignored(DurableName, e.Subject) {
+			h.log.Error("review consumer: unlisted subject; acked without handling",
+				"subject", e.Subject, "event_id", eventID, "durable", DurableName)
+		}
 		return nil
 	}
 }

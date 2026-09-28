@@ -8,6 +8,7 @@ import (
 
 	"github.com/sujaykumarsuman/xlearn/internal/assessment/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 )
 
 // testLogger discards output (handler/consumer tests assert on responses, not logs).
@@ -32,6 +33,8 @@ type fakeStore struct {
 	mockStats       func(ctx context.Context, accountID string) (store.MockStats, error)
 
 	pingErr error
+
+	deadLetters []events.DeadLetter
 }
 
 func (f *fakeStore) CreateMock(ctx context.Context, accountID, setID, problemID, difficulty string, startedAt, deadlineAt time.Time) (store.MockSession, error) {
@@ -85,6 +88,11 @@ func (f *fakeStore) ListUnsentOutbox(context.Context, int32) ([]store.OutboxRow,
 func (f *fakeStore) MarkOutboxSent(context.Context, string) error { return nil }
 
 func (f *fakeStore) Ping(context.Context) error { return f.pingErr }
+
+func (f *fakeStore) RecordDeadLetter(_ context.Context, dl events.DeadLetter) error {
+	f.deadLetters = append(f.deadLetters, dl)
+	return nil
+}
 
 // fakeVerifier accepts any non-empty token, returning claims for a fixed subject,
 // unless err is set (to exercise the invalid-token path).

@@ -13,7 +13,7 @@ MODULE  := github.com/sujaykumarsuman/xlearn
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X $(MODULE).Version=$(VERSION)
 
-.PHONY: all web build run test lint go-test go-lint web-test web-lint contentlint clean
+.PHONY: all web build run test lint go-test go-lint web-test web-lint contentlint clean nats-acl-render nats-acl-test
 
 all: build
 
@@ -57,6 +57,25 @@ go-test:
 # removing content: go run ./cmd/contentlint -write-allowlist (and review the diff).
 contentlint:
 	go run ./cmd/contentlint
+
+## ---- NATS auth (ADR-0035 §2; mi-05 N0) ----
+# Print the NATS `authorization` block rendered from internal/platform/events/topology.go
+# with real PUBLIC nkeys (NKEYS: a file of <identity>=U… lines, one per service + ops).
+# LEGACY=allow|deny|none is the bridge stage (N1/N3/N4); FORMAT=yaml is the nats chart
+# values fragment for ../infra, FORMAT=conf the server conf. The golden (placeholder
+# keys) is internal/platform/events/testdata/nats-authorization.golden.{conf,yaml}.
+NKEYS  ?=
+LEGACY ?= allow
+FORMAT ?= yaml
+nats-acl-render:
+	@test -n "$(NKEYS)" || { echo "usage: make nats-acl-render NKEYS=<pubkeys.env> LEGACY=allow|deny|none FORMAT=conf|yaml" >&2; exit 2; }
+	@go run ./internal/platform/events/natsacl -nkeys "$(NKEYS)" -legacy "$(LEGACY)" -format "$(FORMAT)"
+
+# The NATS-auth integration test: boots nats:2.14 (deploy/local/nats-acl.compose.yml)
+# with the rendered block for throwaway nkeys and drives the real client code through
+# every allowed/denied case and the three legacy stages. Needs docker.
+nats-acl-test:
+	go test -tags natsacl -count=1 -run 'TestNATSACL' -v ./internal/platform/events/
 
 ## ---- aggregate ----
 lint: go-lint web-lint

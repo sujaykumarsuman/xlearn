@@ -10,6 +10,15 @@ import (
 	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 )
 
+// Durable is the worker's durable-consumer name on XLEARN_REVIEW, and
+// SubjectRevisionDue the one subject it handles (both declared in
+// internal/platform/events/topology.go; review's NotificationsDurable and
+// RevisionDueSubjectFilter alias them).
+const (
+	Durable            = "notifications"
+	SubjectRevisionDue = "xlearn.review.revision_due"
+)
+
 // ReminderStore persists reminders idempotently (the review store satisfies it).
 type ReminderStore interface {
 	// HandleRevisionDue dedupes on eventID and writes one reminder at dueAt in one
@@ -52,9 +61,17 @@ type envelope struct {
 
 // Handle processes one revision_due event.
 func (h *Handler) Handle(ctx context.Context, e events.Event) error {
-	// Belt-and-braces: the consumer is filtered to revision_due, but ignore anything
-	// else that reaches this handler.
-	if e.Subject != "" && e.Subject != "xlearn.review.revision_due" {
+	// Belt-and-braces: the consumer is filtered to revision_due, so nothing else should
+	// reach this handler. Anything that does is acked (it can't be processed here), but
+	// never silently unless topology.go lists it under the durable's Ignores
+	// (ADR-0035 §1.1 subject registry).
+	switch e.Subject {
+	case "", SubjectRevisionDue:
+	default:
+		if !events.Ignored(Durable, e.Subject) {
+			h.log.Error("notifications: unlisted subject; acked without handling",
+				"subject", e.Subject, "event_id", e.ID, "durable", Durable)
+		}
 		return nil
 	}
 	var env envelope

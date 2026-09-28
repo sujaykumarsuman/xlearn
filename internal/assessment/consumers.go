@@ -46,6 +46,19 @@ type projectionHandler struct {
 var _ events.Handler = (*projectionHandler)(nil)
 
 func (h *projectionHandler) Handle(ctx context.Context, e events.Event) error {
+	// Subject registry (ADR-0035 §1.1, topology.go): assessment handles every practice
+	// and review subject v1 emits. A subject listed under Ignores is acked quietly; an
+	// unlisted one (published before assessment learned it) is never acked silently.
+	switch {
+	case events.Handled(DurableName, e.Subject):
+	case events.Ignored(DurableName, e.Subject):
+		return nil
+	default:
+		h.log.Error("assessment consumer: unlisted subject; acked without handling",
+			"subject", e.Subject, "event_id", e.ID, "durable", DurableName)
+		return nil
+	}
+
 	var env envelope
 	if err := json.Unmarshal(e.Data, &env); err != nil {
 		// A malformed payload can never succeed on redelivery — log and ack (return

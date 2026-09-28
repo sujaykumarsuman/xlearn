@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/sujaykumarsuman/xlearn/internal/assessment/store/gen"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 )
 
 // Dimensions is the 7-value rubric enum in canonical PRD order (R-MK2). Scores are
@@ -195,6 +196,10 @@ type Store interface {
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]OutboxRow, error)
 	MarkOutboxSent(ctx context.Context, eventID string) error
 	Ping(ctx context.Context) error
+
+	// RecordDeadLetter is the consumers' dead-letter sink (events.DeadLetterSink):
+	// one ids-only assessment.event_dead_letter row per (durable, event_id).
+	RecordDeadLetter(ctx context.Context, dl events.DeadLetter) error
 }
 
 // PgStore is the pgxpool-backed Store.

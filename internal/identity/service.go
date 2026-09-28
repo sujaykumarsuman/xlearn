@@ -12,8 +12,13 @@ import (
 	"github.com/sujaykumarsuman/xlearn/internal/platform/health"
 )
 
-// streamIdentity is identity's JetStream stream (events.md).
-const streamIdentity = "XLEARN_IDENTITY"
+// ServiceName is identity's identity on NATS (topology owner, connection names, nkey
+// user in the rendered ACL).
+const ServiceName = "identity"
+
+// StreamIdentity is identity's JetStream stream (events.md); its subjects and limits
+// live in internal/platform/events/topology.go. main passes it to the NATS publisher.
+const StreamIdentity = events.StreamIdentity
 
 // Service is the identity HTTP application: OAuth, sessions, accounts, onboarding,
 // and the internal JWT-protected routes. It owns no signing key (the gateway
@@ -98,11 +103,11 @@ func (s *Service) Handler() http.Handler {
 	return mux
 }
 
-// NewOutboxRelay builds the identity outbox relay with the placeholder log
-// publisher (NATS JetStream lands in S05/S06). Call Run in a goroutine.
-func (s *Service) NewOutboxRelay() *events.Relay {
-	pub := events.NewLogPublisher(s.log, streamIdentity)
-	return events.NewRelay(outboxSource{s.store}, pub, s.log)
+// NewOutboxRelay builds the identity outbox relay over pub: a JetStream publisher on
+// XLEARN_IDENTITY when NATS_URL is set (compose; prod from mi-06's identity N2 PR),
+// else the log publisher. Call Run in a goroutine.
+func (s *Service) NewOutboxRelay(pub events.Publisher, opts ...events.RelayOption) *events.Relay {
+	return events.NewRelay(outboxSource{s.store}, pub, s.log, opts...)
 }
 
 // outboxSource adapts the identity store to events.OutboxSource.

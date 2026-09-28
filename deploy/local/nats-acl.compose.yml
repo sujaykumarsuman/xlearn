@@ -1,0 +1,27 @@
+# NATS-auth integration test server (mi-05, ADR-0035 §2 "Verification before any seed
+# is mounted"). NOT the review stack: `make nats-acl-test` boots this per stage with a
+# conf rendered from internal/platform/events/topology.go (throwaway nkeys), restarting
+# it for each LEGACY stage (allow = N1, deny = N3, none = N4). The test owns its
+# lifecycle (up --force-recreate, down -v); nothing here persists.
+#
+# Same image line as docker-compose.yml (prod parity: ../infra messaging runs 2.14), so
+# the ACLs are proven on the prod minor, not on the e2e lane's embedded server.
+name: xlearn-natsacl
+
+services:
+  nats:
+    image: nats:2.14-alpine
+    command: ["-c", "/etc/nats/nats.conf"]
+    ports:
+      - "127.0.0.1:${NATSACL_CLIENT_PORT:-14222}:4222"
+      - "127.0.0.1:${NATSACL_MONITOR_PORT:-18222}:8222"
+    volumes:
+      # The rendered conf (server block + authorization block), written by the test.
+      - "${NATSACL_CONF:?set by the natsacl test (make nats-acl-test)}:/etc/nats/nats.conf:ro"
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8222/healthz?js-enabled-only=true"]
+      interval: 1s
+      timeout: 2s
+      retries: 30

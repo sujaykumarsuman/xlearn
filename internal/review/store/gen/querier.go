@@ -35,6 +35,9 @@ type Querier interface {
 	// emits mistake_closed exactly on the close transition. At most one open row exists
 	// (the partial unique index), so this affects a single entry; no open entry → no row.
 	IncrementCleanRevisit(ctx context.Context, arg IncrementCleanRevisitParams) (IncrementCleanRevisitRow, error)
+	// Record an event whose handler failed its last delivery (mi-05, ADR-0035 §1.2). Ids
+	// only. ON CONFLICT DO NOTHING: a replayed-then-dead-lettered event stays one row.
+	InsertDeadLetter(ctx context.Context, arg InsertDeadLetterParams) error
 	// Record a consumed event's id for idempotency. ON CONFLICT DO NOTHING so a
 	// re-delivered event returns no row (pgx.ErrNoRows) → the handler no-ops instead of
 	// re-applying its side effects (effectively-once, ADR-0004).
@@ -53,6 +56,8 @@ type Querier interface {
 	// overdue reviews lead). The caller splits due (due_date <= now) from upcoming and
 	// groups by touch_level for the Revision screen. Bounded so the queue stays light.
 	ListActiveTouches(ctx context.Context, arg ListActiveTouchesParams) ([]ReviewRevisionItem, error)
+	// The on-demand read (D34: no alerting): newest first, capped.
+	ListDeadLetters(ctx context.Context, limit int32) ([]ReviewEventDeadLetter, error)
 	// An account's undelivered reminders that are due (due_at <= now), soonest-due first,
 	// capped — the Dashboard "revisions due today" surface (GET /dashboard).
 	ListDueReminders(ctx context.Context, arg ListDueRemindersParams) ([]ReviewReminder, error)

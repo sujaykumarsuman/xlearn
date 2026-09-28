@@ -202,22 +202,22 @@ func setup(t *testing.T, dsn, natsURL string) *harness {
 	//    streams must exist before the consumers attach, and the DeliverNew consumers
 	//    (assessment, notifications) must be created BEFORE any event is published so
 	//    they don't miss the first one.
-	pPub := mustPublisher(t, ctx, natsURL, practice.StreamPractice, practice.StreamSubjects, log)
-	rPub := mustPublisher(t, ctx, natsURL, review.StreamReview, review.StreamSubjects, log)
-	aPub := mustPublisher(t, ctx, natsURL, assessment.StreamAssessment, assessment.StreamSubjects, log)
+	pPub := mustPublisher(t, ctx, natsURL, practice.ServiceName, practice.StreamPractice, log)
+	rPub := mustPublisher(t, ctx, natsURL, review.ServiceName, review.StreamReview, log)
+	aPub := mustPublisher(t, ctx, natsURL, assessment.ServiceName, assessment.StreamAssessment, log)
 	go practiceSvc.NewOutboxRelay(pPub, events.WithInterval(relayTick)).Run(ctx)
 	go reviewSvc.NewOutboxRelay(rPub, events.WithInterval(relayTick)).Run(ctx)
 	go assessmentSvc.NewOutboxRelay(aPub, events.WithInterval(relayTick)).Run(ctx)
 
 	// review consumes XLEARN_PRACTICE (the scheduler) + its own XLEARN_REVIEW (notifications).
-	sub, err := reviewSvc.StartConsumers(ctx, mustConsumer(t, ctx, natsURL, review.StreamPractice, log))
+	sub, err := reviewSvc.StartConsumers(ctx, mustConsumer(t, ctx, natsURL, review.ServiceName, review.StreamPractice, log))
 	startSub(t, sub, err)
-	sub, err = reviewSvc.StartNotifications(ctx, mustConsumer(t, ctx, natsURL, review.StreamReview, log))
+	sub, err = reviewSvc.StartNotifications(ctx, mustConsumer(t, ctx, natsURL, review.ServiceName, review.StreamReview, log))
 	startSub(t, sub, err)
 	// assessment projects from XLEARN_PRACTICE + XLEARN_REVIEW.
-	sub, err = assessmentSvc.StartProjectionConsumer(ctx, mustConsumer(t, ctx, natsURL, assessment.StreamPractice, log), assessment.PracticeSubjectFilter)
+	sub, err = assessmentSvc.StartProjectionConsumer(ctx, mustConsumer(t, ctx, natsURL, assessment.ServiceName, assessment.StreamPractice, log), assessment.PracticeSubjectFilter)
 	startSub(t, sub, err)
-	sub, err = assessmentSvc.StartProjectionConsumer(ctx, mustConsumer(t, ctx, natsURL, assessment.StreamReview, log), assessment.ReviewSubjectFilter)
+	sub, err = assessmentSvc.StartProjectionConsumer(ctx, mustConsumer(t, ctx, natsURL, assessment.ServiceName, assessment.StreamReview, log), assessment.ReviewSubjectFilter)
 	startSub(t, sub, err)
 
 	return &harness{practiceURL: practiceHTTP.URL, reviewURL: reviewHTTP.URL, assessmentURL: assessmentHTTP.URL, signer: signer}
@@ -363,8 +363,11 @@ func startEmbeddedNATS(t *testing.T) string {
 		Port:      -1, // an ephemeral free port
 		JetStream: true,
 		StoreDir:  t.TempDir(),
-		NoLog:     true,
-		NoSigs:    true,
+		// Prod's max_file_store (5 Gi): the topology.go streams reserve their MaxBytes
+		// against it, exactly as on the cluster.
+		JetStreamMaxStore: 5 << 30,
+		NoLog:             true,
+		NoSigs:            true,
 	})
 	if err != nil {
 		t.Fatalf("embedded nats: %v", err)
@@ -402,9 +405,9 @@ func mustExec(t *testing.T, dsn string, stmts ...string) {
 	}
 }
 
-func mustPublisher(t *testing.T, ctx context.Context, url, stream string, subjects []string, log *slog.Logger) *events.NatsPublisher {
+func mustPublisher(t *testing.T, ctx context.Context, url, svc, stream string, log *slog.Logger) *events.NatsPublisher {
 	t.Helper()
-	pub, err := events.NewNatsPublisher(ctx, url, stream, subjects, log)
+	pub, err := events.NewNatsPublisher(ctx, svc, url, stream, log)
 	if err != nil {
 		t.Fatalf("publisher %s: %v", stream, err)
 	}
@@ -412,9 +415,9 @@ func mustPublisher(t *testing.T, ctx context.Context, url, stream string, subjec
 	return pub
 }
 
-func mustConsumer(t *testing.T, ctx context.Context, url, stream string, log *slog.Logger) *events.NatsConsumer {
+func mustConsumer(t *testing.T, ctx context.Context, url, svc, stream string, log *slog.Logger) *events.NatsConsumer {
 	t.Helper()
-	cons, err := events.NewNatsConsumer(ctx, url, stream, log)
+	cons, err := events.NewNatsConsumer(ctx, svc, url, stream, log)
 	if err != nil {
 		t.Fatalf("consumer %s: %v", stream, err)
 	}

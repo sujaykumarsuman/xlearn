@@ -27,6 +27,7 @@ import (
 	"github.com/sujaykumarsuman/xlearn/internal/assessment"
 	"github.com/sujaykumarsuman/xlearn/internal/assessment/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/config"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/httpx"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/slogx"
@@ -83,8 +84,13 @@ func run() int {
 
 	// Outbox relay: drains assessment events (mock_completed) to JetStream
 	// (XLEARN_ASSESSMENT). With no NATS_URL (local dev) it falls back to the log
-	// publisher so the outbox still drains.
-	pub := newPublisher(ctx, cfg.NATS.URL, logger)
+	// publisher so the outbox still drains. With NATS_URL set an init error is fatal
+	// (fail closed): the log publisher would mark rows sent without delivering them.
+	pub, err := newPublisher(ctx, cfg.NATS.URL, logger)
+	if err != nil {
+		logger.Error("nats publisher init failed; refusing to start (NATS_URL is set)", "err", err)
+		return 1
+	}
 	if closer, ok := pub.(interface{ Close() }); ok {
 		defer closer.Close()
 	}
@@ -95,14 +101,19 @@ func run() int {
 	// xlearn.practice.* (XLEARN_PRACTICE) and xlearn.review.* (XLEARN_REVIEW). The
 	// projection handler bodies are no-op stubs this sprint (S08 wires only the durable
 	// + inbox-dedupe seam). With no NATS_URL (local dev) no consumer runs; the HTTP API
-	// still works. subs are stopped explicitly on shutdown (before the HTTP drain) so no
-	// event is dispatched while draining.
+	// still works. With NATS_URL set a consumer init error is fatal (fail closed). subs
+	// are stopped explicitly on shutdown (before the HTTP drain) so no event is
+	// dispatched while draining.
 	var subs []events.Subscription
 	for _, c := range []struct{ stream, filter string }{
 		{assessment.StreamPractice, assessment.PracticeSubjectFilter},
 		{assessment.StreamReview, assessment.ReviewSubjectFilter},
 	} {
-		cons := newConsumer(ctx, cfg.NATS.URL, c.stream, logger)
+		cons, cerr := newConsumer(ctx, cfg.NATS.URL, c.stream, logger)
+		if cerr != nil {
+			logger.Error("nats consumer init failed; refusing to start (NATS_URL is set)", "stream", c.stream, "err", cerr)
+			return 1
+		}
 		if cons == nil {
 			continue
 		}
@@ -150,45 +161,47 @@ func run() int {
 }
 
 // newPublisher builds the JetStream publisher when NATS_URL is set, else the log
-// publisher (local dev / no broker). A failed NATS connect is non-fatal — the relay
-// buffers in the outbox and retries once the broker is reachable.
-func newPublisher(ctx context.Context, natsURL string, logger *slog.Logger) events.Publisher {
+// publisher (local dev / no broker). An unreachable broker is not an error — the
+// connection retries and the relay buffers in the outbox — but an init error with
+// NATS_URL set (a bad or missing nkey seed, bad options) is returned so the service
+// exits: it never falls back to the log publisher, which would mark rows sent.
+func newPublisher(ctx context.Context, natsURL string, logger *slog.Logger) (events.Publisher, error) {
 	if natsURL == "" {
 		logger.Warn("NATS_URL not set; using the log publisher (events are not delivered to JetStream)")
-		return events.NewLogPublisher(logger, assessment.StreamAssessment)
+		return events.NewLogPublisher(logger, assessment.StreamAssessment), nil
 	}
 	natsCtx, cancel := context.WithTimeout(ctx, natsTimeout)
 	defer cancel()
-	pub, err := events.NewNatsPublisher(natsCtx, natsURL, assessment.StreamAssessment, assessment.StreamSubjects, logger)
-	if err != nil {
-		logger.Error("nats publisher init failed; falling back to log publisher", "err", err)
-		return events.NewLogPublisher(logger, assessment.StreamAssessment)
-	}
-	return pub
+	return events.NewNatsPublisher(natsCtx, assessment.ServiceName, natsURL, assessment.StreamAssessment, logger)
 }
 
 // newConsumer builds a durable JetStream consumer on stream when NATS_URL is set, else
-// nil (local dev / no broker: the service runs without consuming). A failed connect is
-// logged and yields nil; the consumer auto-reconnects once constructed, so Subscribe
-// retries the stream.
-func newConsumer(ctx context.Context, natsURL, stream string, logger *slog.Logger) *events.NatsConsumer {
+// nil (local dev / no broker: the service runs without consuming). The consumer
+// auto-reconnects, so an unreachable broker is not an error (Subscribe retries the
+// stream); an init error with NATS_URL set is returned so the service exits (fail
+// closed) rather than silently running without its consumers.
+func newConsumer(ctx context.Context, natsURL, stream string, logger *slog.Logger) (*events.NatsConsumer, error) {
 	if natsURL == "" {
 		logger.Warn("NATS_URL not set; consumers are disabled", "stream", stream)
-		return nil
+		return nil, nil
 	}
 	natsCtx, cancel := context.WithTimeout(ctx, natsTimeout)
 	defer cancel()
-	cons, err := events.NewNatsConsumer(natsCtx, natsURL, stream, logger)
-	if err != nil {
-		logger.Error("nats consumer init failed; consumer disabled", "stream", stream, "err", err)
-		return nil
-	}
-	return cons
+	return events.NewNatsConsumer(natsCtx, assessment.ServiceName, natsURL, stream, logger)
 }
 
-// newPool opens a pgxpool and pins search_path to the service's schema (defence in
-// depth; all SQL is schema-qualified anyway).
+// newPool opens a pgxpool from poolConfig.
 func newPool(ctx context.Context, db assessment.DBConfig) (*pgxpool.Pool, error) {
+	poolCfg, err := poolConfig(db)
+	if err != nil {
+		return nil, err
+	}
+	return pgxpool.NewWithConfig(ctx, poolCfg)
+}
+
+// poolConfig pins search_path to the service's schema (defence in depth; all SQL is
+// schema-qualified anyway) and MaxConns to PG_MAX_CONNS (default 4, L21).
+func poolConfig(db assessment.DBConfig) (*pgxpool.Config, error) {
 	poolCfg, err := pgxpool.ParseConfig(db.DSN())
 	if err != nil {
 		return nil, err
@@ -196,7 +209,8 @@ func newPool(ctx context.Context, db assessment.DBConfig) (*pgxpool.Pool, error)
 	if db.SearchPath != "" {
 		poolCfg.ConnConfig.RuntimeParams["search_path"] = db.SearchPath
 	}
-	return pgxpool.NewWithConfig(ctx, poolCfg)
+	poolCfg.MaxConns = config.PGMaxConns(config.DefaultPGMaxConns)
+	return poolCfg, nil
 }
 
 // version is stamped at build time with -ldflags "-X main.version=vX.Y.Z" (see

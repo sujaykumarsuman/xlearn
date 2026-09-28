@@ -10,18 +10,18 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done 2026-09-28 · [PR #85](https://github.com/sujaykumarsuman/xlearn/pull/85) (merge only; ships dark in `v1.6.0`) · N0 ready: golden at `internal/platform/events/testdata/`, integration test green on NATS 2.14; identity prod `NATS_URL` + seed pending mi-06 N2
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | `topology.go`: the single source of truth for streams and durables, plus its tests | X | ⬜ |
-| 2 | ACL renderer: golden `authorization` block and `make nats-acl-render` | X | ⬜ |
-| 3 | Dead-letter hook plus `event_dead_letter` in review and assessment | X | ⬜ |
-| 4 | identity publishes `XLEARN_IDENTITY` through its existing outbox | X | ⬜ |
-| 5 | Client options: seed, inbox prefix, ErrorHandler, fail-closed init, 16 KiB envelope cap | X | ⬜ |
-| 6 | `pgxpool` `MaxConns` pins (L21) | X | ⬜ |
-| 7 | NATS-auth integration test on NATS 2.14 (`make nats-acl-test` and a CI job) | X | ⬜ |
-| 8 | Verify, update the docs, record | X | ⬜ |
+| 1 | `topology.go`: the single source of truth for streams and durables, plus its tests | X | ✅ 6 streams (Σ 3.375 GiB), 4 live durables (verified against `review`/`assessment` code); `ensureStream` builds from the table, hard-coded config gone; `Subscribe` refuses undeclared; budget, table, declared-entry (per service), subject-registry and live v1-stream update tests |
+| 2 | ACL renderer: golden `authorization` block and `make nats-acl-render` | X | ✅ `RenderAuthorization` → conf + chart `config.merge` goldens (N1, placeholder keys); stale = red, `-update`; `$` quoting asserted and the conf parsed by the 2.14 server loader; `natsacl` CLI rejects seeds |
+| 3 | Dead-letter hook plus `event_dead_letter` in review and assessment | X | ✅ sink → `Term()` → ERROR (ids only); `WithMaxDeliver`; review `00004`, assessment `00003` + sqlc; unit (fake `Msg`), embedded-JetStream, store-integration and e2e tests |
+| 4 | identity publishes `XLEARN_IDENTITY` through its existing outbox | X | ✅ no migration needed; compose: a fresh sign-up's `account_created` landed in `XLEARN_IDENTITY`; prod stays dark (no `NATS_URL` until mi-06 N2) |
+| 5 | Client options: seed, inbox prefix, ErrorHandler, fail-closed init, 16 KiB envelope cap | X | ✅ `events.Dial`; per-service connection names on `/connz`; fail closed with `NATS_URL` set; cap skips without stalling; v1 prod max 443 B |
+| 6 | `pgxpool` `MaxConns` pins (L21) | X | ✅ `config.PGMaxConns` (default 4, `PG_MAX_CONNS`) in all six `newPool`s; a test per service |
+| 7 | NATS-auth integration test on NATS 2.14 (`make nats-acl-test` and a CI job) | X | ✅ `deploy/local/nats-acl.compose.yml` (`nats:2.14-alpine`); allowed + denied matrix for 6 services + ops through the real constructors, N1/N3/N4 stages; no ACL subject added; CI job `nats-acl` |
+| 8 | Verify, update the docs, record | X | ✅ gofmt, vet (3 tag sets), `-race`, e2e + store tests on PG 18, `sqlc diff`; compose smoke (limits on `/jsz`, Revision queue +5 touches); `events.md`, `data-model.md`, status.md |
 
 > **Keep this current.** Set a task to 🔄 when you start it, to ✅ when its acceptance bullet passes, and to ⛔ if it's blocked (say why).
 > Update the _Overall_ line to match, and mirror the sprint's state into [`../status.md`](../status.md): the Sprint board row, the MI table row **MI-6**, and the decisions log. Full rules: [status protocol](README.md#status-protocol-way-of-working).

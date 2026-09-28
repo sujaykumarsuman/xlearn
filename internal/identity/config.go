@@ -22,6 +22,15 @@ type Config struct {
 	DB   DBConfig
 	JWT  JWTVerifyConfig
 	Auth AuthConfig
+	NATS NATSConfig
+}
+
+// NATSConfig points identity's outbox relay at JetStream (XLEARN_IDENTITY, mi-05). An
+// empty URL keeps the log publisher: prod identity has no NATS_URL until mi-06's
+// identity N2 PR adds it together with the nkey seed (ADR-0035 §2), so its first prod
+// connection already uses its own nkey. docker-compose sets it.
+type NATSConfig struct {
+	URL string
 }
 
 // DBConfig is the Postgres connection (coords as plain env, creds from the SOPS
@@ -125,6 +134,9 @@ func LoadConfig() Config {
 			SessionTTL:   envDuration("SESSION_TTL", 30*24*time.Hour),
 			DevAuth:      envBool("DEV_AUTH", false),
 			Signup:       parseSignupMode(os.Getenv("SIGNUP_MODE")),
+		},
+		NATS: NATSConfig{
+			URL: strings.TrimSpace(os.Getenv("NATS_URL")),
 		},
 	}
 }

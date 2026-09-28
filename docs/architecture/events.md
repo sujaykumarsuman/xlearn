@@ -6,7 +6,13 @@ Domain events on **NATS JetStream**, published via the **transactional outbox** 
 ## Conventions
 
 - **Subject:** `xlearn.<context>.<event>` — one JetStream **stream per producing context**
-  (`XLEARN_PRACTICE`, `XLEARN_REVIEW`, `XLEARN_IDENTITY`, `XLEARN_ASSESSMENT`).
+  (`XLEARN_PRACTICE`, `XLEARN_REVIEW`, `XLEARN_IDENTITY`, `XLEARN_ASSESSMENT`; declared for v2:
+  `XLEARN_JUDGE`, `XLEARN_COACH`).
+- **Topology:** [`internal/platform/events/topology.go`](../../internal/platform/events/topology.go)
+  is the **single source of truth** for streams (owner, subjects, the subjects the owner `Emits`,
+  limits) and live durable consumers (stream, name, filter, service, `Handles`/`Ignores`). The
+  publisher builds its stream config from it; `Subscribe` refuses an undeclared (stream, durable,
+  filter); the NATS ACL is rendered from it (see [Topology, limits and auth](#topology-limits-and-auth-mi-05-n0)).
 - **Envelope:** `{ event_id (uuid), subject, occurred_at (UTC), version (int), account_id, data {…} }`.
 - **Delivery:** at-least-once. Consumers **dedupe on `event_id`** (an `inbox`/offset table) → effectively
   once. Producers write the domain row **and** the `outbox` row in one transaction; a relay publishes.
@@ -17,7 +23,7 @@ Domain events on **NATS JetStream**, published via the **transactional outbox** 
 
 | Subject | Producer | Payload (`data`) | Consumers → reaction |
 |---------|----------|------------------|----------------------|
-| `xlearn.identity.account_created` | identity | `provider`, `display_name` | *(reserved: seed defaults / welcome)* |
+| `xlearn.identity.account_created` | identity (→ `XLEARN_IDENTITY` when `NATS_URL` is set; dark in prod until mi-06 N2) | `provider`, `display_name` | *(reserved: seed defaults / welcome)* |
 | `xlearn.practice.attempt_logged` | practice | `problem_id`, `stage_reached`, `duration_s` | **assessment** → outcome-mix / coverage projections |
 | `xlearn.practice.solution_revealed_early` | practice | `problem_id` | **review** → schedule the "owed attempt in 3 days" ([R-PF2](../prd/xlearn-prd.md#61-guided-problem-flow-gated-stages)) |
 | `xlearn.practice.problem_solved` | practice | `problem_id`, `outcome`, `first_solve` (bool) | **review** → schedule Day 1·3·7·21·45 (on first clean solve); open a mistake if below-clean · **assessment** → coverage/mastery projections |
@@ -108,3 +114,64 @@ sequenceDiagram
   `revision_scheduled` may arrive before its `problem_solved` projection is applied — handlers upsert).
 - **Replay:** JetStream retains the streams, so a new/rebuilt projection (assessment) can be
   re-derived by replaying from the start.
+- **Dead letters** (mi-05, [ADR-0035 §1.2](../adr/0035-v2-operations-nats-auth-limits-capacity.md)):
+  a failing handler naks with an escalating backoff (`MaxDeliver` 100 ≈ 8 h). On the **last**
+  failing delivery the consumer records `<svc>.event_dead_letter` (ids only: `event_id`, `subject`,
+  `durable`, `err_class` ∈ timeout/db/decode/other, `stream_seq`, `at`), then `Term()`s the message
+  and logs ERROR with the ids only. A sink error still ends in `Term()`. Rows are read on demand
+  (`ListDeadLetters`; D34: no alerting) — review and assessment have the table today; practice,
+  identity, coach and judge add theirs when they first consume.
+- **Unlisted subjects:** each consumer's default branch acks a subject its durable lists under
+  `Ignores` quietly and logs **ERROR** for anything else — never a silent ack (the subject registry).
+- **Envelope cap:** `events.MaxEnvelopeBytes` = 16 KiB (L20). The relay leaves a larger outbox row
+  unsent, logs ERROR once per event id, and carries on with the batch; producers can call
+  `events.CheckEnvelope`. The measured v1 maximum is 443 B (prod outboxes, 2026-09-28).
+
+## Topology, limits and auth (mi-05, N0)
+
+**Streams** (`topology.go`, [ADR-0035 §1](../adr/0035-v2-operations-nats-auth-limits-capacity.md)).
+The dedupe window is 5 min everywhere. `Discard=New` makes a full stream refuse publishes, so the
+relay stalls loudly and the rows wait in the outbox (nothing is lost). The owning service's
+`CreateOrUpdateStream` applies these limits to the live v1 streams on the v1.6.0 rollout.
+
+| Stream | Owner | `MaxBytes` | `MaxAge` | Discard | Live durables (service) |
+|---|---|---|---|---|---|
+| `XLEARN_PRACTICE` | practice | 1 GiB | — | New | `review` (review), `assessment` (assessment) |
+| `XLEARN_REVIEW` | review | 1.5 GiB | — | New | `notifications` (review), `assessment` (assessment) |
+| `XLEARN_ASSESSMENT` | assessment | 128 MiB | — | New | — |
+| `XLEARN_JUDGE` | judge | 512 MiB | 14 d | Old | — (declared; producer in m3-05) |
+| `XLEARN_IDENTITY` | identity | 128 MiB | — | New | — (erase consumers in l-01) |
+| `XLEARN_COACH` | coach | 128 MiB | — | New | — (declared; producer in l-01) |
+
+Σ `MaxBytes` = 3.375 GiB ≤ the 3.75 GiB budget (75% of `max_file_store` 5 Gi), pinned by a test.
+The later durables (erase in l-01/m3-05, `evaluation_completed` in m3-08, the analyzer in m4-03)
+are listed in `topology.go`'s header and declared by the sprint that adds each `Subscribe`.
+
+**Subject registry.** Each stream lists the subjects its owner `Emits`; each durable lists what it
+`Handles` and `Ignores`. Tests require `Emits ∩ Filter ⊆ Handles ∪ Ignores` (disjoint) per durable,
+each producer's `Subject*` constants ⊆ its stream's `Emits`, and each consumer to route every
+`Handles` subject past its default branch. review's practice durable ignores `attempt_logged`.
+
+**Client options** (all optional env; unset = the v1 anonymous connection). `events.Dial` is shared
+by publisher and consumer: connection name `xlearn-<svc>:<stream>:pub|cons` (`/connz` shows the
+owner); `NATS_NKEY_SEED_FILE` → nkey auth; `NATS_INBOX_PREFIX` (default `_INBOX_<svc>` once a seed is
+set — the only inbox the ACL lets a service subscribe to); an `ErrorHandler` logging permission
+violations at ERROR with the subject. With `NATS_URL` set an init error (bad or missing seed) makes
+the service **exit** — no log-publisher fallback, which would mark rows sent without delivering
+them. identity publishes `account_created` to `XLEARN_IDENTITY` when `NATS_URL` is set (compose);
+prod identity has no `NATS_URL` until mi-06's identity N2 PR adds it together with its seed.
+
+**ACL render** ([ADR-0035 §2](../adr/0035-v2-operations-nats-auth-limits-capacity.md)). `acl.go`
+renders the `authorization` block from the table: per service, publish `xlearn.<svc>.>`,
+`$JS.API.INFO` and `$JS.API.STREAM.{CREATE,UPDATE,INFO}.<own stream>`, and per consumed durable
+`$JS.API.CONSUMER.{CREATE,CREATE…>,INFO,MSG.NEXT}.<S>.<d>` + `$JS.ACK.<S>.<d>.>`; subscribe only
+`_INBOX_<svc>.>`; deny stream delete/purge/msg-delete. `ops` gets `$JS.API.>` + `_INBOX.>`. The
+optional `legacy` user + `no_auth_user` bridges seedless clients: `LEGACY=allow` (N1), `deny` (N3),
+`none` (N4). Goldens (placeholder keys, N1):
+`internal/platform/events/testdata/nats-authorization.golden.{conf,yaml}` — the `.yaml` is the
+`nats` chart's `config.merge` fragment. A stale golden fails CI (`go test … -run Golden -update`
+rewrites it). Real keys: `make nats-acl-render NKEYS=<pubkeys.env> LEGACY=allow|deny|none
+FORMAT=conf|yaml` (public keys only). `make nats-acl-test` (CI job `nats-acl`) boots `nats:2.14`
+with the render and proves the allowed/denied matrix for the 6 services + ops and the three legacy
+stages. **Standing rule:** a new stream, durable or subject re-renders the golden, and its infra
+ACL PR merges before the consuming service's tag.

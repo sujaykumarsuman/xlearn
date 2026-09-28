@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 	"github.com/sujaykumarsuman/xlearn/internal/review/store"
 )
 
@@ -28,6 +29,8 @@ type fakeStore struct {
 	handleDue       func(ctx context.Context, eventID, accountID, kind string, dueAt time.Time) (bool, error)
 
 	pingErr error
+
+	deadLetters []events.DeadLetter
 }
 
 func (f *fakeStore) HandleProblemSolved(ctx context.Context, eventID, accountID, problemID, outcome string, firstSolve bool, occurredAt time.Time) (int, error) {
@@ -93,6 +96,11 @@ func (f *fakeStore) ListUnsentOutbox(context.Context, int32) ([]store.OutboxRow,
 func (f *fakeStore) MarkOutboxSent(context.Context, string) error { return nil }
 
 func (f *fakeStore) Ping(context.Context) error { return f.pingErr }
+
+func (f *fakeStore) RecordDeadLetter(_ context.Context, dl events.DeadLetter) error {
+	f.deadLetters = append(f.deadLetters, dl)
+	return nil
+}
 
 // fakeVerifier accepts any non-empty token, returning claims for a fixed subject,
 // unless err is set (to exercise the invalid-token path).
