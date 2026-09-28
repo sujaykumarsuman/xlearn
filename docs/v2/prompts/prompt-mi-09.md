@@ -36,7 +36,8 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
   - §9, the spike;
   - §13, the risks;
   - §15, the S0 facts (runc 1.4.2, containerd 2.3.4, no `config-v3.toml.d`, no subuid, `mmap_rnd_bits=32`).
-- The spike results in [t3](../research/t3-sandbox.md) §16: §16.1 (spk-01, P0–P2), §16.2 (spk-02, P3 amd64, including the amd64 pod-level seccomp profile verbatim) and §16.4 (the MI-10 verdict and the ADR-0030 deltas), landed by [spk-01](../sprints/sprint-spk-01.md) and [spk-02](../sprints/sprint-spk-02.md). **This is your source for every host file.**
+- The spike results in [t3](../research/t3-sandbox.md) §16: §16.1 (spk-01, P0–P2), §16.2 (spk-02, P3 amd64, including the amd64 pod-level seccomp profile verbatim), §16.3 (image volume: the "no node-level registry credentials" rule) and §16.4 (the MI-10 verdict and the ADR-0030 deltas), landed by [spk-01](../sprints/sprint-spk-01.md) and [spk-02](../sprints/sprint-spk-02.md). **This is your source for every host file.**
+- [ADR-0027](../../adr/0027-content-evalpack-and-user-data-model.md) §2, the "Spike before M3" bullet. It's Accepted; your docs PR adds its dated note (step 12) and nothing else.
 - The neighbour plans:
   - [mi-02](../sprints/sprint-mi-02.md), the `host-verify --cluster` flags;
   - [mi-08](../sprints/sprint-mi-08.md), MI-11a, batched into the window;
@@ -96,7 +97,8 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
    - any sysctl change.
 
    If you only have diffs, rebuild each file from t3 §8.7 plus the diffs. Hand the final caps list (5 caps,
-   or 4 without SETPCAP) to mi-10 via status.md; it's a runner value, not a host file.
+   or 4 without SETPCAP) to mi-10 via status.md; it's a runner value, not a host file. §16.3 adds one host
+   rule, not a file: **no node-level registry credentials** (step 4 asserts it).
 
 2. **[H] Sandbox block** (plan task 2). Replace block (8) `FUTURE (v2 T3)` in `host-bootstrap.sh` with a real block, moved
    **before** block (6) k3s, behind a new `--with-sandbox` flag.
@@ -120,8 +122,14 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 
 4. **[H] Asserts + BOM + lint** (plan task 4). In `host-verify.sh`, replace the `TODO(v2 T3)` section with
    the plan's task 4 checks (`sandbox.sysctl`, `sandbox.containerd`, `sandbox.apparmor`, `sandbox.seccomp`,
-   `sandbox.userns`, `kubelet.config`).
+   `sandbox.userns`, `kubelet.config`, `sandbox.registry-creds`).
    - **Presence rule:** a partial install FAILs; a full absence is INFO unless `--expect-sandbox` is set.
+   - **`sandbox.registry-creds`** (read-only; t3 §16.3) runs on **every** `host-verify`, outside the presence
+     rule. It FAILs on an `auth:` for `ghcr.io` in `/etc/rancher/k3s/registries.yaml`, or if
+     `/var/lib/kubelet/config.json` or `/root/.docker/config.json` exists. It never prints a matched line (a
+     credential). The pack credential exists only as the `xlearn-evalpack-pull` imagePullSecret: with a
+     node-level credential, pods without the pull secret can use the cached pack, and the kubelet's record of
+     that stays until the image is removed.
    - `sandbox.containerd` branches on the shared constant `SANDBOX_CONTAINERD_MODE`, set from the spike
      record. With `dropin`, fail loudly if the rendered `config.toml` no longer imports
      `config-v3.toml.d/*.toml`, and check the drop-in hash. With `tmpl`, check the template hash, and skip
@@ -136,6 +144,9 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 
 5. **[H] Baseline, read-only, on the live node** (plan task 5). Run `crictl info`, read the rendered
    `config.toml`, run `configz`, and read capacity/allocatable, `/etc/subuid|subgid` and the sysctls.
+   - Read `sandbox.registry-creds` on the live node; PASS is expected. If it FAILs, record which file in the PR
+     and as ⛔ in status.md for m3-07 (the credential must be gone before the pack is first pulled). You remove
+     nothing: the node is read-only for you.
    - Find the maximum `pids.current` per pod under `kubepods.slice`. If any pod is above 2,048, raise
      `pod-max-pids` above it, and record the value and why in the Decisions log.
    - Run `host-verify --cluster --with-runner`.
@@ -174,7 +185,8 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
    - the new flags;
    - the real "v2 judge sandbox" section;
    - **Rebuild order:** `--with-sandbox` on the bootstrap line and `--expect-sandbox` on both verify lines,
-     plus a note that an R-d restore rewinds the host files;
+     plus a note that an R-d restore rewinds the host files, and the line **never `docker login` on the node**
+     (the pack credential is pod-level only);
    - a PR note flagging the Kernel reboot runbook's off-node `pg_dumpall`, which conflicts with ADR-0034
      §4.3. Leave that step as it is here; mi-11's monthly-window runbook resolves it per the ADR.
 
@@ -203,6 +215,8 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
     - a **Before you launch (owner)** block at the top: the manual Hostinger snapshot is taken and has
       completed; hPanel and the VNC console are reachable; the last weekly image is ≤ 7 days old, with its
       date given at launch;
+    - the rule **never `docker login` on sujaykumar-vps** (node-level credentials expose the eval pack to every
+      pod; t3 §16.3), and `sandbox.registry-creds` among step 6's green checks;
     - steps 5b and 7 opening the held branches' PRs (`gh pr create -R sujaykumarsuman/infra --head <branch> …`)
       and merging them;
     - the batched MI-11a step, and **step 3b always**: `host-verify --cluster --with-runner` shows the memory
@@ -218,8 +232,11 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
     - step 10, the uniform **Ship** ending: the held branches' PRs were merged in steps 5b and 7, then the
       status docs PR, then `git checkout main && git pull` in xlearn and `../infra`.
 
-12. **[X] Record** (plan task 11) in status.md (see Update status). It rides the xlearn docs PR (see **Ship**
-    below).
+12. **[X] Record + the ADR-0027 note** (plan task 11) in status.md (see Update status). It rides the xlearn
+    docs PR (see **Ship** below), and so does ADR-0027's dated note: add the plan's task 11 note, verbatim
+    with today's date, directly under ADR-0027 §2's "Spike before M3" bullet (image volume GO; the pack
+    credential is pod-level only). Change no decision text. An Accepted ADR changes only through a follow-up
+    PR, and this docs PR is it. If it can't carry the note, m3-07 adds it at the latest.
 
 ## Constraints
 
@@ -242,7 +259,8 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
   session's to merge. The window session's runbook opens and merges their PRs (steps 7 and 5b). Never leave
   an open PR at session end.
 - **Don't edit ADR-0030.** It's accepted in m3-03. Divergences from t3 §8.7 go in your PR description and the
-  status decisions log.
+  status decisions log. ADR-0027 gets only its dated note (step 12).
+- **Never `docker login` on sujaykumar-vps**, and never put a registry credential on the node (t3 §16.3).
 - **Not applicable, since there's no xlearn code:** goose + sqlc (`sqlc diff`), outbox/inbox, service
   boundaries ([ADR-0005](../../adr/0005-data-ownership-and-migrations.md)), `theme.css` verbatim,
   consumers-before-producers, and the ACL-PR-before-consuming-tag rule. If you find yourself editing
@@ -261,7 +279,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
   - the README host sections and Rebuild order.
 - infra branch (pushed, **no PR**): `chore/cnpg-18.6-host-window`, CNPG `18.6-system-trixie`.
 - infra branch (pushed, **no PR**, **only if v1.36.5 is GA**): `chore/k3s-v1.36.5-host-window`, `PIN_K3S_VERSION` in both scripts.
-- xlearn docs PR (merged): `docs/v2/runbooks/host-window-2026-10.md`, the status rows and this sprint's Status table.
+- xlearn docs PR (merged): `docs/v2/runbooks/host-window-2026-10.md`, the status rows, this sprint's Status table and ADR-0027's dated note.
 
 ## Update status
 
@@ -270,7 +288,8 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
   - the **Sprint board** row;
   - the **MI track** MI-11 row: "prepared", the PR numbers, the window booked for 2026-10-24. The window session sets it ✅ (runbook step 9);
   - the `ev-host-window` owner-event row: a session runs the runbook on 2026-10-24. Before launching it, the owner takes the manual Hostinger snapshot and keeps hPanel/VNC reachable;
-  - the held branches (names and head commits, "opened and merged in ev-host-window"), so the next session's peer checks don't take them for stragglers.
+  - the held branches (names and head commits, "opened and merged in ev-host-window"), so the next session's peer checks don't take them for stragglers;
+  - the **Hand-offs** row spk-02 → mi-09 (node-level registry credentials): closed, with the host-script PR number and step 5's live `sandbox.registry-creds` result.
 - Add **Decisions log** lines for:
   - `config.yaml.d` (or the fallback to `config.yaml`);
   - `--with-sandbox`/`--expect-sandbox`;
@@ -285,7 +304,8 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 
 - [ ] On a throwaway VM with the new block (dry run), on the k3s pin the window will use: `host-verify --expect-sandbox` green for every `sandbox.*` check and `kubelet.config`, with no host line regressed from the VM's baseline (`--cluster` not gated on the VM; any expected VM-only FAILs recorded)
 - [ ] `hack/host-lint.sh` green: shared constants identical; heredoc = constant = BOM for every artefact; shellcheck clean; mi-02's read-only lint still passes
-- [ ] On the live node, without `--with-sandbox`, your branch's `host-bootstrap.sh --dry-run` plans nothing beyond `main`'s copy (the two outputs diff empty), and `host-verify --cluster` is unchanged
+- [ ] On the live node, without `--with-sandbox`, your branch's `host-bootstrap.sh --dry-run` plans nothing beyond `main`'s copy (the two outputs diff empty), and `host-verify --cluster` is unchanged apart from the new `sandbox.registry-creds` line (PASS, or its FAIL recorded per step 5)
+- [ ] ADR-0027 carries its dated note (image volume GO; pod-level pull secret only), merged with the docs PR
 - [ ] The CNPG 18.6 branch (and the k3s pin branch, if GA) is pushed with no PR, lint-green locally, and linked from the runbook
 - [ ] The runbook is merged before 10-24, with its before-launch block (snapshot, hPanel/VNC, weekly-image date) and its Ship ending
 - [ ] The infra README host table, flags and Rebuild order are updated
@@ -299,7 +319,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 3. **Release action — infra PR(s) only:**
    - Merge the host-script PR (plan tasks 2–4 + 9). It changes nothing on the cluster, since Flux doesn't apply `hack/`.
    - Leave the CNPG 18.6 change and, if GA, the k3s pin change as **pushed branches with no PR**, recorded in status.md. The window session opens and merges their PRs (runbook steps 7 and 5b), so no PR is left hanging.
-   - Then merge the xlearn docs PR (the runbook + status).
+   - Then merge the xlearn docs PR (the runbook + status + ADR-0027's dated note).
    - No tag. Nothing is applied to the live host by this session.
 4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
 5. Run `git checkout main && git pull` in every repo touched (xlearn and `../infra`). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.
