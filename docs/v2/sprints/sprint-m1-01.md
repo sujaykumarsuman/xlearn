@@ -9,7 +9,7 @@
 
 ## Status
 
-_Overall:_ ✅ Done 2026-09-28 · [PR #79](https://github.com/sujaykumarsuman/xlearn/pull/79) (merge only; ships dark in `v1.6.0`) · item schema v1 frozen → `ev-schema-freeze` ✅
+_Overall:_ ✅ Done 2026-09-28 · [PR #79](https://github.com/sujaykumarsuman/xlearn/pull/79), squash `6b84442` (merge only; ships dark in `v1.6.0`) · item schema v1 frozen → `ev-schema-freeze` ✅
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
