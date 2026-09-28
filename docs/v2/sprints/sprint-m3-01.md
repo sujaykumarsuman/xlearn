@@ -9,7 +9,7 @@
 
 ## Status
 
-_Overall:_ ✅ Done 2026-09-28 (run r-21; merge only — ships dark in the next app tag). Post-ship owner event `ev-hook-install` ⬜ (not a task; [status.md](../status.md#owner-calendar-events)).
+_Overall:_ ✅ Done 2026-09-28 ([PR #87](https://github.com/sujaykumarsuman/xlearn/pull/87), run r-21; merge only — ships dark in the next app tag). Decisions: [status.md decisions log](../status.md#decisions-log). Post-ship owner event `ev-hook-install` ⬜ (not a task; [status.md](../status.md#owner-calendar-events)).
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
