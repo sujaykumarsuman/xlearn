@@ -123,3 +123,48 @@ Which services back each screen (`A` = aggregated by gateway from several).
 | Settings | ● | | | | | ● |
 
 ● primary · ○ secondary/context
+
+---
+
+## Network fences (v2)
+
+Ingress NetworkPolicies, live since 2026-09-28 ([mi-03](../v2/sprints/sprint-mi-03.md): MI-5 infra#42, MI-5a
+infra#44; [ADR-0035 §2](../adr/0035-v2-operations-nats-auth-limits-capacity.md), ADR-0030 A4). Callers are
+selected by namespace (`kubernetes.io/metadata.name`) and `app.kubernetes.io/instance`, **never
+`app.kubernetes.io/part-of`**: the chart puts that label on the Deployment only, so it matches no pod.
+
+**MI-5a is the internal-HTTP fence.** identity's unauthenticated `/sessions/*` and `/internal/*` and review's
+service-to-service worker calls rely on it ([ADR-0006](../adr/0006-authn-authz.md) and
+[ADR-0016](../adr/0016-mistake-journal-and-worker-service-auth.md) as amended by
+[ADR-0033](../adr/0033-invite-only-admission-and-owner-admin.md) §12 row 7 / §14). There are still no service
+tokens. The gateway also serves **in-namespace JWKS**: every JWT-verifying service fetches
+`xlearn-gateway:8080/.well-known/jwks.json` in-cluster, so the gateway admits same-namespace pods as well as
+Traefik. "Traefik only" would break every service's JWT check on its next pod start, hidden for up to 1 h by
+the stale-key tolerance in `internal/platform/auth/jwks.go`.
+
+| Caller (`instance`, ns `xlearn`) | PG 5432 | NATS 4222 | HTTP it calls (in `xlearn`) |
+|---|---|---|---|
+| `xlearn-gateway` | **no** | no | identity :8081, curriculum :8082, practice :8083, review :8084, assessment :8085, coach :8086 |
+| `xlearn-identity` | yes | forward (N2, mi-06) | gateway :8080 (JWKS) |
+| `xlearn-curriculum` | yes | no | none |
+| `xlearn-practice` | yes | yes | gateway :8080 (JWKS) |
+| `xlearn-review` | yes | yes | gateway :8080 (JWKS); identity :8081 and curriculum :8082 (ADR-0016 workers) |
+| `xlearn-assessment` | yes | yes | gateway :8080 (JWKS) |
+| `xlearn-coach` | yes | forward (L-E, l-01) | gateway :8080 (JWKS) |
+| `xlearn-judge` (MI-13, m3-07) | forward | forward | gateway :8080 (JWKS); called by the gateway and practice |
+| Traefik (`kube-system`, `app.kubernetes.io/name: traefik`) | — | — | gateway :8080 only |
+| CNPG operator (`cnpg-system`) | :8000 status only | — | — |
+| node / host (kubelet probes, the API-server proxy `host-verify` uses) | node-local, always admitted | 8222 node-local | probes |
+
+| Policy | Admits |
+|---|---|
+| `databases/projects-pgstore-ingress` | 5432 ← the 6 DB-owning services + judge (**not the gateway**); 8000 ← `cnpg-system`; instance↔instance 5432/8000 |
+| `messaging/nats-ingress` | 4222 ← practice, review, assessment + identity, judge, coach (forward-declared); **no 8222 rule** |
+| `xlearn/xlearn-gateway` | 8080 ← Traefik **and** same-namespace pods (one rule, two peers) |
+| `xlearn/xlearn-{identity,curriculum,practice,review,assessment,coach}` | own `containerPort` ← same-namespace pods only (`from: null` drops the chart's Traefik default); `xlearn-runner` is admitted nowhere |
+
+- **Standing rule (ADR-0035 §2):** a new caller updates these policies in its own infra PR, merged before its
+  tag. Forward-declared selectors are harmless; a missing caller is blocked **silently**.
+- **A regression fails open**, and with no alerting (D34) the only detector is `host-verify --cluster`'s
+  NetworkPolicy-presence check against `hack/expected-netpol.tsv` (run on demand).
+- **Known limit:** k3s always admits node-local traffic (kubelet probes, the API-server proxy).
