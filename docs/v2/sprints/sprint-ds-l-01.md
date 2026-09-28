@@ -8,17 +8,17 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done — AB19★, AB20, AB21 frozen (merged in PR #82, 2026-09-28)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Board scaffolding (own files only; never `index.html` or `board.css`) | X | ⬜ |
-| 2 | AB19 ★ invite acceptance (hero): auth-page states, invite errors, acceptance step | X | ⬜ |
-| 3 | AB20 privacy notice / terms (agent-drafted notice text; ships as drafted, D40) | X | ⬜ |
-| 4 | AB21 erase account (Settings) | X | ⬜ |
-| 5 | Self-review checklist (run before merging) + screenshots (1440 px, 390 px) | X | ⬜ |
-| 6 | Open the design PR (screenshots, frame lists, the ticked self-review checklist, "Decisions to confirm") | X | ⬜ |
-| 7 | Freeze: squash-merge on CI green (the merge is the freeze) → status → sync `main` | X | ⬜ |
+| 1 | Board scaffolding (own files only; never `index.html` or `board.css`) | X | ✅ |
+| 2 | AB19 ★ invite acceptance (hero): auth-page states, invite errors, acceptance step | X | ✅ |
+| 3 | AB20 privacy notice / terms (agent-drafted notice text; ships as drafted, D40) | X | ✅ |
+| 4 | AB21 erase account (Settings) | X | ✅ |
+| 5 | Self-review checklist (run before merging) + screenshots (1440 px, 390 px) | X | ✅ |
+| 6 | Open the design PR (screenshots, frame lists, the ticked self-review checklist, "Decisions to confirm") | X | ✅ |
+| 7 | Freeze: squash-merge on CI green (the merge is the freeze) → status → sync `main` | X | ✅ frozen: merged in PR #82, 2026-09-28 |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly. **Land and sync ([D40](../feasibility.md#decisions-log-newest-first)):** the board PR
@@ -31,7 +31,7 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] **Notice inputs known.** The inputs are **owner decisions D12 / D24 / D33** in the [feasibility decisions log](../feasibility.md#decisions-log-newest-first),
+- [x] **Notice inputs known.** The inputs are **owner decisions D12 / D24 / D33** in the [feasibility decisions log](../feasibility.md#decisions-log-newest-first),
   recorded in ADR-0028 and ADR-0033 (Accepted) and ADR-0031 (still **Proposed** under BP2 — accepted at the WIF spike before M4 — but its
   §4 only records D24 and won't change with the spike), so nothing waits:
   - D12's data-loss window: with no off-node backups, up to about **7 days** of data can be lost with the node or its disk, and Hostinger's weekly images are the only safety net ([ADR-0028 §2](../../adr/0028-object-storage-and-backups.md#2-off-node-backups-deferred) and its Consequences, [feasibility D12](../feasibility.md#decisions-log-newest-first));
