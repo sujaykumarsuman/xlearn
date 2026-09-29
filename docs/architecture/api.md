@@ -53,6 +53,15 @@ service APIs are in [`services.md`](services.md). Auth model: [ADR-0006](../adr/
   `POST /mocks`, `/mocks/trend`, `/concepts/{slug}` — run the course-scoped handler with the DSA course and
   are byte-identical to `/paths/dsa/…`. OpenAPI marks them `deprecated`. The SPA stops calling them in
   `v1.7.0`; they stay at least through `v1.8.0` (earliest removal: `v1.9.0`).
+- **Withholding (M1b, m1-06; [ADR-0027](../adr/0027-content-evalpack-and-user-data-model.md) §1):** while an
+  item is **live** (an open counted attempt or a due touch), every route that shows it drops its
+  answer-bearing fields — `pattern`, `concepts`, `solution_facts` and the hint and solution stages — by one
+  gateway function (`internal/gateway/withhold.go`): lists (problem index, week, Today, due queue, mistakes,
+  weak area, the score result) hide them while live; the workspace shows the pattern from the hint stage of
+  an unsolved item or open attempt (a solved, not-live item as v1) and only the statement on a due touch;
+  the arena (`?practice=1`) shows a live item's attempt stage only; the coach context drops them for a live
+  or never-solved problem. A withheld field is **absent**, not empty. If practice or review can't answer,
+  the gateway withholds as if live (fail closed). `withhold_routes_test.go` pins every route's policy.
 
 ## Endpoints (v1)
 
@@ -89,7 +98,7 @@ service APIs are in [`services.md`](services.md). Auth model: [ADR-0006](../adr/
 | Method | Path | Purpose | Backed by |
 |--------|------|---------|-----------|
 | `GET` | `/paths/{slug}/revision/due` | The course's prioritised due queue. | review |
-| `POST` | `/revision/{itemId}/score` | Submit a re-solve; auto-scores → advance or reset. | review |
+| `POST` | `/revision/{itemId}/score` | Submit a re-solve; auto-scores → advance or reset. The result carries the item's `problem` (its pattern revealed now the touch concluded, m1-06). | review + curriculum |
 | `GET` | `/paths/{slug}/mistakes?status=open\|closed` | The course's journal. | review |
 | `POST` | `/paths/{slug}/mistakes` | Create an entry in the course (root cause, insight, category). | review |
 | `PATCH` | `/mistakes/{id}` | Update status / revisit. | review |

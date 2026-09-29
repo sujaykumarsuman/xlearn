@@ -220,6 +220,68 @@ func TestGetProblemContractFields(t *testing.T) {
 	}
 }
 
+// An item's solution_facts are served only inside a solution-stage block of GET
+// /problems/{id} (m1-06, t1 §4) — never top-level, never on the list, bulk or week routes
+// — so the gateway's stage filter and withhold() gate them. The loader doesn't persist the
+// field yet (m2-01's spec column will), so this is a fixture test.
+func TestGetProblemSolutionFactsOnlyInSolutionStage(t *testing.T) {
+	f := seededFake()
+	p := f.problem["16"]
+	p.SolutionFacts = json.RawMessage(`{"complexity":{"time":["O(n^2)"],"space":["O(1)"]}}`)
+	f.problem["16"] = p
+	h := testService(t, f).Handler()
+
+	_, body := do(t, h, http.MethodGet, "/problems/16")
+	if _, ok := body["problem"].(map[string]any)["solution_facts"]; ok {
+		t.Fatal("solution_facts must not be served top-level on the problem")
+	}
+	var facts []map[string]any
+	maxSolutionOrder := 0.0
+	for _, raw := range body["sections"].([]any) {
+		sec := raw.(map[string]any)
+		if _, ok := sec["solution_facts"]; ok {
+			facts = append(facts, sec)
+		} else if sec["stage"] == "solution" && sec["order"].(float64) > maxSolutionOrder {
+			maxSolutionOrder = sec["order"].(float64)
+		}
+	}
+	if len(facts) != 1 || facts[0]["stage"] != "solution" || facts[0]["kind"] != "solution_facts" {
+		t.Fatalf("want exactly one solution-stage facts block, got %v", facts)
+	}
+	if facts[0]["order"].(float64) <= maxSolutionOrder {
+		t.Errorf("the facts block (order %v) should follow the solution sections (max %v)", facts[0]["order"], maxSolutionOrder)
+	}
+	if got := facts[0]["solution_facts"].(map[string]any)["complexity"].(map[string]any)["time"].([]any)[0]; got != "O(n^2)" {
+		t.Errorf("facts payload = %v", facts[0]["solution_facts"])
+	}
+
+	for _, path := range []string{"/problems?ids=16", "/paths/dsa/problems", "/paths/dsa/weeks/2"} {
+		rec, raw := doRaw(t, h, path)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s: status %d", path, rec.Code)
+		}
+		if strings.Contains(raw, "solution_facts") || strings.Contains(raw, "O(n^2)") {
+			t.Errorf("%s serves solution facts: %s", path, raw)
+		}
+	}
+
+	// An item without facts has no facts block (v1's sections unchanged).
+	_, body = do(t, testService(t, seededFake()).Handler(), http.MethodGet, "/problems/16")
+	for _, raw := range body["sections"].([]any) {
+		if raw.(map[string]any)["kind"] == "solution_facts" {
+			t.Fatal("a facts block without facts")
+		}
+	}
+}
+
+// doRaw issues a GET and returns the recorder and the raw body.
+func doRaw(t *testing.T, h http.Handler, path string) (*httptest.ResponseRecorder, string) {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+	return rec, rec.Body.String()
+}
+
 func TestGetProblemNotFound(t *testing.T) {
 	h := testService(t, seededFake()).Handler()
 	rec, _ := do(t, h, http.MethodGet, "/problems/9999")

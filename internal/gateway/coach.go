@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/platform/httpx"
@@ -321,19 +322,38 @@ func (g *Gateway) coachEnrich(r *http.Request, accountID string, body []byte) (s
 		pathSlug = coachProblemPathSlug(meta)
 	}
 
-	// Authoritative mode from practice: review ONLY when THIS problem is solved.
+	// Authoritative mode from practice: review ONLY when THIS problem is solved. The same
+	// practice answer, with review's due set, decides the withholding (m1-06).
 	mode := coachModeAttempt
+	in := stateInputs{practice: map[string]practiceItem{}, practiceKnown: true, practiceOK: g.practice == nil}
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		in.due, in.dueOK = g.fetchDueSet(r.Context(), accountID, itemPathSlug(pathSlug))
+		in.dueKnown = true
+	}()
 	if g.practice != nil {
 		if token, okp := g.mintForPractice(accountID); okp {
-			if pbody, pstatus, perr := g.practice.get(r.Context(), token, "/state/"+url.PathEscape(id)); perr == nil && pstatus == http.StatusOK && practiceSolved(pbody) {
-				mode = coachModeReview
+			if pbody, pstatus, perr := g.practice.get(r.Context(), token, "/state/"+url.PathEscape(id)); perr == nil && pstatus == http.StatusOK {
+				if practiceSolved(pbody) {
+					mode = coachModeReview
+				}
+				if item, iok := parsePracticeItem(pbody); iok {
+					in.practice[id], in.practiceOK = item, true
+				}
 			}
 		}
 	}
+	wg.Wait()
+	states, _ := g.combineStates([]string{id}, in)
+	wh := withhold(stateOf(states, id), surfaceCoach)
 
 	// Rewrite the descriptive problem fields to the authoritative values so the prompt
 	// names the gated problem, not a client-spoofed one. Other fields (message, context,
-	// kind, stage) pass through unchanged.
+	// kind, stage) pass through unchanged. A live or never-solved problem's pattern,
+	// concepts and solution facts never reach coach (m1-06): the keys are dropped, so a
+	// client-sent value can't pass through either.
 	var obj map[string]any
 	if err := json.Unmarshal(body, &obj); err != nil || obj == nil {
 		obj = map[string]any{}
@@ -341,6 +361,15 @@ func (g *Gateway) coachEnrich(r *http.Request, accountID string, body []byte) (s
 	obj["problemId"] = id
 	obj["problemTitle"] = title
 	obj["pattern"] = pattern
+	if wh.Pattern {
+		delete(obj, "pattern")
+	}
+	if wh.Concepts {
+		delete(obj, "concepts")
+	}
+	if wh.SolutionFacts {
+		delete(obj, "solution_facts")
+	}
 	rewritten, err := json.Marshal(obj)
 	if err != nil {
 		return mode, pathSlug, body

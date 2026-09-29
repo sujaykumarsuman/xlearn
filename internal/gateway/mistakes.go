@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"sync"
 
 	"github.com/sujaykumarsuman/xlearn/internal/platform/httpx"
 )
@@ -48,7 +49,26 @@ func (g *Gateway) handleMistakes(w http.ResponseWriter, r *http.Request) {
 		passthrough(w, status, body)
 		return
 	}
-	passthrough(w, http.StatusOK, g.enrichMistakeEnvelope(r.Context(), body, "mistakes"))
+	passthrough(w, http.StatusOK, g.composeMistakeEnvelope(r, accountID, slug, body, "mistakes"))
+}
+
+// composeMistakeEnvelope enriches review's mistake entries (under arrayKey) with their
+// curriculum problems and applies the list withholding (m1-06): a live item loses its
+// pattern and concepts on both the curriculum join and review's own entry `pattern`.
+// The item states are resolved while curriculum enriches.
+func (g *Gateway) composeMistakeEnvelope(r *http.Request, accountID, slug string, body []byte, arrayKey string) []byte {
+	var (
+		states map[string]itemState
+		wg     sync.WaitGroup
+	)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		states, _ = g.itemStates(r.Context(), accountID, slug, listItemIDs(body, arrayKey), stateInputs{})
+	}()
+	enriched := g.enrichMistakeEnvelope(r.Context(), body, arrayKey)
+	wg.Wait()
+	return withholdListBody(enriched, arrayKey, states)
 }
 
 // handleCreateMistake: POST /paths/{slug}/mistakes (and the DSA alias POST /mistakes) —
@@ -101,7 +121,7 @@ func (g *Gateway) handleWeakArea(w http.ResponseWriter, r *http.Request) {
 		passthrough(w, status, body)
 		return
 	}
-	passthrough(w, http.StatusOK, g.enrichMistakeEnvelope(r.Context(), body, "entries"))
+	passthrough(w, http.StatusOK, g.composeMistakeEnvelope(r, accountID, slug, body, "entries"))
 }
 
 // proxyReviewWrite validates the session, mints a review-scoped JWT, and forwards a

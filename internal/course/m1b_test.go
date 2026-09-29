@@ -2,6 +2,7 @@ package course_test
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -95,8 +96,17 @@ func TestLearnerViewDSA(t *testing.T) {
 	if v.PrimaryLanguage != "go" {
 		t.Fatalf("primary language = %q", v.PrimaryLanguage)
 	}
+	// m1-06: the revision bands' display fields (AB03's format badges): DSA L1–3 is a
+	// 20:00 re-solve, L4–5 the same under mock conditions; minutes from the plan.
+	want := []course.ViewBand{
+		{Levels: []int{1, 2, 3}, Format: "resolve", Label: "Re-solve", TimerS: 1200, EstMinutes: 20, MockMode: false},
+		{Levels: []int{4, 5}, Format: "resolve", Label: "Re-solve", TimerS: 1200, EstMinutes: 20, MockMode: true},
+	}
+	if v.Revision == nil || !reflect.DeepEqual(v.Revision.Bands, want) {
+		t.Fatalf("revision bands = %+v, want %+v", v.Revision, want)
+	}
 
-	// Nothing answer-bearing or server-only reaches the JSON.
+	// Nothing answer-bearing or server-only reaches the JSON (the bands carry no criteria).
 	b, err := json.Marshal(v)
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +123,7 @@ func TestLearnerViewFixtures(t *testing.T) {
 	r := coursetest.Registry(t)
 	soon, _ := r.Lookup(coursetest.FixtureComingSoon)
 	v := soon.LearnerView()
-	if v.Nav != nil || v.Stages != nil || v.MockRail != nil || v.EstMinutes != nil {
+	if v.Nav != nil || v.Stages != nil || v.MockRail != nil || v.EstMinutes != nil || v.Revision != nil {
 		t.Fatalf("coming_soon view = %+v, want header only", v)
 	}
 	fx, _ := r.Lookup(coursetest.FixtureActive)
