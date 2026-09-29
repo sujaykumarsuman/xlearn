@@ -9,15 +9,15 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done — merged, [PR #100](https://github.com/sujaykumarsuman/xlearn/pull/100), 2026-09-29 (merge only; ships in `v1.7.0`)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Gateway `withhold()` + per-request item states, applied on every item surface (incl. arena GET and coach context) | X | ⬜ |
-| 2 | Route-enumeration test (static policy on every route + behavioural sentinel sweep) | X | ⬜ |
-| 3 | Sanitizing Markdown renderer (GFM tables, fenced code + highlighting, `asset:` images, https links) + XSS corpus + ADR | X | ⬜ |
-| 4 | Revision v2 (AB03 F1–F4, F6, F9): format badges, withheld pattern, re-solve/result, empty state | X | ⬜ |
-| 5 | `solution_facts` only with the solution stage (curriculum + BFF) | X | ⬜ |
+| 1 | Gateway `withhold()` + per-request item states, applied on every item surface (incl. arena GET and coach context) | X | ✅ |
+| 2 | Route-enumeration test (static policy on every route + behavioural sentinel sweep) | X | ✅ |
+| 3 | Sanitizing Markdown renderer (GFM tables, fenced code + highlighting, `asset:` images, https links) + XSS corpus + ADR | X | ✅ |
+| 4 | Revision v2 (AB03 F1–F4, F6, F9): format badges, withheld pattern, re-solve/result, empty state | X | ✅ |
+| 5 | `solution_facts` only with the solution stage (curriculum + BFF) | X | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + milestone).
@@ -25,15 +25,15 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] AB03 frozen: [ds-m1-01](sprint-ds-m1-01.md) merged (the merge is the freeze, D40). This sprint builds frames **F1–F4, F6
+- [x] AB03 frozen: [ds-m1-01](sprint-ds-m1-01.md) merged (the merge is the freeze, D40). This sprint builds frames **F1–F4, F6
       and F9**; F5, F7 and F8 are deferred by name (task 4).
-- [ ] [m1-05](sprint-m1-05.md) merged (gateway router serialized m1-03 → m1-04 → m1-05 → m1-06; `httpx.ReadBody` in place)
-- [ ] [m1-03](sprint-m1-03.md) merged (course-scoped routes and DSA aliases; `useCourse()` → `{slug, view, status}` with the
+- [x] [m1-05](sprint-m1-05.md) merged (gateway router serialized m1-03 → m1-04 → m1-05 → m1-06; `httpx.ReadBody` in place)
+- [x] [m1-03](sprint-m1-03.md) merged (course-scoped routes and DSA aliases; `useCourse()` → `{slug, view, status}` with the
       learner-safe manifest view) and `v1.6.0` live (frozen item schema with `concepts[]` / `solution_facts`, [m1-01](sprint-m1-01.md))
-- [ ] *Soft, recommended — not blocking:* MI-5b live ([mi-04](sprint-mi-04.md)) before the new Markdown renderer ships
+- [ ] *Soft, recommended — not blocking (not live at merge: mi-04 4b pending; noted in PR #100):* MI-5b live ([mi-04](sprint-mi-04.md)) before the new Markdown renderer ships
       ([ADR-0033 §11](../../adr/0033-invite-only-admission-and-owner-admin.md#11-admin-console-isolation-mi-5b)); m1-07
       carries the same soft gate for the tag
-- [ ] Parallel sessions: no open peer PR edits `internal/gateway/**`, `web/src/components/Markdown.tsx` or
+- [x] Parallel sessions: no open peer PR edits `internal/gateway/**`, `web/src/components/Markdown.tsx` or
       `web/src/screens/Revision.tsx` (`gh pr list`, `git worktree list`, ListAgents). The one exception is
       [m1-10](sprint-m1-10.md)'s additive gateway change: the new `coach_models.go`, one coach route row, its
       OpenAPI path and new test files.
@@ -203,20 +203,20 @@ Sources: [t1 §4 curriculum](../research/t1-content-data-model.md#4-schema-delta
 
 ## Acceptance criteria
 
-- [ ] **Route-enumeration test green:** every route declares a withhold policy (exempt ones with a reviewed reason); **no
+- [x] **Route-enumeration test green:** every route declares a withhold policy (exempt ones with a reviewed reason); **no
       route leaks pattern, concepts or facts during a live attempt or a due touch**. A solved (incl. solved-blind), not-due
       item keeps its pattern on lists **and** in the workspace.
-- [ ] Problem workspace: while unsolved or during an open attempt, the pattern chip appears only from the hint stage. A
+- [x] Problem workspace: while unsolved or during an open attempt, the pattern chip appears only from the hint stage. A
       solved, not-live item shows it as in v1. A due-touch item shows no hint, solution or pattern, and the arena view
       of a live item shows the attempt stage only.
-- [ ] Coach context for a live or never-solved problem carries no pattern, concepts or facts.
-- [ ] **Markdown XSS corpus blocked**; tables, fenced code with highlighting, `asset:` images and https links render; v1
+- [x] Coach context for a live or never-solved problem carries no pattern, concepts or facts.
+- [x] **Markdown XSS corpus blocked**; tables, fenced code with highlighting, `asset:` images and https links render; v1
       content renders with parity; the renderer ADR is recorded.
-- [ ] **Revision matches AB03 F1–F4, F6 and F9** (badges, withheld pattern, re-solve, scored result, empty state,
+- [x] **Revision matches AB03 F1–F4, F6 and F9** (badges, withheld pattern, re-solve, scored result, empty state,
       narrow), with 1440/390 px screenshots in the PR. F5, F7 and F8 are deferred to m2-04 / p-02; the Recall badge
       exists only in a fixture test.
-- [ ] `solution_facts` only with the solution stage (curriculum + gateway tests).
-- [ ] Every v1 e2e green; Week/Today golden = v1 except the withheld pattern on live items; CI green (incl. `sqlc diff`).
+- [x] `solution_facts` only with the solution stage (curriculum + gateway tests).
+- [x] Every v1 e2e green; Week/Today golden = v1 except the withheld pattern on live items; CI green (incl. `sqlc diff`).
 
 ## Release
 
