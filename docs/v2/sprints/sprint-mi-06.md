@@ -9,17 +9,17 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done 2026-09-29 (run r-34). **NATS auth live at stage `n3`**: N1 infra#45 (`a84be0e`, the one restart, 14:06:53Z), N2 practice infra#46 (`f91f292`), review infra#47 (`afe0717`), assessment infra#48 (`af6dc8c`), identity infra#49 (`2e9493d`, identity joined NATS on its own nkey), N3 infra#50 (`393fb0f`, a reload: **N3 timestamp 2026-09-29T14:26:46Z**). 8/8 connections on their own nkey, 0 `legacy`; outboxes 0 and pending 0 after every stage; `host-verify --cluster` 64 pass / 1 warn (TR-STEAL) / 0 fail at `PIN_NATS_STAGE=n3`, `/root` copy refreshed. Pending: the owner's login smoke and one real attempt flow (production has no account; ps-17, ps-18) and `ev-nats-ops-first-use`.
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Generate the nkeys (four service seeds → SOPS, agent in-session; the ops public key comes from the owner, generated offline before launch) | I | ⬜ |
-| 2 | Local rehearsal of the N1 / N3 server config (NATS 2.14.6) | H | ⬜ |
-| 3 | **N1** PR: nkey users + fine ACLs + `legacy` + `no_auth_user` + `PIN_NATS_STAGE=n1` — the one restart | I | ⬜ |
-| 4 | **N2** PRs: seed + env per service — practice → review → assessment → identity (identity also gets `NATS_URL`) | I | ⬜ |
-| 5 | **N3** PR: `legacy` → `deny ">"` (reload) + `PIN_NATS_STAGE=n3` + verify | I | ⬜ |
-| 6 | NATS break-glass runbook; tunnel proved by the N3 probe (the owner's first ops-seed use is recorded as a pending owner event) | X | ⬜ |
-| 7 | Record (status NATS rows, MI-7, events.md note) | X | ⬜ |
+| 1 | Generate the nkeys (four service seeds → SOPS, agent in-session; the ops public key comes from the owner, generated offline before launch) | I | ✅ practice `UCZONB…`, review `UDECHS…`, assessment `UCJVF5…`, identity `UALKQK…`: seeds generated in-session (never printed), SOPS-encrypted to the `apps/secrets` recipient (round trip checked by hash), plaintext deleted; each landed in its N2 PR. ops `UAEO5F…` from the owner (ask-21). No judge/coach keys |
+| 2 | Local rehearsal of the N1 / N3 server config (NATS 2.14.6) | H | ✅ rendered at `v1.6.0` (judge/coach dropped); `helm template` 2.14.6 → StatefulSet diff = the annotation only; `nats-server -t` valid for N1 and N3. Real run: anonymous → `legacy` pub/sub/stream ok at N1; N3 by SIGHUP: `start` same, `config_load_time` moved, anonymous pub/sub refused and logged. **Found:** a bcrypt `legacy` password breaks `no_auth_user` (the server presents the stored hash as the password) → random plaintext (ADR-0035's "random unused password") |
+| 3 | **N1** PR: nkey users + fine ACLs + `legacy` + `no_auth_user` + `PIN_NATS_STAGE=n1` — the one restart | I | ✅ infra#45 (`a84be0e`): nats-0 restarted 14:06:53Z (volume healthy, streams + 4 consumers restored); `/connz` 7 → 7, all `legacy`; pending 0; outboxes 0; no violations; plain `--cluster` 63 / 2 (TR-STEAL, a transient TR-DISK) / 0 at `n1`; `/root` copy refreshed |
+| 4 | **N2** PRs: seed + env per service — practice → review → assessment → identity (identity also gets `NATS_URL`) | I | ✅ infra#46 practice, #47 review, #48 assessment, #49 identity (+ `NATS_URL`), each verified before the next: every connection on its own key, no violation, outboxes 0, durables pending 0. identity's first connection was on its nkey; `XLEARN_IDENTITY` exists. The real attempt flow is an owner pending smoke (no prod account; ps-18) |
+| 5 | **N3** PR: `legacy` → `deny ">"` (reload) + `PIN_NATS_STAGE=n3` + verify | I | ✅ infra#50 (`393fb0f`): reload at **2026-09-29T14:26:46Z** (`start` unchanged, config hash = the rehearsed one); plain `--cluster` 64/1/0 at `n3` (8 nkey, 0 legacy) before and after the probe; `/root` copy refreshed; tunnel probe: anonymous pub + sub refused, both logged for `$G/user:legacy`. Credential-free smoke OK; owner login smoke pending (ps-17) |
+| 6 | NATS break-glass runbook; tunnel proved by the N3 probe (the owner's first ops-seed use is recorded as a pending owner event) | X | ✅ [`runbooks/nats-break-glass.md`](../runbooks/nats-break-glass.md); tunnel proved by the N3 probe (logged). The owner's first ops-seed `stream ls` is `ev-nats-ops-first-use` (post-ship) |
+| 7 | Record (status NATS rows, MI-7, events.md note) | X | ✅ this PR: status.md (board, MI-7, NATS rows, break-glass log, `ev-nats-ops-first-use`, pending smokes, decisions), `events.md` note |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + the MI table's MI-7 row + the NATS rows).
@@ -29,13 +29,13 @@ _Overall:_ ⬜ Not started
 
 Each gate guards one stage; a later stage may wait while an earlier one proceeds.
 
-- [ ] **Before N1:** MI-6 merged ([mi-05](sprint-mi-05.md)) — `internal/platform/events/testdata/nats-authorization.golden.conf` and `make nats-acl-render` on `main`
-- [ ] **Before N1:** MI-8 host-verify NATS stage check available ([mi-02](sprint-mi-02.md)) — `hack/host-verify.sh --cluster --nats-stage=open|n1|n3|n4`, with the script constant `PIN_NATS_STAGE=open` that this sprint bumps
-- [ ] **Before N1:** Hostinger weekly image date checked (≤ 7 days; the owner reads hPanel before launch and records it in status.md, and the session verifies it) — N1 is a restart-inducing step ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)). If it isn't recorded, don't wait: set N1 and the stages after it ⛔ in status.md, naming the owner item, and land the rest (the runbook and status docs PR)
-- [ ] **Before N2:** `v1.6.0` — the tag carrying N0 ([m1-02](sprint-m1-02.md)) — live on all seven `xlearn-*` Deployments, with the NATS-auth integration test (`make nats-acl-test`, its CI job) green at that tag
-- [ ] **Before identity's N2:** `v1.6.0` live on `xlearn-identity` (the NATS publisher code), and either no `messaging` ingress NetworkPolicy exists yet or MI-5's policy lists `xlearn-identity` as a 4222 caller (forward-declared, [mi-03](sprint-mi-03.md)) — `ssh sujaykumar-vps 'k3s kubectl -n messaging get networkpolicy -o yaml'`
-- [ ] **Before N3:** MI-5 PR merged ([mi-03](sprint-mi-03.md)'s first PR: `databases` + `messaging` ingress). MI-5a and MI-4 ([mi-14](sprint-mi-14.md)) do **not** gate this sprint
-- [ ] **Before N3:** all four N2 PRs verified — `/connz?auth=true` shows **no** `legacy` connection
+- [x] **Before N1:** MI-6 merged ([mi-05](sprint-mi-05.md)) — `internal/platform/events/testdata/nats-authorization.golden.conf` and `make nats-acl-render` on `main` (2026-09-29: #85 on `main`; golden + `make nats-acl-render` present)
+- [x] **Before N1:** MI-8 host-verify NATS stage check available ([mi-02](sprint-mi-02.md)) — `hack/host-verify.sh --cluster --nats-stage=open|n1|n3|n4`, with the script constant `PIN_NATS_STAGE=open` that this sprint bumps (infra `main`: `--nats-stage`, `PIN_NATS_STAGE=open`)
+- [x] **Before N1:** Hostinger weekly image date checked (≤ 7 days; the owner reads hPanel before launch and records it in status.md, and the session verifies it) — N1 is a restart-inducing step ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)). If it isn't recorded, don't wait: set N1 and the stages after it ⛔ in status.md, naming the owner item, and land the rest (the runbook and status docs PR) (2026-09-26 per ask-21, verified: 3 days old)
+- [x] **Before N2:** `v1.6.0` — the tag carrying N0 ([m1-02](sprint-m1-02.md)) — live on all seven `xlearn-*` Deployments, with the NATS-auth integration test (`make nats-acl-test`, its CI job) green at that tag (7/7 Deployments on `1.6.0`; CI run 36424931722 at `b67ecdd`: `nats-acl` success)
+- [x] **Before identity's N2:** `v1.6.0` live on `xlearn-identity` (the NATS publisher code), and either no `messaging` ingress NetworkPolicy exists yet or MI-5's policy lists `xlearn-identity` as a 4222 caller (forward-declared, [mi-03](sprint-mi-03.md)) — `ssh sujaykumar-vps 'k3s kubectl -n messaging get networkpolicy -o yaml'` (identity on `1.6.0`; `messaging/nats-ingress` lists `xlearn-identity` on 4222)
+- [x] **Before N3:** MI-5 PR merged ([mi-03](sprint-mi-03.md)'s first PR: `databases` + `messaging` ingress). MI-5a and MI-4 ([mi-14](sprint-mi-14.md)) do **not** gate this sprint (infra#42 `ff5fb03`)
+- [x] **Before N3:** all four N2 PRs verified — `/connz?auth=true` shows **no** `legacy` connection (infra#46–#49; `/connz` 8 nkey, 0 legacy at 14:24Z)
 
 ## Goal
 
@@ -289,16 +289,17 @@ Write **`docs/v2/runbooks/nats-break-glass.md`** — the only sanctioned manual 
 
 ## Acceptance criteria
 
-- [ ] Every live NATS connection authenticates with **its own nkey** (practice, review, assessment, identity);
+- [x] Every live NATS connection authenticates with **its own nkey** (practice, review, assessment, identity);
       `/connz?auth=true` shows no `legacy` connection.
-- [ ] Denied operations are **logged, not silently dropped**: the N3 anonymous probe is refused and the
+- [x] Denied operations are **logged, not silently dropped**: the N3 anonymous probe is refused and the
       violation appears in the `nats-0` log; services show no violation ERRORs in normal flow.
-- [ ] **N3 applied** (a reload, `start` unchanged); a plain `host-verify --cluster` (`PIN_NATS_STAGE=n3`) green
+- [x] **N3 applied** (a reload, `start` unchanged); a plain `host-verify --cluster` (`PIN_NATS_STAGE=n3`) green
       right after the reload, with the timestamp recorded for l-01's ≥ 24 h re-check.
-- [ ] identity is on NATS with its own nkey: `XLEARN_IDENTITY` exists and its relay drains (l-01's entry gate).
-- [ ] **No event lost:** every outbox's unsent count is 0 and every durable's pending is 0 after N1, after each
-      N2 and after N3; a real flow (attempt → review + assessment) works end to end.
-- [ ] The break-glass runbook exists, and its tunnel is proved by the N3 probe (logged in `status.md`). The
+- [x] identity is on NATS with its own nkey: `XLEARN_IDENTITY` exists and its relay drains (l-01's entry gate).
+- [x] **No event lost:** every outbox's unsent count is 0 and every durable's pending is 0 after N1, after each
+      N2 and after N3; a real flow (attempt → review + assessment) works end to end. _(2026-09-29: 0 and 0 at
+      every stage. The real attempt flow is the owner's pending smoke ps-18, because production has no account.)_
+- [x] The break-glass runbook exists, and its tunnel is proved by the N3 probe (logged in `status.md`). The
       owner's first ops-seed use is recorded as the post-ship owner event `ev-nats-ops-first-use`; it doesn't gate
       _Overall_ ✅.
 
