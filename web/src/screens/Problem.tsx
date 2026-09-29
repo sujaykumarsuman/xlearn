@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Icon } from "../components/Icon";
 import type { IconName } from "../components/Icon";
 import { Markdown } from "../components/Markdown";
+import { coursePath, useCourse, useCourseSlug } from "../lib/course";
 import type { Outcome, PracticeState, Problem as ProblemMeta, ProblemAggregate, ProblemSection, RevealPenalty } from "../lib/curriculum";
 import { isAhead, logOutcome, revealNext, startAttempt, useProblem } from "../lib/curriculum";
 import { useStartPath } from "../lib/enrollment";
@@ -28,7 +29,7 @@ const OUTCOMES: { value: Outcome; label: string; hint: string; color: string }[]
 const OUTCOME_LABEL: Record<Outcome, string> = { clean: "Clean", rough: "Rough", assisted: "Assisted", miss: "Miss" };
 
 /**
- * Problem (`/xlearn/dsa/problem/:id`): the guided 3-pane workspace built on the BFF
+ * Problem (`/xlearn/:course/problem/:id`): the guided 3-pane workspace built on the BFF
  * agg (GET /problems/:id) — statement + only the UNLOCKED stage sections (R-PF1),
  * plus the practice state and the server-authoritative timer. The learner starts a
  * blind attempt under a 15-min timer, reveals a hint (10-min) then the solution
@@ -77,6 +78,7 @@ export default function Problem() {
 // curriculum before any attempt counts. Browsing the roadmap/problems stays open.
 function StartGate() {
   const qc = useQueryClient();
+  const course = useCourse();
   const startPath = useStartPath();
   return (
     <div
@@ -100,7 +102,7 @@ function StartGate() {
       <h2 style={{ fontSize: 18, fontWeight: 700 }}>Start the path to begin</h2>
       <p style={{ fontSize: 13, color: "var(--ds-dim)", margin: "8px auto 20px", maxWidth: 360 }}>
         Solving counts toward your curriculum once you start{" "}
-        <b style={{ color: "var(--ds-text)" }}>Data Structures &amp; Algorithms</b>. Start it to
+        <b style={{ color: "var(--ds-text)" }}>{course.path?.title}</b>. Start it to
         unlock the guided flow and your daily schedule — or browse the problems freely first.
       </p>
       <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
@@ -108,11 +110,11 @@ function StartGate() {
           type="button"
           className="ds-btn ds-btn--primary"
           disabled={startPath.isPending}
-          onClick={() => startPath.mutate("dsa", { onSuccess: () => qc.invalidateQueries() })}
+          onClick={() => startPath.mutate(course.slug, { onSuccess: () => qc.invalidateQueries() })}
         >
           <Icon name="play" className="xl-ico--sm" /> {startPath.isPending ? "Starting…" : "Start path"}
         </button>
-        <Link className="ds-btn ds-btn--secondary" to="/dsa/problems">
+        <Link className="ds-btn ds-btn--secondary" to={coursePath(course.slug, "problems")}>
           Browse problems
         </Link>
       </div>
@@ -312,14 +314,15 @@ function PracticeWorkspace({ data }: { data: ProblemAggregate }) {
 // --- header (breadcrumb + title row + timer HUD) ---
 
 function ProblemHeader({ problem, state }: { problem: ProblemMeta; state: PracticeState }) {
+  const slug = useCourseSlug();
   return (
     <div style={{ borderBottom: "1px solid var(--ds-line)", paddingBottom: 14 }}>
       <div className="xl-crumb" style={{ marginBottom: 10 }}>
-        <Link to="/dsa" style={{ color: "inherit", textDecoration: "none" }}>
-          dsa
+        <Link to={coursePath(slug)} style={{ color: "inherit", textDecoration: "none" }}>
+          {slug}
         </Link>
         <span className="xl-crumb__sep">/</span>
-        <Link to={`/dsa/week/${problem.week_n}`} style={{ color: "inherit", textDecoration: "none" }}>
+        <Link to={coursePath(slug, "week", problem.week_n)} style={{ color: "inherit", textDecoration: "none" }}>
           week {problem.week_n}
         </Link>
         <span className="xl-crumb__sep">/</span>
@@ -684,6 +687,7 @@ function PenaltyNote({ penalty }: { penalty: RevealPenalty }) {
 const TOUCH_LABELS = ["D1", "D3", "D7", "D21", "D45"];
 
 function SolvedCard({ state }: { state: PracticeState }) {
+  const slug = useCourseSlug();
   return (
     <div className="ds-card ds-card--teal" style={{ padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -710,10 +714,10 @@ function SolvedCard({ state }: { state: PracticeState }) {
         </p>
       )}
       <div style={{ display: "flex", gap: 8 }}>
-        <Link className="ds-btn ds-btn--secondary ds-btn--sm" to="/dsa/revision">
+        <Link className="ds-btn ds-btn--secondary ds-btn--sm" to={coursePath(slug, "revision")}>
           Revision queue
         </Link>
-        <Link className="ds-btn ds-btn--primary ds-btn--sm" to="/dsa">
+        <Link className="ds-btn ds-btn--primary ds-btn--sm" to={coursePath(slug)}>
           Next problem
         </Link>
       </div>

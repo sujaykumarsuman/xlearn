@@ -72,7 +72,15 @@ END $$`); err != nil {
 
 // rowSnapshot is every seeded row of the curriculum tables, uuids stripped, in natural-key
 // order. week_concept is recorded as (path, week n, concept slug) triples. Only the v1
-// columns are captured, so the same snapshot compares a v1 seed with a v2 one.
+// fields are captured, so the same snapshot compares a v1 seed with a v2 one.
+//
+// Since m1-03 the seed no longer writes the four columns M1c drops (the problem's
+// leetcode_url, neetcode_url and is_reinforcement, the concept's code_template): a fresh
+// seed leaves them at their defaults (TestSeedV2Columns). The snapshot reads those four v1
+// fields the way the API derives them from the v2 columns, under their v1 names: the URL
+// of the first link of each kind, role = 'reinforcement', and the template of DSA's
+// primary language (go; the only course with concepts). The fixture is unchanged, so it
+// still proves every v1 value; TestAPIMatchesV1Snapshot checks the served JSON too.
 type rowSnapshot struct {
 	Path           []map[string]any `json:"path"`
 	Phase          []map[string]any `json:"phase"`
@@ -94,7 +102,8 @@ var v1SnapshotQueries = []struct {
 		FROM curriculum.phase ORDER BY path_slug COLLATE "C", "order"`},
 	{"week", `SELECT path_slug, n, title, thesis
 		FROM curriculum.week ORDER BY path_slug COLLATE "C", n`},
-	{"concept", `SELECT path_slug, slug, title, body_md, when_to_use_md, code_template
+	{"concept", `SELECT path_slug, slug, title, body_md, when_to_use_md,
+			COALESCE(templates ->> 'go', '') AS code_template
 		FROM curriculum.concept ORDER BY path_slug COLLATE "C", slug COLLATE "C"`},
 	{"week_concept", `SELECT w.path_slug, w.n AS week_n, c.slug AS concept_slug
 		FROM curriculum.week_concept wc
@@ -102,10 +111,19 @@ var v1SnapshotQueries = []struct {
 		JOIN curriculum.concept c ON c.id = wc.concept_id
 		ORDER BY w.path_slug COLLATE "C", w.n, c.slug COLLATE "C"`},
 	{"problem", `SELECT id, path_slug, week_n, title, difficulty, pattern,
-			leetcode_url, neetcode_url, is_reinforcement, sort_order
+			` + firstLinkSQL("leetcode") + ` AS leetcode_url,
+			` + firstLinkSQL("neetcode") + ` AS neetcode_url,
+			role = 'reinforcement' AS is_reinforcement, sort_order
 		FROM curriculum.problem ORDER BY path_slug COLLATE "C", id COLLATE "C"`},
 	{"problem_section", `SELECT problem_id, stage, "order", kind, body_md, code
 		FROM curriculum.problem_section ORDER BY problem_id COLLATE "C", stage COLLATE "C", "order"`},
+}
+
+// firstLinkSQL is the URL of a problem's first link of kind (empty if none): the v1 URL
+// field as the API derives it from problem.links.
+func firstLinkSQL(kind string) string {
+	return `COALESCE((SELECT l.v ->> 'url' FROM jsonb_array_elements(links) WITH ORDINALITY AS l(v, i)
+			WHERE l.v ->> 'kind' = '` + kind + `' ORDER BY l.i LIMIT 1), '')`
 }
 
 // queryRows runs sql and returns its rows as column -> value maps.

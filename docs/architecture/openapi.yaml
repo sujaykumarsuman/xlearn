@@ -35,6 +35,17 @@ info:
     than failing the whole response, except `GET /progress`, whose summary leg is
     required.
 
+    **Courses (m1-03).** Course-scoped routes live under `/paths/{slug}/…`; `{slug}` is
+    resolved against the course manifests compiled into the gateway. An unknown or
+    retired course, a `coming_soon` course's data routes and a `preview` course outside
+    the owner/tester cohort all get the same `404 {"error":{"code":"course_not_found"}}`.
+    Items keep global ids (`/problems/{id}`, `/revision/{itemId}/score`,
+    `/mistakes/{id}`, `/mocks/{id}`); their course is the item's `path_slug`. The v1 routes
+    without a course (`/dashboard`, `/progress`, `/revision/due`, `/mistakes`,
+    `/weak-area`, `/mocks`, `/mocks/trend`, `/concepts/{slug}`) are **deprecated DSA
+    aliases**, byte-identical to `/paths/dsa/…`; the SPA stops calling them in v1.7.0 and
+    they are removed no earlier than v1.9.0 (ADR-0034 §1.1).
+
     **Streaming.** `POST /coach/chat` responds `text/event-stream` (SSE): `data:` frames
     carrying `{"delta"}`, a terminal `event: done`, or `event: error` on a mid-stream
     failure. Errors before the first byte are the normal JSON envelope.
@@ -268,10 +279,14 @@ paths:
     get:
       tags: [curriculum]
       operationId: listPaths
-      summary: Catalog — all learning paths + status.
+      summary: Catalog — the courses this caller may see, with status and the learner-safe course view.
+      description: |
+        Active courses, `coming_soon` teasers (catalog only: their data routes 404) and, for
+        the owner/tester cohort only, `preview` courses (m1-04; hidden from everyone in
+        v1.7.0). Retired courses never appear. Each entry carries its `course` view.
       responses:
         "200":
-          description: All paths.
+          description: The session-gated catalog.
           content:
             application/json:
               schema:
@@ -287,7 +302,7 @@ paths:
     get:
       tags: [curriculum]
       operationId: getPath
-      summary: Roadmap — phases, weeks, totals.
+      summary: Roadmap — phases, weeks, totals (and the course view in path.course).
       parameters:
         - { $ref: "#/components/parameters/Slug" }
       responses:
@@ -297,7 +312,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Roadmap" }
         "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
+        "404": { $ref: "#/components/responses/CourseNotFound" }
         "502": { $ref: "#/components/responses/BadGateway" }
         "503": { $ref: "#/components/responses/Unavailable" }
   /paths/{slug}/problems:
@@ -319,7 +334,7 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/Problem" }
         "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
+        "404": { $ref: "#/components/responses/CourseNotFound" }
         "502": { $ref: "#/components/responses/BadGateway" }
         "503": { $ref: "#/components/responses/Unavailable" }
   /paths/{slug}/weeks/{n}:
@@ -338,19 +353,197 @@ paths:
               schema: { $ref: "#/components/schemas/WeekView" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
+        "404": { $ref: "#/components/responses/CourseNotFound" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /paths/{slug}/concepts/{c}:
+    get:
+      tags: [curriculum]
+      operationId: getCourseConcept
+      summary: A course's concept reading + code template (keyed on course and concept slug).
+      parameters:
+        - { $ref: "#/components/parameters/Slug" }
+        - { $ref: "#/components/parameters/ConceptSlug" }
+      responses:
+        "200":
+          description: The concept.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  concept: { $ref: "#/components/schemas/Concept" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/CourseNotFound" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /paths/{slug}/dashboard:
+    get:
+      tags: [progress]
+      operationId: getCourseDashboard
+      summary: A course's "Today" — daily plan, due reviews, weak area, streak, stats (agg).
+      parameters:
+        - { $ref: "#/components/parameters/Slug" }
+      responses:
+        "200":
+          description: The composed dashboard.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardView" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/CourseNotFound" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /paths/{slug}/progress:
+    get:
+      tags: [progress]
+      operationId: getCourseProgress
+      summary: A course's coverage, heatmap, mastery, rubric trend, outcome mix (agg).
+      parameters:
+        - { $ref: "#/components/parameters/Slug" }
+      responses:
+        "200":
+          description: The composed progress view.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProgressView" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/CourseNotFound" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /paths/{slug}/revision/due:
+    get:
+      tags: [revision]
+      operationId: courseRevisionDue
+      summary: A course's prioritised due queue, enriched with problem metadata (agg).
+      parameters:
+        - { $ref: "#/components/parameters/Slug" }
+      responses:
+        "200":
+          description: The due queue.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DueQueue" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/CourseNotFound" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /paths/{slug}/mistakes:
+    get:
+      tags: [mistakes]
+      operationId: listCourseMistakes
+      summary: A course's mistake journal, each entry enriched with problem metadata (agg).
+      parameters:
+        - { $ref: "#/components/parameters/Slug" }
+        - name: status
+          in: query
+          schema: { type: string, enum: [open, closed] }
+      responses:
+        "200":
+          description: The journal.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MistakeList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/CourseNotFound" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+    post:
+      tags: [mistakes]
+      operationId: createCourseMistake
+      summary: Create a journal entry in this course (root cause, insight, category).
+      parameters:
+        - { $ref: "#/components/parameters/Slug" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MistakeCreateRequest" }
+      responses:
+        "201":
+          description: The created entry.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Mistake" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/CourseNotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /paths/{slug}/weak-area:
+    get:
+      tags: [mistakes]
+      operationId: courseWeakArea
+      summary: A course's current weekly weak-area banner (agg).
+      parameters:
+        - { $ref: "#/components/parameters/Slug" }
+      responses:
+        "200":
+          description: The weak-area rollup.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WeakArea" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/CourseNotFound" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /paths/{slug}/mocks:
+    post:
+      tags: [mock]
+      operationId: startCourseMock
+      summary: Start a mock in this course (setup → session).
+      parameters:
+        - { $ref: "#/components/parameters/Slug" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MockStartRequest" }
+      responses:
+        "201":
+          description: The live mock session view.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MockView" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/CourseNotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /paths/{slug}/mocks/trend:
+    get:
+      tags: [mock]
+      operationId: courseMockTrend
+      summary: A course's scored mock history vs the readiness targets.
+      parameters:
+        - { $ref: "#/components/parameters/Slug" }
+      responses:
+        "200":
+          description: The trend points + targets.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MockTrend" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/CourseNotFound" }
         "502": { $ref: "#/components/responses/BadGateway" }
         "503": { $ref: "#/components/responses/Unavailable" }
   /paths/{slug}/start:
     post:
       tags: [curriculum]
       operationId: startPath
-      summary: Enroll the caller in a path (idempotent) — sets the start date for "current day".
+      summary: Enroll the caller in a course (idempotent) — sets the start date for "current day".
+      description: |
+        Only an `active` course can be started (ADR-0033 §12 row 8): an unknown course, or a
+        `preview` one outside the cohort, is `404 course_not_found`; a `coming_soon` or
+        `retired` course is `409 course_not_available`.
       parameters:
         - { $ref: "#/components/parameters/Slug" }
       responses:
         "200":
-          description: The caller's enrollment on this path.
+          description: The caller's enrollment on this course.
           content:
             application/json:
               schema:
@@ -358,6 +551,8 @@ paths:
                 properties:
                   enrollment: { $ref: "#/components/schemas/Enrollment" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/CourseNotFound" }
+        "409": { $ref: "#/components/responses/CourseNotAvailable" }
         "422": { $ref: "#/components/responses/Unprocessable" }
         "502": { $ref: "#/components/responses/BadGateway" }
         "503": { $ref: "#/components/responses/Unavailable" }
@@ -365,6 +560,8 @@ paths:
     get:
       tags: [curriculum]
       operationId: getConcept
+      deprecated: true
+      description: DSA alias of `/paths/dsa/concepts/{c}` (m1-03, ADR-0034 §1.1) — byte-identical; kept for open v1.6.0 tabs, removed no earlier than v1.9.0.
       summary: Concept reading + code template.
       parameters:
         - { $ref: "#/components/parameters/Slug" }
@@ -470,6 +667,8 @@ paths:
     get:
       tags: [revision]
       operationId: revisionDue
+      deprecated: true
+      description: DSA alias of `/paths/dsa/revision/due` (m1-03, ADR-0034 §1.1) — byte-identical; kept for open v1.6.0 tabs, removed no earlier than v1.9.0.
       summary: The prioritised due queue, enriched with problem metadata (agg).
       responses:
         "200":
@@ -508,6 +707,8 @@ paths:
     get:
       tags: [mistakes]
       operationId: listMistakes
+      deprecated: true
+      description: DSA alias of `/paths/dsa/mistakes` (m1-03, ADR-0034 §1.1) — byte-identical; kept for open v1.6.0 tabs, removed no earlier than v1.9.0.
       summary: The mistake journal, each entry enriched with problem metadata (agg).
       parameters:
         - name: status
@@ -525,6 +726,8 @@ paths:
     post:
       tags: [mistakes]
       operationId: createMistake
+      deprecated: true
+      description: DSA alias of `/paths/dsa/mistakes` (m1-03, ADR-0034 §1.1) — byte-identical; kept for open v1.6.0 tabs, removed no earlier than v1.9.0.
       summary: Create/edit a journal entry (root cause, insight, category).
       requestBody:
         required: true
@@ -571,6 +774,8 @@ paths:
     get:
       tags: [mistakes]
       operationId: weakArea
+      deprecated: true
+      description: DSA alias of `/paths/dsa/weak-area` (m1-03, ADR-0034 §1.1) — byte-identical; kept for open v1.6.0 tabs, removed no earlier than v1.9.0.
       summary: The current weekly weak-area banner (agg).
       responses:
         "200":
@@ -585,6 +790,8 @@ paths:
     post:
       tags: [mock]
       operationId: startMock
+      deprecated: true
+      description: DSA alias of `/paths/dsa/mocks` (m1-03, ADR-0034 §1.1) — byte-identical; kept for open v1.6.0 tabs, removed no earlier than v1.9.0.
       summary: Start a 45-min mock (setup → session).
       requestBody:
         required: true
@@ -606,6 +813,8 @@ paths:
     get:
       tags: [mock]
       operationId: mockTrend
+      deprecated: true
+      description: DSA alias of `/paths/dsa/mocks/trend` (m1-03, ADR-0034 §1.1) — byte-identical; kept for open v1.6.0 tabs, removed no earlier than v1.9.0.
       summary: The scored /35 history vs the readiness targets.
       responses:
         "200":
@@ -661,6 +870,8 @@ paths:
     get:
       tags: [progress]
       operationId: getProgress
+      deprecated: true
+      description: DSA alias of `/paths/dsa/progress` (m1-03, ADR-0034 §1.1) — byte-identical; kept for open v1.6.0 tabs, removed no earlier than v1.9.0.
       summary: Coverage, heatmap, mastery, rubric trend, outcome mix (agg).
       responses:
         "200":
@@ -675,6 +886,8 @@ paths:
     get:
       tags: [progress]
       operationId: getDashboard
+      deprecated: true
+      description: DSA alias of `/paths/dsa/dashboard` (m1-03, ADR-0034 §1.1) — byte-identical; kept for open v1.6.0 tabs, removed no earlier than v1.9.0.
       summary: The "Today" home — daily plan, due reviews, weak area, streak, stats (agg).
       responses:
         "200":
@@ -823,6 +1036,13 @@ components:
       name: slug
       in: path
       required: true
+      description: The course slug (resolved against the compiled-in course manifests).
+      schema: { type: string }
+    ConceptSlug:
+      name: c
+      in: path
+      required: true
+      description: The concept slug within the course.
       schema: { type: string }
     ProblemID:
       name: id
@@ -857,6 +1077,21 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    CourseNotFound:
+      description: |
+        Unknown or retired course, a coming_soon course's data route, a preview course
+        outside the cohort, or a resource that doesn't exist — one uniform envelope, so a
+        response never hints whether a hidden course exists.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+          example: { error: { code: course_not_found, message: no such course } }
+    CourseNotAvailable:
+      description: The course exists but can't be started (coming_soon or retired).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+          example: { error: { code: course_not_available } }
     Unprocessable:
       description: Semantically invalid (e.g. bad outcome/category/rubric value).
       content:
@@ -1014,10 +1249,55 @@ components:
       properties:
         slug: { type: string }
         title: { type: string }
-        status: { type: string }
+        status: { type: string, enum: [active, coming_soon, preview] }
         summary: { type: string }
         problem_total: { type: integer }
         week_total: { type: integer }
+        course: { $ref: "#/components/schemas/CourseView" }
+    CourseView:
+      type: object
+      description: |
+        The learner-safe view of the course manifest (m1-03; internal/course/view.go):
+        presentation data only — nothing answer-bearing.
+      properties:
+        slug: { type: string }
+        title: { type: string }
+        status: { type: string }
+        short_code: { type: string, description: "The selector badge (DSA, …)." }
+        nav:
+          type: object
+          properties:
+            item_noun: { type: string }
+            groups:
+              type: array
+              items:
+                type: object
+                properties:
+                  cap: { type: string }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        screen: { type: string, enum: [today, roadmap, problems, progress, revision, mistakes, mock] }
+                        label: { type: string }
+        stages:
+          type: object
+          properties:
+            attempt: { type: object, properties: { duration_s: { type: integer }, label: { type: string } } }
+            hint: { type: object, properties: { duration_s: { type: integer }, label: { type: string } } }
+            solution: { type: object, properties: { label: { type: string } } }
+            reimplement: { type: string }
+        est_minutes: { type: object, additionalProperties: { type: integer } }
+        mock_rail:
+          type: array
+          items:
+            type: object
+            properties:
+              label: { type: string }
+              start_min: { type: integer }
+              end_min: { type: integer }
+        primary_language: { type: string }
     Phase:
       type: object
       properties:
@@ -1051,9 +1331,17 @@ components:
         title: { type: string }
         difficulty: { $ref: "#/components/schemas/Difficulty" }
         pattern: { type: string }
-        leetcode_url: { type: string }
-        neetcode_url: { type: string }
-        is_reinforcement: { type: boolean }
+        leetcode_url: { type: string, description: "Derived from links (kind leetcode)." }
+        neetcode_url: { type: string, description: "Derived from links (kind neetcode)." }
+        is_reinforcement: { type: boolean, description: "Derived: role == reinforcement." }
+        role: { type: string, enum: [core, reinforcement, drill] }
+        links:
+          type: array
+          items:
+            type: object
+            properties:
+              kind: { type: string }
+              url: { type: string }
     Concept:
       type: object
       properties:
@@ -1062,7 +1350,8 @@ components:
         title: { type: string }
         body_md: { type: string }
         when_to_use_md: { type: string }
-        code_template: { type: string }
+        code_template: { type: string, description: "Derived: templates[the course's primary language]." }
+        templates: { type: object, additionalProperties: { type: string } }
     Touch:
       type: object
       properties:

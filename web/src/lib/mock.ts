@@ -1,10 +1,11 @@
 // Mock-interview data hooks for the BFF (docs/architecture/api.md, Mock & progress).
-// A mock is a 45-minute, server-timed session (POST /mocks -> GET /mocks/{id}); the
-// phase rail + remaining time are server-authoritative (the client mirrors them). It is
-// scored on the 7-dimension rubric (POST /mocks/{id}/score -> /35) and charted vs the
-// readiness targets (GET /mocks/trend).
+// A mock is a 45-minute, server-timed session started in a course (POST
+// /paths/{slug}/mocks -> GET /mocks/{id}); the phase rail + remaining time are
+// server-authoritative (the client mirrors them). It is scored on the 7-dimension rubric
+// (POST /mocks/{id}/score -> /35) and charted vs the readiness targets (GET
+// /paths/{slug}/mocks/trend). Sessions are addressed by their global id.
 import { useQuery } from "@tanstack/react-query";
-import { ApiRequestError, apiFetch } from "./api";
+import { ApiRequestError, apiFetch, coursePathApi } from "./api";
 
 export type Difficulty = "easy" | "med" | "hard";
 
@@ -54,7 +55,7 @@ export interface MockTargets {
   pre: number;
 }
 
-/** GET /mocks/{id} (and POST /mocks, POST /mocks/{id}/score) response. */
+/** GET /mocks/{id} (and POST /paths/{slug}/mocks, POST /mocks/{id}/score) response. */
 export interface MockSession {
   id: string;
   status: "live" | "scored";
@@ -72,7 +73,7 @@ export interface MockSession {
   problem?: MockProblem | null;
 }
 
-/** The setup selection POST /mocks accepts. */
+/** The setup selection POST /paths/{slug}/mocks accepts. */
 export interface MockSetup {
   setId: string;
   problemId?: string;
@@ -93,7 +94,7 @@ export interface MockTrendPoint {
   total35: number;
 }
 
-/** GET /mocks/trend response. */
+/** GET /paths/{slug}/mocks/trend response. */
 export interface MockTrend {
   points: MockTrendPoint[];
   targets: MockTargets;
@@ -125,18 +126,20 @@ export function useMock(id: string) {
   });
 }
 
-/** useMockTrend fetches the account's scored /35 history vs the readiness targets. */
-export function useMockTrend(enabled = true) {
+/** useMockTrend fetches the account's scored /35 history in a course vs the readiness
+ *  targets. */
+export function useMockTrend(slug: string, enabled = true) {
   return useQuery<MockTrend, ApiRequestError>({
-    queryKey: ["mock", "trend"],
-    queryFn: () => apiFetch<MockTrend>("/mocks/trend"),
-    enabled,
+    queryKey: ["mock", "trend", slug],
+    queryFn: () => apiFetch<MockTrend>(coursePathApi(slug, "/mocks/trend")),
+    enabled: enabled && slug !== "",
   });
 }
 
-/** startMock begins a 45-minute session (POST /mocks) and returns the live session. */
-export function startMock(setup: MockSetup): Promise<MockSession> {
-  return apiFetch<MockSession>("/mocks", {
+/** startMock begins a 45-minute session in a course (POST /paths/{slug}/mocks) and
+ *  returns the live session. */
+export function startMock(slug: string, setup: MockSetup): Promise<MockSession> {
+  return apiFetch<MockSession>(coursePathApi(slug, "/mocks"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(setup),

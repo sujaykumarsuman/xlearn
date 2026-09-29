@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "slug": "zz-soon",
+  "title": "Coming Soon Fixture",
+  "status": "coming_soon",
+  "id_prefix": "zzs",
+  "public_stats": {
+    "default_visible": true
+  }
+}

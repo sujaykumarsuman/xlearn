@@ -11,7 +11,7 @@ import (
 var (
 	// slugRe is the course slug shape (m1-09 adds the reserved-segment list).
 	slugRe = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
-	// idPrefixRe is a course's item-id prefix (DSA's "dsa" is recorded but its ids stay bare).
+	// idPrefixRe is a course's item-id prefix (DSA's prefix is recorded but its ids stay bare).
 	idPrefixRe = regexp.MustCompile(`^[a-z]{2,4}$`)
 	// identRe is a snake_case identifier: categories, criteria keys, band formats, dims.
 	identRe = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { useMe } from "../lib/auth";
+import { coursePath, useCourse, useCourseSlug } from "../lib/course";
 import { useDashboard } from "../lib/dashboard";
 import type { DashboardData, DashboardWeek, PlanItem, PlanProblem, PlanReview } from "../lib/dashboard";
 import { currentDay, enrollmentFor } from "../lib/enrollment";
@@ -9,22 +10,25 @@ import type { Reminder, WeakArea } from "../lib/mistakes";
 import type { DueItem } from "../lib/revision";
 
 /**
- * Dashboard / "Today" (`/xlearn/dsa/dashboard`, S09): the daily home, composed by the
- * gateway from the assessment projections (streak / solved / mock), review (due queue,
- * weak-area, reminders) and curriculum (the week/problem taxonomy). Reviews come before
- * new work (R-SR5): the plan leads with due revisions, then the week's next problems.
+ * Dashboard / "Today" (`/xlearn/:course/dashboard`, S09): a course's daily home, composed
+ * by the gateway from the assessment projections (streak / solved / mock), review (due
+ * queue, weak-area, reminders) and curriculum (the week/problem taxonomy). Reviews come
+ * before new work (R-SR5): the plan leads with due revisions, then the week's next
+ * problems. The eyebrow is the course title (data; AB02-F2).
  */
 export default function Dashboard() {
-  const q = useDashboard();
+  const course = useCourse();
+  const slug = course.slug;
+  const q = useDashboard(slug);
   const data = q.data;
   const me = useMe();
-  const day = currentDay(enrollmentFor(me.data, "dsa"));
+  const day = currentDay(enrollmentFor(me.data, slug));
 
   return (
     <div>
       <div className="xl-page-h" style={{ borderBottom: "1px solid var(--ds-line)", paddingBottom: 16, marginBottom: 20 }}>
         <div>
-          <div className="xl-eyebrow">Data Structures &amp; Algorithms</div>
+          <div className="xl-eyebrow">{course.path?.title}</div>
           <h1 style={{ marginTop: 6, fontSize: 26, fontWeight: 700, letterSpacing: "-.3px" }}>Today</h1>
           <p style={{ margin: "8px 0 0", fontSize: 13.5, color: "var(--ds-dim)" }}>
             {day != null ? `Day ${day} · ` : ""}
@@ -38,7 +42,7 @@ export default function Dashboard() {
               <span style={{ color: "var(--ds-warn)" }}><Icon name="flame" /></span> {data.stats.streak.current}
             </div>
           )}
-          <Link className="ds-btn ds-btn--primary ds-btn--lg" to={startTarget(data)}>
+          <Link className="ds-btn ds-btn--primary ds-btn--lg" to={startTarget(slug, data)}>
             <Icon name="play" /> {data && data.stats.revisionsDue > 0 ? "Start reviews" : "Start today’s plan"}
           </Link>
         </div>
@@ -145,6 +149,7 @@ function QuickStats({ data }: { data: DashboardData }) {
 // --- today's plan ---
 
 function TodaysPlan({ plan }: { plan: PlanItem[] }) {
+  const slug = useCourseSlug();
   const done = 0; // completion tracking lands with per-item state; the plan is the queue.
   return (
     <>
@@ -159,7 +164,7 @@ function TodaysPlan({ plan }: { plan: PlanItem[] }) {
             <b style={{ fontSize: 13.5 }}>All caught up.</b>
             <div style={{ fontSize: 12, color: "var(--ds-muted)", marginTop: 2 }}>No reviews due and this week’s core problems are solved.</div>
           </div>
-          <Link className="ds-btn ds-btn--secondary ds-btn--sm" to="/dsa">Roadmap</Link>
+          <Link className="ds-btn ds-btn--secondary ds-btn--sm" to={coursePath(slug)}>Roadmap</Link>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -173,9 +178,10 @@ function TodaysPlan({ plan }: { plan: PlanItem[] }) {
 }
 
 function ReviewCard({ item }: { item: PlanReview }) {
+  const slug = useCourseSlug();
   return (
     <Link
-      to="/dsa/revision"
+      to={coursePath(slug, "revision")}
       style={{ display: "flex", gap: 14, alignItems: "center", padding: "13px 15px", background: "var(--ds-panel)", border: "1px solid var(--ds-line)", borderRadius: 10, textDecoration: "none", color: "inherit" }}
     >
       <span style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(53,208,192,.14)", display: "grid", placeItems: "center", flex: "none" }}>
@@ -198,9 +204,10 @@ function ProblemCard({ item, first }: { item: PlanProblem; first: boolean }) {
   const active = item.status === "attempting";
   const border = first || active ? "1px solid rgba(53,208,192,.5)" : "1px solid var(--ds-line)";
   const bg = first || active ? "#101a1c" : "var(--ds-panel)";
+  const slug = useCourseSlug();
   return (
     <Link
-      to={`/dsa/problem/${item.problemId}`}
+      to={coursePath(slug, "problem", item.problemId)}
       style={{ display: "flex", gap: 14, alignItems: "center", padding: 15, background: bg, border, borderRadius: 10, textDecoration: "none", color: "inherit" }}
     >
       <span style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(53,208,192,.16)", display: "grid", placeItems: "center", flex: "none" }}>
@@ -225,12 +232,13 @@ function ProblemCard({ item, first }: { item: PlanProblem; first: boolean }) {
 // --- week progress ---
 
 function WeekProgress({ week }: { week: DashboardWeek }) {
+  const slug = useCourseSlug();
   return (
     <div className="xl-panel" style={{ marginTop: 18 }}>
       <div className="xl-panel__b" style={{ padding: "14px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <span style={{ fontSize: 12.5, color: "var(--ds-dim)" }}>Week {week.n} progress</span>
-          <Link to={`/dsa/week/${week.n}`} style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <Link to={coursePath(slug, "week", week.n)} style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 4 }}>
             Open week <Icon name="arrow" className="xl-ico--sm" />
           </Link>
         </div>
@@ -250,6 +258,7 @@ function WeekProgress({ week }: { week: DashboardWeek }) {
 // --- right column: revisions / weak area / reminders ---
 
 function RevisionsDuePanel({ dueItems, reminderCount }: { dueItems: DueItem[]; reminderCount: number }) {
+  const slug = useCourseSlug();
   return (
     <div className="xl-panel">
       <div className="xl-panel__h" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
@@ -265,7 +274,7 @@ function RevisionsDuePanel({ dueItems, reminderCount }: { dueItems: DueItem[]; r
             <b style={{ fontSize: 13.5 }}>Queue clear — no reviews due.</b>
             <div style={{ fontSize: 12, color: "var(--ds-muted)", marginTop: 2 }}>New problems unlock while the queue is empty.</div>
           </div>
-          <Link className="ds-btn ds-btn--secondary ds-btn--sm" to="/dsa" style={{ marginLeft: "auto" }}>Roadmap</Link>
+          <Link className="ds-btn ds-btn--secondary ds-btn--sm" to={coursePath(slug)} style={{ marginLeft: "auto" }}>Roadmap</Link>
         </div>
       ) : (
         <>
@@ -275,7 +284,7 @@ function RevisionsDuePanel({ dueItems, reminderCount }: { dueItems: DueItem[]; r
             ))}
           </div>
           <div style={{ padding: "12px 14px", borderTop: "1px solid var(--ds-line)" }}>
-            <Link className="ds-btn ds-btn--secondary ds-btn--block ds-btn--sm" to="/dsa/revision">
+            <Link className="ds-btn ds-btn--secondary ds-btn--block ds-btn--sm" to={coursePath(slug, "revision")}>
               Open revision queue <Icon name="arrow" className="xl-ico--sm" />
             </Link>
           </div>
@@ -301,9 +310,10 @@ const DAY_BADGE_CLASS: Record<number, string> = {
 };
 
 function DueRow({ item }: { item: DueItem }) {
+  const slug = useCourseSlug();
   const title = item.problem?.title ?? `Problem ${item.problemId}`;
   return (
-    <Link to="/dsa/revision" style={{ display: "block", padding: "11px 10px", borderRadius: 8, textDecoration: "none", color: "inherit" }}>
+    <Link to={coursePath(slug, "revision")} style={{ display: "block", padding: "11px 10px", borderRadius: 8, textDecoration: "none", color: "inherit" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span className="ds-mono" style={{ fontSize: 12, color: "var(--ds-muted)" }}>#{item.problemId}</span>
         <b style={{ fontSize: 13, flex: 1 }}>{title}</b>
@@ -328,6 +338,7 @@ function TouchDots({ level, mock }: { level: number; mock: boolean }) {
 }
 
 function WeakAreaCard({ weak }: { weak: WeakArea | null }) {
+  const journal = coursePath(useCourseSlug(), "mistakes");
   if (!weak || !weak.topCategory) {
     return (
       <div className="ds-card" style={{ padding: 16 }}>
@@ -338,7 +349,7 @@ function WeakAreaCard({ weak }: { weak: WeakArea | null }) {
         <p style={{ fontSize: 12.5, color: "var(--ds-dim)", lineHeight: 1.5, margin: 0 }}>
           No weak area yet — classify your open mistakes and one will surface here.
         </p>
-        <Link className="ds-btn ds-btn--secondary ds-btn--sm" to="/dsa/mistakes" style={{ marginTop: 12 }}>
+        <Link className="ds-btn ds-btn--secondary ds-btn--sm" to={journal} style={{ marginTop: 12 }}>
           Open journal <Icon name="arrow" className="xl-ico--sm" />
         </Link>
       </div>
@@ -355,7 +366,7 @@ function WeakAreaCard({ weak }: { weak: WeakArea | null }) {
       <p style={{ fontSize: 12.5, color: "var(--ds-dim)", lineHeight: 1.5, margin: 0 }}>
         {count} mistake {count === 1 ? "entry" : "entries"} this week. Reviews name it before you fail it.
       </p>
-      <Link className="ds-btn ds-btn--secondary ds-btn--sm" to="/dsa/mistakes" style={{ marginTop: 12 }}>
+      <Link className="ds-btn ds-btn--secondary ds-btn--sm" to={journal} style={{ marginTop: 12 }}>
         Drill this area <Icon name="arrow" className="xl-ico--sm" />
       </Link>
     </div>
@@ -401,11 +412,11 @@ function dueByDay(items: DueItem[]): string {
   return [...counts.entries()].map(([label, n]) => `${n} · ${label}`).join("  •  ");
 }
 
-function startTarget(data: DashboardData | undefined): string {
-  if (!data) return "/dsa/revision";
-  if (data.stats.revisionsDue > 0) return "/dsa/revision";
+function startTarget(slug: string, data: DashboardData | undefined): string {
+  if (!data) return coursePath(slug, "revision");
+  if (data.stats.revisionsDue > 0) return coursePath(slug, "revision");
   const firstProblem = data.plan.find((p): p is PlanProblem => p.kind === "problem");
-  return firstProblem ? `/dsa/problem/${firstProblem.problemId}` : "/dsa";
+  return firstProblem ? coursePath(slug, "problem", firstProblem.problemId) : coursePath(slug);
 }
 
 function todayLabel(): string {

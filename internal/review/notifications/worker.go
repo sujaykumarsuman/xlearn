@@ -22,7 +22,8 @@ const (
 type ReminderStore interface {
 	// HandleRevisionDue dedupes on eventID and writes one reminder at dueAt in one
 	// transaction, returning whether a row was newly written. pathSlug is the event's
-	// course (the envelope's path_slug; "dsa" for a v1 event).
+	// course (the envelope's path_slug; events.V1PathSlug, the DSA course, for a v1
+	// event).
 	HandleRevisionDue(ctx context.Context, eventID, accountID, pathSlug, kind string, dueAt time.Time) (bool, error)
 }
 

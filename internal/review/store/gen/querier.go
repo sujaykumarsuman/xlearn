@@ -11,20 +11,21 @@ import (
 )
 
 type Querier interface {
-	// Per-category counts of an account's OPEN entries opened within [start, end) (the
-	// week window in the account timezone, computed by the caller). Uncategorised entries
-	// (category IS NULL) are excluded — they don't define a weak area until classified.
+	// Per-category counts of an account's OPEN entries in one course opened within
+	// [window_start, window_end) (the week window in the account timezone, computed by the
+	// caller). Uncategorised entries (category IS NULL) are excluded — they don't define a
+	// weak area until classified.
 	CountOpenMistakesByCategoryInRange(ctx context.Context, arg CountOpenMistakesByCategoryInRangeParams) ([]CountOpenMistakesByCategoryInRangeRow, error)
-	// Manually create a journal entry (POST /mistakes). A plain insert: if the learner
-	// already has an open entry for the problem the partial unique index rejects it
-	// (mapped to 409 by the handler).
+	// Manually create a journal entry (POST /mistakes?path=) in the request's course,
+	// written explicitly (m1-03). A plain insert: if the learner already has an open entry
+	// for the problem the partial unique index rejects it (mapped to 409 by the handler).
 	CreateMistake(ctx context.Context, arg CreateMistakeParams) (ReviewMistakeEntry, error)
 	// The most-recent entry for (account, problem), open or closed — the Score fail path
 	// reads this to decide open-vs-reopen-vs-reset.
 	GetLatestMistake(ctx context.Context, arg GetLatestMistakeParams) (ReviewMistakeEntry, error)
-	// The account's most recent weekly snapshot — the single signal both the Mistakes
-	// banner and the Dashboard weak-area card read (GET /weak-area).
-	GetLatestWeakArea(ctx context.Context, accountID pgtype.UUID) (ReviewWeakAreaSnapshot, error)
+	// The account's most recent weekly snapshot in one course — the single signal both the
+	// Mistakes banner and the Dashboard weak-area card read (GET /weak-area/current?path=).
+	GetLatestWeakArea(ctx context.Context, arg GetLatestWeakAreaParams) (ReviewWeakAreaSnapshot, error)
 	// One entry scoped to its owner (the account from the gateway-minted JWT).
 	GetMistake(ctx context.Context, arg GetMistakeParams) (ReviewMistakeEntry, error)
 	// Fetch one touch scoped to its owner (the account from the gateway-minted JWT).
@@ -34,6 +35,7 @@ type Querier interface {
 	// entry's count; at 2 it closes (R-MJ4). Returns the new count + status so the caller
 	// emits mistake_closed exactly on the close transition. At most one open row exists
 	// (the partial unique index), so this affects a single entry; no open entry → no row.
+	// path_slug is the entry's course, which the v2 mistake_closed envelope carries (m1-03).
 	IncrementCleanRevisit(ctx context.Context, arg IncrementCleanRevisitParams) (IncrementCleanRevisitRow, error)
 	// Record an event whose handler failed its last delivery (mi-05, ADR-0035 §1.2). Ids
 	// only. ON CONFLICT DO NOTHING: a replayed-then-dead-lettered event stays one row.
@@ -51,24 +53,26 @@ type Querier interface {
 	// the service (pattern < 2 min AND solved in-timer AND complexity stated); mock_mode
 	// marks the stricter Day 21 / Day 45 touches (R-SR4).
 	InsertTouchResult(ctx context.Context, arg InsertTouchResultParams) error
-	// Every account that has at least one mistake entry — the recompute job iterates these
-	// to build a weak-area snapshot per account.
-	ListAccountsWithMistakes(ctx context.Context) ([]pgtype.UUID, error)
-	// The account's live queue: every not-yet-passed touch, soonest-due first (most
-	// overdue reviews lead). The caller splits due (due_date <= now) from upcoming and
-	// groups by touch_level for the Revision screen. Bounded so the queue stays light.
+	// The account's live queue in one course (GET /revisions/due?path=, m1-03): every
+	// not-yet-passed touch, soonest-due first (most overdue reviews lead). The caller splits
+	// due (due_date <= now) from upcoming and groups by touch_level for the Revision screen.
+	// Bounded so the queue stays light.
 	ListActiveTouches(ctx context.Context, arg ListActiveTouchesParams) ([]ReviewRevisionItem, error)
 	// The on-demand read (D34: no alerting): newest first, capped.
 	ListDeadLetters(ctx context.Context, limit int32) ([]ReviewEventDeadLetter, error)
 	// An account's undelivered reminders that are due (due_at <= now), soonest-due first,
 	// capped — the Dashboard "revisions due today" surface (GET /dashboard).
 	ListDueReminders(ctx context.Context, arg ListDueRemindersParams) ([]ReviewReminder, error)
-	// The journal for an account, newest first (GET /mistakes with no status filter).
-	ListMistakes(ctx context.Context, accountID pgtype.UUID) ([]ReviewMistakeEntry, error)
-	// The journal filtered to open|closed (GET /mistakes?status=).
+	// Every (account, course) that has at least one mistake entry — the weekly recompute
+	// builds one weak-area snapshot per pair (m1-03).
+	ListMistakeScopes(ctx context.Context) ([]ListMistakeScopesRow, error)
+	// An account's journal in one course, newest first (GET /mistakes?path= with no status
+	// filter; m1-03).
+	ListMistakes(ctx context.Context, arg ListMistakesParams) ([]ReviewMistakeEntry, error)
+	// An account's journal in one course filtered to open|closed.
 	ListMistakesByStatus(ctx context.Context, arg ListMistakesByStatusParams) ([]ReviewMistakeEntry, error)
 	// The supporting entries behind the weak-area banner: an account's open entries in one
-	// category, newest first (GET /weak-area).
+	// course and category, newest first (GET /weak-area/current?path=).
 	ListOpenMistakesByCategory(ctx context.Context, arg ListOpenMistakesByCategoryParams) ([]ReviewMistakeEntry, error)
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]ReviewOutbox, error)
 	// Serialise all journal mutations for one (account, problem) across BOTH entry points
@@ -82,7 +86,8 @@ type Querier interface {
 	// Idempotently latch surfaced_at. The `surfaced_at IS NULL AND status = 'pending'`
 	// guard makes a re-run (or a concurrent sweep) a no-op AND closes the TOCTOU between
 	// the candidate SELECT and this UPDATE — a touch passed in between returns no row, so
-	// revision_due is emitted at most once and never for a settled touch.
+	// revision_due is emitted at most once and never for a settled touch. path_slug is the
+	// touch's course, which the v2 revision_due envelope carries (m1-03).
 	MarkSurfaced(ctx context.Context, id pgtype.UUID) (MarkSurfacedRow, error)
 	MarkTouchPassed(ctx context.Context, id pgtype.UUID) (ReviewRevisionItem, error)
 	// Open a mistake for (account, problem). ON CONFLICT on the partial unique index
@@ -109,7 +114,7 @@ type Querier interface {
 	// out-of-order practice event never double-schedules or clobbers a touch already
 	// scored: on conflict the query returns no row (pgx.ErrNoRows), which the caller
 	// reads as "already scheduled — do not re-emit revision_scheduled". path_slug is the
-	// event's course (m1-02, M1a; 'dsa' for every v1 event).
+	// event's course, written explicitly (m1-02, M1a; a v1 event is the DSA course).
 	ScheduleTouch(ctx context.Context, arg ScheduleTouchParams) (ReviewRevisionItem, error)
 	// The periodic sweep's scan (flow 4): touches that are due, not yet surfaced, and
 	// still PENDING, across all accounts. The status guard is load-bearing: a learner can
@@ -121,10 +126,12 @@ type Querier interface {
 	// current row, overlays the request's fields, and writes the full set — so this is a
 	// straight assignment, no COALESCE ambiguity (category can be set back to NULL).
 	UpdateMistake(ctx context.Context, arg UpdateMistakeParams) (ReviewMistakeEntry, error)
-	// Idempotent per (account, week_of): the weekly recompute upserts the same row so a
-	// re-run of the tick never double-counts. top_category is NULL when the account has no
-	// categorised open entries this week. The conflict target stays the v1
-	// UNIQUE (account_id, week_of) until M1c; path_slug is written explicitly (m1-02).
+	// Idempotent per (account, course, week_of): the weekly recompute upserts the same row
+	// so a re-run of the tick never double-counts. top_category is NULL when the account has
+	// no categorised open entries in the course this week. path_slug is written explicitly,
+	// and the conflict target is the per-course unique weak_area_snapshot_account_path_week_uq
+	// (m1-02, 00006) — m1-03 moved off the v1 per-account unique so m1-08 can drop it; until
+	// then that v1 unique still refuses a second course's snapshot in the same week.
 	UpsertWeakAreaSnapshot(ctx context.Context, arg UpsertWeakAreaSnapshotParams) (ReviewWeakAreaSnapshot, error)
 }
 

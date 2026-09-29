@@ -46,7 +46,7 @@ describe("Concept screen", () => {
   it("renders the reading, when-to-use callout, code template and pattern practice links", async () => {
     installFetchMock((url) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
-      if (url.endsWith("/api/concepts/sliding-window")) return { status: 200, body: SLIDING_WINDOW };
+      if (url.endsWith("/api/paths/dsa/concepts/sliding-window")) return { status: 200, body: SLIDING_WINDOW };
       if (url.endsWith("/api/paths/dsa/weeks/2")) return { status: 200, body: WEEK2 };
       return { status: 404 };
     });
@@ -81,7 +81,7 @@ describe("Concept screen", () => {
   it("without a week context, still renders the reading and points practice at the roadmap", async () => {
     installFetchMock((url) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
-      if (url.endsWith("/api/concepts/sliding-window")) return { status: 200, body: SLIDING_WINDOW };
+      if (url.endsWith("/api/paths/dsa/concepts/sliding-window")) return { status: 200, body: SLIDING_WINDOW };
       return { status: 404 };
     });
     renderApp("/xlearn/dsa/concept/sliding-window");

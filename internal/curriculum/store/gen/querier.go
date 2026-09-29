@@ -25,8 +25,11 @@ type Querier interface {
 	DeleteSectionsByProblem(ctx context.Context, problemID string) error
 	// The seed relinks a course's week <-> concept pairs from scratch on every run.
 	DeleteWeekConceptsByPath(ctx context.Context, pathSlug string) error
-	// code_template is nullable since 00002 but dual-written from templates.go by the seed.
-	GetConcept(ctx context.Context, slug string) (GetConceptRow, error)
+	// Keyed on (path_slug, slug) (00003's concept_path_slug_slug_key; m1-03): a concept
+	// resolves only under its own course. Reads the per-language templates only; the v1
+	// single-template field is derived from them in Go (the course's primary language), so
+	// no reader touches the column M1c drops.
+	GetConcept(ctx context.Context, arg GetConceptParams) (GetConceptRow, error)
 	GetPath(ctx context.Context, slug string) (GetPathRow, error)
 	// Resolves any item by id, whatever its status (a retired item stays reachable).
 	// contract_hash and grading_summary (m3-01) are answer-free and served on this route only.
@@ -46,19 +49,25 @@ type Querier interface {
 	ListPaths(ctx context.Context) ([]ListPathsRow, error)
 	ListPhasesByPath(ctx context.Context, pathSlug string) ([]ListPhasesByPathRow, error)
 	// The whole live problem index for a path (id -> week_n / pattern / difficulty /
-	// reinforcement). The gateway reads this once to compose the Progress + Dashboard
-	// roll-ups (by-phase completion, by-pattern mastery) without N per-problem calls.
+	// role). The gateway reads this once to compose the Progress + Dashboard roll-ups
+	// (by-phase completion, by-pattern mastery) without N per-problem calls.
 	ListProblemsByPath(ctx context.Context, pathSlug string) ([]ListProblemsByPathRow, error)
-	// Readers keep the v1 response shape (m1-09 is M1a expand; m1-03 switches readers to the
-	// new columns). The M1c-drop columns are nullable since 00002 but dual-written by the
-	// seed, so the COALESCEs only guard a row some future writer left NULL.
+	// Readers select the v2 columns only (m1-03): role and links. The v1 response fields
+	// (the reinforcement flag and the two outbound URLs) are derived from them in Go
+	// (internal/curriculum/handlers.go), so no query here reads a column M1c (m1-08) drops.
+	// The seed stops writing those columns too (UpsertProblem): nullable since 00002, they
+	// get their 00001 defaults ('' and false) on a new row and keep what an older seed wrote
+	// on an existing one. A v1.6.0 reader (the R-b target, or a pod mid-rollout) COALESCEs
+	// each of them, so it never fails on them, and a v1.6.0 boot's own seed rewrites them for
+	// every item that image carries. M1c drops the columns.
 	//
 	// Retire semantics (t1 §4): only `live` items are in the index and the counts; retired
 	// and withdrawn items stay resolvable by id (GetProblem, GetProblemsByIDs).
 	ListProblemsByWeek(ctx context.Context, arg ListProblemsByWeekParams) ([]ListProblemsByWeekRow, error)
 	// All content sections for a problem, ordered by stage (attempt -> hint -> solution)
 	// then position. A withdrawn item (a takedown) serves no sections: its prose is
-	// blanked while its title stays resolvable.
+	// blanked while its title stays resolvable. language is the code section's language
+	// ('' for prose; m1-03 serves it).
 	ListSectionsByProblem(ctx context.Context, problemID string) ([]ListSectionsByProblemRow, error)
 	// Weeks for a path with the difficulty mix computed from the SEEDED live problems, so
 	// the Roadmap's per-week counts agree with the index (retired and withdrawn items are
@@ -69,17 +78,21 @@ type Querier interface {
 	// WARN per id).
 	RetireMissingProblems(ctx context.Context, seededIds []string) ([]RetireMissingProblemsRow, error)
 	// Keyed on (path_slug, slug) (00003's unique), so a concept is never re-parented. The v1
-	// UNIQUE(slug) stays until M1c, so a slug is still global until then. Dual-writes
-	// code_template from templates.go.
+	// UNIQUE(slug) stays until M1c, so a slug is still global until then. Since m1-03 the
+	// seed writes templates only: the v1 single-template column (nullable since 00002) gets
+	// its 00001 default ('') on a new row and keeps what an older seed wrote on an existing
+	// one. A v1.6.0 reader (the R-b target, or a pod mid-rollout) reads it through COALESCE,
+	// so it never fails on it, and a v1.6.0 boot's own seed rewrites it for every concept
+	// that image carries. M1c drops the column.
 	UpsertConcept(ctx context.Context, arg UpsertConceptParams) (pgtype.UUID, error)
 	// id_prefix comes from the course manifest (00002; unique since 00003).
 	UpsertPath(ctx context.Context, arg UpsertPathParams) error
 	UpsertPhase(ctx context.Context, arg UpsertPhaseParams) error
 	// The id guard (t1 §4): an id is never re-parented. The DO UPDATE applies only when the
 	// stored row is in the same course, so a move affects 0 rows and the seed aborts unless
-	// exactly 1 row is affected. Writes the v2 columns and dual-writes the v1 ones
-	// (is_reinforcement, leetcode_url, neetcode_url) from them until M1c. contract_hash and
-	// grading_summary (00004, m3-01) come from canon and the item's parts.
+	// exactly 1 row is affected. Writes the v2 columns only (m1-03): the v1 flag and URL
+	// columns are never written (see the header).
+	// contract_hash and grading_summary (00004, m3-01) come from canon and the item's parts.
 	UpsertProblem(ctx context.Context, arg UpsertProblemParams) (int64, error)
 	UpsertWeek(ctx context.Context, arg UpsertWeekParams) (pgtype.UUID, error)
 }

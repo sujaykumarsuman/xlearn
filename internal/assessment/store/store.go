@@ -3,14 +3,13 @@
 // transactional outbox and the idempotent inbox (ADR-0004/0005). It exposes small
 // domain types with plain Go scalars so the HTTP/consumer layers never touch
 // pgtype, keeps the xlearn_assessment role scoped to schema assessment (all SQL is
-// schema-qualified), and owns the mock-interview invariants — the /35 rubric total is
+// schema-qualified), and owns the mock-interview invariants — the rubric total is
 // summed server-side, scoring transitions live -> scored exactly once, and the
 // mock_completed event is appended to the outbox inside the same transaction.
 package store
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -20,13 +19,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/sujaykumarsuman/xlearn/internal/assessment/store/gen"
-	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 )
 
 // Dimensions is the 7-value rubric enum in canonical PRD order (R-MK2). Scores are
 // stored under these text keys; human display names live in the http layer. The
-// server sums exactly these seven into total_35 — a client total is never trusted.
+// server sums exactly these seven into the total — a client total is never trusted.
 var Dimensions = []string{
 	"communication",
 	"problem_understanding",
@@ -55,9 +53,9 @@ const (
 	// as mock_session.max_total, and readers default a NULL max_total to it.
 	MaxTotal = NumDimensions * MaxScore
 
-	// RubricID is the id the DSA manifest gives the v1 mock rubric
-	// (curriculum/courses/dsa/course.json mock.rubric.id; pinned by
-	// TestManifestGoldenMirror). New sessions record it with RubricSnapshot.
+	// RubricID is the id the DSA course's manifest gives the v1 mock rubric (its
+	// course.json mock.rubric.id; pinned by TestManifestGoldenMirror). New sessions
+	// record it with RubricSnapshot; it is the only rubric this service scores.
 	RubricID = "dsa-mock@1"
 
 	// ScoredBySelf is the only scorer v1 has: the learner's own rubric (m1-02; 'ai-byo'
@@ -86,11 +84,13 @@ var validDifficulties = map[string]bool{"easy": true, "med": true, "hard": true}
 func ValidDifficulty(d string) bool { return validDifficulties[d] }
 
 // Event subject + envelope version (events.md). assessment emits mock_completed to
-// its own XLEARN_ASSESSMENT stream via the outbox relay.
+// its own XLEARN_ASSESSMENT stream via the outbox relay. mock_completed is
+// course-scoped, so since m1-03 (M1b) it is a v2 envelope carrying the session's
+// path_slug (the v1.6.0 consumers already decode v2, m1-02).
 const (
 	SubjectMockCompleted = "xlearn.assessment.mock_completed"
 
-	eventVersion = 1
+	eventVersion = events.EnvelopeV2
 )
 
 // Errors mapped to HTTP status by the handlers.
@@ -118,7 +118,7 @@ func ValidateRubric(scores map[string]int) error {
 	return nil
 }
 
-// TotalScore sums a validated rubric into the /35 total (R-MK2).
+// TotalScore sums a validated rubric into its total (R-MK2: /35 for the v1 rubric).
 func TotalScore(scores map[string]int) int {
 	t := 0
 	for _, dim := range Dimensions {
@@ -127,9 +127,10 @@ func TotalScore(scores map[string]int) int {
 	return t
 }
 
-// MockSession is one timed mock, with plain Go scalars. Total35 is nil until scored; it
-// reads COALESCE(total, total_35) (m1-02: total is dual-written beside total_35, which
-// M1c drops), and MaxTotal reads COALESCE(max_total, 35).
+// MockSession is one timed mock, with plain Go scalars. Total is nil until scored and
+// reads only mock_session.total (m1-03: m1-02 backfilled it for every v1 row and v1.6.0
+// dual-writes it, so the v1 /35 column is never read); MaxTotal reads
+// COALESCE(max_total, 35). RubricID is the rubric the session is scored against.
 type MockSession struct {
 	ID         string
 	AccountID  string
@@ -138,8 +139,9 @@ type MockSession struct {
 	Difficulty string
 	Date       time.Time
 	Status     string
-	Total35    *int
+	Total      *int
 	MaxTotal   int
+	RubricID   string
 	PathSlug   string
 	Notes      string
 	StartedAt  time.Time
@@ -152,7 +154,7 @@ type RubricScore struct {
 	Score     int
 }
 
-// TrendPoint is one scored mock in the account's trend series (R-MK3).
+// TrendPoint is one scored mock in the account's trend series in one course (R-MK3).
 type TrendPoint struct {
 	MockID     string
 	SetID      string
@@ -160,7 +162,8 @@ type TrendPoint struct {
 	Difficulty string
 	Date       time.Time
 	StartedAt  time.Time
-	Total35    int
+	Total      int
+	MaxTotal   int
 }
 
 // OutboxRow is one unsent domain event awaiting relay to NATS.
@@ -173,21 +176,21 @@ type OutboxRow struct {
 // Store is the assessment persistence seam. Handlers + consumers depend on this
 // interface so they can be unit-tested against an in-memory fake.
 type Store interface {
-	// CreateMock inserts a live session (status=live) with the server clock and
-	// returns it. startedAt / deadlineAt are computed by the caller so the 45-minute
-	// window is server-authoritative (deadlineAt = startedAt + MockDuration).
-	CreateMock(ctx context.Context, accountID, setID, problemID, difficulty string, startedAt, deadlineAt time.Time) (MockSession, error)
+	// CreateMock inserts a live session (status=live) in course pathSlug with the server
+	// clock and returns it. startedAt / deadlineAt are computed by the caller so the
+	// 45-minute window is server-authoritative (deadlineAt = startedAt + MockDuration).
+	CreateMock(ctx context.Context, accountID, pathSlug, setID, problemID, difficulty string, startedAt, deadlineAt time.Time) (MockSession, error)
 	// GetMock returns a session scoped to its owner plus its rubric scores (empty
 	// until scored). ErrNotFound if it isn't the account's.
 	GetMock(ctx context.Context, accountID, mockID string) (MockSession, []RubricScore, error)
-	// ScoreMock records the seven rubric scores, computes total_35 server-side,
+	// ScoreMock records the seven rubric scores, computes the total server-side,
 	// transitions the session live -> scored, and appends a mock_completed outbox row —
 	// all in one transaction (R-MK2). It is idempotent: a re-submit on an
 	// already-scored session returns the stored result without re-inserting or
 	// re-emitting. ErrInvalidRubric for a bad rubric; ErrNotFound if not the account's.
 	ScoreMock(ctx context.Context, accountID, mockID string, scores map[string]int, notes string) (MockSession, []RubricScore, error)
-	// Trend returns the account's scored mocks oldest-first (R-MK3).
-	Trend(ctx context.Context, accountID string) ([]TrendPoint, error)
+	// Trend returns the account's scored mocks in one course, oldest-first (R-MK3).
+	Trend(ctx context.Context, accountID, pathSlug string) ([]TrendPoint, error)
 
 	// ApplyProjection applies a decoded practice/review event to the S09 read-model
 	// projections (coverage / mastery / heatmap / outcome-mix), deduped on event_id via
@@ -213,8 +216,9 @@ type Store interface {
 	Mastery(ctx context.Context, accountID string) ([]ProblemMastery, error)
 	// OutcomeMix returns the first-solve outcome counts (clean/rough/assisted/miss).
 	OutcomeMix(ctx context.Context, accountID string) (map[string]int, error)
-	// MockStats returns the scored-mock roll-up (count, average /35, best /35).
-	MockStats(ctx context.Context, accountID string) (MockStats, error)
+	// MockStats returns the scored-mock roll-up in one course (count, average total,
+	// best total).
+	MockStats(ctx context.Context, accountID, pathSlug string) (MockStats, error)
 
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]OutboxRow, error)
 	MarkOutboxSent(ctx context.Context, eventID string) error
@@ -241,14 +245,19 @@ var _ Store = (*PgStore)(nil)
 // Ping verifies the database is reachable (drives /readyz).
 func (s *PgStore) Ping(ctx context.Context) error { return s.pool.Ping(ctx) }
 
-// CreateMock starts a live session with a server-authoritative 45-minute window. The
-// session row and its ordinal-1 mock_session_item row are written in ONE transaction
-// (m1-02, M1a): the item is the session's problem, or NULL for a mixed set (problemID
-// "" — v1 never pins an item).
-func (s *PgStore) CreateMock(ctx context.Context, accountID, setID, problemID, difficulty string, startedAt, deadlineAt time.Time) (MockSession, error) {
+// CreateMock starts a live session in course pathSlug with a server-authoritative
+// 45-minute window. The session row and its ordinal-1 mock_session_item row are written
+// in ONE transaction (m1-02, M1a), both with the course written explicitly: the item is
+// the session's problem, or NULL for a mixed set (problemID "" — v1 never pins an item).
+func (s *PgStore) CreateMock(ctx context.Context, accountID, pathSlug, setID, problemID, difficulty string, startedAt, deadlineAt time.Time) (MockSession, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return MockSession{}, fmt.Errorf("parse account id: %w", err)
+	}
+	if pathSlug == "" {
+		// Never write '' or lean on the column default (m1-08 drops it): the handler
+		// always resolves a course.
+		return MockSession{}, errors.New("assessment: create mock without a course")
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -264,7 +273,7 @@ func (s *PgStore) CreateMock(ctx context.Context, accountID, setID, problemID, d
 		Difficulty:     pgtype.Text{String: difficulty, Valid: true},
 		StartedAt:      tsz(startedAt),
 		DeadlineAt:     tsz(deadlineAt),
-		PathSlug:       course.DSASlug,
+		PathSlug:       pathSlug,
 		RubricID:       pgtype.Text{String: RubricID, Valid: true},
 		RubricSnapshot: []byte(RubricSnapshot),
 		MaxTotal:       i4(MaxTotal),
@@ -283,7 +292,7 @@ func (s *PgStore) CreateMock(ctx context.Context, accountID, setID, problemID, d
 	if err := tx.Commit(ctx); err != nil {
 		return MockSession{}, fmt.Errorf("commit tx: %w", err)
 	}
-	return toMockSession(m), nil
+	return toMockSession(gen.GetMockSessionRow(m)), nil
 }
 
 // GetMock returns a session + its rubric scores, scoped to the owner.
@@ -313,8 +322,9 @@ func (s *PgStore) GetMock(ctx context.Context, accountID, mockID string) (MockSe
 	return toMockSession(m), scores, nil
 }
 
-// ScoreMock validates + records the seven-dimension rubric, computes /35 server-side,
-// latches the session scored, and emits mock_completed via the outbox — one tx.
+// ScoreMock validates + records the seven-dimension rubric, computes the total
+// server-side, latches the session scored, and emits mock_completed via the outbox —
+// one tx.
 func (s *PgStore) ScoreMock(ctx context.Context, accountID, mockID string, scores map[string]int, notes string) (MockSession, []RubricScore, error) {
 	if err := ValidateRubric(scores); err != nil {
 		return MockSession{}, nil, err
@@ -355,10 +365,14 @@ func (s *PgStore) ScoreMock(ctx context.Context, accountID, mockID string, score
 		if err := tx.Commit(ctx); err != nil {
 			return MockSession{}, nil, fmt.Errorf("commit tx: %w", err)
 		}
-		return toMockSession(m), stored, nil
+		return toMockSession(gen.GetMockSessionRow(m)), stored, nil
 	}
 
 	total := TotalScore(scores)
+	maxTotal := MaxTotal
+	if m.MaxTotal.Valid {
+		maxTotal = int(m.MaxTotal.Int32)
+	}
 	for _, dim := range Dimensions {
 		if err := qtx.InsertRubricScore(ctx, gen.InsertRubricScoreParams{
 			MockSessionID: m.ID,
@@ -371,7 +385,7 @@ func (s *PgStore) ScoreMock(ctx context.Context, accountID, mockID string, score
 	if _, err := qtx.MarkMockScored(ctx, gen.MarkMockScoredParams{
 		ID:        mid,
 		AccountID: aid,
-		Total35:   i4(total),
+		Total:     i4(total),
 		Notes:     notes,
 		MaxTotal:  i4(MaxTotal),
 	}); err != nil {
@@ -385,7 +399,11 @@ func (s *PgStore) ScoreMock(ctx context.Context, accountID, mockID string, score
 
 	// Transactional outbox: the mock_completed fact is written in this same tx (R-MK2 /
 	// events.md). The relay publishes it to XLEARN_ASSESSMENT.
-	if err := emitMockCompleted(ctx, qtx, accountID, mockID, total, scores); err != nil {
+	rubricID := RubricID
+	if m.RubricID.Valid {
+		rubricID = m.RubricID.String
+	}
+	if err := emitMockCompleted(ctx, qtx, accountID, m.PathSlug, mockID, rubricID, total, maxTotal, scores); err != nil {
 		return MockSession{}, nil, err
 	}
 
@@ -395,41 +413,43 @@ func (s *PgStore) ScoreMock(ctx context.Context, accountID, mockID string, score
 
 	// Reflect the committed transition without another round trip.
 	m.Status = StatusScored
-	m.Total35 = i4(total)
 	m.Total = i4(total)
-	if !m.MaxTotal.Valid {
-		m.MaxTotal = i4(MaxTotal)
-	}
+	m.MaxTotal = i4(maxTotal)
 	m.ScoredBy = pgtype.Text{String: ScoredBySelf, Valid: true}
 	m.Notes = notes
 	out := make([]RubricScore, 0, NumDimensions)
 	for _, dim := range Dimensions {
 		out = append(out, RubricScore{Dimension: dim, Score: scores[dim]})
 	}
-	return toMockSession(m), out, nil
+	return toMockSession(gen.GetMockSessionRow(m)), out, nil
 }
 
-// Trend returns the account's scored mocks oldest-first.
-func (s *PgStore) Trend(ctx context.Context, accountID string) ([]TrendPoint, error) {
+// Trend returns the account's scored mocks in one course, oldest-first.
+func (s *PgStore) Trend(ctx context.Context, accountID, pathSlug string) ([]TrendPoint, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return nil, ErrNotFound
 	}
-	rows, err := s.q.ListScoredMocks(ctx, aid)
+	rows, err := s.q.ListScoredMocks(ctx, gen.ListScoredMocksParams{AccountID: aid, PathSlug: pathSlug})
 	if err != nil {
 		return nil, fmt.Errorf("list scored mocks: %w", err)
 	}
 	out := make([]TrendPoint, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, TrendPoint{
+		p := TrendPoint{
 			MockID:     uuidString(r.ID),
 			SetID:      r.SetID,
 			ProblemID:  r.ProblemID,
 			Difficulty: r.Difficulty.String,
 			Date:       r.Date.Time,
 			StartedAt:  r.StartedAt.Time,
-			Total35:    int(r.Total35.Int32),
-		})
+			Total:      int(r.Total.Int32),
+			MaxTotal:   MaxTotal,
+		}
+		if r.MaxTotal.Valid {
+			p.MaxTotal = int(r.MaxTotal.Int32)
+		}
+		out = append(out, p)
 	}
 	return out, nil
 }
@@ -475,10 +495,11 @@ func (s *PgStore) readRubric(ctx context.Context, q *gen.Queries, mockID pgtype.
 	return out, nil
 }
 
-// toMockSession maps the generated row to the plain-scalar domain type. The total reads
-// COALESCE(total, total_35) and the max COALESCE(max_total, 35) (m1-02, M1a), so a row
-// written by v1.5.2 (total_35 only) and one written by v1.7.0 (total only) read alike.
-func toMockSession(m gen.AssessmentMockSession) MockSession {
+// toMockSession maps a generated session row (every session read shares GetMockSession's
+// column list; the other row types convert to it) to the plain-scalar domain type. The
+// total reads total only; the max reads COALESCE(max_total, 35) and the rubric
+// COALESCE(rubric_id, RubricID) — both are backfilled for every v1 row (m1-02).
+func toMockSession(m gen.GetMockSessionRow) MockSession {
 	ms := MockSession{
 		ID:         uuidString(m.ID),
 		AccountID:  uuidString(m.AccountID),
@@ -488,21 +509,21 @@ func toMockSession(m gen.AssessmentMockSession) MockSession {
 		Date:       m.Date.Time,
 		Status:     m.Status,
 		MaxTotal:   MaxTotal,
+		RubricID:   RubricID,
 		PathSlug:   m.PathSlug,
 		Notes:      m.Notes,
 		StartedAt:  m.StartedAt.Time,
 		DeadlineAt: m.DeadlineAt.Time,
 	}
-	switch {
-	case m.Total.Valid:
+	if m.Total.Valid {
 		v := int(m.Total.Int32)
-		ms.Total35 = &v
-	case m.Total35.Valid:
-		v := int(m.Total35.Int32)
-		ms.Total35 = &v
+		ms.Total = &v
 	}
 	if m.MaxTotal.Valid {
 		ms.MaxTotal = int(m.MaxTotal.Int32)
+	}
+	if m.RubricID.Valid {
+		ms.RubricID = m.RubricID.String
 	}
 	return ms
 }
@@ -520,21 +541,40 @@ func claimInbox(ctx context.Context, qtx *gen.Queries, eventID string) (bool, er
 	return true, nil
 }
 
-// emitMockCompleted appends a xlearn.assessment.mock_completed event to the outbox
-// (payload: mock_id, total_35, rubric) inside the caller's transaction (events.md).
-func emitMockCompleted(ctx context.Context, qtx *gen.Queries, accountID, mockID string, total int, rubric map[string]int) error {
-	return insertEvent(ctx, qtx, SubjectMockCompleted, accountID, map[string]any{
-		"mock_id":  mockID,
-		"total_35": total,
-		"rubric":   rubric,
-	})
+// mockCompletedData is the xlearn.assessment.mock_completed payload. It is append-only
+// (events.md): v1's mock_id, total_35 and rubric stay, and m1-03 (M1b; t1 §9) adds
+// rubric_id, total, max_total and scored_by. total_35 is the same total, kept for a
+// 35-point rubric (every v1 and DSA session); a session scored against another rubric
+// width omits it rather than report a total that isn't out of 35.
+func mockCompletedData(mockID, rubricID string, total, maxTotal int, rubric map[string]int) map[string]any {
+	data := map[string]any{
+		"mock_id":   mockID,
+		"rubric":    rubric,
+		"rubric_id": rubricID,
+		"total":     total,
+		"max_total": maxTotal,
+		"scored_by": ScoredBySelf,
+	}
+	if maxTotal == MaxTotal {
+		data["total_35"] = total
+	}
+	return data
 }
 
-// insertEvent marshals the events.md envelope and appends it to the outbox inside the
-// caller's transaction (transactional outbox — never published inline).
-func insertEvent(ctx context.Context, qtx *gen.Queries, subject, accountID string, data map[string]any) error {
+// emitMockCompleted appends a xlearn.assessment.mock_completed event (the session's
+// course in path_slug; mockCompletedData's payload) to the outbox inside the caller's
+// transaction (events.md).
+func emitMockCompleted(ctx context.Context, qtx *gen.Queries, accountID, pathSlug, mockID, rubricID string, total, maxTotal int, rubric map[string]int) error {
+	return insertEvent(ctx, qtx, SubjectMockCompleted, accountID, pathSlug, mockCompletedData(mockID, rubricID, total, maxTotal, rubric))
+}
+
+// insertEvent marshals the event envelope — v2, carrying pathSlug (the session's
+// course); events.NewEnvelope also enforces the size cap — and appends it to the outbox
+// inside the caller's transaction (transactional outbox — never published inline).
+// occurred_at is the write time, as in v1.
+func insertEvent(ctx context.Context, qtx *gen.Queries, subject, accountID, pathSlug string, data map[string]any) error {
 	eventID := newUUIDv4()
-	payload, err := marshalEnvelope(eventID, subject, accountID, data)
+	payload, err := events.NewEnvelope(eventVersion, eventID, subject, accountID, pathSlug, time.Now(), data)
 	if err != nil {
 		return fmt.Errorf("marshal %s: %w", subject, err)
 	}
@@ -551,18 +591,6 @@ func insertEvent(ctx context.Context, qtx *gen.Queries, subject, accountID strin
 		return fmt.Errorf("insert outbox %s: %w", subject, err)
 	}
 	return nil
-}
-
-// marshalEnvelope builds the events.md event envelope.
-func marshalEnvelope(eventID, subject, accountID string, data map[string]any) ([]byte, error) {
-	return json.Marshal(map[string]any{
-		"event_id":    eventID,
-		"subject":     subject,
-		"occurred_at": time.Now().UTC().Format(time.RFC3339Nano),
-		"version":     eventVersion,
-		"account_id":  accountID,
-		"data":        data,
-	})
 }
 
 // tsz wraps a time in a non-null pgtype.Timestamptz.

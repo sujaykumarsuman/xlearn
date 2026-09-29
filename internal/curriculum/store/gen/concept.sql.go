@@ -40,24 +40,31 @@ func (q *Queries) DeleteWeekConceptsByPath(ctx context.Context, pathSlug string)
 }
 
 const getConcept = `-- name: GetConcept :one
-SELECT slug, path_slug, title, body_md, when_to_use_md,
-       COALESCE(code_template, templates ->> 'go', '')::text AS code_template
+SELECT slug, path_slug, title, body_md, when_to_use_md, templates
 FROM curriculum.concept
-WHERE slug = $1
+WHERE path_slug = $1 AND slug = $2
 `
 
-type GetConceptRow struct {
-	Slug         string
-	PathSlug     string
-	Title        string
-	BodyMd       string
-	WhenToUseMd  string
-	CodeTemplate string
+type GetConceptParams struct {
+	PathSlug string
+	Slug     string
 }
 
-// code_template is nullable since 00002 but dual-written from templates.go by the seed.
-func (q *Queries) GetConcept(ctx context.Context, slug string) (GetConceptRow, error) {
-	row := q.db.QueryRow(ctx, getConcept, slug)
+type GetConceptRow struct {
+	Slug        string
+	PathSlug    string
+	Title       string
+	BodyMd      string
+	WhenToUseMd string
+	Templates   []byte
+}
+
+// Keyed on (path_slug, slug) (00003's concept_path_slug_slug_key; m1-03): a concept
+// resolves only under its own course. Reads the per-language templates only; the v1
+// single-template field is derived from them in Go (the course's primary language), so
+// no reader touches the column M1c drops.
+func (q *Queries) GetConcept(ctx context.Context, arg GetConceptParams) (GetConceptRow, error) {
+	row := q.db.QueryRow(ctx, getConcept, arg.PathSlug, arg.Slug)
 	var i GetConceptRow
 	err := row.Scan(
 		&i.Slug,
@@ -65,7 +72,7 @@ func (q *Queries) GetConcept(ctx context.Context, slug string) (GetConceptRow, e
 		&i.Title,
 		&i.BodyMd,
 		&i.WhenToUseMd,
-		&i.CodeTemplate,
+		&i.Templates,
 	)
 	return i, err
 }
@@ -126,30 +133,32 @@ func (q *Queries) ListConceptsByWeek(ctx context.Context, arg ListConceptsByWeek
 }
 
 const upsertConcept = `-- name: UpsertConcept :one
-INSERT INTO curriculum.concept (path_slug, slug, title, body_md, when_to_use_md, code_template, templates)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO curriculum.concept (path_slug, slug, title, body_md, when_to_use_md, templates)
+VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (path_slug, slug) DO UPDATE SET
     title          = EXCLUDED.title,
     body_md        = EXCLUDED.body_md,
     when_to_use_md = EXCLUDED.when_to_use_md,
-    code_template  = EXCLUDED.code_template,
     templates      = EXCLUDED.templates
 RETURNING id
 `
 
 type UpsertConceptParams struct {
-	PathSlug     string
-	Slug         string
-	Title        string
-	BodyMd       string
-	WhenToUseMd  string
-	CodeTemplate pgtype.Text
-	Templates    []byte
+	PathSlug    string
+	Slug        string
+	Title       string
+	BodyMd      string
+	WhenToUseMd string
+	Templates   []byte
 }
 
 // Keyed on (path_slug, slug) (00003's unique), so a concept is never re-parented. The v1
-// UNIQUE(slug) stays until M1c, so a slug is still global until then. Dual-writes
-// code_template from templates.go.
+// UNIQUE(slug) stays until M1c, so a slug is still global until then. Since m1-03 the
+// seed writes templates only: the v1 single-template column (nullable since 00002) gets
+// its 00001 default (”) on a new row and keeps what an older seed wrote on an existing
+// one. A v1.6.0 reader (the R-b target, or a pod mid-rollout) reads it through COALESCE,
+// so it never fails on it, and a v1.6.0 boot's own seed rewrites it for every concept
+// that image carries. M1c drops the column.
 func (q *Queries) UpsertConcept(ctx context.Context, arg UpsertConceptParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, upsertConcept,
 		arg.PathSlug,
@@ -157,7 +166,6 @@ func (q *Queries) UpsertConcept(ctx context.Context, arg UpsertConceptParams) (p
 		arg.Title,
 		arg.BodyMd,
 		arg.WhenToUseMd,
-		arg.CodeTemplate,
 		arg.Templates,
 	)
 	var id pgtype.UUID

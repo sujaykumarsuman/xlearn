@@ -64,11 +64,17 @@ func (c *assessmentClient) do(req *http.Request) ([]byte, int, error) {
 // curriculum can't resolve degrades to a null `problem` (the screen falls back to the
 // id) rather than failing the response.
 
-// handleStartMock proxies POST /mocks (start a 45-min session) to assessment and
-// enriches the returned live view with the problem metadata.
+// handleStartMock proxies POST /paths/{slug}/mocks (and the DSA alias POST /mocks: start
+// a 45-min session) to assessment and enriches the returned live view with the problem
+// metadata. The course travels as ?path= (assessment's body decoder rejects unknown
+// fields, so a body field would break a mixed-version minute).
 func (g *Gateway) handleStartMock(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := g.authAccount(w, r)
 	if !ok {
+		return
+	}
+	slug := r.PathValue("slug")
+	if _, ok := g.requireCourse(w, r, slug); !ok {
 		return
 	}
 	if g.assessment == nil {
@@ -84,7 +90,7 @@ func (g *Gateway) handleStartMock(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
 		return
 	}
-	body, status, err := g.assessment.post(r.Context(), token, "/mocks", reqBody)
+	body, status, err := g.assessment.post(r.Context(), token, withPath("/mocks", slug), reqBody)
 	if err != nil {
 		g.log.Error("bff mocks start: assessment call failed", "err", err)
 		writeError(w, http.StatusBadGateway, "upstream", "assessment unavailable")
@@ -161,11 +167,16 @@ func (g *Gateway) handleScoreMock(w http.ResponseWriter, r *http.Request) {
 	passthrough(w, http.StatusOK, g.enrichMockView(r.Context(), body))
 }
 
-// handleMockTrend proxies GET /mocks/trend (scored /35 history vs targets) to
-// assessment. The trend is a line chart of totals — no problem enrichment needed.
+// handleMockTrend proxies GET /paths/{slug}/mocks/trend (and the DSA alias /mocks/trend:
+// the course's scored history vs targets) to assessment. The trend is a line chart of
+// totals — no problem enrichment needed.
 func (g *Gateway) handleMockTrend(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := g.authAccount(w, r)
 	if !ok {
+		return
+	}
+	slug := r.PathValue("slug")
+	if _, ok := g.requireCourse(w, r, slug); !ok {
 		return
 	}
 	if g.assessment == nil {
@@ -176,7 +187,7 @@ func (g *Gateway) handleMockTrend(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	body, status, err := g.assessment.get(r.Context(), token, "/mocks/trend")
+	body, status, err := g.assessment.get(r.Context(), token, withPath("/mocks/trend", slug))
 	if err != nil {
 		g.log.Error("bff mocks trend: assessment call failed", "err", err)
 		writeError(w, http.StatusBadGateway, "upstream", "assessment unavailable")

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/health"
@@ -64,9 +65,15 @@ type Service struct {
 	// weakArea recomputes the weekly weak-area on the sweep tick (always built; uses
 	// accounts when set, else a UTC week window).
 	weakArea *weakAreaComputer
+
+	// courses resolves the internal `?path=<slug>` param (m1-03): the manifests
+	// compiled into the binary unless a test injects coursetest.Registry.
+	courses *course.Registry
 }
 
-// NewService wires the review application. verifier checks gateway-minted JWTs.
+// NewService wires the review application. verifier checks gateway-minted JWTs. The
+// course registry defaults to the embedded manifests (course.Embedded); main loads them
+// first with course.LoadEmbedded so a bad manifest fails the boot, not a request.
 func NewService(st store.Store, verifier auth.Verifier, log *slog.Logger) *Service {
 	return &Service{
 		store:    st,
@@ -77,7 +84,15 @@ func NewService(st store.Store, verifier auth.Verifier, log *slog.Logger) *Servi
 			Check: st.Ping,
 		}),
 		weakArea: &weakAreaComputer{store: st, log: log},
+		courses:  course.Embedded(),
 	}
+}
+
+// WithCourses replaces the course registry `?path=` resolves against (tests inject
+// coursetest.Registry for the fixture courses). Returns the service for chaining.
+func (s *Service) WithCourses(r *course.Registry) *Service {
+	s.courses = r
+	return s
 }
 
 // WithAccountResolver injects the identity client the background workers use to resolve
@@ -100,6 +115,9 @@ func (s *Service) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", s.health.Live)
 	mux.HandleFunc("GET /readyz", s.health.Ready)
 
+	// The course-scoped reads and the journal create take the optional internal
+	// `?path=<slug>` (m1-03, see resolveCourse); the routes by id (score, patch) and the
+	// account-wide reminders don't.
 	mux.Handle("GET /revisions/due", s.requireJWT(http.HandlerFunc(s.handleDueQueue)))
 	mux.Handle("POST /revisions/{id}/score", s.requireJWT(http.HandlerFunc(s.handleScore)))
 

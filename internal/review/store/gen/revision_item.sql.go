@@ -71,21 +71,23 @@ func (q *Queries) GetTouch(ctx context.Context, arg GetTouchParams) (ReviewRevis
 
 const listActiveTouches = `-- name: ListActiveTouches :many
 SELECT id, account_id, problem_id, touch_level, due_date, surfaced_at, status, created_at, updated_at, path_slug FROM review.revision_item
-WHERE account_id = $1 AND status <> 'passed'
+WHERE account_id = $1 AND path_slug = $2 AND status <> 'passed'
 ORDER BY due_date ASC, touch_level ASC
-LIMIT $2
+LIMIT $3
 `
 
 type ListActiveTouchesParams struct {
 	AccountID pgtype.UUID
+	PathSlug  string
 	Limit     int32
 }
 
-// The account's live queue: every not-yet-passed touch, soonest-due first (most
-// overdue reviews lead). The caller splits due (due_date <= now) from upcoming and
-// groups by touch_level for the Revision screen. Bounded so the queue stays light.
+// The account's live queue in one course (GET /revisions/due?path=, m1-03): every
+// not-yet-passed touch, soonest-due first (most overdue reviews lead). The caller splits
+// due (due_date <= now) from upcoming and groups by touch_level for the Revision screen.
+// Bounded so the queue stays light.
 func (q *Queries) ListActiveTouches(ctx context.Context, arg ListActiveTouchesParams) ([]ReviewRevisionItem, error) {
-	rows, err := q.db.Query(ctx, listActiveTouches, arg.AccountID, arg.Limit)
+	rows, err := q.db.Query(ctx, listActiveTouches, arg.AccountID, arg.PathSlug, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -119,23 +121,30 @@ const markSurfaced = `-- name: MarkSurfaced :one
 UPDATE review.revision_item
 SET surfaced_at = now(), updated_at = now()
 WHERE id = $1 AND surfaced_at IS NULL AND status = 'pending'
-RETURNING account_id, problem_id, touch_level
+RETURNING account_id, problem_id, touch_level, path_slug
 `
 
 type MarkSurfacedRow struct {
 	AccountID  pgtype.UUID
 	ProblemID  string
 	TouchLevel int32
+	PathSlug   string
 }
 
 // Idempotently latch surfaced_at. The `surfaced_at IS NULL AND status = 'pending'`
 // guard makes a re-run (or a concurrent sweep) a no-op AND closes the TOCTOU between
 // the candidate SELECT and this UPDATE — a touch passed in between returns no row, so
-// revision_due is emitted at most once and never for a settled touch.
+// revision_due is emitted at most once and never for a settled touch. path_slug is the
+// touch's course, which the v2 revision_due envelope carries (m1-03).
 func (q *Queries) MarkSurfaced(ctx context.Context, id pgtype.UUID) (MarkSurfacedRow, error) {
 	row := q.db.QueryRow(ctx, markSurfaced, id)
 	var i MarkSurfacedRow
-	err := row.Scan(&i.AccountID, &i.ProblemID, &i.TouchLevel)
+	err := row.Scan(
+		&i.AccountID,
+		&i.ProblemID,
+		&i.TouchLevel,
+		&i.PathSlug,
+	)
 	return i, err
 }
 
@@ -230,7 +239,7 @@ type ScheduleTouchParams struct {
 // out-of-order practice event never double-schedules or clobbers a touch already
 // scored: on conflict the query returns no row (pgx.ErrNoRows), which the caller
 // reads as "already scheduled — do not re-emit revision_scheduled". path_slug is the
-// event's course (m1-02, M1a; 'dsa' for every v1 event).
+// event's course, written explicitly (m1-02, M1a; a v1 event is the DSA course).
 func (q *Queries) ScheduleTouch(ctx context.Context, arg ScheduleTouchParams) (ReviewRevisionItem, error) {
 	row := q.db.QueryRow(ctx, scheduleTouch,
 		arg.AccountID,

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
@@ -22,11 +23,13 @@ const StreamIdentity = events.StreamIdentity
 
 // Service is the identity HTTP application: OAuth, sessions, accounts, onboarding,
 // and the internal JWT-protected routes. It owns no signing key (the gateway
-// mints + publishes JWKS, ADR-0006); it only verifies inbound JWTs.
+// mints + publishes JWKS, ADR-0006); it only verifies inbound JWTs. courses is the
+// course registry enrollment validates against (sprint m1-03).
 type Service struct {
 	cfg       Config
 	store     store.Store
 	verifier  auth.Verifier
+	courses   *course.Registry
 	providers map[string]*oauthProvider
 	httpc     *http.Client
 	log       *slog.Logger
@@ -34,12 +37,18 @@ type Service struct {
 }
 
 // NewService wires the identity application. verifier checks gateway-minted JWTs on
-// the protected internal routes.
-func NewService(cfg Config, st store.Store, verifier auth.Verifier, log *slog.Logger) *Service {
+// the protected internal routes; courses is the course registry (production: the
+// embedded manifests, loaded at startup; tests: coursetest.Registry). A nil courses
+// means the embedded registry.
+func NewService(cfg Config, st store.Store, verifier auth.Verifier, courses *course.Registry, log *slog.Logger) *Service {
+	if courses == nil {
+		courses = course.Embedded()
+	}
 	return &Service{
 		cfg:       cfg,
 		store:     st,
 		verifier:  verifier,
+		courses:   courses,
 		providers: newProviders(cfg.Auth),
 		httpc:     &http.Client{Timeout: 10 * time.Second},
 		log:       log,

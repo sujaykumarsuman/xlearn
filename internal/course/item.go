@@ -293,9 +293,6 @@ var (
 	valueTypeRe   = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9]*)((?:\[\])*)$`)
 )
 
-// DSASlug is the one course whose item ids stay bare.
-const DSASlug = "dsa"
-
 // MaxConcepts bounds item.concepts.
 const MaxConcepts = 3
 

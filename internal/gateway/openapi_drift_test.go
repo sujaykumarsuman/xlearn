@@ -64,6 +64,47 @@ func TestOpenAPISpecMatchesRoutes(t *testing.T) {
 	for _, k := range diff(spec, reg) {
 		t.Errorf("openapi.yaml documents %q which is not a gateway route (spec is stale)", k)
 	}
+
+	// m1-03: every DSA alias (apiRoute.Alias) is `deprecated: true` in the spec, and no
+	// other operation is (ADR-0034 §1.1: aliases are recorded for removal).
+	for _, rt := range (&Gateway{}).apiRoutes() {
+		if !rt.Doc {
+			continue
+		}
+		path := strings.TrimPrefix(rt.Pattern, "/api")
+		op, _ := doc.Paths[path][strings.ToLower(rt.Method)].(map[string]interface{})
+		deprecated, _ := op["deprecated"].(bool)
+		if rt.Alias != deprecated {
+			t.Errorf("%s %s: Alias=%v but openapi deprecated=%v", rt.Method, path, rt.Alias, deprecated)
+		}
+	}
+}
+
+// TestAliasesHaveCourseScopedTwins: every DSA alias has a course-scoped route under
+// /api/paths/{slug}/… with the same method (the alias runs that route's handler).
+func TestAliasesHaveCourseScopedTwins(t *testing.T) {
+	routes := (&Gateway{}).apiRoutes()
+	have := map[string]bool{}
+	for _, rt := range routes {
+		have[rt.Method+" "+rt.Pattern] = true
+	}
+	n := 0
+	for _, rt := range routes {
+		if !rt.Alias {
+			continue
+		}
+		n++
+		twin := "/api/paths/{slug}" + strings.TrimPrefix(rt.Pattern, "/api")
+		if rt.Pattern == "/api/concepts/{slug}" {
+			twin = "/api/paths/{slug}/concepts/{c}"
+		}
+		if !have[rt.Method+" "+twin] {
+			t.Errorf("alias %s %s has no course-scoped twin %s", rt.Method, rt.Pattern, twin)
+		}
+	}
+	if n != 9 {
+		t.Errorf("%d DSA aliases, want the 9 m1-03 recorded (status.md lists them with their removal tag)", n)
+	}
 }
 
 // diff returns the sorted keys present in a but not in b.

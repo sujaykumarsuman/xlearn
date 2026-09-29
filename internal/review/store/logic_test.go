@@ -3,6 +3,8 @@ package store
 import (
 	"testing"
 	"time"
+
+	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 )
 
 // The auto-score rule and the five-touch day mapping are the product's core
@@ -61,23 +63,19 @@ func TestIsMockTouch(t *testing.T) {
 	}
 }
 
-func TestMarshalEnvelope(t *testing.T) {
-	payload, err := marshalEnvelope("evt-1", SubjectRevisionScheduled, "acct-1", map[string]any{
-		"problem_id": "16", "touch_level": 2, "due_date": "2026-09-24T12:00:00Z",
-	})
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
+// m1-03 (M1b): review emits the v2 envelope, and every review subject is
+// course-scoped, so NewEnvelope refuses one without a course (insertEvent can't write a
+// course-less event). The integration test checks the rows themselves.
+func TestEnvelopeIsV2AndCourseScoped(t *testing.T) {
+	if eventVersion != events.EnvelopeV2 {
+		t.Fatalf("eventVersion = %d, want %d", eventVersion, events.EnvelopeV2)
 	}
-	for _, want := range []string{
-		`"event_id":"evt-1"`,
-		`"subject":"xlearn.review.revision_scheduled"`,
-		`"account_id":"acct-1"`,
-		`"problem_id":"16"`,
-		`"touch_level":2`,
-		`"version":1`,
-	} {
-		if !contains(payload, want) {
-			t.Errorf("payload missing %q\ngot %s", want, payload)
+	for _, subject := range []string{SubjectRevisionScheduled, SubjectRevisionDue, SubjectMistakeOpened, SubjectMistakeClosed} {
+		if !events.CourseScoped(subject) {
+			t.Errorf("%s is not course-scoped in topology.go", subject)
+		}
+		if _, err := events.NewEnvelope(eventVersion, "evt-1", subject, "acct-1", "", time.Now(), map[string]any{}); err == nil {
+			t.Errorf("%s: a v2 envelope without path_slug was accepted", subject)
 		}
 	}
 }
@@ -113,14 +111,4 @@ func TestValidMistakeCategory(t *testing.T) {
 	if MistakeCloseThreshold != 2 {
 		t.Errorf("MistakeCloseThreshold = %d, want 2 (R-MJ4)", MistakeCloseThreshold)
 	}
-}
-
-func contains(b []byte, sub string) bool {
-	s := string(b)
-	for i := 0; i+len(sub) <= len(s); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return len(sub) == 0
 }

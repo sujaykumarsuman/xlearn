@@ -49,11 +49,15 @@ type scoreResultJSON struct {
 
 // --- handlers ---
 
-// handleDueQueue: GET /revisions/due — the account's prioritised revision queue
-// (reviews before new work, R-SR5), grouped-ready by touch day.
+// handleDueQueue: GET /revisions/due?path=<slug> — the account's prioritised revision
+// queue in one course (reviews before new work, R-SR5), grouped-ready by touch day.
 func (s *Service) handleDueQueue(w http.ResponseWriter, r *http.Request) {
 	accountID := claimsFrom(r.Context()).Subject
-	items, err := s.store.DueQueue(r.Context(), accountID, dueQueueLimit)
+	pathSlug, ok := s.resolveCourse(w, r)
+	if !ok {
+		return
+	}
+	items, err := s.store.DueQueue(r.Context(), accountID, pathSlug, dueQueueLimit)
 	if err != nil {
 		s.mapErr(w, "due queue", err)
 		return

@@ -33,7 +33,9 @@ type dimScoreJSON struct {
 
 // mockViewJSON is the mock session + server-computed phase-rail state + rubric. It is
 // the shape returned by POST /mocks, GET /mocks/{id}, and POST /mocks/{id}/score, so
-// the client renders setup/live/results off one contract keyed by `status`.
+// the client renders setup/live/results off one contract keyed by `status`. The JSON is
+// v1's byte for byte (API additive only): total35 carries the session's total, which
+// m1-03 reads from mock_session.total.
 type mockViewJSON struct {
 	ID         string         `json:"id"`
 	Status     string         `json:"status"` // live | scored
@@ -43,7 +45,7 @@ type mockViewJSON struct {
 	Date       string         `json:"date"`       // YYYY-MM-DD
 	StartedAt  string         `json:"startedAt"`  // RFC3339 UTC
 	DeadlineAt string         `json:"deadlineAt"` // RFC3339 UTC
-	Total35    *int           `json:"total35"`    // null until scored
+	Total35    *int           `json:"total35"`    // the total; null until scored
 	Notes      string         `json:"notes"`
 	Rail       RailState      `json:"rail"`       // server-authoritative timer + phases
 	Dimensions []dimScoreJSON `json:"dimensions"` // empty until scored
@@ -84,7 +86,7 @@ func buildMockView(m store.MockSession, scores []store.RubricScore, now time.Tim
 		Date:       m.Date.Format("2006-01-02"),
 		StartedAt:  m.StartedAt.UTC().Format(time.RFC3339),
 		DeadlineAt: m.DeadlineAt.UTC().Format(time.RFC3339),
-		Total35:    m.Total35,
+		Total35:    m.Total,
 		Notes:      m.Notes,
 		Rail:       computeRail(m.StartedAt, now),
 		Dimensions: dims,
@@ -94,11 +96,24 @@ func buildMockView(m store.MockSession, scores []store.RubricScore, now time.Tim
 
 // --- handlers ---
 
-// handleStartMock: POST /mocks — accept the setup (problem set + difficulty), insert a
-// live session with a server-authoritative 45-minute window (setup -> live), and
-// return the live view (R-MK1).
+// handleStartMock: POST /mocks?path=<slug> — accept the setup (problem set +
+// difficulty), insert a live session in the course with a server-authoritative
+// 45-minute window (setup -> live), and return the live view (R-MK1). A course whose
+// manifest has no mock block is a 404 not_found "course has no mock".
 func (s *Service) handleStartMock(w http.ResponseWriter, r *http.Request) {
 	accountID := claimsFrom(r.Context()).Subject
+	pathSlug, m, ok := s.resolveCourse(w, r)
+	if !ok {
+		return
+	}
+	// This service scores exactly one rubric (store.RubricID, the DSA course's): a
+	// course whose mock uses another has, as far as this service goes, no mock yet —
+	// refused rather than recorded against the wrong rubric (per-course rubrics arrive
+	// with multi-course mocks; no course has one today).
+	if m.Mock == nil || m.Mock.Rubric.ID != store.RubricID {
+		writeError(w, http.StatusNotFound, "not_found", "course has no mock")
+		return
+	}
 	var body struct {
 		SetID      string `json:"setId"`
 		ProblemID  string `json:"problemId"`
@@ -127,12 +142,12 @@ func (s *Service) handleStartMock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := time.Now()
-	m, err := s.store.CreateMock(r.Context(), accountID, setID, problemID, difficulty, now, now.Add(store.MockDuration))
+	session, err := s.store.CreateMock(r.Context(), accountID, pathSlug, setID, problemID, difficulty, now, now.Add(store.MockDuration))
 	if err != nil {
 		s.mapErr(w, "create mock", err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, buildMockView(m, nil, time.Now()))
+	writeJSON(w, http.StatusCreated, buildMockView(session, nil, time.Now()))
 }
 
 // handleGetMock: GET /mocks/{id} — the live session + server-computed phase-rail state
@@ -178,11 +193,16 @@ func (s *Service) handleScoreMock(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, buildMockView(m, scores, time.Now()))
 }
 
-// handleTrend: GET /mocks/trend — the account's scored /35 history against the R-MK3
-// readiness targets (used to draw the W13/W15/pre target lines).
+// handleTrend: GET /mocks/trend?path=<slug> — the account's scored-mock history in one
+// course against the R-MK3 readiness targets (used to draw the W13/W15/pre target
+// lines). total35 carries each mock's total (API unchanged).
 func (s *Service) handleTrend(w http.ResponseWriter, r *http.Request) {
 	accountID := claimsFrom(r.Context()).Subject
-	points, err := s.store.Trend(r.Context(), accountID)
+	pathSlug, _, ok := s.resolveCourse(w, r)
+	if !ok {
+		return
+	}
+	points, err := s.store.Trend(r.Context(), accountID, pathSlug)
 	if err != nil {
 		s.mapErr(w, "trend", err)
 		return
@@ -196,7 +216,7 @@ func (s *Service) handleTrend(w http.ResponseWriter, r *http.Request) {
 			Difficulty: p.Difficulty,
 			Date:       p.Date.Format("2006-01-02"),
 			StartedAt:  p.StartedAt.UTC().Format(time.RFC3339),
-			Total35:    p.Total35,
+			Total35:    p.Total,
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"points": out, "targets": readinessTargets})

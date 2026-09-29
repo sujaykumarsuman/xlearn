@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/sujaykumarsuman/xlearn/internal/coach/store"
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/health"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/secrets"
@@ -18,26 +19,34 @@ const historyLimit = 20
 // the thread history endpoint, plus the k8s probes. It verifies the gateway-minted JWT
 // on every user route (ADR-0006) and derives the account id from the token subject. The
 // cipher seals/opens the provider key (ADR-0007); the raw key is decrypted in memory
-// only for a provider call and never logged or returned.
+// only for a provider call and never logged or returned. courses resolves the course of
+// a page context (sprint m1-03: the thread key and path_slug).
 type Service struct {
 	store     store.Store
 	verifier  auth.Verifier
 	cipher    *secrets.Cipher
 	openai    Provider
 	anthropic Provider
+	courses   *course.Registry
 	log       *slog.Logger
 	health    *health.Handler
 }
 
 // NewService wires the coach application. verifier checks gateway-minted JWTs; cipher
-// performs envelope encryption; openai/anthropic are the provider clients.
-func NewService(st store.Store, verifier auth.Verifier, cipher *secrets.Cipher, openai, anthropic Provider, log *slog.Logger) *Service {
+// performs envelope encryption; openai/anthropic are the provider clients; courses is
+// the course registry (production: the embedded manifests, loaded at startup; tests:
+// coursetest.Registry). A nil courses means the embedded registry.
+func NewService(st store.Store, verifier auth.Verifier, cipher *secrets.Cipher, openai, anthropic Provider, courses *course.Registry, log *slog.Logger) *Service {
+	if courses == nil {
+		courses = course.Embedded()
+	}
 	return &Service{
 		store:     st,
 		verifier:  verifier,
 		cipher:    cipher,
 		openai:    openai,
 		anthropic: anthropic,
+		courses:   courses,
 		log:       log,
 		health: health.New(health.Named{
 			Name:  "postgres",

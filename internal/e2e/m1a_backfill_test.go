@@ -154,6 +154,27 @@ func TestM1aBackfillOnV152Schema(t *testing.T) {
 		"mock_session_scored_total_check:true")
 	expect("assessment outbox backfilled", `SELECT count(*) FROM assessment.outbox WHERE account_id = '`+owner+`'`, int64(1))
 
+	// m1-03 (M1b): the readers that left the v1 columns read the backfilled v1 rows
+	// through the stores — the mock total from `total` alone, and the weak area and the
+	// journal through their course filter.
+	aStore := assessmentstore.New(pool)
+	if m, _, err := aStore.GetMock(ctx, owner, "7d000000-0000-4000-8000-000000000001"); err != nil || m.Total == nil || *m.Total != 24 || m.MaxTotal != 35 || m.PathSlug != "dsa" {
+		t.Fatalf("GetMock on the backfilled v1 row = %+v (%v), want 24/35 in dsa", m, err)
+	}
+	if trend, err := aStore.Trend(ctx, owner, "dsa"); err != nil || len(trend) != 1 || trend[0].Total != 24 {
+		t.Fatalf("Trend on the backfilled v1 rows = %+v (%v), want [24]", trend, err)
+	}
+	if stats, err := aStore.MockStats(ctx, owner, "dsa"); err != nil || stats.Count != 1 || stats.Best != 24 {
+		t.Fatalf("MockStats on the backfilled v1 rows = %+v (%v)", stats, err)
+	}
+	rStore := reviewstore.New(pool)
+	if _, found, err := rStore.WeakAreaCurrent(ctx, owner, "dsa"); err != nil || !found {
+		t.Fatalf("WeakAreaCurrent on the backfilled v1 snapshot: found=%v (%v)", found, err)
+	}
+	if ms, err := rStore.ListMistakes(ctx, owner, "dsa", ""); err != nil || len(ms) != 1 {
+		t.Fatalf("ListMistakes on the backfilled v1 entry = %v (%v)", ms, err)
+	}
+
 	// coach
 	expect("key_default = the is_default rows", `SELECT string_agg(concat_ws('|', d.account_id, k.provider, d.model, d.feature), ',' ORDER BY d.account_id)
 		FROM coach.key_default d JOIN coach.api_key_config k ON k.id = d.key_id`,

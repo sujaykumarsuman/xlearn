@@ -9,17 +9,18 @@ import (
 )
 
 // This file computes the weekly weak-area rollup (R-MJ3, ADR-0016). It runs on the
-// same periodic tick as the S06 due-sweep: for each account with mistakes it counts
-// this week's open entries per category and upserts one snapshot, with the WEEK
-// BOUNDARY defined in the account's timezone (resolved via the identity internal API)
-// so a snapshot never straddles the wrong day for a user far from UTC. The upsert is
-// idempotent per week_of, so re-running the tick never double-counts.
+// same periodic tick as the S06 due-sweep: for each (account, course) with mistakes
+// (m1-03: a weak area is per course, over mistake_entry.path_slug) it counts this
+// week's open entries per category and upserts one snapshot, with the WEEK BOUNDARY
+// defined in the account's timezone (resolved via the identity internal API) so a
+// snapshot never straddles the wrong day for a user far from UTC. The upsert is
+// idempotent per (course, week_of), so re-running the tick never double-counts.
 
 // weakAreaStore is the store seam the recompute needs (the full store.Store satisfies it).
 type weakAreaStore interface {
-	AccountsWithMistakes(ctx context.Context) ([]string, error)
-	CountOpenMistakesByCategory(ctx context.Context, accountID string, start, end time.Time) (map[string]int, error)
-	SaveWeakAreaSnapshot(ctx context.Context, accountID string, weekOf time.Time, topCategory string, counts map[string]int) error
+	MistakeScopes(ctx context.Context) ([]store.MistakeScope, error)
+	CountOpenMistakesByCategory(ctx context.Context, accountID, pathSlug string, start, end time.Time) (map[string]int, error)
+	SaveWeakAreaSnapshot(ctx context.Context, accountID, pathSlug string, weekOf time.Time, topCategory string, counts map[string]int) error
 }
 
 // accountResolver resolves an account's timezone + study budget + reminder prefs (the
@@ -77,44 +78,52 @@ func (w *WeakAreaWorker) recompute(ctx context.Context) {
 	}
 }
 
-// Recompute rebuilds every account's current-week weak-area snapshot. It never fails
-// the whole run for one account — an account whose timezone can't be resolved falls
-// back to a UTC week window (logged), and one account's error is logged and skipped.
-// Returns the number of accounts snapshotted.
+// Recompute rebuilds the current-week weak-area snapshot of every (account, course)
+// with mistakes. It never fails the whole run for one scope — an account whose timezone
+// can't be resolved falls back to a UTC week window (logged, resolved once per account
+// whatever its course count), and one scope's error is logged and skipped. Returns the
+// number of snapshots written.
 func (c *weakAreaComputer) Recompute(ctx context.Context) (int, error) {
 	if c == nil || c.store == nil {
 		return 0, nil
 	}
-	accounts, err := c.store.AccountsWithMistakes(ctx)
+	scopes, err := c.store.MistakeScopes(ctx)
 	if err != nil {
 		return 0, err
 	}
 	now := time.Now()
 	done := 0
-	for _, acct := range accounts {
-		tz := "UTC"
-		if c.accounts != nil {
-			if resolved, _, _, rerr := c.accounts.ResolveAccount(ctx, acct); rerr != nil {
-				c.log.Warn("weak-area: timezone resolve failed; using UTC", "account_id", acct, "err", rerr)
-			} else if resolved != "" {
-				tz = resolved
+	tzOf := map[string]string{}
+	for _, sc := range scopes {
+		tz, seen := tzOf[sc.AccountID]
+		if !seen {
+			tz = "UTC"
+			if c.accounts != nil {
+				if resolved, _, _, rerr := c.accounts.ResolveAccount(ctx, sc.AccountID); rerr != nil {
+					c.log.Warn("weak-area: timezone resolve failed; using UTC", "account_id", sc.AccountID, "err", rerr)
+				} else if resolved != "" {
+					tz = resolved
+				}
 			}
+			tzOf[sc.AccountID] = tz
 		}
 		weekOf, start, end := weekWindow(now, tz)
-		counts, err := c.store.CountOpenMistakesByCategory(ctx, acct, start, end)
+		counts, err := c.store.CountOpenMistakesByCategory(ctx, sc.AccountID, sc.PathSlug, start, end)
 		if err != nil {
-			c.log.Error("weak-area: count failed; skipping account", "account_id", acct, "err", err)
+			c.log.Error("weak-area: count failed; skipping", "account_id", sc.AccountID, "path_slug", sc.PathSlug, "err", err)
 			continue
 		}
 		top := topCategory(counts)
-		if err := c.store.SaveWeakAreaSnapshot(ctx, acct, weekOf, top, counts); err != nil {
-			c.log.Error("weak-area: save snapshot failed; skipping account", "account_id", acct, "err", err)
+		if err := c.store.SaveWeakAreaSnapshot(ctx, sc.AccountID, sc.PathSlug, weekOf, top, counts); err != nil {
+			// Until m1-08 drops the v1 UNIQUE (account_id, week_of), a second course's
+			// snapshot in the same week lands here (a unique violation) and is skipped.
+			c.log.Error("weak-area: save snapshot failed; skipping", "account_id", sc.AccountID, "path_slug", sc.PathSlug, "err", err)
 			continue
 		}
 		done++
 	}
 	if done > 0 {
-		c.log.Info("weak-area snapshots recomputed", "accounts", done)
+		c.log.Info("weak-area snapshots recomputed", "snapshots", done)
 	}
 	return done, nil
 }

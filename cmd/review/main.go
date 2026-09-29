@@ -23,6 +23,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/config"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
@@ -52,6 +53,14 @@ func run() int {
 	cfg := review.LoadConfig()
 	logger := slogx.New(cfg.LogLevel)
 
+	// The compiled-in course manifests resolve the internal `?path=` param (m1-03); load
+	// and validate them first so a bad manifest fails the boot, not a request.
+	courses, err := course.LoadEmbedded()
+	if err != nil {
+		logger.Error("course manifests invalid; refusing to start", "err", err)
+		return 1
+	}
+
 	// Migrations on startup inside an advisory lock; refuse to serve on failure.
 	migrateCtx, cancelMigrate := context.WithTimeout(context.Background(), migrateTimeout)
 	defer cancelMigrate()
@@ -77,7 +86,7 @@ func run() int {
 	}
 	st := store.New(pool, storeOpts...)
 	verifier := auth.NewJWKSVerifier(cfg.JWT.JWKSURL, cfg.JWT.Audience, cfg.JWT.Issuer)
-	svc := review.NewService(st, verifier, logger)
+	svc := review.NewService(st, verifier, logger).WithCourses(courses)
 	if identity := review.NewIdentityClient(cfg.IdentityBaseURL); identity != nil {
 		svc.WithAccountResolver(identity)
 	}

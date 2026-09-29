@@ -1,11 +1,17 @@
 import { vi } from "vitest";
+import { catalog } from "./courses";
 
 /** A minimal route handler: returns the status + JSON body for a request, or a raw
  *  Response (e.g. an SSE stream from sseResponse) that is passed through verbatim. */
 export type RouteHandler = (url: string, init?: RequestInit) => { status: number; body?: unknown } | Response;
 
 /** installFetchMock stubs global fetch with a route handler. Returns the vi mock
- *  so tests can assert on calls. Pair with restoreFetch() in afterEach. */
+ *  so tests can assert on calls. Pair with restoreFetch() in afterEach.
+ *
+ *  Every course route resolves its course against the catalog (GET /paths, useCourse),
+ *  so a handler that doesn't answer /api/paths itself (a bare 404) gets the production
+ *  catalog, `catalog()` from ./courses: the DSA course active, the rest coming soon. A
+ *  handler that does answer it (a fixture course, an error, an empty catalog) wins. */
 export function installFetchMock(handler: RouteHandler) {
   const fn = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const raw = typeof input === "string" ? input : input.toString();
@@ -13,8 +19,11 @@ export function installFetchMock(handler: RouteHandler) {
     // /api/… (ADR-0021). Normalise here so the route handlers can keep matching the
     // unversioned paths regardless of which surface the client uses.
     const url = raw.replace("/api/v1/", "/api/");
-    const result = handler(url, init);
+    let result = handler(url, init);
     if (result instanceof Response) return result;
+    if (result.status === 404 && result.body === undefined && new URL(url, "http://x").pathname.endsWith("/api/paths")) {
+      result = { status: 200, body: catalog() };
+    }
     const { status, body } = result;
     return new Response(body === undefined ? null : JSON.stringify(body), {
       status,

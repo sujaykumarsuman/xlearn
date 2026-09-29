@@ -104,7 +104,7 @@ describe("Mock interview", () => {
   it("starts a 45-minute mock and shows the live phase rail + server timer", async () => {
     const fetchMock = installFetchMock((url, init) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
-      if (url.endsWith("/api/mocks") && init?.method === "POST") return { status: 201, body: liveSession() };
+      if (url.endsWith("/api/paths/dsa/mocks") && init?.method === "POST") return { status: 201, body: liveSession() };
       if (url.includes("/api/mocks/mk-1")) return { status: 200, body: liveSession() };
       return { status: 404 };
     });
@@ -118,15 +118,15 @@ describe("Mock interview", () => {
     expect(screen.getByText(/Now · Clarify/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Finish & score/ })).toBeInTheDocument();
     // POST /mocks actually fired.
-    expect(fetchMock.mock.calls.some(([u, i]) => String(u).endsWith("/api/v1/mocks") && (i as RequestInit)?.method === "POST")).toBe(true);
+    expect(fetchMock.mock.calls.some(([u, i]) => String(u).endsWith("/api/v1/paths/dsa/mocks") && (i as RequestInit)?.method === "POST")).toBe(true);
   });
 
   it("finishes, scores the seven dimensions, and shows the /35 result + trend", async () => {
     let scoreBody: Record<string, unknown> | null = null;
     installFetchMock((url, init) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
-      if (url.endsWith("/api/mocks") && init?.method === "POST") return { status: 201, body: liveSession() };
-      if (url.includes("/api/mocks/trend")) return { status: 200, body: TREND };
+      if (url.endsWith("/api/paths/dsa/mocks") && init?.method === "POST") return { status: 201, body: liveSession() };
+      if (url.includes("/api/paths/dsa/mocks/trend")) return { status: 200, body: TREND };
       if (url.includes("/api/mocks/mk-1/score") && init?.method === "POST") {
         scoreBody = JSON.parse(String(init?.body ?? "{}"));
         return { status: 200, body: scoredSession(24) };
@@ -163,8 +163,8 @@ describe("Mock interview", () => {
     // here, so drive it through start -> the GET returning a scored session on poll.
     installFetchMock((url, init) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
-      if (url.endsWith("/api/mocks") && init?.method === "POST") return { status: 201, body: scoredSession(30) };
-      if (url.includes("/api/mocks/trend")) return { status: 200, body: TREND };
+      if (url.endsWith("/api/paths/dsa/mocks") && init?.method === "POST") return { status: 201, body: scoredSession(30) };
+      if (url.includes("/api/paths/dsa/mocks/trend")) return { status: 200, body: TREND };
       if (url.includes("/api/mocks/mk-1")) return { status: 200, body: scoredSession(30) };
       return { status: 404 };
     });

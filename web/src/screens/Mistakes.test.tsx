@@ -56,8 +56,8 @@ const WEAK_AREA = {
 function mockAll() {
   return installFetchMock((url) => {
     if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
-    if (url.includes("/api/mistakes")) return { status: 200, body: MISTAKES };
-    if (url.includes("/api/weak-area")) return { status: 200, body: WEAK_AREA };
+    if (url.includes("/api/paths/dsa/mistakes")) return { status: 200, body: MISTAKES };
+    if (url.includes("/api/paths/dsa/weak-area")) return { status: 200, body: WEAK_AREA };
     return { status: 404 };
   });
 }

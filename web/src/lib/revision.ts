@@ -1,8 +1,9 @@
 // Revision data hooks for the BFF (docs/architecture/api.md, Revision & mistakes).
-// The due queue is a gateway aggregation (review's five-touch queue + curriculum
-// problem metadata); the score submit auto-scores a re-solve → advance or reset.
+// The due queue is a course-scoped gateway aggregation (review's five-touch queue +
+// curriculum problem metadata, GET /paths/{slug}/revision/due since m1-03); the score
+// submit (by the item's global id) auto-scores a re-solve → advance or reset.
 import { useQuery } from "@tanstack/react-query";
-import { ApiRequestError, apiFetch } from "./api";
+import { ApiRequestError, apiFetch, coursePathApi } from "./api";
 
 /** The curriculum problem metadata the gateway enriches each due item with (null when
  *  curriculum can't resolve the id — the screen falls back to the bare id). */
@@ -29,7 +30,7 @@ export interface DueItem {
   problem: RevisionProblem | null;
 }
 
-/** GET /revision/due payload (Revision screen, BFF agg). */
+/** GET /paths/{slug}/revision/due payload (Revision screen, BFF agg). */
 export interface DueQueue {
   items: DueItem[];
   dueCount: number;
@@ -67,11 +68,13 @@ export function dayLabelFor(level: number): string {
   return d ? `Day ${d}` : "";
 }
 
-/** useDueRevision fetches the learner's prioritised revision queue (Revision screen). */
-export function useDueRevision() {
+/** useDueRevision fetches the learner's prioritised revision queue for a course (the
+ *  Revision screen, and the sidebar's live badge). */
+export function useDueRevision(slug: string, enabled = true) {
   return useQuery<DueQueue, ApiRequestError>({
-    queryKey: ["revision", "due"],
-    queryFn: () => apiFetch<DueQueue>("/revision/due"),
+    queryKey: ["revision", "due", slug],
+    queryFn: () => apiFetch<DueQueue>(coursePathApi(slug, "/revision/due")),
+    enabled: enabled && slug !== "",
   });
 }
 

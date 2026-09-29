@@ -27,6 +27,7 @@ import (
 
 	"github.com/sujaykumarsuman/xlearn/internal/coach"
 	"github.com/sujaykumarsuman/xlearn/internal/coach/store"
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/config"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/httpx"
@@ -86,7 +87,15 @@ func run() int {
 	openai := coach.NewOpenAIProvider(cfg.Providers.OpenAIBaseURL, providerHTTP)
 	anthropic := coach.NewAnthropicProvider(cfg.Providers.AnthropicBaseURL, providerHTTP)
 
-	svc := coach.NewService(st, verifier, cipher, openai, anthropic, logger)
+	// The compiled-in course manifests (thread keys and path_slug, m1-03). A bad manifest
+	// fails the boot, not a request.
+	courses, err := course.LoadEmbedded()
+	if err != nil {
+		logger.Error("load course manifests; refusing to serve", "err", err)
+		return 1
+	}
+
+	svc := coach.NewService(st, verifier, cipher, openai, anthropic, courses, logger)
 
 	handler := httpx.Chain(svc.Handler(),
 		httpx.RequestID,

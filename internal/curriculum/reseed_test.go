@@ -27,8 +27,12 @@ import (
 // edits, retire/withdraw, delete-missing, the re-parenting and slug guards, a v1.5.2
 // writer in between (the R-b case), and the upgrade from a v1-seeded schema.
 
-// fullSnapshotQueries capture every column (v1 and v2) except uuids; retired_at is
-// reduced to "is set" so the snapshot has no clock in it.
+// fullSnapshotQueries capture every column the seed owns except uuids; retired_at is
+// reduced to "is set" so the snapshot has no clock in it. The four M1c-drop columns are
+// not seed-owned since m1-03 (a fresh seed leaves them at their defaults, and a value a v1
+// writer left stays until M1c drops the column), so they are out: TestSeedV2Columns
+// asserts that the seed leaves them unwritten and the v1 snapshot compares the values the
+// API derives.
 var fullSnapshotQueries = []struct {
 	table string
 	sql   string
@@ -38,15 +42,15 @@ var fullSnapshotQueries = []struct {
 	{"phase", `SELECT path_slug, "order", name, theme, week_from, week_to
 		FROM curriculum.phase ORDER BY path_slug COLLATE "C", "order"`},
 	{"week", `SELECT path_slug, n, title, thesis FROM curriculum.week ORDER BY path_slug COLLATE "C", n`},
-	{"concept", `SELECT path_slug, slug, title, body_md, when_to_use_md, code_template, templates
+	{"concept", `SELECT path_slug, slug, title, body_md, when_to_use_md, templates
 		FROM curriculum.concept ORDER BY path_slug COLLATE "C", slug COLLATE "C"`},
 	{"week_concept", `SELECT w.path_slug, w.n AS week_n, c.slug AS concept_slug
 		FROM curriculum.week_concept wc
 		JOIN curriculum.week w    ON w.id = wc.week_id
 		JOIN curriculum.concept c ON c.id = wc.concept_id
 		ORDER BY w.path_slug COLLATE "C", w.n, c.slug COLLATE "C"`},
-	{"problem", `SELECT id, path_slug, week_n, title, difficulty, pattern, leetcode_url, neetcode_url,
-			is_reinforcement, sort_order, role, status, retired_at IS NOT NULL AS retired, links, content_hash,
+	{"problem", `SELECT id, path_slug, week_n, title, difficulty, pattern,
+			sort_order, role, status, retired_at IS NOT NULL AS retired, links, content_hash,
 			contract_hash, grading_summary
 		FROM curriculum.problem ORDER BY path_slug COLLATE "C", id COLLATE "C"`},
 	{"problem_section", `SELECT problem_id, stage, "order", language, kind, body_md, code
@@ -129,30 +133,26 @@ func freshSeeded(t *testing.T) *pgxpool.Pool {
 
 // TestSeedV2Columns is the snapshot test's second table: the new columns a fresh seed
 // writes (role, status, links, content_hash, language, templates, id_prefix), and the
-// dual-written v1 columns agreeing with them.
+// four M1c-drop columns it no longer writes (m1-03). That role, links and templates
+// carry the v1 values is proven by the v1 snapshot (it derives the v1 fields from them)
+// and by TestUpgradeFromV1 (a fresh seed's links equal 00002's backfill of v1's URLs).
 func TestSeedV2Columns(t *testing.T) {
 	pool := freshSeeded(t)
 	ctx := context.Background()
 
 	for _, c := range []struct{ what, sql string }{
-		{"role mirrors is_reinforcement", `SELECT count(*) FROM curriculum.problem
-			WHERE role <> CASE WHEN is_reinforcement THEN 'reinforcement' ELSE 'core' END`},
 		{"every item is live with no retired_at", `SELECT count(*) FROM curriculum.problem
 			WHERE status <> 'live' OR retired_at IS NOT NULL`},
-		{"links mirror the two URL columns", `SELECT count(*) FROM curriculum.problem WHERE links <>
-			(CASE WHEN leetcode_url <> '' THEN jsonb_build_array(jsonb_build_object('kind','leetcode','url',leetcode_url)) ELSE '[]'::jsonb END)
-			|| (CASE WHEN neetcode_url <> '' THEN jsonb_build_array(jsonb_build_object('kind','neetcode','url',neetcode_url)) ELSE '[]'::jsonb END)`},
 		{"content_hash is set", `SELECT count(*) FROM curriculum.problem WHERE content_hash NOT LIKE 'sha256:%'`},
 		// 00004 (m3-01): every v1 item is on the self path.
 		{"self-path items have no contract_hash", `SELECT count(*) FROM curriculum.problem WHERE contract_hash <> ''`},
 		{"self-path items summarize as self", `SELECT count(*) FROM curriculum.problem WHERE grading_summary <> '{"mode": "self"}'::jsonb`},
 		{"code sections are go, prose none", `SELECT count(*) FROM curriculum.problem_section
 			WHERE language <> CASE WHEN kind = 'code' THEN 'go' ELSE '' END`},
-		{"templates mirror code_template", `SELECT count(*) FROM curriculum.concept
-			WHERE templates <> CASE WHEN code_template <> '' THEN jsonb_build_object('go', code_template) ELSE '{}'::jsonb END`},
-		{"no NULL in a dual-written column", `SELECT
-			(SELECT count(*) FROM curriculum.problem WHERE is_reinforcement IS NULL OR leetcode_url IS NULL OR neetcode_url IS NULL)
-			+ (SELECT count(*) FROM curriculum.concept WHERE code_template IS NULL)`},
+		// m1-03: the seed writes none of the columns M1c drops, so each holds its 00001
+		// default ('' / false; NULL would do too). The content has links and templates, so
+		// a written column would show here.
+		{"no M1c-drop column written", unwrittenDropColumnsSQL},
 	} {
 		var n int
 		if err := pool.QueryRow(ctx, c.sql).Scan(&n); err != nil {
@@ -745,7 +745,8 @@ END $$`); err != nil {
 			t.Errorf("section %v: backfilled language %q, want %q", r, r["language"], lang)
 		}
 	}
-	for _, r := range backfilled["concept"] {
+	// code_template is out of fullRows (not seed-owned since m1-03): read it directly.
+	for _, r := range queryRows(t, pool, `SELECT slug, templates, code_template FROM curriculum.concept`) {
 		if tm, _ := r["templates"].(map[string]any); fmt.Sprint(tm["go"]) != fmt.Sprint(r["code_template"]) {
 			t.Errorf("concept %s: backfilled templates %v", r["slug"], r["templates"])
 		}
@@ -756,4 +757,46 @@ END $$`); err != nil {
 		t.Fatalf("upgraded database differs from a fresh install:\n%s", strings.Join(d, "\n"))
 	}
 	assertSnapshot(t, pool, snapshotFile)
+
+	// The seed leaves the values v1 wrote in the M1c-drop columns alone (m1-03: it no
+	// longer writes them), so a v1.6.0 reader still reads v1's values until M1c.
+	v1 := v1Rows(t)
+	for _, c := range []struct {
+		table, sql string
+		keys       []string
+	}{
+		{"problem", `SELECT id, leetcode_url, neetcode_url, is_reinforcement FROM curriculum.problem ORDER BY id COLLATE "C"`,
+			[]string{"leetcode_url", "neetcode_url", "is_reinforcement"}},
+		{"concept", `SELECT slug, code_template FROM curriculum.concept ORDER BY slug COLLATE "C"`, []string{"code_template"}},
+	} {
+		idKey := map[string]string{"problem": "id", "concept": "slug"}[c.table]
+		want := map[string]map[string]any{}
+		for _, r := range v1[c.table] {
+			want[r[idKey].(string)] = r
+		}
+		for _, r := range normalizeRows(t, queryRows(t, pool, c.sql)) {
+			for _, k := range c.keys {
+				if w := want[r[idKey].(string)]; !reflect.DeepEqual(r[k], w[k]) {
+					t.Errorf("%s %s: %s = %v after the seed, v1 wrote %v", c.table, r[idKey], k, r[k], w[k])
+				}
+			}
+		}
+	}
 }
+
+// normalizeRows round-trips rows through JSON so they compare with the fixture's values.
+func normalizeRows(t *testing.T, rows []map[string]any) []map[string]any {
+	t.Helper()
+	var out []map[string]any
+	if err := json.Unmarshal(encodeSnapshot(t, rows), &out); err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+// unwrittenDropColumnsSQL counts the rows where the seed wrote one of the four columns
+// M1c drops (m1-03 stops writing them): each must be NULL or its 00001 default.
+const unwrittenDropColumnsSQL = `SELECT
+	(SELECT count(*) FROM curriculum.problem
+		WHERE COALESCE(is_reinforcement, false) OR COALESCE(leetcode_url, '') <> '' OR COALESCE(neetcode_url, '') <> '')
+	+ (SELECT count(*) FROM curriculum.concept WHERE COALESCE(code_template, '') <> '')`

@@ -64,7 +64,7 @@ describe("Revision queue", () => {
   it("renders the prioritised due queue grouped by touch day, with an upcoming tail", async () => {
     installFetchMock((url) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
-      if (url.includes("/api/revision/due")) return { status: 200, body: QUEUE };
+      if (url.includes("/api/paths/dsa/revision/due")) return { status: 200, body: QUEUE };
       return { status: 404 };
     });
     renderApp("/xlearn/dsa/revision");
@@ -104,7 +104,7 @@ describe("Revision queue", () => {
           },
         };
       }
-      if (url.includes("/api/revision/due")) return { status: 200, body: QUEUE };
+      if (url.includes("/api/paths/dsa/revision/due")) return { status: 200, body: QUEUE };
       return { status: 404 };
     });
     renderApp("/xlearn/dsa/revision");
@@ -135,7 +135,7 @@ describe("Revision queue", () => {
           body: { itemId: "it-1", problemId: "3", touchLevel: 3, autoPass: true, status: "passed", mockMode: false, reset: false, nextTouchLevel: 4, nextDayLabel: "Day 21", nextDueDate: future },
         };
       }
-      if (url.includes("/api/revision/due")) return { status: 200, body: QUEUE };
+      if (url.includes("/api/paths/dsa/revision/due")) return { status: 200, body: QUEUE };
       return { status: 404 };
     });
     renderApp("/xlearn/dsa/revision");
@@ -155,7 +155,7 @@ describe("Revision queue", () => {
         scoreBody = JSON.parse(String(init?.body ?? "{}"));
         return { status: 200, body: { itemId: "it-1", problemId: "3", touchLevel: 1, autoPass: false, status: "failed", mockMode: false, reset: true, nextTouchLevel: 1, nextDayLabel: "Day 1", nextDueDate: future } };
       }
-      if (url.includes("/api/revision/due")) return { status: 200, body: QUEUE };
+      if (url.includes("/api/paths/dsa/revision/due")) return { status: 200, body: QUEUE };
       return { status: 404 };
     });
     renderApp("/xlearn/dsa/revision");
@@ -190,7 +190,7 @@ describe("Revision queue", () => {
           },
         };
       }
-      if (url.includes("/api/revision/due")) return { status: 200, body: QUEUE };
+      if (url.includes("/api/paths/dsa/revision/due")) return { status: 200, body: QUEUE };
       return { status: 404 };
     });
     renderApp("/xlearn/dsa/revision");
@@ -205,7 +205,7 @@ describe("Revision queue", () => {
   it("shows the empty state when nothing is due", async () => {
     installFetchMock((url) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
-      if (url.includes("/api/revision/due")) return { status: 200, body: { items: [], dueCount: 0 } };
+      if (url.includes("/api/paths/dsa/revision/due")) return { status: 200, body: { items: [], dueCount: 0 } };
       return { status: 404 };
     });
     renderApp("/xlearn/dsa/revision");

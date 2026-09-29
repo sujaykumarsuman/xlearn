@@ -13,7 +13,8 @@ import (
 
 // m1-02 (M1a expand): review writes the event's course on every row it creates — the
 // consumer paths carry the envelope's path_slug, the score path carries the scored
-// touch's, the journal API and the weekly snapshot write 'dsa' — and sets
+// touch's, the journal API and the weekly snapshot write the caller's course ('dsa'
+// here; m1-03 made them course-scoped) — and sets
 // outbox.account_id. The (account, path, week) unique index is valid. A non-DSA course
 // ("sql") proves the course is carried, not defaulted.
 func TestM1aReviewPathSlug(t *testing.T) {
@@ -95,12 +96,12 @@ func TestM1aReviewPathSlug(t *testing.T) {
 	}
 	eq("mistake_entry after a failed re-solve", paths("mistake_entry"), "sql")
 
-	// The journal API and the weekly snapshot are DSA-only until M1b.
-	if _, err := st.CreateMistake(ctx, acct, store.MistakeInput{ProblemID: "p-9"}); err != nil {
+	// The journal API and the weekly snapshot write the course they are given.
+	if _, err := st.CreateMistake(ctx, acct, "dsa", store.MistakeInput{ProblemID: "p-9"}); err != nil {
 		t.Fatalf("create mistake: %v", err)
 	}
 	eq("mistake_entry after a manual entry", paths("mistake_entry"), "dsa", "sql")
-	if err := st.SaveWeakAreaSnapshot(ctx, acct, time.Now(), "", nil); err != nil {
+	if err := st.SaveWeakAreaSnapshot(ctx, acct, "dsa", time.Now(), "", nil); err != nil {
 		t.Fatalf("snapshot: %v", err)
 	}
 	eq("weak_area_snapshot", paths("weak_area_snapshot"), "dsa")

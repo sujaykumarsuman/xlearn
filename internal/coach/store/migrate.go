@@ -52,23 +52,9 @@ func migrate(ctx context.Context, dsn string, logger *slog.Logger, to int64) err
 	}
 	defer db.Close()
 
-	sub, err := fs.Sub(migrationsFS, "migrations")
+	provider, err := newProvider(db)
 	if err != nil {
-		return fmt.Errorf("sub migrations fs: %w", err)
-	}
-
-	locker, err := lock.NewPostgresSessionLocker()
-	if err != nil {
-		return fmt.Errorf("new session locker: %w", err)
-	}
-
-	provider, err := goose.NewProvider(
-		goose.DialectPostgres, db, sub,
-		goose.WithSessionLocker(locker),
-		goose.WithTableName(migrationTable),
-	)
-	if err != nil {
-		return fmt.Errorf("new goose provider: %w", err)
+		return err
 	}
 
 	var results []*goose.MigrationResult
@@ -84,4 +70,28 @@ func migrate(ctx context.Context, dsn string, logger *slog.Logger, to int64) err
 		logger.Info("migration applied", "version", r.Source.Version, "file", r.Source.Path)
 	}
 	return nil
+}
+
+// newProvider builds the goose provider over the embedded migrations, with the advisory
+// session lock and coach's own version table.
+func newProvider(db *sql.DB) (*goose.Provider, error) {
+	sub, err := fs.Sub(migrationsFS, "migrations")
+	if err != nil {
+		return nil, fmt.Errorf("sub migrations fs: %w", err)
+	}
+
+	locker, err := lock.NewPostgresSessionLocker()
+	if err != nil {
+		return nil, fmt.Errorf("new session locker: %w", err)
+	}
+
+	provider, err := goose.NewProvider(
+		goose.DialectPostgres, db, sub,
+		goose.WithSessionLocker(locker),
+		goose.WithTableName(migrationTable),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("new goose provider: %w", err)
+	}
+	return provider, nil
 }

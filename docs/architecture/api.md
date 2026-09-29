@@ -16,6 +16,18 @@ service APIs are in [`services.md`](services.md). Auth model: [ADR-0006](../adr/
 - **Versioning:** `/xlearn/api/v1` is the 1.0 surface (introduced at the 1.0 milestone, S12); the
   unversioned `/xlearn/api` is kept as a same-origin compat alias ([ADR-0021](../adr/0021-release-tagging-and-api-versioning.md)).
 - **BFF aggregation:** endpoints marked **`agg`** fan out to several services server-side.
+- **Courses (M1b, m1-03; [ADR-0026](../adr/0026-per-course-extensibility-model.md) §5, t0 §7):**
+  course-scoped routes live under the existing `/paths/{slug}/…` prefix (no parallel `/courses` tree);
+  the gateway resolves `{slug}` against the course manifests compiled into it. Unknown or retired courses,
+  a `coming_soon` course's data routes and a `preview` course outside the owner/tester cohort all get the
+  same `404 {"error":{"code":"course_not_found"}}`. Items keep **global** ids (`/problems/{id}`,
+  `/revision/{itemId}/score`, `/mistakes/{id}`, `/mocks/{id}`); the course is the item's `path_slug`.
+  Internal calls carry the course as `?path=<slug>` (defaulting to `course.DefaultSlug` when absent).
+- **DSA aliases ([ADR-0034](../adr/0034-v2-release-labelling-gating-and-rollback.md) §1.1):** the v1 routes
+  without a course — `/dashboard`, `/progress`, `/revision/due`, `GET|POST /mistakes`, `/weak-area`,
+  `POST /mocks`, `/mocks/trend`, `/concepts/{slug}` — run the course-scoped handler with the DSA course and
+  are byte-identical to `/paths/dsa/…`. OpenAPI marks them `deprecated`. The SPA stops calling them in
+  `v1.7.0`; they stay at least through `v1.8.0` (earliest removal: `v1.9.0`).
 
 ## Endpoints (v1)
 
@@ -32,10 +44,13 @@ service APIs are in [`services.md`](services.md). Auth model: [ADR-0006](../adr/
 ### Curriculum (read)
 | Method | Path | Purpose | Backed by |
 |--------|------|---------|-----------|
-| `GET` | `/paths` | Catalog — all paths + status. | curriculum |
-| `GET` | `/paths/{slug}` | Roadmap — phases, weeks, totals. | curriculum |
+| `GET` | `/paths` | Catalog — the courses this caller may see (active, `coming_soon`; `preview` for the cohort) + status + the learner-safe `course` view. | curriculum (filtered by the gateway) |
+| `GET` | `/paths/{slug}` | Roadmap — phases, weeks, totals (+ `path.course`). | curriculum |
+| `GET` | `/paths/{slug}/problems` | The course's problem index (the Problems arena). | curriculum |
 | `GET` | `/paths/{slug}/weeks/{n}` **agg** | Week thesis + concepts + problem list **with the user's five-touch state**. | curriculum + practice + review |
-| `GET` | `/concepts/{slug}` | Concept reading + code template. | curriculum |
+| `GET` | `/paths/{slug}/concepts/{c}` | Concept reading + code template, keyed on (course, concept). | curriculum |
+| `POST` | `/paths/{slug}/start` | Start a course (idempotent). Only `active`: `404 course_not_found` / `409 course_not_available`. | identity |
+| `GET` | `/concepts/{slug}` | *Deprecated DSA alias* of `/paths/dsa/concepts/{slug}`. | curriculum |
 
 ### Problem workspace
 | Method | Path | Purpose | Backed by |
@@ -48,21 +63,24 @@ service APIs are in [`services.md`](services.md). Auth model: [ADR-0006](../adr/
 ### Revision & mistakes
 | Method | Path | Purpose | Backed by |
 |--------|------|---------|-----------|
-| `GET` | `/revision/due` | The prioritised due queue. | review |
+| `GET` | `/paths/{slug}/revision/due` | The course's prioritised due queue. | review |
 | `POST` | `/revision/{itemId}/score` | Submit a re-solve; auto-scores → advance or reset. | review |
-| `GET` | `/mistakes?status=open\|closed` | Journal list. | review |
-| `POST` | `/mistakes` | Create/edit an entry (root cause, insight, category). | review |
+| `GET` | `/paths/{slug}/mistakes?status=open\|closed` | The course's journal. | review |
+| `POST` | `/paths/{slug}/mistakes` | Create an entry in the course (root cause, insight, category). | review |
 | `PATCH` | `/mistakes/{id}` | Update status / revisit. | review |
-| `GET` | `/weak-area` | Current weekly weak-area banner. | review |
+| `GET` | `/paths/{slug}/weak-area` | The course's current weekly weak-area banner. | review |
+| `GET` · `GET` · `POST` · `GET` | `/revision/due` · `/mistakes` · `/mistakes` · `/weak-area` | *Deprecated DSA aliases* of the rows above. | review |
 
 ### Mock & progress
 | Method | Path | Purpose | Backed by |
 |--------|------|---------|-----------|
-| `POST` | `/mocks` | Start a 45-min mock (setup → session). | assessment |
+| `POST` | `/paths/{slug}/mocks` | Start a 45-min mock in the course (setup → session). | assessment |
+| `GET` | `/paths/{slug}/mocks/trend` | The course's scored history vs the readiness targets. | assessment |
 | `GET` | `/mocks/{id}` | Live session + phase rail state. | assessment |
 | `POST` | `/mocks/{id}/score` | Submit the 7-dim rubric → /35 + trend. | assessment |
-| `GET` | `/dashboard` **agg** | "Today": daily plan, due reviews, weak area, streak, stats. | practice + review + assessment + curriculum |
-| `GET` | `/progress` **agg** | Coverage, heatmap, mastery, rubric trend, outcome mix. | assessment (+ review) |
+| `GET` | `/paths/{slug}/dashboard` **agg** | The course's "Today": daily plan, due reviews, weak area, streak, stats. | practice + review + assessment + curriculum |
+| `GET` | `/paths/{slug}/progress` **agg** | The course's coverage, heatmap, mastery, rubric trend, outcome mix. | assessment (+ review) |
+| `POST` · `GET` · `GET` · `GET` | `/mocks` · `/mocks/trend` · `/dashboard` · `/progress` | *Deprecated DSA aliases* of the rows above. | as above |
 
 ### Coach
 | Method | Path | Purpose | Backed by |
@@ -72,6 +90,12 @@ service APIs are in [`services.md`](services.md). Auth model: [ADR-0006](../adr/
 | `DELETE` | `/coach/key` | Remove the key. | coach |
 | `POST` | `/coach/chat` (SSE) | Send a message with page context; streams the coach reply. | coach |
 | `GET` | `/coach/thread?context=` | Thread history for a page context. | coach |
+
+Coach page contexts (m1-03, t0 §7): items keep `problem:<id>`; account-wide contexts stay `catalog`,
+`settings`, `general`; every course-scoped context is `<course>:<ctx>` (`<course>:concept:<slug>`,
+`<course>:week:<n>`, `<course>:roadmap|dashboard|revision|mistakes|mock|progress`). The gateway and coach
+run one shared parser (`course.NormalizeCoachContext`) that maps the v1 forms from open `v1.6.0` tabs to the
+DSA course.
 
 ### System
 | Method | Path | Purpose |

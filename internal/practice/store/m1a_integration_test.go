@@ -30,7 +30,7 @@ func TestM1aPracticeDualWrite(t *testing.T) {
 	acct := newTestUUID()
 	const problem = "m1a-7"
 
-	if _, err := st.StartAttempt(ctx, acct, problem); err != nil {
+	if _, err := st.StartAttempt(ctx, acct, problem, "dsa"); err != nil {
 		t.Fatalf("start: %v", err)
 	}
 	if _, err := st.Reveal(ctx, acct, problem); err != nil {

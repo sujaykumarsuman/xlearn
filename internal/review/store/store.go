@@ -10,7 +10,6 @@ package store
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -59,7 +58,10 @@ const (
 )
 
 // Event subjects + envelope version (events.md). Consumed practice subjects and the
-// review subjects the relay publishes to XLEARN_REVIEW.
+// review subjects the relay publishes to XLEARN_REVIEW. Every review subject is
+// course-scoped, so since m1-03 (M1b) each is a v2 envelope carrying the course of the
+// row it reports (the touch's or the mistake entry's path_slug); the v1.6.0 consumers
+// already decode v2 (m1-02).
 const (
 	SubjectProblemSolved         = "xlearn.practice.problem_solved"
 	SubjectSolutionRevealedEarly = "xlearn.practice.solution_revealed_early"
@@ -69,7 +71,7 @@ const (
 	SubjectMistakeOpened     = "xlearn.review.mistake_opened"
 	SubjectMistakeClosed     = "xlearn.review.mistake_closed"
 
-	eventVersion = 1
+	eventVersion = events.EnvelopeV2
 )
 
 // Mistake-journal status values + the close rule (R-MJ4).
@@ -170,8 +172,8 @@ type Store interface {
 	// emits revision_scheduled per newly-scheduled touch, all in one transaction that
 	// also records eventID in the inbox. A re-delivered event (eventID already in the
 	// inbox) is a no-op. Returns the number of touches scheduled. pathSlug is the
-	// event's course (the envelope's path_slug; "dsa" for every v1 event), written on
-	// every row it creates (m1-02, M1a).
+	// event's course (the envelope's path_slug; events.V1PathSlug for a v1 event),
+	// written on every row it creates (m1-02, M1a) and carried on every event it emits.
 	HandleProblemSolved(ctx context.Context, eventID, accountID, pathSlug, problemID, outcome string, firstSolve bool, occurredAt time.Time) (int, error)
 	// HandleSolutionRevealedEarly reacts to xlearn.practice.solution_revealed_early:
 	// it schedules the owed re-solve 3 days out (R-PF2) as the Day-3 touch and emits
@@ -181,9 +183,9 @@ type Store interface {
 	// advances to the next touch (emitting revision_scheduled) or, on a fail, resets
 	// the problem's ladder to Day 1 (R-SR3). One transaction.
 	Score(ctx context.Context, accountID, itemID string, in ScoreInput) (ScoreResult, error)
-	// DueQueue returns the account's prioritised queue (most-overdue first), capped at
-	// limit, for the Revision screen.
-	DueQueue(ctx context.Context, accountID string, limit int) ([]DueItem, error)
+	// DueQueue returns the account's prioritised queue in one course (most-overdue
+	// first), capped at limit, for the Revision screen.
+	DueQueue(ctx context.Context, accountID, pathSlug string, limit int) ([]DueItem, error)
 	// Sweep materialises due-but-unsurfaced touches across all accounts (flow 4):
 	// it latches surfaced_at (idempotent) and emits revision_due per item, each in one
 	// transaction. Returns the number of items surfaced this run.
@@ -191,32 +193,34 @@ type Store interface {
 
 	// --- mistake journal (S07) ---
 
-	// ListMistakes returns an account's journal, newest first. status "" lists all;
-	// "open"/"closed" filters.
-	ListMistakes(ctx context.Context, accountID, status string) ([]Mistake, error)
+	// ListMistakes returns an account's journal in one course, newest first. status ""
+	// lists all; "open"/"closed" filters.
+	ListMistakes(ctx context.Context, accountID, pathSlug, status string) ([]Mistake, error)
 	// GetMistake returns one entry scoped to its owner.
 	GetMistake(ctx context.Context, accountID, id string) (Mistake, error)
-	// CreateMistake manually creates a journal entry. ErrConflict if an open entry for
-	// the problem already exists; ErrInvalidCategory for a bad category.
-	CreateMistake(ctx context.Context, accountID string, in MistakeInput) (Mistake, error)
+	// CreateMistake manually creates a journal entry in course pathSlug. ErrConflict if
+	// an open entry for the problem already exists (one open entry per item, whatever
+	// the course); ErrInvalidCategory for a bad category.
+	CreateMistake(ctx context.Context, accountID, pathSlug string, in MistakeInput) (Mistake, error)
 	// UpdateMistake overlays the editable fields of an entry (root cause / insight /
 	// category / mistake / status). ErrNotFound if it isn't the account's.
 	UpdateMistake(ctx context.Context, accountID, id string, in MistakePatch) (Mistake, error)
 
 	// --- weekly weak-area (S07) ---
 
-	// AccountsWithMistakes lists every account that has a mistake entry (the recompute
-	// job iterates these).
-	AccountsWithMistakes(ctx context.Context) ([]string, error)
-	// SaveWeakAreaSnapshot upserts one account's weekly snapshot (idempotent per
-	// week_of). counts maps category → count; topCategory "" means none.
-	SaveWeakAreaSnapshot(ctx context.Context, accountID string, weekOf time.Time, topCategory string, counts map[string]int) error
-	// CountOpenMistakesByCategory counts an account's open entries opened within
-	// [start, end), grouped by category (uncategorised excluded).
-	CountOpenMistakesByCategory(ctx context.Context, accountID string, start, end time.Time) (map[string]int, error)
-	// WeakAreaCurrent reads the account's latest snapshot + the supporting open entries
-	// in the top category. found is false when no snapshot exists yet.
-	WeakAreaCurrent(ctx context.Context, accountID string) (wa WeakArea, found bool, err error)
+	// MistakeScopes lists every (account, course) that has a mistake entry (the
+	// recompute job builds one snapshot per pair).
+	MistakeScopes(ctx context.Context) ([]MistakeScope, error)
+	// SaveWeakAreaSnapshot upserts one account's weekly snapshot in one course
+	// (idempotent per course and week_of). counts maps category → count; topCategory ""
+	// means none.
+	SaveWeakAreaSnapshot(ctx context.Context, accountID, pathSlug string, weekOf time.Time, topCategory string, counts map[string]int) error
+	// CountOpenMistakesByCategory counts an account's open entries in one course opened
+	// within [start, end), grouped by category (uncategorised excluded).
+	CountOpenMistakesByCategory(ctx context.Context, accountID, pathSlug string, start, end time.Time) (map[string]int, error)
+	// WeakAreaCurrent reads the account's latest snapshot in one course + the supporting
+	// open entries in the top category. found is false when no snapshot exists yet.
+	WeakAreaCurrent(ctx context.Context, accountID, pathSlug string) (wa WeakArea, found bool, err error)
 
 	// --- notifications (S07) ---
 
@@ -327,7 +331,7 @@ func (s *PgStore) HandleProblemSolved(ctx context.Context, eventID, accountID, p
 			})
 			switch {
 			case err == nil:
-				if eerr := emitRevisionScheduled(ctx, qtx, accountID, problemID, level, due); eerr != nil {
+				if eerr := emitRevisionScheduled(ctx, qtx, accountID, pathSlug, problemID, level, due); eerr != nil {
 					return 0, eerr
 				}
 				scheduled++
@@ -394,7 +398,7 @@ func (s *PgStore) HandleSolutionRevealedEarly(ctx context.Context, eventID, acco
 	})
 	switch {
 	case err == nil:
-		if eerr := emitRevisionScheduled(ctx, qtx, accountID, problemID, OwedAttemptTouchLevel, due); eerr != nil {
+		if eerr := emitRevisionScheduled(ctx, qtx, accountID, pathSlug, problemID, OwedAttemptTouchLevel, due); eerr != nil {
 			return 0, eerr
 		}
 		scheduled = 1
@@ -503,7 +507,7 @@ func (s *PgStore) Score(ctx context.Context, accountID, itemID string, in ScoreI
 			if err != nil {
 				return ScoreResult{}, err
 			}
-			if eerr := emitRevisionScheduled(ctx, qtx, accountID, item.ProblemID, next, nextDue); eerr != nil {
+			if eerr := emitRevisionScheduled(ctx, qtx, accountID, item.PathSlug, item.ProblemID, next, nextDue); eerr != nil {
 				return ScoreResult{}, eerr
 			}
 			res.NextTouchLevel = next
@@ -536,7 +540,7 @@ func (s *PgStore) Score(ctx context.Context, accountID, itemID string, in ScoreI
 			}
 		}
 		day1Due := touchDueDate(1, now)
-		if eerr := emitRevisionScheduled(ctx, qtx, accountID, item.ProblemID, 1, day1Due); eerr != nil {
+		if eerr := emitRevisionScheduled(ctx, qtx, accountID, item.PathSlug, item.ProblemID, 1, day1Due); eerr != nil {
 			return ScoreResult{}, eerr
 		}
 		res.Reset = true
@@ -608,8 +612,8 @@ func (s *PgStore) settledResult(ctx context.Context, qtx *gen.Queries, aid pgtyp
 	return res, nil
 }
 
-// DueQueue returns the account's prioritised revision queue.
-func (s *PgStore) DueQueue(ctx context.Context, accountID string, limit int) ([]DueItem, error) {
+// DueQueue returns the account's prioritised revision queue in one course.
+func (s *PgStore) DueQueue(ctx context.Context, accountID, pathSlug string, limit int) ([]DueItem, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return nil, ErrNotFound
@@ -617,7 +621,7 @@ func (s *PgStore) DueQueue(ctx context.Context, accountID string, limit int) ([]
 	if limit <= 0 {
 		limit = 100
 	}
-	rows, err := s.q.ListActiveTouches(ctx, gen.ListActiveTouchesParams{AccountID: aid, Limit: int32(limit)})
+	rows, err := s.q.ListActiveTouches(ctx, gen.ListActiveTouchesParams{AccountID: aid, PathSlug: pathSlug, Limit: int32(limit)})
 	if err != nil {
 		return nil, fmt.Errorf("list active touches: %w", err)
 	}
@@ -677,7 +681,7 @@ func (s *PgStore) surfaceOne(ctx context.Context, id pgtype.UUID) (bool, error) 
 	if err != nil {
 		return false, fmt.Errorf("mark surfaced: %w", err)
 	}
-	if err := emitRevisionDue(ctx, qtx, uuidString(row.AccountID), row.ProblemID, int(row.TouchLevel)); err != nil {
+	if err := emitRevisionDue(ctx, qtx, uuidString(row.AccountID), row.PathSlug, row.ProblemID, int(row.TouchLevel)); err != nil {
 		return false, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -744,29 +748,33 @@ func claimInbox(ctx context.Context, qtx *gen.Queries, eventID string) (bool, er
 	return true, nil
 }
 
-// emitRevisionScheduled appends a xlearn.review.revision_scheduled event to the outbox.
-func emitRevisionScheduled(ctx context.Context, qtx *gen.Queries, accountID, problemID string, touchLevel int, dueDate time.Time) error {
-	return insertEvent(ctx, qtx, SubjectRevisionScheduled, accountID, map[string]any{
+// emitRevisionScheduled appends a xlearn.review.revision_scheduled event (the touch's
+// course in path_slug) to the outbox.
+func emitRevisionScheduled(ctx context.Context, qtx *gen.Queries, accountID, pathSlug, problemID string, touchLevel int, dueDate time.Time) error {
+	return insertEvent(ctx, qtx, SubjectRevisionScheduled, accountID, pathSlug, map[string]any{
 		"problem_id":  problemID,
 		"touch_level": touchLevel,
 		"due_date":    dueDate.UTC().Format(time.RFC3339),
 	})
 }
 
-// emitRevisionDue appends a xlearn.review.revision_due event to the outbox (no
-// due_date — the sweep event carries only problem_id + touch_level per events.md).
-func emitRevisionDue(ctx context.Context, qtx *gen.Queries, accountID, problemID string, touchLevel int) error {
-	return insertEvent(ctx, qtx, SubjectRevisionDue, accountID, map[string]any{
+// emitRevisionDue appends a xlearn.review.revision_due event (the touch's course in
+// path_slug) to the outbox (no due_date — the sweep event carries only problem_id +
+// touch_level per events.md).
+func emitRevisionDue(ctx context.Context, qtx *gen.Queries, accountID, pathSlug, problemID string, touchLevel int) error {
+	return insertEvent(ctx, qtx, SubjectRevisionDue, accountID, pathSlug, map[string]any{
 		"problem_id":  problemID,
 		"touch_level": touchLevel,
 	})
 }
 
-// insertEvent marshals the events.md envelope and appends it to the outbox inside
-// the caller's transaction (transactional outbox — never published inline).
-func insertEvent(ctx context.Context, qtx *gen.Queries, subject, accountID string, data map[string]any) error {
+// insertEvent marshals the event envelope — v2, carrying pathSlug (the course of the
+// row the event reports); events.NewEnvelope also enforces the size cap — and appends
+// it to the outbox inside the caller's transaction (transactional outbox — never
+// published inline). occurred_at is the write time, as in v1.
+func insertEvent(ctx context.Context, qtx *gen.Queries, subject, accountID, pathSlug string, data map[string]any) error {
 	eventID := newUUIDv4()
-	payload, err := marshalEnvelope(eventID, subject, accountID, data)
+	payload, err := events.NewEnvelope(eventVersion, eventID, subject, accountID, pathSlug, time.Now(), data)
 	if err != nil {
 		return fmt.Errorf("marshal %s: %w", subject, err)
 	}
@@ -783,18 +791,6 @@ func insertEvent(ctx context.Context, qtx *gen.Queries, subject, accountID strin
 		return fmt.Errorf("insert outbox %s: %w", subject, err)
 	}
 	return nil
-}
-
-// marshalEnvelope builds the events.md event envelope.
-func marshalEnvelope(eventID, subject, accountID string, data map[string]any) ([]byte, error) {
-	return json.Marshal(map[string]any{
-		"event_id":    eventID,
-		"subject":     subject,
-		"occurred_at": time.Now().UTC().Format(time.RFC3339Nano),
-		"version":     eventVersion,
-		"account_id":  accountID,
-		"data":        data,
-	})
 }
 
 // tsz wraps a time in a non-null pgtype.Timestamptz.

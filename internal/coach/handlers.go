@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/coach/store"
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/secrets"
 )
@@ -215,7 +216,10 @@ func (s *Service) handleDeleteKey(w http.ResponseWriter, r *http.Request) {
 
 // --- thread history ---
 
-// handleThread: GET /threads?context= — the message history for a page context.
+// handleThread: GET /threads?context= — the message history for a page context. The
+// context is normalized to its thread key first (course.NormalizeCoachContext), so a v1
+// form from an open v1.6.0 tab reads the same thread as its `<course>:` form. The
+// response echoes the context as sent (the v1 shape).
 func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 	accountID := claimsFrom(r.Context()).Subject
 	pageContext := strings.TrimSpace(r.URL.Query().Get("context"))
@@ -223,7 +227,7 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad_request", "context is required")
 		return
 	}
-	msgs, err := s.store.ThreadHistory(r.Context(), accountID, pageContext)
+	msgs, err := s.store.ThreadHistory(r.Context(), accountID, s.courses.NormalizeCoachContext(pageContext).Key)
 	if err != nil {
 		s.mapErr(w, "thread history", err)
 		return
@@ -239,9 +243,42 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"context": pageContext, "messages": out})
 }
 
+// --- page contexts (sprint m1-03; t0 §7) ---
+
+// threadCourse is the course a chat's thread and its messages are labelled with
+// (coach_thread.path_slug / coach_message.path_slug; "" writes NULL):
+//
+//   - a course-scoped context: its course, i.e. the `<course>:` prefix, or DefaultSlug
+//     for a v1 form (the parser's PathSlug);
+//   - problem:<id>: the item's course, which only curriculum knows, so the gateway passes
+//     it as POST /chat?path=<slug>. No value (a v1.6.0 gateway during a rolling update)
+//     or a slug the registry doesn't know is DefaultSlug: v1 was DSA-only. A label never
+//     fails a chat, so an unknown value is logged, not refused;
+//   - account-wide (catalog, settings, general) or unrecognised: "" (NULL).
+func (s *Service) threadCourse(cc course.CoachContext, pathParam string) string {
+	switch {
+	case cc.CourseScoped():
+		return cc.PathSlug
+	case cc.Kind == course.CoachKindProblem:
+		if _, ok := s.courses.Lookup(pathParam); ok {
+			return pathParam
+		}
+		if pathParam != "" {
+			s.log.Warn("coach: chat ?path= names no known course; labelling the problem thread with the default course", "path", pathParam)
+		}
+		return course.DefaultSlug
+	default:
+		return ""
+	}
+}
+
 // --- chat (SSE) ---
 
-// handleChat: POST /chat — stream a coach reply over SSE. It persists the user message +
+// handleChat: POST /chat[?path=<slug>] — stream a coach reply over SSE. The body's
+// context is normalized to its thread key (course.NormalizeCoachContext: a course-scoped
+// context is `<course>:<ctx>`, and a v1 form maps to DefaultSlug's), and the thread is
+// labelled with its course (threadCourse; ?path= matters only for a problem context).
+// The body is v1's: the course never travels in it. It persists the user message +
 // the assistant reply to the (account, context) thread, builds the server-side prompt
 // from the AUTHORITATIVE mode (X-Coach-Mode header), decrypts the key in memory only for
 // the provider call, and zeroes it after. A rejected key flips enabled=false so the
@@ -318,7 +355,8 @@ func (s *Service) handleChat(w http.ResponseWriter, r *http.Request) {
 
 	// Persist the user's turn, then build the provider request from the thread history
 	// (which now ends with this message).
-	threadID, err := s.store.EnsureThread(r.Context(), accountID, pageKey)
+	cc := s.courses.NormalizeCoachContext(pageKey)
+	threadID, err := s.store.EnsureThread(r.Context(), accountID, cc.Key, s.threadCourse(cc, r.URL.Query().Get("path")))
 	if err != nil {
 		s.mapErr(w, "chat: ensure thread", err)
 		return
@@ -327,7 +365,7 @@ func (s *Service) handleChat(w http.ResponseWriter, r *http.Request) {
 		s.mapErr(w, "chat: append user message", err)
 		return
 	}
-	history, err := s.store.ThreadHistory(r.Context(), accountID, pageKey)
+	history, err := s.store.ThreadHistory(r.Context(), accountID, cc.Key)
 	if err != nil {
 		s.mapErr(w, "chat: history", err)
 		return

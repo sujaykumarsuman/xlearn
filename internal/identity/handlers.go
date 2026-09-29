@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 )
@@ -302,6 +303,11 @@ func (s *Service) handleOnboardingStep(w http.ResponseWriter, r *http.Request) {
 // handleStartEnrollment enrolls the caller in a path (F002 · POST /paths/{slug}/start).
 // JWT-scoped to the caller's own account; idempotent (a repeat start keeps the original
 // started_at, so "current day" never resets).
+//
+// The slug must be an `active` course (ADR-0033 §12 row 8, sprint m1-03): an unknown or
+// `preview` slug is 404 course_not_found, one body for both so nothing hints that a
+// preview course exists; `coming_soon` and `retired` are 409 course_not_available. A new
+// enrollment's public_visible is the manifest's public_stats.default_visible (D7).
 func (s *Service) handleStartEnrollment(w http.ResponseWriter, r *http.Request) {
 	claims := claimsFrom(r.Context())
 	slug := r.PathValue("slug")
@@ -309,7 +315,17 @@ func (s *Service) handleStartEnrollment(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusUnprocessableEntity, "invalid_path", "path slug is required")
 		return
 	}
-	e, err := s.store.StartEnrollment(r.Context(), claims.Subject, slug)
+	m, ok := s.courses.Lookup(slug)
+	// The owner/tester cohort's branch for a preview course is m1-04's (task 7).
+	if !ok || m.Status == course.StatusPreview {
+		writeError(w, http.StatusNotFound, "course_not_found", "no such course")
+		return
+	}
+	if m.Status != course.StatusActive {
+		writeError(w, http.StatusConflict, "course_not_available", "this course is not open for enrollment")
+		return
+	}
+	e, err := s.store.StartEnrollment(r.Context(), claims.Subject, slug, m.PublicStats.Visible())
 	if err != nil {
 		s.mapStoreErr(w, err)
 		return

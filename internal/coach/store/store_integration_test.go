@@ -149,11 +149,11 @@ func TestStoreIntegration(t *testing.T) {
 
 	t.Run("thread get-or-create + message ordering", func(t *testing.T) {
 		acct := newTestUUID()
-		id1, err := st.EnsureThread(ctx, acct, "problem:16")
+		id1, err := st.EnsureThread(ctx, acct, "problem:16", "dsa")
 		if err != nil {
 			t.Fatalf("ensure: %v", err)
 		}
-		id2, err := st.EnsureThread(ctx, acct, "problem:16")
+		id2, err := st.EnsureThread(ctx, acct, "problem:16", "dsa")
 		if err != nil {
 			t.Fatalf("ensure again: %v", err)
 		}
@@ -161,7 +161,7 @@ func TestStoreIntegration(t *testing.T) {
 			t.Fatalf("ensure not idempotent: %s vs %s", id1, id2)
 		}
 		// A different context is a distinct thread.
-		id3, _ := st.EnsureThread(ctx, acct, "concept:sliding-window")
+		id3, _ := st.EnsureThread(ctx, acct, "dsa:concept:sliding-window", "dsa")
 		if id3 == id1 {
 			t.Fatal("distinct contexts collided into one thread")
 		}

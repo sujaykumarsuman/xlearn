@@ -1,9 +1,10 @@
 // Mistake-journal, weak-area and dashboard data hooks for the BFF
 // (docs/architecture/api.md, Revision & mistakes + Dashboard). The journal and
-// weak-area are gateway aggregations (review's bare-id entries + curriculum problem
-// metadata); create/edit proxy to review.
+// weak-area are course-scoped gateway aggregations (review's bare-id entries +
+// curriculum problem metadata; GET /paths/{slug}/mistakes and /weak-area since m1-03);
+// an entry's edit goes by its global id and proxies to review.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiRequestError, apiFetch } from "./api";
+import { ApiRequestError, apiFetch, coursePathApi } from "./api";
 
 /** The eight mistake categories (R-MJ2), in canonical order. `key` is the stored enum
  *  value; `label` is the display text; `badge` is the artboard badge class. */
@@ -64,8 +65,8 @@ export interface Mistake {
   problem: MistakeProblem | null;
 }
 
-/** GET /mistakes payload. openCount/closedCount are over the full journal;
- *  closeThreshold is the "n/2" denominator (R-MJ4). */
+/** GET /paths/{slug}/mistakes payload. openCount/closedCount are over the course's full
+ *  journal; closeThreshold is the "n/2" denominator (R-MJ4). */
 export interface MistakesResponse {
   mistakes: Mistake[];
   openCount: number;
@@ -74,7 +75,8 @@ export interface MistakesResponse {
   categories: string[];
 }
 
-/** GET /weak-area payload (R-MJ3). topCategory "" when no weak area this week. */
+/** GET /paths/{slug}/weak-area payload (R-MJ3). topCategory "" when no weak area this
+ *  week. */
 export interface WeakArea {
   weekOf?: string;
   topCategory: string;
@@ -90,19 +92,22 @@ export interface Reminder {
   dueAt: string;
 }
 
-/** useMistakes fetches the full journal (the screen filters client-side). */
-export function useMistakes() {
+/** useMistakes fetches a course's full journal (the screen filters client-side; the
+ *  sidebar reads its open count for the live badge). */
+export function useMistakes(slug: string, enabled = true) {
   return useQuery<MistakesResponse, ApiRequestError>({
-    queryKey: ["mistakes"],
-    queryFn: () => apiFetch<MistakesResponse>("/mistakes"),
+    queryKey: ["mistakes", slug],
+    queryFn: () => apiFetch<MistakesResponse>(coursePathApi(slug, "/mistakes")),
+    enabled: enabled && slug !== "",
   });
 }
 
-/** useWeakArea fetches the current weekly weak-area banner. */
-export function useWeakArea() {
+/** useWeakArea fetches a course's current weekly weak-area banner. */
+export function useWeakArea(slug: string) {
   return useQuery<WeakArea, ApiRequestError>({
-    queryKey: ["weak-area"],
-    queryFn: () => apiFetch<WeakArea>("/weak-area"),
+    queryKey: ["weak-area", slug],
+    queryFn: () => apiFetch<WeakArea>(coursePathApi(slug, "/weak-area")),
+    enabled: slug !== "",
   });
 }
 
@@ -115,9 +120,9 @@ export interface MistakePatch {
   status?: "open" | "closed";
 }
 
-/** usePatchMistake edits an entry (root cause / insight / category / status) and
- *  refreshes the journal + weak-area on success. */
-export function usePatchMistake() {
+/** usePatchMistake edits an entry (root cause / insight / category / status) by its
+ *  global id and refreshes the course's journal + weak-area on success. */
+export function usePatchMistake(slug: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: MistakePatch }) =>
@@ -127,8 +132,8 @@ export function usePatchMistake() {
         body: JSON.stringify(patch),
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["mistakes"] });
-      qc.invalidateQueries({ queryKey: ["weak-area"] });
+      qc.invalidateQueries({ queryKey: ["mistakes", slug] });
+      qc.invalidateQueries({ queryKey: ["weak-area", slug] });
     },
   });
 }

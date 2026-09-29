@@ -67,27 +67,38 @@ type ConceptRef struct {
 	Title string
 }
 
-// Concept is a full concept/pattern reading + code template.
+// Concept is a full concept/pattern reading + its code templates.
 type Concept struct {
-	Slug         string
-	PathSlug     string
-	Title        string
-	BodyMD       string
-	WhenToUseMD  string
-	CodeTemplate string
+	Slug        string
+	PathSlug    string
+	Title       string
+	BodyMD      string
+	WhenToUseMD string
+	// Templates maps a language to its code template (concept.templates; never nil).
+	// The v1 single template is the course's primary language's entry (handlers.go).
+	Templates map[string]string
+}
+
+// Link is one outbound link of a problem ({kind, url}; kind is one of
+// course.LinkKinds). It is also the jsonb shape of problem.links.
+type Link struct {
+	Kind string `json:"kind"`
+	URL  string `json:"url"`
 }
 
 // Problem is a problem's metadata (natural id, difficulty drives the UI tokens).
 type Problem struct {
-	ID              string
-	PathSlug        string
-	WeekN           int
-	Title           string
-	Difficulty      string // "easy" | "med" | "hard"
-	Pattern         string
-	LeetcodeURL     string
-	NeetcodeURL     string
-	IsReinforcement bool
+	ID         string
+	PathSlug   string
+	WeekN      int
+	Title      string
+	Difficulty string // "easy" | "med" | "hard"
+	Pattern    string
+	// Role is core | reinforcement | drill (course.Roles).
+	Role string
+	// Links are the outbound links in content order (never nil). The v1 URL fields are
+	// derived from them (handlers.go).
+	Links []Link
 	// ContractHash and GradingSummary are read by GetProblem and GetProblemsByIDs only
 	// (m3-01): canon.ContractHash ("" on the self path) and the derived, answer-free
 	// grading summary (a JSON object).
@@ -102,6 +113,8 @@ type Section struct {
 	Order  int
 	BodyMD string
 	Code   string
+	// Language is a code section's language ("" for prose).
+	Language string
 }
 
 // Store is the curriculum persistence seam. Handlers depend on this interface so
@@ -118,7 +131,8 @@ type Store interface {
 	GetProblem(ctx context.Context, id string) (Problem, error)
 	GetProblemsByIDs(ctx context.Context, ids []string) ([]Problem, error)
 	ListSections(ctx context.Context, problemID string) ([]Section, error)
-	GetConcept(ctx context.Context, slug string) (Concept, error)
+	// GetConcept resolves a concept by its course and slug (a slug is unique per course).
+	GetConcept(ctx context.Context, pathSlug, slug string) (Concept, error)
 	CountProblems(ctx context.Context, pathSlug string) (int, error)
 	// SeedAll applies the entire versioned seed in one transaction, idempotently
 	// (natural-key upserts, delete-missing per course, sections rewritten, the id guard)
@@ -246,17 +260,12 @@ func (s *PgStore) ListProblemsByWeek(ctx context.Context, pathSlug string, n int
 	}
 	out := make([]Problem, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, Problem{
-			ID:              r.ID,
-			PathSlug:        r.PathSlug,
-			WeekN:           int(r.WeekN),
-			Title:           r.Title,
-			Difficulty:      r.Difficulty,
-			Pattern:         r.Pattern,
-			LeetcodeURL:     r.LeetcodeUrl,
-			NeetcodeURL:     r.NeetcodeUrl,
-			IsReinforcement: r.IsReinforcement,
-		})
+		// The week and path index select the same columns.
+		p, err := indexProblem(gen.ListProblemsByPathRow(r))
+		if err != nil {
+			return nil, fmt.Errorf("list problems by week: %w", err)
+		}
+		out = append(out, p)
 	}
 	return out, nil
 }
@@ -268,17 +277,11 @@ func (s *PgStore) ListProblemsByPath(ctx context.Context, pathSlug string) ([]Pr
 	}
 	out := make([]Problem, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, Problem{
-			ID:              r.ID,
-			PathSlug:        r.PathSlug,
-			WeekN:           int(r.WeekN),
-			Title:           r.Title,
-			Difficulty:      r.Difficulty,
-			Pattern:         r.Pattern,
-			LeetcodeURL:     r.LeetcodeUrl,
-			NeetcodeURL:     r.NeetcodeUrl,
-			IsReinforcement: r.IsReinforcement,
-		})
+		p, err := indexProblem(r)
+		if err != nil {
+			return nil, fmt.Errorf("list problems by path: %w", err)
+		}
+		out = append(out, p)
 	}
 	return out, nil
 }
@@ -288,19 +291,7 @@ func (s *PgStore) GetProblem(ctx context.Context, id string) (Problem, error) {
 	if err != nil {
 		return Problem{}, mapErr(err)
 	}
-	return Problem{
-		ID:              r.ID,
-		PathSlug:        r.PathSlug,
-		WeekN:           int(r.WeekN),
-		Title:           r.Title,
-		Difficulty:      r.Difficulty,
-		Pattern:         r.Pattern,
-		LeetcodeURL:     r.LeetcodeUrl,
-		NeetcodeURL:     r.NeetcodeUrl,
-		IsReinforcement: r.IsReinforcement,
-		ContractHash:    r.ContractHash,
-		GradingSummary:  json.RawMessage(r.GradingSummary),
-	}, nil
+	return detailProblem(r)
 }
 
 // GetProblemsByIDs resolves many problems in one query (the gateway's due-queue /
@@ -317,19 +308,64 @@ func (s *PgStore) GetProblemsByIDs(ctx context.Context, ids []string) ([]Problem
 	}
 	out := make([]Problem, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, Problem{
-			ID:              r.ID,
-			PathSlug:        r.PathSlug,
-			WeekN:           int(r.WeekN),
-			Title:           r.Title,
-			Difficulty:      r.Difficulty,
-			Pattern:         r.Pattern,
-			LeetcodeURL:     r.LeetcodeUrl,
-			NeetcodeURL:     r.NeetcodeUrl,
-			IsReinforcement: r.IsReinforcement,
-			ContractHash:    r.ContractHash,
-			GradingSummary:  json.RawMessage(r.GradingSummary),
-		})
+		// The bulk read selects the same columns as GetProblem.
+		p, err := detailProblem(gen.GetProblemRow(r))
+		if err != nil {
+			return nil, fmt.Errorf("get problems by ids: %w", err)
+		}
+		out = append(out, p)
+	}
+	return out, nil
+}
+
+// indexProblem maps an index row (the week and path lists).
+func indexProblem(r gen.ListProblemsByPathRow) (Problem, error) {
+	links, err := decodeLinks(r.Links)
+	if err != nil {
+		return Problem{}, fmt.Errorf("problem %s: links: %w", r.ID, err)
+	}
+	return Problem{
+		ID:         r.ID,
+		PathSlug:   r.PathSlug,
+		WeekN:      int(r.WeekN),
+		Title:      r.Title,
+		Difficulty: r.Difficulty,
+		Pattern:    r.Pattern,
+		Role:       r.Role,
+		Links:      links,
+	}, nil
+}
+
+// detailProblem maps a by-id row: the index columns plus the contract fields.
+func detailProblem(r gen.GetProblemRow) (Problem, error) {
+	links, err := decodeLinks(r.Links)
+	if err != nil {
+		return Problem{}, fmt.Errorf("problem %s: links: %w", r.ID, err)
+	}
+	return Problem{
+		ID:             r.ID,
+		PathSlug:       r.PathSlug,
+		WeekN:          int(r.WeekN),
+		Title:          r.Title,
+		Difficulty:     r.Difficulty,
+		Pattern:        r.Pattern,
+		Role:           r.Role,
+		Links:          links,
+		ContractHash:   r.ContractHash,
+		GradingSummary: json.RawMessage(r.GradingSummary),
+	}, nil
+}
+
+// decodeLinks decodes problem.links (a jsonb array of {kind, url}); never nil.
+func decodeLinks(b []byte) ([]Link, error) {
+	var out []Link
+	if len(b) > 0 {
+		if err := json.Unmarshal(b, &out); err != nil {
+			return nil, err
+		}
+	}
+	if out == nil {
+		out = []Link{}
 	}
 	return out, nil
 }
@@ -342,28 +378,38 @@ func (s *PgStore) ListSections(ctx context.Context, problemID string) ([]Section
 	out := make([]Section, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, Section{
-			Stage:  r.Stage,
-			Kind:   r.Kind,
-			Order:  int(r.Order),
-			BodyMD: r.BodyMd,
-			Code:   r.Code,
+			Stage:    r.Stage,
+			Kind:     r.Kind,
+			Order:    int(r.Order),
+			BodyMD:   r.BodyMd,
+			Code:     r.Code,
+			Language: r.Language,
 		})
 	}
 	return out, nil
 }
 
-func (s *PgStore) GetConcept(ctx context.Context, slug string) (Concept, error) {
-	r, err := s.q.GetConcept(ctx, slug)
+func (s *PgStore) GetConcept(ctx context.Context, pathSlug, slug string) (Concept, error) {
+	r, err := s.q.GetConcept(ctx, gen.GetConceptParams{PathSlug: pathSlug, Slug: slug})
 	if err != nil {
 		return Concept{}, mapErr(err)
 	}
+	var templates map[string]string
+	if len(r.Templates) > 0 {
+		if err := json.Unmarshal(r.Templates, &templates); err != nil {
+			return Concept{}, fmt.Errorf("concept %s/%s: templates: %w", pathSlug, slug, err)
+		}
+	}
+	if templates == nil {
+		templates = map[string]string{}
+	}
 	return Concept{
-		Slug:         r.Slug,
-		PathSlug:     r.PathSlug,
-		Title:        r.Title,
-		BodyMD:       r.BodyMd,
-		WhenToUseMD:  r.WhenToUseMd,
-		CodeTemplate: r.CodeTemplate,
+		Slug:        r.Slug,
+		PathSlug:    r.PathSlug,
+		Title:       r.Title,
+		BodyMD:      r.BodyMd,
+		WhenToUseMD: r.WhenToUseMd,
+		Templates:   templates,
 	}, nil
 }
 

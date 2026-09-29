@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/health"
 )
@@ -65,6 +66,10 @@ type Options struct {
 	CoachBaseURL string
 	// AudienceCoach is the "aud" for JWTs forwarded to coach.
 	AudienceCoach string
+	// Courses is the course registry every course-scoped route resolves {slug} against
+	// (m1-03). Nil means the manifests compiled into the binary (course.Embedded()); tests
+	// inject coursetest.Registry to exercise a second course and every status.
+	Courses *course.Registry
 	// AggCacheTTL is the TTL for the per-account Dashboard/Week aggregation cache
 	// (S12). Zero (the default in tests) disables caching so behaviour is unchanged;
 	// the deployment sets a short TTL (env AGG_CACHE_TTL, default 15s).
@@ -92,6 +97,7 @@ type Gateway struct {
 	audAssessment string
 	audCoach      string
 	cache         *aggCache
+	courses       *course.Registry
 	api           *http.ServeMux
 }
 
@@ -114,6 +120,10 @@ func New(opt Options) *Gateway {
 		audAssessment: opt.AudienceAssessment,
 		audCoach:      opt.AudienceCoach,
 		cache:         newAggCache(opt.AggCacheTTL),
+		courses:       opt.Courses,
+	}
+	if g.courses == nil {
+		g.courses = course.Embedded()
 	}
 	if opt.IdentityBaseURL != "" {
 		g.identity = newIdentityClient(opt.IdentityBaseURL)
@@ -224,7 +234,7 @@ func (g *Gateway) serveStatic(w http.ResponseWriter, r *http.Request, appPath st
 	}
 	data, err := fs.ReadFile(g.dist, name)
 	if err != nil {
-		// Not a real asset: a client-side route (e.g. /dsa/week/2) or unknown
+		// Not a real asset: a client-side route (e.g. /<course>/week/2) or unknown
 		// path — serve the shell and let the router decide.
 		g.serveIndex(w, r)
 		return

@@ -5,14 +5,75 @@
 import { useQuery } from "@tanstack/react-query";
 import { ApiRequestError, apiFetch } from "./api";
 
-/** A learning path (Catalog card + Roadmap header). */
+/** A course's status in the session-gated catalog. The gateway lists `active` and
+ *  `coming_soon` courses (and `preview` only for the owner/tester cohort, m1-04); a
+ *  `retired` course never appears. */
+export type CourseStatus = "active" | "coming_soon" | "preview";
+
+/** A nav screen: the closed set a course manifest's nav block may name (ADR-0026 §5).
+ *  Every course uses the same URL segments; only labels (and which screens exist) differ. */
+export type NavScreen = "today" | "roadmap" | "problems" | "progress" | "revision" | "mistakes" | "mock";
+
+/** One nav entry of a course view: a screen and its label. */
+export interface CourseViewNavItem {
+  screen: NavScreen;
+  label: string;
+}
+
+/** A titled nav section of a course view. */
+export interface CourseViewNavGroup {
+  cap?: string;
+  items: CourseViewNavItem[];
+}
+
+/** The course-scoped left nav: the item noun and the titled groups. */
+export interface CourseViewNav {
+  item_noun: string;
+  groups: CourseViewNavGroup[];
+}
+
+/** A timed stage (attempt / hint) of a course view. */
+export interface CourseViewTimedStage {
+  duration_s: number;
+  label: string;
+}
+
+/**
+ * CourseView is the learner-safe view of a course manifest (internal/course/view.go,
+ * `course.View`): the `course` block curriculum adds to GET /paths and GET /paths/{slug}.
+ * Presentation data only (nav, labels, timers, estimates, short code), nothing
+ * answer-bearing. Optional blocks are absent when the manifest has none (a coming_soon
+ * course has no nav; a course without a mock has no mock_rail).
+ */
+export interface CourseView {
+  slug: string;
+  title: string;
+  status: string;
+  /** The mono badge in the course selector (DSA, …). */
+  short_code: string;
+  nav?: CourseViewNav;
+  stages?: {
+    attempt: CourseViewTimedStage;
+    hint: CourseViewTimedStage;
+    solution: { label: string };
+    reimplement: string;
+  };
+  est_minutes?: Record<string, number>;
+  mock_rail?: { label: string; start_min: number; end_min: number }[];
+  /** The course's primary language code ("go" → the "Go-first" note); absent if none. */
+  primary_language?: string;
+}
+
+/** A learning path (Catalog card + Roadmap header). `course` is the learner-safe course
+ *  view (m1-03); only a pre-v1.7 curriculum omits it, during a rolling update. */
 export interface Path {
   slug: string;
   title: string;
-  status: "active" | "coming_soon";
+  status: CourseStatus;
   summary: string;
   problem_total: number;
   week_total: number;
+  course?: CourseView;
 }
 
 /** A phase groups a contiguous week range within a path. */
@@ -236,7 +297,7 @@ export interface Concept {
   code_template: string;
 }
 
-/** GET /concepts/{slug} payload (Concept). */
+/** GET /paths/{course}/concepts/{slug} payload (Concept). */
 export interface ConceptDetail {
   concept: Concept;
 }
@@ -250,12 +311,14 @@ export function useWeek(slug: string, n: number) {
   });
 }
 
-/** useConcept fetches a concept's reading + code template (Concept). */
-export function useConcept(slug: string) {
+/** useConcept fetches a course's concept reading + code template (Concept). Concepts are
+ *  keyed by (course, slug): two courses may each have a "two-pointers" concept. */
+export function useConcept(course: string, slug: string) {
   return useQuery<ConceptDetail, ApiRequestError>({
-    queryKey: ["concept", slug],
-    queryFn: () => apiFetch<ConceptDetail>(`/concepts/${encodeURIComponent(slug)}`),
-    enabled: slug !== "",
+    queryKey: ["concept", course, slug],
+    queryFn: () =>
+      apiFetch<ConceptDetail>(`/paths/${encodeURIComponent(course)}/concepts/${encodeURIComponent(slug)}`),
+    enabled: course !== "" && slug !== "",
   });
 }
 
@@ -312,11 +375,14 @@ export function logOutcome(id: string, outcome: Outcome, practice = false): Prom
   });
 }
 
-/** usePaths fetches every path + status for the Catalog. */
-export function usePaths() {
+/** usePaths fetches the session-gated catalog: every visible course with its status and
+ *  learner-safe view. The Catalog lists it; useCourse() resolves the URL's course against
+ *  it. `enabled` lets a caller skip the fetch (a route that can't be a course). */
+export function usePaths(enabled = true) {
   return useQuery<PathsResponse, ApiRequestError>({
     queryKey: ["paths"],
     queryFn: () => apiFetch<PathsResponse>("/paths"),
+    enabled,
   });
 }
 

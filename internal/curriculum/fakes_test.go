@@ -18,13 +18,18 @@ type fakeStore struct {
 	problems map[wkKey][]store.Problem
 	problem  map[string]store.Problem
 	sections map[string][]store.Section
-	concept  map[string]store.Concept
+	concept  map[conceptKey]store.Concept // keyed on (course, slug), like the database
 	pingErr  error
 }
 
 type wkKey struct {
 	slug string
 	n    int
+}
+
+type conceptKey struct {
+	path string
+	slug string
 }
 
 func newFakeStore() *fakeStore {
@@ -36,7 +41,7 @@ func newFakeStore() *fakeStore {
 		problems: map[wkKey][]store.Problem{},
 		problem:  map[string]store.Problem{},
 		sections: map[string][]store.Section{},
-		concept:  map[string]store.Concept{},
+		concept:  map[conceptKey]store.Concept{},
 	}
 }
 
@@ -105,12 +110,15 @@ func (f *fakeStore) ListSections(_ context.Context, id string) ([]store.Section,
 	return f.sections[id], nil
 }
 
-func (f *fakeStore) GetConcept(_ context.Context, slug string) (store.Concept, error) {
-	if c, ok := f.concept[slug]; ok {
+func (f *fakeStore) GetConcept(_ context.Context, pathSlug, slug string) (store.Concept, error) {
+	if c, ok := f.concept[conceptKey{pathSlug, slug}]; ok {
 		return c, nil
 	}
 	return store.Concept{}, store.ErrNotFound
 }
+
+// addConcept stores c under its own course.
+func (f *fakeStore) addConcept(c store.Concept) { f.concept[conceptKey{c.PathSlug, c.Slug}] = c }
 
 func (f *fakeStore) CountProblems(_ context.Context, slug string) (int, error) {
 	return len(f.problem), nil

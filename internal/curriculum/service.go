@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/curriculum/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/health"
 )
@@ -12,16 +13,22 @@ import (
 // the k8s probes. It owns no auth (content is read-only, no user state — the gateway
 // enforces the session boundary) and emits no events.
 type Service struct {
-	store  store.Store
-	log    *slog.Logger
-	health *health.Handler
+	store store.Store
+	// courses are the course manifests (m1-03): the learner-safe `course` block on
+	// /paths*, which paths are retired, and each course's primary language (the v1
+	// concept template). Production passes course.Embedded(); tests inject
+	// coursetest.Registry.
+	courses *course.Registry
+	log     *slog.Logger
+	health  *health.Handler
 }
 
-// NewService wires the curriculum application.
-func NewService(st store.Store, log *slog.Logger) *Service {
+// NewService wires the curriculum application over the course registry courses.
+func NewService(st store.Store, courses *course.Registry, log *slog.Logger) *Service {
 	return &Service{
-		store: st,
-		log:   log,
+		store:   st,
+		courses: courses,
+		log:     log,
 		health: health.New(health.Named{
 			Name:  "postgres",
 			Check: st.Ping,
@@ -42,9 +49,12 @@ func (s *Service) Handler() http.Handler {
 	mux.HandleFunc("GET /paths/{slug}", s.handleGetPath)
 	mux.HandleFunc("GET /paths/{slug}/problems", s.handleListPathProblems)
 	mux.HandleFunc("GET /paths/{slug}/weeks/{n}", s.handleGetWeek)
+	mux.HandleFunc("GET /paths/{slug}/concepts/{c}", s.handleGetConcept)
 	mux.HandleFunc("GET /problems", s.handleGetProblemsByIDs)
 	mux.HandleFunc("GET /problems/{id}", s.handleGetProblem)
-	mux.HandleFunc("GET /concepts/{slug}", s.handleGetConcept)
+	// v1's unscoped concept route is the DSA alias (m1-03; a v1.6.0 gateway still calls
+	// it): the course-scoped handler with course.DefaultSlug.
+	mux.HandleFunc("GET /concepts/{slug}", s.handleGetConceptAlias)
 
 	return mux
 }

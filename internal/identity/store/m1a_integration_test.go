@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course/coursetest"
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store/gen"
 )
@@ -66,7 +67,8 @@ func TestM1aIdentityColumns(t *testing.T) {
 	}
 	check("email signup", read(email.ID))
 
-	// Enrollment: the manifest default on insert (dsa public, behavioral private) …
+	// Enrollment: the default the caller passes (the manifest's: dsa public, behavioral
+	// private) is written on insert …
 	visible := func(slug string) bool {
 		t.Helper()
 		var v bool
@@ -78,7 +80,7 @@ func TestM1aIdentityColumns(t *testing.T) {
 		return v
 	}
 	for slug, want := range map[string]bool{"dsa": true, "behavioral": false} {
-		if _, err := st.StartEnrollment(ctx, email.ID, slug); err != nil {
+		if _, err := st.StartEnrollment(ctx, email.ID, slug, coursetest.All(t)[slug].PublicStats.Visible()); err != nil {
 			t.Fatalf("enroll %s: %v", slug, err)
 		}
 		if got := visible(slug); got != want {
@@ -89,7 +91,7 @@ func TestM1aIdentityColumns(t *testing.T) {
 	if _, err := pool.Exec(ctx, `UPDATE identity.path_enrollment SET public_visible = false WHERE account_id = $1 AND path_slug = 'dsa'`, email.ID); err != nil {
 		t.Fatalf("toggle: %v", err)
 	}
-	if _, err := st.StartEnrollment(ctx, email.ID, "dsa"); err != nil {
+	if _, err := st.StartEnrollment(ctx, email.ID, "dsa", true); err != nil {
 		t.Fatalf("re-enroll: %v", err)
 	}
 	if visible("dsa") {

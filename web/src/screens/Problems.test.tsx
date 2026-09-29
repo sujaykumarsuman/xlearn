@@ -30,7 +30,7 @@ describe("Problems arena", () => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa", true, enrolled("dsa")) };
       if (url.endsWith("/api/paths/dsa/problems")) return { status: 200, body: PROBLEMS };
       // Frontier = week 1, so week 2 is "ahead · free practice".
-      if (url.endsWith("/api/progress"))
+      if (url.endsWith("/api/paths/dsa/progress"))
         return { status: 200, body: { summary: { solved: 0, total: 151, streak: { current: 0, longest: 0 } }, phases: [], patterns: [], enrolled: true, currentWeek: 1, revisionsDue: 0 } };
       return { status: 404 };
     });

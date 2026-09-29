@@ -11,6 +11,17 @@ export const API_BASE = `${import.meta.env.BASE_URL.replace(/\/+$/, "")}/api/v1`
 // (the screen's error state) instead of an indefinite loading skeleton.
 const REQUEST_TIMEOUT_MS = 15_000;
 
+/**
+ * coursePathApi is the BFF path of a course-scoped resource: coursePathApi("x",
+ * "/dashboard") is "/paths/x/dashboard" (m1-03: course-scoped aggregates live under the
+ * existing /paths/{slug}/… prefix, t0 §7). Items stay addressed by global id
+ * (/problems/{id}, /mistakes/{id}, …). An unknown or closed course answers
+ * 404 course_not_found.
+ */
+export function coursePathApi(slug: string, rest: string): string {
+  return `/paths/${encodeURIComponent(slug)}${rest}`;
+}
+
 /** The error object inside the BFF's error envelope. */
 export interface ApiError {
   code: string;

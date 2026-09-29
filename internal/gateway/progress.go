@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"sort"
 	"sync"
 	"time"
@@ -98,9 +99,17 @@ type patternMastery struct {
 // handleProgress is the Progress screen aggregation. It fans out to assessment (the
 // projections), curriculum (the taxonomy for the roll-ups) and review (the weak-area),
 // then composes the coverage-by-phase table and the pattern-mastery bars.
+//
+// Course-scoped: GET /paths/{slug}/progress (and the DSA alias /progress). Every upstream
+// call carries the course; assessment's projections stay account-grain until M2b (it
+// applies ?path= to the mock figures only).
 func (g *Gateway) handleProgress(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := g.authAccount(w, r)
 	if !ok {
+		return
+	}
+	slug := r.PathValue("slug")
+	if _, ok := g.requireCourse(w, r, slug); !ok {
 		return
 	}
 	if g.assessment == nil {
@@ -138,10 +147,10 @@ func (g *Gateway) handleProgress(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	wg.Add(4)
-	go aget("/progress/summary", &summaryRaw, &summaryOK)
-	go aget("/progress/heatmap", &heatmapRaw, nil)
-	go aget("/progress/mastery", &masteryRaw, nil)
-	go aget("/mocks/trend", &trendRaw, nil)
+	go aget(withPath("/progress/summary", slug), &summaryRaw, &summaryOK)
+	go aget(withPath("/progress/heatmap", slug), &heatmapRaw, nil)
+	go aget(withPath("/progress/mastery", slug), &masteryRaw, nil)
+	go aget(withPath("/mocks/trend", slug), &trendRaw, nil)
 
 	// curriculum: the roadmap (phases + true problem total) + the whole problem index.
 	if g.curriculum != nil {
@@ -150,7 +159,7 @@ func (g *Gateway) handleProgress(w http.ResponseWriter, r *http.Request) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(r.Context(), aggCallTimeout)
 			defer cancel()
-			if body, status, err := g.curriculum.get(ctx, "/paths/dsa"); err == nil && status == http.StatusOK {
+			if body, status, err := g.curriculum.get(ctx, "/paths/"+url.PathEscape(slug)); err == nil && status == http.StatusOK {
 				roadmapRaw = body
 			}
 		}()
@@ -158,7 +167,7 @@ func (g *Gateway) handleProgress(w http.ResponseWriter, r *http.Request) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(r.Context(), aggCallTimeout)
 			defer cancel()
-			if body, status, err := g.curriculum.get(ctx, "/paths/dsa/problems"); err == nil && status == http.StatusOK {
+			if body, status, err := g.curriculum.get(ctx, "/paths/"+url.PathEscape(slug)+"/problems"); err == nil && status == http.StatusOK {
 				problemsRaw = body
 			}
 		}()
@@ -172,7 +181,7 @@ func (g *Gateway) handleProgress(w http.ResponseWriter, r *http.Request) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(r.Context(), aggCallTimeout)
 			defer cancel()
-			if body, status, err := g.review.get(ctx, rToken, "/weak-area/current"); err == nil && status == http.StatusOK {
+			if body, status, err := g.review.get(ctx, rToken, withPath("/weak-area/current", slug)); err == nil && status == http.StatusOK {
 				weakAreaRaw = g.enrichMistakeEnvelope(ctx, body, "entries")
 			}
 		}()
@@ -180,7 +189,7 @@ func (g *Gateway) handleProgress(w http.ResponseWriter, r *http.Request) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(r.Context(), aggCallTimeout)
 			defer cancel()
-			if body, status, err := g.review.get(ctx, rToken, "/revisions/due"); err == nil && status == http.StatusOK {
+			if body, status, err := g.review.get(ctx, rToken, withPath("/revisions/due", slug)); err == nil && status == http.StatusOK {
 				dueRaw = body
 			}
 		}()
@@ -211,7 +220,7 @@ func (g *Gateway) handleProgress(w http.ResponseWriter, r *http.Request) {
 	for _, m := range mastery.Problems {
 		solvedSet[m.ProblemID] = true
 	}
-	enrolled := g.isEnrolled(r.Context(), accountID, "dsa")
+	enrolled := g.isEnrolled(r.Context(), accountID, slug)
 	cur := 0
 	if enrolled {
 		cur = currentWeek(problems.Problems, solvedSet)

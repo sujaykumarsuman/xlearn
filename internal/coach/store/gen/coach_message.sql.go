@@ -12,15 +12,17 @@ import (
 )
 
 const insertMessage = `-- name: InsertMessage :one
-INSERT INTO coach.coach_message (thread_id, role, content)
-VALUES ($1, $2, $3)
+INSERT INTO coach.coach_message (thread_id, role, content, path_slug)
+SELECT t.id, $1, $2, t.path_slug
+FROM coach.coach_thread t
+WHERE t.id = $3
 RETURNING id, seq, role, content, created_at
 `
 
 type InsertMessageParams struct {
-	ThreadID pgtype.UUID
 	Role     string
 	Content  string
+	ThreadID pgtype.UUID
 }
 
 type InsertMessageRow struct {
@@ -31,9 +33,11 @@ type InsertMessageRow struct {
 	CreatedAt pgtype.Timestamptz
 }
 
-// Append one message to a thread. seq (identity) orders it; created_at is the wall time.
+// Append one message to a thread, labelled with the thread's course (path_slug, copied
+// from the thread so the two never disagree; NULL for an account-wide thread). seq
+// (identity) orders it; created_at is the wall time. No row when the thread is missing.
 func (q *Queries) InsertMessage(ctx context.Context, arg InsertMessageParams) (InsertMessageRow, error) {
-	row := q.db.QueryRow(ctx, insertMessage, arg.ThreadID, arg.Role, arg.Content)
+	row := q.db.QueryRow(ctx, insertMessage, arg.Role, arg.Content, arg.ThreadID)
 	var i InsertMessageRow
 	err := row.Scan(
 		&i.ID,

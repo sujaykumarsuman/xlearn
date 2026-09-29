@@ -62,7 +62,7 @@ func (c *coachClient) deleteKey(ctx context.Context, token, provider string) ([]
 	return c.jsonReq(ctx, http.MethodDelete, "/keys?provider="+url.QueryEscape(provider), token, nil)
 }
 
-// getThread fetches the message history for a page context.
+// getThread fetches the message history for a page context (already normalized).
 func (c *coachClient) getThread(ctx context.Context, token, pageContext string) ([]byte, int, error) {
 	return c.jsonReq(ctx, http.MethodGet, "/threads?context="+url.QueryEscape(pageContext), token, nil)
 }
@@ -92,9 +92,15 @@ func (c *coachClient) jsonReq(ctx context.Context, method, path, token string, b
 }
 
 // chatStream POSTs the chat request to coach and returns the raw streaming response for
-// the caller to relay (it must close resp.Body). mode is the authoritative behaviour gate.
-func (c *coachClient) chatStream(ctx context.Context, token, mode string, body []byte) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/chat", bytes.NewReader(body))
+// the caller to relay (it must close resp.Body). mode is the authoritative behaviour gate;
+// pathSlug (optional) is a problem context's course, which coach writes on the thread
+// (it defaults an absent one to course.DefaultSlug).
+func (c *coachClient) chatStream(ctx context.Context, token, mode, pathSlug string, body []byte) (*http.Response, error) {
+	target := c.baseURL + "/chat"
+	if pathSlug != "" {
+		target = withPath(target, pathSlug)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +198,9 @@ func (g *Gateway) handleDeleteCoachKey(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleCoachThread returns the chat history for a page context (api.md
-// GET /coach/thread?context=).
+// GET /coach/thread?context=). The context is normalized first with the shared dual
+// parser (course.NormalizeCoachContext): a v1.6.0 tab's `week:3` reads the same thread as
+// v1.7.0's `<DefaultSlug>:week:3` (m1-03); coach normalizes again, which is a no-op.
 func (g *Gateway) handleCoachThread(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := g.authAccount(w, r)
 	if !ok {
@@ -203,6 +211,7 @@ func (g *Gateway) handleCoachThread(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad_request", "context is required")
 		return
 	}
+	pageContext = g.courses.NormalizeCoachContext(pageContext).Key
 	if g.coach == nil {
 		// No coach yet → an empty thread so the panel renders its empty state.
 		passthrough(w, http.StatusOK, []byte(`{"messages":[]}`))
@@ -244,7 +253,7 @@ func (g *Gateway) handleCoachChat(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	mode, body := g.coachEnrich(r, accountID, reqBody)
+	mode, pathSlug, body := g.coachEnrich(r, accountID, reqBody)
 
 	// Clear the server WriteTimeout (60s) before dialling coach: chatStream can block up
 	// to the provider limit before coach's first byte, and a transport error after 60s
@@ -252,7 +261,7 @@ func (g *Gateway) handleCoachChat(w http.ResponseWriter, r *http.Request) {
 	// the success path). Reaches the base writer via httpx.statusWriter's Unwrap.
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Time{})
 
-	resp, err := g.coach.chatStream(r.Context(), token, mode, body)
+	resp, err := g.coach.chatStream(r.Context(), token, mode, pathSlug, body)
 	if err != nil {
 		g.log.Error("bff /coach/chat: coach call failed", "err", err)
 		writeError(w, http.StatusBadGateway, "upstream", "coach unavailable")
@@ -270,25 +279,46 @@ func (g *Gateway) handleCoachChat(w http.ResponseWriter, r *http.Request) {
 // solved-check at a solved problem B while the coach discusses unsolved problem A.
 //
 // Only a problem context can be an attempt or a review; every other page is the general
-// tutor (body unchanged). If practice can't confirm the problem is solved (or is
-// unavailable) the mode is the SAFE default — attempt (spoiler-free). Returns the mode
-// header value and the (possibly rewritten) request body to forward to coach.
-func (g *Gateway) coachEnrich(r *http.Request, accountID string, body []byte) (string, []byte) {
+// tutor. If practice can't confirm the problem is solved (or is unavailable) the mode is
+// the SAFE default — attempt (spoiler-free).
+//
+// The context is first normalized with the shared dual parser (m1-03): a v1.6.0 tab's
+// course-scoped context (`week:3`, `dashboard`, …) is rewritten to its `<course>:<ctx>`
+// key before coach sees it; a normalized key is forwarded unchanged. For a problem
+// context the item's course (curriculum's path_slug) is returned so coach can record it.
+// Returns the mode header value, the problem's course ("" otherwise) and the (possibly
+// rewritten) request body to forward to coach.
+func (g *Gateway) coachEnrich(r *http.Request, accountID string, body []byte) (string, string, []byte) {
 	var meta struct {
 		Context string `json:"context"`
 	}
 	_ = json.Unmarshal(body, &meta)
-	id, ok := problemIDFromContext(meta.Context)
+	cc := g.courses.NormalizeCoachContext(meta.Context)
+	id, ok := problemIDFromContext(cc.Key)
 	if !ok {
-		return coachModeGeneral, body
+		if cc.Key == meta.Context {
+			return coachModeGeneral, "", body
+		}
+		var obj map[string]any
+		if err := json.Unmarshal(body, &obj); err != nil || obj == nil {
+			return coachModeGeneral, "", body
+		}
+		obj["context"] = cc.Key
+		rewritten, err := json.Marshal(obj)
+		if err != nil {
+			return coachModeGeneral, "", body
+		}
+		return coachModeGeneral, "", rewritten
 	}
 
 	// Authoritative problem descriptors from curriculum (best-effort). On failure we still
 	// bind problemId to the context id and clear the client's title/pattern, so the coach
 	// never names a spoofed problem.
-	var title, pattern string
+	var title, pattern, pathSlug string
 	if g.curriculum != nil {
-		title, pattern = coachProblemTitlePattern(g.curriculumProblemMeta(r.Context(), id))
+		meta := g.curriculumProblemMeta(r.Context(), id)
+		title, pattern = coachProblemTitlePattern(meta)
+		pathSlug = coachProblemPathSlug(meta)
 	}
 
 	// Authoritative mode from practice: review ONLY when THIS problem is solved.
@@ -313,9 +343,24 @@ func (g *Gateway) coachEnrich(r *http.Request, accountID string, body []byte) (s
 	obj["pattern"] = pattern
 	rewritten, err := json.Marshal(obj)
 	if err != nil {
-		return mode, body
+		return mode, pathSlug, body
 	}
-	return mode, rewritten
+	return mode, pathSlug, rewritten
+}
+
+// coachProblemPathSlug extracts the item's course from curriculum's raw `problem` object,
+// or "" when it's nil/malformed (coach then applies its own course.DefaultSlug default).
+func coachProblemPathSlug(raw json.RawMessage) string {
+	if len(raw) == 0 {
+		return ""
+	}
+	var p struct {
+		PathSlug string `json:"path_slug"`
+	}
+	if err := json.Unmarshal(raw, &p); err != nil {
+		return ""
+	}
+	return p.PathSlug
 }
 
 // problemIDFromContext extracts the problem id from a "problem:<id>" thread context.

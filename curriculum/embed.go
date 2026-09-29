@@ -20,3 +20,12 @@ import "embed"
 //
 //go:embed paths.json ids.lock.json all:courses _schema/*.json
 var FS embed.FS
+
+// Manifests is the settings-only slice of FS every service compiles in (ADR-0026 §1,
+// sprint m1-03): the catalog (paths.json) and each course's manifest, nothing else. The
+// gateway resolves course slugs against it, identity validates enrollment against it and
+// curriculum serves the learner-safe view from it (internal/course.Embedded). A service
+// that references only Manifests links none of the item content.
+//
+//go:embed paths.json courses/*/course.json
+var Manifests embed.FS

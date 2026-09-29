@@ -14,10 +14,12 @@ import (
 )
 
 // m1-02 (M1a expand): CreateMock writes the session and its ordinal-1 item in one tx
-// (item_id NULL for a mixed set), the course and the rubric; ScoreMock dual-writes
-// total / max_total / scored_by beside total_35; readers use COALESCE(total, total_35),
-// so a v1.5.2-written row (total_35 only) and a v1.7.0-written row (total only) read the
-// same. The status/total CHECK is the relaxed COALESCE one.
+// (item_id NULL for a mixed set), the course and the rubric. m1-03 (M1b) then moves the
+// writer and the readers off the v1 /35 column: ScoreMock writes total / max_total /
+// scored_by only, and readers read total only — a v1.6.0-written row (dual-written) and
+// a v1.7.0-written row (total only) read the same (the rollback floor after v1.7.0 is
+// 1.6.0, and m1-02 backfilled total on every older row). The status/total CHECK is the
+// relaxed COALESCE one.
 func TestM1aMockDualWrite(t *testing.T) {
 	dsn := os.Getenv("XLEARN_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -37,15 +39,15 @@ func TestM1aMockDualWrite(t *testing.T) {
 	acct := newTestUUID()
 	now := time.Now().UTC()
 
-	pinned, err := st.CreateMock(ctx, acct, "set-1", "16", "med", now, now.Add(store.MockDuration))
+	pinned, err := st.CreateMock(ctx, acct, "dsa", "set-1", "16", "med", now, now.Add(store.MockDuration))
 	if err != nil {
 		t.Fatalf("create pinned: %v", err)
 	}
-	mixed, err := st.CreateMock(ctx, acct, "set-2", "", "hard", now.Add(time.Second), now.Add(store.MockDuration))
+	mixed, err := st.CreateMock(ctx, acct, "dsa", "set-2", "", "hard", now.Add(time.Second), now.Add(store.MockDuration))
 	if err != nil {
 		t.Fatalf("create mixed: %v", err)
 	}
-	if pinned.PathSlug != "dsa" || pinned.MaxTotal != 35 || pinned.Total35 != nil {
+	if pinned.PathSlug != "dsa" || pinned.MaxTotal != 35 || pinned.Total != nil || pinned.RubricID != store.RubricID {
 		t.Fatalf("pinned session = %+v", pinned)
 	}
 	for _, c := range []struct {
@@ -81,27 +83,28 @@ func TestM1aMockDualWrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("score: %v", err)
 	}
-	if scored.Total35 == nil || *scored.Total35 != 28 || scored.MaxTotal != 35 {
+	if scored.Total == nil || *scored.Total != 28 || scored.MaxTotal != 35 {
 		t.Fatalf("scored = %+v", scored)
 	}
-	var total, total35, maxTotal int
+	var total, maxTotal int
+	var total35 *int
 	var scoredBy string
 	if err := pool.QueryRow(ctx, `SELECT total, total_35, max_total, scored_by FROM assessment.mock_session WHERE id = $1`,
 		pinned.ID).Scan(&total, &total35, &maxTotal, &scoredBy); err != nil {
 		t.Fatalf("read scored: %v", err)
 	}
-	if total != 28 || total35 != 28 || maxTotal != 35 || scoredBy != store.ScoredBySelf {
-		t.Fatalf("dual-write: total=%d total_35=%d max=%d by=%s", total, total35, maxTotal, scoredBy)
+	if total != 28 || total35 != nil || maxTotal != 35 || scoredBy != store.ScoredBySelf {
+		t.Fatalf("m1-03 write: total=%d total_35=%v max=%d by=%s; want 28, NULL, 35, self", total, total35, maxTotal, scoredBy)
 	}
 
-	// A v1.5.2-written scored row (its own INSERT + MarkMockScored: total_35 only) and a
-	// v1.7.0-shaped one (total only) both satisfy the relaxed CHECK and read alike.
-	var v152, v170 string
+	// A v1.6.0-written scored row (dual-written) and a v1.7.0-shaped one (total only)
+	// both satisfy the relaxed CHECK and read alike.
+	var v160, v170 string
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO assessment.mock_session (account_id, set_id, problem_id, difficulty, started_at, deadline_at, status, total_35)
-		VALUES ($1, 's-152', '3', 'easy', $2, $3, 'scored', 21) RETURNING id::text`,
-		acct, now.Add(2*time.Second), now.Add(store.MockDuration)).Scan(&v152); err != nil {
-		t.Fatalf("v1.5.2-shaped insert: %v", err)
+		INSERT INTO assessment.mock_session (account_id, set_id, problem_id, difficulty, started_at, deadline_at, status, total_35, total, max_total, scored_by)
+		VALUES ($1, 's-160', '3', 'easy', $2, $3, 'scored', 21, 21, 35, 'self') RETURNING id::text`,
+		acct, now.Add(2*time.Second), now.Add(store.MockDuration)).Scan(&v160); err != nil {
+		t.Fatalf("v1.6.0-shaped insert: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `
 		INSERT INTO assessment.mock_session (account_id, set_id, problem_id, started_at, deadline_at, status, total, max_total, scored_by)
@@ -109,17 +112,17 @@ func TestM1aMockDualWrite(t *testing.T) {
 		acct, now.Add(3*time.Second), now.Add(store.MockDuration)).Scan(&v170); err != nil {
 		t.Fatalf("v1.7.0-shaped insert (no total_35, no difficulty): %v", err)
 	}
-	for id, want := range map[string]int{v152: 21, v170: 30} {
+	for id, want := range map[string]int{v160: 21, v170: 30} {
 		m, _, err := st.GetMock(ctx, acct, id)
-		if err != nil || m.Total35 == nil || *m.Total35 != want || m.MaxTotal != 35 {
+		if err != nil || m.Total == nil || *m.Total != want || m.MaxTotal != 35 {
 			t.Fatalf("GetMock %s = %+v (%v), want total %d /35", id, m, err, want)
 		}
 	}
-	trend, err := st.Trend(ctx, acct)
-	if err != nil || len(trend) != 3 || trend[0].Total35 != 28 || trend[1].Total35 != 21 || trend[2].Total35 != 30 {
+	trend, err := st.Trend(ctx, acct, "dsa")
+	if err != nil || len(trend) != 3 || trend[0].Total != 28 || trend[1].Total != 21 || trend[2].Total != 30 || trend[0].MaxTotal != 35 {
 		t.Fatalf("trend = %+v (%v)", trend, err)
 	}
-	stats, err := st.MockStats(ctx, acct)
+	stats, err := st.MockStats(ctx, acct, "dsa")
 	if err != nil || stats.Count != 3 || stats.Best != 30 {
 		t.Fatalf("mock stats = %+v (%v)", stats, err)
 	}

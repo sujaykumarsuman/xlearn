@@ -1,8 +1,9 @@
 -- name: ListSectionsByProblem :many
 -- All content sections for a problem, ordered by stage (attempt -> hint -> solution)
 -- then position. A withdrawn item (a takedown) serves no sections: its prose is
--- blanked while its title stays resolvable.
-SELECT s.stage, s.kind, s."order", s.body_md, s.code
+-- blanked while its title stays resolvable. language is the code section's language
+-- ('' for prose; m1-03 serves it).
+SELECT s.stage, s.kind, s."order", s.body_md, s.code, s.language
 FROM curriculum.problem_section s
 JOIN curriculum.problem p ON p.id = s.problem_id
 WHERE s.problem_id = $1 AND p.status <> 'withdrawn'

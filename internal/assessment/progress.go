@@ -106,11 +106,19 @@ func masteryWeight(bestRank int) float64 {
 
 // --- handlers ---
 
-// handleProgressSummary: GET /progress/summary — the four tiles (solved, streak, Day-7
-// retention, mock average) + the first-solve outcome mix, all from the projections.
+// handleProgressSummary: GET /progress/summary?path=<slug> — the four tiles (solved,
+// streak, Day-7 retention, mock average) + the first-solve outcome mix. Only the mock
+// tile is per course (m1-03: mock_session carries path_slug). solved, streak, retention
+// and the outcome mix stay account-grain: the projections they read have no path_slug
+// column until M2b redefines and replays them — for the one active course, the DSA
+// course, account-grain is course-grain.
 func (s *Service) handleProgressSummary(w http.ResponseWriter, r *http.Request) {
 	accountID := claimsFrom(r.Context()).Subject
 	ctx := r.Context()
+	pathSlug, _, ok := s.resolveCourse(w, r)
+	if !ok {
+		return
+	}
 
 	solved, err := s.store.SolvedCount(ctx, accountID)
 	if err != nil {
@@ -127,12 +135,12 @@ func (s *Service) handleProgressSummary(w http.ResponseWriter, r *http.Request) 
 		s.mapErr(w, "outcome mix", err)
 		return
 	}
-	mock, err := s.store.MockStats(ctx, accountID)
+	mock, err := s.store.MockStats(ctx, accountID, pathSlug)
 	if err != nil {
 		s.mapErr(w, "mock stats", err)
 		return
 	}
-	trend, err := s.store.Trend(ctx, accountID)
+	trend, err := s.store.Trend(ctx, accountID, pathSlug)
 	if err != nil {
 		s.mapErr(w, "trend", err)
 		return
@@ -159,10 +167,15 @@ func (s *Service) handleProgressSummary(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, out)
 }
 
-// handleProgressHeatmap: GET /progress/heatmap — the per-day revision activity for the
-// display window (the teal-ramp grid).
+// handleProgressHeatmap: GET /progress/heatmap?path=<slug> — the per-day revision
+// activity for the display window (the teal-ramp grid). `path` is accepted (and an
+// unknown course refused) but the heatmap stays account-grain: proj_heatmap has no
+// path_slug column until M2b.
 func (s *Service) handleProgressHeatmap(w http.ResponseWriter, r *http.Request) {
 	accountID := claimsFrom(r.Context()).Subject
+	if _, _, ok := s.resolveCourse(w, r); !ok {
+		return
+	}
 	days, err := s.store.Heatmap(r.Context(), accountID, time.Now().AddDate(0, 0, -heatmapWindowDays))
 	if err != nil {
 		s.mapErr(w, "heatmap", err)
@@ -177,11 +190,16 @@ func (s *Service) handleProgressHeatmap(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, out)
 }
 
-// handleProgressMastery: GET /progress/mastery — every solved problem with its solve
-// quality; the gateway groups these by curriculum pattern (mastery bars) and week ->
-// phase (completion table).
+// handleProgressMastery: GET /progress/mastery?path=<slug> — every solved problem with
+// its solve quality; the gateway groups these by curriculum pattern (mastery bars) and
+// week -> phase (completion table). `path` is accepted (and an unknown course refused)
+// but mastery stays account-grain: proj_coverage / proj_mastery have no path_slug
+// column until M2b.
 func (s *Service) handleProgressMastery(w http.ResponseWriter, r *http.Request) {
 	accountID := claimsFrom(r.Context()).Subject
+	if _, _, ok := s.resolveCourse(w, r); !ok {
+		return
+	}
 	rows, err := s.store.Mastery(r.Context(), accountID)
 	if err != nil {
 		s.mapErr(w, "mastery", err)
@@ -233,16 +251,16 @@ func outcomeMix(mix map[string]int) outcomeMixJSON {
 	return o
 }
 
-// lastAndDelta returns the most recent scored /35 and its change from the previous mock
-// (0 when fewer than one/two scored mocks exist). trend is oldest-first.
+// lastAndDelta returns the most recent scored total and its change from the previous
+// mock (0 when fewer than one/two scored mocks exist). trend is oldest-first, one course.
 func lastAndDelta(trend []store.TrendPoint) (last, delta int) {
 	n := len(trend)
 	if n == 0 {
 		return 0, 0
 	}
-	last = trend[n-1].Total35
+	last = trend[n-1].Total
 	if n >= 2 {
-		delta = last - trend[n-2].Total35
+		delta = last - trend[n-2].Total
 	}
 	return last, delta
 }

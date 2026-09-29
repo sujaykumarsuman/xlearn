@@ -1,6 +1,7 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { InlineMD, Markdown } from "../components/Markdown";
+import { coursePath, useCourseSlug } from "../lib/course";
 import type { Concept as ConceptData, Problem } from "../lib/curriculum";
 import { patternMatchesConcept, useConcept, useWeek } from "../lib/curriculum";
 
@@ -12,18 +13,19 @@ const DIFF_CLASS: Record<Problem["difficulty"], string> = {
 const DIFF_SHORT: Record<Problem["difficulty"], string> = { easy: "Easy", med: "Med", hard: "Hard" };
 
 /**
- * Concept (`/xlearn/dsa/concept/:slug`): pattern reading from GET /concepts/:slug —
- * the "when to reach for it" callout (when_to_use_md), the body (body_md via a
- * sanitized Markdown renderer into the `.cn` article styles) and the reusable Go
- * code template. `?week=N` (set when opened from a Week) drives the eyebrow and the
- * "practice this pattern" links; v1 is Go-first, so the C++ tab is stubbed.
+ * Concept (`/xlearn/:course/concept/:slug`): pattern reading from GET
+ * /paths/{course}/concepts/:slug — the "when to reach for it" callout (when_to_use_md),
+ * the body (body_md via a sanitized Markdown renderer into the `.cn` article styles) and
+ * the reusable Go code template. `?week=N` (set when opened from a Week) drives the
+ * eyebrow and the "practice this pattern" links; v1 is Go-first, so the C++ tab is
+ * stubbed.
  */
 export default function Concept() {
   const { slug = "" } = useParams();
   const [params] = useSearchParams();
   const weekParam = params.get("week");
   const weekN = weekParam && /^\d+$/.test(weekParam) ? Number(weekParam) : undefined;
-  const concept = useConcept(slug);
+  const concept = useConcept(useCourseSlug(), slug);
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,760px) 300px", gap: 34, alignItems: "start", maxWidth: 1120 }}>
@@ -104,14 +106,15 @@ function Article({ concept, weekN }: { concept: ConceptData; weekN?: number }) {
 // was opened from (matched on the problem's pattern) — never fabricated links. The
 // "Practice now" button routes into the guided Problem workspace (S05 stub).
 function RightRail({ slug, title, weekN }: { slug: string; title: string; weekN?: number }) {
-  const week = useWeek("dsa", weekN ?? 0);
+  const course = useCourseSlug();
+  const week = useWeek(course, weekN ?? 0);
   const related =
     weekN && week.data ? week.data.problems.filter((p) => patternMatchesConcept(p.pattern, slug) || patternMatchesConcept(p.pattern, title)) : [];
   const practiceTo = related[0]
-    ? `/dsa/problem/${related[0].id}`
+    ? coursePath(course, "problem", related[0].id)
     : weekN
-      ? `/dsa/week/${weekN}`
-      : "/dsa";
+      ? coursePath(course, "week", weekN)
+      : coursePath(course);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, position: "sticky", top: 0 }}>
@@ -125,7 +128,7 @@ function RightRail({ slug, title, weekN }: { slug: string; title: string; weekN?
             related.map((p) => (
               <Link
                 key={p.id}
-                to={`/dsa/problem/${p.id}`}
+                to={coursePath(course, "problem", p.id)}
                 style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 10px", borderRadius: 7, textDecoration: "none", color: "inherit" }}
               >
                 <span className="ds-mono" style={{ fontSize: 11, color: "var(--ds-muted)" }}>

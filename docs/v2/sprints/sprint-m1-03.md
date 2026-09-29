@@ -10,17 +10,17 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done — merged ([PR #97](https://github.com/sujaykumarsuman/xlearn/pull/97), 2026-09-29); ships in `v1.7.0` (m1-07 tags it)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Gateway course resolution + course-scoped routes + DSA aliases | X | ⬜ |
-| 2 | curriculum: concept route, learner-safe course view, readers on new columns | X | ⬜ |
-| 3 | Producers emit the v2 envelope; readers/writers leave every M1c-drop column | X | ⬜ |
-| 4 | SPA `/:course/*`, `useCourse()`, manifest nav, switcher, `coming_soon`, NotFound (AB02) | X | ⬜ |
-| 5 | Coach `page_context` prefix + `path_slug` | X | ⬜ |
-| 6 | Enrollment slug validation (active only) | X | ⬜ |
-| 7 | Tests + CI gates (route/alias parity, nav, literal grep, dropped-column queries) | X | ⬜ |
+| 1 | Gateway course resolution + course-scoped routes + DSA aliases | X | ✅ |
+| 2 | curriculum: concept route, learner-safe course view, readers on new columns | X | ✅ |
+| 3 | Producers emit the v2 envelope; readers/writers leave every M1c-drop column | X | ✅ |
+| 4 | SPA `/:course/*`, `useCourse()`, manifest nav, switcher, `coming_soon`, NotFound (AB02) | X | ✅ |
+| 5 | Coach `page_context` prefix + `path_slug` | X | ✅ |
+| 6 | Enrollment slug validation (active only) | X | ✅ |
+| 7 | Tests + CI gates (route/alias parity, nav, literal grep, dropped-column queries) | X | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + any milestone).

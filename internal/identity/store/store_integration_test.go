@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 )
 
 // Integration test against a real Postgres, gated on XLEARN_TEST_DATABASE_URL so
@@ -188,6 +189,14 @@ func TestStoreIntegration(t *testing.T) {
 	}
 	if mine.Subject != store.SubjectAccountCreated {
 		t.Fatalf("unexpected subject: %s", mine.Subject)
+	}
+	// m1-03: a v2 envelope, account-scoped (no path_slug; jsonb keeps the keys it got).
+	env, err := events.DecodeEnvelope(mine.Payload)
+	if err != nil {
+		t.Fatalf("decode account_created: %v", err)
+	}
+	if env.Version != events.EnvelopeV2 || env.PathSlug != "" || env.AccountID != acct.ID || strings.Contains(string(mine.Payload), `"path_slug"`) {
+		t.Fatalf("account_created envelope %+v (%s), want v2 without path_slug", env, mine.Payload)
 	}
 	if err := st.MarkOutboxSent(ctx, mine.EventID); err != nil {
 		t.Fatalf("MarkOutboxSent: %v", err)

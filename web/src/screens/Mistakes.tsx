@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Icon } from "../components/Icon";
+import { useCourseSlug } from "../lib/course";
 import {
   MISTAKE_CATEGORIES,
   categoryBadgeClass,
@@ -13,16 +14,18 @@ import type { Mistake, WeakArea } from "../lib/mistakes";
 type StatusFilter = "all" | "open" | "closed";
 
 /**
- * Mistakes (`/xlearn/dsa/mistakes`): the 8-category mistake journal (R-MJ1..R-MJ4),
- * backed by the BFF (GET /mistakes + GET /weak-area). Every below-Clean outcome and
+ * Mistakes (`/xlearn/:course/mistakes`): the course's 8-category mistake journal
+ * (R-MJ1..R-MJ4), backed by the BFF (GET /paths/{course}/mistakes + GET
+ * /paths/{course}/weak-area). Every below-Clean outcome and
  * failed re-solve opens an entry (pattern pre-filled); an entry closes after two clean
  * revisits and re-opens on a later fail — all computed server-side, the client only
  * renders. The weekly weak-area banner flags the top category; the category picker lets
  * the learner classify an auto-opened entry.
  */
 export default function Mistakes() {
-  const q = useMistakes();
-  const weak = useWeakArea();
+  const slug = useCourseSlug();
+  const q = useMistakes(slug);
+  const weak = useWeakArea(slug);
   const [cat, setCat] = useState<string>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
 
@@ -275,7 +278,7 @@ function MistakeDetail({ m }: { m: Mistake }) {
 // CategoryCell shows the category badge, or the 8-category picker for an uncategorised
 // (auto-opened) entry so the learner can classify it (R-MJ2, server-authoritative).
 function CategoryCell({ m }: { m: Mistake }) {
-  const patch = usePatchMistake();
+  const patch = usePatchMistake(useCourseSlug());
   if (m.category) {
     return <span className={categoryBadgeClass(m.category)}>{categoryLabel(m.category)}</span>;
   }

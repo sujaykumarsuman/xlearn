@@ -1,7 +1,11 @@
 -- name: InsertMessage :one
--- Append one message to a thread. seq (identity) orders it; created_at is the wall time.
-INSERT INTO coach.coach_message (thread_id, role, content)
-VALUES ($1, $2, $3)
+-- Append one message to a thread, labelled with the thread's course (path_slug, copied
+-- from the thread so the two never disagree; NULL for an account-wide thread). seq
+-- (identity) orders it; created_at is the wall time. No row when the thread is missing.
+INSERT INTO coach.coach_message (thread_id, role, content, path_slug)
+SELECT t.id, sqlc.arg(role), sqlc.arg(content), t.path_slug
+FROM coach.coach_thread t
+WHERE t.id = sqlc.arg(thread_id)
 RETURNING id, seq, role, content, created_at;
 
 -- name: ListMessages :many

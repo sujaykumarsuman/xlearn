@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../components/Icon";
+import { coursePath, courseShortCode, useCourse, useCourseSlug } from "../lib/course";
 import type { ConceptRef, Problem, ProblemState, Touch, WeekAggregate } from "../lib/curriculum";
 import { useWeek } from "../lib/curriculum";
 
@@ -14,37 +15,42 @@ const DIFF_CLASS: Record<Problem["difficulty"], string> = {
 const DIFF_LABEL: Record<Problem["difficulty"], string> = { easy: "Easy", med: "Medium", hard: "Hard" };
 
 /**
- * Week (`/xlearn/dsa/week/:n`): the week thesis, its concept links, and the filtered
- * problem list, from GET /paths/dsa/weeks/:n (BFF `agg`). The five-touch dots, per-
+ * Week (`/xlearn/:course/week/:n`): the week thesis, its concept links, and the filtered
+ * problem list, from GET /paths/{course}/weeks/:n (BFF `agg`). The five-touch dots, per-
  * problem status and the progress meter read from the aggregation's placeholder
  * `userState` — an honest empty/available state at 0/core, never faked, until
  * practice/review land (S05/S06).
  */
 export default function Week() {
   const { n: nParam } = useParams();
+  const course = useCourse();
+  const slug = course.slug;
   const n = Number(nParam);
   const validN = Number.isInteger(n) && n > 0;
   // Pass 0 for a malformed week so the hook stays disabled; the guard below renders
-  // the not-found state (a bad/stale URL like /dsa/week/0 must not fall through to a
-  // blank page with a "Week NaN of 16" header).
-  const week = useWeek("dsa", validN ? n : 0);
+  // the not-found state (a bad/stale URL like /<course>/week/0 must not fall through to
+  // a blank page with a "Week NaN of 16" header).
+  const week = useWeek(slug, validN ? n : 0);
+  // The course's week count is in the catalog entry before the week loads.
+  const weekTotal = course.path?.week_total ?? 0;
 
   if (!validN) {
+    const code = courseShortCode(course.path ?? { slug });
     return (
       <>
         <div className="xl-page-h">
           <div>
-            <div className="xl-eyebrow">DSA · Week</div>
+            <div className="xl-eyebrow">{code} · Week</div>
             <h1 style={{ marginTop: 6 }}>Week not found</h1>
           </div>
-          <Link className="ds-btn ds-btn--secondary" to="/dsa">
+          <Link className="ds-btn ds-btn--secondary" to={coursePath(slug)}>
             <Icon name="map" className="xl-ico--sm" /> Roadmap
           </Link>
         </div>
         <div className="xl-panel" style={{ padding: 20, display: "flex", alignItems: "center", gap: 12 }}>
           <Icon name="alert" />
           <span className="xl-mut" style={{ flex: 1 }}>
-            “{nParam}” isn’t a valid week — weeks are numbered 1–16.
+            “{nParam}” isn’t a valid week — weeks are numbered 1–{weekTotal}.
           </span>
         </div>
       </>
@@ -53,7 +59,7 @@ export default function Week() {
 
   return (
     <>
-      <WeekHeader n={n} data={week.data} />
+      <WeekHeader n={n} data={week.data} weekTotal={weekTotal} />
 
       {week.isLoading && <WeekSkeleton />}
 
@@ -76,8 +82,9 @@ export default function Week() {
   );
 }
 
-function WeekHeader({ n, data }: { n: number; data?: WeekAggregate }) {
-  const weekTotal = data?.path.week_total ?? 16;
+function WeekHeader({ n, data, weekTotal: courseWeekTotal }: { n: number; data?: WeekAggregate; weekTotal: number }) {
+  const slug = useCourseSlug();
+  const weekTotal = data?.path.week_total ?? courseWeekTotal;
   const phase = data?.phase;
   const eyebrow = phase
     ? `Week ${n} of ${weekTotal} · Phase ${phase.order} ${phase.name}`
@@ -93,11 +100,11 @@ function WeekHeader({ n, data }: { n: number; data?: WeekAggregate }) {
         <h1 style={{ marginTop: 6 }}>{data?.week.title ?? `Week ${Number.isFinite(n) ? n : ""}`.trim()}</h1>
       </div>
       <div style={{ display: "flex", gap: 8 }}>
-        <Link className="ds-btn ds-btn--secondary" to="/dsa">
+        <Link className="ds-btn ds-btn--secondary" to={coursePath(slug)}>
           <Icon name="map" className="xl-ico--sm" /> Roadmap
         </Link>
         {firstProblem && (
-          <Link className="ds-btn ds-btn--primary" to={`/dsa/problem/${firstProblem.id}`}>
+          <Link className="ds-btn ds-btn--primary" to={coursePath(slug, "problem", firstProblem.id)}>
             Start practicing <Icon name="arrow" className="xl-ico--sm" />
           </Link>
         )}
@@ -134,6 +141,7 @@ function WeekBody({ n, data }: { n: number; data: WeekAggregate }) {
 }
 
 function Concepts({ n, concepts }: { n: number; concepts: ConceptRef[] }) {
+  const slug = useCourseSlug();
   return (
     <div className="xl-sect">
       <div className="xl-sect__h">
@@ -149,7 +157,7 @@ function Concepts({ n, concepts }: { n: number; concepts: ConceptRef[] }) {
             <Link
               key={c.slug}
               className="ds-card ds-card--interactive"
-              to={`/dsa/concept/${c.slug}?week=${n}`}
+              to={`${coursePath(slug, "concept", c.slug)}?week=${n}`}
               style={{ padding: 15, textDecoration: "none", color: "inherit" }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}>
@@ -231,10 +239,11 @@ function Problems({
 }
 
 function ProblemRow({ problem, state }: { problem: Problem; state?: ProblemState }) {
+  const slug = useCourseSlug();
   const locked = state?.status === "locked";
   return (
     <Link
-      to={`/dsa/problem/${problem.id}`}
+      to={coursePath(slug, "problem", problem.id)}
       style={{
         display: "flex",
         alignItems: "center",
@@ -322,6 +331,7 @@ function StatusChip({ state }: { state?: ProblemState }) {
 }
 
 function RightRail({ n, data }: { n: number; data: WeekAggregate }) {
+  const slug = useCourseSlug();
   const rollup = data.userState.week;
   const pct = rollup.coreTotal > 0 ? Math.round((rollup.solved / rollup.coreTotal) * 100) : 0;
   const suggestion = data.problems.find((p) => !p.is_reinforcement) ?? data.problems[0];
@@ -359,7 +369,7 @@ function RightRail({ n, data }: { n: number; data: WeekAggregate }) {
           <div style={{ fontSize: 12, color: "var(--ds-dim)", marginBottom: 10 }}>Suggested for today</div>
           {suggestion ? (
             <Link
-              to={`/dsa/problem/${suggestion.id}`}
+              to={coursePath(slug, "problem", suggestion.id)}
               style={{
                 display: "flex",
                 alignItems: "center",

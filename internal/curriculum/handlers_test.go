@@ -9,11 +9,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course/coursetest"
 	"github.com/sujaykumarsuman/xlearn/internal/curriculum/store"
 )
 
-func testService(st store.Store) *Service {
-	return NewService(st, slog.New(slog.NewTextHandler(io.Discard, nil)))
+// testService serves st with the test registry: every embedded course plus the
+// fixtures (zz-fixture, zz-preview, zz-soon, zz-retired).
+func testService(t *testing.T, st store.Store) *Service {
+	t.Helper()
+	return NewService(st, coursetest.Registry(t), slog.New(slog.NewTextHandler(io.Discard, nil)))
 }
 
 func do(t *testing.T, h http.Handler, method, path string) (*httptest.ResponseRecorder, map[string]any) {
@@ -46,19 +50,21 @@ func seededFake() *fakeStore {
 	f.week[wkKey{"dsa", 2}] = store.Week{N: 2, Title: "Two Pointers", Thesis: "t2"}
 	f.concepts[wkKey{"dsa", 2}] = []store.ConceptRef{{Slug: "two-pointers", Title: "Two Pointers"}}
 	f.problems[wkKey{"dsa", 2}] = []store.Problem{
-		{ID: "16", PathSlug: "dsa", WeekN: 2, Title: "3Sum", Difficulty: "med", Pattern: "Two Pointers", LeetcodeURL: "lc", NeetcodeURL: "nc"},
+		{ID: "16", PathSlug: "dsa", WeekN: 2, Title: "3Sum", Difficulty: "med", Pattern: "Two Pointers", Role: "core",
+			Links: []store.Link{{Kind: "leetcode", URL: "lc"}, {Kind: "neetcode", URL: "nc"}}},
 	}
-	f.problem["16"] = store.Problem{ID: "16", PathSlug: "dsa", WeekN: 2, Title: "3Sum", Difficulty: "med", Pattern: "Two Pointers"}
+	f.problem["16"] = store.Problem{ID: "16", PathSlug: "dsa", WeekN: 2, Title: "3Sum", Difficulty: "med", Pattern: "Two Pointers", Role: "core"}
 	f.sections["16"] = []store.Section{
 		{Stage: "attempt", Kind: "summary", Order: 1, BodyMD: "a"},
-		{Stage: "solution", Kind: "code", Order: 1, Code: "func threeSum() {}"},
+		{Stage: "solution", Kind: "code", Order: 1, Code: "func threeSum() {}", Language: "go"},
 	}
-	f.concept["two-pointers"] = store.Concept{Slug: "two-pointers", PathSlug: "dsa", Title: "Two Pointers", BodyMD: "b", WhenToUseMD: "w", CodeTemplate: "c"}
+	f.addConcept(store.Concept{Slug: "two-pointers", PathSlug: "dsa", Title: "Two Pointers", BodyMD: "b", WhenToUseMD: "w",
+		Templates: map[string]string{"go": "c"}})
 	return f
 }
 
 func TestListPaths(t *testing.T) {
-	h := testService(seededFake()).Handler()
+	h := testService(t, seededFake()).Handler()
 	rec, body := do(t, h, http.MethodGet, "/paths")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -78,7 +84,7 @@ func TestListPaths(t *testing.T) {
 }
 
 func TestGetPath(t *testing.T) {
-	h := testService(seededFake()).Handler()
+	h := testService(t, seededFake()).Handler()
 	rec, body := do(t, h, http.MethodGet, "/paths/dsa")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -100,7 +106,7 @@ func TestGetPath(t *testing.T) {
 }
 
 func TestGetPathNotFound(t *testing.T) {
-	h := testService(seededFake()).Handler()
+	h := testService(t, seededFake()).Handler()
 	rec, body := do(t, h, http.MethodGet, "/paths/nope")
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rec.Code)
@@ -111,7 +117,7 @@ func TestGetPathNotFound(t *testing.T) {
 }
 
 func TestGetWeek(t *testing.T) {
-	h := testService(seededFake()).Handler()
+	h := testService(t, seededFake()).Handler()
 	rec, body := do(t, h, http.MethodGet, "/paths/dsa/weeks/2")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -134,7 +140,7 @@ func TestGetWeek(t *testing.T) {
 }
 
 func TestGetWeekBadNumber(t *testing.T) {
-	h := testService(seededFake()).Handler()
+	h := testService(t, seededFake()).Handler()
 	rec, _ := do(t, h, http.MethodGet, "/paths/dsa/weeks/abc")
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", rec.Code)
@@ -142,7 +148,7 @@ func TestGetWeekBadNumber(t *testing.T) {
 }
 
 func TestGetWeekNotFound(t *testing.T) {
-	h := testService(seededFake()).Handler()
+	h := testService(t, seededFake()).Handler()
 	rec, _ := do(t, h, http.MethodGet, "/paths/dsa/weeks/99")
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rec.Code)
@@ -150,7 +156,7 @@ func TestGetWeekNotFound(t *testing.T) {
 }
 
 func TestGetProblem(t *testing.T) {
-	h := testService(seededFake()).Handler()
+	h := testService(t, seededFake()).Handler()
 	rec, body := do(t, h, http.MethodGet, "/problems/16")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -178,7 +184,7 @@ func TestGetProblemContractFields(t *testing.T) {
 	p.GradingSummary = json.RawMessage(`{"mode":"auto","parts":[{"id":"solution","type":"code","grading":"auto","cadence":"iterate"}],"grader_kinds":["code"],"languages":["go"]}`)
 	f.problem["16"] = p
 	f.problem["1"] = store.Problem{ID: "1", PathSlug: "dsa", WeekN: 1, Title: "Contains Duplicate", GradingSummary: json.RawMessage(`{"mode":"self"}`)}
-	h := testService(f).Handler()
+	h := testService(t, f).Handler()
 
 	_, body := do(t, h, http.MethodGet, "/problems/16")
 	pj := body["problem"].(map[string]any)
@@ -215,7 +221,7 @@ func TestGetProblemContractFields(t *testing.T) {
 }
 
 func TestGetProblemNotFound(t *testing.T) {
-	h := testService(seededFake()).Handler()
+	h := testService(t, seededFake()).Handler()
 	rec, _ := do(t, h, http.MethodGet, "/problems/9999")
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rec.Code)
@@ -223,7 +229,7 @@ func TestGetProblemNotFound(t *testing.T) {
 }
 
 func TestGetConcept(t *testing.T) {
-	h := testService(seededFake()).Handler()
+	h := testService(t, seededFake()).Handler()
 	rec, body := do(t, h, http.MethodGet, "/concepts/two-pointers")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -235,7 +241,7 @@ func TestGetConcept(t *testing.T) {
 }
 
 func TestGetConceptNotFound(t *testing.T) {
-	h := testService(seededFake()).Handler()
+	h := testService(t, seededFake()).Handler()
 	rec, _ := do(t, h, http.MethodGet, "/concepts/nope")
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rec.Code)
@@ -243,7 +249,7 @@ func TestGetConceptNotFound(t *testing.T) {
 }
 
 func TestReadyz(t *testing.T) {
-	h := testService(seededFake()).Handler()
+	h := testService(t, seededFake()).Handler()
 	rec, _ := do(t, h, http.MethodGet, "/readyz")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)

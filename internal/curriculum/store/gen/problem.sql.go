@@ -7,8 +7,6 @@ package gen
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const countProblemsByPath = `-- name: CountProblemsByPath :one
@@ -23,27 +21,23 @@ func (q *Queries) CountProblemsByPath(ctx context.Context, pathSlug string) (int
 }
 
 const getProblem = `-- name: GetProblem :one
-SELECT id, path_slug, week_n, title, difficulty, pattern,
-       COALESCE(leetcode_url, '')::text AS leetcode_url,
-       COALESCE(neetcode_url, '')::text AS neetcode_url,
-       COALESCE(is_reinforcement, role = 'reinforcement')::boolean AS is_reinforcement,
+SELECT id, path_slug, week_n, title, difficulty, pattern, role, links,
        contract_hash, grading_summary
 FROM curriculum.problem
 WHERE id = $1
 `
 
 type GetProblemRow struct {
-	ID              string
-	PathSlug        string
-	WeekN           int32
-	Title           string
-	Difficulty      string
-	Pattern         string
-	LeetcodeUrl     string
-	NeetcodeUrl     string
-	IsReinforcement bool
-	ContractHash    string
-	GradingSummary  []byte
+	ID             string
+	PathSlug       string
+	WeekN          int32
+	Title          string
+	Difficulty     string
+	Pattern        string
+	Role           string
+	Links          []byte
+	ContractHash   string
+	GradingSummary []byte
 }
 
 // Resolves any item by id, whatever its status (a retired item stays reachable).
@@ -58,9 +52,8 @@ func (q *Queries) GetProblem(ctx context.Context, id string) (GetProblemRow, err
 		&i.Title,
 		&i.Difficulty,
 		&i.Pattern,
-		&i.LeetcodeUrl,
-		&i.NeetcodeUrl,
-		&i.IsReinforcement,
+		&i.Role,
+		&i.Links,
 		&i.ContractHash,
 		&i.GradingSummary,
 	)
@@ -68,10 +61,7 @@ func (q *Queries) GetProblem(ctx context.Context, id string) (GetProblemRow, err
 }
 
 const getProblemsByIDs = `-- name: GetProblemsByIDs :many
-SELECT id, path_slug, week_n, title, difficulty, pattern,
-       COALESCE(leetcode_url, '')::text AS leetcode_url,
-       COALESCE(neetcode_url, '')::text AS neetcode_url,
-       COALESCE(is_reinforcement, role = 'reinforcement')::boolean AS is_reinforcement,
+SELECT id, path_slug, week_n, title, difficulty, pattern, role, links,
        contract_hash, grading_summary
 FROM curriculum.problem
 WHERE id = ANY($1::text[])
@@ -79,17 +69,16 @@ ORDER BY week_n, sort_order, id
 `
 
 type GetProblemsByIDsRow struct {
-	ID              string
-	PathSlug        string
-	WeekN           int32
-	Title           string
-	Difficulty      string
-	Pattern         string
-	LeetcodeUrl     string
-	NeetcodeUrl     string
-	IsReinforcement bool
-	ContractHash    string
-	GradingSummary  []byte
+	ID             string
+	PathSlug       string
+	WeekN          int32
+	Title          string
+	Difficulty     string
+	Pattern        string
+	Role           string
+	Links          []byte
+	ContractHash   string
+	GradingSummary []byte
 }
 
 // Bulk problem-metadata read: resolve many bare problem ids in ONE round-trip so the
@@ -115,9 +104,8 @@ func (q *Queries) GetProblemsByIDs(ctx context.Context, ids []string) ([]GetProb
 			&i.Title,
 			&i.Difficulty,
 			&i.Pattern,
-			&i.LeetcodeUrl,
-			&i.NeetcodeUrl,
-			&i.IsReinforcement,
+			&i.Role,
+			&i.Links,
 			&i.ContractHash,
 			&i.GradingSummary,
 		); err != nil {
@@ -132,30 +120,26 @@ func (q *Queries) GetProblemsByIDs(ctx context.Context, ids []string) ([]GetProb
 }
 
 const listProblemsByPath = `-- name: ListProblemsByPath :many
-SELECT id, path_slug, week_n, title, difficulty, pattern,
-       COALESCE(leetcode_url, '')::text AS leetcode_url,
-       COALESCE(neetcode_url, '')::text AS neetcode_url,
-       COALESCE(is_reinforcement, role = 'reinforcement')::boolean AS is_reinforcement
+SELECT id, path_slug, week_n, title, difficulty, pattern, role, links
 FROM curriculum.problem
 WHERE path_slug = $1 AND status = 'live'
 ORDER BY week_n, sort_order, id
 `
 
 type ListProblemsByPathRow struct {
-	ID              string
-	PathSlug        string
-	WeekN           int32
-	Title           string
-	Difficulty      string
-	Pattern         string
-	LeetcodeUrl     string
-	NeetcodeUrl     string
-	IsReinforcement bool
+	ID         string
+	PathSlug   string
+	WeekN      int32
+	Title      string
+	Difficulty string
+	Pattern    string
+	Role       string
+	Links      []byte
 }
 
 // The whole live problem index for a path (id -> week_n / pattern / difficulty /
-// reinforcement). The gateway reads this once to compose the Progress + Dashboard
-// roll-ups (by-phase completion, by-pattern mastery) without N per-problem calls.
+// role). The gateway reads this once to compose the Progress + Dashboard roll-ups
+// (by-phase completion, by-pattern mastery) without N per-problem calls.
 func (q *Queries) ListProblemsByPath(ctx context.Context, pathSlug string) ([]ListProblemsByPathRow, error) {
 	rows, err := q.db.Query(ctx, listProblemsByPath, pathSlug)
 	if err != nil {
@@ -172,9 +156,8 @@ func (q *Queries) ListProblemsByPath(ctx context.Context, pathSlug string) ([]Li
 			&i.Title,
 			&i.Difficulty,
 			&i.Pattern,
-			&i.LeetcodeUrl,
-			&i.NeetcodeUrl,
-			&i.IsReinforcement,
+			&i.Role,
+			&i.Links,
 		); err != nil {
 			return nil, err
 		}
@@ -188,10 +171,7 @@ func (q *Queries) ListProblemsByPath(ctx context.Context, pathSlug string) ([]Li
 
 const listProblemsByWeek = `-- name: ListProblemsByWeek :many
 
-SELECT id, path_slug, week_n, title, difficulty, pattern,
-       COALESCE(leetcode_url, '')::text AS leetcode_url,
-       COALESCE(neetcode_url, '')::text AS neetcode_url,
-       COALESCE(is_reinforcement, role = 'reinforcement')::boolean AS is_reinforcement
+SELECT id, path_slug, week_n, title, difficulty, pattern, role, links
 FROM curriculum.problem
 WHERE path_slug = $1 AND week_n = $2 AND status = 'live'
 ORDER BY sort_order, id
@@ -203,20 +183,24 @@ type ListProblemsByWeekParams struct {
 }
 
 type ListProblemsByWeekRow struct {
-	ID              string
-	PathSlug        string
-	WeekN           int32
-	Title           string
-	Difficulty      string
-	Pattern         string
-	LeetcodeUrl     string
-	NeetcodeUrl     string
-	IsReinforcement bool
+	ID         string
+	PathSlug   string
+	WeekN      int32
+	Title      string
+	Difficulty string
+	Pattern    string
+	Role       string
+	Links      []byte
 }
 
-// Readers keep the v1 response shape (m1-09 is M1a expand; m1-03 switches readers to the
-// new columns). The M1c-drop columns are nullable since 00002 but dual-written by the
-// seed, so the COALESCEs only guard a row some future writer left NULL.
+// Readers select the v2 columns only (m1-03): role and links. The v1 response fields
+// (the reinforcement flag and the two outbound URLs) are derived from them in Go
+// (internal/curriculum/handlers.go), so no query here reads a column M1c (m1-08) drops.
+// The seed stops writing those columns too (UpsertProblem): nullable since 00002, they
+// get their 00001 defaults (” and false) on a new row and keep what an older seed wrote
+// on an existing one. A v1.6.0 reader (the R-b target, or a pod mid-rollout) COALESCEs
+// each of them, so it never fails on them, and a v1.6.0 boot's own seed rewrites them for
+// every item that image carries. M1c drops the columns.
 //
 // Retire semantics (t1 §4): only `live` items are in the index and the counts; retired
 // and withdrawn items stay resolvable by id (GetProblem, GetProblemsByIDs).
@@ -236,9 +220,8 @@ func (q *Queries) ListProblemsByWeek(ctx context.Context, arg ListProblemsByWeek
 			&i.Title,
 			&i.Difficulty,
 			&i.Pattern,
-			&i.LeetcodeUrl,
-			&i.NeetcodeUrl,
-			&i.IsReinforcement,
+			&i.Role,
+			&i.Links,
 		); err != nil {
 			return nil, err
 		}
@@ -287,25 +270,20 @@ func (q *Queries) RetireMissingProblems(ctx context.Context, seededIds []string)
 
 const upsertProblem = `-- name: UpsertProblem :execrows
 INSERT INTO curriculum.problem (
-    id, path_slug, week_n, title, difficulty, pattern,
-    leetcode_url, neetcode_url, is_reinforcement, sort_order,
+    id, path_slug, week_n, title, difficulty, pattern, sort_order,
     role, status, retired_at, links, content_hash, contract_hash, grading_summary
 )
 VALUES (
     $1, $2, $3, $4, $5, $6,
-    $7, $8, $9, $10,
-    $11, $12,
-    CASE WHEN $12::text = 'live' THEN NULL ELSE now() END,
-    $13, $14, $15, $16
+    $7, $8, $9,
+    CASE WHEN $9::text = 'live' THEN NULL ELSE now() END,
+    $10, $11, $12, $13
 )
 ON CONFLICT (id) DO UPDATE SET
     week_n           = EXCLUDED.week_n,
     title            = EXCLUDED.title,
     difficulty       = EXCLUDED.difficulty,
     pattern          = EXCLUDED.pattern,
-    leetcode_url     = EXCLUDED.leetcode_url,
-    neetcode_url     = EXCLUDED.neetcode_url,
-    is_reinforcement = EXCLUDED.is_reinforcement,
     sort_order       = EXCLUDED.sort_order,
     role             = EXCLUDED.role,
     status           = EXCLUDED.status,
@@ -320,29 +298,26 @@ WHERE curriculum.problem.path_slug = EXCLUDED.path_slug
 `
 
 type UpsertProblemParams struct {
-	ID              string
-	PathSlug        string
-	WeekN           int32
-	Title           string
-	Difficulty      string
-	Pattern         string
-	LeetcodeUrl     pgtype.Text
-	NeetcodeUrl     pgtype.Text
-	IsReinforcement pgtype.Bool
-	SortOrder       int32
-	Role            string
-	Status          string
-	Links           []byte
-	ContentHash     string
-	ContractHash    string
-	GradingSummary  []byte
+	ID             string
+	PathSlug       string
+	WeekN          int32
+	Title          string
+	Difficulty     string
+	Pattern        string
+	SortOrder      int32
+	Role           string
+	Status         string
+	Links          []byte
+	ContentHash    string
+	ContractHash   string
+	GradingSummary []byte
 }
 
 // The id guard (t1 §4): an id is never re-parented. The DO UPDATE applies only when the
 // stored row is in the same course, so a move affects 0 rows and the seed aborts unless
-// exactly 1 row is affected. Writes the v2 columns and dual-writes the v1 ones
-// (is_reinforcement, leetcode_url, neetcode_url) from them until M1c. contract_hash and
-// grading_summary (00004, m3-01) come from canon and the item's parts.
+// exactly 1 row is affected. Writes the v2 columns only (m1-03): the v1 flag and URL
+// columns are never written (see the header).
+// contract_hash and grading_summary (00004, m3-01) come from canon and the item's parts.
 func (q *Queries) UpsertProblem(ctx context.Context, arg UpsertProblemParams) (int64, error) {
 	result, err := q.db.Exec(ctx, upsertProblem,
 		arg.ID,
@@ -351,9 +326,6 @@ func (q *Queries) UpsertProblem(ctx context.Context, arg UpsertProblemParams) (i
 		arg.Title,
 		arg.Difficulty,
 		arg.Pattern,
-		arg.LeetcodeUrl,
-		arg.NeetcodeUrl,
-		arg.IsReinforcement,
 		arg.SortOrder,
 		arg.Role,
 		arg.Status,

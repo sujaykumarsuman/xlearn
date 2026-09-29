@@ -1,9 +1,10 @@
-// Dashboard "Today" data hook for the BFF (docs/architecture/api.md, GET /dashboard
-// `agg`, S09). The gateway fans out to assessment (streak / solved / mock projection
-// stats), review (due queue, weak-area, reminders) and curriculum (the week/problem
-// taxonomy), then composes the daily plan with reviews ordered before new work (R-SR5).
+// Dashboard "Today" data hook for the BFF (docs/architecture/api.md, GET
+// /paths/{slug}/dashboard `agg`, S09; course-scoped since m1-03). The gateway fans out to
+// assessment (streak / solved / mock projection stats), review (due queue, weak-area,
+// reminders) and curriculum (the week/problem taxonomy), then composes the daily plan
+// with reviews ordered before new work (R-SR5).
 import { useQuery } from "@tanstack/react-query";
-import { ApiRequestError, apiFetch } from "./api";
+import { ApiRequestError, apiFetch, coursePathApi } from "./api";
 import type { Reminder, WeakArea } from "./mistakes";
 import type { DueQueue } from "./revision";
 
@@ -54,7 +55,8 @@ export interface DashboardWeek {
   problems: WeekProblem[];
 }
 
-/** GET /dashboard (agg) payload. Sections degrade independently to empty/null. */
+/** GET /paths/{slug}/dashboard (agg) payload. Sections degrade independently to
+ *  empty/null. */
 export interface DashboardData {
   stats: DashboardStats;
   plan: PlanItem[];
@@ -64,12 +66,13 @@ export interface DashboardData {
   reminders: Reminder[];
 }
 
-/** useDashboard fetches the composed "Today" aggregation. `enabled` lets callers that
- *  only need it conditionally (e.g. the Catalog's started-path summary) skip the fetch. */
-export function useDashboard(enabled = true) {
+/** useDashboard fetches a course's composed "Today" aggregation. `enabled` lets callers
+ *  that only need it conditionally (e.g. the Catalog's started-path summary) skip the
+ *  fetch. */
+export function useDashboard(slug: string, enabled = true) {
   return useQuery<DashboardData, ApiRequestError>({
-    queryKey: ["dashboard"],
-    queryFn: () => apiFetch<DashboardData>("/dashboard"),
-    enabled,
+    queryKey: ["dashboard", slug],
+    queryFn: () => apiFetch<DashboardData>(coursePathApi(slug, "/dashboard")),
+    enabled: enabled && slug !== "",
   });
 }

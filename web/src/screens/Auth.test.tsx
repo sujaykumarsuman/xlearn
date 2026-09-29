@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 import { routes } from "../router";
+import { DSA_PATH, ZZ_FIXTURE_PATH, ZZ_SOON_PATH, catalog } from "../test/courses";
 import { authedMe, installFetchMock, restoreFetch } from "../test/fetchMock";
 
 /** A mid-onboarding /me: path chosen, and budget_set/completed as given. */
@@ -148,6 +149,47 @@ describe("Auth screen", () => {
     // After persisting, the flow advances to the (inert) step 2 shell.
     expect(await screen.findByRole("heading", { name: /set your study budget/i })).toBeInTheDocument();
     expect(stepPosted).toEqual({ step: "path", path_chosen: "dsa" });
+  });
+
+  it("renders step 1's DSA card exactly as v1 from the catalog", async () => {
+    installFetchMock((url) => (url.endsWith("/api/me") ? { status: 200, body: authedMe(null) } : { status: 404 }));
+    renderApp("/xlearn/auth");
+
+    expect(await screen.findByRole("heading", { name: /pick your path/i })).toBeInTheDocument();
+    expect(screen.getByText("Start with DSA — more paths are on the way.")).toBeInTheDocument();
+    const card = screen.getByRole("button", { name: /Data Structures & Algorithms/ });
+    expect(card).toHaveAttribute("aria-pressed", "true");
+    expect(card).toHaveClass("ds-card", "ds-card--teal");
+    expect(within(card).getByText("16 weeks · 151 problems · Go-first")).toBeInTheDocument();
+    expect(screen.getByText("System Design · Go Concurrency · +3")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continue/i })).toBeEnabled();
+  });
+
+  it("step 1 lists every active course and persists the one picked", async () => {
+    let stepPosted: unknown = null;
+    installFetchMock((url, init) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe(null) };
+      if (url.endsWith("/api/paths")) return { status: 200, body: catalog(DSA_PATH, ZZ_FIXTURE_PATH, ZZ_SOON_PATH) };
+      if (url.endsWith("/api/onboarding/step")) {
+        stepPosted = init?.body ? JSON.parse(String(init.body)) : null;
+        return { status: 200, body: { onboarding: { path_chosen: "zz-fixture", budget_set: false, completed: false } } };
+      }
+      return { status: 404 };
+    });
+    renderApp("/xlearn/auth");
+
+    const dsa = await screen.findByRole("button", { name: /Data Structures & Algorithms/ });
+    const zz = screen.getByRole("button", { name: /Fixture Course/ });
+    // The first active course is the default; the coming-soon one isn't a card.
+    expect(dsa).toHaveAttribute("aria-pressed", "true");
+    expect(zz).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByRole("button", { name: /Soon Course/ })).not.toBeInTheDocument();
+    expect(screen.getByText("Pick one to start — more paths are on the way.")).toBeInTheDocument();
+
+    fireEvent.click(zz);
+    expect(zz).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    await waitFor(() => expect(stepPosted).toEqual({ step: "path", path_chosen: "zz-fixture" }));
   });
 
   it("redirects a returning, onboarded user into the app", async () => {

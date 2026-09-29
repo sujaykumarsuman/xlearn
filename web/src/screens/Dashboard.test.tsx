@@ -58,7 +58,7 @@ describe("Dashboard (Today)", () => {
   it("renders quick stats, the plan with reviews first, and the revisions panel", async () => {
     installFetchMock((url) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
-      if (url.includes("/api/dashboard")) return { status: 200, body: DASHBOARD };
+      if (url.includes("/api/paths/dsa/dashboard")) return { status: 200, body: DASHBOARD };
       return { status: 404 };
     });
     renderApp("/xlearn/dsa/dashboard");
@@ -82,7 +82,7 @@ describe("Dashboard (Today)", () => {
   it("shows the caught-up state when there is no plan and no reviews", async () => {
     installFetchMock((url) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
-      if (url.includes("/api/dashboard")) {
+      if (url.includes("/api/paths/dsa/dashboard")) {
         return {
           status: 200,
           body: {

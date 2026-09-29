@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"testing"
 	"time"
+
+	"github.com/sujaykumarsuman/xlearn/internal/review/store"
 )
 
 func TestWeekWindowTimezone(t *testing.T) {
@@ -68,66 +70,80 @@ func TestTopCategory(t *testing.T) {
 // --- Recompute with fakes ---
 
 type fakeWeakStore struct {
-	accounts []string
-	counts   map[string]map[string]int // accountID → category counts
-	saved    []savedSnapshot
+	scopes []store.MistakeScope
+	counts map[string]map[string]int // "account|course" → category counts
+	saved  []savedSnapshot
 }
 
 type savedSnapshot struct {
 	accountID   string
+	pathSlug    string
 	weekOf      time.Time
 	topCategory string
 	counts      map[string]int
 }
 
-func (f *fakeWeakStore) AccountsWithMistakes(context.Context) ([]string, error) {
-	return f.accounts, nil
+func (f *fakeWeakStore) MistakeScopes(context.Context) ([]store.MistakeScope, error) {
+	return f.scopes, nil
 }
-func (f *fakeWeakStore) CountOpenMistakesByCategory(_ context.Context, accountID string, _, _ time.Time) (map[string]int, error) {
-	return f.counts[accountID], nil
+func (f *fakeWeakStore) CountOpenMistakesByCategory(_ context.Context, accountID, pathSlug string, _, _ time.Time) (map[string]int, error) {
+	return f.counts[accountID+"|"+pathSlug], nil
 }
-func (f *fakeWeakStore) SaveWeakAreaSnapshot(_ context.Context, accountID string, weekOf time.Time, top string, counts map[string]int) error {
-	f.saved = append(f.saved, savedSnapshot{accountID, weekOf, top, counts})
+func (f *fakeWeakStore) SaveWeakAreaSnapshot(_ context.Context, accountID, pathSlug string, weekOf time.Time, top string, counts map[string]int) error {
+	f.saved = append(f.saved, savedSnapshot{accountID, pathSlug, weekOf, top, counts})
 	return nil
 }
 
-type fakeResolver struct{ tz map[string]string }
+type fakeResolver struct {
+	tz    map[string]string
+	calls map[string]int
+}
 
 func (f fakeResolver) ResolveAccount(_ context.Context, accountID string) (string, []byte, []byte, error) {
+	if f.calls != nil {
+		f.calls[accountID]++
+	}
 	return f.tz[accountID], nil, nil, nil
 }
 
+// m1-03: the recompute runs per (account, course) — one snapshot per pair, each over
+// that course's entries — and resolves an account's timezone once.
 func TestWeakAreaRecompute(t *testing.T) {
 	st := &fakeWeakStore{
-		accounts: []string{"a", "b"},
+		scopes: []store.MistakeScope{
+			{AccountID: "a", PathSlug: "dsa"},
+			{AccountID: "a", PathSlug: "zz-fixture"},
+			{AccountID: "b", PathSlug: "dsa"},
+		},
 		counts: map[string]map[string]int{
-			"a": {"off_by_one": 3, "communication": 1},
-			"b": {}, // no categorised open entries → top ""
+			"a|dsa":        {"off_by_one": 3, "communication": 1},
+			"a|zz-fixture": {"communication": 2},
+			"b|dsa":        {}, // no categorised open entries → top ""
 		},
 	}
+	resolver := fakeResolver{tz: map[string]string{"a": "UTC", "b": "America/Los_Angeles"}, calls: map[string]int{}}
 	c := &weakAreaComputer{
 		store:    st,
-		accounts: fakeResolver{tz: map[string]string{"a": "UTC", "b": "America/Los_Angeles"}},
+		accounts: resolver,
 		log:      slog.New(slog.NewJSONHandler(io.Discard, nil)),
 	}
 	n, err := c.Recompute(context.Background())
 	if err != nil {
 		t.Fatalf("recompute: %v", err)
 	}
-	if n != 2 {
-		t.Fatalf("recomputed %d accounts, want 2", n)
+	if n != 3 || len(st.saved) != 3 {
+		t.Fatalf("recomputed %d, saved %d snapshots, want 3 (one per account and course)", n, len(st.saved))
 	}
-	if len(st.saved) != 2 {
-		t.Fatalf("saved %d snapshots, want 2", len(st.saved))
-	}
-	byAcct := map[string]savedSnapshot{}
+	byScope := map[string]savedSnapshot{}
 	for _, s := range st.saved {
-		byAcct[s.accountID] = s
+		byScope[s.accountID+"|"+s.pathSlug] = s
 	}
-	if byAcct["a"].topCategory != "off_by_one" {
-		t.Errorf("account a top = %q, want off_by_one", byAcct["a"].topCategory)
+	for scope, want := range map[string]string{"a|dsa": "off_by_one", "a|zz-fixture": "communication", "b|dsa": ""} {
+		if got := byScope[scope].topCategory; got != want {
+			t.Errorf("%s top = %q, want %q", scope, got, want)
+		}
 	}
-	if byAcct["b"].topCategory != "" {
-		t.Errorf("account b top = %q, want \"\" (no categorised entries)", byAcct["b"].topCategory)
+	if resolver.calls["a"] != 1 || resolver.calls["b"] != 1 {
+		t.Errorf("timezone resolves = %v, want one per account", resolver.calls)
 	}
 }
