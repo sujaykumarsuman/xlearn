@@ -8,7 +8,7 @@
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) / [`../../../AGENT.md`](../../../AGENT.md) — conventions, land-and-sync.
 - The plan: [`../sprints/sprint-m3-04.md`](../sprints/sprint-m3-04.md) (the type table, the profile table, the lint rules and the item list are there).
 - [ADR-0030](../../adr/0030-runner-technology-and-host-hardening.md) (Accepted in m3-03: §2 languages, §3 timing, the spike-results section).
-- [t3 §16.2](../research/t3-sandbox.md) — **the amd64 allowlists** (per-profile sorted syscall lists, justified additions, compile sets). You copy them; you don't regenerate them.
+- [t3 §16.2](../research/t3-sandbox.md) — **the amd64 allowlists** (per-profile sorted syscall lists, justified additions, compile sets). You copy them; you don't regenerate them. Block 1 there is **the GOCACHE seed** (read-only in place, no overlay).
 - [t3](../research/t3-sandbox.md) §2.4 (A1, A5, A18), §6.1–§6.2 (image, profile table, harnesses, ASLR), §7.2–§7.3 (TL policy, calibration), §12 (D20: Go + C++ + Python).
 - [t1 §7.1](../research/t1-content-data-model.md#71-package-format) (the closed type and checker registries, harness `@v`), [t4 §2.6](../research/t4-judge-contract.md#26-evaluation), [§4.1](../research/t4-judge-contract.md#41-archetype-a-code-ide), [§5.6](../research/t4-judge-contract.md#56-ci-lints-public-ci-and-again-at-judge-start), [§11.1](../research/t4-judge-contract.md#111-t3-the-runner-contract-not-the-technology).
 - Code from m3-03: `internal/runner/profile` (the `Profile` interface and registry), `internal/runner/seccomp`, `internal/runner/it`, `internal/platform/runnerapi` (`names.go`, types), `docs/architecture/runner.md`, the `runner-it` job in `.github/workflows/ci.yml`.
@@ -59,10 +59,13 @@ and you prove it with reference and wrong solutions through the real jail. The t
    compile/exec commands, env, compile limits (Go 15 s/768 MiB/pids 256; C++ 15 s/1 GiB/pids 64; Python 15 s/256 MiB/pids 16), case
    limits (pids 32/4/4, `RLIMIT_STACK` = the memory limit for C++ and Python), diagnostics parsers (`go build -json`, GCC JSON,
    `SyntaxError`), detected toolchain versions, the `languages[]` → profile table, and the Go cache seed recipe (`profile/go/seed.go`:
-   `go build std` with the profile's flags, fixed future mtimes, a fresh `trim.txt` per job) **plus the `runner seed-gocache`
+   `go build std` with the profile's exact toolchain, flags and env, fixed future mtimes) **plus the `runner seed-gocache`
    subcommand** in `cmd/runner/main.go` (`-out <dir>` required, `-goroot` defaulting to the profile's toolchain; prints the seed's
-   tree hash; non-zero exit and no partial seed on failure; m3-15's Dockerfile calls it), with a `runner_it` test that a compile
-   against the seeded overlay rebuilds no `std` package. `ArtifactMode` per profile: `0111` for Go/C++ `bin`, `0444` for
+   tree hash; non-zero exit and no partial seed on failure; m3-15's Dockerfile calls it). **The compile uses the seed read-only in
+   place** (t3 §16.2 block 1): `GOCACHE` = the read-only seed bind, `TMPDIR=/w` (the case tmpfs), `GOROOT` = the profile's
+   toolchain path (the jail has no `/proc`); **no overlay** (overlayfs EACCESes under `hostUsers:false`) and no per-case copy. Add
+   the `runner_it` test **"compile with a read-only seed rebuilds no std"**: seed a cache, bind it read-only as `GOCACHE`, compile
+   an item, assert no `std` package is rebuilt. `ArtifactMode` per profile: `0111` for Go/C++ `bin`, `0444` for
    `app.pyz`, one test per language. Toolchain paths overridable by `RUNNER_TOOLCHAINS_DIR` for tests.
 5. **[X] Lint** (plan task 4): `internal/platform/runnerapi/lint` with `Check` (judge, pre-enqueue → REJECTED) and `CheckNames` (the
    front's re-check → 400); Go per t3 A5 + the import allowlist; C++ header/directive/`asm`/`main` rules; Python import allowlist.
@@ -138,7 +141,8 @@ and you prove it with reference and wrong solutions through the real jail. The t
 - [ ] Wrong solutions are classified WA / TLE / RE / CE (plus MLE, REJECTED) in all 3 languages; runtime SIGSYS → RE.
 - [ ] Both harnesses round-trip every registry type; non-float outputs are byte-identical across languages and equal to m3-02's Go
       bytes; one harness package; tests compare through `internal/platform/checker`.
-- [ ] The content check passes (starters compile, public references pass samples); `runner seed-gocache` works; artifact modes tested.
+- [ ] The content check passes (starters compile, public references pass samples); `runner seed-gocache` works and a compile with
+      the read-only seed in place rebuilds no std (no overlay); artifact modes tested.
 - [ ] Exec allowlists = t3 §16.2 + justified additions; the dangerous set is in no exec list; no arm64 delta in amd64 builds.
 - [ ] Lint goldens pass; evasion fixtures are stopped by the jail.
 - [ ] `/v1/profiles` serves versions, `ProfileSHA`, baselines and provisional multipliers; CI green; docs and hand-offs recorded.

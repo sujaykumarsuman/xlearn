@@ -267,7 +267,7 @@ The front receives each case's pipe fds from the spawner via `SCM_RIGHTS`.
 4. **Compile jail** (`slots/sN/job/compile`):
    - new namespaces, **no user namespace**, loopback down;
    - tmpfs root; read-only binds of the toolchain and `GOMODCACHE`, all `nosuid,nodev`;
-   - overlay with the read-only `GOCACHE` seed as the lower layer and tmpfs as the upper;
+   - the read-only `GOCACHE` seed, bound and used **in place** (`GOCACHE` = the seed), with `TMPDIR` on the case tmpfs and `GOROOT` set. *Corrected by spk-02 (§16.2 block 1): an in-pod overlay (seed lower + tmpfs upper) EACCESes under `hostUsers:false`;*
    - `/job/src` read-only;
    - compile UID, 0 caps, NNP, rlimits;
    - **compile seccomp:** ENOSYS by default (logged), KILL for dangerous calls, no `socket()`;
@@ -395,7 +395,7 @@ After 100 hostile jobs and 1,000 case cgroups:
 - **At M3 it contains:**
   - the supervisor binaries;
   - **go1.26.8**, from a checksummed tarball, pruned;
-  - the `GOCACHE` seed. Its cache files carry a **fixed future mtime** and each job gets a fresh `trim.txt`, so they are never copied up or trimmed;
+  - the `GOCACHE` seed (cache files with a **fixed future mtime**), baked in or shipped as a sibling image volume. Compiles use it **read-only in place** as `GOCACHE`, with `TMPDIR` on the case tmpfs: no overlay and no per-job copy, and the go command ignores its failed cache writes (*corrected by spk-02, §16.2 block 1; the earlier overlay-with-fresh-`trim.txt` design EACCESes under `hostUsers:false`*);
   - profile JSON files.
 - **The pilot adds** `gcc`/`libc6-dev` (go-race) or PostgreSQL 18.x ≥ 18.6 from PGDG (sql-pg). C++ adds g++ and a precompiled header after M5.
 - **Size:** about 200–250 MB compressed at M3 **(inferred)**.
@@ -417,7 +417,7 @@ After 100 hostile jobs and 1,000 case cgroups:
 | Slot | 1 | **1** (`cpu.max` 1 CPU, `GOMAXPROCS=2` to get interleavings) | 1 | 1 |
 | Exec unit | A process per case; no `/proc` | A process per declared test: `-test.run '^Name$' -test.count=N -test.timeout`; fresh procfs with **`hidepid=invisible,subset=pid`** | Per-job postmaster + trusted `sqlharness`; backends moved into case cgroups | A process per case |
 | Env | `GOMAXPROCS=1`, **`GOMEMLIMIT` unset**, `TZ=UTC`, `LANG=C.UTF-8`, `GOTOOLCHAIN=local`, `GOPROXY=off`, `GOFLAGS=-mod=readonly`, `GOTELEMETRY=off` | + `GORACE="halt_on_error=1 atexit_sleep_ms=0 exitcode=66"`, `GOTRACEBACK=all` | GUCs in §6.3 | — |
-| Seccomp (exec) | KILL by default; no sockets; `clone3` → ENOSYS | + threads; `clone3` → ENOSYS (glibc ≥ 2.34 falls back to `clone`); **`personality(ADDR_NO_RANDOMIZE)` + re-exec of self if the amd64 replay shows TSAN needs it** | + AF_UNIX, shm | — |
+| Seccomp (exec) | KILL by default; no sockets; `clone3` → ENOSYS | + threads; `clone3` → ENOSYS (glibc ≥ 2.34 falls back to `clone`); **no `personality`** (*spk-02, §16.2 block 2: TSAN needs no ASLR policy*); the 40-name amd64 list and fixed rules of §16.2 | + AF_UNIX, shm | — |
 | Case limits | CPU TL from the pack (≥ 1 s); wall 1.5·TL + 0.5 s; mem `mem_mb` (default 256) + baseline; pids 32; FSIZE 1 MiB; NOFILE 64; `/w` tmpfs 64 MiB / 4k inodes | per-test deadline ≥ 10× baseline; 1 GiB; pids 128; job ≤ 45 s; **Run: `-count=1`, job ≤ 20 s** | `statement_timeout` = TL; supervisor wall 3·TL + 2 s; case 256 MiB; `pg/` 256 MiB | — |
 | Verdicts | T4 mapping; panic class on fd 4 | RACE > DEADLOCK > TLE > LEAK > RE > WA; a missing pass fails | Result set → WA; runtime SQL error, **including 25006** → RE; timeout → TLE; backend OOM → MLE | ASan/UBSan in Run only |
 | Lint allowlist (public) | `fmt sort slices maps strings strconv math math/bits math/rand/v2 container/* unicode/* bytes errors cmp iter`; denies `os/* syscall unsafe net/* plugin embed runtime/* reflect C` | + `sync sync/atomic time context`, limited `runtime` | A single statement; static SELECT check | — |
@@ -428,6 +428,9 @@ After 100 hostile jobs and 1,000 case cgroups:
 - **go-race** uses `goleak` through the harness-owned `TestMain`. Pack guidance: use `testing/synctest` for time-based tests.
 
 **ASLR policy (corrected).** ASLR stays on by default. On amd64, noble's `vm.mmap_rnd_bits=32` breaks TSAN with "unexpected memory mapping"; arm64 is unaffected [W29]. TSAN from LLVM ≥ 18.1 re-executes itself with ASLR off when that happens [W30]. Whether Go 1.26's race runtime does the same is **(inferred)**, and the amd64 replay decides it. If needed, allow `personality(ADDR_NO_RANDOMIZE)` **for go-race processes only**. Never lower the host sysctl.
+**Resolved by spk-02 (§16.2 block 2, §16.4): no ASLR policy.** Go 1.26's race runtime works in the jail under
+`mmap_rnd_bits=32` without calling `personality`, so there is no launcher, no self re-exec and no `personality` in any
+exec allowlist; the pod profile keeps RuntimeDefault's rule, which denies `ADDR_NO_RANDOMIZE`.
 
 ### 6.3 The SQL sandbox (`sql-pg@18`, pilot)
 - **Placement:** a fresh PostgreSQL 18 per job, inside the jail. The baked `PGDATA` is copied into the job tmpfs by a trusted step running as the PG UID. `listen_addresses=''`, socket in `/job/sock`, loopback down.
@@ -1342,6 +1345,11 @@ production):
   GOOS/GOARCH). A mismatch just means cache misses (cold speed), never a wrong build. Build it in the runner-image
   pipeline, either baked into the image or as a sibling image volume. Both measured the same; the image volume lets
   the seed update without rebuilding the runner.
+- **Folded (2026-09-29, doc debt F1-17/F5-12)** into [m3-03](../sprints/sprint-m3-03.md) (task 1's ADR-0030 list gains a
+  `GOCACHE` bullet; the jail spec has no overlay; `testgo@0` sets `GOROOT` and `TMPDIR`) and
+  [m3-04](../sprints/sprint-m3-04.md) (the `go@1.26` compile env: `GOCACHE` = the read-only seed in place,
+  `TMPDIR=/w`, `GOROOT` = the toolchain path; its `runner_it` test is "compile with a read-only seed rebuilds no std").
+  [p-01](../sprints/sprint-p-01.md)'s separate race seed uses the same mechanism. §5.4 and §6.1 are corrected to match.
 
 **Re-run block 2 (2026-09-25): TSAN, postgres, amd64 allowlists, KILL re-run, pod-profile architectures ✅.**
 Everything ran inside spk-01's positive pod shape on env A: `hostUsers:false`, the 5 caps, the `judge` runtime,
@@ -1364,6 +1372,10 @@ were used: one on the three-arch profile, and one on the x86_64-only variant. Ho
   rule, which denies `ADDR_NO_RANDOMIZE` (§16.2 probes). The generated `personality(0x0040000)` variants are
   **not needed** and don't ship; `setarch -R` isn't needed either.
 - go-race is **in** the pilot as far as the sandbox goes (p-01).
+- **Folded into [p-01](../sprints/sprint-p-01.md) (2026-09-29, doc debt F2-17/F5-19):** its goal, task 1 and entry gate
+  now read "no ASLR policy"; `personality` is out of the `go-race` list, which is the 40 names below with the fixed
+  rules; the launcher, the pod-profile gate and the host-seccomp infra branch are n/a (§16.4: the pod profile keeps
+  RuntimeDefault's `personality` rule, so `ADDR_NO_RANDOMIZE` stays denied). §6.2's go-race column is corrected to match.
 
 *postgres in the jail (amd64) ✅.*
 - PG 18 ran as uid 999 on a Unix socket, with `listen_addresses=''`, and returned `select 42`.

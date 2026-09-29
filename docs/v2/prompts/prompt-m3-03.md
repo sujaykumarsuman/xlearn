@@ -41,7 +41,8 @@ and you touch none of it. Production has one user (the owner, D35); nothing here
    - status → `Accepted (<date>, spike P0–P3 GO; ADR-0035 §6 amendments folded)`;
    - add "Spike results (MI-10, spk-01/spk-02)": the compact P0–P3 + image-volume table from t3 §16, and one bullet each for the
      mechanism (update §1's "Jail primitive" line), SETPCAP, the spawn path, where the allowlists live, the go-race ASLR policy,
-     host-file diffs;
+     **`GOCACHE`** (a read-only seed used in place, `TMPDIR` on the case tmpfs, `GOROOT` in the compile env; no in-pod overlay,
+     which EACCESes under `hostUsers:false`; t3 §16.2 block 1, §16.4), host-file diffs;
    - fold ADR-0035 §6 **and everything in today's §7** into §5, row by row (the plan's task 1 lists the exact text): A3 (live chart
      0.2.2; the knobs ship as 0.3.0 in one PR); A4 (forward-declared identity/coach/judge NATS callers, judge as a PG caller, `:8222`
      admits no pod); A5 (server-first nkeys with fine ACLs from `topology.go`, N0–N4 with the `legacy` bridge and the compose test;
@@ -72,7 +73,8 @@ and you touch none of it. Production has one user (the owner, D35); nothing here
    ≤ 64 MiB over a pipe) → spawner writes the per-job artifact tmpfs (dir mode `0111`; the file mode is the profile's
    `ArtifactMode`: `0111` static ELF, `0444` interpreted artifact) before learner code runs.
    Per-case jail: `NEWNS|NEWPID|NEWNET|NEWIPC|NEWUTS|NEWCGROUP`, **never `NEWUSER`**, loopback down, tmpfs root + `pivot_root`,
-   read-only `nosuid,nodev` binds, `/w` tmpfs, no `/proc` by default, per-job UID from a pool not reused within 1,000 jobs, caps 0 +
+   read-only `nosuid,nodev` binds, `/w` tmpfs, **no overlay** (the Go compile cache is a read-only seed bind used in place,
+   m3-04), no `/proc` by default, per-job UID from a pool not reused within 1,000 jobs, caps 0 +
    bounding drop + NNP, `RLIMIT_CORE=0` and the profile's rlimits, seccomp last (`clone3` → ENOSYS), fds 0 `/dev/null`, 1/2 capped
    pipes, 3 input, 4 harness. Startup: wipe `slots/`, move into `runner/`, pre-read and hash toolchains, measure each profile's
    memory baseline, then serve.
@@ -97,7 +99,8 @@ and you touch none of it. Production has one user (the owner, D35); nothing here
    5 min idle + on demand; rolling median → `CanaryMedian`); the three suspect rules; the quiet re-run (503, ≤ 60 s drain, steal < 5%
    over 10 s, pre-canary ≤ 1.1 × median, re-run the case and the rest of its group, final verdict); else `Throttled=true`. Thresholds
    in one file, with a pointer to the S0 data.
-10. **[X] Corpus + tests + CI** (plan task 7): test profile `testgo@0` (build tag `runner_it`; spk-02's amd64 `go` list) with a guard
+10. **[X] Corpus + tests + CI** (plan task 7): test profile `testgo@0` (build tag `runner_it`; spk-02's amd64 `go` list; its compile env sets
+    `GOROOT` to the bound toolchain, since the jail has no `/proc`, and `TMPDIR=/w`) with a guard
     test that release builds don't register it; corpus programs under `internal/runner/testdata/corpus/<name>/main.go`; integration
     tests under `internal/runner/it/` (`//go:build linux && runner_it`) for every row of the plan's task 7 list, including balloon
     × 100 (MLE 100/100, container `oom_kill` delta 0), 1,000 case cgroups (cleanup invariants) and the 45 s tests cap (record the
