@@ -80,6 +80,7 @@ Edit [`docs/adr/0030-runner-technology-and-host-hardening.md`](../../adr/0030-ru
   - **the spawn path**: `CLONE_INTO_CGROUP` or `cgroup.procs` + sync pipe on 6.8;
   - **where the allowlists live**: pod seccomp on the host ([mi-09](sprint-mi-09.md)), per-case exec/compile filters inside the runner image ([m3-04](sprint-m3-04.md));
   - **the go-race ASLR policy** (for [p-01](sprint-p-01.md));
+  - **`GOCACHE`**: a **read-only seed used in place** (`GOCACHE` = the seed, baked into the runner image or mounted as an image volume, bound read-only into the compile jail), with `TMPDIR` on the case tmpfs (`/w`) and `GOROOT` set in the compile env (the jail has no `/proc`). **No in-pod overlay:** overlayfs EACCESes under `hostUsers:false` on arm64 and amd64 (t3 §16.1, §16.2 block 1, §16.4). The seed is built with the exec profile's exact toolchain and flags ([m3-04](sprint-m3-04.md)); [p-01](sprint-p-01.md)'s race seed uses the same mechanism;
   - **host-file diffs** against t3 §8.7, if any.
 - **Fold ADR-0035 §6 (and everything in today's ADR-0030 §7) into §5**, row by row:
   - **A3** gains "the live chart is **0.2.2**; A3's knobs (the union of every topic's asks) ship as **0.3.0 in one PR**".
@@ -133,7 +134,7 @@ Sources: [t3 §2.3](../research/t3-sandbox.md#23-trust-boundaries) (rule **R-FS*
 
 **Per-case jail** ([t3 §5.4](../research/t3-sandbox.md#54-lifecycle-of-one-job) steps 4–5):
 - clone flags `NEWNS|NEWPID|NEWNET|NEWIPC|NEWUTS|NEWCGROUP`, **never `NEWUSER`**; loopback left down;
-- a fresh tmpfs root, `pivot_root`; read-only `nosuid,nodev` binds of the profile's toolchain/runtime paths and the artifact; a per-case writable `/w` tmpfs (64 MiB, 4k inodes by default); one overlay where a profile asks for it (the Go compile cache, m3-04); **no `/proc`** unless the profile asks (go-race later: `hidepid=invisible,subset=pid`);
+- a fresh tmpfs root, `pivot_root`; read-only `nosuid,nodev` binds of the profile's toolchain/runtime paths and the artifact; a per-case writable `/w` tmpfs (64 MiB, 4k inodes by default); **no overlay** (overlayfs EACCESes under `hostUsers:false`, t3 §16.2): a profile's Go compile cache is one more read-only bind, the seed, used in place as `GOCACHE` with `TMPDIR=/w` (m3-04); **no `/proc`** unless the profile asks (go-race later: `hidepid=invisible,subset=pid`);
 - a per-job UID from a pool inside the pod's userns, **not reused within 1,000 jobs** (t3 §2.4 A6); a separate compile UID;
 - caps → 0 and the bounding set dropped, `NO_NEW_PRIVS`, `RLIMIT_CORE=0`, `RLIMIT_FSIZE`, `RLIMIT_NOFILE`, `RLIMIT_STACK` per profile, `RLIMIT_CPU` backstop at TL + 2 s;
 - the profile's seccomp filter installed last (KILL-by-default for exec; ENOSYS-by-default with KILL for dangerous calls for compile; `clone3` → ENOSYS);
@@ -216,7 +217,7 @@ Sources: [t3 §5.7](../research/t3-sandbox.md#57-throttled-and-the-quiet-re-run-
 
 Sources: [t3 §5.10](../research/t3-sandbox.md#510-cleanup-invariants-release-gate-a8), [t3 §9](../research/t3-sandbox.md#9-the-smallest-spike-local-and-throwaway-needs-the-owners-go-ahead) (the P2 corpus), [t3 §2.4](../research/t3-sandbox.md#24-attacks-and-the-control-that-stops-each-one).
 
-- **Test profile `testgo@0`** (`internal/runner/profile/testgo/`, build tag `runner_it`, never in a release build): compile = `go build` with the job's Go toolchain bound read-only; exec = the artifact; the per-case filter = spk-02's amd64 `go` allowlist from t3 §16.2 (m3-04 moves it into the real `go@1.26` profile). A `-tags runner_it` guard test asserts the release build's registry has no `testgo`.
+- **Test profile `testgo@0`** (`internal/runner/profile/testgo/`, build tag `runner_it`, never in a release build): compile = `go build` with the job's Go toolchain bound read-only, `GOROOT` set to that path (the jail has no `/proc`, t3 §16.2) and `TMPDIR=/w`; exec = the artifact; the per-case filter = spk-02's amd64 `go` allowlist from t3 §16.2 (m3-04 moves it into the real `go@1.26` profile). A `-tags runner_it` guard test asserts the release build's registry has no `testgo`.
 - **Corpus** as committed Go programs under `internal/runner/testdata/corpus/<name>/main.go` (`testdata` keeps them out of `./...`): 1 GiB balloon, fork bomb, thread bomb, tmpfs fill, inode fill, stdout flood, orphan double-fork, sleep (idle), spin, a SIGSYS probe (`bpf`, `io_uring_setup`, `unshare(CLONE_NEWUSER)`, `mount`, `ptrace`, `keyctl`), a network probe (TCP to `1.1.1.1:443`, UDP to `10.43.0.10:53`) and cross-job markers (`/w`, `/tmp`, `/dev/shm`, SysV shm, POSIX mq, an abstract socket, a keyring). The SQL rows and the race fixture wait for their profiles (not M3).
 - **Integration tests** (`//go:build linux && runner_it`, `internal/runner/it/`), run as root with a delegated cgroup:
   - balloon × 100 → **MLE 100/100**, the container's `memory.events oom_kill` delta **= 0**;
