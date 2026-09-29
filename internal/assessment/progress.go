@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/assessment/store"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 )
 
 // This file is the S09 progress read API: GET /progress/summary (the four Progress /
@@ -113,7 +114,7 @@ func masteryWeight(bestRank int) float64 {
 // column until M2b redefines and replays them — for the one active course, the DSA
 // course, account-grain is course-grain.
 func (s *Service) handleProgressSummary(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	ctx := r.Context()
 	pathSlug, _, ok := s.resolveCourse(w, r)
 	if !ok {
@@ -172,7 +173,7 @@ func (s *Service) handleProgressSummary(w http.ResponseWriter, r *http.Request) 
 // unknown course refused) but the heatmap stays account-grain: proj_heatmap has no
 // path_slug column until M2b.
 func (s *Service) handleProgressHeatmap(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	if _, _, ok := s.resolveCourse(w, r); !ok {
 		return
 	}
@@ -196,7 +197,7 @@ func (s *Service) handleProgressHeatmap(w http.ResponseWriter, r *http.Request) 
 // but mastery stays account-grain: proj_coverage / proj_mastery have no path_slug
 // column until M2b.
 func (s *Service) handleProgressMastery(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	if _, _, ok := s.resolveCourse(w, r); !ok {
 		return
 	}

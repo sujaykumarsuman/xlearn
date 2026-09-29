@@ -32,7 +32,7 @@ func doJSON(t *testing.T, h http.HandlerFunc, method, target string, body any, c
 		req.SetPathValue(k, v)
 	}
 	if claims != nil {
-		req = req.WithContext(context.WithValue(req.Context(), claimsCtxKey{}, *claims))
+		req = req.WithContext(auth.WithClaims(req.Context(), *claims))
 	}
 	rec := httptest.NewRecorder()
 	h(rec, req)
@@ -116,7 +116,7 @@ func TestUnlinkGuardsLastMethod(t *testing.T) {
 		t.Fatalf("unlink last-method status %d, want 409", rec.Code)
 	}
 	// With a password set, disconnecting is allowed.
-	if _, err := st.SetAccountPassword(context.Background(), acct.ID, "bcrypt-ish"); err != nil {
+	if _, _, err := st.SetAccountPassword(context.Background(), acct.ID, "bcrypt-ish"); err != nil {
 		t.Fatalf("set password: %v", err)
 	}
 	if rec := doJSON(t, svc.handleUnlinkOAuth, http.MethodDelete, "/x", nil, claims, pv); rec.Code != http.StatusNoContent {
@@ -154,9 +154,9 @@ func TestSignupClosed(t *testing.T) {
 
 func mustHash(t *testing.T, pw string) string {
 	t.Helper()
-	h, err := hashPassword(pw)
+	h, err := realBcrypt{}.Generate([]byte(pw))
 	if err != nil {
 		t.Fatalf("hash: %v", err)
 	}
-	return h
+	return string(h)
 }

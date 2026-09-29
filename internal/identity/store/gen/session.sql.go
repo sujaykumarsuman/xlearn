@@ -37,21 +37,57 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (I
 }
 
 const getValidSession = `-- name: GetValidSession :one
-SELECT id, account_id, created_at, expires_at, revoked_at FROM identity.session
-WHERE id = $1 AND revoked_at IS NULL AND expires_at > now()
+SELECT s.id, s.account_id, s.created_at, s.expires_at,
+       a.role, a.status, a.accepted_at
+FROM identity.session s
+JOIN identity.account a ON a.id = s.account_id AND a.status = 'active'
+WHERE s.id = $1 AND s.revoked_at IS NULL AND s.expires_at > now()
 `
 
-func (q *Queries) GetValidSession(ctx context.Context, id string) (IdentitySession, error) {
+type GetValidSessionRow struct {
+	ID         string
+	AccountID  pgtype.UUID
+	CreatedAt  pgtype.Timestamptz
+	ExpiresAt  pgtype.Timestamptz
+	Role       string
+	Status     string
+	AcceptedAt pgtype.Timestamptz
+}
+
+// A live session of an ACTIVE account (m1-04, ADR-0033 §7): the join on
+// status = 'active' kills every session of a suspended account at once, with no
+// revocation step. It returns what session-validate reports (§6): the account's role,
+// status and accepted_at, and the SESSION's created_at (L8's fresh-session check). It
+// runs on every API call and reads the account by primary key.
+func (q *Queries) GetValidSession(ctx context.Context, id string) (GetValidSessionRow, error) {
 	row := q.db.QueryRow(ctx, getValidSession, id)
-	var i IdentitySession
+	var i GetValidSessionRow
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
 		&i.CreatedAt,
 		&i.ExpiresAt,
-		&i.RevokedAt,
+		&i.Role,
+		&i.Status,
+		&i.AcceptedAt,
 	)
 	return i, err
+}
+
+const revokeAllSessions = `-- name: RevokeAllSessions :execrows
+UPDATE identity.session
+SET revoked_at = now()
+WHERE account_id = $1 AND revoked_at IS NULL
+`
+
+// Revoke every live session of an account (m1-04): a password change (the caller's
+// own session included), the admin CLI's suspend and revoke-sessions.
+func (q *Queries) RevokeAllSessions(ctx context.Context, accountID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeAllSessions, accountID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const revokeSession = `-- name: RevokeSession :execrows

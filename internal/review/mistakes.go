@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/review/store"
 )
 
@@ -59,7 +60,7 @@ func toMistakeJSON(m store.Mistake) mistakeJSON {
 // consistently. closeThreshold surfaces the "n/2" denominator without hardcoding it
 // client-side.
 func (s *Service) handleListMistakes(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	pathSlug, ok := s.resolveCourse(w, r)
 	if !ok {
 		return
@@ -101,7 +102,7 @@ func (s *Service) handleListMistakes(w http.ResponseWriter, r *http.Request) {
 // handleCreateMistake: POST /mistakes?path=<slug> — manually create an entry in that
 // course. The one-open-entry rule stays per item (a 409 whatever the course).
 func (s *Service) handleCreateMistake(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	// The course travels as `?path=`, never a body field: a v1.6.0 review decodes the
 	// body with DisallowUnknownFields.
 	pathSlug, ok := s.resolveCourse(w, r)
@@ -144,7 +145,7 @@ func (s *Service) handleCreateMistake(w http.ResponseWriter, r *http.Request) {
 // handlePatchMistake: PATCH /mistakes/{id} — edit root cause / insight / category /
 // status / revisit. Absent fields are unchanged (pointer presence).
 func (s *Service) handlePatchMistake(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	id := r.PathValue("id")
 	var body struct {
 		Pattern      *string `json:"pattern"`
@@ -179,7 +180,7 @@ func (s *Service) handlePatchMistake(w http.ResponseWriter, r *http.Request) {
 // banner (R-MJ3). When no snapshot exists yet, topCategory is "" and the client hides
 // the banner.
 func (s *Service) handleWeakArea(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	pathSlug, ok := s.resolveCourse(w, r)
 	if !ok {
 		return
@@ -217,7 +218,7 @@ func (s *Service) handleWeakArea(w http.ResponseWriter, r *http.Request) {
 // handleReminders: GET /reminders — the account's due in-app reminders, for the
 // gateway's Dashboard aggregation.
 func (s *Service) handleReminders(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	rows, err := s.store.ListDueReminders(r.Context(), accountID, reminderLimit)
 	if err != nil {
 		s.mapErr(w, "list reminders", err)

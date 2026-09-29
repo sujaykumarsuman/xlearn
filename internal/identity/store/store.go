@@ -64,6 +64,11 @@ type Account struct {
 	StudyBudget []byte
 	Reminders   []byte
 	CreatedAt   time.Time
+	// Role and Status live here, never in a JWT (ADR-0033 §7): RoleLearner|RoleTester|
+	// RoleOwner and StatusActive|StatusSuspended. AdmittedVia is the admission provenance.
+	Role        string
+	Status      string
+	AdmittedVia string
 }
 
 // Onboarding is the first-run state for an account. Whether a coach key is connected is
@@ -77,12 +82,18 @@ type Onboarding struct {
 	CompletedAt time.Time // zero until onboarding completes
 }
 
-// Session is a server-side session behind the opaque HttpOnly cookie.
+// Session is a server-side session behind the opaque HttpOnly cookie. CreatedAt is the
+// session's own creation time (L8's fresh-session check). GetValidSession also fills the
+// account's Role, Status and AcceptedAt (zero until the L-A acceptance step) — what
+// session-validate returns (ADR-0033 §6); CreateSession leaves them empty.
 type Session struct {
-	ID        string
-	AccountID string
-	CreatedAt time.Time
-	ExpiresAt time.Time
+	ID         string
+	AccountID  string
+	CreatedAt  time.Time
+	ExpiresAt  time.Time
+	Role       string
+	Status     string
+	AcceptedAt time.Time
 }
 
 // Enrollment is a learner's per-path enrollment (F002). started_at anchors the
@@ -148,8 +159,10 @@ type Store interface {
 	// password) with onboarding + the account_created outbox row, in one transaction.
 	// ErrEmailTaken when the email is already registered.
 	CreateEmailAccount(ctx context.Context, email, passwordHash, displayName string) (Account, error)
-	// SetAccountPassword sets/replaces the account's bcrypt hash (Settings).
-	SetAccountPassword(ctx context.Context, id, passwordHash string) (Account, error)
+	// SetAccountPassword sets/replaces the account's bcrypt hash (Settings) and revokes
+	// every live session of the account, the caller's included, in one transaction
+	// (m1-04, ADR-0033 §12 row 4). revoked is the number of sessions it ended.
+	SetAccountPassword(ctx context.Context, id, passwordHash string) (acct Account, revoked int64, err error)
 	// LinkOAuth attaches a provider identity to an existing account (Settings: connect).
 	// ErrConflict when that (provider, provider_user_id) is already linked.
 	LinkOAuth(ctx context.Context, accountID, provider, providerUserID string) error
@@ -176,8 +189,14 @@ type Store interface {
 	StartEnrollment(ctx context.Context, accountID, pathSlug string, publicVisible bool) (Enrollment, error)
 	ListEnrollments(ctx context.Context, accountID string) ([]Enrollment, error)
 	CreateSession(ctx context.Context, id, accountID string, expiresAt time.Time) (Session, error)
+	// GetValidSession returns a non-revoked, unexpired session of an ACTIVE account with
+	// the account's role/status/accepted_at; ErrNotFound otherwise (a suspended account's
+	// sessions all die at once, ADR-0033 §7).
 	GetValidSession(ctx context.Context, id string) (Session, error)
 	RevokeSession(ctx context.Context, id string) (revoked bool, err error)
+	// RevokeAllSessions revokes every live session of an account (password change,
+	// admin suspend / revoke-sessions); it returns how many it ended.
+	RevokeAllSessions(ctx context.Context, accountID string) (int64, error)
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]OutboxRow, error)
 	MarkOutboxSent(ctx context.Context, eventID string) error
 	Ping(ctx context.Context) error
@@ -388,17 +407,31 @@ func (s *PgStore) CreateEmailAccount(ctx context.Context, email, passwordHash, d
 	return toAccount(acctRow), nil
 }
 
-// SetAccountPassword sets or replaces the account's bcrypt hash.
-func (s *PgStore) SetAccountPassword(ctx context.Context, id, passwordHash string) (Account, error) {
+// SetAccountPassword sets or replaces the account's bcrypt hash and revokes every live
+// session of the account in the same transaction.
+func (s *PgStore) SetAccountPassword(ctx context.Context, id, passwordHash string) (Account, int64, error) {
 	uid, err := parseUUID(id)
 	if err != nil {
-		return Account{}, ErrNotFound
+		return Account{}, 0, ErrNotFound
 	}
-	row, err := s.q.SetAccountPassword(ctx, gen.SetAccountPasswordParams{ID: uid, PasswordHash: textOrNull(passwordHash)})
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return Account{}, mapErr(err)
+		return Account{}, 0, fmt.Errorf("begin tx: %w", err)
 	}
-	return toAccount(row), nil
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := s.q.WithTx(tx)
+	row, err := qtx.SetAccountPassword(ctx, gen.SetAccountPasswordParams{ID: uid, PasswordHash: textOrNull(passwordHash)})
+	if err != nil {
+		return Account{}, 0, mapErr(err)
+	}
+	revoked, err := qtx.RevokeAllSessions(ctx, uid)
+	if err != nil {
+		return Account{}, 0, fmt.Errorf("revoke sessions: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Account{}, 0, fmt.Errorf("commit tx: %w", err)
+	}
+	return toAccount(row), revoked, nil
 }
 
 // LinkOAuth attaches a provider identity to an existing account (ErrConflict if the
@@ -588,13 +621,34 @@ func (s *PgStore) CreateSession(ctx context.Context, id, accountID string, expir
 	return toSession(row), nil
 }
 
-// GetValidSession returns a non-revoked, non-expired session by id.
+// GetValidSession returns a non-revoked, non-expired session of an active account.
 func (s *PgStore) GetValidSession(ctx context.Context, id string) (Session, error) {
 	row, err := s.q.GetValidSession(ctx, id)
 	if err != nil {
 		return Session{}, mapErr(err)
 	}
-	return toSession(row), nil
+	return Session{
+		ID:         row.ID,
+		AccountID:  uuidString(row.AccountID),
+		CreatedAt:  row.CreatedAt.Time,
+		ExpiresAt:  row.ExpiresAt.Time,
+		Role:       row.Role,
+		Status:     row.Status,
+		AcceptedAt: row.AcceptedAt.Time,
+	}, nil
+}
+
+// RevokeAllSessions revokes every live session of an account.
+func (s *PgStore) RevokeAllSessions(ctx context.Context, accountID string) (int64, error) {
+	uid, err := parseUUID(accountID)
+	if err != nil {
+		return 0, ErrNotFound
+	}
+	n, err := s.q.RevokeAllSessions(ctx, uid)
+	if err != nil {
+		return 0, fmt.Errorf("revoke all sessions: %w", err)
+	}
+	return n, nil
 }
 
 // RevokeSession marks a session revoked; revoked reports whether a row changed.
@@ -657,6 +711,9 @@ func toAccount(a gen.IdentityAccount) Account {
 		StudyBudget:  a.StudyBudgetJson,
 		Reminders:    a.RemindersJson,
 		CreatedAt:    a.CreatedAt.Time,
+		Role:         a.Role,
+		Status:       a.Status,
+		AdmittedVia:  a.AdmittedVia.String,
 	}
 }
 

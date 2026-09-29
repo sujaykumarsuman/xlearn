@@ -1,19 +1,14 @@
 package review
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/review/store"
 )
-
-// claimsCtxKey carries verified JWT claims from requireJWT to the handler.
-type claimsCtxKey struct{}
 
 // dueQueueLimit caps the due queue returned to the gateway/screen.
 const dueQueueLimit = 100
@@ -52,7 +47,7 @@ type scoreResultJSON struct {
 // handleDueQueue: GET /revisions/due?path=<slug> — the account's prioritised revision
 // queue in one course (reviews before new work, R-SR5), grouped-ready by touch day.
 func (s *Service) handleDueQueue(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	pathSlug, ok := s.resolveCourse(w, r)
 	if !ok {
 		return
@@ -85,7 +80,7 @@ func (s *Service) handleDueQueue(w http.ResponseWriter, r *http.Request) {
 // handleScore: POST /revisions/{id}/score — auto-score a re-solve (R-SR2) and
 // advance the touch or reset the ladder to Day 1 (R-SR3).
 func (s *Service) handleScore(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	itemID := r.PathValue("id")
 	var body struct {
 		NamedPatternSecs int  `json:"namedPatternSecs"`
@@ -154,39 +149,6 @@ func statusFor(pass bool) string {
 	return store.StatusFailed
 }
 
-// requireJWT verifies the gateway-minted JWT (Authorization: Bearer) via JWKS and
-// stores its claims in the request context (ADR-0006).
-func (s *Service) requireJWT(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := bearer(r)
-		if token == "" {
-			writeUnauthenticated(w)
-			return
-		}
-		claims, err := s.verifier.Verify(r.Context(), token)
-		if err != nil {
-			s.log.Warn("jwt verify failed", "err", err)
-			writeUnauthenticated(w)
-			return
-		}
-		ctx := context.WithValue(r.Context(), claimsCtxKey{}, claims)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-func claimsFrom(ctx context.Context) auth.Claims {
-	c, _ := ctx.Value(claimsCtxKey{}).(auth.Claims)
-	return c
-}
-
-func bearer(r *http.Request) string {
-	h := r.Header.Get("Authorization")
-	if len(h) > 7 && strings.EqualFold(h[:7], "Bearer ") {
-		return strings.TrimSpace(h[7:])
-	}
-	return ""
-}
-
 // mapErr maps a store error to the right HTTP status + error envelope.
 func (s *Service) mapErr(w http.ResponseWriter, what string, err error) {
 	switch {
@@ -214,11 +176,4 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func writeError(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, map[string]any{"error": map[string]any{"code": code, "message": message}})
-}
-
-// writeUnauthenticated emits exactly the api.md 401 envelope the SPA redirects on.
-func writeUnauthenticated(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
-	_, _ = w.Write([]byte(`{"error":{"code":"unauthenticated"}}`))
 }

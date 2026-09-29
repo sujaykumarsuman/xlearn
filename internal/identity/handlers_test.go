@@ -339,9 +339,11 @@ func TestCallbackStateMismatch(t *testing.T) {
 func TestSessionValidateAndRevoke(t *testing.T) {
 	st := newFakeStore()
 	svc := newTestService(st, nil)
-	_, _ = st.CreateSession(context.Background(), "sid-1", "acct-1", time.Now().Add(time.Hour))
+	acct, _, _ := st.FindOrCreateAccount(context.Background(), store.OAuthUpsert{Provider: "github", ProviderUserID: "1", DisplayName: "Ada"})
+	sess, _ := st.CreateSession(context.Background(), "sid-1", acct.ID, time.Now().Add(time.Hour))
 
-	// validate valid
+	// validate valid: the m1-04 fields ride along (role/status from the account row,
+	// accepted false until L-A, created_at = the SESSION's).
 	rec := httptest.NewRecorder()
 	svc.handleValidateSession(rec, jsonReq("/sessions/validate", `{"session_id":"sid-1"}`))
 	if rec.Code != http.StatusOK {
@@ -349,10 +351,18 @@ func TestSessionValidateAndRevoke(t *testing.T) {
 	}
 	var vr struct {
 		AccountID string `json:"account_id"`
+		Role      string `json:"role"`
+		Status    string `json:"status"`
+		Accepted  *bool  `json:"accepted"`
+		CreatedAt string `json:"created_at"`
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &vr)
-	if vr.AccountID != "acct-1" {
+	if vr.AccountID != acct.ID {
 		t.Fatalf("validate returned account %q", vr.AccountID)
+	}
+	if vr.Role != "learner" || vr.Status != "active" || vr.Accepted == nil || *vr.Accepted ||
+		vr.CreatedAt != sess.CreatedAt.UTC().Format(time.RFC3339) {
+		t.Fatalf("validate fields: %s", rec.Body.String())
 	}
 
 	// validate invalid → 401 unauthenticated envelope

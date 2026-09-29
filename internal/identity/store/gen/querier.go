@@ -11,6 +11,27 @@ import (
 )
 
 type Querier interface {
+	AdminCountActiveOwners(ctx context.Context) (int64, error)
+	// A seat (ADR-0033 §3) is an active learner. Invites join the count at L-A.
+	AdminCountSeatsUsed(ctx context.Context) (int64, error)
+	// `account create --role tester`: a password account provisioned by the CLI.
+	AdminCreateAccount(ctx context.Context, arg AdminCreateAccountParams) (IdentityAccount, error)
+	// `account list`: optional role/status filters; dormant_before keeps only accounts with
+	// no session created at or after it. last_session_at is NULL for an account that never
+	// signed in.
+	AdminListAccounts(ctx context.Context, arg AdminListAccountsParams) ([]AdminListAccountsRow, error)
+	AdminLockAccountByEmail(ctx context.Context, lower string) (IdentityAccount, error)
+	AdminLockAccountByID(ctx context.Context, id pgtype.UUID) (IdentityAccount, error)
+	AdminLockAccountByUsername(ctx context.Context, lower string) (IdentityAccount, error)
+	// Role only: admitted_via never changes (ADR-0033 §2).
+	AdminSetRole(ctx context.Context, arg AdminSetRoleParams) (IdentityAccount, error)
+	AdminSetStatus(ctx context.Context, arg AdminSetStatusParams) (IdentityAccount, error)
+	// The owner admin CLI (m1-04, ADR-0033 §8): `identity admin …`, run via kubectl exec
+	// with the pod's own credentials. Every verb runs in one transaction that also writes
+	// identity.admin_audit (admin_audit.sql). Guards serialize on transaction-scoped
+	// advisory locks: 'identity.owners' (the last-owner guard) before 'identity.seats'
+	// (SEAT_CAP), always in that order.
+	AdminXactLock(ctx context.Context, lockName string) error
 	// The last onboarding step (Finish / Skip). Idempotent: an already-completed account keeps
 	// its original completed_at (COALESCE) so re-submitting Finish never moves the timestamp.
 	// The key_added column is unused: nothing ever set it, and whether a coach key is
@@ -39,7 +60,12 @@ type Querier interface {
 	// profile at /xlearn/u/<username>). ErrNotFound when no account has claimed that username.
 	GetAccountByUsername(ctx context.Context, lower string) (IdentityAccount, error)
 	GetOnboarding(ctx context.Context, accountID pgtype.UUID) (IdentityOnboarding, error)
-	GetValidSession(ctx context.Context, id string) (IdentitySession, error)
+	// A live session of an ACTIVE account (m1-04, ADR-0033 §7): the join on
+	// status = 'active' kills every session of a suspended account at once, with no
+	// revocation step. It returns what session-validate reports (§6): the account's role,
+	// status and accepted_at, and the SESSION's created_at (L8's fresh-session check). It
+	// runs on every API call and reads the account by primary key.
+	GetValidSession(ctx context.Context, id string) (GetValidSessionRow, error)
 	// identity.admin_audit (m1-02, M1a expand; ADR-0033 §8): the owner admin CLI's audit
 	// log. m1-04's CLI is the writer; v1.6.0 only creates the table.
 	InsertAdminAudit(ctx context.Context, arg InsertAdminAuditParams) (IdentityAdminAudit, error)
@@ -51,6 +77,9 @@ type Querier interface {
 	ListOauthProviders(ctx context.Context, accountID pgtype.UUID) ([]string, error)
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]IdentityOutbox, error)
 	MarkOutboxSent(ctx context.Context, eventID pgtype.UUID) error
+	// Revoke every live session of an account (m1-04): a password change (the caller's
+	// own session included), the admin CLI's suspend and revoke-sessions.
+	RevokeAllSessions(ctx context.Context, accountID pgtype.UUID) (int64, error)
 	RevokeSession(ctx context.Context, id string) (int64, error)
 	// Set or replace the account's bcrypt password hash (Settings: set/change password).
 	SetAccountPassword(ctx context.Context, arg SetAccountPasswordParams) (IdentityAccount, error)

@@ -1,7 +1,6 @@
 package practice
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,9 +11,6 @@ import (
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/practice/store"
 )
-
-// claimsCtxKey carries verified JWT claims from requireJWT to the handler.
-type claimsCtxKey struct{}
 
 // --- JSON response shapes (api.md conventions) ---
 
@@ -47,7 +43,7 @@ type penaltyJSON struct {
 
 // handleGetState: GET /state/{problemId} — one problem's state + active timer.
 func (s *Service) handleGetState(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	problemID := r.PathValue("problemId")
 	st, err := s.store.GetState(r.Context(), accountID, problemID)
 	if err != nil {
@@ -61,7 +57,7 @@ func (s *Service) handleGetState(w http.ResponseWriter, r *http.Request) {
 // ids (the Week five-touch dots + daily plan). practice is week-agnostic, so the
 // gateway supplies the week's problem ids via ?ids=; `week` is accepted for logging.
 func (s *Service) handleListStates(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	ids := parseIDs(r.URL.Query().Get("ids"))
 	states, err := s.store.ListStates(r.Context(), accountID, ids)
 	if err != nil {
@@ -79,7 +75,7 @@ func (s *Service) handleListStates(w http.ResponseWriter, r *http.Request) {
 // the attempt and start the 15-min timer. The course is written when the problem
 // state row is created; a resume keeps the row's own course.
 func (s *Service) handleStartAttempt(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	problemID := r.PathValue("id")
 	pathSlug, ok := s.resolveCourse(w, r)
 	if !ok {
@@ -98,7 +94,7 @@ func (s *Service) handleStartAttempt(w http.ResponseWriter, r *http.Request) {
 // elapses. A reveal never creates a problem state row, so `path` is only validated: the
 // solution_revealed_early event carries the row's course.
 func (s *Service) handleReveal(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	problemID := r.PathValue("id")
 	if _, ok := s.resolveCourse(w, r); !ok {
 		return
@@ -128,7 +124,7 @@ func (s *Service) handleReveal(w http.ResponseWriter, r *http.Request) {
 // Miss. Like a reveal it only validates `path`: problem_solved and attempt_logged carry
 // the problem state row's course.
 func (s *Service) handleOutcome(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	problemID := r.PathValue("id")
 	if _, ok := s.resolveCourse(w, r); !ok {
 		return
@@ -200,39 +196,6 @@ func parseIDs(csv string) []string {
 	return out
 }
 
-// requireJWT verifies the gateway-minted JWT (Authorization: Bearer) via JWKS and
-// stores its claims in the request context (ADR-0006).
-func (s *Service) requireJWT(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := bearer(r)
-		if token == "" {
-			writeUnauthenticated(w)
-			return
-		}
-		claims, err := s.verifier.Verify(r.Context(), token)
-		if err != nil {
-			s.log.Warn("jwt verify failed", "err", err)
-			writeUnauthenticated(w)
-			return
-		}
-		ctx := context.WithValue(r.Context(), claimsCtxKey{}, claims)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-func claimsFrom(ctx context.Context) auth.Claims {
-	c, _ := ctx.Value(claimsCtxKey{}).(auth.Claims)
-	return c
-}
-
-func bearer(r *http.Request) string {
-	h := r.Header.Get("Authorization")
-	if len(h) > 7 && strings.EqualFold(h[:7], "Bearer ") {
-		return strings.TrimSpace(h[7:])
-	}
-	return ""
-}
-
 // mapErr maps a store error to the right HTTP status + error envelope.
 func (s *Service) mapErr(w http.ResponseWriter, what string, err error) {
 	switch {
@@ -266,11 +229,4 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func writeError(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, map[string]any{"error": map[string]any{"code": code, "message": message}})
-}
-
-// writeUnauthenticated emits exactly the api.md 401 envelope the SPA redirects on.
-func writeUnauthenticated(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
-	_, _ = w.Write([]byte(`{"error":{"code":"unauthenticated"}}`))
 }

@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 )
 
 // This file implements the S10 account surface on identity: the partial PATCH /me
@@ -36,7 +37,7 @@ var hhmm = regexp.MustCompile(`^([01]\d|2[0-3]):[0-5]\d$`)
 // Only fields present in the body are changed; email is read-only and ignored. The
 // study-budget / reminders blobs are validated + canonicalised before they are stored.
 func (s *Service) handlePatchAccount(w http.ResponseWriter, r *http.Request) {
-	claims := claimsFrom(r.Context())
+	claims := auth.ClaimsFrom(r.Context())
 	id := r.PathValue("id")
 	if claims.Subject != id {
 		writeError(w, http.StatusForbidden, "forbidden", "account does not match token subject")

@@ -6,6 +6,7 @@
 package identity
 
 import (
+	"log/slog"
 	"net"
 	"net/url"
 	"os"
@@ -71,23 +72,68 @@ type AuthConfig struct {
 	DevAuth bool
 	// Signup gates creating NEW accounts (ADR-0023 §2, amended 2026-09-24): email sign-up
 	// and a first OAuth sign-in that matches no account. Existing accounts sign in as usual.
+	// It is the EFFECTIVE mode (resolveSignupMode): `open` only with DEV_AUTH (L7).
 	Signup SignupMode
+	// SignupRequested is SIGNUP_MODE as set (trimmed, lower-cased), and SignupNote says
+	// why the effective mode differs from it ("" when it doesn't). LogSignupMode logs it.
+	SignupRequested string
+	SignupNote      string
+	// SeatCap is SEAT_CAP (ADR-0033 §3): active learners allowed. Only the admin CLI's
+	// reactivate / set-role learner read it in M1b; invites (L-A) join. Default 15.
+	SeatCap int
 }
 
-// SignupMode is SIGNUP_MODE. Anything other than "open" (unset, a typo) resolves to
-// closed, so a missing env fails safe. v2 adds "invite".
+// DefaultSeatCap is SEAT_CAP's code default (ADR-0033 §3 initial value).
+const DefaultSeatCap = 15
+
+// SignupMode is the effective sign-up mode. v2 names three (ADR-0033 §3): closed,
+// invite and open; identity runs only closed and open until L-A builds invite.
 type SignupMode string
 
 const (
 	SignupOpen   SignupMode = "open"
 	SignupClosed SignupMode = "closed"
+	// SignupInvite is accepted as a value but runs as closed until L-A (l-03) builds
+	// the invite flow.
+	SignupInvite SignupMode = "invite"
 )
 
-func parseSignupMode(v string) SignupMode {
-	if SignupMode(strings.ToLower(strings.TrimSpace(v))) == SignupOpen {
-		return SignupOpen
+// resolveSignupMode is the L7 guard (ADR-0033 §3, ADR-0035 §4): `open` is honoured only
+// with DEV_AUTH set (compose); without it identity runs closed and says why (logged at
+// ERROR — production at `open` would be D21's open-signup trigger, a code change behind
+// a new ADR, never an env flip). `invite` runs closed until L-A. Unset or empty is
+// closed with no note; anything else is closed with a note. The note never echoes more
+// than the normalized value.
+func resolveSignupMode(raw string, devAuth bool) (SignupMode, string) {
+	switch SignupMode(normalizeSignupMode(raw)) {
+	case SignupOpen:
+		if devAuth {
+			return SignupOpen, ""
+		}
+		return SignupClosed, "SIGNUP_MODE=open ignored without DEV_AUTH; running closed"
+	case SignupInvite:
+		return SignupClosed, "SIGNUP_MODE=invite runs closed until the invite flow ships (L-A)"
+	case SignupClosed, "":
+		return SignupClosed, ""
+	default:
+		return SignupClosed, "SIGNUP_MODE has an unknown value; running closed"
 	}
-	return SignupClosed
+}
+
+func normalizeSignupMode(raw string) string { return strings.ToLower(strings.TrimSpace(raw)) }
+
+// LogSignupMode logs the effective sign-up mode once at startup (D34: a log line, no
+// alert): ERROR when `open` was asked for without DEV_AUTH (the L7 misconfiguration),
+// INFO for any other note.
+func (a AuthConfig) LogSignupMode(log *slog.Logger) {
+	switch {
+	case a.SignupNote == "":
+		return
+	case SignupMode(a.SignupRequested) == SignupOpen && a.Signup != SignupOpen:
+		log.Error(a.SignupNote, "signup_mode", a.Signup, "requested", a.SignupRequested)
+	default:
+		log.Info(a.SignupNote, "signup_mode", a.Signup)
+	}
 }
 
 // OAuthClient is a provider's registered app credentials.
@@ -104,6 +150,9 @@ func (c OAuthClient) Configured() bool { return c.ClientID != "" && c.ClientSecr
 // suit local dev (gateway on :8080, identity on :8081); k8s overrides via env.
 func LoadConfig() Config {
 	base := env("PUBLIC_BASE_URL", "http://localhost:8080/xlearn")
+	devAuth := envBool("DEV_AUTH", false)
+	signupRaw := os.Getenv("SIGNUP_MODE")
+	signup, signupNote := resolveSignupMode(signupRaw, devAuth)
 	return Config{
 		Port:     env("PORT", "8081"),
 		LogLevel: env("LOG_LEVEL", "info"),
@@ -130,10 +179,13 @@ func LoadConfig() Config {
 			// Secure cookies whenever the public base is https (prod); plain http
 			// (local dev) gets non-Secure so the browser will store the cookie.
 			// Overridable with COOKIE_SECURE.
-			CookieSecure: envBool("COOKIE_SECURE", strings.HasPrefix(base, "https://")),
-			SessionTTL:   envDuration("SESSION_TTL", 30*24*time.Hour),
-			DevAuth:      envBool("DEV_AUTH", false),
-			Signup:       parseSignupMode(os.Getenv("SIGNUP_MODE")),
+			CookieSecure:    envBool("COOKIE_SECURE", strings.HasPrefix(base, "https://")),
+			SessionTTL:      envDuration("SESSION_TTL", 30*24*time.Hour),
+			DevAuth:         devAuth,
+			Signup:          signup,
+			SignupRequested: normalizeSignupMode(signupRaw),
+			SignupNote:      signupNote,
+			SeatCap:         envPositiveInt("SEAT_CAP", DefaultSeatCap),
 		},
 		NATS: NATSConfig{
 			URL: strings.TrimSpace(os.Getenv("NATS_URL")),
@@ -176,6 +228,16 @@ func envBool(key string, def bool) bool {
 	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
 		if b, err := strconv.ParseBool(v); err == nil {
 			return b
+		}
+	}
+	return def
+}
+
+// envPositiveInt reads a positive integer, falling back to def when unset or invalid.
+func envPositiveInt(key string, def int) int {
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
 		}
 	}
 	return def

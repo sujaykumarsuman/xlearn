@@ -105,31 +105,51 @@ func (s *Service) WithAccountResolver(r accountResolver) *Service {
 	return s
 }
 
-// Handler builds review's HTTP routes (Go 1.22+ method+pattern mux). The Revision
-// routes verify the gateway-minted JWT; the account is the token subject. The
-// external gateway surface /xlearn/api/revision/* maps to these internal
-// /revisions/* routes (api.md: external `revision`, internal `revisions`).
+// Handler builds review's HTTP routes (Go 1.22+ method+pattern mux). Every user route
+// (userRoutes) verifies the gateway-minted JWT and requires the learner role; the
+// account is the token subject. The external gateway surface /xlearn/api/revision/*
+// maps to the internal /revisions/* routes (api.md: external `revision`, internal
+// `revisions`).
 func (s *Service) Handler() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", s.health.Live)
 	mux.HandleFunc("GET /readyz", s.health.Ready)
 
-	// The course-scoped reads and the journal create take the optional internal
-	// `?path=<slug>` (m1-03, see resolveCourse); the routes by id (score, patch) and the
-	// account-wide reminders don't.
-	mux.Handle("GET /revisions/due", s.requireJWT(http.HandlerFunc(s.handleDueQueue)))
-	mux.Handle("POST /revisions/{id}/score", s.requireJWT(http.HandlerFunc(s.handleScore)))
-
-	// Mistake journal + weekly weak-area + reminders (S07). The gateway maps external
-	// /mistakes · /weak-area · /dashboard onto these internal routes.
-	mux.Handle("GET /mistakes", s.requireJWT(http.HandlerFunc(s.handleListMistakes)))
-	mux.Handle("POST /mistakes", s.requireJWT(http.HandlerFunc(s.handleCreateMistake)))
-	mux.Handle("PATCH /mistakes/{id}", s.requireJWT(http.HandlerFunc(s.handlePatchMistake)))
-	mux.Handle("GET /weak-area/current", s.requireJWT(http.HandlerFunc(s.handleWeakArea)))
-	mux.Handle("GET /reminders", s.requireJWT(http.HandlerFunc(s.handleReminders)))
+	requireLearner := auth.RequireRole(s.verifier, auth.RoleLearner, auth.WithLogger(s.log))
+	for _, rt := range s.userRoutes() {
+		mux.Handle(rt.Method+" "+rt.Pattern, requireLearner(rt.Handler))
+	}
 
 	return mux
+}
+
+// userRoute is one per-user (JWT) route. Handler registers every userRoutes entry behind
+// auth.RequireRole(learner) (ADR-0033 §12 row 5), so a route added to the table cannot
+// skip the role check.
+type userRoute struct {
+	Method  string
+	Pattern string
+	Handler http.HandlerFunc
+}
+
+// userRoutes is review's per-user route table.
+func (s *Service) userRoutes() []userRoute {
+	return []userRoute{
+		// The course-scoped reads and the journal create take the optional internal
+		// `?path=<slug>` (m1-03, see resolveCourse); the routes by id (score, patch) and
+		// the account-wide reminders don't.
+		{http.MethodGet, "/revisions/due", s.handleDueQueue},
+		{http.MethodPost, "/revisions/{id}/score", s.handleScore},
+
+		// Mistake journal + weekly weak-area + reminders (S07). The gateway maps external
+		// /mistakes · /weak-area · /dashboard onto these internal routes.
+		{http.MethodGet, "/mistakes", s.handleListMistakes},
+		{http.MethodPost, "/mistakes", s.handleCreateMistake},
+		{http.MethodPatch, "/mistakes/{id}", s.handlePatchMistake},
+		{http.MethodGet, "/weak-area/current", s.handleWeakArea},
+		{http.MethodGet, "/reminders", s.handleReminders},
+	}
 }
 
 // NewOutboxRelay builds the review outbox relay over pub (a JetStream publisher in

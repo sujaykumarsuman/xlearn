@@ -1,20 +1,15 @@
 package identity
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 )
-
-// claimsCtxKey carries verified JWT claims from requireJWT to the handler.
-type claimsCtxKey struct{}
 
 // --- OAuth: start + callback ---
 
@@ -146,6 +141,12 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 		s.redirectToAuth(w, r, "account")
 		return
 	}
+	// A suspended account can't start a session (ADR-0033 §7, m1-04).
+	if acct.Status == store.StatusSuspended {
+		s.log.Info("oauth callback: account suspended; no session", "provider", provider, "account_id", acct.ID)
+		s.redirectToAuth(w, r, "account_unavailable")
+		return
+	}
 
 	sid := newSessionID()
 	if _, err := s.store.CreateSession(ctx, sid, acct.ID, time.Now().Add(s.cfg.Auth.SessionTTL)); err != nil {
@@ -188,9 +189,16 @@ func (s *Service) handleValidateSession(w http.ResponseWriter, r *http.Request) 
 		writeUnauthenticated(w)
 		return
 	}
+	// m1-04 (ADR-0033 §6, §7): the account's role and status (identity's DB, never a
+	// JWT), whether it passed the acceptance step (always false until L-A; not enforced
+	// here) and the SESSION's created_at (L8's fresh-session check). Additive fields.
 	writeJSON(w, http.StatusOK, map[string]any{
 		"account_id": sess.AccountID,
 		"expires_at": sess.ExpiresAt.UTC().Format(time.RFC3339),
+		"role":       sess.Role,
+		"status":     sess.Status,
+		"accepted":   !sess.AcceptedAt.IsZero(),
+		"created_at": sess.CreatedAt.UTC().Format(time.RFC3339),
 	})
 }
 
@@ -212,7 +220,7 @@ func (s *Service) handleRevokeSession(w http.ResponseWriter, r *http.Request) {
 // --- User-data routes (JWT-protected) ---
 
 func (s *Service) handleGetAccount(w http.ResponseWriter, r *http.Request) {
-	claims := claimsFrom(r.Context())
+	claims := auth.ClaimsFrom(r.Context())
 	id := r.PathValue("id")
 	if claims.Subject != id {
 		writeError(w, http.StatusForbidden, "forbidden", "account does not match token subject")
@@ -250,7 +258,7 @@ func rawJSONOrEmpty(b []byte) json.RawMessage {
 }
 
 func (s *Service) handleOnboardingStep(w http.ResponseWriter, r *http.Request) {
-	claims := claimsFrom(r.Context())
+	claims := auth.ClaimsFrom(r.Context())
 	var body struct {
 		Step        string          `json:"step"`
 		PathChosen  string          `json:"path_chosen"`
@@ -304,24 +312,35 @@ func (s *Service) handleOnboardingStep(w http.ResponseWriter, r *http.Request) {
 // JWT-scoped to the caller's own account; idempotent (a repeat start keeps the original
 // started_at, so "current day" never resets).
 //
-// The slug must be an `active` course (ADR-0033 §12 row 8, sprint m1-03): an unknown or
-// `preview` slug is 404 course_not_found, one body for both so nothing hints that a
-// preview course exists; `coming_soon` and `retired` are 409 course_not_available. A new
-// enrollment's public_visible is the manifest's public_stats.default_visible (D7).
+// The slug must be an `active` course, or a `preview` course for the owner/tester cohort
+// (ADR-0033 §12 row 8; m1-03, m1-04): an unknown slug, or a preview one outside the
+// cohort, is 404 course_not_found — one body for both, so nothing hints that a preview
+// course exists; `coming_soon` and `retired` are 409 course_not_available. The cohort is
+// the caller's role in identity's own row, never a JWT claim (§7). A new enrollment's
+// public_visible is the manifest's public_stats.default_visible (D7).
 func (s *Service) handleStartEnrollment(w http.ResponseWriter, r *http.Request) {
-	claims := claimsFrom(r.Context())
+	claims := auth.ClaimsFrom(r.Context())
 	slug := r.PathValue("slug")
 	if slug == "" {
 		writeError(w, http.StatusUnprocessableEntity, "invalid_path", "path slug is required")
 		return
 	}
 	m, ok := s.courses.Lookup(slug)
-	// The owner/tester cohort's branch for a preview course is m1-04's (task 7).
-	if !ok || m.Status == course.StatusPreview {
+	if !ok {
 		writeError(w, http.StatusNotFound, "course_not_found", "no such course")
 		return
 	}
-	if m.Status != course.StatusActive {
+	if m.Status == course.StatusPreview {
+		acct, err := s.store.GetAccount(r.Context(), claims.Subject)
+		if err != nil && !errors.Is(err, store.ErrNotFound) {
+			s.mapStoreErr(w, err)
+			return
+		}
+		if err != nil || !store.InCohort(acct.Role) {
+			writeError(w, http.StatusNotFound, "course_not_found", "no such course")
+			return
+		}
+	} else if m.Status != course.StatusActive {
 		writeError(w, http.StatusConflict, "course_not_available", "this course is not open for enrollment")
 		return
 	}
@@ -363,39 +382,6 @@ func (s *Service) writeAccount(w http.ResponseWriter, r *http.Request, id string
 		"onboarding":  toOnboardingJSON(ob),
 		"enrollments": toEnrollmentsJSON(enrollments),
 	})
-}
-
-// requireJWT verifies the gateway-minted JWT (Authorization: Bearer) via JWKS and
-// stores its claims in the request context (ADR-0006).
-func (s *Service) requireJWT(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := bearer(r)
-		if token == "" {
-			writeUnauthenticated(w)
-			return
-		}
-		claims, err := s.verifier.Verify(r.Context(), token)
-		if err != nil {
-			s.log.Warn("jwt verify failed", "err", err)
-			writeUnauthenticated(w)
-			return
-		}
-		ctx := context.WithValue(r.Context(), claimsCtxKey{}, claims)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-func claimsFrom(ctx context.Context) auth.Claims {
-	c, _ := ctx.Value(claimsCtxKey{}).(auth.Claims)
-	return c
-}
-
-func bearer(r *http.Request) string {
-	h := r.Header.Get("Authorization")
-	if len(h) > 7 && strings.EqualFold(h[:7], "Bearer ") {
-		return strings.TrimSpace(h[7:])
-	}
-	return ""
 }
 
 func (s *Service) mapStoreErr(w http.ResponseWriter, err error) {

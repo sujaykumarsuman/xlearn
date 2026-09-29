@@ -34,6 +34,8 @@ type Service struct {
 	httpc     *http.Client
 	log       *slog.Logger
 	health    *health.Handler
+	// pw is the L3-gated bcrypt (process-wide; tests swap in their own).
+	pw *passwords
 }
 
 // NewService wires the identity application. verifier checks gateway-minted JWTs on
@@ -43,6 +45,11 @@ type Service struct {
 func NewService(cfg Config, st store.Store, verifier auth.Verifier, courses *course.Registry, log *slog.Logger) *Service {
 	if courses == nil {
 		courses = course.Embedded()
+	}
+	pw := processPasswords()
+	// L3: the dummy hash is made once, at startup, at the real bcrypt cost.
+	if err := pw.warm(); err != nil {
+		log.Error("bcrypt dummy hash failed; logins will 500", "err", err)
 	}
 	return &Service{
 		cfg:       cfg,
@@ -56,6 +63,31 @@ func NewService(cfg Config, st store.Store, verifier auth.Verifier, courses *cou
 			Name:  "postgres",
 			Check: st.Ping,
 		}),
+		pw: pw,
+	}
+}
+
+// userRoute is one JWT route: every entry of userRoutes is registered behind
+// auth.RequireRole(learner) (ADR-0033 §12 row 5), so a route can't skip the role check.
+type userRoute struct {
+	Method, Pattern string
+	Handler         http.HandlerFunc
+}
+
+// userRoutes are identity's user-data routes: the gateway-minted JWT (verified via the
+// JWKS) must carry the learner role, and handlers check ownership against its subject.
+func (s *Service) userRoutes() []userRoute {
+	return []userRoute{
+		{"GET", "/accounts/{id}", s.handleGetAccount},
+		{"PATCH", "/accounts/{id}", s.handlePatchAccount},
+		{"POST", "/onboarding/step", s.handleOnboardingStep},
+		{"POST", "/paths/{slug}/start", s.handleStartEnrollment},
+		// Account & sign-in management (ADR-0023): set/change password + disconnect a provider.
+		{"POST", "/accounts/{id}/password", s.handleSetPassword},
+		{"DELETE", "/accounts/{id}/oauth/{provider}", s.handleUnlinkOAuth},
+		// Username claim/change + availability check (F009). JWT-scoped to the caller.
+		{"POST", "/accounts/{id}/username", s.handleSetUsername},
+		{"GET", "/username/available", s.handleUsernameAvailable},
 	}
 }
 
@@ -97,17 +129,12 @@ func (s *Service) Handler() http.Handler {
 	// only non-PII public fields (id, username, display name, join date).
 	mux.HandleFunc("GET /internal/accounts/by-username/{username}", s.handleInternalGetAccountByUsername)
 
-	// User-data routes: verify the gateway-minted JWT via JWKS + ownership.
-	mux.Handle("GET /accounts/{id}", s.requireJWT(http.HandlerFunc(s.handleGetAccount)))
-	mux.Handle("PATCH /accounts/{id}", s.requireJWT(http.HandlerFunc(s.handlePatchAccount)))
-	mux.Handle("POST /onboarding/step", s.requireJWT(http.HandlerFunc(s.handleOnboardingStep)))
-	mux.Handle("POST /paths/{slug}/start", s.requireJWT(http.HandlerFunc(s.handleStartEnrollment)))
-	// Account & sign-in management (ADR-0023): set/change password + disconnect a provider.
-	mux.Handle("POST /accounts/{id}/password", s.requireJWT(http.HandlerFunc(s.handleSetPassword)))
-	mux.Handle("DELETE /accounts/{id}/oauth/{provider}", s.requireJWT(http.HandlerFunc(s.handleUnlinkOAuth)))
-	// Username claim/change + availability check (F009). JWT-scoped to the caller.
-	mux.Handle("POST /accounts/{id}/username", s.requireJWT(http.HandlerFunc(s.handleSetUsername)))
-	mux.Handle("GET /username/available", s.requireJWT(http.HandlerFunc(s.handleUsernameAvailable)))
+	// User-data routes: the gateway-minted JWT with the learner role (RequireRole) +
+	// ownership against its subject in each handler.
+	requireLearner := auth.RequireRole(s.verifier, auth.RoleLearner, auth.WithLogger(s.log))
+	for _, rt := range s.userRoutes() {
+		mux.Handle(rt.Method+" "+rt.Pattern, requireLearner(rt.Handler))
+	}
 
 	return mux
 }

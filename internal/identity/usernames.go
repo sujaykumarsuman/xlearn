@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 )
 
 // --- Usernames (F009 / ADR-0024) ---
@@ -15,7 +16,7 @@ import (
 // public handle. Validated + normalised + reserved-word checked before it hits the store;
 // a case-insensitive collision is a 409. Mirrors handleSetPassword's ownership guard.
 func (s *Service) handleSetUsername(w http.ResponseWriter, r *http.Request) {
-	claims := claimsFrom(r.Context())
+	claims := auth.ClaimsFrom(r.Context())
 	id := r.PathValue("id")
 	if claims.Subject != id {
 		writeError(w, http.StatusForbidden, "forbidden", "account does not match token subject")
@@ -50,7 +51,7 @@ func (s *Service) handleSetUsername(w http.ResponseWriter, r *http.Request) {
 // reported as unavailable with the reason (not an error status) so the UI can show it
 // inline. The caller's own current username reads as available (re-saving is a no-op).
 func (s *Service) handleUsernameAvailable(w http.ResponseWriter, r *http.Request) {
-	claims := claimsFrom(r.Context())
+	claims := auth.ClaimsFrom(r.Context())
 	name := normalizeUsername(r.URL.Query().Get("u"))
 	if err := validateUsername(name); err != nil {
 		writeJSON(w, http.StatusOK, map[string]any{"available": false, "reason": err.Error()})

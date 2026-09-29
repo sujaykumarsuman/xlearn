@@ -1,8 +1,9 @@
 package store
 
-// v2 M1a (sprint m1-02; ADR-0033 §4, D7): identity's new write-side constants. Nothing
-// READS role, status, admitted_via or public_visible in v1.6.0 — sessions, RequireRole,
-// the admin CLI and the public filters are M1b (m1-04, m1-05).
+// v2 M1a (sprint m1-02; ADR-0033 §4, D7): identity's admission constants. Since m1-04
+// (M1b) role and status are read: session-validate joins status = 'active' and returns
+// the role (the gateway's T-3 cohort bit), preview enrollment checks the role, and the
+// admin CLI (store/admin.go) changes both. Neither is ever minted into a JWT (§7).
 //
 // path_enrollment.public_visible is the course manifest's public_stats.default_visible
 // (D7). Since m1-03 identity compiles the manifests in (internal/course): the enrollment
@@ -21,3 +22,21 @@ const (
 	AdmittedViaCLI    = "cli"
 	AdmittedViaInvite = "invite"
 )
+
+// account.role values (CHECK in migration 00005; ADR-0033 §7). The owner and testers
+// form the T-3 cohort (ADR-0034 §2) and sit outside SEAT_CAP.
+const (
+	RoleLearner = "learner"
+	RoleTester  = "tester"
+	RoleOwner   = "owner"
+)
+
+// account.status values (CHECK in migration 00005). A suspended account's sessions all
+// fail validation at once (the GetValidSession join) and it cannot start a new one.
+const (
+	StatusActive    = "active"
+	StatusSuspended = "suspended"
+)
+
+// InCohort reports whether role is in the owner/tester cohort (preview courses).
+func InCohort(role string) bool { return role == RoleOwner || role == RoleTester }
