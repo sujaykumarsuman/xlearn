@@ -128,6 +128,49 @@ describe("Auth screen", () => {
     expect(alert).toHaveTextContent(/sign in with your password, then connect github from settings/i);
   });
 
+  it("explains a suspended account on the OAuth callback (?error=account_unavailable)", async () => {
+    installFetchMock((url) => (url.endsWith("/api/me") ? { status: 401, body: { error: { code: "unauthenticated" } } } : { status: 404 }));
+    renderApp("/xlearn/auth?error=account_unavailable");
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("This account isn’t available. Contact the owner if you think this is a mistake.");
+  });
+
+  it("shows the password-changed notice (?notice=password_changed) as a status, not an error", async () => {
+    installFetchMock((url) => (url.endsWith("/api/me") ? { status: 401, body: { error: { code: "unauthenticated" } } } : { status: 404 }));
+    renderApp("/xlearn/auth?notice=password_changed");
+
+    expect(await screen.findByText("Password changed — sign in again.")).toHaveAttribute("role", "status");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    // The sign-in form is right there to use.
+    expect(screen.getByRole("button", { name: /continue with github/i })).toBeInTheDocument();
+  });
+
+  it("ignores an unknown ?notice= code", async () => {
+    installFetchMock((url) => (url.endsWith("/api/me") ? { status: 401, body: { error: { code: "unauthenticated" } } } : { status: 404 }));
+    renderApp("/xlearn/auth?notice=bogus");
+
+    await screen.findByRole("button", { name: /continue with github/i });
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.queryByText(/password changed/i)).not.toBeInTheDocument();
+  });
+
+  it("asks the learner to retry when identity is busy (429 too_many_requests)", async () => {
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 401, body: { error: { code: "unauthenticated" } } };
+      if (url.includes("/api/auth/login")) return { status: 429, body: { error: { code: "too_many_requests" } } };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/auth");
+
+    await screen.findByRole("button", { name: /continue with github/i });
+    fireEvent.change(screen.getByLabelText("Email or username"), { target: { value: "me@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "opensesame" } });
+    fireEvent.click(screen.getByRole("button", { name: /^log in$/i }));
+
+    expect(await screen.findByText("Too many attempts right now — try again in a moment.")).toBeInTheDocument();
+  });
+
   it("shows onboarding step 1 and persists the chosen path on Continue", async () => {
     let stepPosted: unknown = null;
     installFetchMock((url, init) => {

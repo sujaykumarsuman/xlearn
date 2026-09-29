@@ -53,12 +53,13 @@ func (g *Gateway) handleMistakes(w http.ResponseWriter, r *http.Request) {
 // handleCreateMistake: POST /paths/{slug}/mistakes (and the DSA alias POST /mistakes) —
 // proxy the create to review, in the route's course.
 func (g *Gateway) handleCreateMistake(w http.ResponseWriter, r *http.Request) {
+	// Auth first, as every route: an unauthenticated caller gets 401, not a course hint,
+	// and the validated session carries the cohort bit the visibility check reads.
+	if _, ok := g.authSession(w, r); !ok {
+		return
+	}
 	slug := r.PathValue("slug")
-	if _, ok := g.visibleCourse(r, slug); !ok {
-		// Auth first, as every route: an unauthenticated caller gets 401, not a course hint.
-		if _, ok := g.authAccount(w, r); ok {
-			writeCourseNotFound(w)
-		}
+	if _, ok := g.requireCourse(w, r, slug); !ok {
 		return
 	}
 	g.proxyReviewWrite(w, r, http.MethodPost, withPath("/mistakes", slug))

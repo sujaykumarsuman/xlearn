@@ -101,6 +101,7 @@ func TestAggCacheServesAndInvalidates(t *testing.T) {
 	// A practice outcome write for acct-1 must invalidate the cache.
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, gwServer.URL+"/xlearn/api/problems/1/outcome", nil)
 	req.AddCookie(cookie)
+	req.Header.Set("Content-Type", "application/json") // mutating calls must be JSON (security.go)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("outcome write: %v", err)

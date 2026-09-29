@@ -103,15 +103,21 @@ func (f *fakeStore) RecordDeadLetter(_ context.Context, dl events.DeadLetter) er
 }
 
 // fakeVerifier accepts any non-empty token, returning claims for a fixed subject,
-// unless err is set (to exercise the invalid-token path).
+// unless err is set (to exercise the invalid-token path). roles overrides the default
+// ["learner"] role set (the role-check tests).
 type fakeVerifier struct {
 	subject string
 	err     error
+	roles   []string
 }
 
 func (v fakeVerifier) Verify(_ context.Context, _ string) (auth.Claims, error) {
 	if v.err != nil {
 		return auth.Claims{}, v.err
 	}
-	return auth.Claims{Subject: v.subject, Audience: "review", Roles: []string{"learner"}}, nil
+	roles := v.roles
+	if roles == nil {
+		roles = []string{"learner"}
+	}
+	return auth.Claims{Subject: v.subject, Audience: "review", Roles: roles}, nil
 }

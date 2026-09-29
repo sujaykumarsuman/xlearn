@@ -15,14 +15,22 @@ import (
 )
 
 // fakeVerifier returns fixed claims for any non-empty token, so handler tests don't need
-// a live JWKS endpoint. The subject is the account id under test.
-type fakeVerifier struct{ subject string }
+// a live JWKS endpoint. The subject is the account id under test; roles overrides the
+// default ["learner"] role set (the role-check tests).
+type fakeVerifier struct {
+	subject string
+	roles   []string
+}
 
 func (f fakeVerifier) Verify(_ context.Context, token string) (auth.Claims, error) {
 	if token == "" {
 		return auth.Claims{}, auth.ErrUnauthenticated
 	}
-	return auth.Claims{Subject: f.subject, Audience: "coach", Roles: []string{"learner"}}, nil
+	roles := f.roles
+	if roles == nil {
+		roles = []string{"learner"}
+	}
+	return auth.Claims{Subject: f.subject, Audience: "coach", Roles: roles}, nil
 }
 
 // memStore is an in-memory Store for unit tests. keys is account -> provider -> config,

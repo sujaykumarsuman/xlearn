@@ -162,6 +162,10 @@ func (nopWriter) Write(p []byte) (int, error) { return len(p), nil }
 // binary serves correctly in both environments.
 func (g *Gateway) Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Every response — probes, API, assets and the shell — carries nosniff and the
+		// referrer policy (security.go; the shell adds its CSP in serveIndex).
+		setSecurityHeaders(w.Header())
+
 		// k8s probes are always at the pod root, prefix-independent.
 		switch r.URL.Path {
 		case "/healthz":
@@ -187,6 +191,11 @@ func (g *Gateway) Handler() http.Handler {
 		// falling through to the SPA shell). JWKS is served at the pod root too so
 		// internal services can fetch it directly on the ClusterIP.
 		if p == "/.well-known/jwks.json" || p == "/api" || strings.HasPrefix(p, "/api/") {
+			// Cross-site write checks (security.go) run on the rewritten app path, so the
+			// versioned, unversioned and base-prefixed spellings of a route are all covered.
+			if p != "/.well-known/jwks.json" && !allowWrite(w, r, p) {
+				return
+			}
 			r2 := r.Clone(r.Context())
 			r2.URL.Path = p
 			r2.URL.RawPath = ""
@@ -250,8 +259,9 @@ func (g *Gateway) serveStatic(w http.ResponseWriter, r *http.Request, appPath st
 	http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(data))
 }
 
-// serveIndex writes index.html with a no-cache header. Returns 200 for SPA
-// fallback routes; the client router renders its own not-found.
+// serveIndex writes index.html with a no-cache header and the shell CSP
+// (security.go). Returns 200 for SPA fallback routes; the client router renders
+// its own not-found.
 func (g *Gateway) serveIndex(w http.ResponseWriter, r *http.Request) {
 	data, err := fs.ReadFile(g.dist, "index.html")
 	if err != nil {
@@ -259,6 +269,7 @@ func (g *Gateway) serveIndex(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "web UI not built", http.StatusInternalServerError)
 		return
 	}
+	setShellHeaders(w.Header())
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.WriteHeader(http.StatusOK)

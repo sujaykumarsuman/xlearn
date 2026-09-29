@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Icon, type IconName } from "../components/Icon";
 import { ProviderLogo } from "../components/ProviderLogo";
 import { Spinner } from "../components/States";
@@ -242,6 +242,7 @@ function UsernameStatus({
 
 function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
   const setPw = useSetPassword();
+  const navigate = useNavigate();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const valid = next.length >= 8 && (!hasPassword || current.length >= 1) && !setPw.isPending;
@@ -253,9 +254,12 @@ function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
     setPw.mutate(
       { new_password: next, ...(hasPassword ? { current_password: current } : {}) },
       {
-        onSuccess: () => {
+        onSuccess: (res) => {
           setCurrent("");
           setNext("");
+          // A password change revokes every session, this one included (m1-04): the hook has
+          // dropped the cached account; send the learner to sign in again, with a notice.
+          if (res?.reauth) navigate("/auth?notice=password_changed", { replace: true });
         },
       },
     );
@@ -366,6 +370,8 @@ function ProvidersRow({ githubLinked, canUnlink }: { githubLinked: boolean; canU
 }
 
 function passwordErrorMessage(err: ApiRequestError | null): string {
+  // identity sheds load with 429 too_many_requests while bcrypt is busy (L3).
+  if (err?.code === "too_many_requests" || err?.status === 429) return "Too many attempts right now — try again in a moment.";
   switch (err?.code) {
     case "wrong_password":
       return "Your current password is incorrect.";

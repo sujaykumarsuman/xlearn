@@ -154,6 +154,9 @@ function Feature({ icon, title, desc }: { icon: "code" | "refresh" | "target"; t
 function SignIn() {
   const [params] = useSearchParams();
   const error = params.get("error");
+  // ?notice= is an informational banner (not an error): e.g. a password change revoked every
+  // session (m1-04), so Settings sends the learner here to sign in again.
+  const notice = noticeMessage(params.get("notice"));
   const devEnabled = useDevAuthEnabled();
   const devLogin = useDevLogin();
 
@@ -192,6 +195,23 @@ function SignIn() {
       <p style={{ fontSize: 13, color: "var(--ds-muted)", marginTop: 4 }}>
         Continue with GitHub, or use your email.
       </p>
+
+      {notice && (
+        <div
+          role="status"
+          style={{
+            marginTop: 14,
+            padding: "10px 12px",
+            borderRadius: 9,
+            border: "1px solid rgba(87,211,154,.4)",
+            background: "rgba(87,211,154,.08)",
+            color: "var(--ds-ok)",
+            fontSize: 12.5,
+          }}
+        >
+          {notice}
+        </div>
+      )}
 
       {error && (
         <div
@@ -319,12 +339,32 @@ function oauthErrorMessage(code: string): string {
       return "An account with this email already uses a password. Sign in with your password, then connect GitHub from Settings.";
     case "signup_closed":
       return "xLearn is invite-only right now. This GitHub account isn’t connected to an xLearn account.";
+    case "account_unavailable":
+      return "This account isn’t available. Contact the owner if you think this is a mistake.";
+    case "too_many_requests":
+      return "Too many attempts right now — try again in a moment.";
     default:
       return "Something went wrong signing in. Please try again.";
   }
 }
 
+/** noticeMessage maps a ?notice= code to its banner copy (null for an unknown code, so a
+ *  stray or stale param renders nothing). */
+function noticeMessage(code: string | null): string | null {
+  switch (code) {
+    case "password_changed":
+      return "Password changed — sign in again.";
+    default:
+      return null;
+  }
+}
+
 function emailAuthErrorMessage(err: ApiRequestError, mode: "signin" | "signup"): string {
+  // identity sheds load with 429 too_many_requests (Retry-After: 1) while bcrypt is busy
+  // (L3); a per-IP limit may answer a bare 429 with no envelope.
+  if (err.code === "too_many_requests" || err.status === 429) {
+    return "Too many attempts right now — try again in a moment.";
+  }
   switch (err.code) {
     case "email_taken":
       return "That email is already registered — switch to Sign in.";
@@ -336,6 +376,8 @@ function emailAuthErrorMessage(err: ApiRequestError, mode: "signin" | "signup"):
       return "Password must be 8–72 characters.";
     case "invalid_email":
       return "Enter a valid email address.";
+    case "account_unavailable":
+      return "This account isn’t available. Contact the owner if you think this is a mistake.";
     default:
       return mode === "signup" ? "Couldn’t create your account. Please try again." : "Couldn’t sign you in. Please try again.";
   }

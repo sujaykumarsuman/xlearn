@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 )
 
 // --- Email/password auth (ADR-0023) ---
@@ -36,8 +37,11 @@ func (s *Service) handleSignup(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, "weak_password", err.Error())
 		return
 	}
-	hash, err := hashPassword(body.Password)
+	hash, err := s.pw.hash(body.Password)
 	if err != nil {
+		if s.bcryptBusy(w, err) {
+			return
+		}
 		s.log.Error("signup: hash password failed", "err", err)
 		writeError(w, http.StatusInternalServerError, "internal", "could not create account")
 		return
@@ -58,7 +62,10 @@ func (s *Service) handleSignup(w http.ResponseWriter, r *http.Request) {
 // handleLogin: POST /auth/login — sign in with email OR username + password (F009). The
 // `email` field carries either identifier (kept as the JSON key for back-compat); an '@'
 // resolves it as an email, otherwise as a username. A uniform 401 on any failure so the
-// response never reveals whether an identifier is registered.
+// response never reveals whether an identifier is registered — uniform in time too (L3):
+// an unknown identifier, a password-less account and a suspended one each run exactly one
+// bcrypt compare, against the startup dummy hash. When both bcrypt slots are busy the
+// answer is 429 whatever the identifier.
 func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Email    string `json:"email"`
@@ -69,11 +76,40 @@ func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	acct, err := s.resolveLoginIdentifier(r, body.Email)
-	if err != nil || acct.PasswordHash == "" || !checkPassword(acct.PasswordHash, body.Password) {
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		s.log.Error("login: account lookup failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "internal", "could not sign in")
+		return
+	}
+	// hash is "" (→ the dummy compare) unless there is a real, active password account.
+	hash := ""
+	if err == nil && acct.Status != store.StatusSuspended {
+		hash = acct.PasswordHash
+	}
+	ok, cerr := s.pw.check(hash, body.Password)
+	if cerr != nil {
+		if s.bcryptBusy(w, cerr) {
+			return
+		}
+		s.log.Error("login: password check failed", "err", cerr)
+		writeError(w, http.StatusInternalServerError, "internal", "could not sign in")
+		return
+	}
+	if !ok {
 		writeError(w, http.StatusUnauthorized, "invalid_credentials", "incorrect email/username or password")
 		return
 	}
 	s.startSession(w, r, acct.ID, "email_login")
+}
+
+// bcryptBusy writes L3's 429 when err is errBcryptBusy and reports whether it did.
+func (s *Service) bcryptBusy(w http.ResponseWriter, err error) bool {
+	if !errors.Is(err, errBcryptBusy) {
+		return false
+	}
+	w.Header().Set("Retry-After", "1")
+	writeError(w, http.StatusTooManyRequests, "too_many_requests", "too many sign-in attempts right now; try again in a moment")
+	return true
 }
 
 // resolveLoginIdentifier looks up the account for an email-or-username login identifier
@@ -101,9 +137,11 @@ func (s *Service) startSession(w http.ResponseWriter, r *http.Request, accountID
 
 // handleSetPassword: POST /accounts/{id}/password (JWT) — set or change the password. An
 // account that already has one must supply the correct current password; an OAuth-only
-// account (no hash) sets it for the first time without one.
+// account (no hash) sets it for the first time without one. On success every session of
+// the account is revoked, the caller's included (ADR-0033 §12 row 4), and the answer is
+// {ok:true, reauth:true}: the SPA sends the learner to sign in again.
 func (s *Service) handleSetPassword(w http.ResponseWriter, r *http.Request) {
-	claims := claimsFrom(r.Context())
+	claims := auth.ClaimsFrom(r.Context())
 	id := r.PathValue("id")
 	if claims.Subject != id {
 		writeError(w, http.StatusForbidden, "forbidden", "account does not match token subject")
@@ -126,28 +164,44 @@ func (s *Service) handleSetPassword(w http.ResponseWriter, r *http.Request) {
 		s.mapStoreErr(w, err)
 		return
 	}
-	if acct.PasswordHash != "" && !checkPassword(acct.PasswordHash, body.CurrentPassword) {
-		writeError(w, http.StatusUnauthorized, "wrong_password", "your current password is incorrect")
-		return
+	if acct.PasswordHash != "" {
+		ok, err := s.pw.check(acct.PasswordHash, body.CurrentPassword)
+		if err != nil {
+			if s.bcryptBusy(w, err) {
+				return
+			}
+			s.log.Error("set password: check failed", "err", err)
+			writeError(w, http.StatusInternalServerError, "internal", "could not set password")
+			return
+		}
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "wrong_password", "your current password is incorrect")
+			return
+		}
 	}
-	hash, err := hashPassword(body.NewPassword)
+	hash, err := s.pw.hash(body.NewPassword)
 	if err != nil {
+		if s.bcryptBusy(w, err) {
+			return
+		}
 		s.log.Error("set password: hash failed", "err", err)
 		writeError(w, http.StatusInternalServerError, "internal", "could not set password")
 		return
 	}
-	if _, err := s.store.SetAccountPassword(r.Context(), id, hash); err != nil {
+	_, revoked, err := s.store.SetAccountPassword(r.Context(), id, hash)
+	if err != nil {
 		s.mapStoreErr(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	s.log.Info("password set; sessions revoked", "account_id", id, "revoked_sessions", revoked)
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "reauth": true})
 }
 
 // handleUnlinkOAuth: DELETE /accounts/{id}/oauth/{provider} (JWT) — disconnect a provider,
 // but never remove the account's LAST sign-in method (which would lock the user out). An
 // account may unlink only if it keeps a password or another linked provider.
 func (s *Service) handleUnlinkOAuth(w http.ResponseWriter, r *http.Request) {
-	claims := claimsFrom(r.Context())
+	claims := auth.ClaimsFrom(r.Context())
 	id := r.PathValue("id")
 	provider := r.PathValue("provider")
 	if claims.Subject != id {

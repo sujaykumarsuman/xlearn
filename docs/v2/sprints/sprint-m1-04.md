@@ -9,18 +9,18 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done — merged, ships in `v1.7.0` (2026-09-29, run r-31)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Sessions: status join, validate returns role/status/accepted/created_at, revoke-all | X | ⬜ |
-| 2 | `auth.RequireRole` on every user route (JWTs stay `["learner"]`) + gateway cohort helper | X | ⬜ |
-| 3 | L7 guard: `SIGNUP_MODE=open` honoured only with `DEV_AUTH` | X | ⬜ |
-| 4 | L3: bcrypt semaphore (≤ 2 in flight → 429) + dummy hash | X | ⬜ |
-| 5 | `identity admin` CLI (`account …`, `seats`) + `admin_audit` | X | ⬜ |
-| 6 | CSP + JSON / `Sec-Fetch-Site` checks on mutating calls | X | ⬜ |
-| 7 | Cohort `preview`: enrollment + gateway course visibility | X | ⬜ |
-| 8 | Runbook `docs/runbooks/identity-admin.md` (+ owner events) | X | ⬜ |
+| 1 | Sessions: status join, validate returns role/status/accepted/created_at, revoke-all | X | ✅ |
+| 2 | `auth.RequireRole` on every user route (JWTs stay `["learner"]`) + gateway cohort helper | X | ✅ |
+| 3 | L7 guard: `SIGNUP_MODE=open` honoured only with `DEV_AUTH` | X | ✅ |
+| 4 | L3: bcrypt semaphore (≤ 2 in flight → 429) + dummy hash | X | ✅ |
+| 5 | `identity admin` CLI (`account …`, `seats`) + `admin_audit` | X | ✅ |
+| 6 | CSP + JSON / `Sec-Fetch-Site` checks on mutating calls | X | ✅ |
+| 7 | Cohort `preview`: enrollment + gateway course visibility | X | ✅ |
+| 8 | Runbook `docs/runbooks/identity-admin.md` (+ owner events) | X | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + any milestone).
@@ -28,9 +28,9 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] `v1.6.0` live — `account.role`, `status`, `admitted_via`, `accepted_at`, `admin_audit` exist in production ([m1-02](sprint-m1-02.md))
-- [ ] [m1-03](sprint-m1-03.md) merged (the M1b gateway-router edits are serialized m1-03 → m1-04 → m1-05 → m1-06)
-- [ ] No open peer PR edits `internal/identity/` or `internal/gateway/gateway.go`/`bff.go` (`gh pr list`, `git worktree list`, ListAgents)
+- [x] `v1.6.0` live — `account.role`, `status`, `admitted_via`, `accepted_at`, `admin_audit` exist in production ([m1-02](sprint-m1-02.md))
+- [x] [m1-03](sprint-m1-03.md) merged (the M1b gateway-router edits are serialized m1-03 → m1-04 → m1-05 → m1-06)
+- [x] No open peer PR edits `internal/identity/` or `internal/gateway/gateway.go`/`bff.go` (`gh pr list`, `git worktree list`, ListAgents)
 
 ## Goal
 
@@ -176,16 +176,16 @@ Sources: [ADR-0033](../../adr/0033-invite-only-admission-and-owner-admin.md) §1
 
 ## Acceptance criteria
 
-- [ ] `suspend` kills every session of the account at once (the next API call 401s); `revoke-sessions` and a password change
+- [x] `suspend` kills every session of the account at once (the next API call 401s); `revoke-sessions` and a password change
       revoke all; the last-owner guard refuses demote/suspend.
-- [ ] `SIGNUP_MODE=open` without `DEV_AUTH` runs `closed` and logs ERROR; `invite` runs closed until L-A; compose unchanged.
-- [ ] Login timing is uniform for unknown identifiers (one dummy compare); a 3rd concurrent bcrypt → 429 with `Retry-After`.
-- [ ] Every CLI verb writes `admin_audit`; no secret in audit or logs; `account create --role tester` prints the password once.
-- [ ] A `public-read` token gets 403 on every user route of every service; JWTs are still `["learner"]` only.
-- [ ] CSP present on the SPA; cross-site writes 403, non-JSON writes 415; the full web suite and a compose smoke of every
+- [x] `SIGNUP_MODE=open` without `DEV_AUTH` runs `closed` and logs ERROR; `invite` runs closed until L-A; compose unchanged.
+- [x] Login timing is uniform for unknown identifiers (one dummy compare); a 3rd concurrent bcrypt → 429 with `Retry-After`.
+- [x] Every CLI verb writes `admin_audit`; no secret in audit or logs; `account create --role tester` prints the password once.
+- [x] A `public-read` token gets 403 on every user route of every service; JWTs are still `["learner"]` only.
+- [x] CSP present on the SPA; cross-site writes 403, non-JSON writes 415; the full web suite and a compose smoke of every
       screen show no CSP violation.
-- [ ] `preview` fixture: visible and enrollable for owner/tester, 404 for a learner.
-- [ ] `sqlc diff` clean; CI green; merged to `main`.
+- [x] `preview` fixture: visible and enrollable for owner/tester, 404 for a learner.
+- [x] `sqlc diff` clean; CI green; merged to `main`.
 
 ## Release
 

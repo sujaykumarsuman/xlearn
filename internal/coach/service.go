@@ -55,22 +55,42 @@ func NewService(st store.Store, verifier auth.Verifier, cipher *secrets.Cipher, 
 	}
 }
 
-// Handler builds coach's HTTP routes (Go 1.22+ method+pattern mux). The key + chat +
-// thread routes verify the gateway-minted JWT; the account is the token subject. The
-// external gateway surface (/coach/key, /coach/chat, /coach/thread) maps onto these
-// internal /keys, /chat, /threads routes (services.md).
+// Handler builds coach's HTTP routes (Go 1.22+ method+pattern mux). Every user route
+// (userRoutes) verifies the gateway-minted JWT and requires the learner role; the
+// account is the token subject. The external gateway surface (/coach/key, /coach/chat,
+// /coach/thread) maps onto the internal /keys, /chat, /threads routes (services.md).
 func (s *Service) Handler() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", s.health.Live)
 	mux.HandleFunc("GET /readyz", s.health.Ready)
 
-	mux.Handle("GET /keys", s.requireJWT(http.HandlerFunc(s.handleGetKey)))
-	mux.Handle("PUT /keys", s.requireJWT(http.HandlerFunc(s.handlePutKey)))
-	mux.Handle("DELETE /keys", s.requireJWT(http.HandlerFunc(s.handleDeleteKey)))
-
-	mux.Handle("POST /chat", s.requireJWT(http.HandlerFunc(s.handleChat)))
-	mux.Handle("GET /threads", s.requireJWT(http.HandlerFunc(s.handleThread)))
+	requireLearner := auth.RequireRole(s.verifier, auth.RoleLearner, auth.WithLogger(s.log))
+	for _, rt := range s.userRoutes() {
+		mux.Handle(rt.Method+" "+rt.Pattern, requireLearner(rt.Handler))
+	}
 
 	return mux
+}
+
+// userRoute is one per-user (JWT) route. Handler registers every userRoutes entry behind
+// auth.RequireRole(learner) (ADR-0033 §12 row 5), so a route added to the table cannot
+// skip the role check.
+type userRoute struct {
+	Method  string
+	Pattern string
+	Handler http.HandlerFunc
+}
+
+// userRoutes is coach's per-user route table: the key config, the chat stream and the
+// thread history.
+func (s *Service) userRoutes() []userRoute {
+	return []userRoute{
+		{http.MethodGet, "/keys", s.handleGetKey},
+		{http.MethodPut, "/keys", s.handlePutKey},
+		{http.MethodDelete, "/keys", s.handleDeleteKey},
+
+		{http.MethodPost, "/chat", s.handleChat},
+		{http.MethodGet, "/threads", s.handleThread},
+	}
 }

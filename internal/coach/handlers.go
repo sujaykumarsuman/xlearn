@@ -15,9 +15,6 @@ import (
 	"github.com/sujaykumarsuman/xlearn/internal/platform/secrets"
 )
 
-// claimsCtxKey carries verified JWT claims from requireJWT to the handler.
-type claimsCtxKey struct{}
-
 // headerCoachMode is the SERVER-AUTHORITATIVE behaviour gate the gateway sets from
 // practice's state (attempt|review|general). It is a gateway→coach header, so a browser
 // client can never set it — the spoiler-control gate is not client-trusted (ADR-0007).
@@ -86,7 +83,7 @@ func (s *Service) writeKeys(w http.ResponseWriter, r *http.Request, accountID st
 
 // handleGetKey: GET /keys — the masked provider keys + connected + default (never a raw key).
 func (s *Service) handleGetKey(w http.ResponseWriter, r *http.Request) {
-	s.writeKeys(w, r, claimsFrom(r.Context()).Subject)
+	s.writeKeys(w, r, auth.ClaimsFrom(r.Context()).Subject)
 }
 
 // handlePutKey: PUT /keys — one body, four modes, every mode keyed to a provider:
@@ -98,7 +95,7 @@ func (s *Service) handleGetKey(w http.ResponseWriter, r *http.Request) {
 //
 // The gateway never sees the raw key beyond forwarding it; coach seals it here.
 func (s *Service) handlePutKey(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	var body struct {
 		Provider     string `json:"provider"`
 		Key          string `json:"key"`
@@ -201,7 +198,7 @@ func (s *Service) handlePutKey(w http.ResponseWriter, r *http.Request) {
 
 // handleDeleteKey: DELETE /keys?provider= — remove one provider's key.
 func (s *Service) handleDeleteKey(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	provider := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("provider")))
 	if !store.ValidProvider(provider) {
 		writeError(w, http.StatusUnprocessableEntity, "invalid_provider", "provider must be openai or anthropic")
@@ -221,7 +218,7 @@ func (s *Service) handleDeleteKey(w http.ResponseWriter, r *http.Request) {
 // form from an open v1.6.0 tab reads the same thread as its `<course>:` form. The
 // response echoes the context as sent (the v1 shape).
 func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	pageContext := strings.TrimSpace(r.URL.Query().Get("context"))
 	if pageContext == "" || len(pageContext) > maxContextLen {
 		writeError(w, http.StatusBadRequest, "bad_request", "context is required")
@@ -286,7 +283,7 @@ func (s *Service) threadCourse(cc course.CoachContext, pathParam string) string 
 // the key and tells the learner to top up. Errors before the first byte are a clean 4xx/5xx;
 // after streaming has begun they surface as an SSE `error` event.
 func (s *Service) handleChat(w http.ResponseWriter, r *http.Request) {
-	accountID := claimsFrom(r.Context()).Subject
+	accountID := auth.ClaimsFrom(r.Context()).Subject
 	var body struct {
 		Context       string `json:"context"`
 		Kind          string `json:"kind"`
@@ -574,39 +571,6 @@ func (s *sseWriter) event(name string, payload any) error {
 
 // --- shared HTTP helpers ---
 
-// requireJWT verifies the gateway-minted JWT (Authorization: Bearer) via JWKS and stores
-// its claims in the request context (ADR-0006).
-func (s *Service) requireJWT(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := bearer(r)
-		if token == "" {
-			writeUnauthenticated(w)
-			return
-		}
-		claims, err := s.verifier.Verify(r.Context(), token)
-		if err != nil {
-			s.log.Warn("jwt verify failed", "err", err)
-			writeUnauthenticated(w)
-			return
-		}
-		ctx := context.WithValue(r.Context(), claimsCtxKey{}, claims)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-func claimsFrom(ctx context.Context) auth.Claims {
-	c, _ := ctx.Value(claimsCtxKey{}).(auth.Claims)
-	return c
-}
-
-func bearer(r *http.Request) string {
-	h := r.Header.Get("Authorization")
-	if len(h) > 7 && strings.EqualFold(h[:7], "Bearer ") {
-		return strings.TrimSpace(h[7:])
-	}
-	return ""
-}
-
 // mapErr maps a store error to the right HTTP status + error envelope.
 func (s *Service) mapErr(w http.ResponseWriter, what string, err error) {
 	switch {
@@ -636,11 +600,4 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func writeError(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, map[string]any{"error": map[string]any{"code": code, "message": message}})
-}
-
-// writeUnauthenticated emits exactly the api.md 401 envelope the SPA redirects on.
-func writeUnauthenticated(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
-	_, _ = w.Write([]byte(`{"error":{"code":"unauthenticated"}}`))
 }

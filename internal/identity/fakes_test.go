@@ -67,7 +67,8 @@ func (f *fakeStore) FindOrCreateAccount(_ context.Context, in store.OAuthUpsert)
 	}
 	f.seq++
 	id := fmt.Sprintf("acct-%d", f.seq)
-	acct := store.Account{ID: id, DisplayName: in.DisplayName, Email: in.Email, Timezone: "UTC", CreatedAt: time.Now()}
+	acct := store.Account{ID: id, DisplayName: in.DisplayName, Email: in.Email, Timezone: "UTC", CreatedAt: time.Now(),
+		Role: store.RoleLearner, Status: store.StatusActive, AdmittedVia: store.AdmittedViaDev}
 	f.accounts[id] = acct
 	f.byProvider[key] = id
 	if in.Email != "" {
@@ -132,7 +133,8 @@ func (f *fakeStore) CreateEmailAccount(_ context.Context, email, passwordHash, d
 	}
 	f.seq++
 	id := fmt.Sprintf("acct-%d", f.seq)
-	acct := store.Account{ID: id, DisplayName: displayName, Email: email, PasswordHash: passwordHash, Timezone: "UTC", CreatedAt: time.Now()}
+	acct := store.Account{ID: id, DisplayName: displayName, Email: email, PasswordHash: passwordHash, Timezone: "UTC", CreatedAt: time.Now(),
+		Role: store.RoleLearner, Status: store.StatusActive, AdmittedVia: store.AdmittedViaDev}
 	f.accounts[id] = acct
 	f.emailIndex[lk] = id
 	f.onboarding[id] = store.Onboarding{AccountID: id}
@@ -144,16 +146,30 @@ func (f *fakeStore) CreateEmailAccount(_ context.Context, email, passwordHash, d
 	return acct, nil
 }
 
-func (f *fakeStore) SetAccountPassword(_ context.Context, id, passwordHash string) (store.Account, error) {
+func (f *fakeStore) SetAccountPassword(_ context.Context, id, passwordHash string) (store.Account, int64, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	a, ok := f.accounts[id]
 	if !ok {
-		return store.Account{}, store.ErrNotFound
+		return store.Account{}, 0, store.ErrNotFound
 	}
 	a.PasswordHash = passwordHash
 	f.accounts[id] = a
-	return a, nil
+	return a, f.revokeAllLocked(id), nil
+}
+
+// setRoleStatus sets an account's role and/or status (the admin CLI's job in prod).
+func (f *fakeStore) setRoleStatus(id, role, status string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	a := f.accounts[id]
+	if role != "" {
+		a.Role = role
+	}
+	if status != "" {
+		a.Status = status
+	}
+	f.accounts[id] = a
 }
 
 func (f *fakeStore) LinkOAuth(_ context.Context, accountID, provider, providerUserID string) error {
@@ -315,6 +331,8 @@ func (f *fakeStore) CreateSession(_ context.Context, id, accountID string, expir
 	return s, nil
 }
 
+// GetValidSession mirrors the real join: the account must be active, and the session
+// carries its role/status/accepted_at.
 func (f *fakeStore) GetValidSession(_ context.Context, id string) (store.Session, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -322,7 +340,29 @@ func (f *fakeStore) GetValidSession(_ context.Context, id string) (store.Session
 	if !ok || time.Now().After(s.ExpiresAt) {
 		return store.Session{}, store.ErrNotFound
 	}
+	a, ok := f.accounts[s.AccountID]
+	if !ok || a.Status != store.StatusActive {
+		return store.Session{}, store.ErrNotFound
+	}
+	s.Role, s.Status = a.Role, a.Status
 	return s, nil
+}
+
+func (f *fakeStore) RevokeAllSessions(_ context.Context, accountID string) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.revokeAllLocked(accountID), nil
+}
+
+func (f *fakeStore) revokeAllLocked(accountID string) int64 {
+	var n int64
+	for id, s := range f.sessions {
+		if s.AccountID == accountID {
+			delete(f.sessions, id)
+			n++
+		}
+	}
+	return n
 }
 
 func (f *fakeStore) RevokeSession(_ context.Context, id string) (bool, error) {

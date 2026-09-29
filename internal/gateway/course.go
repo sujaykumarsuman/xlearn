@@ -22,8 +22,8 @@ import (
 // Visibility (ADR-0034 §2):
 //   - active: visible.
 //   - coming_soon: listed in the catalog (GET /api/paths) only; every data route 404s.
-//   - preview: visible only to the owner/tester cohort. m1-04 passes the cohort bit from
-//     session-validate; until then it is false for everyone, so preview 404s everywhere.
+//   - preview: visible only to the owner/tester cohort (m1-04): the cohort bit is the
+//     role session-validate returned for this request (cohort.go), never a JWT claim.
 //   - retired, or unknown: 404.
 //
 // Every refusal is the SAME uniform 404 course_not_found envelope, so a response never
@@ -60,14 +60,10 @@ func courseListed(m *course.Manifest, cohort bool) bool {
 	return courseVisible(m, cohort) || m.Status == course.StatusComingSoon
 }
 
-// inCohort is the caller's owner/tester bit. m1-04 derives it from session-validate's
-// role; in m1-03 nobody is in the cohort, so preview courses are hidden from everyone.
-func (g *Gateway) inCohort(*http.Request) bool { return false }
-
 // visibleCourse resolves slug and reports whether its data routes serve this request.
 func (g *Gateway) visibleCourse(r *http.Request, slug string) (*course.Manifest, bool) {
 	m, err := g.resolveCourse(slug)
-	if err != nil || !courseVisible(m, g.inCohort(r)) {
+	if err != nil || !courseVisible(m, g.cohort(r)) {
 		return nil, false
 	}
 	return m, true
@@ -159,7 +155,7 @@ func (g *Gateway) filterCatalog(r *http.Request, body []byte) []byte {
 	if err := json.Unmarshal(raw, &entries); err != nil {
 		return body
 	}
-	cohort := g.inCohort(r)
+	cohort := g.cohort(r)
 	kept := make([]json.RawMessage, 0, len(entries))
 	for _, e := range entries {
 		var p struct {

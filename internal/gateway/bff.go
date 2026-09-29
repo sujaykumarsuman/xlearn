@@ -150,7 +150,12 @@ func (g *Gateway) aliasConcept(w http.ResponseWriter, r *http.Request) {
 func (g *Gateway) newAPIMux() *http.ServeMux {
 	mux := http.NewServeMux()
 	for _, rt := range g.apiRoutes() {
-		mux.HandleFunc(rt.Method+" "+rt.Pattern, rt.Handler)
+		h := rt.Handler
+		// Each request gets its own session slot (cohort.go): authSession fills it, the
+		// course-visibility checks read it. Nothing outlives the request.
+		mux.HandleFunc(rt.Method+" "+rt.Pattern, func(w http.ResponseWriter, r *http.Request) {
+			h(w, withRequestSession(r))
+		})
 	}
 	// Catch-all: unknown /api/* is a 404 envelope, never the SPA shell.
 	mux.HandleFunc("/api/", g.apiNotFound)
@@ -308,6 +313,14 @@ func (g *Gateway) handleSetPassword(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadGateway, "upstream", "identity unavailable")
 		return
 	}
+	switch status {
+	case http.StatusOK:
+		// identity revoked every session, this one included (m1-04): drop the dead cookie
+		// too; the SPA sends the learner to sign in again ({reauth:true}).
+		clearSessionCookie(w)
+	case http.StatusTooManyRequests:
+		w.Header().Set("Retry-After", "1") // L3: bcrypt busy
+	}
 	passthrough(w, status, body)
 }
 
@@ -395,8 +408,9 @@ func (g *Gateway) handleAuthDevProxy(w http.ResponseWriter, r *http.Request) {
 // handleStartPath enrolls the caller in a course (F002 · POST /paths/{slug}/start),
 // minting an identity-scoped JWT and forwarding to identity. Idempotent. Only an active
 // course can be started (ADR-0033 §12 row 8): an unknown or preview course is the uniform
-// 404 course_not_found (m1-04 lets the cohort start a preview course), and a coming_soon
-// or retired one is 409 course_not_available. identity enforces the same rule itself.
+// 404 course_not_found — except a preview course for the owner/tester cohort (m1-04) —
+// and a coming_soon or retired one is 409 course_not_available. identity enforces the
+// same rule itself, from its own row.
 func (g *Gateway) handleStartPath(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := g.authAccount(w, r)
 	if !ok {
@@ -405,7 +419,7 @@ func (g *Gateway) handleStartPath(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
 	m, err := g.resolveCourse(slug)
 	switch {
-	case err != nil, m.Status == course.StatusPreview && !g.inCohort(r):
+	case err != nil, m.Status == course.StatusPreview && !g.cohort(r):
 		writeCourseNotFound(w)
 		return
 	case m.Status == course.StatusComingSoon, m.Status == course.StatusRetired:
@@ -815,7 +829,7 @@ func (g *Gateway) mintQuiet(accountID, audience string) (string, bool) {
 	if g.signer == nil {
 		return "", false
 	}
-	token, err := g.signer.Mint(context.Background(), accountID, audience, []string{"learner"})
+	token, err := g.signer.Mint(context.Background(), accountID, audience, mintedRoles())
 	if err != nil {
 		g.log.Error("mint jwt", "aud", audience, "err", err)
 		return "", false
@@ -933,24 +947,45 @@ func (g *Gateway) proxyCurriculum(w http.ResponseWriter, r *http.Request, upstre
 }
 
 // authAccount resolves the account id from the session cookie via identity, or
-// writes the 401 envelope and returns ok=false.
+// writes the 401 envelope and returns ok=false (authSession, keeping the v1 signature).
 func (g *Gateway) authAccount(w http.ResponseWriter, r *http.Request) (string, bool) {
+	info, ok := g.authSession(w, r)
+	return info.AccountID, ok
+}
+
+// authSession validates the session cookie with identity and returns what
+// session-validate reports (sessionInfo), or writes the 401 envelope and returns
+// ok=false. It asks identity on EVERY request and the gateway never caches status or
+// role: a suspend or a set-role applies on the caller's next request (m1-05's P11 relies
+// on it). The answer is remembered for the rest of THIS request only (rememberSession),
+// which is where the course-visibility cohort bit reads it, and a second authSession in
+// the same request reuses it instead of calling identity twice.
+func (g *Gateway) authSession(w http.ResponseWriter, r *http.Request) (sessionInfo, bool) {
+	if info, ok := requestSession(r); ok {
+		return info, true
+	}
 	if g.identity == nil {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "identity not configured")
-		return "", false
+		return sessionInfo{}, false
 	}
 	c, err := r.Cookie(auth.SessionCookieName)
 	if err != nil || c.Value == "" {
 		writeUnauthenticated(w)
-		return "", false
+		return sessionInfo{}, false
 	}
-	accountID, err := g.identity.validateSession(r.Context(), c.Value)
+	info, err := g.identity.validateSession(r.Context(), c.Value)
 	if err != nil {
 		writeUnauthenticated(w)
-		return "", false
+		return sessionInfo{}, false
 	}
-	return accountID, true
+	rememberSession(r, info)
+	return info, true
 }
+
+// mintedRoles is the role set of EVERY gateway-minted JWT: exactly ["learner"], for every
+// account (ADR-0033 §7). The owner/tester cohort is never a JWT role — the gateway reads
+// it from session-validate — and "public-read" is minted only by M2b's public route.
+func mintedRoles() []string { return []string{auth.RoleLearner} }
 
 // mint issues an identity-scoped JWT for accountID (roles: learner).
 func (g *Gateway) mint(w http.ResponseWriter, accountID string) (string, bool) {
@@ -964,7 +999,7 @@ func (g *Gateway) mintFor(w http.ResponseWriter, accountID, audience string) (st
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "signing not configured")
 		return "", false
 	}
-	token, err := g.signer.Mint(context.Background(), accountID, audience, []string{"learner"})
+	token, err := g.signer.Mint(context.Background(), accountID, audience, mintedRoles())
 	if err != nil {
 		g.log.Error("mint jwt", "err", err)
 		writeError(w, http.StatusInternalServerError, "internal", "could not mint token")
@@ -1032,21 +1067,38 @@ func newIdentityClient(baseURL string) *identityClient {
 	}
 }
 
-func (c *identityClient) validateSession(ctx context.Context, sessionID string) (string, error) {
+// sessionInfo is identity's session-validate answer (m1-04, ADR-0033 §6): the account,
+// its role and status from identity's DB (never a JWT claim), whether it passed the
+// acceptance step (always false until L-A; not enforced until l-05) and the SESSION's
+// created_at (L8's fresh-session check). A v1.6.0 identity sends only account_id: the
+// rest stays zero, so nobody is in the cohort during a mixed-version rollout.
+type sessionInfo struct {
+	AccountID string
+	Role      string
+	Status    string
+	Accepted  bool
+	CreatedAt time.Time
+}
+
+func (c *identityClient) validateSession(ctx context.Context, sessionID string) (sessionInfo, error) {
 	body, status, err := c.postJSON(ctx, "/sessions/validate", "", map[string]string{"session_id": sessionID})
 	if err != nil {
-		return "", err
+		return sessionInfo{}, err
 	}
 	if status != http.StatusOK {
-		return "", fmt.Errorf("validate session: status %d", status)
+		return sessionInfo{}, fmt.Errorf("validate session: status %d", status)
 	}
 	var vr struct {
-		AccountID string `json:"account_id"`
+		AccountID string    `json:"account_id"`
+		Role      string    `json:"role"`
+		Status    string    `json:"status"`
+		Accepted  bool      `json:"accepted"`
+		CreatedAt time.Time `json:"created_at"`
 	}
 	if err := json.Unmarshal(body, &vr); err != nil || vr.AccountID == "" {
-		return "", fmt.Errorf("validate session: bad response")
+		return sessionInfo{}, fmt.Errorf("validate session: bad response")
 	}
-	return vr.AccountID, nil
+	return sessionInfo{AccountID: vr.AccountID, Role: vr.Role, Status: vr.Status, Accepted: vr.Accepted, CreatedAt: vr.CreatedAt}, nil
 }
 
 func (c *identityClient) revokeSession(ctx context.Context, sessionID string) error {
@@ -1240,6 +1292,10 @@ func (c *identityClient) forward(w http.ResponseWriter, r *http.Request, upstrea
 	}
 	if ct := resp.Header.Get("Content-Type"); ct != "" {
 		w.Header().Set("Content-Type", ct)
+	}
+	// L3's 429 (bcrypt busy on login/signup) tells the browser when to retry.
+	if ra := resp.Header.Get("Retry-After"); ra != "" {
+		w.Header().Set("Retry-After", ra)
 	}
 	w.WriteHeader(resp.StatusCode)
 	_, _ = io.Copy(w, io.LimitReader(resp.Body, 4<<20))

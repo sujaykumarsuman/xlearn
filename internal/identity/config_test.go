@@ -1,6 +1,10 @@
 package identity
 
 import (
+	"bytes"
+	"log/slog"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -44,24 +48,97 @@ func TestDSNEncodesReservedCharacters(t *testing.T) {
 	}
 }
 
-// SIGNUP_MODE fails safe: only an explicit "open" opens sign-up.
-func TestSignupModeDefaultsClosed(t *testing.T) {
-	for in, want := range map[string]SignupMode{
-		"":        SignupClosed,
-		"closed":  SignupClosed,
-		"open":    SignupOpen,
-		" OPEN ":  SignupOpen,
-		"invite":  SignupClosed, // v2; not yet understood → closed
-		"opened":  SignupClosed,
-		"true":    SignupClosed,
-		"disable": SignupClosed,
-	} {
-		if got := parseSignupMode(in); got != want {
-			t.Errorf("parseSignupMode(%q) = %q, want %q", in, got, want)
+// L7 (ADR-0033 §3, ADR-0035 §4): `open` is honoured only with DEV_AUTH; `invite` runs
+// closed until L-A; anything else is closed. The full SIGNUP_MODE × DEV_AUTH table goes
+// through LoadConfig (the real env parsing), and the note decides the log level.
+func TestSignupModeL7Guard(t *testing.T) {
+	const unset = "\x00unset"
+	modes := []string{unset, "", "open", "OPEN", " open ", "closed", "invite", "junk"}
+	devAuths := []string{unset, "true", "false", "junk"}
+	for _, mode := range modes {
+		for _, dev := range devAuths {
+			setOrUnset(t, "SIGNUP_MODE", mode, unset)
+			setOrUnset(t, "DEV_AUTH", dev, unset)
+			a := LoadConfig().Auth
+
+			devOn := dev == "true" // "junk" and "false" parse as off (fail safe)
+			if a.DevAuth != devOn {
+				t.Fatalf("DEV_AUTH=%q: DevAuth=%v, want %v", dev, a.DevAuth, devOn)
+			}
+			isOpen := mode == "open" || mode == "OPEN" || mode == " open "
+			want := SignupClosed
+			if isOpen && devOn {
+				want = SignupOpen
+			}
+			if a.Signup != want {
+				t.Errorf("SIGNUP_MODE=%q DEV_AUTH=%q: Signup=%q, want %q", mode, dev, a.Signup, want)
+			}
+			// The note: the L7 misconfiguration and invite/junk say why; open+DEV_AUTH,
+			// closed and unset/empty say nothing.
+			wantNote := (isOpen && !devOn) || mode == "invite" || mode == "junk"
+			if (a.SignupNote != "") != wantNote {
+				t.Errorf("SIGNUP_MODE=%q DEV_AUTH=%q: note %q, want note=%v", mode, dev, a.SignupNote, wantNote)
+			}
+			level := logLevelOf(a)
+			switch {
+			case isOpen && !devOn:
+				if level != "ERROR" || !strings.Contains(a.SignupNote, "ignored without DEV_AUTH") {
+					t.Errorf("SIGNUP_MODE=%q DEV_AUTH=%q: logged %q %q, want ERROR 'ignored without DEV_AUTH'", mode, dev, level, a.SignupNote)
+				}
+			case wantNote:
+				if level != "INFO" {
+					t.Errorf("SIGNUP_MODE=%q DEV_AUTH=%q: logged at %q, want INFO", mode, dev, level)
+				}
+			default:
+				if level != "" {
+					t.Errorf("SIGNUP_MODE=%q DEV_AUTH=%q: logged at %q, want nothing", mode, dev, level)
+				}
+			}
 		}
 	}
-	t.Setenv("SIGNUP_MODE", "")
-	if got := LoadConfig().Auth.Signup; got != SignupClosed {
-		t.Fatalf("unset SIGNUP_MODE resolved to %q, want closed", got)
+}
+
+// The compose stack keeps sign-up: SIGNUP_MODE=open with DEV_AUTH="1" (docker-compose.yml).
+func TestSignupModeComposeStaysOpen(t *testing.T) {
+	t.Setenv("SIGNUP_MODE", "open")
+	t.Setenv("DEV_AUTH", "1")
+	if got := LoadConfig().Auth.Signup; got != SignupOpen {
+		t.Fatalf("compose env resolved to %q, want open", got)
+	}
+}
+
+func TestSeatCapDefault(t *testing.T) {
+	for in, want := range map[string]int{"": DefaultSeatCap, "15": 15, "3": 3, "0": DefaultSeatCap, "-2": DefaultSeatCap, "x": DefaultSeatCap} {
+		t.Setenv("SEAT_CAP", in)
+		if got := LoadConfig().Auth.SeatCap; got != want {
+			t.Errorf("SEAT_CAP=%q: %d, want %d", in, got, want)
+		}
+	}
+}
+
+func setOrUnset(t *testing.T, key, val, unset string) {
+	t.Helper()
+	if val == unset {
+		t.Setenv(key, "") // registers the restore
+		_ = os.Unsetenv(key)
+		return
+	}
+	t.Setenv(key, val)
+}
+
+// logLevelOf runs LogSignupMode against a capturing handler: the level logged, or "".
+func logLevelOf(a AuthConfig) string {
+	var buf bytes.Buffer
+	a.LogSignupMode(slog.New(slog.NewTextHandler(&buf, nil)))
+	out := buf.String()
+	switch {
+	case out == "":
+		return ""
+	case strings.Contains(out, "level=ERROR"):
+		return "ERROR"
+	case strings.Contains(out, "level=INFO"):
+		return "INFO"
+	default:
+		return out
 	}
 }

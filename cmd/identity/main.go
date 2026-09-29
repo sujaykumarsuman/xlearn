@@ -22,6 +22,7 @@ import (
 
 	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/identity"
+	"github.com/sujaykumarsuman/xlearn/internal/identity/admin"
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/config"
@@ -43,12 +44,20 @@ func main() {
 		fmt.Println(buildVersion())
 		return
 	}
+	// `identity admin …` is the owner's CLI (m1-04, ADR-0033 §8), run via kubectl exec in
+	// the running pod: the pod's own DB credentials, no migrations, no server.
+	if len(os.Args) >= 2 && os.Args[1] == "admin" {
+		os.Exit(admin.Main(os.Args[2:], os.Stdout, os.Stderr))
+	}
 	os.Exit(run())
 }
 
 func run() int {
 	cfg := identity.LoadConfig()
 	logger := slogx.New(cfg.LogLevel)
+	// L7 (ADR-0033 §3): `open` without DEV_AUTH runs closed and logs at ERROR (D34: a log
+	// line, no alert).
+	cfg.Auth.LogSignupMode(logger)
 
 	// Migrations on startup inside an advisory lock; refuse to serve on failure.
 	migrateCtx, cancelMigrate := context.WithTimeout(context.Background(), migrateTimeout)

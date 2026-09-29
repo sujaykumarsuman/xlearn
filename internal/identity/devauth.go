@@ -50,6 +50,11 @@ func (s *Service) handleDevLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal", "dev login failed")
 		return
 	}
+	// A suspended account can't start a session, dev login included (m1-04).
+	if acct.Status == store.StatusSuspended {
+		writeError(w, http.StatusForbidden, "account_unavailable", "this account is suspended")
+		return
+	}
 	if _, err := s.store.CompleteOnboarding(ctx, acct.ID); err != nil {
 		s.log.Error("dev login: complete onboarding failed", "err", err)
 		writeError(w, http.StatusInternalServerError, "internal", "dev login failed")

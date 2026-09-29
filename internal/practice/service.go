@@ -61,24 +61,43 @@ func (s *Service) WithCourses(r *course.Registry) *Service {
 	return s
 }
 
-// Handler builds practice's HTTP routes (Go 1.22+ method+pattern mux). All user
-// routes verify the gateway-minted JWT; the account is the token subject.
+// Handler builds practice's HTTP routes (Go 1.22+ method+pattern mux). Every user
+// route (userRoutes) verifies the gateway-minted JWT and requires the learner role;
+// the account is the token subject.
 func (s *Service) Handler() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", s.health.Live)
 	mux.HandleFunc("GET /readyz", s.health.Ready)
 
-	// Per-user guided-flow routes (proxied through the gateway BFF under /xlearn/api).
-	// Problems are global ids, so the reads take no course; the three writes accept the
-	// optional `?path=<slug>` (m1-03, see resolveCourse).
-	mux.Handle("GET /state", s.requireJWT(http.HandlerFunc(s.handleListStates)))
-	mux.Handle("GET /state/{problemId}", s.requireJWT(http.HandlerFunc(s.handleGetState)))
-	mux.Handle("POST /problems/{id}/attempt/start", s.requireJWT(http.HandlerFunc(s.handleStartAttempt)))
-	mux.Handle("POST /problems/{id}/reveal", s.requireJWT(http.HandlerFunc(s.handleReveal)))
-	mux.Handle("POST /problems/{id}/outcome", s.requireJWT(http.HandlerFunc(s.handleOutcome)))
+	requireLearner := auth.RequireRole(s.verifier, auth.RoleLearner, auth.WithLogger(s.log))
+	for _, rt := range s.userRoutes() {
+		mux.Handle(rt.Method+" "+rt.Pattern, requireLearner(rt.Handler))
+	}
 
 	return mux
+}
+
+// userRoute is one per-user (JWT) route. Handler registers every userRoutes entry behind
+// auth.RequireRole(learner) (ADR-0033 §12 row 5), so a route added to the table cannot
+// skip the role check.
+type userRoute struct {
+	Method  string
+	Pattern string
+	Handler http.HandlerFunc
+}
+
+// userRoutes is practice's per-user route table (proxied through the gateway BFF under
+// /xlearn/api). Problems are global ids, so the reads take no course; the three writes
+// accept the optional `?path=<slug>` (m1-03, see resolveCourse).
+func (s *Service) userRoutes() []userRoute {
+	return []userRoute{
+		{http.MethodGet, "/state", s.handleListStates},
+		{http.MethodGet, "/state/{problemId}", s.handleGetState},
+		{http.MethodPost, "/problems/{id}/attempt/start", s.handleStartAttempt},
+		{http.MethodPost, "/problems/{id}/reveal", s.handleReveal},
+		{http.MethodPost, "/problems/{id}/outcome", s.handleOutcome},
+	}
 }
 
 // NewOutboxRelay builds the practice outbox relay over pub (a JetStream publisher in

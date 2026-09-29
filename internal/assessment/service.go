@@ -82,32 +82,52 @@ func (s *Service) WithCourses(r *course.Registry) *Service {
 	return s
 }
 
-// Handler builds assessment's HTTP routes (Go 1.22+ method+pattern mux). The mock
-// routes verify the gateway-minted JWT; the account is the token subject. The external
-// gateway surface /xlearn/api/mocks/* maps onto these internal /mocks/* routes. The
-// static /mocks/trend pattern is registered alongside /mocks/{id} — Go's mux prefers
-// the more specific literal, so "trend" never collides with an {id}.
+// Handler builds assessment's HTTP routes (Go 1.22+ method+pattern mux). Every user
+// route (userRoutes) verifies the gateway-minted JWT and requires the learner role; the
+// account is the token subject. The external gateway surface /xlearn/api/mocks/* maps
+// onto the internal /mocks/* routes.
 func (s *Service) Handler() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", s.health.Live)
 	mux.HandleFunc("GET /readyz", s.health.Ready)
 
-	// POST /mocks, the trend and the progress reads take the optional internal
-	// `?path=<slug>` (m1-03, see resolveCourse); a session by id doesn't.
-	mux.Handle("POST /mocks", s.requireJWT(http.HandlerFunc(s.handleStartMock)))
-	mux.Handle("GET /mocks/trend", s.requireJWT(http.HandlerFunc(s.handleTrend)))
-	mux.Handle("GET /mocks/{id}", s.requireJWT(http.HandlerFunc(s.handleGetMock)))
-	mux.Handle("POST /mocks/{id}/score", s.requireJWT(http.HandlerFunc(s.handleScoreMock)))
-
-	// Progress read model (S09): the four tiles + outcome mix (summary), the
-	// revision-activity heatmap, and per-problem solve quality (mastery) the gateway
-	// rolls up by curriculum pattern + phase. All read the assessment projections only.
-	mux.Handle("GET /progress/summary", s.requireJWT(http.HandlerFunc(s.handleProgressSummary)))
-	mux.Handle("GET /progress/heatmap", s.requireJWT(http.HandlerFunc(s.handleProgressHeatmap)))
-	mux.Handle("GET /progress/mastery", s.requireJWT(http.HandlerFunc(s.handleProgressMastery)))
+	requireLearner := auth.RequireRole(s.verifier, auth.RoleLearner, auth.WithLogger(s.log))
+	for _, rt := range s.userRoutes() {
+		mux.Handle(rt.Method+" "+rt.Pattern, requireLearner(rt.Handler))
+	}
 
 	return mux
+}
+
+// userRoute is one per-user (JWT) route. Handler registers every userRoutes entry behind
+// auth.RequireRole(learner) (ADR-0033 §12 row 5), so a route added to the table cannot
+// skip the role check.
+type userRoute struct {
+	Method  string
+	Pattern string
+	Handler http.HandlerFunc
+}
+
+// userRoutes is assessment's per-user route table. The static /mocks/trend pattern is
+// registered alongside /mocks/{id}: Go's mux prefers the more specific literal, so
+// "trend" never collides with an {id}.
+func (s *Service) userRoutes() []userRoute {
+	return []userRoute{
+		// POST /mocks, the trend and the progress reads take the optional internal
+		// `?path=<slug>` (m1-03, see resolveCourse); a session by id doesn't.
+		{http.MethodPost, "/mocks", s.handleStartMock},
+		{http.MethodGet, "/mocks/trend", s.handleTrend},
+		{http.MethodGet, "/mocks/{id}", s.handleGetMock},
+		{http.MethodPost, "/mocks/{id}/score", s.handleScoreMock},
+
+		// Progress read model (S09): the four tiles + outcome mix (summary), the
+		// revision-activity heatmap, and per-problem solve quality (mastery) the gateway
+		// rolls up by curriculum pattern + phase. All read the assessment projections only.
+		{http.MethodGet, "/progress/summary", s.handleProgressSummary},
+		{http.MethodGet, "/progress/heatmap", s.handleProgressHeatmap},
+		{http.MethodGet, "/progress/mastery", s.handleProgressMastery},
+	}
 }
 
 // NewOutboxRelay builds the assessment outbox relay over pub (a JetStream publisher in

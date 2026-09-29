@@ -24,11 +24,24 @@ Legend — **Deploy:** `edge` = has Traefik route; `internal` = ClusterIP only. 
 
 - **Responsibility:** OAuth 2.0/OIDC with GitHub & Google; account records; server-side sessions;
   onboarding state (path chosen, budget set, key added); RS256 JWT issuance + JWKS.
-- **Owns:** schema `identity` — `account`, `oauth_identity`, `session`, `onboarding`.
+- **Owns:** schema `identity` — `account` (incl. `role`, `status`, `admitted_via`), `oauth_identity`,
+  `session`, `onboarding`, `path_enrollment`, `admin_audit`.
 - **API:** `POST /auth/{provider}/start`, `GET /auth/{provider}/callback`, `POST /sessions/validate`,
   `POST /sessions/revoke`, `GET /accounts/{id}`, `GET /.well-known/jwks.json`, `POST /paths/{slug}/start`
-  (only an `active` course: unknown or `preview` → `404 course_not_found`, `coming_soon`/`retired` →
-  `409 course_not_available`; `public_visible` from the manifest — m1-03, ADR-0033 §12 row 8).
+  (an `active` course, or a `preview` one for the owner/tester cohort by the caller's DB role: otherwise
+  unknown or `preview` → `404 course_not_found`, `coming_soon`/`retired` → `409 course_not_available`;
+  `public_visible` from the manifest — m1-03, m1-04, ADR-0033 §12 row 8).
+- **Sessions (m1-04, ADR-0033 §6–§7):** `POST /sessions/validate` joins `account.status = 'active'` and
+  returns `account_id`, `expires_at`, `role`, `status`, `accepted` (false until L-A) and the session's
+  `created_at`. The gateway reads the owner/tester cohort from it on every request (never cached); **JWTs
+  stay `["learner"]`** and every user route of every service requires it (`auth.RequireRole`).
+- **Limits:** L3 — at most 2 bcrypt operations in flight, else `429 too_many_requests` (`Retry-After: 1`);
+  login compares a startup dummy hash for unknown, password-less or suspended identifiers. L7 —
+  `SIGNUP_MODE=open` is honoured only with `DEV_AUTH` (else closed + an ERROR log); `invite` runs closed
+  until L-A.
+- **Admin CLI:** `identity admin account list|suspend|reactivate|revoke-sessions|set-role|create`, `seats`
+  — run with `kubectl exec` in the pod, every verb audited in `admin_audit`
+  ([runbook](../runbooks/identity-admin.md)).
 - **Emits:** `xlearn.identity.account_created` (a v2 envelope from `v1.7.0`; account-scoped, no
   `path_slug`). **Consumes:** —.
 
