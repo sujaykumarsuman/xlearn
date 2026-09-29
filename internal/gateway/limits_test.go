@@ -57,17 +57,30 @@ type limitsHarness struct {
 
 	mu          sync.Mutex
 	loginBodies []string // bodies identity's /auth/login received
-	signups     int      // signup handler invocations
-	signupBytes []int    // bytes each signup handler read before EOF / error
-	signupErrs  []error
-	starts      int
+
+	signups    atomic.Int64   // signup handler invocations
+	signupRecs chan signupRec // what each signup handler read, sent before it answers
+	starts     atomic.Int64
+}
+
+// logins returns a copy of the login bodies identity received.
+func (h *limitsHarness) logins() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return append([]string(nil), h.loginBodies...)
+}
+
+// signupRec is what one invocation of the fake identity's signup handler read.
+type signupRec struct {
+	n   int64
+	err error
 }
 
 func newLimitsHarness(t *testing.T) *limitsHarness {
 	t.Helper()
 	key, _ := rsa.GenerateKey(rand.Reader, 2048)
 	signer := auth.NewSigner(key, "xlearn-gateway", 0)
-	h := &limitsHarness{t: t, clock: newFakeClock()}
+	h := &limitsHarness{t: t, clock: newFakeClock(), signupRecs: make(chan signupRec, 64)}
 
 	identity := httptest.NewServer(jsonMux(map[string]handlerFn{
 		"POST /sessions/validate": func(w http.ResponseWriter, r *http.Request) {
@@ -98,17 +111,15 @@ func newLimitsHarness(t *testing.T) *limitsHarness {
 		},
 		"POST /auth/signup": func(w http.ResponseWriter, r *http.Request) {
 			n, err := io.Copy(io.Discard, r.Body)
-			h.mu.Lock()
-			h.signups++
-			h.signupBytes = append(h.signupBytes, int(n))
-			h.signupErrs = append(h.signupErrs, err)
-			h.mu.Unlock()
+			h.signups.Add(1)
+			select {
+			case h.signupRecs <- signupRec{n: n, err: err}:
+			default:
+			}
 			_, _ = w.Write([]byte(`{"ok":true}`))
 		},
 		"POST /auth/{provider}/start": func(w http.ResponseWriter, r *http.Request) {
-			h.mu.Lock()
-			h.starts++
-			h.mu.Unlock()
+			h.starts.Add(1)
 			w.Header().Set("Location", "https://github.com/login/oauth/authorize")
 			w.WriteHeader(http.StatusFound)
 		},
@@ -251,13 +262,13 @@ func TestL1LoginFailureWindow(t *testing.T) {
 		}
 		h.clock.Advance(time.Minute)
 	}
-	if n := len(h.loginBodies); n != 5 || h.loginBodies[0] != loginBody("ada@example.com", "wrong") {
-		t.Fatalf("identity saw %d bodies (%v), want 5 identical to the client's", n, h.loginBodies)
+	if bodies := h.logins(); len(bodies) != 5 || bodies[0] != loginBody("ada@example.com", "wrong") {
+		t.Fatalf("identity saw %d bodies (%v), want 5 identical to the client's", len(bodies), bodies)
 	}
 	// Failures at t0..t0+4m; now t0+5m: blocked for 10 more minutes, identity not called.
 	resp, body := login("ADA@example.com", "right-password")
 	want429(t, resp, body, "rate_limited", 600)
-	if len(h.loginBodies) != 5 {
+	if len(h.logins()) != 5 {
 		t.Fatal("identity was called for a blocked identifier")
 	}
 	// Another identifier still reaches identity.
@@ -286,7 +297,7 @@ func TestL1LoginOversizeBodyIs413(t *testing.T) {
 	if resp.StatusCode != http.StatusRequestEntityTooLarge || errorCode(body) != httpx.CodeBodyTooLarge {
 		t.Fatalf("oversize login: %d %s, want 413 body_too_large", resp.StatusCode, body)
 	}
-	if len(h.loginBodies) != 0 {
+	if len(h.logins()) != 0 {
 		t.Fatal("identity saw an oversize login")
 	}
 }
@@ -307,8 +318,8 @@ func TestL2SignupAndOAuthStartPerIP(t *testing.T) {
 			t.Fatalf("%s: another IP limited", path)
 		}
 	}
-	if h.signups != 6 || h.starts != 6 {
-		t.Fatalf("identity saw %d signups / %d starts, want 6 / 6", h.signups, h.starts)
+	if h.signups.Load() != 6 || h.starts.Load() != 6 {
+		t.Fatalf("identity saw %d signups / %d starts, want 6 / 6", h.signups.Load(), h.starts.Load())
 	}
 	for i := 0; i < 20; i++ {
 		if resp, _ := h.do(limitsReq{method: "GET", path: "/auth/github/callback?code=x", ip: "203.0.113.5"}); resp.StatusCode == http.StatusTooManyRequests {
@@ -377,34 +388,51 @@ func TestOversizeSignupIs413(t *testing.T) {
 	if resp.StatusCode != http.StatusRequestEntityTooLarge || errorCode(body) != httpx.CodeBodyTooLarge {
 		t.Fatalf("oversize signup: %d %s, want 413 body_too_large", resp.StatusCode, body)
 	}
-	if h.signups != 0 {
-		t.Fatal("identity was dialled for a declared oversize body")
+	if n := h.signups.Load(); n != 0 {
+		t.Fatalf("identity was dialled %d time(s) for a declared oversize body", n)
 	}
 
+	// A cut stream: identity's handler may start reading before the gateway aborts it (and
+	// may finish after the client already has its 413). Whenever it records, it must have
+	// read at most the cap and then failed — never the whole overrun.
+	overrun := func(rec signupRec) {
+		t.Helper()
+		if rec.n > httpx.BodyLimitDefault || rec.err == nil {
+			t.Errorf("identity read %d bytes (err %v): it saw the overrun", rec.n, rec.err)
+		}
+	}
 	resp, body = h.do(limitsReq{method: "POST", path: "/auth/signup", ip: "203.0.113.21", body: big, chunked: true})
 	if resp.StatusCode != http.StatusRequestEntityTooLarge || errorCode(body) != httpx.CodeBodyTooLarge {
 		t.Fatalf("chunked oversize signup: %d %s, want 413 body_too_large", resp.StatusCode, body)
 	}
-	h.mu.Lock()
-	for i, n := range h.signupBytes {
-		if int64(n) > httpx.BodyLimitDefault || h.signupErrs[i] == nil {
-			t.Errorf("identity read %d bytes (err %v): it saw the overrun", n, h.signupErrs[i])
-		}
+	select {
+	case rec := <-h.signupRecs:
+		overrun(rec)
+	case <-time.After(2 * time.Second): // identity never started on it: fine
 	}
-	h.mu.Unlock()
 
-	// A normal signup still streams through untouched.
-	h.mu.Lock()
-	before := h.signups
-	h.mu.Unlock()
-	resp, body = h.do(limitsReq{method: "POST", path: "/auth/signup", ip: "203.0.113.22", body: `{"email":"a@b.c","password":"hunter2hunter"}`})
+	// A normal signup still streams through untouched (a late record of the cut stream
+	// may arrive first; it is checked the same way).
+	normal := `{"email":"a@b.c","password":"hunter2hunter"}`
+	resp, body = h.do(limitsReq{method: "POST", path: "/auth/signup", ip: "203.0.113.22", body: normal})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("normal signup: %d %s", resp.StatusCode, body)
 	}
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if h.signups != before+1 || h.signupBytes[len(h.signupBytes)-1] != len(`{"email":"a@b.c","password":"hunter2hunter"}`) || h.signupErrs[len(h.signupErrs)-1] != nil {
-		t.Fatalf("identity did not get the normal body intact: %v %v", h.signupBytes, h.signupErrs)
+	deadline := time.After(5 * time.Second)
+	for {
+		select {
+		case rec := <-h.signupRecs:
+			if rec.err != nil {
+				overrun(rec)
+				continue
+			}
+			if rec.n != int64(len(normal)) {
+				t.Fatalf("identity read %d bytes of the normal signup, want %d", rec.n, len(normal))
+			}
+			return
+		case <-deadline:
+			t.Fatal("identity never recorded the normal signup")
+		}
 	}
 }
 
