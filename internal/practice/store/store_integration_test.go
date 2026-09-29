@@ -62,7 +62,7 @@ func TestStoreIntegration(t *testing.T) {
 		}
 
 		// Start the attempt → attempting, 15-min attempt timer running.
-		s1, err := st.StartAttempt(ctx, acct, problem)
+		s1, err := st.StartAttempt(ctx, acct, problem, "dsa")
 		if err != nil {
 			t.Fatalf("start attempt: %v", err)
 		}
@@ -74,7 +74,7 @@ func TestStoreIntegration(t *testing.T) {
 		}
 
 		// Restart is idempotent (resume): the same attempt/timer, not reset.
-		s1b, err := st.StartAttempt(ctx, acct, problem)
+		s1b, err := st.StartAttempt(ctx, acct, problem, "dsa")
 		if err != nil {
 			t.Fatalf("resume attempt: %v", err)
 		}
@@ -172,7 +172,7 @@ func TestStoreIntegration(t *testing.T) {
 	t.Run("clean solve blind, no reveal, first_solve", func(t *testing.T) {
 		acct := newTestUUID()
 		const problem = "1"
-		if _, err := st.StartAttempt(ctx, acct, problem); err != nil {
+		if _, err := st.StartAttempt(ctx, acct, problem, "dsa"); err != nil {
 			t.Fatalf("start: %v", err)
 		}
 		s, err := st.LogOutcome(ctx, acct, problem, store.OutcomeClean)
@@ -190,7 +190,7 @@ func TestStoreIntegration(t *testing.T) {
 
 	t.Run("list states for a week's problems", func(t *testing.T) {
 		acct := newTestUUID()
-		if _, err := st.StartAttempt(ctx, acct, "16"); err != nil {
+		if _, err := st.StartAttempt(ctx, acct, "16", "dsa"); err != nil {
 			t.Fatalf("start: %v", err)
 		}
 		states, err := st.ListStates(ctx, acct, []string{"16", "17", "18"})

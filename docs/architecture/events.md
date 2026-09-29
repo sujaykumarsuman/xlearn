@@ -29,7 +29,9 @@ Domain events on **NATS JetStream**, published via the **transactional outbox** 
 **forever**. **Consumers before producers:** in `v1.6.0` every consumer decodes both (review's practice
 consumer and notifications worker, assessment's projection consumer — all through `DecodeEnvelope`)
 while every producer still emits v1; producers switch to `NewEnvelope(EnvelopeV2, …)` one tag later
-(m1-03, `v1.7.0`).
+(m1-03, `v1.7.0`): from `v1.7.0` **every producer emits v2** — practice, review and assessment with the
+row's `path_slug` (every writer sets it explicitly), identity's account-scoped `account_created` without
+one. The rollback floor after `v1.7.0` is `1.6.0` (v2 envelopes are in the log).
 
 **Decode rule** (`DecodeEnvelope`):
 
@@ -63,7 +65,7 @@ an unknown v3); each consumer has a v1-vs-v2 twin test.
 | `xlearn.review.revision_due` | review (sweep) | `problem_id`, `touch_level` | **notifications** (in review) → reminder |
 | `xlearn.review.mistake_opened` | review | `problem_id`, `category` | **assessment** → outcome-mix / weak-area projection |
 | `xlearn.review.mistake_closed` | review | `mistake_id`, `problem_id` | **assessment** → projections |
-| `xlearn.assessment.mock_completed` | assessment | `mock_id`, `total_35`, `rubric` | *(reserved: coach nudges / trend snapshots)* |
+| `xlearn.assessment.mock_completed` | assessment | `mock_id`, `total_35`, `rubric`; v2 (m1-03) adds `rubric_id`, `total`, `max_total`, `scored_by` — `total_35` stays in the payload for a 35-point rubric (append-only; the DB column is dropped separately in M1c) | *(reserved: coach nudges / trend snapshots)* |
 
 ## Flow 1 — attempt logged → revision scheduled (the core loop)
 

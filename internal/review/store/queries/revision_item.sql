@@ -3,7 +3,7 @@
 -- out-of-order practice event never double-schedules or clobbers a touch already
 -- scored: on conflict the query returns no row (pgx.ErrNoRows), which the caller
 -- reads as "already scheduled — do not re-emit revision_scheduled". path_slug is the
--- event's course (m1-02, M1a; 'dsa' for every v1 event).
+-- event's course, written explicitly (m1-02, M1a; a v1 event is the DSA course).
 INSERT INTO review.revision_item (account_id, problem_id, touch_level, due_date, status, path_slug)
 VALUES ($1, $2, $3, $4, 'pending', $5)
 ON CONFLICT (account_id, problem_id, touch_level) DO NOTHING
@@ -39,13 +39,14 @@ WHERE id = $1
 RETURNING *;
 
 -- name: ListActiveTouches :many
--- The account's live queue: every not-yet-passed touch, soonest-due first (most
--- overdue reviews lead). The caller splits due (due_date <= now) from upcoming and
--- groups by touch_level for the Revision screen. Bounded so the queue stays light.
+-- The account's live queue in one course (GET /revisions/due?path=, m1-03): every
+-- not-yet-passed touch, soonest-due first (most overdue reviews lead). The caller splits
+-- due (due_date <= now) from upcoming and groups by touch_level for the Revision screen.
+-- Bounded so the queue stays light.
 SELECT * FROM review.revision_item
-WHERE account_id = $1 AND status <> 'passed'
+WHERE account_id = $1 AND path_slug = $2 AND status <> 'passed'
 ORDER BY due_date ASC, touch_level ASC
-LIMIT $2;
+LIMIT $3;
 
 -- name: SweepDueCandidates :many
 -- The periodic sweep's scan (flow 4): touches that are due, not yet surfaced, and
@@ -62,8 +63,9 @@ LIMIT $1;
 -- Idempotently latch surfaced_at. The `surfaced_at IS NULL AND status = 'pending'`
 -- guard makes a re-run (or a concurrent sweep) a no-op AND closes the TOCTOU between
 -- the candidate SELECT and this UPDATE — a touch passed in between returns no row, so
--- revision_due is emitted at most once and never for a settled touch.
+-- revision_due is emitted at most once and never for a settled touch. path_slug is the
+-- touch's course, which the v2 revision_due envelope carries (m1-03).
 UPDATE review.revision_item
 SET surfaced_at = now(), updated_at = now()
 WHERE id = $1 AND surfaced_at IS NULL AND status = 'pending'
-RETURNING account_id, problem_id, touch_level;
+RETURNING account_id, problem_id, touch_level, path_slug;

@@ -7,11 +7,15 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/course/canon"
 	"github.com/sujaykumarsuman/xlearn/internal/curriculum/store"
 )
 
 // --- JSON response shapes (api.md conventions: JSON success + error envelope) ---
+//
+// The shapes are additive only (m1-03): every v1 field keeps its name, position and,
+// for the default course, its value. New fields go after the v1 ones.
 
 type pathJSON struct {
 	Slug         string `json:"slug"`
@@ -20,6 +24,10 @@ type pathJSON struct {
 	Summary      string `json:"summary"`
 	ProblemTotal int    `json:"problem_total"`
 	WeekTotal    int    `json:"week_total"`
+	// Course is the learner-safe manifest view (m1-03; course.View: nav, labels, stage
+	// timers, short code, nothing answer-bearing). Absent when the binary has no
+	// manifest for the slug.
+	Course *course.View `json:"course,omitempty"`
 }
 
 type phaseJSON struct {
@@ -54,16 +62,27 @@ type weekPathJSON struct {
 	WeekTotal    int    `json:"week_total"`
 }
 
+// problemJSON is a problem's metadata. The v1 fields leetcode_url, neetcode_url and
+// is_reinforcement are derived from the v2 role and links (m1-03; toProblemJSON), which
+// are served beside them.
 type problemJSON struct {
-	ID              string `json:"id"`
-	PathSlug        string `json:"path_slug"`
-	WeekN           int    `json:"week_n"`
-	Title           string `json:"title"`
-	Difficulty      string `json:"difficulty"`
-	Pattern         string `json:"pattern"`
-	LeetcodeURL     string `json:"leetcode_url"`
-	NeetcodeURL     string `json:"neetcode_url"`
-	IsReinforcement bool   `json:"is_reinforcement"`
+	ID              string     `json:"id"`
+	PathSlug        string     `json:"path_slug"`
+	WeekN           int        `json:"week_n"`
+	Title           string     `json:"title"`
+	Difficulty      string     `json:"difficulty"`
+	Pattern         string     `json:"pattern"`
+	LeetcodeURL     string     `json:"leetcode_url"`
+	NeetcodeURL     string     `json:"neetcode_url"`
+	IsReinforcement bool       `json:"is_reinforcement"`
+	Role            string     `json:"role"`  // core | reinforcement | drill
+	Links           []linkJSON `json:"links"` // content order; [] when none
+}
+
+// linkJSON is one outbound link of a problem.
+type linkJSON struct {
+	Kind string `json:"kind"`
+	URL  string `json:"url"`
 }
 
 // problemDetailJSON is GET /problems/{id}'s problem: the list shape plus two additive,
@@ -83,20 +102,36 @@ type sectionJSON struct {
 	Order  int    `json:"order"`
 	BodyMD string `json:"body_md"`
 	Code   string `json:"code"`
+	// Language is a code section's language ("" for prose; m1-03).
+	Language string `json:"language"`
 }
 
+// conceptJSON is a concept's reading. The v1 code_template is the course's primary
+// language's entry of templates (m1-03), which is served beside it.
 type conceptJSON struct {
-	Slug         string `json:"slug"`
-	PathSlug     string `json:"path_slug"`
-	Title        string `json:"title"`
-	BodyMD       string `json:"body_md"`
-	WhenToUseMD  string `json:"when_to_use_md"`
-	CodeTemplate string `json:"code_template"`
+	Slug         string            `json:"slug"`
+	PathSlug     string            `json:"path_slug"`
+	Title        string            `json:"title"`
+	BodyMD       string            `json:"body_md"`
+	WhenToUseMD  string            `json:"when_to_use_md"`
+	CodeTemplate string            `json:"code_template"`
+	Templates    map[string]string `json:"templates"` // language -> template; {} when none
 }
+
+// The sources of the derived v1 problem fields: a reinforcement item has role
+// "reinforcement" (course.Roles), and the two v1 URLs are the first link of each kind
+// (course.LinkKinds).
+const (
+	roleReinforcement = "reinforcement"
+	linkKindLeetcode  = "leetcode"
+	linkKindNeetcode  = "neetcode"
+)
 
 // --- handlers ---
 
-// handleListPaths: GET /paths — Catalog (all paths + status).
+// handleListPaths: GET /paths — Catalog (every non-retired path with its status and
+// course view, in catalog order). A retired course is invisible; `preview` courses are
+// listed and the gateway, which knows the viewer, filters them (m1-03).
 func (s *Service) handleListPaths(w http.ResponseWriter, r *http.Request) {
 	paths, err := s.store.ListPaths(r.Context())
 	if err != nil {
@@ -105,12 +140,16 @@ func (s *Service) handleListPaths(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]pathJSON, 0, len(paths))
 	for _, p := range paths {
-		out = append(out, toPathJSON(p))
+		if s.courseStatus(p) == course.StatusRetired {
+			continue
+		}
+		out = append(out, s.toPathJSON(p))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"paths": out})
 }
 
-// handleGetPath: GET /paths/{slug} — Roadmap (phases, weeks, totals).
+// handleGetPath: GET /paths/{slug} — Roadmap (phases, weeks, totals, course view). Any
+// status resolves: the gateway decides which courses a viewer may open.
 func (s *Service) handleGetPath(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
 	path, err := s.store.GetPath(r.Context(), slug)
@@ -142,14 +181,14 @@ func (s *Service) handleGetPath(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"path":   toPathJSON(path),
+		"path":   s.toPathJSON(path),
 		"phases": phasesOut,
 		"weeks":  weeksOut,
 	})
 }
 
 // handleListPathProblems: GET /paths/{slug}/problems — the whole problem index for a
-// path (id / week_n / pattern / difficulty / reinforcement). It powers the gateway's
+// path (id / week_n / pattern / difficulty / role). It powers the gateway's
 // Progress + Dashboard roll-ups (by-phase completion, by-pattern mastery) in one call,
 // so the BFF need not fan out per problem (ADR-0005: cross-context composition in the
 // gateway). Content-only; the per-user solve state is layered on in the gateway.
@@ -313,6 +352,7 @@ func (s *Service) handleGetProblem(w http.ResponseWriter, r *http.Request) {
 	for _, sec := range sections {
 		sectionsOut = append(sectionsOut, sectionJSON{
 			Stage: sec.Stage, Kind: sec.Kind, Order: sec.Order, BodyMD: sec.BodyMD, Code: sec.Code,
+			Language: sec.Language,
 		})
 	}
 	summary := problem.GradingSummary
@@ -329,13 +369,29 @@ func (s *Service) handleGetProblem(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleGetConcept: GET /concepts/{slug} — concept reading + code template.
+// handleGetConcept: GET /paths/{slug}/concepts/{c} — a concept's reading and code
+// templates, keyed on (course, concept slug) (m1-03): a concept resolves only under its
+// own course.
 func (s *Service) handleGetConcept(w http.ResponseWriter, r *http.Request) {
-	slug := r.PathValue("slug")
-	c, err := s.store.GetConcept(r.Context(), slug)
+	s.serveConcept(w, r, r.PathValue("slug"), r.PathValue("c"))
+}
+
+// handleGetConceptAlias: GET /concepts/{slug} — v1's route, now the DSA alias: the
+// concept under course.DefaultSlug, byte-identical to
+// GET /paths/<course.DefaultSlug>/concepts/{slug}.
+func (s *Service) handleGetConceptAlias(w http.ResponseWriter, r *http.Request) {
+	s.serveConcept(w, r, course.DefaultSlug, r.PathValue("slug"))
+}
+
+func (s *Service) serveConcept(w http.ResponseWriter, r *http.Request, pathSlug, slug string) {
+	c, err := s.store.GetConcept(r.Context(), pathSlug, slug)
 	if err != nil {
 		s.mapErr(w, "get concept", err)
 		return
+	}
+	templates := c.Templates
+	if templates == nil {
+		templates = map[string]string{}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"concept": conceptJSON{
@@ -344,15 +400,36 @@ func (s *Service) handleGetConcept(w http.ResponseWriter, r *http.Request) {
 			Title:        c.Title,
 			BodyMD:       c.BodyMD,
 			WhenToUseMD:  c.WhenToUseMD,
-			CodeTemplate: c.CodeTemplate,
+			CodeTemplate: templates[s.primaryLanguage(c.PathSlug)],
+			Templates:    templates,
 		},
 	})
 }
 
 // --- conversions + helpers ---
 
-func toPathJSON(p store.Path) pathJSON {
-	return pathJSON{
+// courseStatus is a path's status as its manifest states it, falling back to the row's
+// when the registry has no manifest for the slug.
+func (s *Service) courseStatus(p store.Path) string {
+	if m, ok := s.courses.Lookup(p.Slug); ok {
+		return m.Status
+	}
+	return p.Status
+}
+
+// primaryLanguage is a course's primary language (its manifest's
+// coach.primary_language: the v1 concept template's language), "" when the registry
+// has no manifest for the slug or the manifest names none.
+func (s *Service) primaryLanguage(slug string) string {
+	m, ok := s.courses.Lookup(slug)
+	if !ok || m.Coach == nil {
+		return ""
+	}
+	return m.Coach.PrimaryLanguage
+}
+
+func (s *Service) toPathJSON(p store.Path) pathJSON {
+	out := pathJSON{
 		Slug:         p.Slug,
 		Title:        p.Title,
 		Status:       p.Status,
@@ -360,9 +437,20 @@ func toPathJSON(p store.Path) pathJSON {
 		ProblemTotal: p.ProblemTotal,
 		WeekTotal:    p.WeekTotal,
 	}
+	if m, ok := s.courses.Lookup(p.Slug); ok {
+		v := m.LearnerView()
+		out.Course = &v
+	}
+	return out
 }
 
+// toProblemJSON serves a problem with its v1 fields derived from role and links
+// (m1-03): the values v1 read from the columns M1c drops.
 func toProblemJSON(p store.Problem) problemJSON {
+	links := make([]linkJSON, 0, len(p.Links))
+	for _, l := range p.Links {
+		links = append(links, linkJSON{Kind: l.Kind, URL: l.URL})
+	}
 	return problemJSON{
 		ID:              p.ID,
 		PathSlug:        p.PathSlug,
@@ -370,10 +458,22 @@ func toProblemJSON(p store.Problem) problemJSON {
 		Title:           p.Title,
 		Difficulty:      p.Difficulty,
 		Pattern:         p.Pattern,
-		LeetcodeURL:     p.LeetcodeURL,
-		NeetcodeURL:     p.NeetcodeURL,
-		IsReinforcement: p.IsReinforcement,
+		LeetcodeURL:     firstLinkURL(p.Links, linkKindLeetcode),
+		NeetcodeURL:     firstLinkURL(p.Links, linkKindNeetcode),
+		IsReinforcement: p.Role == roleReinforcement,
+		Role:            p.Role,
+		Links:           links,
 	}
+}
+
+// firstLinkURL is the URL of the first link of kind ("" if none).
+func firstLinkURL(links []store.Link, kind string) string {
+	for _, l := range links {
+		if l.Kind == kind {
+			return l.URL
+		}
+	}
+	return ""
 }
 
 // mapErr maps a store error to 404 (not found) or 500 (everything else).

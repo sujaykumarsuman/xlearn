@@ -24,7 +24,7 @@ func TestMistakesRequireJWT(t *testing.T) {
 
 func TestListMistakes(t *testing.T) {
 	st := &fakeStore{
-		listMistakes: func(_ context.Context, accountID, status string) ([]store.Mistake, error) {
+		listMistakes: func(_ context.Context, accountID, _, status string) ([]store.Mistake, error) {
 			if accountID != "acct-1" {
 				t.Fatalf("account = %q, want acct-1", accountID)
 			}
@@ -58,7 +58,7 @@ func TestListMistakes(t *testing.T) {
 
 func TestListMistakesFiltersByStatus(t *testing.T) {
 	st := &fakeStore{
-		listMistakes: func(context.Context, string, string) ([]store.Mistake, error) {
+		listMistakes: func(context.Context, string, string, string) ([]store.Mistake, error) {
 			return []store.Mistake{
 				{ID: "m1", Status: "open"},
 				{ID: "m2", Status: "closed"},
@@ -91,7 +91,7 @@ func TestListMistakesRejectsBadStatus(t *testing.T) {
 
 func TestCreateMistake(t *testing.T) {
 	st := &fakeStore{
-		createMistake: func(_ context.Context, accountID string, in store.MistakeInput) (store.Mistake, error) {
+		createMistake: func(_ context.Context, accountID, _ string, in store.MistakeInput) (store.Mistake, error) {
 			if accountID != "acct-1" || in.ProblemID != "16" || in.Category != "off_by_one" {
 				t.Fatalf("create input = %+v (acct %s)", in, accountID)
 			}
@@ -117,7 +117,7 @@ func TestCreateMistakeRequiresProblem(t *testing.T) {
 
 func TestCreateMistakeConflict(t *testing.T) {
 	st := &fakeStore{
-		createMistake: func(context.Context, string, store.MistakeInput) (store.Mistake, error) {
+		createMistake: func(context.Context, string, string, store.MistakeInput) (store.Mistake, error) {
 			return store.Mistake{}, store.ErrConflict
 		},
 	}
@@ -132,7 +132,7 @@ func TestCreateMistakeConflict(t *testing.T) {
 
 func TestCreateMistakeInvalidCategory(t *testing.T) {
 	st := &fakeStore{
-		createMistake: func(context.Context, string, store.MistakeInput) (store.Mistake, error) {
+		createMistake: func(context.Context, string, string, store.MistakeInput) (store.Mistake, error) {
 			return store.Mistake{}, store.ErrInvalidCategory
 		},
 	}
@@ -184,7 +184,7 @@ func TestPatchMistakeNotFound(t *testing.T) {
 
 func TestWeakAreaHandler(t *testing.T) {
 	st := &fakeStore{
-		weakAreaCurrent: func(_ context.Context, accountID string) (store.WeakArea, bool, error) {
+		weakAreaCurrent: func(_ context.Context, accountID, _ string) (store.WeakArea, bool, error) {
 			return store.WeakArea{
 				WeekOf:      time.Date(2026, 9, 21, 0, 0, 0, 0, time.UTC),
 				TopCategory: "off_by_one",
@@ -211,7 +211,7 @@ func TestWeakAreaHandler(t *testing.T) {
 
 func TestWeakAreaHandlerEmpty(t *testing.T) {
 	st := &fakeStore{
-		weakAreaCurrent: func(context.Context, string) (store.WeakArea, bool, error) {
+		weakAreaCurrent: func(context.Context, string, string) (store.WeakArea, bool, error) {
 			return store.WeakArea{}, false, nil
 		},
 	}

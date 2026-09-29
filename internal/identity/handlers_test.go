@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 )
@@ -33,7 +34,7 @@ func testConfig() Config {
 
 func newTestService(st *fakeStore, v auth.Verifier) *Service {
 	log := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	return NewService(testConfig(), st, v, log)
+	return NewService(testConfig(), st, v, course.Embedded(), log)
 }
 
 // fakeOAuth stands in for a provider's token + userinfo endpoints.

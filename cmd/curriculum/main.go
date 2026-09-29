@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	seeddata "github.com/sujaykumarsuman/xlearn/curriculum"
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/curriculum"
 	"github.com/sujaykumarsuman/xlearn/internal/curriculum/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/config"
@@ -47,6 +48,14 @@ func run() int {
 	cfg := curriculum.LoadConfig()
 	logger := slogx.New(cfg.LogLevel)
 
+	// The compiled-in course manifests (m1-03: the learner-safe course view on /paths*
+	// and each course's primary language). A bad manifest fails the boot, not a request.
+	courses, err := course.LoadEmbedded()
+	if err != nil {
+		logger.Error("course manifests invalid; refusing to serve", "err", err)
+		return 1
+	}
+
 	// Migrations on startup inside an advisory lock; refuse to serve on failure.
 	migrateCtx, cancelMigrate := context.WithTimeout(context.Background(), migrateTimeout)
 	defer cancelMigrate()
@@ -73,7 +82,7 @@ func run() int {
 		return 1
 	}
 
-	svc := curriculum.NewService(st, logger)
+	svc := curriculum.NewService(st, courses, logger)
 
 	handler := httpx.Chain(svc.Handler(),
 		httpx.RequestID,

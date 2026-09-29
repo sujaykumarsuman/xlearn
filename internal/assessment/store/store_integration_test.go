@@ -54,11 +54,11 @@ func TestStoreIntegration(t *testing.T) {
 	t.Run("create -> live session with server window", func(t *testing.T) {
 		acct := newTestUUID()
 		start := time.Now().Truncate(time.Second)
-		m, err := st.CreateMock(ctx, acct, "set-07", "16", "med", start, start.Add(store.MockDuration))
+		m, err := st.CreateMock(ctx, acct, "dsa", "set-07", "16", "med", start, start.Add(store.MockDuration))
 		if err != nil {
 			t.Fatalf("create: %v", err)
 		}
-		if m.Status != store.StatusLive || m.Total35 != nil {
+		if m.Status != store.StatusLive || m.Total != nil {
 			t.Fatalf("new session not live/unscored: %+v", m)
 		}
 		if m.DeadlineAt.Sub(m.StartedAt) != store.MockDuration {
@@ -79,7 +79,7 @@ func TestStoreIntegration(t *testing.T) {
 	t.Run("score computes /35, latches scored, emits one mock_completed", func(t *testing.T) {
 		acct := newTestUUID()
 		start := time.Now()
-		m, err := st.CreateMock(ctx, acct, "set-07", "16", "med", start, start.Add(store.MockDuration))
+		m, err := st.CreateMock(ctx, acct, "dsa", "set-07", "16", "med", start, start.Add(store.MockDuration))
 		if err != nil {
 			t.Fatalf("create: %v", err)
 		}
@@ -91,7 +91,7 @@ func TestStoreIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("score: %v", err)
 		}
-		if scored.Status != store.StatusScored || scored.Total35 == nil || *scored.Total35 != 24 {
+		if scored.Status != store.StatusScored || scored.Total == nil || *scored.Total != 24 {
 			t.Fatalf("scored total wrong: %+v", scored)
 		}
 		if len(scores) != 7 {
@@ -103,7 +103,7 @@ func TestStoreIntegration(t *testing.T) {
 		if c := countOutbox(ctx, t, pool, store.SubjectMockCompleted, acct); c != 1 {
 			t.Fatalf("mock_completed events = %d, want 1", c)
 		}
-		// Outbox payload carries mock_id, total_35, rubric (events.md).
+		// Outbox payload carries mock_id, total_35, rubric (events.md) + the m1-03 fields.
 		assertMockCompletedPayload(ctx, t, pool, acct, m.ID, 24)
 
 		// GetMock now returns the scored session + rubric.
@@ -119,7 +119,7 @@ func TestStoreIntegration(t *testing.T) {
 	t.Run("re-score is idempotent (no new rubric/outbox rows)", func(t *testing.T) {
 		acct := newTestUUID()
 		start := time.Now()
-		m, _ := st.CreateMock(ctx, acct, "set-07", "16", "med", start, start.Add(store.MockDuration))
+		m, _ := st.CreateMock(ctx, acct, "dsa", "set-07", "16", "med", start, start.Add(store.MockDuration))
 		rubric := allFives()
 		if _, _, err := st.ScoreMock(ctx, acct, m.ID, rubric, "first"); err != nil {
 			t.Fatalf("first score: %v", err)
@@ -133,7 +133,7 @@ func TestStoreIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("re-score: %v", err)
 		}
-		if again.Total35 == nil || *again.Total35 != 35 || again.Notes != "first" {
+		if again.Total == nil || *again.Total != 35 || again.Notes != "first" {
 			t.Fatalf("re-score should return the stored 35/'first', got %+v", again)
 		}
 		if c := countRubric(ctx, t, pool, m.ID); c != 7 {
@@ -147,7 +147,7 @@ func TestStoreIntegration(t *testing.T) {
 	t.Run("invalid rubric and cross-account are rejected", func(t *testing.T) {
 		acct := newTestUUID()
 		start := time.Now()
-		m, _ := st.CreateMock(ctx, acct, "set-07", "16", "med", start, start.Add(store.MockDuration))
+		m, _ := st.CreateMock(ctx, acct, "dsa", "set-07", "16", "med", start, start.Add(store.MockDuration))
 
 		if _, _, err := st.ScoreMock(ctx, acct, m.ID, map[string]int{"communication": 4}, ""); err != store.ErrInvalidRubric {
 			t.Fatalf("partial rubric err = %v, want ErrInvalidRubric", err)
@@ -169,20 +169,20 @@ func TestStoreIntegration(t *testing.T) {
 		acct := newTestUUID()
 		base := time.Now().Add(-30 * 24 * time.Hour)
 		// Three sessions started 14 / 7 / 0 days ago; score the first two only.
-		older, _ := st.CreateMock(ctx, acct, "set-05", "16", "med", base, base.Add(store.MockDuration))
-		mid, _ := st.CreateMock(ctx, acct, "set-06", "17", "med", base.AddDate(0, 0, 7), base.AddDate(0, 0, 7).Add(store.MockDuration))
-		_, _ = st.CreateMock(ctx, acct, "set-07", "18", "med", base.AddDate(0, 0, 14), base.AddDate(0, 0, 14).Add(store.MockDuration))
+		older, _ := st.CreateMock(ctx, acct, "dsa", "set-05", "16", "med", base, base.Add(store.MockDuration))
+		mid, _ := st.CreateMock(ctx, acct, "dsa", "set-06", "17", "med", base.AddDate(0, 0, 7), base.AddDate(0, 0, 7).Add(store.MockDuration))
+		_, _ = st.CreateMock(ctx, acct, "dsa", "set-07", "18", "med", base.AddDate(0, 0, 14), base.AddDate(0, 0, 14).Add(store.MockDuration))
 		mustScore(ctx, t, st, acct, older.ID, 20)
 		mustScore(ctx, t, st, acct, mid.ID, 24)
 
-		points, err := st.Trend(ctx, acct)
+		points, err := st.Trend(ctx, acct, "dsa")
 		if err != nil {
 			t.Fatalf("trend: %v", err)
 		}
 		if len(points) != 2 {
 			t.Fatalf("trend points = %d, want 2 (only scored)", len(points))
 		}
-		if points[0].Total35 != 20 || points[1].Total35 != 24 {
+		if points[0].Total != 20 || points[1].Total != 24 {
 			t.Fatalf("trend order/totals wrong: %+v", points)
 		}
 		if !points[0].StartedAt.Before(points[1].StartedAt) {
@@ -299,7 +299,7 @@ func TestStoreIntegration(t *testing.T) {
 	t.Run("concurrent scoring stays idempotent (one event, one settle)", func(t *testing.T) {
 		acct := newTestUUID()
 		start := time.Now()
-		m, _ := st.CreateMock(ctx, acct, "set-07", "16", "med", start, start.Add(store.MockDuration))
+		m, _ := st.CreateMock(ctx, acct, "dsa", "set-07", "16", "med", start, start.Add(store.MockDuration))
 
 		const n = 6
 		var wg sync.WaitGroup
@@ -311,8 +311,8 @@ func TestStoreIntegration(t *testing.T) {
 				defer wg.Done()
 				scored, _, err := st.ScoreMock(ctx, acct, m.ID, allFives(), "concurrent")
 				errs[i] = err
-				if err == nil && scored.Total35 != nil {
-					totals[i] = *scored.Total35
+				if err == nil && scored.Total != nil {
+					totals[i] = *scored.Total
 				}
 			}(i)
 		}
@@ -399,20 +399,34 @@ func assertMockCompletedPayload(ctx context.Context, t *testing.T, pool *pgxpool
 		store.SubjectMockCompleted, accountID).Scan(&raw); err != nil {
 		t.Fatalf("read payload: %v", err)
 	}
+	// m1-03: a v2 envelope carrying the session's course; the v1 fields stay and
+	// rubric_id / total / max_total / scored_by are added (append-only).
 	var env struct {
 		Subject   string `json:"subject"`
 		AccountID string `json:"account_id"`
+		Version   int    `json:"version"`
+		PathSlug  string `json:"path_slug"`
 		Data      struct {
-			MockID  string         `json:"mock_id"`
-			Total35 int            `json:"total_35"`
-			Rubric  map[string]int `json:"rubric"`
+			MockID   string         `json:"mock_id"`
+			Total35  int            `json:"total_35"`
+			Rubric   map[string]int `json:"rubric"`
+			RubricID string         `json:"rubric_id"`
+			Total    int            `json:"total"`
+			MaxTotal int            `json:"max_total"`
+			ScoredBy string         `json:"scored_by"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(raw, &env); err != nil {
 		t.Fatalf("unmarshal payload: %v", err)
 	}
-	if env.Data.MockID != mockID || env.Data.Total35 != wantTotal {
-		t.Fatalf("payload mock_id/total = %q/%d, want %q/%d", env.Data.MockID, env.Data.Total35, mockID, wantTotal)
+	if env.Version != 2 || env.PathSlug != "dsa" {
+		t.Fatalf("envelope version/path_slug = %d/%q, want 2/dsa", env.Version, env.PathSlug)
+	}
+	if env.Data.MockID != mockID || env.Data.Total35 != wantTotal || env.Data.Total != wantTotal {
+		t.Fatalf("payload mock_id/total_35/total = %q/%d/%d, want %q/%d/%d", env.Data.MockID, env.Data.Total35, env.Data.Total, mockID, wantTotal, wantTotal)
+	}
+	if env.Data.RubricID != store.RubricID || env.Data.MaxTotal != store.MaxTotal || env.Data.ScoredBy != store.ScoredBySelf {
+		t.Fatalf("payload rubric_id/max_total/scored_by = %q/%d/%q", env.Data.RubricID, env.Data.MaxTotal, env.Data.ScoredBy)
 	}
 	if len(env.Data.Rubric) != 7 {
 		t.Fatalf("payload rubric has %d dims, want 7", len(env.Data.Rubric))

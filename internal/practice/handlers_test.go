@@ -98,7 +98,11 @@ func TestGetState(t *testing.T) {
 
 func TestStartAttempt(t *testing.T) {
 	fs := &fakeStore{
-		start: func(_ context.Context, _, _ string) (store.State, error) {
+		start: func(_ context.Context, _, _, path string) (store.State, error) {
+			// No ?path= (a v1.6.0 gateway): the default course.
+			if path != "dsa" {
+				t.Errorf("start path = %q, want dsa", path)
+			}
 			return store.State{ProblemID: "16", Status: "attempting", StageReached: store.StageAttempt,
 				UnlockedStages: []string{store.StageAttempt}, Timer: &store.Timer{Kind: store.TimerAttempt, DeadlineAt: time.Now().Add(15 * time.Minute)}}, nil
 		},

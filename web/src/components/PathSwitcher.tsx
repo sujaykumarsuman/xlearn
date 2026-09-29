@@ -1,26 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { usePaths, type Path } from "../lib/curriculum";
+import { coursePath, courseShortCode } from "../lib/course";
+import { usePaths } from "../lib/curriculum";
 import { Icon } from "./Icon";
 
-/** A short mono code for a path's badge (DSA, SYS, …); falls back to the slug head. */
-const SHORT_CODE: Record<string, string> = {
-  dsa: "DSA",
-  "system-design": "SYS",
-  "go-concurrency": "GO",
-  "lld-ood": "OOD",
-  sql: "SQL",
-  behavioral: "STAR",
-};
-function shortCode(slug: string): string {
-  return SHORT_CODE[slug] ?? slug.replace(/[^a-z0-9]/gi, "").slice(0, 3).toUpperCase();
-}
-
 /**
- * PathSwitcher is the top-bar curriculum selector (F001): it replaces the removed ⌘K
- * search and is shown only inside a curriculum. It names the current path and opens a
- * menu to jump between started/available paths or back to the Catalog ("Browse all
- * paths"). Coming-soon paths are listed but locked. Accessible button-disclosure
+ * PathSwitcher is the top-bar course selector (F001, AB02-F3): it replaces the removed ⌘K
+ * search and is shown only inside an active course. It names the current course and
+ * opens a menu to jump between the open courses (each to its dashboard) or back to the
+ * Catalog ("Browse all paths"). Coming-soon courses are listed but locked. All of it
+ * comes from the session-gated catalog. Accessible button-disclosure
  * (aria-expanded/haspopup + Esc + outside-click), mirroring the account menu.
  */
 export function PathSwitcher({ slug }: { slug: string }) {
@@ -46,7 +35,9 @@ export function PathSwitcher({ slug }: { slug: string }) {
 
   const all = paths.data?.paths ?? [];
   const current = all.find((p) => p.slug === slug);
-  const active = all.filter((p) => p.status === "active");
+  // A preview course is listed only for the owner/tester cohort (m1-04); it switches like
+  // an active one, marked "Preview" (AB02-F3).
+  const openCourses = all.filter((p) => p.status === "active" || p.status === "preview");
   const comingSoon = all.filter((p) => p.status === "coming_soon");
   const title = current?.title ?? slug.toUpperCase();
   const close = () => setOpen(false);
@@ -61,17 +52,17 @@ export function PathSwitcher({ slug }: { slug: string }) {
         aria-label="Switch curriculum"
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="xl-pathsw__ic">{shortCode(slug)}</span>
+        <span className="xl-pathsw__ic">{courseShortCode(current ?? { slug })}</span>
         <span className="xl-pathsw__t">{title}</span>
         <Icon name="chevdown" className="xl-ico--sm" />
       </button>
 
       {open && (
         <div className="xl-topsw__menu" role="menu">
-          {active.map((p) => (
+          {openCourses.map((p) => (
             <Link
               key={p.slug}
-              to={`/${p.slug}/dashboard`}
+              to={coursePath(p.slug, "dashboard")}
               role="menuitem"
               onClick={close}
               className={
@@ -79,9 +70,14 @@ export function PathSwitcher({ slug }: { slug: string }) {
               }
             >
               <span className="ds-dot ds-dot--ok" /> {p.title}
+              {p.status === "preview" && (
+                <span className="ds-badge ds-badge--violet" style={{ height: 19, fontSize: 10.5, marginLeft: "auto" }}>
+                  Preview
+                </span>
+              )}
             </Link>
           ))}
-          {comingSoon.map((p: Path) => (
+          {comingSoon.map((p) => (
             <div key={p.slug} className="xl-pathsw__opt xl-pathsw__opt--locked" aria-disabled="true">
               <Icon name="lock" className="xl-ico--sm" /> {p.title} · <i>Coming soon</i>
             </div>

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/health"
@@ -31,9 +32,15 @@ type Service struct {
 	verifier auth.Verifier
 	log      *slog.Logger
 	health   *health.Handler
+
+	// courses resolves the internal `?path=<slug>` param (m1-03): the manifests
+	// compiled into the binary unless a test injects coursetest.Registry.
+	courses *course.Registry
 }
 
-// NewService wires the practice application. verifier checks gateway-minted JWTs.
+// NewService wires the practice application. verifier checks gateway-minted JWTs. The
+// course registry defaults to the embedded manifests (course.Embedded); main loads them
+// first with course.LoadEmbedded so a bad manifest fails the boot, not a request.
 func NewService(st store.Store, verifier auth.Verifier, log *slog.Logger) *Service {
 	return &Service{
 		store:    st,
@@ -43,7 +50,15 @@ func NewService(st store.Store, verifier auth.Verifier, log *slog.Logger) *Servi
 			Name:  "postgres",
 			Check: st.Ping,
 		}),
+		courses: course.Embedded(),
 	}
+}
+
+// WithCourses replaces the course registry `?path=` resolves against (tests inject
+// coursetest.Registry for the fixture courses). Returns the service for chaining.
+func (s *Service) WithCourses(r *course.Registry) *Service {
+	s.courses = r
+	return s
 }
 
 // Handler builds practice's HTTP routes (Go 1.22+ method+pattern mux). All user
@@ -55,6 +70,8 @@ func (s *Service) Handler() http.Handler {
 	mux.HandleFunc("GET /readyz", s.health.Ready)
 
 	// Per-user guided-flow routes (proxied through the gateway BFF under /xlearn/api).
+	// Problems are global ids, so the reads take no course; the three writes accept the
+	// optional `?path=<slug>` (m1-03, see resolveCourse).
 	mux.Handle("GET /state", s.requireJWT(http.HandlerFunc(s.handleListStates)))
 	mux.Handle("GET /state/{problemId}", s.requireJWT(http.HandlerFunc(s.handleGetState)))
 	mux.Handle("POST /problems/{id}/attempt/start", s.requireJWT(http.HandlerFunc(s.handleStartAttempt)))

@@ -1,22 +1,28 @@
 import { Fragment } from "react";
 import { Link, NavLink } from "react-router-dom";
+import type { CourseViewNav } from "../lib/curriculum";
 import { useMistakes } from "../lib/mistakes";
 import { useDueRevision } from "../lib/revision";
-import { navForPath, SIDEBAR_COLLAPSE_ID } from "../nav";
+import { navForPath, navHasScreen, SIDEBAR_COLLAPSE_ID } from "../nav";
 import { Icon } from "./Icon";
 
 /**
- * The collapsible left sidebar (F001): brand, the curriculum-scoped nav, and the
- * pure-CSS collapse toggle. It renders only inside a curriculum; the path switcher
- * moved to the top bar, so the sidebar is now purely this path's navigation.
+ * The collapsible left sidebar (F001): brand, the course-scoped nav rendered from the
+ * course manifest's nav block (AB02), and the pure-CSS collapse toggle. It renders only
+ * inside an active course; the course switcher is in the top bar, so the sidebar is
+ * purely this course's navigation.
  */
-export function Sidebar({ slug }: { slug: string }) {
+export function Sidebar({ slug, nav: courseNav }: { slug: string; nav?: CourseViewNav }) {
   // Live Practice-loop badges: reviews due today + open journal entries. Both are cached
   // react-query reads (shared with the Revision / Mistakes screens), so this adds no fetch
-  // once those screens have loaded; the badge stays hidden until the count resolves.
-  const revision = useDueRevision();
-  const mistakes = useMistakes();
-  const nav = navForPath(slug, { revisionDue: revision.data?.dueCount, mistakesOpen: mistakes.data?.openCount });
+  // once those screens have loaded; the badge stays hidden until the count resolves. A
+  // course whose nav has no Revision / Mistakes row doesn't fetch that count.
+  const revision = useDueRevision(slug, navHasScreen(courseNav, "revision"));
+  const mistakes = useMistakes(slug, navHasScreen(courseNav, "mistakes"));
+  const nav = navForPath(slug, courseNav, {
+    revisionDue: revision.data?.dueCount,
+    mistakesOpen: mistakes.data?.openCount,
+  });
 
   return (
     <aside className="xl-side">

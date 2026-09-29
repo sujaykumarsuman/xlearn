@@ -39,6 +39,8 @@ import (
 // (testdata/v1-events.golden.json; XLEARN_UPDATE_GOLDEN=1 rewrites it), and the same 19
 // events re-encoded as v2 envelopes (path_slug "dsa", another account) must produce an
 // identical snapshot. A second delivery of every event changes nothing (inbox dedupe).
+// Since m1-03 review's own outbox facts are v2 envelopes (checked beside the golden,
+// which compares only their data and so stays v1's).
 func TestReplayV1EventsAndV2Twin(t *testing.T) {
 	dsn := os.Getenv("XLEARN_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -100,6 +102,19 @@ func TestReplayV1EventsAndV2Twin(t *testing.T) {
 
 	if twin != got {
 		t.Fatalf("the v2 twin differs from the v1 replay:\nv1: %s\nv2: %s", got, twin)
+	}
+
+	// m1-03: review's producers emit v2. Every outbox fact the replay produced (for
+	// either input version) is a v2 envelope in the DSA course; the snapshot compares
+	// only the facts' data, which stays v1's (golden = v1).
+	var facts, v2Facts int
+	if err := pool.QueryRow(ctx, `
+		SELECT count(*), count(*) FILTER (WHERE payload_json ->> 'version' = '2' AND payload_json ->> 'path_slug' = $1)
+		FROM review.outbox`, events.V1PathSlug).Scan(&facts, &v2Facts); err != nil {
+		t.Fatalf("read review outbox envelopes: %v", err)
+	}
+	if facts == 0 || v2Facts != facts {
+		t.Fatalf("%d review outbox facts, %d of them v2 in the DSA course; want all", facts, v2Facts)
 	}
 	golden := filepath.Join("testdata", "v1-events.golden.json")
 	if os.Getenv("XLEARN_UPDATE_GOLDEN") == "1" {

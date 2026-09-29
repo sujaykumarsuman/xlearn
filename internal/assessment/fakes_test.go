@@ -20,25 +20,25 @@ func testLogger() *slog.Logger {
 // database). Each method delegates to an overridable func so a test sets only what it
 // exercises; an unset func panics, surfacing an unexpected call.
 type fakeStore struct {
-	createMock      func(ctx context.Context, accountID, setID, problemID, difficulty string, startedAt, deadlineAt time.Time) (store.MockSession, error)
+	createMock      func(ctx context.Context, accountID, pathSlug, setID, problemID, difficulty string, startedAt, deadlineAt time.Time) (store.MockSession, error)
 	getMock         func(ctx context.Context, accountID, mockID string) (store.MockSession, []store.RubricScore, error)
 	scoreMock       func(ctx context.Context, accountID, mockID string, scores map[string]int, notes string) (store.MockSession, []store.RubricScore, error)
-	trend           func(ctx context.Context, accountID string) ([]store.TrendPoint, error)
+	trend           func(ctx context.Context, accountID, pathSlug string) ([]store.TrendPoint, error)
 	applyProjection func(ctx context.Context, ev store.ProjectionEvent) (bool, error)
 	solvedCount     func(ctx context.Context, accountID string) (int, error)
 	retention       func(ctx context.Context, accountID string) (int, int, error)
 	heatmap         func(ctx context.Context, accountID string, since time.Time) ([]store.HeatmapDay, error)
 	mastery         func(ctx context.Context, accountID string) ([]store.ProblemMastery, error)
 	outcomeMix      func(ctx context.Context, accountID string) (map[string]int, error)
-	mockStats       func(ctx context.Context, accountID string) (store.MockStats, error)
+	mockStats       func(ctx context.Context, accountID, pathSlug string) (store.MockStats, error)
 
 	pingErr error
 
 	deadLetters []events.DeadLetter
 }
 
-func (f *fakeStore) CreateMock(ctx context.Context, accountID, setID, problemID, difficulty string, startedAt, deadlineAt time.Time) (store.MockSession, error) {
-	return f.createMock(ctx, accountID, setID, problemID, difficulty, startedAt, deadlineAt)
+func (f *fakeStore) CreateMock(ctx context.Context, accountID, pathSlug, setID, problemID, difficulty string, startedAt, deadlineAt time.Time) (store.MockSession, error) {
+	return f.createMock(ctx, accountID, pathSlug, setID, problemID, difficulty, startedAt, deadlineAt)
 }
 
 func (f *fakeStore) GetMock(ctx context.Context, accountID, mockID string) (store.MockSession, []store.RubricScore, error) {
@@ -49,8 +49,8 @@ func (f *fakeStore) ScoreMock(ctx context.Context, accountID, mockID string, sco
 	return f.scoreMock(ctx, accountID, mockID, scores, notes)
 }
 
-func (f *fakeStore) Trend(ctx context.Context, accountID string) ([]store.TrendPoint, error) {
-	return f.trend(ctx, accountID)
+func (f *fakeStore) Trend(ctx context.Context, accountID, pathSlug string) ([]store.TrendPoint, error) {
+	return f.trend(ctx, accountID, pathSlug)
 }
 
 func (f *fakeStore) ApplyProjection(ctx context.Context, ev store.ProjectionEvent) (bool, error) {
@@ -77,8 +77,8 @@ func (f *fakeStore) OutcomeMix(ctx context.Context, accountID string) (map[strin
 	return f.outcomeMix(ctx, accountID)
 }
 
-func (f *fakeStore) MockStats(ctx context.Context, accountID string) (store.MockStats, error) {
-	return f.mockStats(ctx, accountID)
+func (f *fakeStore) MockStats(ctx context.Context, accountID, pathSlug string) (store.MockStats, error) {
+	return f.mockStats(ctx, accountID, pathSlug)
 }
 
 func (f *fakeStore) ListUnsentOutbox(context.Context, int32) ([]store.OutboxRow, error) {

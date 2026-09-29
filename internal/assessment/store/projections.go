@@ -81,9 +81,10 @@ type ProjectionEvent struct {
 	EventID   string
 	Subject   string
 	AccountID string
-	// PathSlug is the event's course (the envelope's path_slug; "dsa" for every v1
-	// event). m1-02 carries it; the v1 projection tables have no course column, so it
-	// is not persisted until the projections are redefined and replayed (M2b).
+	// PathSlug is the event's course (the envelope's path_slug; events.V1PathSlug, the
+	// DSA course, for every v1 event). m1-02 carries it; the v1 projection tables have no
+	// course column, so it is not persisted until the projections are redefined and
+	// replayed (M2b).
 	PathSlug   string
 	ProblemID  string
 	Outcome    string
@@ -324,17 +325,18 @@ func (s *PgStore) OutcomeMix(ctx context.Context, accountID string) (map[string]
 	return out, nil
 }
 
-// MockStats returns the scored-mock count, average /35 and best /35.
-func (s *PgStore) MockStats(ctx context.Context, accountID string) (MockStats, error) {
+// MockStats returns one course's scored-mock count, average total and best total (the
+// mock tables carry path_slug, unlike the projections).
+func (s *PgStore) MockStats(ctx context.Context, accountID, pathSlug string) (MockStats, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return MockStats{}, ErrNotFound
 	}
-	row, err := s.q.MockAggregate(ctx, aid)
+	row, err := s.q.MockAggregate(ctx, gen.MockAggregateParams{AccountID: aid, PathSlug: pathSlug})
 	if err != nil {
 		return MockStats{}, fmt.Errorf("mock aggregate: %w", err)
 	}
-	return MockStats{Count: int(row.ScoredCount), Average: int(row.Average35), Best: int(row.Best35)}, nil
+	return MockStats{Count: int(row.ScoredCount), Average: int(row.AverageTotal), Best: int(row.BestTotal)}, nil
 }
 
 // dateOf truncates a time to its UTC calendar day as a non-null pgtype.Date.

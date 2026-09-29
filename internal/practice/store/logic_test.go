@@ -4,7 +4,9 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
+	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 	"github.com/sujaykumarsuman/xlearn/internal/practice/store/gen"
 )
 
@@ -80,29 +82,19 @@ func TestDefaultState(t *testing.T) {
 	}
 }
 
-func TestMarshalEnvelope(t *testing.T) {
-	payload, err := marshalEnvelope("evt-1", SubjectProblemSolved, "acct-1", map[string]any{
-		"problem_id": "16", "outcome": "clean", "first_solve": true, "below_clean": false,
-	})
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
+// m1-03 (M1b): practice emits the v2 envelope, and every practice subject is
+// course-scoped, so NewEnvelope refuses one without a course (insertEvent can't write a
+// course-less event). The integration test checks the rows themselves.
+func TestEnvelopeIsV2AndCourseScoped(t *testing.T) {
+	if eventVersion != events.EnvelopeV2 {
+		t.Fatalf("eventVersion = %d, want %d", eventVersion, events.EnvelopeV2)
 	}
-	for _, want := range []string{`"event_id":"evt-1"`, `"subject":"xlearn.practice.problem_solved"`, `"account_id":"acct-1"`, `"problem_id":"16"`, `"first_solve":true`, `"version":1`} {
-		if !contains(payload, want) {
-			t.Errorf("payload missing %q\ngot %s", want, payload)
+	for _, subject := range []string{SubjectProblemSolved, SubjectAttemptLogged, SubjectSolutionRevealedEarly} {
+		if !events.CourseScoped(subject) {
+			t.Errorf("%s is not course-scoped in topology.go", subject)
+		}
+		if _, err := events.NewEnvelope(eventVersion, "evt-1", subject, "acct-1", "", time.Now(), map[string]any{}); err == nil {
+			t.Errorf("%s: a v2 envelope without path_slug was accepted", subject)
 		}
 	}
-}
-
-func contains(b []byte, sub string) bool {
-	return len(sub) == 0 || (len(b) >= len(sub) && indexOf(string(b), sub) >= 0)
-}
-
-func indexOf(s, sub string) int {
-	for i := 0; i+len(sub) <= len(s); i++ {
-		if s[i:i+len(sub)] == sub {
-			return i
-		}
-	}
-	return -1
 }

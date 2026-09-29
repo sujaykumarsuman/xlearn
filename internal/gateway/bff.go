@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 )
 
@@ -26,6 +27,11 @@ type apiRoute struct {
 	// Doc is false for routes intentionally excluded from the public OpenAPI contract
 	// (ops/JWKS): they are served but not part of the documented /xlearn/api surface.
 	Doc bool
+	// Alias marks a v1 route without a course: a DSA alias that runs the course-scoped
+	// handler with course.DefaultSlug (m1-03). OpenAPI marks it deprecated: true (the drift
+	// test checks). The SPA stops calling aliases in v1.7.0; they stay for open v1.6.0
+	// tabs at least through v1.8.0 (ADR-0034 §1.1; status.md records the removal tag).
+	Alias bool
 }
 
 // apiRoutes is the authoritative BFF route table. Order is irrelevant to correctness
@@ -34,74 +40,107 @@ type apiRoute struct {
 func (g *Gateway) apiRoutes() []apiRoute {
 	return []apiRoute{
 		// System / auth infra.
-		{"GET", "/api/healthz", g.appHealth, false},
-		{"GET", "/.well-known/jwks.json", g.handleJWKS, false},
+		{Method: "GET", Pattern: "/api/healthz", Handler: g.appHealth},
+		{Method: "GET", Pattern: "/.well-known/jwks.json", Handler: g.handleJWKS},
 		// Account + onboarding (identity-backed). OAuth start/callback are proxied so the
 		// browser only ever talks to the gateway origin.
-		{"GET", "/api/me", g.handleMe, true},
-		{"PATCH", "/api/me", g.handlePatchMe, true},
+		{Method: "GET", Pattern: "/api/me", Handler: g.handleMe, Doc: true},
+		{Method: "PATCH", Pattern: "/api/me", Handler: g.handlePatchMe, Doc: true},
 		// Account & sign-in management (ADR-0023): set/change password + disconnect a provider.
-		{"POST", "/api/me/password", g.handleSetPassword, true},
-		{"DELETE", "/api/me/oauth/{provider}", g.handleUnlinkOAuth, true},
+		{Method: "POST", Pattern: "/api/me/password", Handler: g.handleSetPassword, Doc: true},
+		{Method: "DELETE", Pattern: "/api/me/oauth/{provider}", Handler: g.handleUnlinkOAuth, Doc: true},
 		// Username (F009 / ADR-0024): claim/change + availability check (session-gated).
-		{"POST", "/api/me/username", g.handleSetUsername, true},
-		{"GET", "/api/username/available", g.handleUsernameAvailable, true},
-		{"POST", "/api/auth/logout", g.handleLogout, true},
-		{"POST", "/api/onboarding/step", g.handleOnboardingStep, true},
+		{Method: "POST", Pattern: "/api/me/username", Handler: g.handleSetUsername, Doc: true},
+		{Method: "GET", Pattern: "/api/username/available", Handler: g.handleUsernameAvailable, Doc: true},
+		{Method: "POST", Pattern: "/api/auth/logout", Handler: g.handleLogout, Doc: true},
+		{Method: "POST", Pattern: "/api/onboarding/step", Handler: g.handleOnboardingStep, Doc: true},
 		// Email/password auth (ADR-0023): fetch-based signup/login (session cookie on the JSON
 		// response). OAuth start/callback are the browser-redirect flow; `?link=1` on start
 		// connects the provider to the signed-in account.
-		{"POST", "/api/auth/signup", g.handleAuthSignup, true},
-		{"POST", "/api/auth/login", g.handleAuthLogin, true},
-		{"POST", "/api/auth/{provider}/start", g.handleAuthProxy, true},
-		{"GET", "/api/auth/{provider}/callback", g.handleAuthProxy, true},
+		{Method: "POST", Pattern: "/api/auth/signup", Handler: g.handleAuthSignup, Doc: true},
+		{Method: "POST", Pattern: "/api/auth/login", Handler: g.handleAuthLogin, Doc: true},
+		{Method: "POST", Pattern: "/api/auth/{provider}/start", Handler: g.handleAuthProxy, Doc: true},
+		{Method: "GET", Pattern: "/api/auth/{provider}/callback", Handler: g.handleAuthProxy, Doc: true},
 		// Local-only dev login (F002 / ADR-0022): proxied to identity, which 404s them
 		// unless DEV_AUTH is set. Undocumented (Doc:false) — never part of the prod surface.
-		{"POST", "/api/auth/dev/login", g.handleAuthDevProxy, false},
-		{"GET", "/api/auth/dev/enabled", g.handleAuthDevProxy, false},
-		// Per-user path enrollment (F002): starting a path is an explicit, durable action.
-		{"POST", "/api/paths/{slug}/start", g.handleStartPath, true},
-		// Curriculum content (read-only, session-gated). The week route is a BFF
-		// aggregation (api.md `agg`): the gateway layers per-user five-touch/solve state
-		// onto curriculum content (ADR-0005/0013).
-		{"GET", "/api/paths", g.handleListPaths, true},
-		{"GET", "/api/paths/{slug}", g.handleGetPath, true},
-		{"GET", "/api/paths/{slug}/problems", g.handleListPathProblems, true},
-		{"GET", "/api/paths/{slug}/weeks/{n}", g.handleGetWeek, true},
-		{"GET", "/api/concepts/{slug}", g.handleGetConcept, true},
-		// Problem workspace: the GET is a BFF aggregation (content limited to unlocked
-		// stages + practice state + timer); the writes proxy to practice.
-		{"GET", "/api/problems/{id}", g.handleGetProblem, true},
-		{"POST", "/api/problems/{id}/attempt/start", g.handleAttemptStart, true},
-		{"POST", "/api/problems/{id}/reveal", g.handleReveal, true},
-		{"POST", "/api/problems/{id}/outcome", g.handleOutcome, true},
+		{Method: "POST", Pattern: "/api/auth/dev/login", Handler: g.handleAuthDevProxy},
+		{Method: "GET", Pattern: "/api/auth/dev/enabled", Handler: g.handleAuthDevProxy},
+		// Per-user course enrollment (F002): starting a course is an explicit, durable
+		// action; only an active course can be started (ADR-0033 §12 row 8).
+		{Method: "POST", Pattern: "/api/paths/{slug}/start", Handler: g.handleStartPath, Doc: true},
+		// The course catalog + course content (read-only, session-gated). Every
+		// /api/paths/{slug}/… route resolves {slug} against the compiled-in manifests
+		// (course.go). The week route is a BFF aggregation (api.md `agg`): the gateway
+		// layers per-user five-touch/solve state onto curriculum content (ADR-0005/0013).
+		{Method: "GET", Pattern: "/api/paths", Handler: g.handleListPaths, Doc: true},
+		{Method: "GET", Pattern: "/api/paths/{slug}", Handler: g.handleGetPath, Doc: true},
+		{Method: "GET", Pattern: "/api/paths/{slug}/problems", Handler: g.handleListPathProblems, Doc: true},
+		{Method: "GET", Pattern: "/api/paths/{slug}/weeks/{n}", Handler: g.handleGetWeek, Doc: true},
+		{Method: "GET", Pattern: "/api/paths/{slug}/concepts/{c}", Handler: g.handleGetConcept, Doc: true},
+		// Course-scoped aggregates (m1-03, t0 §7): the same handlers the DSA aliases below run.
+		{Method: "GET", Pattern: "/api/paths/{slug}/dashboard", Handler: g.handleDashboard, Doc: true},
+		{Method: "GET", Pattern: "/api/paths/{slug}/progress", Handler: g.handleProgress, Doc: true},
+		{Method: "GET", Pattern: "/api/paths/{slug}/revision/due", Handler: g.handleRevisionDue, Doc: true},
+		{Method: "GET", Pattern: "/api/paths/{slug}/mistakes", Handler: g.handleMistakes, Doc: true},
+		{Method: "POST", Pattern: "/api/paths/{slug}/mistakes", Handler: g.handleCreateMistake, Doc: true},
+		{Method: "GET", Pattern: "/api/paths/{slug}/weak-area", Handler: g.handleWeakArea, Doc: true},
+		{Method: "POST", Pattern: "/api/paths/{slug}/mocks", Handler: g.handleStartMock, Doc: true},
+		{Method: "GET", Pattern: "/api/paths/{slug}/mocks/trend", Handler: g.handleMockTrend, Doc: true},
+		// Items by GLOBAL id: the course comes from the item's path_slug (curriculum) or,
+		// for revision items, mistakes and mocks, from the owning service's row. The
+		// Problem GET is a BFF aggregation (content limited to unlocked stages + practice
+		// state + timer); the writes proxy to practice.
+		{Method: "GET", Pattern: "/api/problems/{id}", Handler: g.handleGetProblem, Doc: true},
+		{Method: "POST", Pattern: "/api/problems/{id}/attempt/start", Handler: g.handleAttemptStart, Doc: true},
+		{Method: "POST", Pattern: "/api/problems/{id}/reveal", Handler: g.handleReveal, Doc: true},
+		{Method: "POST", Pattern: "/api/problems/{id}/outcome", Handler: g.handleOutcome, Doc: true},
 		// Revision (review). External /revision maps to review's internal /revisions.
-		{"GET", "/api/revision/due", g.handleRevisionDue, true},
-		{"POST", "/api/revision/{itemId}/score", g.handleRevisionScore, true},
-		// Mistake journal + weak-area (review), enriched with curriculum metadata.
-		{"GET", "/api/mistakes", g.handleMistakes, true},
-		{"POST", "/api/mistakes", g.handleCreateMistake, true},
-		{"PATCH", "/api/mistakes/{id}", g.handlePatchMistake, true},
-		{"GET", "/api/weak-area", g.handleWeakArea, true},
-		// Mock interview (assessment). /mocks/trend is more specific than /mocks/{id},
-		// so it wins regardless of order.
-		{"POST", "/api/mocks", g.handleStartMock, true},
-		{"GET", "/api/mocks/trend", g.handleMockTrend, true},
-		{"GET", "/api/mocks/{id}", g.handleGetMock, true},
-		{"POST", "/api/mocks/{id}/score", g.handleScoreMock, true},
-		// Progress + Dashboard "Today" (parallel fan-out aggregations, S09).
-		{"GET", "/api/progress", g.handleProgress, true},
-		{"GET", "/api/dashboard", g.handleDashboard, true},
+		{Method: "POST", Pattern: "/api/revision/{itemId}/score", Handler: g.handleRevisionScore, Doc: true},
+		// Mistake journal edits (review).
+		{Method: "PATCH", Pattern: "/api/mistakes/{id}", Handler: g.handlePatchMistake, Doc: true},
+		// Mock interview (assessment). /mocks/trend (an alias below) is more specific than
+		// /mocks/{id}, so it wins regardless of order.
+		{Method: "GET", Pattern: "/api/mocks/{id}", Handler: g.handleGetMock, Doc: true},
+		{Method: "POST", Pattern: "/api/mocks/{id}/score", Handler: g.handleScoreMock, Doc: true},
+		// DSA aliases (ADR-0034 §1.1): the v1 routes without a course, served by the
+		// course-scoped handler with course.DefaultSlug (the course a v1 caller means).
+		{Method: "GET", Pattern: "/api/concepts/{slug}", Handler: g.aliasConcept, Doc: true, Alias: true},
+		{Method: "GET", Pattern: "/api/revision/due", Handler: g.alias(g.handleRevisionDue), Doc: true, Alias: true},
+		{Method: "GET", Pattern: "/api/mistakes", Handler: g.alias(g.handleMistakes), Doc: true, Alias: true},
+		{Method: "POST", Pattern: "/api/mistakes", Handler: g.alias(g.handleCreateMistake), Doc: true, Alias: true},
+		{Method: "GET", Pattern: "/api/weak-area", Handler: g.alias(g.handleWeakArea), Doc: true, Alias: true},
+		{Method: "POST", Pattern: "/api/mocks", Handler: g.alias(g.handleStartMock), Doc: true, Alias: true},
+		{Method: "GET", Pattern: "/api/mocks/trend", Handler: g.alias(g.handleMockTrend), Doc: true, Alias: true},
+		{Method: "GET", Pattern: "/api/progress", Handler: g.alias(g.handleProgress), Doc: true, Alias: true},
+		{Method: "GET", Pattern: "/api/dashboard", Handler: g.alias(g.handleDashboard), Doc: true, Alias: true},
 		// PUBLIC user dashboard (F009 / ADR-0024): the ONLY unauthenticated /api route —
 		// resolves a username to non-PII public stats + a merged activity heatmap.
-		{"GET", "/api/u/{username}", g.handlePublicProfile, true},
+		{Method: "GET", Pattern: "/api/u/{username}", Handler: g.handlePublicProfile, Doc: true},
 		// Coach (S11): masked key CRUD, per-page thread, and the SSE chat relay.
-		{"GET", "/api/coach/key", g.handleCoachKey, true},
-		{"PUT", "/api/coach/key", g.handlePutCoachKey, true},
-		{"DELETE", "/api/coach/key", g.handleDeleteCoachKey, true},
-		{"GET", "/api/coach/thread", g.handleCoachThread, true},
-		{"POST", "/api/coach/chat", g.handleCoachChat, true},
+		{Method: "GET", Pattern: "/api/coach/key", Handler: g.handleCoachKey, Doc: true},
+		{Method: "PUT", Pattern: "/api/coach/key", Handler: g.handlePutCoachKey, Doc: true},
+		{Method: "DELETE", Pattern: "/api/coach/key", Handler: g.handleDeleteCoachKey, Doc: true},
+		{Method: "GET", Pattern: "/api/coach/thread", Handler: g.handleCoachThread, Doc: true},
+		{Method: "POST", Pattern: "/api/coach/chat", Handler: g.handleCoachChat, Doc: true},
 	}
+}
+
+// alias wraps a course-scoped handler as its v1 DSA alias: the request runs with the
+// {slug} path value set to course.DefaultSlug, so the alias and the course-scoped route
+// share one code path (and return byte-identical bodies for the same upstream state).
+func (g *Gateway) alias(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.SetPathValue("slug", course.DefaultSlug)
+		h(w, r)
+	}
+}
+
+// aliasConcept is GET /api/concepts/{slug}'s alias: v1's {slug} is the CONCEPT slug, so it
+// moves to {c} and the course becomes course.DefaultSlug.
+func (g *Gateway) aliasConcept(w http.ResponseWriter, r *http.Request) {
+	r.SetPathValue("c", r.PathValue("slug"))
+	r.SetPathValue("slug", course.DefaultSlug)
+	g.handleGetConcept(w, r)
 }
 
 // newAPIMux builds the BFF routes from the authoritative apiRoutes table. The gateway
@@ -353,18 +392,31 @@ func (g *Gateway) handleAuthDevProxy(w http.ResponseWriter, r *http.Request) {
 	g.identity.forward(w, r, "/auth/dev/"+lastSegment(r.URL.Path))
 }
 
-// handleStartPath enrolls the caller in a path (F002 · POST /paths/{slug}/start),
-// minting an identity-scoped JWT and forwarding to identity. Idempotent.
+// handleStartPath enrolls the caller in a course (F002 · POST /paths/{slug}/start),
+// minting an identity-scoped JWT and forwarding to identity. Idempotent. Only an active
+// course can be started (ADR-0033 §12 row 8): an unknown or preview course is the uniform
+// 404 course_not_found (m1-04 lets the cohort start a preview course), and a coming_soon
+// or retired one is 409 course_not_available. identity enforces the same rule itself.
 func (g *Gateway) handleStartPath(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := g.authAccount(w, r)
 	if !ok {
+		return
+	}
+	slug := r.PathValue("slug")
+	m, err := g.resolveCourse(slug)
+	switch {
+	case err != nil, m.Status == course.StatusPreview && !g.inCohort(r):
+		writeCourseNotFound(w)
+		return
+	case m.Status == course.StatusComingSoon, m.Status == course.StatusRetired:
+		writeError(w, http.StatusConflict, "course_not_available", "this course is not open for enrollment")
 		return
 	}
 	token, ok := g.mint(w, accountID)
 	if !ok {
 		return
 	}
-	body, status, err := g.identity.startEnrollment(r.Context(), token, r.PathValue("slug"))
+	body, status, err := g.identity.startEnrollment(r.Context(), token, slug)
 	if err != nil {
 		g.log.Error("bff /paths/{slug}/start: identity call failed", "err", err)
 		writeError(w, http.StatusBadGateway, "upstream", "identity unavailable")
@@ -383,27 +435,53 @@ func (g *Gateway) apiNotFound(w http.ResponseWriter, r *http.Request) {
 // (consistent with the rest of /api) but does NOT forward a user JWT — curriculum
 // has no user-scoped logic. It simply proxies; screen aggregation is a later sprint.
 
+// handleListPaths is the session-gated course catalog: curriculum's GET /paths (every
+// non-retired course with its learner-safe `course` view), filtered to what this caller
+// may see — active courses, coming_soon teasers, and preview only for the cohort.
 func (g *Gateway) handleListPaths(w http.ResponseWriter, r *http.Request) {
 	if _, ok := g.authAccount(w, r); !ok {
 		return
 	}
-	g.proxyCurriculum(w, r, "/paths")
+	if g.curriculum == nil {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "curriculum not configured")
+		return
+	}
+	body, status, err := g.curriculum.get(r.Context(), "/paths")
+	if err != nil {
+		g.log.Error("bff curriculum call failed", "path", "/paths", "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "curriculum unavailable")
+		return
+	}
+	if status != http.StatusOK {
+		passthrough(w, status, body)
+		return
+	}
+	passthrough(w, http.StatusOK, g.filterCatalog(r, body))
 }
 
+// handleGetPath is a course's Roadmap content (GET /paths/{slug}): visible courses only.
 func (g *Gateway) handleGetPath(w http.ResponseWriter, r *http.Request) {
 	if _, ok := g.authAccount(w, r); !ok {
 		return
 	}
-	g.proxyCurriculum(w, r, "/paths/"+url.PathEscape(r.PathValue("slug")))
+	slug := r.PathValue("slug")
+	if _, ok := g.requireCourse(w, r, slug); !ok {
+		return
+	}
+	g.proxyCurriculum(w, r, "/paths/"+url.PathEscape(slug))
 }
 
-// handleListPathProblems proxies the whole problem index for a path (the Problems arena,
-// review round 2 — a flat list you can browse + attempt any problem from).
+// handleListPathProblems proxies the whole problem index for a course (the Problems
+// arena, review round 2 — a flat list you can browse + attempt any problem from).
 func (g *Gateway) handleListPathProblems(w http.ResponseWriter, r *http.Request) {
 	if _, ok := g.authAccount(w, r); !ok {
 		return
 	}
-	g.proxyCurriculum(w, r, "/paths/"+url.PathEscape(r.PathValue("slug"))+"/problems")
+	slug := r.PathValue("slug")
+	if _, ok := g.requireCourse(w, r, slug); !ok {
+		return
+	}
+	g.proxyCurriculum(w, r, "/paths/"+url.PathEscape(slug)+"/problems")
 }
 
 // handleGetWeek is the week BFF aggregation (api.md `agg`): it fetches the curriculum
@@ -414,6 +492,9 @@ func (g *Gateway) handleListPathProblems(w http.ResponseWriter, r *http.Request)
 func (g *Gateway) handleGetWeek(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := g.authAccount(w, r)
 	if !ok {
+		return
+	}
+	if _, ok := g.requireCourse(w, r, r.PathValue("slug")); !ok {
 		return
 	}
 	n := r.PathValue("n")
@@ -522,6 +603,12 @@ func (g *Gateway) handleGetProblem(w http.ResponseWriter, r *http.Request) {
 		passthrough(w, status, body)
 		return
 	}
+	// Items are addressed by global id; the course is the item's path_slug. An item whose
+	// course the caller can't see is the same uniform 404 as an unknown course.
+	slug := problemPathSlug(body)
+	if _, ok := g.requireCourse(w, r, slug); !ok {
+		return
+	}
 
 	// Practice arena (?practice=1): a study view. Deliver ALL sections (all stages) with a
 	// default (available, no-timer) state and DON'T touch practice — so opening a problem
@@ -548,13 +635,25 @@ func (g *Gateway) handleGetProblem(w http.ResponseWriter, r *http.Request) {
 	}
 	// Layer the curriculum gate (enrolled? scheduled?) so the workspace can render the
 	// "Start the path" gate or the "ahead of schedule" banner (review round 2).
-	merged = g.injectProblemGate(r.Context(), accountID, id, merged)
+	merged = g.injectProblemGate(r.Context(), accountID, slug, id, merged)
 	passthrough(w, http.StatusOK, merged)
 }
 
+// problemPathSlug reads the item's course from curriculum's GET /problems/{id} body
+// ({"problem":{"path_slug":…}}), via itemPathSlug's v1 default.
+func problemPathSlug(body []byte) string {
+	var env struct {
+		Problem struct {
+			PathSlug string `json:"path_slug"`
+		} `json:"problem"`
+	}
+	_ = json.Unmarshal(body, &env)
+	return itemPathSlug(env.Problem.PathSlug)
+}
+
 // injectProblemGate adds the `gate` block (enrolled/scheduled/currentWeek) to the Problem
-// aggregate, reading the problem's week from the merged content.
-func (g *Gateway) injectProblemGate(ctx context.Context, accountID, problemID string, merged []byte) []byte {
+// aggregate, reading the problem's week from the merged content. slug is the item's course.
+func (g *Gateway) injectProblemGate(ctx context.Context, accountID, slug, problemID string, merged []byte) []byte {
 	var obj map[string]json.RawMessage
 	if json.Unmarshal(merged, &obj) != nil {
 		return merged
@@ -568,7 +667,7 @@ func (g *Gateway) injectProblemGate(ctx context.Context, accountID, problemID st
 			week = p.WeekN
 		}
 	}
-	obj["gate"] = mustJSON(g.problemGateFor(ctx, accountID, "dsa", problemID, week))
+	obj["gate"] = mustJSON(g.problemGateFor(ctx, accountID, slug, problemID, week))
 	if out, err := json.Marshal(obj); err == nil {
 		return out
 	}
@@ -619,8 +718,11 @@ func (g *Gateway) handleOutcome(w http.ResponseWriter, r *http.Request) {
 
 // proxyPracticeWrite validates the session, enforces the curriculum gates, mints a
 // practice-scoped JWT, and forwards a POST (with body) to practice, passing its status +
-// JSON envelope straight through. The gates (review round 2):
-//   - enrollment: every practice write requires the path to be started (403 not_enrolled).
+// JSON envelope straight through. The item's course is resolved from curriculum (its
+// path_slug) and passed to practice as `?path=` so the rows and events carry it (m1-03).
+// The gates (review round 2), per the item's course:
+//   - visibility: an item whose course the caller can't see is 404 course_not_found.
+//   - enrollment: every practice write requires the course to be started (403 not_enrolled).
 //   - schedule (scheduleGate=true, the outcome): a NEW-problem solve counts only when the
 //     problem is at/before the frontier week; an ahead solve is acknowledged (counted:false)
 //     and NOT forwarded, so it records no solve, emits no events, and schedules no revision.
@@ -644,11 +746,24 @@ func (g *Gateway) proxyPracticeWrite(w http.ResponseWriter, r *http.Request, pro
 		_, _ = w.Write([]byte(`{"practice":true}`))
 		return
 	}
-	if !g.requireEnrolled(w, r.Context(), accountID, "dsa") {
+	slug, found, err := g.itemCourse(r.Context(), problemID)
+	if err != nil {
+		g.log.Error("bff practice write: curriculum lookup failed", "id", problemID, "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "curriculum unavailable")
+		return
+	}
+	if !found {
+		writeError(w, http.StatusNotFound, "not_found", "resource not found")
+		return
+	}
+	if _, ok := g.requireCourse(w, r, slug); !ok {
+		return
+	}
+	if !g.requireEnrolled(w, r.Context(), accountID, slug) {
 		return
 	}
 	if scheduleGate {
-		if frontier, byID, resolved := g.pathFrontier(r.Context(), accountID); resolved {
+		if frontier, byID, resolved := g.pathFrontier(r.Context(), accountID, slug); resolved {
 			if p, found := byID[problemID]; found && p.WeekN > frontier {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
@@ -666,7 +781,7 @@ func (g *Gateway) proxyPracticeWrite(w http.ResponseWriter, r *http.Request, pro
 		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
 		return
 	}
-	body, status, err := g.practice.post(r.Context(), token, upstreamPath, reqBody)
+	body, status, err := g.practice.post(r.Context(), token, withPath(upstreamPath, slug), reqBody)
 	if err != nil {
 		g.log.Error("bff practice write failed", "path", upstreamPath, "err", err)
 		writeError(w, http.StatusBadGateway, "upstream", "practice unavailable")
@@ -719,9 +834,14 @@ func (g *Gateway) mintForPracticeW(w http.ResponseWriter, accountID string) (str
 // learner's prioritised due queue from review, then enriches each bare-id item with
 // its curriculum problem metadata (title/difficulty/pattern) so the screen renders
 // full cards. If curriculum can't resolve a problem the item degrades to id-only.
+// Course-scoped: GET /paths/{slug}/revision/due (and the DSA alias /revision/due).
 func (g *Gateway) handleRevisionDue(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := g.authAccount(w, r)
 	if !ok {
+		return
+	}
+	slug := r.PathValue("slug")
+	if _, ok := g.requireCourse(w, r, slug); !ok {
 		return
 	}
 	if g.review == nil {
@@ -732,7 +852,7 @@ func (g *Gateway) handleRevisionDue(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	body, status, err := g.review.get(r.Context(), token, "/revisions/due")
+	body, status, err := g.review.get(r.Context(), token, withPath("/revisions/due", slug))
 	if err != nil {
 		g.log.Error("bff revision/due: review call failed", "err", err)
 		writeError(w, http.StatusBadGateway, "upstream", "review unavailable")
@@ -783,11 +903,17 @@ func (g *Gateway) mintForReviewW(w http.ResponseWriter, accountID string) (strin
 	return g.mintFor(w, accountID, g.audReview)
 }
 
+// handleGetConcept is a course's concept reading (GET /paths/{slug}/concepts/{c}, keyed
+// on (course, concept slug); the DSA alias is GET /concepts/{slug}).
 func (g *Gateway) handleGetConcept(w http.ResponseWriter, r *http.Request) {
 	if _, ok := g.authAccount(w, r); !ok {
 		return
 	}
-	g.proxyCurriculum(w, r, "/concepts/"+url.PathEscape(r.PathValue("slug")))
+	slug := r.PathValue("slug")
+	if _, ok := g.requireCourse(w, r, slug); !ok {
+		return
+	}
+	g.proxyCurriculum(w, r, "/paths/"+url.PathEscape(slug)+"/concepts/"+url.PathEscape(r.PathValue("c")))
 }
 
 // proxyCurriculum forwards a GET to the curriculum service and passes its JSON

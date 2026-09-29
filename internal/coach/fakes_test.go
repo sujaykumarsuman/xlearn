@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/sujaykumarsuman/xlearn/internal/coach/store"
@@ -32,6 +33,7 @@ type memStore struct {
 	threads  map[string]string                     // accountID|context -> threadID
 	messages map[string][]store.Message            // threadID -> messages
 	threadOf map[string]string                     // threadID -> accountID|context (bookkeeping)
+	pathOf   map[string]string                     // threadID -> path_slug ("" = NULL)
 	nextID   int
 }
 
@@ -41,6 +43,7 @@ func newMemStore() *memStore {
 		threads:  map[string]string{},
 		messages: map[string][]store.Message{},
 		threadOf: map[string]string{},
+		pathOf:   map[string]string{},
 	}
 }
 
@@ -162,18 +165,45 @@ func (m *memStore) DeleteKey(_ context.Context, accountID, provider string) erro
 	return nil
 }
 
-func (m *memStore) EnsureThread(_ context.Context, accountID, pageContext string) (string, error) {
+func (m *memStore) EnsureThread(_ context.Context, accountID, pageContext, pathSlug string) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	key := accountID + "|" + pageContext
 	if id, ok := m.threads[key]; ok {
+		if m.pathOf[id] == "" {
+			m.pathOf[id] = pathSlug // keep an existing path_slug, fill a NULL one (the real upsert)
+		}
 		return id, nil
 	}
 	m.nextID++
 	id := "thread-" + itoa(m.nextID)
 	m.threads[key] = id
 	m.threadOf[id] = key
+	m.pathOf[id] = pathSlug
 	return id, nil
+}
+
+// thread returns the (account, thread key) thread's id and path_slug; ok is false when
+// the account never chatted under that key.
+func (m *memStore) thread(accountID, key string) (id, pathSlug string, ok bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	id, ok = m.threads[accountID+"|"+key]
+	return id, m.pathOf[id], ok
+}
+
+// threadKeys returns every thread key the account has, sorted.
+func (m *memStore) threadKeys(accountID string) []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []string
+	for k := range m.threads {
+		if a, key, _ := strings.Cut(k, "|"); a == accountID {
+			out = append(out, key)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 func (m *memStore) ThreadHistory(_ context.Context, accountID, pageContext string) ([]store.Message, error) {

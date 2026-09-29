@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 import { routes } from "../router";
+import { DSA_PATH, ZZ_FIXTURE_PATH, ZZ_SOON_PATH, catalog } from "../test/courses";
 import { authedMe, installFetchMock, restoreFetch, sseResponse, type RouteHandler } from "../test/fetchMock";
 
 function renderApp(initialPath: string) {
@@ -71,7 +72,8 @@ describe("Coach panel", () => {
 
     expect(await screen.findByText("Hi there")).toBeInTheDocument();
     expect(screen.getByText("how am I doing?")).toBeInTheDocument();
-    await waitFor(() => expect(chatBody.context).toBe("dashboard"));
+    // Course-scoped contexts carry their course (m1-03): the thread key is per course.
+    await waitFor(() => expect(chatBody.context).toBe("dsa:dashboard"));
     expect(chatBody.message).toBe("how am I doing?");
   });
 
@@ -116,5 +118,66 @@ describe("Coach panel", () => {
     renderApp("/xlearn/dsa/concept/sliding-window");
     fireEvent.click(await screen.findByRole("button", { name: /open ai coach/i }));
     expect(await screen.findByText(/Concept — Sliding Window/i)).toBeInTheDocument();
+  });
+});
+
+describe("Coach page context (m1-03: <course>:<ctx>)", () => {
+  afterEach(restoreFetch);
+
+  /** threadContextAt opens the coach at a path and returns the context its thread read
+   *  asked for (GET /coach/thread?context=…), plus the chip text. */
+  async function threadContextAt(path: string, paths?: unknown): Promise<{ context: string; chip: string }> {
+    let context = "";
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (paths && url.endsWith("/api/paths")) return { status: 200, body: paths };
+      if (url.endsWith("/api/coach/key")) return { status: 200, body: enabledKey };
+      if (url.includes("/api/coach/thread")) {
+        context = new URL(url, "http://x").searchParams.get("context") ?? "";
+        return { status: 200, body: { messages: [] } };
+      }
+      return { status: 404 };
+    });
+    const { unmount } = renderApp(path);
+    fireEvent.click(await screen.findByRole("button", { name: /open ai coach/i }));
+    await waitFor(() => expect(context).not.toBe(""));
+    const chip = document.querySelector(".xl-coach__ctx")?.textContent ?? "";
+    unmount();
+    return { context, chip };
+  }
+
+  it.each([
+    ["/xlearn/dsa", "dsa:roadmap", "Roadmap"],
+    ["/xlearn/dsa/dashboard", "dsa:dashboard", "Today"],
+    ["/xlearn/dsa/revision", "dsa:revision", "Revision"],
+    ["/xlearn/dsa/mistakes", "dsa:mistakes", "Mistakes"],
+    ["/xlearn/dsa/mock", "dsa:mock", "Mock interview"],
+    ["/xlearn/dsa/progress", "dsa:progress", "Progress"],
+    ["/xlearn/dsa/week/3", "dsa:week:3", "Week 3"],
+    ["/xlearn/dsa/concept/two-pointers", "dsa:concept:two-pointers", "Concept — Two Pointers"],
+    // Problems are global ids: unchanged.
+    ["/xlearn/dsa/problem/16", "problem:16", "Problem 16"],
+    // Account-wide contexts are unchanged.
+    ["/xlearn", "catalog", "Catalog"],
+    ["/xlearn/settings", "settings", "Settings"],
+    // Not a course (NotFound in the plain frame): general.
+    ["/xlearn/nope", "general", "xLearn"],
+    ["/xlearn/dsa/bogus", "general", "xLearn"],
+  ])("%s → %s", async (path, want, chip) => {
+    const got = await threadContextAt(path);
+    expect(got.context).toBe(want);
+    expect(got.chip).toContain(`Context · ${chip}`);
+  });
+
+  it("gives a second course its own keys (week 3 of two courses are separate threads)", async () => {
+    const both = catalog(DSA_PATH, ZZ_FIXTURE_PATH);
+    expect((await threadContextAt("/xlearn/zz-fixture/week/3", both)).context).toBe("zz-fixture:week:3");
+    expect((await threadContextAt("/xlearn/dsa/week/3", both)).context).toBe("dsa:week:3");
+    expect((await threadContextAt("/xlearn/zz-fixture/dashboard", both)).context).toBe("zz-fixture:dashboard");
+  });
+
+  it("uses the general context on a coming-soon course's teaser", async () => {
+    const got = await threadContextAt("/xlearn/zz-soon/week/3", catalog(DSA_PATH, ZZ_SOON_PATH));
+    expect(got.context).toBe("general");
   });
 });

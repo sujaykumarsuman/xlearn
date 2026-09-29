@@ -52,9 +52,12 @@ func TestDueQueueRequiresJWT(t *testing.T) {
 func TestDueQueue(t *testing.T) {
 	now := time.Now()
 	st := &fakeStore{
-		dueQueue: func(_ context.Context, accountID string, _ int) ([]store.DueItem, error) {
+		dueQueue: func(_ context.Context, accountID, pathSlug string, _ int) ([]store.DueItem, error) {
 			if accountID != "acct-1" {
 				t.Fatalf("account = %q, want acct-1 (token subject)", accountID)
+			}
+			if pathSlug != "dsa" { // no ?path= (a v1.6.0 gateway): the default course
+				t.Fatalf("path = %q, want dsa", pathSlug)
 			}
 			return []store.DueItem{
 				{ItemID: "it-1", ProblemID: "3", TouchLevel: 1, DueDate: now.Add(-time.Hour), Due: true, Status: "pending"},

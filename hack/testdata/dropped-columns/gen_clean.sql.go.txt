@@ -1,0 +1,23 @@
+// lint-expect: 0
+// lint-as: internal/assessment/store/gen/mock_session.sql.go
+// Only the SQL inside Go raw strings is scanned: Go identifiers and comments that
+// mention total_35 or ON CONFLICT (account_id, week_of) are not hits, and neither is a
+// `--` comment inside the query.
+
+package gen
+
+// Reads total, never total_35.
+const listScoredMocks = `-- name: ListScoredMocks :many
+SELECT id, total, max_total -- not total_35
+FROM assessment.mock_session
+WHERE account_id = $1 AND path_slug = $2
+`
+
+type ListScoredMocksRow struct {
+	Total35Legacy pgtype.Int4 // total_35
+}
+
+const upsert = `-- name: Upsert :one
+INSERT INTO review.weak_area_snapshot (account_id, week_of, path_slug) VALUES ($1, $2, $3)
+ON CONFLICT (account_id, path_slug, week_of) DO NOTHING
+`

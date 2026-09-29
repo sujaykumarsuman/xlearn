@@ -75,12 +75,17 @@ func (s *Service) handleListStates(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"states": out})
 }
 
-// handleStartAttempt: POST /problems/{id}/attempt/start — create/resume the attempt
-// and start the 15-min timer.
+// handleStartAttempt: POST /problems/{id}/attempt/start?path=<slug> — create/resume
+// the attempt and start the 15-min timer. The course is written when the problem
+// state row is created; a resume keeps the row's own course.
 func (s *Service) handleStartAttempt(w http.ResponseWriter, r *http.Request) {
 	accountID := claimsFrom(r.Context()).Subject
 	problemID := r.PathValue("id")
-	st, err := s.store.StartAttempt(r.Context(), accountID, problemID)
+	pathSlug, ok := s.resolveCourse(w, r)
+	if !ok {
+		return
+	}
+	st, err := s.store.StartAttempt(r.Context(), accountID, problemID, pathSlug)
 	if err != nil {
 		s.mapErr(w, "start attempt", err)
 		return
@@ -88,11 +93,16 @@ func (s *Service) handleStartAttempt(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"state": toStateJSON(st)})
 }
 
-// handleReveal: POST /problems/{id}/reveal — unlock the next content stage; returns
-// the penalty ack when the solution is revealed before the attempt timer elapses.
+// handleReveal: POST /problems/{id}/reveal?path=<slug> — unlock the next content
+// stage; returns the penalty ack when the solution is revealed before the attempt timer
+// elapses. A reveal never creates a problem state row, so `path` is only validated: the
+// solution_revealed_early event carries the row's course.
 func (s *Service) handleReveal(w http.ResponseWriter, r *http.Request) {
 	accountID := claimsFrom(r.Context()).Subject
 	problemID := r.PathValue("id")
+	if _, ok := s.resolveCourse(w, r); !ok {
+		return
+	}
 	res, err := s.store.Reveal(r.Context(), accountID, problemID)
 	if err != nil {
 		s.mapErr(w, "reveal", err)
@@ -114,10 +124,15 @@ func (s *Service) handleReveal(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, body)
 }
 
-// handleOutcome: POST /problems/{id}/outcome — log Clean/Rough/Assisted/Miss.
+// handleOutcome: POST /problems/{id}/outcome?path=<slug> — log Clean/Rough/Assisted/
+// Miss. Like a reveal it only validates `path`: problem_solved and attempt_logged carry
+// the problem state row's course.
 func (s *Service) handleOutcome(w http.ResponseWriter, r *http.Request) {
 	accountID := claimsFrom(r.Context()).Subject
 	problemID := r.PathValue("id")
+	if _, ok := s.resolveCourse(w, r); !ok {
+		return
+	}
 	var body struct {
 		Outcome string `json:"outcome"`
 	}

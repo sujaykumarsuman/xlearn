@@ -30,7 +30,9 @@ type Querier interface {
 	// Resolve an existing thread id for (account, page context). ErrNoRows when the account
 	// has never chatted on that page (GET /coach/thread returns empty history).
 	GetThread(ctx context.Context, arg GetThreadParams) (pgtype.UUID, error)
-	// Append one message to a thread. seq (identity) orders it; created_at is the wall time.
+	// Append one message to a thread, labelled with the thread's course (path_slug, copied
+	// from the thread so the two never disagree; NULL for an account-wide thread). seq
+	// (identity) orders it; created_at is the wall time. No row when the thread is missing.
 	InsertMessage(ctx context.Context, arg InsertMessageParams) (InsertMessageRow, error)
 	// All of an account's provider key configs (0..2), stable-ordered. Includes the sealed
 	// material (service-only — the HTTP layer returns only the masked view).
@@ -73,9 +75,11 @@ type Querier interface {
 	// Make key_id the account's coach default, with its model (dual-write of the first key
 	// and of set-default).
 	UpsertKeyDefault(ctx context.Context, arg UpsertKeyDefaultParams) error
-	// Get-or-create the thread for (account, page context). The no-op DO UPDATE makes the
-	// existing row's id come back via RETURNING on a conflict, so concurrent first-messages
-	// on the same page can't create duplicate threads (UNIQUE(account_id, page_context)).
+	// Get-or-create the thread for (account, page context), labelled with its course
+	// (path_slug; NULL for an account-wide context). The DO UPDATE always fires, so the
+	// existing row's id comes back via RETURNING on a conflict and concurrent first-messages
+	// on the same page can't create duplicate threads (UNIQUE(account_id, page_context)). It
+	// keeps an existing path_slug and fills a NULL one (a thread written before m1-03).
 	UpsertThread(ctx context.Context, arg UpsertThreadParams) (pgtype.UUID, error)
 }
 

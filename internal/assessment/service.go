@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/sujaykumarsuman/xlearn/internal/assessment/store"
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/health"
@@ -52,9 +53,15 @@ type Service struct {
 	verifier auth.Verifier
 	log      *slog.Logger
 	health   *health.Handler
+
+	// courses resolves the internal `?path=<slug>` param (m1-03): the manifests
+	// compiled into the binary unless a test injects coursetest.Registry.
+	courses *course.Registry
 }
 
-// NewService wires the assessment application. verifier checks gateway-minted JWTs.
+// NewService wires the assessment application. verifier checks gateway-minted JWTs. The
+// course registry defaults to the embedded manifests (course.Embedded); main loads them
+// first with course.LoadEmbedded so a bad manifest fails the boot, not a request.
 func NewService(st store.Store, verifier auth.Verifier, log *slog.Logger) *Service {
 	return &Service{
 		store:    st,
@@ -64,7 +71,15 @@ func NewService(st store.Store, verifier auth.Verifier, log *slog.Logger) *Servi
 			Name:  "postgres",
 			Check: st.Ping,
 		}),
+		courses: course.Embedded(),
 	}
+}
+
+// WithCourses replaces the course registry `?path=` resolves against (tests inject
+// coursetest.Registry for the fixture courses). Returns the service for chaining.
+func (s *Service) WithCourses(r *course.Registry) *Service {
+	s.courses = r
+	return s
 }
 
 // Handler builds assessment's HTTP routes (Go 1.22+ method+pattern mux). The mock
@@ -78,6 +93,8 @@ func (s *Service) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", s.health.Live)
 	mux.HandleFunc("GET /readyz", s.health.Ready)
 
+	// POST /mocks, the trend and the progress reads take the optional internal
+	// `?path=<slug>` (m1-03, see resolveCourse); a session by id doesn't.
 	mux.Handle("POST /mocks", s.requireJWT(http.HandlerFunc(s.handleStartMock)))
 	mux.Handle("GET /mocks/trend", s.requireJWT(http.HandlerFunc(s.handleTrend)))
 	mux.Handle("GET /mocks/{id}", s.requireJWT(http.HandlerFunc(s.handleGetMock)))

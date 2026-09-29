@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { EmptyState, ErrorState, LoadingState } from "../components/States";
+import { coursePath, languageNote, useCourse, useCourseSlug } from "../lib/course";
 import type { Phase, WeekSummary } from "../lib/curriculum";
 import { usePath } from "../lib/curriculum";
 import { useProgress } from "../lib/progress";
@@ -11,29 +12,45 @@ const RING_C = 2 * Math.PI * RING_R;
 
 const pctOf = (solved: number, total: number) => (total > 0 ? Math.round((100 * solved) / total) : 0);
 
-/** Roadmap (`/xlearn/dsa`): the 4-phase / 16-week rail plus a summary column. Content is
- *  GET /paths/dsa; the rail's real per-user progress (overall ring, current week, streak,
- *  revisions due, phase meters) comes from GET /progress (review round 2). */
+/** Roadmap (`/xlearn/:course`): the course's phase / week rail plus a summary column.
+ *  Content is GET /paths/{course}; the rail's real per-user progress (overall ring, current
+ *  week, streak, revisions due, phase meters) comes from GET /paths/{course}/progress
+ *  (review round 2). The header facts ("16 weeks · 4 phases · 151 problems · Go-first"
+ *  for DSA) are the course's data, not copy. */
 export default function Roadmap() {
-  const detail = usePath("dsa");
-  const progress = useProgress();
+  const course = useCourse();
+  const slug = course.slug;
+  const detail = usePath(slug);
+  const progress = useProgress(slug);
   const prog = progress.data;
   // order → completion pct, from the progress agg's by-phase rollup.
   const phasePct: Record<number, number> = {};
   for (const ph of prog?.phases ?? []) phasePct[ph.order] = pctOf(ph.solved, ph.total);
 
+  // The catalog entry is known before the detail loads; the phase count comes with it.
+  const path = detail.data?.path ?? course.path;
+  const phases = detail.data?.phases.length;
+  const facts = [
+    path ? `${path.week_total} weeks` : "",
+    phases ? `${phases} phases` : "",
+    path ? `${path.problem_total} problems` : "",
+    languageNote(course.view),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <>
       <div className="xl-page-h">
         <div>
-          <div className="xl-eyebrow">Learning path · /xlearn/dsa</div>
-          <h1 style={{ marginTop: 6 }}>{detail.data?.path.title ?? "Data Structures & Algorithms"}</h1>
+          <div className="xl-eyebrow">Learning path · /xlearn/{slug}</div>
+          <h1 style={{ marginTop: 6 }}>{path?.title}</h1>
           <p>
-            16 weeks · 4 phases · 151 problems · Go-first. The method is enforced: sequential
-            unlocks, timed practice, and five-touch spaced revision.
+            {facts}. The method is enforced: sequential unlocks, timed practice, and five-touch spaced
+            revision.
           </p>
         </div>
-        <Link className="ds-btn ds-btn--primary ds-btn--lg" to="/dsa/dashboard">
+        <Link className="ds-btn ds-btn--primary ds-btn--lg" to={coursePath(slug, "dashboard")}>
           <Icon name="play" /> Start today's plan
         </Link>
       </div>
@@ -104,8 +121,9 @@ function PhaseBlock({ phase, weeks, pct }: { phase: Phase; weeks: WeekSummary[];
 }
 
 function WeekRow({ week }: { week: WeekSummary }) {
+  const slug = useCourseSlug();
   return (
-    <Link to={`/dsa/week/${week.n}`} style={{ display: "flex", gap: 14, textDecoration: "none", color: "inherit" }}>
+    <Link to={coursePath(slug, "week", week.n)} style={{ display: "flex", gap: 14, textDecoration: "none", color: "inherit" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "none", width: 36 }}>
         <span
           className="ds-mono"

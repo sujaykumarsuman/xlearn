@@ -52,6 +52,8 @@ func TestAggCacheServesAndInvalidates(t *testing.T) {
 				"problems": []any{map[string]any{"id": "1", "difficulty": "easy", "is_reinforcement": false}},
 			})
 		},
+		// The outcome write resolves the item's course (m1-03).
+		"GET /problems": writeJSONFn(map[string]any{"problems": []any{map[string]any{"id": "1", "path_slug": "dsa"}}}),
 	}))
 	t.Cleanup(curriculum.Close)
 

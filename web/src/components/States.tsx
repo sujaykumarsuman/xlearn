@@ -19,6 +19,26 @@ export function Spinner({ label = "Loading…", size }: { label?: string; size?:
   );
 }
 
+/** FullScreen centers a small status message on the app background: the app-level
+ *  loading / unreachable state (AuthedShell's session check, CurriculumShell's course
+ *  resolution), shown before any app frame renders. */
+export function FullScreen({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        background: "var(--ds-bg)",
+        color: "var(--ds-dim)",
+        gap: 12,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{children}</div>
+    </div>
+  );
+}
+
 /** LoadingState is a Spinner given its own padded row (the common list-loading slot). */
 export function LoadingState({ label }: { label?: string }) {
   return (

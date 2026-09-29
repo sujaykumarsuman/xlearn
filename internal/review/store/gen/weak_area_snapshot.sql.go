@@ -13,15 +13,20 @@ import (
 
 const getLatestWeakArea = `-- name: GetLatestWeakArea :one
 SELECT id, account_id, week_of, top_category, counts_json, computed_at, path_slug FROM review.weak_area_snapshot
-WHERE account_id = $1
+WHERE account_id = $1 AND path_slug = $2
 ORDER BY week_of DESC
 LIMIT 1
 `
 
-// The account's most recent weekly snapshot — the single signal both the Mistakes
-// banner and the Dashboard weak-area card read (GET /weak-area).
-func (q *Queries) GetLatestWeakArea(ctx context.Context, accountID pgtype.UUID) (ReviewWeakAreaSnapshot, error) {
-	row := q.db.QueryRow(ctx, getLatestWeakArea, accountID)
+type GetLatestWeakAreaParams struct {
+	AccountID pgtype.UUID
+	PathSlug  string
+}
+
+// The account's most recent weekly snapshot in one course — the single signal both the
+// Mistakes banner and the Dashboard weak-area card read (GET /weak-area/current?path=).
+func (q *Queries) GetLatestWeakArea(ctx context.Context, arg GetLatestWeakAreaParams) (ReviewWeakAreaSnapshot, error) {
+	row := q.db.QueryRow(ctx, getLatestWeakArea, arg.AccountID, arg.PathSlug)
 	var i ReviewWeakAreaSnapshot
 	err := row.Scan(
 		&i.ID,
@@ -38,7 +43,7 @@ func (q *Queries) GetLatestWeakArea(ctx context.Context, accountID pgtype.UUID) 
 const upsertWeakAreaSnapshot = `-- name: UpsertWeakAreaSnapshot :one
 INSERT INTO review.weak_area_snapshot (account_id, week_of, top_category, counts_json, computed_at, path_slug)
 VALUES ($1, $2, $3, $4, now(), $5)
-ON CONFLICT (account_id, week_of)
+ON CONFLICT (account_id, path_slug, week_of)
 DO UPDATE SET top_category = EXCLUDED.top_category,
              counts_json = EXCLUDED.counts_json,
              computed_at = now()
@@ -53,10 +58,12 @@ type UpsertWeakAreaSnapshotParams struct {
 	PathSlug    string
 }
 
-// Idempotent per (account, week_of): the weekly recompute upserts the same row so a
-// re-run of the tick never double-counts. top_category is NULL when the account has no
-// categorised open entries this week. The conflict target stays the v1
-// UNIQUE (account_id, week_of) until M1c; path_slug is written explicitly (m1-02).
+// Idempotent per (account, course, week_of): the weekly recompute upserts the same row
+// so a re-run of the tick never double-counts. top_category is NULL when the account has
+// no categorised open entries in the course this week. path_slug is written explicitly,
+// and the conflict target is the per-course unique weak_area_snapshot_account_path_week_uq
+// (m1-02, 00006) — m1-03 moved off the v1 per-account unique so m1-08 can drop it; until
+// then that v1 unique still refuses a second course's snapshot in the same week.
 func (q *Queries) UpsertWeakAreaSnapshot(ctx context.Context, arg UpsertWeakAreaSnapshotParams) (ReviewWeakAreaSnapshot, error) {
 	row := q.db.QueryRow(ctx, upsertWeakAreaSnapshot,
 		arg.AccountID,

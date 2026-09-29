@@ -23,8 +23,11 @@ type fakeStore struct {
 	onboarding  map[string]store.Onboarding
 	sessions    map[string]store.Session
 	enrollments map[string][]store.Enrollment
-	outbox      []store.OutboxRow
-	pingErr     error
+	// publicVisible is each enrollment's public_visible as written on insert
+	// (accountID|pathSlug).
+	publicVisible map[string]bool
+	outbox        []store.OutboxRow
+	pingErr       error
 }
 
 func newFakeStore() *fakeStore {
@@ -280,17 +283,21 @@ func (f *fakeStore) SetOnboardingPath(_ context.Context, accountID, path string)
 	return o, nil
 }
 
-func (f *fakeStore) StartEnrollment(_ context.Context, accountID, pathSlug string) (store.Enrollment, error) {
+func (f *fakeStore) StartEnrollment(_ context.Context, accountID, pathSlug string, publicVisible bool) (store.Enrollment, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for _, e := range f.enrollments[accountID] {
 		if e.PathSlug == pathSlug {
 			e.Status = "active"
-			return e, nil // idempotent: keep the original started_at
+			return e, nil // idempotent: keep the original started_at (and public_visible)
 		}
 	}
 	e := store.Enrollment{AccountID: accountID, PathSlug: pathSlug, Status: "active", StartedAt: time.Now()}
 	f.enrollments[accountID] = append(f.enrollments[accountID], e)
+	if f.publicVisible == nil {
+		f.publicVisible = map[string]bool{}
+	}
+	f.publicVisible[accountID+"|"+pathSlug] = publicVisible
 	return e, nil
 }
 

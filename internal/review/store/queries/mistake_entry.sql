@@ -51,23 +51,25 @@ RETURNING *;
 -- entry's count; at 2 it closes (R-MJ4). Returns the new count + status so the caller
 -- emits mistake_closed exactly on the close transition. At most one open row exists
 -- (the partial unique index), so this affects a single entry; no open entry → no row.
+-- path_slug is the entry's course, which the v2 mistake_closed envelope carries (m1-03).
 UPDATE review.mistake_entry
 SET revisit_count = revisit_count + 1,
     status = CASE WHEN revisit_count + 1 >= 2 THEN 'closed' ELSE status END,
     updated_at = now()
 WHERE account_id = $1 AND problem_id = $2 AND status = 'open'
-RETURNING id, problem_id, revisit_count, status;
+RETURNING id, problem_id, revisit_count, status, path_slug;
 
 -- name: ListMistakes :many
--- The journal for an account, newest first (GET /mistakes with no status filter).
+-- An account's journal in one course, newest first (GET /mistakes?path= with no status
+-- filter; m1-03).
 SELECT * FROM review.mistake_entry
-WHERE account_id = $1
+WHERE account_id = $1 AND path_slug = $2
 ORDER BY created_at DESC;
 
 -- name: ListMistakesByStatus :many
--- The journal filtered to open|closed (GET /mistakes?status=).
+-- An account's journal in one course filtered to open|closed.
 SELECT * FROM review.mistake_entry
-WHERE account_id = $1 AND status = $2
+WHERE account_id = $1 AND path_slug = $2 AND status = $3
 ORDER BY created_at DESC;
 
 -- name: GetMistake :one
@@ -76,9 +78,9 @@ SELECT * FROM review.mistake_entry
 WHERE id = $1 AND account_id = $2;
 
 -- name: CreateMistake :one
--- Manually create a journal entry (POST /mistakes). A plain insert: if the learner
--- already has an open entry for the problem the partial unique index rejects it
--- (mapped to 409 by the handler).
+-- Manually create a journal entry (POST /mistakes?path=) in the request's course,
+-- written explicitly (m1-03). A plain insert: if the learner already has an open entry
+-- for the problem the partial unique index rejects it (mapped to 409 by the handler).
 INSERT INTO review.mistake_entry (
     account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, path_slug
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -95,26 +97,29 @@ SET pattern = $3, mistake = $4, root_cause = $5, insight = $6,
 WHERE id = $1 AND account_id = $2
 RETURNING *;
 
--- name: ListAccountsWithMistakes :many
--- Every account that has at least one mistake entry — the recompute job iterates these
--- to build a weak-area snapshot per account.
-SELECT DISTINCT account_id FROM review.mistake_entry;
+-- name: ListMistakeScopes :many
+-- Every (account, course) that has at least one mistake entry — the weekly recompute
+-- builds one weak-area snapshot per pair (m1-03).
+SELECT DISTINCT account_id, path_slug FROM review.mistake_entry
+ORDER BY account_id, path_slug;
 
 -- name: CountOpenMistakesByCategoryInRange :many
--- Per-category counts of an account's OPEN entries opened within [start, end) (the
--- week window in the account timezone, computed by the caller). Uncategorised entries
--- (category IS NULL) are excluded — they don't define a weak area until classified.
+-- Per-category counts of an account's OPEN entries in one course opened within
+-- [window_start, window_end) (the week window in the account timezone, computed by the
+-- caller). Uncategorised entries (category IS NULL) are excluded — they don't define a
+-- weak area until classified.
 SELECT category, count(*) AS n
 FROM review.mistake_entry
-WHERE account_id = $1
+WHERE account_id = sqlc.arg(account_id)
+  AND path_slug = sqlc.arg(path_slug)
   AND status = 'open'
   AND category IS NOT NULL
-  AND created_at >= $2 AND created_at < $3
+  AND created_at >= sqlc.arg(window_start) AND created_at < sqlc.arg(window_end)
 GROUP BY category;
 
 -- name: ListOpenMistakesByCategory :many
 -- The supporting entries behind the weak-area banner: an account's open entries in one
--- category, newest first (GET /weak-area).
+-- course and category, newest first (GET /weak-area/current?path=).
 SELECT * FROM review.mistake_entry
-WHERE account_id = $1 AND status = 'open' AND category = $2
+WHERE account_id = $1 AND path_slug = $2 AND status = 'open' AND category = $3
 ORDER BY created_at DESC;

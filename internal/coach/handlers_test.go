@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/sujaykumarsuman/xlearn/internal/coach/store"
+	"github.com/sujaykumarsuman/xlearn/internal/course/coursetest"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/httpx"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/secrets"
 )
@@ -50,7 +51,7 @@ func newHarness(t *testing.T) *harness {
 
 	openai := NewOpenAIProvider(h.provider.URL, h.provider.Client())
 	anthropic := NewAnthropicProvider(h.provider.URL, h.provider.Client())
-	svc := NewService(h.store, fakeVerifier{subject: h.account}, h.cipher, openai, anthropic, discardLogger())
+	svc := NewService(h.store, fakeVerifier{subject: h.account}, h.cipher, openai, anthropic, coursetest.Registry(t), discardLogger())
 
 	handler := httpx.Chain(svc.Handler(), httpx.RequestID, httpx.AccessLog(discardLogger()), httpx.Recoverer(discardLogger()))
 	h.server = httptest.NewServer(handler)
@@ -356,7 +357,7 @@ func TestChatHappyPathStreamsAndPersists(t *testing.T) {
 		t.Fatalf("provider saw auth %q, want %q", h.lastAuth, raw)
 	}
 	// The thread now holds the user turn + the assistant reply.
-	msgs := h.store.messagesFor(h.account, "concept:sliding-window")
+	msgs := h.store.messagesFor(h.account, "dsa:concept:sliding-window") // a v1 context is the DSA course's
 	if len(msgs) != 2 || msgs[0].Role != store.RoleUser || msgs[1].Role != store.RoleAssistant || msgs[1].Content != "Hi there" {
 		t.Fatalf("persisted = %+v", msgs)
 	}
@@ -484,7 +485,7 @@ func TestChatProviderLimitedMidStream(t *testing.T) {
 	if kc, _ := h.store.GetKey(context.Background(), h.account, "openai"); !kc.Enabled {
 		t.Fatal("a mid-stream quota error disabled the key")
 	}
-	msgs := h.store.messagesFor(h.account, "dashboard")
+	msgs := h.store.messagesFor(h.account, "dsa:dashboard")
 	if len(msgs) != 2 || msgs[1].Content != "Partial" {
 		t.Fatalf("persisted = %+v, want the partial reply", msgs)
 	}
@@ -502,7 +503,7 @@ func TestChatTruncatedReplyIsMarked(t *testing.T) {
 	if res.text != want || !res.done || !res.truncated {
 		t.Fatalf("sse = %+v, want %q done+truncated", res, want)
 	}
-	msgs := h.store.messagesFor(h.account, "dashboard")
+	msgs := h.store.messagesFor(h.account, "dsa:dashboard")
 	if len(msgs) != 2 || msgs[1].Content != want {
 		t.Fatalf("persisted = %+v, want the marked reply", msgs)
 	}

@@ -141,6 +141,36 @@ func TestStoreIntegration(t *testing.T) {
 	if len(sections) != 2 || sections[0].Stage != "attempt" {
 		t.Fatalf("unexpected sections: %+v", sections)
 	}
+	// m1-03: sections carry their language ("" for prose).
+	if sections[0].Language != "" || sections[1].Language != "go" {
+		t.Fatalf("section languages %q, %q; want \"\" and go", sections[0].Language, sections[1].Language)
+	}
+
+	// m1-03: problem reads carry role and links (never nil), in every read.
+	index, err := st.ListProblemsByPath(ctx, "dsa")
+	if err != nil {
+		t.Fatalf("ListProblemsByPath: %v", err)
+	}
+	week1, err := st.ListProblemsByWeek(ctx, "dsa", 1)
+	if err != nil {
+		t.Fatalf("ListProblemsByWeek: %v", err)
+	}
+	wantLinks := map[string][]store.Link{
+		"1":  {{Kind: "leetcode", URL: "https://leetcode.com/problems/contains-duplicate/"}},
+		"9":  {},
+		"16": {},
+	}
+	wantRole := map[string]string{"1": "core", "9": "reinforcement", "16": "core"}
+	for _, ps := range [][]store.Problem{index, week1, bulk} {
+		for _, p := range ps {
+			if p.Role != wantRole[p.ID] || p.Links == nil || !reflect.DeepEqual(p.Links, wantLinks[p.ID]) {
+				t.Errorf("problem %s: role %q links %#v; want %q %#v", p.ID, p.Role, p.Links, wantRole[p.ID], wantLinks[p.ID])
+			}
+		}
+	}
+	if len(index) != 3 || len(week1) != 2 {
+		t.Fatalf("index %d, week 1 %d problems; want 3, 2", len(index), len(week1))
+	}
 
 	concepts, err := st.ListConceptsByWeek(ctx, "dsa", 2)
 	if err != nil {
@@ -150,12 +180,36 @@ func TestStoreIntegration(t *testing.T) {
 		t.Fatalf("unexpected week concepts: %+v", concepts)
 	}
 
-	c, err := st.GetConcept(ctx, "two-pointers")
+	c, err := st.GetConcept(ctx, "dsa", "two-pointers")
 	if err != nil {
 		t.Fatalf("GetConcept: %v", err)
 	}
-	if c.CodeTemplate == "" {
-		t.Fatalf("concept missing code template: %+v", c)
+	if !reflect.DeepEqual(c.Templates, map[string]string{"go": "c"}) || c.PathSlug != "dsa" {
+		t.Fatalf("concept templates: %+v", c)
+	}
+	// m1-03: a concept resolves only under its own course, (path_slug, slug).
+	zc, err := st.GetConcept(ctx, "zz-fixture", "zz-loops")
+	if err != nil || zc.PathSlug != "zz-fixture" || zc.Templates == nil || len(zc.Templates) != 0 {
+		t.Fatalf("GetConcept(zz-fixture, zz-loops) = %+v, %v; want it with no templates", zc, err)
+	}
+	for _, k := range [][2]string{{"dsa", "zz-loops"}, {"zz-fixture", "two-pointers"}, {"dsa", "missing"}} {
+		if _, err := st.GetConcept(ctx, k[0], k[1]); err != store.ErrNotFound {
+			t.Fatalf("GetConcept(%s, %s): want ErrNotFound, got %v", k[0], k[1], err)
+		}
+	}
+
+	// m1-03: the seed writes none of the columns M1c drops, so each holds NULL or its
+	// 00001 default; problem 1's link, problem 9's role and the concept's template would
+	// show if it did.
+	var written int
+	if err := pool.QueryRow(ctx, `SELECT
+		(SELECT count(*) FROM curriculum.problem
+			WHERE COALESCE(is_reinforcement, false) OR COALESCE(leetcode_url, '') <> '' OR COALESCE(neetcode_url, '') <> '')
+		+ (SELECT count(*) FROM curriculum.concept WHERE COALESCE(code_template, '') <> '')`).Scan(&written); err != nil {
+		t.Fatal(err)
+	}
+	if written != 0 {
+		t.Fatalf("the seed wrote %d M1c-drop values", written)
 	}
 
 	n, err := st.CountProblems(ctx, "dsa")
@@ -187,9 +241,10 @@ func jsonEqual(t *testing.T, a json.RawMessage, b string) bool {
 
 func sampleContent() store.SeedContent {
 	return store.SeedContent{
-		Courses: []string{"dsa"},
+		Courses: []string{"dsa", "zz-fixture"},
 		Paths: []store.SeedPath{
 			{Slug: "dsa", Title: "DSA", Status: "active", Summary: "s", ProblemTotal: 151, WeekTotal: 2, SortOrder: 0, IDPrefix: "dsa"},
+			{Slug: "zz-fixture", Title: "Fixture", Status: "active", Summary: "z", SortOrder: 90, IDPrefix: "zz"},
 		},
 		Phases: []store.SeedPhase{
 			{PathSlug: "dsa", Order: 1, Name: "Fundamentals", Theme: "arrays", WeekFrom: 1, WeekTo: 2},
@@ -200,6 +255,8 @@ func sampleContent() store.SeedContent {
 		},
 		Concepts: []store.SeedConcept{
 			{PathSlug: "dsa", Slug: "two-pointers", Title: "Two Pointers", BodyMD: "b", WhenToUseMD: "w", Templates: map[string]string{"go": "c"}, Weeks: []int{2}},
+			// A second course's concept (m1-03's (path_slug, slug) lookup).
+			{PathSlug: "zz-fixture", Slug: "zz-loops", Title: "Loops", BodyMD: "zb", WhenToUseMD: "zw"},
 		},
 		Problems: []store.SeedProblem{
 			{ID: "1", PathSlug: "dsa", WeekN: 1, Title: "Contains Duplicate", Difficulty: "easy", Pattern: "Hashing", SortOrder: 1,

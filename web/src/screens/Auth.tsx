@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Icon, IconSprite } from "../components/Icon";
-import { Spinner } from "../components/States";
+import { ErrorState, Spinner } from "../components/States";
 import { BudgetFields } from "../components/BudgetFields";
 import { DEFAULT_WEEKDAY, DEFAULT_WEEKEND, budgetEta, clampWeekday } from "../lib/budget";
 import { type ApiRequestError } from "../lib/api";
@@ -21,6 +21,9 @@ import {
   type StudyBudget,
   type WeekendBand,
 } from "../lib/auth";
+import { courseShortCode, languageNote } from "../lib/course";
+import { courseIcon } from "../lib/courseIcons";
+import { usePaths } from "../lib/curriculum";
 import { COACH_MODELS, COACH_PROVIDERS, coachModelLabel, usePutCoachKey, type ProviderId } from "../lib/settings";
 
 /**
@@ -347,7 +350,8 @@ function Onboarding({ me }: { me: Me }) {
   // background refetch (the invalidate after saving a step) can't reset the flow.
   const [alreadyDone] = useState(() => me.onboarding.completed);
   const [step, setStep] = useState(() => firstUnfinishedStep(me));
-  const [path, setPath] = useState(me.onboarding.path_chosen ?? "dsa");
+  // "" until the learner picks: StepPath then selects the first active course.
+  const [path, setPath] = useState(me.onboarding.path_chosen ?? "");
   const setOnboardingPath = useSetOnboardingPath();
 
   useEffect(() => {
@@ -367,7 +371,7 @@ function Onboarding({ me }: { me: Me }) {
           onPick={setPath}
           pending={setOnboardingPath.isPending}
           error={setOnboardingPath.isError}
-          onContinue={() => setOnboardingPath.mutate(path, { onSuccess: () => setStep(2) })}
+          onContinue={(slug) => setOnboardingPath.mutate(slug, { onSuccess: () => setStep(2) })}
         />
       )}
       {step === 2 && <StepBudget initial={me.account.study_budget} onBack={() => setStep(1)} onContinue={() => setStep(3)} />}
@@ -400,6 +404,12 @@ function Stepper({ step, total = 4 }: { step: number; total?: number }) {
   );
 }
 
+/**
+ * StepPath is onboarding step 1: pick a course. The cards are the catalog's active
+ * courses (any active course can be the first, ADR-0026 §5), selected by default in
+ * catalog order unless the learner already chose one. With the DSA course the only
+ * active one, it renders exactly as v1.
+ */
 function StepPath({
   path,
   onPick,
@@ -409,41 +419,65 @@ function StepPath({
 }: {
   path: string;
   onPick: (p: string) => void;
-  onContinue: () => void;
+  onContinue: (slug: string) => void;
   pending: boolean;
   error: boolean;
 }) {
-  const dsaSelected = path === "dsa";
+  const paths = usePaths();
+
+  if (!paths.data) {
+    return paths.isError && !paths.isFetching ? (
+      <ErrorState message="Couldn’t load the paths." onRetry={() => paths.refetch()} />
+    ) : (
+      <Spinner label="Loading paths…" />
+    );
+  }
+
+  const active = paths.data.paths.filter((p) => p.status === "active");
+  const selected = active.some((p) => p.slug === path) ? path : (active[0]?.slug ?? "");
+  const lead =
+    active.length === 1 ? `Start with ${courseShortCode(active[0]!)}` : "Pick one to start";
+
   return (
     <>
       <div className="xl-eyebrow">Step 1 of 4</div>
       <h2 style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>Pick your path</h2>
       <p style={{ fontSize: 13, color: "var(--ds-muted)", marginTop: 4 }}>
-        Start with DSA — more paths are on the way.
+        {lead} — more paths are on the way.
       </p>
 
-      <button
-        type="button"
-        onClick={() => onPick("dsa")}
-        aria-pressed={dsaSelected}
-        className={dsaSelected ? "ds-card ds-card--teal" : "ds-card"}
-        style={{ display: "flex", alignItems: "center", gap: 13, padding: 15, borderRadius: 11, marginTop: 16, width: "100%", textAlign: "left", cursor: "pointer" }}
-      >
-        <span style={{ flex: "none", width: 38, height: 38, borderRadius: 9, display: "grid", placeItems: "center", background: "rgba(53,208,192,.14)", color: "var(--ds-teal)" }}>
-          <Icon name="code" />
-        </span>
-        <span style={{ flex: 1 }}>
-          <b style={{ fontSize: 14 }}>Data Structures &amp; Algorithms</b>
-          <br />
-          <span style={{ fontSize: 11.5, color: "var(--ds-muted)" }}>16 weeks · 151 problems · Go-first</span>
-        </span>
-        {dsaSelected && (
-          <span style={{ flex: "none", width: 22, height: 22, borderRadius: 999, display: "grid", placeItems: "center", background: "var(--ds-teal)", color: "#06231f" }}>
-            <Icon name="check" className="xl-ico--sm" />
-          </span>
-        )}
-      </button>
+      {active.map((p, i) => {
+        const isSelected = p.slug === selected;
+        const lang = languageNote(p.course);
+        return (
+          <button
+            key={p.slug}
+            type="button"
+            onClick={() => onPick(p.slug)}
+            aria-pressed={isSelected}
+            className={isSelected ? "ds-card ds-card--teal" : "ds-card"}
+            style={{ display: "flex", alignItems: "center", gap: 13, padding: 15, borderRadius: 11, marginTop: i === 0 ? 16 : 10, width: "100%", textAlign: "left", cursor: "pointer" }}
+          >
+            <span style={{ flex: "none", width: 38, height: 38, borderRadius: 9, display: "grid", placeItems: "center", background: "rgba(53,208,192,.14)", color: "var(--ds-teal)" }}>
+              <Icon name={courseIcon(p.slug)} />
+            </span>
+            <span style={{ flex: 1 }}>
+              <b style={{ fontSize: 14 }}>{p.title}</b>
+              <br />
+              <span style={{ fontSize: 11.5, color: "var(--ds-muted)" }}>
+                {p.week_total} weeks · {p.problem_total} problems{lang && ` · ${lang}`}
+              </span>
+            </span>
+            {isSelected && (
+              <span style={{ flex: "none", width: 22, height: 22, borderRadius: 999, display: "grid", placeItems: "center", background: "var(--ds-teal)", color: "#06231f" }}>
+                <Icon name="check" className="xl-ico--sm" />
+              </span>
+            )}
+          </button>
+        );
+      })}
 
+      {/* The upcoming courses, as v1 names them (copy; the catalog decides what opens). */}
       <div
         style={{ display: "flex", alignItems: "center", gap: 13, padding: 15, borderRadius: 11, marginTop: 10, border: "1px dashed var(--ds-line-2)", opacity: 0.6 }}
       >
@@ -467,8 +501,8 @@ function StepPath({
         type="button"
         className="ds-btn ds-btn--primary ds-btn--block ds-btn--lg"
         style={{ marginTop: 22 }}
-        disabled={pending || !dsaSelected}
-        onClick={onContinue}
+        disabled={pending || selected === ""}
+        onClick={() => onContinue(selected)}
       >
         {pending ? "Saving…" : "Continue"} <Icon name="arrow" className="xl-ico--sm" />
       </button>

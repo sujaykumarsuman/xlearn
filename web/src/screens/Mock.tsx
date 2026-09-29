@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Icon } from "../components/Icon";
+import { coursePath, useCourseSlug } from "../lib/course";
 import {
   MOCK_TOTAL_SECS,
   RUBRIC_DIMENSIONS,
@@ -11,7 +12,7 @@ import {
   useMock,
   useMockTrend,
 } from "../lib/mock";
-import type { Difficulty, MockPhase, MockSession, MockTrend, RubricScores } from "../lib/mock";
+import type { Difficulty, MockPhase, MockSession, MockSetup, MockTrend, RubricScores } from "../lib/mock";
 
 // Setup presets (problem set + difficulty), mapped to the API's setId/problemId. Set 07
 // pins a concrete problem (the gateway enriches its title/pattern); "Mixed" leaves the
@@ -28,20 +29,22 @@ const DIFFS: { key: Difficulty; label: string }[] = [
 ];
 
 /**
- * Mock (`/xlearn/dsa/mock`): the timed mock interview. Setup -> a 45-minute,
- * server-authoritative live session whose phase rail (R-MK1) walks the six interview
- * phases -> the 7-dimension rubric (R-MK2, /35) with a radar + a trend chart vs the
- * readiness targets (R-MK3). The 45-min timer and phase index come from the server
- * (GET /mocks/{id}), polled while live; the client HUD only mirrors them.
+ * Mock (`/xlearn/:course/mock`): the timed mock interview. Setup -> a 45-minute,
+ * server-authoritative live session (started in the course, POST /paths/{course}/mocks)
+ * whose phase rail (R-MK1) walks the six interview phases -> the 7-dimension rubric
+ * (R-MK2, /35) with a radar + a trend chart vs the readiness targets (R-MK3). The 45-min
+ * timer and phase index come from the server (GET /mocks/{id}), polled while live; the
+ * client HUD only mirrors them.
  */
 export default function Mock() {
   const qc = useQueryClient();
+  const slug = useCourseSlug();
   const [mockId, setMockId] = useState("");
   const q = useMock(mockId);
   const session = q.data;
 
   const startM = useMutation({
-    mutationFn: startMock,
+    mutationFn: (setup: MockSetup) => startMock(slug, setup),
     onSuccess: (s) => {
       qc.setQueryData(["mock", s.id], s);
       setMockId(s.id);
@@ -216,13 +219,14 @@ const RAIL_REFERENCE = [
 
 function Live({ session, onNewMock }: { session: MockSession; onNewMock: () => void }) {
   const qc = useQueryClient();
+  const slug = useCourseSlug();
   const [scoring, setScoring] = useState(false);
 
   const scoreM = useMutation({
     mutationFn: ({ scores, notes }: { scores: RubricScores; notes: string }) => scoreMock(session.id, scores, notes),
     onSuccess: (scored) => {
       qc.setQueryData(["mock", session.id], scored);
-      qc.invalidateQueries({ queryKey: ["mock", "trend"] });
+      qc.invalidateQueries({ queryKey: ["mock", "trend", slug] });
     },
   });
 
@@ -412,7 +416,8 @@ function Scoring({
 // --- results (radar + trend + per-dimension meters) ---
 
 function Results({ session, onNewMock }: { session: MockSession; onNewMock: () => void }) {
-  const trendQ = useMockTrend();
+  const slug = useCourseSlug();
+  const trendQ = useMockTrend(slug);
   const total = session.total35 ?? 0;
   const targets = session.targets;
   const scores = session.dimensions.map((d) => d.score);
@@ -435,7 +440,7 @@ function Results({ session, onNewMock }: { session: MockSession; onNewMock: () =
             <button type="button" className="ds-btn ds-btn--secondary" onClick={onNewMock}>
               <Icon name="refresh" className="xl-ico--sm" /> New mock
             </button>
-            <Link className="ds-btn ds-btn--secondary" to="/dsa/mistakes">
+            <Link className="ds-btn ds-btn--secondary" to={coursePath(slug, "mistakes")}>
               Log takeaways
             </Link>
           </div>

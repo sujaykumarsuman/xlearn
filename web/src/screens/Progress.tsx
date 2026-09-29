@@ -1,18 +1,20 @@
 import { Link } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { CompletionByPhase, Heatmap, PatternMasteryPanel } from "../components/ProgressViews";
+import { coursePath, useCourseSlug } from "../lib/course";
 import { useProgress } from "../lib/progress";
 import type { ProgressData, ProgressSummary } from "../lib/progress";
 import type { MockTrend } from "../lib/mock";
 
 /**
- * Progress (`/xlearn/dsa/progress`, S09): the analytics screen, read entirely from the
- * assessment read-model projections composed with the curriculum taxonomy in the gateway
- * (GET /progress `agg`). Four stat tiles, the revision-activity heatmap, completion by
- * phase, pattern mastery, the mock rubric trend, and the first-solve outcome mix.
+ * Progress (`/xlearn/:course/progress`, S09): a course's analytics screen, read entirely
+ * from the assessment read-model projections composed with the curriculum taxonomy in the
+ * gateway (GET /paths/{course}/progress `agg`). Four stat tiles, the revision-activity
+ * heatmap, completion by phase, pattern mastery, the mock rubric trend, and the
+ * first-solve outcome mix.
  */
 export default function Progress() {
-  const q = useProgress();
+  const q = useProgress(useCourseSlug());
 
   return (
     <div>
@@ -141,6 +143,7 @@ function yFor(score: number): number {
 }
 
 function RubricTrend({ trend }: { trend: MockTrend | null }) {
+  const slug = useCourseSlug();
   const points = trend?.points ?? [];
   const targets = trend?.targets ?? { w13: 24, w15: 28, pre: 30 };
   const coords = points.map((p, i) => {
@@ -155,7 +158,7 @@ function RubricTrend({ trend }: { trend: MockTrend | null }) {
         <span style={{ color: "var(--ds-violet)" }}><Icon name="target" className="xl-ico--sm" /></span>
         <h3>Mock rubric trend</h3>
         <span style={{ marginLeft: "auto" }}>
-          <Link to="/dsa/mock" style={{ fontSize: 11.5 }}>View mocks →</Link>
+          <Link to={coursePath(slug, "mock")} style={{ fontSize: 11.5 }}>View mocks →</Link>
         </span>
       </div>
       <div className="xl-panel__b">

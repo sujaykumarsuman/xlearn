@@ -26,8 +26,11 @@ Legend — **Deploy:** `edge` = has Traefik route; `internal` = ClusterIP only. 
   onboarding state (path chosen, budget set, key added); RS256 JWT issuance + JWKS.
 - **Owns:** schema `identity` — `account`, `oauth_identity`, `session`, `onboarding`.
 - **API:** `POST /auth/{provider}/start`, `GET /auth/{provider}/callback`, `POST /sessions/validate`,
-  `POST /sessions/revoke`, `GET /accounts/{id}`, `GET /.well-known/jwks.json`.
-- **Emits:** `xlearn.identity.account_created`. **Consumes:** —.
+  `POST /sessions/revoke`, `GET /accounts/{id}`, `GET /.well-known/jwks.json`, `POST /paths/{slug}/start`
+  (only an `active` course: unknown or `preview` → `404 course_not_found`, `coming_soon`/`retired` →
+  `409 course_not_available`; `public_visible` from the manifest — m1-03, ADR-0033 §12 row 8).
+- **Emits:** `xlearn.identity.account_created` (a v2 envelope from `v1.7.0`; account-scoped, no
+  `path_slug`). **Consumes:** —.
 
 ## curriculum · `internal`
 
@@ -35,8 +38,10 @@ Legend — **Deploy:** `edge` = has Traefik route; `internal` = ClusterIP only. 
   Read-heavy; **seeded** from the versioned `curriculum/` source ([PRD Q2](../prd/xlearn-prd.md#10-open-questions)).
   Enforces *content* structure (stage content, links); per-user gating lives in `practice`.
 - **Owns:** schema `curriculum` — `path`, `phase`, `week`, `problem`, `problem_section`, `concept`.
-- **API:** `GET /paths`, `GET /paths/{slug}`, `GET /paths/{slug}/weeks/{n}`,
-  `GET /problems/{id}` (with stage-scoped sections), `GET /concepts/{slug}`.
+- **API:** `GET /paths` (every non-retired course + its learner-safe `course` view), `GET /paths/{slug}`,
+  `GET /paths/{slug}/problems`, `GET /paths/{slug}/weeks/{n}`, `GET /paths/{slug}/concepts/{c}` (keyed on
+  course + concept), `GET /problems/{id}` (with stage-scoped sections), `GET /problems?ids=`, and
+  `GET /concepts/{slug}` (the DSA alias, m1-03).
 - **Emits:** —. **Consumes:** —.
 
 ## practice · `internal`
@@ -46,7 +51,8 @@ Legend — **Deploy:** `edge` = has Traefik route; `internal` = ClusterIP only. 
   (Clean/Rough/Assisted/Miss). The gatekeeper of "solved".
 - **Owns:** schema `practice` — `user_problem_state`, `attempt`, `stage_event`, `timer`, `outcome`, `outbox`.
 - **API:** `GET /state?week=`, `GET /state/{problemId}`, `POST /problems/{id}/attempt/start`,
-  `POST /problems/{id}/reveal` (returns penalty ack), `POST /problems/{id}/outcome`.
+  `POST /problems/{id}/reveal` (returns penalty ack), `POST /problems/{id}/outcome`. The writes take
+  `?path=<course>` (the item's course, from the gateway; absent → `course.DefaultSlug`, m1-03).
 - **Emits:** `xlearn.practice.attempt_logged`, `xlearn.practice.problem_solved`,
   `xlearn.practice.solution_revealed_early`. **Consumes:** —.
 
@@ -61,7 +67,9 @@ Legend — **Deploy:** `edge` = has Traefik route; `internal` = ClusterIP only. 
 - **Owns:** schema `review` — `revision_item`, `touch_result`, `mistake_entry`, `weak_area_snapshot`,
   `reminder`, `outbox`.
 - **API:** `GET /revisions/due`, `POST /revisions/{id}/score`, `GET /mistakes?status=`,
-  `POST /mistakes`, `PATCH /mistakes/{id}`, `GET /weak-area/current`.
+  `POST /mistakes`, `PATCH /mistakes/{id}`, `GET /weak-area/current`. The course-scoped reads and the
+  create take `?path=<course>` (absent → `course.DefaultSlug`, m1-03); the weekly weak-area snapshot is
+  per `(account, course, week)`.
 - **Emits:** `xlearn.review.revision_scheduled`, `xlearn.review.revision_due`,
   `xlearn.review.mistake_opened`, `xlearn.review.mistake_closed`.
   **Consumes:** `practice.problem_solved`, `practice.attempt_logged`, `practice.solution_revealed_early`.
@@ -75,7 +83,11 @@ Legend — **Deploy:** `edge` = has Traefik route; `internal` = ClusterIP only. 
 - **Owns:** schema `assessment` — `mock_session`, `rubric_score`, and projection tables
   `proj_coverage`, `proj_heatmap`, `proj_mastery`, `proj_outcome_mix`, plus consumer offsets/`inbox`.
 - **API:** `POST /mocks`, `GET /mocks/{id}`, `POST /mocks/{id}/score`, `GET /mocks/trend`,
-  `GET /progress/summary`, `GET /progress/heatmap`, `GET /progress/mastery`.
+  `GET /progress/summary`, `GET /progress/heatmap`, `GET /progress/mastery`. `POST /mocks`, the trend and
+  the summary's mock figures take `?path=<course>` (absent → `course.DefaultSlug`, m1-03); the projections
+  stay account-grain until M2b. `POST /mocks` for a course with no mock (or a rubric other than DSA's,
+  the only one scored so far) is `404 {"error":{"code":"not_found","message":"course has no mock"}}`.
+  Every internal `?path=` names a known course or gets `404 course_not_found`.
 - **Emits:** `xlearn.assessment.mock_completed`.
   **Consumes:** `practice.*`, `review.*` (to update projections).
 
@@ -86,7 +98,9 @@ Legend — **Deploy:** `edge` = has Traefik route; `internal` = ClusterIP only. 
   during attempts, reviewer post-solve), and fans out to the user's LLM provider. Never returns the key.
 - **Owns:** schema `coach` — `api_key_config` (encrypted), `coach_thread`, `coach_message`.
 - **API:** `PUT /keys` (store), `GET /keys` (masked only), `DELETE /keys`,
-  `POST /chat` (context + prompt → provider; streams back), `GET /threads/{pageContext}`.
+  `POST /chat` (context + prompt → provider; streams back; `?path=` = a problem context's course),
+  `GET /threads?context=`. Every context is normalized with the shared parser
+  (`course.NormalizeCoachContext`, m1-03): course-scoped contexts are keyed `<course>:<ctx>`.
 - **Emits:** —. **Consumes:** page context via API (reads practice/curriculum through the gateway).
 
 ## notifications *(worker inside `review` in v1)*

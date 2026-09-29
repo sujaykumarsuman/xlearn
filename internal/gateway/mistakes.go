@@ -14,11 +14,15 @@ import (
 // the same composition it does for the Revision due queue. Writes proxy to review with
 // a minted review-scoped JWT (ADR-0006).
 
-// handleMistakes: GET /mistakes?status= — the journal, each entry enriched with its
-// curriculum problem metadata.
+// handleMistakes: GET /paths/{slug}/mistakes?status= (and the DSA alias /mistakes) — the
+// course's journal, each entry enriched with its curriculum problem metadata.
 func (g *Gateway) handleMistakes(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := g.authAccount(w, r)
 	if !ok {
+		return
+	}
+	slug := r.PathValue("slug")
+	if _, ok := g.requireCourse(w, r, slug); !ok {
 		return
 	}
 	if g.review == nil {
@@ -33,7 +37,7 @@ func (g *Gateway) handleMistakes(w http.ResponseWriter, r *http.Request) {
 	if status := r.URL.Query().Get("status"); status != "" {
 		upstream += "?status=" + url.QueryEscape(status)
 	}
-	body, status, err := g.review.get(r.Context(), token, upstream)
+	body, status, err := g.review.get(r.Context(), token, withPath(upstream, slug))
 	if err != nil {
 		g.log.Error("bff mistakes: review call failed", "err", err)
 		writeError(w, http.StatusBadGateway, "upstream", "review unavailable")
@@ -46,9 +50,18 @@ func (g *Gateway) handleMistakes(w http.ResponseWriter, r *http.Request) {
 	passthrough(w, http.StatusOK, g.enrichMistakeEnvelope(r.Context(), body, "mistakes"))
 }
 
-// handleCreateMistake: POST /mistakes — proxy the create to review.
+// handleCreateMistake: POST /paths/{slug}/mistakes (and the DSA alias POST /mistakes) —
+// proxy the create to review, in the route's course.
 func (g *Gateway) handleCreateMistake(w http.ResponseWriter, r *http.Request) {
-	g.proxyReviewWrite(w, r, http.MethodPost, "/mistakes")
+	slug := r.PathValue("slug")
+	if _, ok := g.visibleCourse(r, slug); !ok {
+		// Auth first, as every route: an unauthenticated caller gets 401, not a course hint.
+		if _, ok := g.authAccount(w, r); ok {
+			writeCourseNotFound(w)
+		}
+		return
+	}
+	g.proxyReviewWrite(w, r, http.MethodPost, withPath("/mistakes", slug))
 }
 
 // handlePatchMistake: PATCH /mistakes/{id} — proxy the edit to review.
@@ -56,11 +69,16 @@ func (g *Gateway) handlePatchMistake(w http.ResponseWriter, r *http.Request) {
 	g.proxyReviewWrite(w, r, http.MethodPatch, "/mistakes/"+url.PathEscape(r.PathValue("id")))
 }
 
-// handleWeakArea: GET /weak-area — the weekly weak-area banner, with its supporting
-// entries enriched with curriculum problem metadata.
+// handleWeakArea: GET /paths/{slug}/weak-area (and the DSA alias /weak-area) — the
+// course's weekly weak-area banner, with its supporting entries enriched with curriculum
+// problem metadata.
 func (g *Gateway) handleWeakArea(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := g.authAccount(w, r)
 	if !ok {
+		return
+	}
+	slug := r.PathValue("slug")
+	if _, ok := g.requireCourse(w, r, slug); !ok {
 		return
 	}
 	if g.review == nil {
@@ -71,7 +89,7 @@ func (g *Gateway) handleWeakArea(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	body, status, err := g.review.get(r.Context(), token, "/weak-area/current")
+	body, status, err := g.review.get(r.Context(), token, withPath("/weak-area/current", slug))
 	if err != nil {
 		g.log.Error("bff weak-area: review call failed", "err", err)
 		writeError(w, http.StatusBadGateway, "upstream", "review unavailable")

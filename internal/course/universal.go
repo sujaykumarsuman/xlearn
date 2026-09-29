@@ -1,11 +1,12 @@
 // Package course holds the typed course manifest (ADR-0026 §1) and the frozen public
 // item schema (ADR-0027 §1, ADR-0029): Go types, strict loading and validation.
 //
-// It is a shared, stdlib-only library of types and constants that every service may
-// import (the manifest is data compiled into every image, never fetched at runtime).
-// It has no database access and imports no service package, so it can never cause an
-// import cycle. In M1a nothing reads a manifest at runtime; the first readers arrive in
-// M1b and M2 (see docs/v2/sprints/sprint-m1-01.md, Scope → Out).
+// It is a shared library of types and constants that every service may import. Besides
+// the standard library it imports only the data-only curriculum embed (curriculum.Manifests:
+// the manifests are compiled into every image, never fetched at runtime; registry.go). It
+// has no database access and imports no service package, so it can never cause an
+// import cycle. M1b (m1-03) adds the first runtime readers: the gateway's course
+// resolution, enrollment validation, the learner view and the coach context parser.
 package course
 
 // This file holds the UNIVERSAL method (D3, ADR-0026 §4): the parts of the learning

@@ -14,10 +14,10 @@ type Querier interface {
 	// The "solved / 151" numerator: distinct problems the account has solved.
 	CountSolvedProblems(ctx context.Context, accountID pgtype.UUID) (int64, error)
 	// Read one session scoped to its owner (soft account ownership check).
-	GetMockSession(ctx context.Context, arg GetMockSessionParams) (AssessmentMockSession, error)
+	GetMockSession(ctx context.Context, arg GetMockSessionParams) (GetMockSessionRow, error)
 	// Read + row-lock one session scoped to its owner, so concurrent score submits on the
 	// same session serialise (the second waits, re-reads status='scored', and no-ops).
-	GetMockSessionForUpdate(ctx context.Context, arg GetMockSessionForUpdateParams) (AssessmentMockSession, error)
+	GetMockSessionForUpdate(ctx context.Context, arg GetMockSessionForUpdateParams) (GetMockSessionForUpdateRow, error)
 	// Record an event whose handler failed its last delivery (mi-05, ADR-0035 §1.2). Ids
 	// only. ON CONFLICT DO NOTHING: a replayed-then-dead-lettered event stays one row.
 	InsertDeadLetter(ctx context.Context, arg InsertDeadLetterParams) error
@@ -26,15 +26,20 @@ type Querier interface {
 	// re-applying its side effects (effectively-once, ADR-0004). The S09 projection writes
 	// slot into the SAME transaction as this claim so inbox <-> projected stays atomic.
 	InsertInbox(ctx context.Context, eventID string) (string, error)
+	// Every read of assessment.mock_session names its columns (never `*`, which sqlc expands
+	// to every column): after v1.7.0 no query may read the v1 /35 column m1-08 drops (M1c),
+	// so the rollback floor can move to 1.7.0. The three session reads share one column list
+	// so their generated row types convert into each other.
 	// Start a live mock session with the server clock (started_at / deadline_at are
 	// computed by the caller so the 45-minute window is server-authoritative). status
-	// defaults to 'live', total_35 stays NULL until scoring, date defaults to today.
-	// m1-02 (M1a) also writes the course, the rubric the session is scored against (id +
-	// snapshot) and its max total; the ordinal-1 mock_session_item row goes in the same tx.
-	InsertMockSession(ctx context.Context, arg InsertMockSessionParams) (AssessmentMockSession, error)
+	// defaults to 'live', total stays NULL until scoring, date defaults to today. The
+	// course (path_slug, written explicitly), the rubric the session is scored against
+	// (id + snapshot) and its max total are written too (m1-02, M1a); the ordinal-1
+	// mock_session_item row goes in the same tx.
+	InsertMockSession(ctx context.Context, arg InsertMockSessionParams) (InsertMockSessionRow, error)
 	// One ordered item of a session (m1-02, M1a; supersedes problem_id / set_id at M1c).
 	// v1 sessions have exactly one row, ordinal 1; item_id is NULL for a mixed set
-	// (problem_id '').
+	// (problem_id ''). path_slug is the session's course, written explicitly.
 	InsertMockSessionItem(ctx context.Context, arg InsertMockSessionItemParams) error
 	// account_id is erase prep (m1-02, ADR-0027 §6): the envelope's account, as a column.
 	InsertOutbox(ctx context.Context, arg InsertOutboxParams) error
@@ -51,24 +56,26 @@ type Querier interface {
 	ListOutcomeMix(ctx context.Context, accountID pgtype.UUID) ([]ListOutcomeMixRow, error)
 	// All rubric rows for a session (the results radar + per-dimension meters).
 	ListRubricScores(ctx context.Context, mockSessionID pgtype.UUID) ([]ListRubricScoresRow, error)
-	// An account's scored mocks oldest-first — the trend series (R-MK3). The total is read
-	// as COALESCE(total, total_35) (m1-02, M1a).
-	ListScoredMocks(ctx context.Context, accountID pgtype.UUID) ([]ListScoredMocksRow, error)
+	// An account's scored mocks in one course, oldest-first — the trend series (R-MK3;
+	// GET /mocks/trend?path=, m1-03). total is backfilled for every v1 row (m1-02) and
+	// dual-written since v1.6.0, the rollback floor after v1.7.0.
+	ListScoredMocks(ctx context.Context, arg ListScoredMocksParams) ([]ListScoredMocksRow, error)
 	// Every solved problem with its solve quality — the gateway groups these by curriculum
 	// pattern (mastery bars) and by week -> phase (completion table). Coverage is the solved
 	// authority; mastery supplies the quality (absent -> zeros for a not-yet-scored row).
 	ListSolvedMastery(ctx context.Context, accountID pgtype.UUID) ([]ListSolvedMasteryRow, error)
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]AssessmentOutbox, error)
-	// Latch a live session to scored with its /35 total + notes. The status='live' guard
-	// makes a double-submit idempotent at the SQL level (no row -> already scored). m1-02
-	// (M1a) dual-writes total / max_total / scored_by beside total_35.
+	// Latch a live session to scored with its rubric total + notes. The status='live' guard
+	// makes a double-submit idempotent at the SQL level (no row -> already scored). Since
+	// m1-03 only total / max_total / scored_by are written (m1-02 relaxed the scored CHECK
+	// to accept a row with total alone).
 	MarkMockScored(ctx context.Context, arg MarkMockScoredParams) (pgtype.UUID, error)
 	MarkOutboxSent(ctx context.Context, eventID pgtype.UUID) error
-	// Scored-mock roll-up for the Progress + Dashboard tiles: how many, the average /35, and
-	// the best /35. `last`/`delta` come from the ordered trend in Go. The total is read as
-	// COALESCE(total, total_35) (m1-02, M1a: total is dual-written beside total_35, which
-	// M1c drops).
-	MockAggregate(ctx context.Context, accountID pgtype.UUID) (MockAggregateRow, error)
+	// Scored-mock roll-up for the Progress + Dashboard tiles in one course (m1-03: never
+	// averaged across courses, whose rubrics differ): how many, the average total and the
+	// best total. `last`/`delta` come from the ordered trend in Go. Reads total only: it is
+	// backfilled for every v1 row (m1-02) and dual-written since v1.6.0.
+	MockAggregate(ctx context.Context, arg MockAggregateParams) (MockAggregateRow, error)
 	// Day-7 retention inputs: `ladders` is problems that started a spaced-repetition ladder
 	// (a Day-1 anchor), `resets` is how many times a ladder was reset by a failed re-solve.
 	RetentionStats(ctx context.Context, accountID pgtype.UUID) (RetentionStatsRow, error)

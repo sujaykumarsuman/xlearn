@@ -1,9 +1,11 @@
 -- name: GetConcept :one
--- code_template is nullable since 00002 but dual-written from templates.go by the seed.
-SELECT slug, path_slug, title, body_md, when_to_use_md,
-       COALESCE(code_template, templates ->> 'go', '')::text AS code_template
+-- Keyed on (path_slug, slug) (00003's concept_path_slug_slug_key; m1-03): a concept
+-- resolves only under its own course. Reads the per-language templates only; the v1
+-- single-template field is derived from them in Go (the course's primary language), so
+-- no reader touches the column M1c drops.
+SELECT slug, path_slug, title, body_md, when_to_use_md, templates
 FROM curriculum.concept
-WHERE slug = $1;
+WHERE path_slug = $1 AND slug = $2;
 
 -- name: ListConceptsByWeek :many
 SELECT c.slug, c.title
@@ -15,15 +17,18 @@ ORDER BY c.title;
 
 -- name: UpsertConcept :one
 -- Keyed on (path_slug, slug) (00003's unique), so a concept is never re-parented. The v1
--- UNIQUE(slug) stays until M1c, so a slug is still global until then. Dual-writes
--- code_template from templates.go.
-INSERT INTO curriculum.concept (path_slug, slug, title, body_md, when_to_use_md, code_template, templates)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+-- UNIQUE(slug) stays until M1c, so a slug is still global until then. Since m1-03 the
+-- seed writes templates only: the v1 single-template column (nullable since 00002) gets
+-- its 00001 default ('') on a new row and keeps what an older seed wrote on an existing
+-- one. A v1.6.0 reader (the R-b target, or a pod mid-rollout) reads it through COALESCE,
+-- so it never fails on it, and a v1.6.0 boot's own seed rewrites it for every concept
+-- that image carries. M1c drops the column.
+INSERT INTO curriculum.concept (path_slug, slug, title, body_md, when_to_use_md, templates)
+VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (path_slug, slug) DO UPDATE SET
     title          = EXCLUDED.title,
     body_md        = EXCLUDED.body_md,
     when_to_use_md = EXCLUDED.when_to_use_md,
-    code_template  = EXCLUDED.code_template,
     templates      = EXCLUDED.templates
 RETURNING id;
 

@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/review/store/gen"
 )
 
@@ -38,6 +37,14 @@ type Mistake struct {
 	RevisitDate  time.Time
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	PathSlug     string // the entry's course (m1-02)
+}
+
+// MistakeScope is one (account, course) with mistake entries: the weekly weak-area
+// recompute builds one snapshot per scope (m1-03).
+type MistakeScope struct {
+	AccountID string
+	PathSlug  string
 }
 
 // MistakeInput is a manual create (POST /mistakes).
@@ -115,15 +122,16 @@ func (s *PgStore) openMistakeTx(ctx context.Context, qtx *gen.Queries, aid pgtyp
 	if err != nil {
 		return false, fmt.Errorf("open mistake: %w", err)
 	}
-	if eerr := emitMistakeOpened(ctx, qtx, accountID, problemID, ""); eerr != nil {
+	if eerr := emitMistakeOpened(ctx, qtx, accountID, pathSlug, problemID, ""); eerr != nil {
 		return false, eerr
 	}
 	return true, nil
 }
 
 // recordCleanRevisitTx increments the open mistake's clean-revisit count for this
-// problem; on the close transition it emits mistake_closed. A no-op when the problem
-// has no open mistake (the common case — a clean re-solve of a never-missed problem).
+// problem; on the close transition it emits mistake_closed (in the entry's course). A
+// no-op when the problem has no open mistake (the common case — a clean re-solve of a
+// never-missed problem).
 func (s *PgStore) recordCleanRevisitTx(ctx context.Context, qtx *gen.Queries, aid pgtype.UUID, accountID, problemID string) error {
 	if err := lockJournal(ctx, qtx, accountID, problemID); err != nil {
 		return err
@@ -136,7 +144,7 @@ func (s *PgStore) recordCleanRevisitTx(ctx context.Context, qtx *gen.Queries, ai
 		return fmt.Errorf("increment clean revisit: %w", err)
 	}
 	if row.Status == MistakeClosed {
-		return emitMistakeClosed(ctx, qtx, accountID, uuidString(row.ID), row.ProblemID)
+		return emitMistakeClosed(ctx, qtx, accountID, row.PathSlug, uuidString(row.ID), row.ProblemID)
 	}
 	return nil
 }
@@ -157,7 +165,8 @@ func (s *PgStore) recordFailedResolveTx(ctx context.Context, qtx *gen.Queries, a
 		if _, rerr := qtx.ReopenMistake(ctx, gen.ReopenMistakeParams{ID: latest.ID, RevisitDate: revisitDate}); rerr != nil {
 			return fmt.Errorf("reopen mistake: %w", rerr)
 		}
-		return emitMistakeOpened(ctx, qtx, accountID, problemID, textString(latest.Category))
+		// The re-opened entry keeps its course; the event carries it.
+		return emitMistakeOpened(ctx, qtx, accountID, latest.PathSlug, problemID, textString(latest.Category))
 	case err == nil && latest.Status == MistakeOpen:
 		// A fail wipes the clean-revisit streak (a fail never counts toward the 2). The
 		// entry is already open, so no mistake_opened is re-emitted.
@@ -177,17 +186,17 @@ func (s *PgStore) recordFailedResolveTx(ctx context.Context, qtx *gen.Queries, a
 
 // --- journal CRUD (gateway API) ---
 
-// ListMistakes returns the account's journal (status "" = all).
-func (s *PgStore) ListMistakes(ctx context.Context, accountID, status string) ([]Mistake, error) {
+// ListMistakes returns the account's journal in one course (status "" = all).
+func (s *PgStore) ListMistakes(ctx context.Context, accountID, pathSlug, status string) ([]Mistake, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return nil, ErrNotFound
 	}
 	var rows []gen.ReviewMistakeEntry
 	if status == "" {
-		rows, err = s.q.ListMistakes(ctx, aid)
+		rows, err = s.q.ListMistakes(ctx, gen.ListMistakesParams{AccountID: aid, PathSlug: pathSlug})
 	} else {
-		rows, err = s.q.ListMistakesByStatus(ctx, gen.ListMistakesByStatusParams{AccountID: aid, Status: status})
+		rows, err = s.q.ListMistakesByStatus(ctx, gen.ListMistakesByStatusParams{AccountID: aid, PathSlug: pathSlug, Status: status})
 	}
 	if err != nil {
 		return nil, fmt.Errorf("list mistakes: %w", err)
@@ -219,11 +228,17 @@ func (s *PgStore) GetMistake(ctx context.Context, accountID, id string) (Mistake
 	return toMistake(row), nil
 }
 
-// CreateMistake manually creates a journal entry (POST /mistakes).
-func (s *PgStore) CreateMistake(ctx context.Context, accountID string, in MistakeInput) (Mistake, error) {
+// CreateMistake manually creates a journal entry in course pathSlug (POST
+// /mistakes?path=).
+func (s *PgStore) CreateMistake(ctx context.Context, accountID, pathSlug string, in MistakeInput) (Mistake, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return Mistake{}, ErrNotFound
+	}
+	if pathSlug == "" {
+		// Never write '' or lean on the column default (m1-08 drops it): the handler
+		// always resolves a course.
+		return Mistake{}, errors.New("review: create mistake without a course")
 	}
 	if in.Category != "" && !ValidMistakeCategory(in.Category) {
 		return Mistake{}, ErrInvalidCategory
@@ -246,8 +261,7 @@ func (s *PgStore) CreateMistake(ctx context.Context, accountID string, in Mistak
 		RevisitDate:  pgtype.Timestamptz{},
 		Status:       status,
 		RevisitCount: 0,
-		// The journal API is DSA-only until M1b's course-scoped routes (m1-02, M1a).
-		PathSlug: course.DSASlug,
+		PathSlug:     pathSlug,
 	})
 	if isUniqueViolation(err) {
 		return Mistake{}, ErrConflict
@@ -335,29 +349,32 @@ func (s *PgStore) UpdateMistake(ctx context.Context, accountID, id string, in Mi
 
 // --- weekly weak-area ---
 
-// AccountsWithMistakes lists every account with at least one mistake entry.
-func (s *PgStore) AccountsWithMistakes(ctx context.Context) ([]string, error) {
-	ids, err := s.q.ListAccountsWithMistakes(ctx)
+// MistakeScopes lists every (account, course) with at least one mistake entry, ordered
+// by account then course.
+func (s *PgStore) MistakeScopes(ctx context.Context) ([]MistakeScope, error) {
+	rows, err := s.q.ListMistakeScopes(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list accounts with mistakes: %w", err)
+		return nil, fmt.Errorf("list mistake scopes: %w", err)
 	}
-	out := make([]string, 0, len(ids))
-	for _, id := range ids {
-		out = append(out, uuidString(id))
+	out := make([]MistakeScope, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, MistakeScope{AccountID: uuidString(r.AccountID), PathSlug: r.PathSlug})
 	}
 	return out, nil
 }
 
-// CountOpenMistakesByCategory counts open entries opened within [start, end).
-func (s *PgStore) CountOpenMistakesByCategory(ctx context.Context, accountID string, start, end time.Time) (map[string]int, error) {
+// CountOpenMistakesByCategory counts one course's open entries opened within
+// [start, end).
+func (s *PgStore) CountOpenMistakesByCategory(ctx context.Context, accountID, pathSlug string, start, end time.Time) (map[string]int, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return nil, ErrNotFound
 	}
 	rows, err := s.q.CountOpenMistakesByCategoryInRange(ctx, gen.CountOpenMistakesByCategoryInRangeParams{
 		AccountID:   aid,
-		CreatedAt:   tsz(start),
-		CreatedAt_2: tsz(end),
+		PathSlug:    pathSlug,
+		WindowStart: tsz(start),
+		WindowEnd:   tsz(end),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("count open mistakes by category: %w", err)
@@ -369,11 +386,15 @@ func (s *PgStore) CountOpenMistakesByCategory(ctx context.Context, accountID str
 	return out, nil
 }
 
-// SaveWeakAreaSnapshot upserts one account's weekly snapshot (idempotent per week_of).
-func (s *PgStore) SaveWeakAreaSnapshot(ctx context.Context, accountID string, weekOf time.Time, topCategory string, counts map[string]int) error {
+// SaveWeakAreaSnapshot upserts one account's weekly snapshot in one course (idempotent
+// per (course, week_of): the conflict target is the per-course unique, m1-03).
+func (s *PgStore) SaveWeakAreaSnapshot(ctx context.Context, accountID, pathSlug string, weekOf time.Time, topCategory string, counts map[string]int) error {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return ErrNotFound
+	}
+	if pathSlug == "" {
+		return errors.New("review: weak-area snapshot without a course")
 	}
 	if counts == nil {
 		counts = map[string]int{}
@@ -387,23 +408,22 @@ func (s *PgStore) SaveWeakAreaSnapshot(ctx context.Context, accountID string, we
 		WeekOf:      dateOf(weekOf),
 		TopCategory: textOrNull(topCategory),
 		CountsJson:  countsJSON,
-		// Every v1 snapshot is DSA (m1-02, M1a); the conflict target stays the v1
-		// (account_id, week_of) unique until M1c.
-		PathSlug: course.DSASlug,
+		PathSlug:    pathSlug,
 	}); err != nil {
 		return fmt.Errorf("upsert weak-area snapshot: %w", err)
 	}
 	return nil
 }
 
-// WeakAreaCurrent reads the account's latest snapshot + the supporting open entries in
-// the top category. found is false when no snapshot exists yet.
-func (s *PgStore) WeakAreaCurrent(ctx context.Context, accountID string) (WeakArea, bool, error) {
+// WeakAreaCurrent reads the account's latest snapshot in one course + the course's
+// supporting open entries in the top category. found is false when no snapshot exists
+// yet.
+func (s *PgStore) WeakAreaCurrent(ctx context.Context, accountID, pathSlug string) (WeakArea, bool, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return WeakArea{}, false, ErrNotFound
 	}
-	snap, err := s.q.GetLatestWeakArea(ctx, aid)
+	snap, err := s.q.GetLatestWeakArea(ctx, gen.GetLatestWeakAreaParams{AccountID: aid, PathSlug: pathSlug})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return WeakArea{}, false, nil
 	}
@@ -422,6 +442,7 @@ func (s *PgStore) WeakAreaCurrent(ctx context.Context, accountID string) (WeakAr
 		wa.TopCount = wa.Counts[wa.TopCategory]
 		ents, err := s.q.ListOpenMistakesByCategory(ctx, gen.ListOpenMistakesByCategoryParams{
 			AccountID: aid,
+			PathSlug:  pathSlug,
 			Category:  textOrNull(wa.TopCategory),
 		})
 		if err != nil {
@@ -501,18 +522,19 @@ func (s *PgStore) ListDueReminders(ctx context.Context, accountID string, limit 
 // --- event emitters ---
 
 // emitMistakeOpened appends a xlearn.review.mistake_opened event (data: problem_id,
-// category) to the outbox. category is "" for an auto-opened, not-yet-classified entry.
-func emitMistakeOpened(ctx context.Context, qtx *gen.Queries, accountID, problemID, category string) error {
-	return insertEvent(ctx, qtx, SubjectMistakeOpened, accountID, map[string]any{
+// category; the entry's course in path_slug) to the outbox. category is "" for an
+// auto-opened, not-yet-classified entry.
+func emitMistakeOpened(ctx context.Context, qtx *gen.Queries, accountID, pathSlug, problemID, category string) error {
+	return insertEvent(ctx, qtx, SubjectMistakeOpened, accountID, pathSlug, map[string]any{
 		"problem_id": problemID,
 		"category":   category,
 	})
 }
 
 // emitMistakeClosed appends a xlearn.review.mistake_closed event (data: mistake_id,
-// problem_id) to the outbox.
-func emitMistakeClosed(ctx context.Context, qtx *gen.Queries, accountID, mistakeID, problemID string) error {
-	return insertEvent(ctx, qtx, SubjectMistakeClosed, accountID, map[string]any{
+// problem_id; the entry's course in path_slug) to the outbox.
+func emitMistakeClosed(ctx context.Context, qtx *gen.Queries, accountID, pathSlug, mistakeID, problemID string) error {
+	return insertEvent(ctx, qtx, SubjectMistakeClosed, accountID, pathSlug, map[string]any{
 		"mistake_id": mistakeID,
 		"problem_id": problemID,
 	})
@@ -535,6 +557,7 @@ func toMistake(r gen.ReviewMistakeEntry) Mistake {
 		RevisitDate:  r.RevisitDate.Time, // zero time when NULL (Valid=false)
 		CreatedAt:    r.CreatedAt.Time,
 		UpdatedAt:    r.UpdatedAt.Time,
+		PathSlug:     r.PathSlug,
 	}
 }
 

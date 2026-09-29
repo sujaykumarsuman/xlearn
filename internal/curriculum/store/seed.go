@@ -63,8 +63,7 @@ type SeedConcept struct {
 	Title       string
 	BodyMD      string
 	WhenToUseMD string
-	// Templates maps a language to its code template; templates["go"] is dual-written
-	// to the v1 code_template column until M1c.
+	// Templates maps a language to its code template (concept.templates).
 	Templates map[string]string
 	Weeks     []int
 }
@@ -77,13 +76,12 @@ type SeedProblem struct {
 	Title      string
 	Difficulty string
 	Pattern    string
-	// Role is core | reinforcement | drill; is_reinforcement is dual-written from it.
+	// Role is core | reinforcement | drill.
 	Role string
 	// Status is live | retired | withdrawn. Retired items leave the index and counts;
 	// withdrawn items also serve no sections.
 	Status string
-	// Links are the outbound links; the leetcode and neetcode ones are dual-written to
-	// the v1 URL columns.
+	// Links are the outbound links (problem.links).
 	Links       []SeedLink
 	SortOrder   int
 	ContentHash string
@@ -94,11 +92,9 @@ type SeedProblem struct {
 	Sections       []SeedSection
 }
 
-// SeedLink is one outbound link ({kind, url}), stored in problem.links.
-type SeedLink struct {
-	Kind string `json:"kind"`
-	URL  string `json:"url"`
-}
+// SeedLink is one outbound link ({kind, url}), stored in problem.links: the shape the
+// readers decode (Link).
+type SeedLink = Link
 
 // SeedSection is one stage-scoped content section. Language is the code language of a
 // code section ("" for prose).
@@ -137,8 +133,9 @@ var ErrReparent = errors.New("curriculum: an item id would move to another cours
 //     none). content_hash is written but never used to skip: the v1.5.2 image rewrites
 //     section bodies without touching it;
 //   - live problems missing from the seed are retired, never deleted;
-//   - the v1 columns (is_reinforcement, leetcode_url, neetcode_url, code_template) are
-//     dual-written from the v2 fields until M1c.
+//   - only the v2 columns are written (m1-03): the v1 columns M1c drops (the problem's
+//     reinforcement flag and two URL columns, the concept's single template) are never
+//     written (a new row gets their 00001 defaults); the readers derive the v1 fields.
 func (s *PgStore) SeedAll(ctx context.Context, content SeedContent) (SeedReport, error) {
 	var report SeedReport
 	tx, err := s.pool.Begin(ctx)
@@ -231,13 +228,12 @@ func (s *PgStore) SeedAll(ctx context.Context, content SeedContent) (SeedReport,
 			return report, fmt.Errorf("concept %q templates: %w", c.Slug, err)
 		}
 		conceptID, err := q.UpsertConcept(ctx, gen.UpsertConceptParams{
-			PathSlug:     c.PathSlug,
-			Slug:         c.Slug,
-			Title:        c.Title,
-			BodyMd:       c.BodyMD,
-			WhenToUseMd:  c.WhenToUseMD,
-			CodeTemplate: pgtype.Text{String: c.Templates["go"], Valid: true},
-			Templates:    templates,
+			PathSlug:    c.PathSlug,
+			Slug:        c.Slug,
+			Title:       c.Title,
+			BodyMd:      c.BodyMD,
+			WhenToUseMd: c.WhenToUseMD,
+			Templates:   templates,
 		})
 		if err != nil {
 			return report, fmt.Errorf("upsert concept %s/%s: %w", c.PathSlug, c.Slug, err)
@@ -264,22 +260,19 @@ func (s *PgStore) SeedAll(ctx context.Context, content SeedContent) (SeedReport,
 			summary = []byte("{}")
 		}
 		n, err := q.UpsertProblem(ctx, gen.UpsertProblemParams{
-			ID:              pr.ID,
-			PathSlug:        pr.PathSlug,
-			WeekN:           int32(pr.WeekN),
-			Title:           pr.Title,
-			Difficulty:      pr.Difficulty,
-			Pattern:         pr.Pattern,
-			LeetcodeUrl:     pgtype.Text{String: linkURL(pr.Links, "leetcode"), Valid: true},
-			NeetcodeUrl:     pgtype.Text{String: linkURL(pr.Links, "neetcode"), Valid: true},
-			IsReinforcement: pgtype.Bool{Bool: pr.Role == "reinforcement", Valid: true},
-			SortOrder:       int32(pr.SortOrder),
-			Role:            pr.Role,
-			Status:          pr.Status,
-			Links:           links,
-			ContentHash:     pr.ContentHash,
-			ContractHash:    pr.ContractHash,
-			GradingSummary:  summary,
+			ID:             pr.ID,
+			PathSlug:       pr.PathSlug,
+			WeekN:          int32(pr.WeekN),
+			Title:          pr.Title,
+			Difficulty:     pr.Difficulty,
+			Pattern:        pr.Pattern,
+			SortOrder:      int32(pr.SortOrder),
+			Role:           pr.Role,
+			Status:         pr.Status,
+			Links:          links,
+			ContentHash:    pr.ContentHash,
+			ContractHash:   pr.ContractHash,
+			GradingSummary: summary,
 		})
 		if err != nil {
 			return report, fmt.Errorf("upsert problem %q: %w", pr.ID, err)
@@ -323,17 +316,6 @@ func (s *PgStore) SeedAll(ctx context.Context, content SeedContent) (SeedReport,
 		return SeedReport{}, fmt.Errorf("commit seed tx: %w", err)
 	}
 	return report, nil
-}
-
-// linkURL returns the first link of a kind ("" if none): the dual-write source of the
-// v1 leetcode_url / neetcode_url columns.
-func linkURL(links []SeedLink, kind string) string {
-	for _, l := range links {
-		if l.Kind == kind {
-			return l.URL
-		}
-	}
-	return ""
 }
 
 // jsonOrEmpty marshals v for a jsonb column, or returns empty (e.g. "[]", "{}") when v

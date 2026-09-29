@@ -1,6 +1,8 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useMe } from "../lib/auth";
-import { Spinner } from "./States";
+import { firstSegment, isCourseCandidate } from "../lib/course";
+import { usePaths } from "../lib/curriculum";
+import { FullScreen, Spinner } from "./States";
 
 /**
  * AuthedShell gates the app: it reads GET /me and renders the nested routes (each of
@@ -12,6 +14,11 @@ import { Spinner } from "./States";
  */
 export default function AuthedShell() {
   const me = useMe();
+  const { pathname } = useLocation();
+  // A course route resolves its course against the catalog (CurriculumShell, useCourse):
+  // start that fetch alongside GET /me rather than after it, so a course page doesn't pay
+  // a second round trip before its frame renders. Same query, so it is fetched once.
+  usePaths(isCourseCandidate(firstSegment(pathname)));
 
   if (me.isLoading) {
     return (
@@ -43,22 +50,4 @@ export default function AuthedShell() {
     return <Navigate to="/auth" replace />;
   }
   return <Outlet />;
-}
-
-/** FullScreen centers a small status message on the app background. */
-function FullScreen({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "grid",
-        placeItems: "center",
-        background: "var(--ds-bg)",
-        color: "var(--ds-dim)",
-        gap: 12,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{children}</div>
-    </div>
-  );
 }

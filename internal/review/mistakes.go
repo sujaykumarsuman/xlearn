@@ -53,18 +53,23 @@ func toMistakeJSON(m store.Mistake) mistakeJSON {
 
 // --- handlers ---
 
-// handleListMistakes: GET /mistakes?status=open|closed — the journal. The list honours
-// the optional status filter; openCount/closedCount are always over the full journal so
-// the screen header + segmented filter read consistently. closeThreshold surfaces the
-// "n/2" denominator without hardcoding it client-side.
+// handleListMistakes: GET /mistakes?path=<slug>&status=open|closed — the journal of one
+// course. The list honours the optional status filter; openCount/closedCount are always
+// over the course's full journal so the screen header + segmented filter read
+// consistently. closeThreshold surfaces the "n/2" denominator without hardcoding it
+// client-side.
 func (s *Service) handleListMistakes(w http.ResponseWriter, r *http.Request) {
 	accountID := claimsFrom(r.Context()).Subject
+	pathSlug, ok := s.resolveCourse(w, r)
+	if !ok {
+		return
+	}
 	status := r.URL.Query().Get("status")
 	if status != "" && status != store.MistakeOpen && status != store.MistakeClosed {
 		writeError(w, http.StatusBadRequest, "bad_request", "status must be open or closed")
 		return
 	}
-	all, err := s.store.ListMistakes(r.Context(), accountID, "")
+	all, err := s.store.ListMistakes(r.Context(), accountID, pathSlug, "")
 	if err != nil {
 		s.mapErr(w, "list mistakes", err)
 		return
@@ -93,9 +98,16 @@ func (s *Service) handleListMistakes(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleCreateMistake: POST /mistakes — manually create an entry.
+// handleCreateMistake: POST /mistakes?path=<slug> — manually create an entry in that
+// course. The one-open-entry rule stays per item (a 409 whatever the course).
 func (s *Service) handleCreateMistake(w http.ResponseWriter, r *http.Request) {
 	accountID := claimsFrom(r.Context()).Subject
+	// The course travels as `?path=`, never a body field: a v1.6.0 review decodes the
+	// body with DisallowUnknownFields.
+	pathSlug, ok := s.resolveCourse(w, r)
+	if !ok {
+		return
+	}
 	var body struct {
 		ProblemID string `json:"problemId"`
 		Pattern   string `json:"pattern"`
@@ -113,7 +125,7 @@ func (s *Service) handleCreateMistake(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, "invalid_mistake", "problemId is required")
 		return
 	}
-	m, err := s.store.CreateMistake(r.Context(), accountID, store.MistakeInput{
+	m, err := s.store.CreateMistake(r.Context(), accountID, pathSlug, store.MistakeInput{
 		ProblemID: body.ProblemID,
 		Pattern:   body.Pattern,
 		Mistake:   body.Mistake,
@@ -163,11 +175,16 @@ func (s *Service) handlePatchMistake(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, toMistakeJSON(m))
 }
 
-// handleWeakArea: GET /weak-area/current — the weekly weak-area banner (R-MJ3). When
-// no snapshot exists yet, topCategory is "" and the client hides the banner.
+// handleWeakArea: GET /weak-area/current?path=<slug> — the course's weekly weak-area
+// banner (R-MJ3). When no snapshot exists yet, topCategory is "" and the client hides
+// the banner.
 func (s *Service) handleWeakArea(w http.ResponseWriter, r *http.Request) {
 	accountID := claimsFrom(r.Context()).Subject
-	wa, found, err := s.store.WeakAreaCurrent(r.Context(), accountID)
+	pathSlug, ok := s.resolveCourse(w, r)
+	if !ok {
+		return
+	}
+	wa, found, err := s.store.WeakAreaCurrent(r.Context(), accountID, pathSlug)
 	if err != nil {
 		s.mapErr(w, "weak area", err)
 		return

@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 )
 
-// Curriculum gating (review round 2): starting a path is a prerequisite for solving,
+// Curriculum gating (review round 2), per course since m1-03 (the item's course, or the
+// route's): starting a course is a prerequisite for solving,
 // and only SCHEDULED work counts toward curriculum activity. "Scheduled" for a NEW
 // problem (the /problems/{id}/outcome path) is: its week is at or before the learner's
 // frontier week — the lowest week that still has an unsolved core problem (currentWeek,
@@ -62,16 +64,16 @@ func (g *Gateway) requireEnrolled(w http.ResponseWriter, ctx context.Context, ac
 	return false
 }
 
-// pathFrontier fetches the DSA problem index + the account's solved set (assessment
+// pathFrontier fetches a course's problem index + the account's solved set (assessment
 // mastery projection) and returns the frontier week + the index keyed by problem id.
 // ok=false when the index can't be resolved (the caller then skips the schedule gate
 // rather than blocking on a degraded upstream).
-func (g *Gateway) pathFrontier(ctx context.Context, accountID string) (frontier int, byID map[string]problemIndexItem, ok bool) {
+func (g *Gateway) pathFrontier(ctx context.Context, accountID, slug string) (frontier int, byID map[string]problemIndexItem, ok bool) {
 	byID = map[string]problemIndexItem{}
 	if g.curriculum == nil {
 		return 0, byID, false
 	}
-	body, status, err := g.curriculum.get(ctx, "/paths/dsa/problems")
+	body, status, err := g.curriculum.get(ctx, "/paths/"+url.PathEscape(slug)+"/problems")
 	if err != nil || status != http.StatusOK {
 		return 0, byID, false
 	}
@@ -86,7 +88,7 @@ func (g *Gateway) pathFrontier(ctx context.Context, accountID string) (frontier 
 	solved := map[string]bool{}
 	if g.assessment != nil {
 		if aToken, okT := g.mintQuiet(accountID, g.audAssessment); okT {
-			if mbody, mstatus, merr := g.assessment.get(ctx, aToken, "/progress/mastery"); merr == nil && mstatus == http.StatusOK {
+			if mbody, mstatus, merr := g.assessment.get(ctx, aToken, withPath("/progress/mastery", slug)); merr == nil && mstatus == http.StatusOK {
 				var m masteryDoc
 				if json.Unmarshal(mbody, &m) == nil {
 					for _, mp := range m.Problems {
@@ -116,7 +118,7 @@ func (g *Gateway) problemGateFor(ctx context.Context, accountID, slug, problemID
 	if !enrolled {
 		return gate // scheduled stays false; the SPA shows the start gate
 	}
-	frontier, _, ok := g.pathFrontier(ctx, accountID)
+	frontier, _, ok := g.pathFrontier(ctx, accountID, slug)
 	if !ok {
 		// Couldn't resolve the frontier — don't falsely block; treat as scheduled.
 		gate.Scheduled = true

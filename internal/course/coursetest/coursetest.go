@@ -6,8 +6,13 @@ package coursetest
 
 import (
 	"io/fs"
+	"maps"
+	"os"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 
@@ -84,4 +89,72 @@ func read(t testing.TB, fsys fs.FS, file string) string {
 		t.Fatalf("read %s: %v", file, err)
 	}
 	return string(b)
+}
+
+// Fixture course slugs (internal/course/testdata/fixtures, sprint m1-03): one per
+// manifest status beside DSA. They exist only in Registry, never in an image.
+const (
+	FixtureActive     = "zz-fixture" // active; its own nav labels ("Exercises"), no mock
+	FixturePreview    = "zz-preview" // preview: hidden outside the cohort
+	FixtureComingSoon = "zz-soon"    // coming_soon: catalog only
+	FixtureRetired    = "zz-retired" // retired: invisible
+)
+
+var (
+	fixturesOnce sync.Once
+	fixtures     map[string]*course.Manifest
+	fixturesErr  error
+)
+
+// Fixtures returns the fixture manifests keyed by slug, strictly decoded and validated.
+func Fixtures(t testing.TB) map[string]*course.Manifest {
+	t.Helper()
+	fixturesOnce.Do(func() { fixtures, fixturesErr = loadFixtures() })
+	if fixturesErr != nil {
+		t.Fatalf("coursetest: fixtures: %v", fixturesErr)
+	}
+	return fixtures
+}
+
+// Registry is the test-only registry: every embedded manifest plus the fixtures. Inject
+// it wherever production code takes a *course.Registry (the gateway, curriculum,
+// identity, coach) to test a second course and each status.
+func Registry(t testing.TB) *course.Registry {
+	t.Helper()
+	ms := maps.Clone(All(t))
+	for s, m := range Fixtures(t) {
+		ms[s] = m
+	}
+	return course.NewRegistry(ms)
+}
+
+func loadFixtures() (map[string]*course.Manifest, error) {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		return nil, fs.ErrNotExist
+	}
+	dir := filepath.Join(filepath.Dir(file), "..", "testdata", "fixtures")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]*course.Manifest{}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		b, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			return nil, err
+		}
+		m, err := course.DecodeManifest(b)
+		if err != nil {
+			return nil, err
+		}
+		if err := m.Validate(); err != nil {
+			return nil, err
+		}
+		out[m.Slug] = m
+	}
+	return out, nil
 }

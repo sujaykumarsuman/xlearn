@@ -24,6 +24,7 @@ type problemHarness struct {
 	gwServer            *httptest.Server
 	practiceAuthErr     error  // last verify error the fake practice saw
 	lastPracticePath    string // last path (incl. query) the fake practice received
+	lastPracticeQuery   string // last raw query the fake practice's writes received (m1-03: path=<course>)
 	lastPracticeMethod  string
 	practiceStateStatus int  // status the fake practice GET /state/{id} returns (default 200)
 	notEnrolled         bool // when set, the fake identity reports acct-1 as NOT started (gate → 403)
@@ -89,6 +90,17 @@ func newProblemHarness(t *testing.T) *problemHarness {
 			"problems": []any{map[string]any{"id": "16", "difficulty": "med", "is_reinforcement": false}},
 		})
 	})
+	// Bulk metadata: the practice writes resolve the item's course here (m1-03). Every
+	// id is a DSA item except "404", which curriculum doesn't know.
+	curriculumMux.HandleFunc("GET /problems", func(w http.ResponseWriter, r *http.Request) {
+		problems := []any{}
+		for _, id := range strings.Split(r.URL.Query().Get("ids"), ",") {
+			if id != "" && id != "404" {
+				problems = append(problems, map[string]any{"id": id, "path_slug": "dsa", "title": "P" + id})
+			}
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"problems": problems})
+	})
 	curriculum := httptest.NewServer(curriculumMux)
 	t.Cleanup(curriculum.Close)
 
@@ -103,7 +115,7 @@ func newProblemHarness(t *testing.T) *problemHarness {
 	}
 	practiceMux := http.NewServeMux()
 	practiceMux.HandleFunc("GET /state/{problemId}", func(w http.ResponseWriter, r *http.Request) {
-		h.lastPracticePath, h.lastPracticeMethod = r.URL.Path, r.Method
+		h.lastPracticePath, h.lastPracticeMethod, h.lastPracticeQuery = r.URL.Path, r.Method, r.URL.RawQuery
 		if !verify(r) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
@@ -132,7 +144,7 @@ func newProblemHarness(t *testing.T) *problemHarness {
 		}})
 	})
 	practiceMux.HandleFunc("POST /problems/{id}/attempt/start", func(w http.ResponseWriter, r *http.Request) {
-		h.lastPracticePath, h.lastPracticeMethod = r.URL.Path, r.Method
+		h.lastPracticePath, h.lastPracticeMethod, h.lastPracticeQuery = r.URL.Path, r.Method, r.URL.RawQuery
 		if !verify(r) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
@@ -140,7 +152,7 @@ func newProblemHarness(t *testing.T) *problemHarness {
 		_ = json.NewEncoder(w).Encode(map[string]any{"state": map[string]any{"problemId": r.PathValue("id"), "status": "attempting"}})
 	})
 	practiceMux.HandleFunc("POST /problems/{id}/reveal", func(w http.ResponseWriter, r *http.Request) {
-		h.lastPracticePath, h.lastPracticeMethod = r.URL.Path, r.Method
+		h.lastPracticePath, h.lastPracticeMethod, h.lastPracticeQuery = r.URL.Path, r.Method, r.URL.RawQuery
 		if !verify(r) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
@@ -152,7 +164,7 @@ func newProblemHarness(t *testing.T) *problemHarness {
 		})
 	})
 	practiceMux.HandleFunc("POST /problems/{id}/outcome", func(w http.ResponseWriter, r *http.Request) {
-		h.lastPracticePath, h.lastPracticeMethod = r.URL.Path, r.Method
+		h.lastPracticePath, h.lastPracticeMethod, h.lastPracticeQuery = r.URL.Path, r.Method, r.URL.RawQuery
 		if !verify(r) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
@@ -264,6 +276,10 @@ func TestBFFAttemptStartProxies(t *testing.T) {
 	}
 	if h.lastPracticeMethod != http.MethodPost || h.lastPracticePath != "/problems/16/attempt/start" {
 		t.Fatalf("practice not called correctly: %s %s", h.lastPracticeMethod, h.lastPracticePath)
+	}
+	// m1-03: the write carries the item's course (from curriculum's path_slug).
+	if h.lastPracticeQuery != "path=dsa" {
+		t.Fatalf("practice write query = %q, want path=dsa", h.lastPracticeQuery)
 	}
 	if h.practiceAuthErr != nil {
 		t.Fatalf("practice verify error: %v", h.practiceAuthErr)

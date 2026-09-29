@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { EmptyState, ErrorState, LoadingState } from "../components/States";
+import { coursePath, useCourse, useCourseSlug } from "../lib/course";
 import type { Problem } from "../lib/curriculum";
 import { usePathProblems } from "../lib/curriculum";
 import { useProgress } from "../lib/progress";
@@ -12,22 +13,23 @@ const DIFF: Record<Problem["difficulty"], { cls: string; label: string }> = {
 };
 
 /**
- * Problems (`/xlearn/dsa/problems`): the practice ARENA (review round 2). A flat, by-week
- * list of every course problem — you can open + attempt ANY of them here, decoupled from
- * the curriculum timeline. Only your current week (and due revisions) counts toward the
- * course; problems ahead of it are free practice and won't count until the schedule
- * reaches them. That gate is enforced server-side; this screen just labels it.
+ * Problems (`/xlearn/:course/problems`): the practice ARENA (review round 2). A flat,
+ * by-week list of every course problem — you can open + attempt ANY of them here,
+ * decoupled from the curriculum timeline. Only your current week (and due revisions)
+ * counts toward the course; problems ahead of it are free practice and won't count until
+ * the schedule reaches them. That gate is enforced server-side; this screen just labels it.
  */
 export default function Problems() {
-  const problems = usePathProblems("dsa");
-  const progress = useProgress();
+  const course = useCourse();
+  const problems = usePathProblems(course.slug);
+  const progress = useProgress(course.slug);
   const frontier = progress.data?.enrolled ? progress.data.currentWeek : 0;
 
   return (
     <>
       <div className="xl-page-h">
         <div>
-          <div className="xl-eyebrow">Data Structures &amp; Algorithms</div>
+          <div className="xl-eyebrow">{course.path?.title}</div>
           <h1 style={{ marginTop: 6 }}>Problems</h1>
           <p>
             The practice arena — open and attempt any problem in the course. Your{" "}
@@ -93,10 +95,11 @@ function ByWeek({ problems, frontier }: { problems: Problem[]; frontier: number 
 }
 
 function ProblemRow({ problem, first }: { problem: Problem; first: boolean }) {
+  const slug = useCourseSlug();
   const d = DIFF[problem.difficulty];
   return (
     <Link
-      to={`/dsa/problem/${encodeURIComponent(problem.id)}?practice=1`}
+      to={`${coursePath(slug, "problem", problem.id)}?practice=1`}
       style={{
         display: "flex",
         alignItems: "center",

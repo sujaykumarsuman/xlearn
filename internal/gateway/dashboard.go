@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 )
 
 // This file is the Dashboard "Today" BFF aggregation (api.md GET /dashboard `agg`,
@@ -22,8 +24,15 @@ import (
 // newWorkLimit caps how many new problems the plan suggests after the reviews.
 const newWorkLimit = 3
 
-// mockW13Target is the R-MK3 readiness target used for the "Mock best" tile's check.
-const mockW13Target = 24
+// mockW13Target is the course's R-MK3 week-13 readiness target (its manifest's
+// mock.targets.w13; DSA's is v1's 24), used for the "Mock best" tile's check. A course
+// without a mock has no target (0).
+func mockW13Target(m *course.Manifest) int {
+	if m == nil || m.Mock == nil {
+		return 0
+	}
+	return m.Mock.Targets.W13
+}
 
 // --- composed output shapes ---
 
@@ -97,14 +106,22 @@ type summaryDoc struct {
 	} `json:"mock"`
 }
 
-// handleDashboard composes the "Today" home from the assessment projections, the review
-// queue/weak-area, and the curriculum taxonomy.
+// handleDashboard composes a course's "Today" from the assessment projections, the review
+// queue/weak-area, and the curriculum taxonomy. Course-scoped: GET /paths/{slug}/dashboard
+// (and the DSA alias /dashboard); every upstream call carries the course, and the cache
+// entry is per course.
 func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := g.authAccount(w, r)
 	if !ok {
 		return
 	}
-	if cached, ok := g.cache.get(accountID, "dashboard"); ok {
+	slug := r.PathValue("slug")
+	m, ok := g.requireCourse(w, r, slug)
+	if !ok {
+		return
+	}
+	cacheName := "dashboard:" + slug
+	if cached, ok := g.cache.get(accountID, cacheName); ok {
 		passthrough(w, http.StatusOK, cached)
 		return
 	}
@@ -127,8 +144,8 @@ func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
 
 	if g.assessment != nil && aToken != "" {
 		wg.Add(2)
-		go g.fanGet(r, &wg, g.assessment.get, aToken, "/progress/summary", &summaryRaw)
-		go g.fanGet(r, &wg, g.assessment.get, aToken, "/progress/mastery", &masteryRaw)
+		go g.fanGet(r, &wg, g.assessment.get, aToken, withPath("/progress/summary", slug), &summaryRaw)
+		go g.fanGet(r, &wg, g.assessment.get, aToken, withPath("/progress/mastery", slug), &masteryRaw)
 	}
 	if g.review != nil && rToken != "" {
 		wg.Add(3)
@@ -136,7 +153,7 @@ func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(r.Context(), aggCallTimeout)
 			defer cancel()
-			if body, status, err := g.review.get(ctx, rToken, "/revisions/due"); err == nil && status == http.StatusOK {
+			if body, status, err := g.review.get(ctx, rToken, withPath("/revisions/due", slug)); err == nil && status == http.StatusOK {
 				dueRaw = g.enrichDueQueue(ctx, body)
 			}
 		}()
@@ -144,7 +161,7 @@ func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(r.Context(), aggCallTimeout)
 			defer cancel()
-			if body, status, err := g.review.get(ctx, rToken, "/weak-area/current"); err == nil && status == http.StatusOK {
+			if body, status, err := g.review.get(ctx, rToken, withPath("/weak-area/current", slug)); err == nil && status == http.StatusOK {
 				weakAreaRaw = g.enrichMistakeEnvelope(ctx, body, "entries")
 			}
 		}()
@@ -163,7 +180,7 @@ func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(r.Context(), aggCallTimeout)
 			defer cancel()
-			if body, status, err := g.curriculum.get(ctx, "/paths/dsa"); err == nil && status == http.StatusOK {
+			if body, status, err := g.curriculum.get(ctx, "/paths/"+url.PathEscape(slug)); err == nil && status == http.StatusOK {
 				roadmapRaw = body
 			}
 		}()
@@ -171,7 +188,7 @@ func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(r.Context(), aggCallTimeout)
 			defer cancel()
-			if body, status, err := g.curriculum.get(ctx, "/paths/dsa/problems"); err == nil && status == http.StatusOK {
+			if body, status, err := g.curriculum.get(ctx, "/paths/"+url.PathEscape(slug)+"/problems"); err == nil && status == http.StatusOK {
 				problemsRaw = body
 			}
 		}()
@@ -212,7 +229,7 @@ func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		Streak:       summary.Streak,
 		Solved:       dashSolved{Count: summary.Solved, Total: pick(roadmap.Path.ProblemTotal, summary.Total)},
 		RevisionsDue: dueCount,
-		Mock:         dashMock{Best: summary.Mock.Best, Last: summary.Mock.Last, Count: summary.Mock.Count, Target: mockW13Target},
+		Mock:         dashMock{Best: summary.Mock.Best, Last: summary.Mock.Last, Count: summary.Mock.Count, Target: mockW13Target(m)},
 	}
 
 	plan := buildPlan(dueItems, weekProblems, statuses)
@@ -237,7 +254,7 @@ func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	// caching it would pin that degraded snapshot for the whole TTL even after the
 	// upstream recovers. Skip the cache and recompute next time instead.
 	if len(summaryRaw) > 0 && len(problemsRaw) > 0 {
-		g.cache.putFresh(accountID, "dashboard", body, cacheEpoch)
+		g.cache.putFresh(accountID, cacheName, body, cacheEpoch)
 	}
 	passthrough(w, http.StatusOK, body)
 }

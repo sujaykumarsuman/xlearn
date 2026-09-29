@@ -31,23 +31,26 @@ func (q *Queries) GetThread(ctx context.Context, arg GetThreadParams) (pgtype.UU
 }
 
 const upsertThread = `-- name: UpsertThread :one
-INSERT INTO coach.coach_thread (account_id, page_context)
-VALUES ($1, $2)
+INSERT INTO coach.coach_thread AS t (account_id, page_context, path_slug)
+VALUES ($1, $2, $3)
 ON CONFLICT (account_id, page_context) DO UPDATE
-SET page_context = EXCLUDED.page_context
+SET path_slug = COALESCE(t.path_slug, EXCLUDED.path_slug)
 RETURNING id
 `
 
 type UpsertThreadParams struct {
 	AccountID   pgtype.UUID
 	PageContext string
+	PathSlug    pgtype.Text
 }
 
-// Get-or-create the thread for (account, page context). The no-op DO UPDATE makes the
-// existing row's id come back via RETURNING on a conflict, so concurrent first-messages
-// on the same page can't create duplicate threads (UNIQUE(account_id, page_context)).
+// Get-or-create the thread for (account, page context), labelled with its course
+// (path_slug; NULL for an account-wide context). The DO UPDATE always fires, so the
+// existing row's id comes back via RETURNING on a conflict and concurrent first-messages
+// on the same page can't create duplicate threads (UNIQUE(account_id, page_context)). It
+// keeps an existing path_slug and fills a NULL one (a thread written before m1-03).
 func (q *Queries) UpsertThread(ctx context.Context, arg UpsertThreadParams) (pgtype.UUID, error) {
-	row := q.db.QueryRow(ctx, upsertThread, arg.AccountID, arg.PageContext)
+	row := q.db.QueryRow(ctx, upsertThread, arg.AccountID, arg.PageContext, arg.PathSlug)
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err

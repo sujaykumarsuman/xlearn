@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Icon } from "../components/Icon";
+import { coursePath, useCourseSlug } from "../lib/course";
 import {
   TOUCH_DOT_LABELS,
   dayLabelFor,
@@ -24,14 +25,15 @@ const DIFF_CLASS: Record<RevisionProblem["difficulty"], string> = {
 const DIFF_LABEL: Record<RevisionProblem["difficulty"], string> = { easy: "Easy", med: "Medium", hard: "Hard" };
 
 /**
- * Revision (`/xlearn/dsa/revision`): the prioritised five-touch queue backed by the BFF
- * agg (GET /revision/due). Reviews are re-solves from a blank editor, not re-reads, and
- * they take priority over new problems (R-SR5). Each re-solve runs on a 20:00 timer and
- * is auto-scored (R-SR2): a pass advances the touch (Day 1→3→7→21→45), a miss resets it
- * to Day 1 (R-SR3). Day 21 & 45 run under mock conditions (R-SR4).
+ * Revision (`/xlearn/:course/revision`): the course's prioritised five-touch queue backed
+ * by the BFF agg (GET /paths/{course}/revision/due). Reviews are re-solves from a blank
+ * editor, not re-reads, and they take priority over new problems (R-SR5). Each re-solve
+ * runs on a 20:00 timer and is auto-scored (R-SR2): a pass advances the touch (Day
+ * 1→3→7→21→45), a miss resets it to Day 1 (R-SR3). Day 21 & 45 run under mock
+ * conditions (R-SR4).
  */
 export default function Revision() {
-  const q = useDueRevision();
+  const q = useDueRevision(useCourseSlug());
 
   return (
     <div>
@@ -66,6 +68,7 @@ export default function Revision() {
 
 function Queue({ items }: { items: DueItem[] }) {
   const qc = useQueryClient();
+  const slug = useCourseSlug();
   const [active, setActive] = useState<string | null>(null);
   const [result, setResult] = useState<ScoreResult | null>(null);
 
@@ -94,7 +97,7 @@ function Queue({ items }: { items: DueItem[] }) {
     setActive(null);
     setResult(null);
     scoreM.reset();
-    qc.invalidateQueries({ queryKey: ["revision", "due"] });
+    qc.invalidateQueries({ queryKey: ["revision", "due", slug] });
   };
 
   const firstDue = dueItems[0];
@@ -140,7 +143,7 @@ function Queue({ items }: { items: DueItem[] }) {
                 New problems unlock while the queue is empty. Solve one and its five touches schedule automatically.
               </div>
             </div>
-            <Link className="ds-btn ds-btn--secondary ds-btn--sm" to="/dsa" style={{ marginLeft: "auto" }}>
+            <Link className="ds-btn ds-btn--secondary ds-btn--sm" to={coursePath(slug)} style={{ marginLeft: "auto" }}>
               Roadmap
             </Link>
           </div>
@@ -221,12 +224,13 @@ function ReviewCard({ item, isActive, result, submitting, onStart, onSubmit, onD
 }
 
 function ProblemLine({ item }: { item: DueItem }) {
+  const slug = useCourseSlug();
   const p = item.problem;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
       <span className="ds-mono" style={{ fontSize: 12, color: "var(--ds-muted)" }}>#{item.problemId}</span>
       <Link
-        to={`/dsa/problem/${encodeURIComponent(item.problemId)}`}
+        to={coursePath(slug, "problem", item.problemId)}
         style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ds-text)", textDecoration: "none" }}
       >
         {p?.title ?? `Problem ${item.problemId}`}
@@ -393,6 +397,7 @@ function ScoreCheck({ label, hint, checked, ok, onToggle }: { label: string; hin
 }
 
 function ResultPanel({ result, onDone }: { result: ScoreResult; onDone: () => void }) {
+  const slug = useCourseSlug();
   const pass = result.autoPass;
   return (
     <div className="xl-panel__b" style={{ padding: 16 }}>
@@ -416,7 +421,7 @@ function ResultPanel({ result, onDone }: { result: ScoreResult; onDone: () => vo
         <button type="button" className="ds-btn ds-btn--primary ds-btn--sm" onClick={onDone}>
           Next review
         </button>
-        <Link className="ds-btn ds-btn--secondary ds-btn--sm" to={`/dsa/problem/${encodeURIComponent(result.problemId)}`}>
+        <Link className="ds-btn ds-btn--secondary ds-btn--sm" to={coursePath(slug, "problem", result.problemId)}>
           Open #{result.problemId}
         </Link>
       </div>

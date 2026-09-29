@@ -112,13 +112,13 @@ SELECT outcome, cnt FROM assessment.proj_outcome_mix
 WHERE account_id = $1;
 
 -- name: MockAggregate :one
--- Scored-mock roll-up for the Progress + Dashboard tiles: how many, the average /35, and
--- the best /35. `last`/`delta` come from the ordered trend in Go. The total is read as
--- COALESCE(total, total_35) (m1-02, M1a: total is dual-written beside total_35, which
--- M1c drops).
+-- Scored-mock roll-up for the Progress + Dashboard tiles in one course (m1-03: never
+-- averaged across courses, whose rubrics differ): how many, the average total and the
+-- best total. `last`/`delta` come from the ordered trend in Go. Reads total only: it is
+-- backfilled for every v1 row (m1-02) and dual-written since v1.6.0.
 SELECT
-    COUNT(*)                                                 AS scored_count,
-    COALESCE(ROUND(AVG(COALESCE(total, total_35))), 0)::int AS average_35,
-    COALESCE(MAX(COALESCE(total, total_35)), 0)::int        AS best_35
+    COUNT(*)                                 AS scored_count,
+    COALESCE(ROUND(AVG(total)), 0)::int AS average_total,
+    COALESCE(MAX(total), 0)::int        AS best_total
 FROM assessment.mock_session
-WHERE account_id = $1 AND status = 'scored';
+WHERE account_id = $1 AND path_slug = $2 AND status = 'scored';

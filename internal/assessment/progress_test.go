@@ -60,11 +60,11 @@ func TestProgressSummaryHandler(t *testing.T) {
 		outcomeMix: func(context.Context, string) (map[string]int, error) {
 			return map[string]int{"clean": 15, "rough": 7, "assisted": 4, "miss": 2}, nil
 		},
-		mockStats: func(context.Context, string) (store.MockStats, error) {
+		mockStats: func(context.Context, string, string) (store.MockStats, error) {
 			return store.MockStats{Count: 3, Average: 22, Best: 24}, nil
 		},
-		trend: func(context.Context, string) ([]store.TrendPoint, error) {
-			return []store.TrendPoint{{Total35: 20}, {Total35: 22}, {Total35: 24}}, nil
+		trend: func(context.Context, string, string) ([]store.TrendPoint, error) {
+			return []store.TrendPoint{{Total: 20}, {Total: 22}, {Total: 24}}, nil
 		},
 		heatmap: func(context.Context, string, time.Time) ([]store.HeatmapDay, error) {
 			return []store.HeatmapDay{

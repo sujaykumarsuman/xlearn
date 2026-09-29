@@ -9,7 +9,6 @@ package store
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -18,7 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/sujaykumarsuman/xlearn/internal/course"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 	"github.com/sujaykumarsuman/xlearn/internal/practice/store/gen"
 )
 
@@ -54,12 +53,14 @@ const (
 )
 
 // Event subjects + envelope version (events.md). The relay publishes these to the
-// XLEARN_PRACTICE JetStream stream.
+// XLEARN_PRACTICE JetStream stream. Every practice subject is course-scoped, so since
+// m1-03 (M1b) each is a v2 envelope carrying the problem state's path_slug (the
+// v1.6.0 consumers already decode v2, m1-02).
 const (
 	SubjectProblemSolved         = "xlearn.practice.problem_solved"
 	SubjectAttemptLogged         = "xlearn.practice.attempt_logged"
 	SubjectSolutionRevealedEarly = "xlearn.practice.solution_revealed_early"
-	eventVersion                 = 1
+	eventVersion                 = events.EnvelopeV2
 )
 
 // contentStages is the ordered content ladder used to build UnlockedStages.
@@ -126,8 +127,10 @@ type Store interface {
 	// has a row for; problems without a row are absent (the caller defaults them).
 	ListStates(ctx context.Context, accountID string, problemIDs []string) (map[string]State, error)
 	// StartAttempt creates or resumes the attempt, starting the 15-min timer, and
-	// moves the problem to "attempting" — all in one transaction.
-	StartAttempt(ctx context.Context, accountID, problemID string) (State, error)
+	// moves the problem to "attempting" — all in one transaction. pathSlug is the
+	// problem's course (the gateway's `?path=`), written when the problem state row is
+	// CREATED; a resume keeps the row's own course.
+	StartAttempt(ctx context.Context, accountID, problemID, pathSlug string) (State, error)
 	// Reveal unlocks the next content stage (hint → solution), starting the hint
 	// timer, and — if the solution is revealed early — flags it and emits
 	// solution_revealed_early via the outbox, in one transaction.
@@ -201,10 +204,15 @@ func (s *PgStore) ListStates(ctx context.Context, accountID string, problemIDs [
 }
 
 // StartAttempt creates or resumes an attempt in one transaction.
-func (s *PgStore) StartAttempt(ctx context.Context, accountID, problemID string) (State, error) {
+func (s *PgStore) StartAttempt(ctx context.Context, accountID, problemID, pathSlug string) (State, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return State{}, ErrNotFound
+	}
+	if pathSlug == "" {
+		// Never write '' or lean on the column default (m1-08 drops it): the handler
+		// always resolves a course.
+		return State{}, errors.New("practice: start attempt without a course")
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -213,8 +221,9 @@ func (s *PgStore) StartAttempt(ctx context.Context, accountID, problemID string)
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.q.WithTx(tx)
 
-	// Every v1 practice row is DSA; M1b's course-scoped routes pass the course in.
-	ups, err := qtx.UpsertUserProblemState(ctx, gen.UpsertUserProblemStateParams{AccountID: aid, ProblemID: problemID, PathSlug: course.DSASlug})
+	// The course is written explicitly on create; the upsert's conflict branch leaves
+	// an existing row's course alone (a resume keeps it).
+	ups, err := qtx.UpsertUserProblemState(ctx, gen.UpsertUserProblemStateParams{AccountID: aid, ProblemID: problemID, PathSlug: pathSlug})
 	if err != nil {
 		return State{}, fmt.Errorf("upsert state: %w", err)
 	}
@@ -337,7 +346,7 @@ func (s *PgStore) Reveal(ctx context.Context, accountID, problemID string) (Reve
 			if err := qtx.SetAttemptRevealedEarly(ctx, att.ID); err != nil {
 				return RevealResult{}, fmt.Errorf("set revealed early: %w", err)
 			}
-			if err := insertEvent(ctx, qtx, SubjectSolutionRevealedEarly, accountID, map[string]any{
+			if err := insertEvent(ctx, qtx, SubjectSolutionRevealedEarly, accountID, ups.PathSlug, map[string]any{
 				"problem_id": problemID,
 			}); err != nil {
 				return RevealResult{}, err
@@ -417,7 +426,7 @@ func (s *PgStore) LogOutcome(ctx context.Context, accountID, problemID, value st
 
 	// problem_solved — review schedules five-touch (on first clean solve) and opens
 	// a mistake when below_clean; assessment updates coverage/mastery projections.
-	if err := insertEvent(ctx, qtx, SubjectProblemSolved, accountID, map[string]any{
+	if err := insertEvent(ctx, qtx, SubjectProblemSolved, accountID, ups.PathSlug, map[string]any{
 		"problem_id":  problemID,
 		"outcome":     value,
 		"first_solve": firstSolve,
@@ -426,7 +435,7 @@ func (s *PgStore) LogOutcome(ctx context.Context, accountID, problemID, value st
 		return State{}, err
 	}
 	// attempt_logged — assessment updates outcome-mix / coverage projections.
-	if err := insertEvent(ctx, qtx, SubjectAttemptLogged, accountID, map[string]any{
+	if err := insertEvent(ctx, qtx, SubjectAttemptLogged, accountID, ups.PathSlug, map[string]any{
 		"problem_id":    problemID,
 		"stage_reached": att.StageReached,
 		"duration_s":    durationS,
@@ -583,11 +592,13 @@ func validOutcome(v string) bool {
 	return false
 }
 
-// insertEvent marshals the events.md envelope and appends it to the outbox inside
-// the caller's transaction (transactional outbox — never published inline).
-func insertEvent(ctx context.Context, qtx *gen.Queries, subject, accountID string, data map[string]any) error {
+// insertEvent marshals the event envelope — v2, carrying pathSlug (the problem state's
+// course); events.NewEnvelope also enforces the size cap — and appends it to the
+// outbox inside the caller's transaction (transactional outbox — never published
+// inline). occurred_at is the write time, as in v1.
+func insertEvent(ctx context.Context, qtx *gen.Queries, subject, accountID, pathSlug string, data map[string]any) error {
 	eventID := newUUIDv4()
-	payload, err := marshalEnvelope(eventID, subject, accountID, data)
+	payload, err := events.NewEnvelope(eventVersion, eventID, subject, accountID, pathSlug, time.Now(), data)
 	if err != nil {
 		return fmt.Errorf("marshal %s: %w", subject, err)
 	}
@@ -604,16 +615,4 @@ func insertEvent(ctx context.Context, qtx *gen.Queries, subject, accountID strin
 		return fmt.Errorf("insert outbox %s: %w", subject, err)
 	}
 	return nil
-}
-
-// marshalEnvelope builds the events.md event envelope.
-func marshalEnvelope(eventID, subject, accountID string, data map[string]any) ([]byte, error) {
-	return json.Marshal(map[string]any{
-		"event_id":    eventID,
-		"subject":     subject,
-		"occurred_at": time.Now().UTC().Format(time.RFC3339Nano),
-		"version":     eventVersion,
-		"account_id":  accountID,
-		"data":        data,
-	})
 }

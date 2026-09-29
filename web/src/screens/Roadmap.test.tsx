@@ -79,4 +79,23 @@ describe("Roadmap screen", () => {
     // Overall progress is a placeholder until practice state exists.
     expect(screen.getByText("0 / 151 solved")).toBeInTheDocument();
   });
+
+  it("builds the page header from data, identical to v1 for DSA (AB02-F1)", async () => {
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.endsWith("/api/paths/dsa")) return { status: 200, body: DSA };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/dsa");
+
+    await screen.findByRole("heading", { name: "Fundamentals" });
+    const header = document.querySelector(".xl-page-h")!;
+    expect(header.querySelector(".xl-eyebrow")?.textContent).toBe("Learning path · /xlearn/dsa");
+    expect(header.querySelector("h1")?.textContent).toBe("Data Structures & Algorithms");
+    expect(header.querySelector("p")?.textContent).toBe(
+      "16 weeks · 4 phases · 151 problems · Go-first. The method is enforced: sequential unlocks, timed practice, and five-touch spaced revision.",
+    );
+    expect(screen.getByRole("link", { name: /start today's plan/i })).toHaveAttribute("href", "/xlearn/dsa/dashboard");
+    expect(screen.getByRole("link", { name: /Week 1 · Arrays/ })).toHaveAttribute("href", "/xlearn/dsa/week/1");
+  });
 });

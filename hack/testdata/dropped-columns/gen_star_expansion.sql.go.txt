@@ -1,0 +1,15 @@
+// lint-expect: 1
+// lint-as: internal/assessment/store/gen/mock_session.sql.go
+// A sqlc-generated file whose `SELECT *` expanded to a drop-list column: the query
+// file never names it, the generated SQL does.
+
+package gen
+
+const getMockSession = `-- name: GetMockSession :one
+SELECT id, account_id, status, total_35, total, max_total FROM assessment.mock_session
+WHERE id = $1 AND account_id = $2
+`
+
+type GetMockSessionRow struct {
+	Total35 pgtype.Int4
+}

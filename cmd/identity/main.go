@@ -20,6 +20,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/identity"
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
@@ -66,7 +67,14 @@ func run() int {
 
 	st := store.New(pool)
 	verifier := auth.NewJWKSVerifier(cfg.JWT.JWKSURL, cfg.JWT.Audience, cfg.JWT.Issuer)
-	svc := identity.NewService(cfg, st, verifier, logger)
+	// The compiled-in course manifests enrollment validates against (m1-03). A bad
+	// manifest fails the boot, not a request.
+	courses, err := course.LoadEmbedded()
+	if err != nil {
+		logger.Error("load course manifests; refusing to serve", "err", err)
+		return 1
+	}
+	svc := identity.NewService(cfg, st, verifier, courses, logger)
 
 	handler := httpx.Chain(svc.Handler(),
 		httpx.RequestID,

@@ -17,6 +17,11 @@
 // meaning, in the same transaction, and every reader prefers key_default, falling back to
 // is_default (a default set by v1.5.2 during an R-b). m1-10 makes key_default the only
 // source; M1c drops is_default.
+//
+// v2 M1b (m1-03): a thread's page_context is the normalized key the handlers build
+// (course.NormalizeCoachContext: `<course>:<ctx>` for a course-scoped context), and the
+// thread and each of its messages carry the thread's course in path_slug (NULL for an
+// account-wide context). Migration 00005 moved the v1 rows onto that shape.
 package store
 
 import (
@@ -107,12 +112,14 @@ type Store interface {
 	DeleteKey(ctx context.Context, accountID, provider string) error
 
 	// EnsureThread get-or-creates the thread for (account, page context) and returns its
-	// id (used before appending a message).
-	EnsureThread(ctx context.Context, accountID, pageContext string) (string, error)
+	// id (used before appending a message). pageContext is the normalized thread key
+	// (course.NormalizeCoachContext); pathSlug is the thread's course, "" for NULL (an
+	// account-wide context). An existing thread keeps its path_slug; a NULL one is filled.
+	EnsureThread(ctx context.Context, accountID, pageContext, pathSlug string) (string, error)
 	// ThreadHistory returns the messages for (account, page context) oldest-first, or an
 	// empty slice when the account has never chatted on that page.
 	ThreadHistory(ctx context.Context, accountID, pageContext string) ([]Message, error)
-	// AppendMessage appends a message to a thread.
+	// AppendMessage appends a message to a thread, with the thread's path_slug.
 	AppendMessage(ctx context.Context, threadID, role, content string) error
 
 	Ping(ctx context.Context) error
@@ -381,13 +388,18 @@ func (s *PgStore) DeleteKey(ctx context.Context, accountID, provider string) err
 	return nil
 }
 
-// EnsureThread get-or-creates the (account, page context) thread and returns its id.
-func (s *PgStore) EnsureThread(ctx context.Context, accountID, pageContext string) (string, error) {
+// EnsureThread get-or-creates the (account, page context) thread, labelled with pathSlug
+// ("" = NULL), and returns its id.
+func (s *PgStore) EnsureThread(ctx context.Context, accountID, pageContext, pathSlug string) (string, error) {
 	aid, err := parseUUID(accountID)
 	if err != nil {
 		return "", fmt.Errorf("parse account id: %w", err)
 	}
-	id, err := s.q.UpsertThread(ctx, gen.UpsertThreadParams{AccountID: aid, PageContext: pageContext})
+	id, err := s.q.UpsertThread(ctx, gen.UpsertThreadParams{
+		AccountID:   aid,
+		PageContext: pageContext,
+		PathSlug:    pgtype.Text{String: pathSlug, Valid: pathSlug != ""},
+	})
 	if err != nil {
 		return "", fmt.Errorf("upsert thread: %w", err)
 	}
@@ -419,13 +431,18 @@ func (s *PgStore) ThreadHistory(ctx context.Context, accountID, pageContext stri
 	return out, nil
 }
 
-// AppendMessage appends a message to a thread.
+// AppendMessage appends a message to a thread; the message takes the thread's path_slug.
+// ErrNotFound when the thread doesn't exist.
 func (s *PgStore) AppendMessage(ctx context.Context, threadID, role, content string) error {
 	tid, err := parseUUID(threadID)
 	if err != nil {
 		return fmt.Errorf("parse thread id: %w", err)
 	}
-	if _, err := s.q.InsertMessage(ctx, gen.InsertMessageParams{ThreadID: tid, Role: role, Content: content}); err != nil {
+	_, err = s.q.InsertMessage(ctx, gen.InsertMessageParams{ThreadID: tid, Role: role, Content: content})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
 		return fmt.Errorf("insert message: %w", err)
 	}
 	return nil

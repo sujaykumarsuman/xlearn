@@ -15,16 +15,18 @@ const countOpenMistakesByCategoryInRange = `-- name: CountOpenMistakesByCategory
 SELECT category, count(*) AS n
 FROM review.mistake_entry
 WHERE account_id = $1
+  AND path_slug = $2
   AND status = 'open'
   AND category IS NOT NULL
-  AND created_at >= $2 AND created_at < $3
+  AND created_at >= $3 AND created_at < $4
 GROUP BY category
 `
 
 type CountOpenMistakesByCategoryInRangeParams struct {
 	AccountID   pgtype.UUID
-	CreatedAt   pgtype.Timestamptz
-	CreatedAt_2 pgtype.Timestamptz
+	PathSlug    string
+	WindowStart pgtype.Timestamptz
+	WindowEnd   pgtype.Timestamptz
 }
 
 type CountOpenMistakesByCategoryInRangeRow struct {
@@ -32,11 +34,17 @@ type CountOpenMistakesByCategoryInRangeRow struct {
 	N        int64
 }
 
-// Per-category counts of an account's OPEN entries opened within [start, end) (the
-// week window in the account timezone, computed by the caller). Uncategorised entries
-// (category IS NULL) are excluded — they don't define a weak area until classified.
+// Per-category counts of an account's OPEN entries in one course opened within
+// [window_start, window_end) (the week window in the account timezone, computed by the
+// caller). Uncategorised entries (category IS NULL) are excluded — they don't define a
+// weak area until classified.
 func (q *Queries) CountOpenMistakesByCategoryInRange(ctx context.Context, arg CountOpenMistakesByCategoryInRangeParams) ([]CountOpenMistakesByCategoryInRangeRow, error) {
-	rows, err := q.db.Query(ctx, countOpenMistakesByCategoryInRange, arg.AccountID, arg.CreatedAt, arg.CreatedAt_2)
+	rows, err := q.db.Query(ctx, countOpenMistakesByCategoryInRange,
+		arg.AccountID,
+		arg.PathSlug,
+		arg.WindowStart,
+		arg.WindowEnd,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -76,9 +84,9 @@ type CreateMistakeParams struct {
 	PathSlug     string
 }
 
-// Manually create a journal entry (POST /mistakes). A plain insert: if the learner
-// already has an open entry for the problem the partial unique index rejects it
-// (mapped to 409 by the handler).
+// Manually create a journal entry (POST /mistakes?path=) in the request's course,
+// written explicitly (m1-03). A plain insert: if the learner already has an open entry
+// for the problem the partial unique index rejects it (mapped to 409 by the handler).
 func (q *Queries) CreateMistake(ctx context.Context, arg CreateMistakeParams) (ReviewMistakeEntry, error) {
 	row := q.db.QueryRow(ctx, createMistake,
 		arg.AccountID,
@@ -188,7 +196,7 @@ SET revisit_count = revisit_count + 1,
     status = CASE WHEN revisit_count + 1 >= 2 THEN 'closed' ELSE status END,
     updated_at = now()
 WHERE account_id = $1 AND problem_id = $2 AND status = 'open'
-RETURNING id, problem_id, revisit_count, status
+RETURNING id, problem_id, revisit_count, status, path_slug
 `
 
 type IncrementCleanRevisitParams struct {
@@ -201,12 +209,14 @@ type IncrementCleanRevisitRow struct {
 	ProblemID    string
 	RevisitCount int32
 	Status       string
+	PathSlug     string
 }
 
 // A clean revisit (an auto-passed re-solve for account+problem) increments the open
 // entry's count; at 2 it closes (R-MJ4). Returns the new count + status so the caller
 // emits mistake_closed exactly on the close transition. At most one open row exists
 // (the partial unique index), so this affects a single entry; no open entry → no row.
+// path_slug is the entry's course, which the v2 mistake_closed envelope carries (m1-03).
 func (q *Queries) IncrementCleanRevisit(ctx context.Context, arg IncrementCleanRevisitParams) (IncrementCleanRevisitRow, error) {
 	row := q.db.QueryRow(ctx, incrementCleanRevisit, arg.AccountID, arg.ProblemID)
 	var i IncrementCleanRevisitRow
@@ -215,29 +225,36 @@ func (q *Queries) IncrementCleanRevisit(ctx context.Context, arg IncrementCleanR
 		&i.ProblemID,
 		&i.RevisitCount,
 		&i.Status,
+		&i.PathSlug,
 	)
 	return i, err
 }
 
-const listAccountsWithMistakes = `-- name: ListAccountsWithMistakes :many
-SELECT DISTINCT account_id FROM review.mistake_entry
+const listMistakeScopes = `-- name: ListMistakeScopes :many
+SELECT DISTINCT account_id, path_slug FROM review.mistake_entry
+ORDER BY account_id, path_slug
 `
 
-// Every account that has at least one mistake entry — the recompute job iterates these
-// to build a weak-area snapshot per account.
-func (q *Queries) ListAccountsWithMistakes(ctx context.Context) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, listAccountsWithMistakes)
+type ListMistakeScopesRow struct {
+	AccountID pgtype.UUID
+	PathSlug  string
+}
+
+// Every (account, course) that has at least one mistake entry — the weekly recompute
+// builds one weak-area snapshot per pair (m1-03).
+func (q *Queries) ListMistakeScopes(ctx context.Context) ([]ListMistakeScopesRow, error) {
+	rows, err := q.db.Query(ctx, listMistakeScopes)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []pgtype.UUID{}
+	items := []ListMistakeScopesRow{}
 	for rows.Next() {
-		var account_id pgtype.UUID
-		if err := rows.Scan(&account_id); err != nil {
+		var i ListMistakeScopesRow
+		if err := rows.Scan(&i.AccountID, &i.PathSlug); err != nil {
 			return nil, err
 		}
-		items = append(items, account_id)
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -247,13 +264,19 @@ func (q *Queries) ListAccountsWithMistakes(ctx context.Context) ([]pgtype.UUID, 
 
 const listMistakes = `-- name: ListMistakes :many
 SELECT id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at, path_slug FROM review.mistake_entry
-WHERE account_id = $1
+WHERE account_id = $1 AND path_slug = $2
 ORDER BY created_at DESC
 `
 
-// The journal for an account, newest first (GET /mistakes with no status filter).
-func (q *Queries) ListMistakes(ctx context.Context, accountID pgtype.UUID) ([]ReviewMistakeEntry, error) {
-	rows, err := q.db.Query(ctx, listMistakes, accountID)
+type ListMistakesParams struct {
+	AccountID pgtype.UUID
+	PathSlug  string
+}
+
+// An account's journal in one course, newest first (GET /mistakes?path= with no status
+// filter; m1-03).
+func (q *Queries) ListMistakes(ctx context.Context, arg ListMistakesParams) ([]ReviewMistakeEntry, error) {
+	rows, err := q.db.Query(ctx, listMistakes, arg.AccountID, arg.PathSlug)
 	if err != nil {
 		return nil, err
 	}
@@ -289,18 +312,19 @@ func (q *Queries) ListMistakes(ctx context.Context, accountID pgtype.UUID) ([]Re
 
 const listMistakesByStatus = `-- name: ListMistakesByStatus :many
 SELECT id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at, path_slug FROM review.mistake_entry
-WHERE account_id = $1 AND status = $2
+WHERE account_id = $1 AND path_slug = $2 AND status = $3
 ORDER BY created_at DESC
 `
 
 type ListMistakesByStatusParams struct {
 	AccountID pgtype.UUID
+	PathSlug  string
 	Status    string
 }
 
-// The journal filtered to open|closed (GET /mistakes?status=).
+// An account's journal in one course filtered to open|closed.
 func (q *Queries) ListMistakesByStatus(ctx context.Context, arg ListMistakesByStatusParams) ([]ReviewMistakeEntry, error) {
-	rows, err := q.db.Query(ctx, listMistakesByStatus, arg.AccountID, arg.Status)
+	rows, err := q.db.Query(ctx, listMistakesByStatus, arg.AccountID, arg.PathSlug, arg.Status)
 	if err != nil {
 		return nil, err
 	}
@@ -336,19 +360,20 @@ func (q *Queries) ListMistakesByStatus(ctx context.Context, arg ListMistakesBySt
 
 const listOpenMistakesByCategory = `-- name: ListOpenMistakesByCategory :many
 SELECT id, account_id, problem_id, pattern, mistake, root_cause, insight, category, revisit_date, status, revisit_count, created_at, updated_at, path_slug FROM review.mistake_entry
-WHERE account_id = $1 AND status = 'open' AND category = $2
+WHERE account_id = $1 AND path_slug = $2 AND status = 'open' AND category = $3
 ORDER BY created_at DESC
 `
 
 type ListOpenMistakesByCategoryParams struct {
 	AccountID pgtype.UUID
+	PathSlug  string
 	Category  pgtype.Text
 }
 
 // The supporting entries behind the weak-area banner: an account's open entries in one
-// category, newest first (GET /weak-area).
+// course and category, newest first (GET /weak-area/current?path=).
 func (q *Queries) ListOpenMistakesByCategory(ctx context.Context, arg ListOpenMistakesByCategoryParams) ([]ReviewMistakeEntry, error) {
-	rows, err := q.db.Query(ctx, listOpenMistakesByCategory, arg.AccountID, arg.Category)
+	rows, err := q.db.Query(ctx, listOpenMistakesByCategory, arg.AccountID, arg.PathSlug, arg.Category)
 	if err != nil {
 		return nil, err
 	}

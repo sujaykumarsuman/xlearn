@@ -3,24 +3,12 @@ import { Link } from "react-router-dom";
 import { Icon, type IconName } from "../components/Icon";
 import { EmptyState, ErrorState, LoadingState } from "../components/States";
 import { useMe, type Me } from "../lib/auth";
+import { coursePath, languageNote } from "../lib/course";
+import { courseIcon } from "../lib/courseIcons";
 import type { Path } from "../lib/curriculum";
 import { usePaths } from "../lib/curriculum";
 import { useDashboard } from "../lib/dashboard";
 import { currentDay, enrollmentFor, useStartPath } from "../lib/enrollment";
-
-// Per-path display icon (presentation only; the API drives which paths exist).
-const PATH_ICON: Record<string, IconName> = {
-  dsa: "code",
-  "system-design": "server",
-  "go-concurrency": "branch",
-  "lld-ood": "layers",
-  sql: "db",
-  behavioral: "chat",
-};
-
-function pathIcon(slug: string): IconName {
-  return PATH_ICON[slug] ?? "grid";
-}
 
 /** Catalog (`/xlearn`): the sidebar-less home — a bare list of paths to pick (F001).
  *  The active path is enrollment-aware (F002): "Start path" until started, then a
@@ -118,10 +106,11 @@ function ActivePathCard({ path, me }: { path: Path; me: Me | undefined }) {
   const enrollment = enrollmentFor(me, path.slug);
   const started = enrollment !== null;
   const startPath = useStartPath();
-  // The Day/streak/today summary reuses the Dashboard agg — fetched only once started
-  // (and only for the real DSA path the agg is pinned to).
-  const dash = useDashboard(started && path.slug === "dsa");
+  // The Day/streak/today summary reuses the course's own Dashboard agg, fetched only once
+  // the course is started.
+  const dash = useDashboard(path.slug, started);
   const day = currentDay(enrollment);
+  const lang = languageNote(path.course);
 
   return (
     <div
@@ -139,7 +128,7 @@ function ActivePathCard({ path, me }: { path: Path; me: Me | undefined }) {
           flex: "none",
         }}
       >
-        <Icon name={pathIcon(path.slug)} className="xl-ico--lg" />
+        <Icon name={courseIcon(path.slug)} className="xl-ico--lg" />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 5 }}>
@@ -162,7 +151,7 @@ function ActivePathCard({ path, me }: { path: Path; me: Me | undefined }) {
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 18, marginTop: 14 }}>
             <span className="ds-mono" style={{ fontSize: 12, color: "var(--ds-muted)" }}>
-              {path.week_total} weeks · {path.problem_total} problems · Go-first
+              {path.week_total} weeks · {path.problem_total} problems{lang && ` · ${lang}`}
             </span>
           </div>
         )}
@@ -170,7 +159,7 @@ function ActivePathCard({ path, me }: { path: Path; me: Me | undefined }) {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: "none" }}>
         {started ? (
-          <Link className="ds-btn ds-btn--primary" to={`/${path.slug}/dashboard`}>
+          <Link className="ds-btn ds-btn--primary" to={coursePath(path.slug, "dashboard")}>
             <Icon name="play" className="xl-ico--sm" /> Continue
           </Link>
         ) : (
@@ -184,7 +173,7 @@ function ActivePathCard({ path, me }: { path: Path; me: Me | undefined }) {
             {startPath.isPending ? "Starting…" : "Start path"}
           </button>
         )}
-        <Link className="ds-btn ds-btn--secondary ds-btn--sm" to={`/${path.slug}`}>
+        <Link className="ds-btn ds-btn--secondary ds-btn--sm" to={coursePath(path.slug)}>
           View roadmap
         </Link>
         {startPath.isError && (
@@ -281,7 +270,7 @@ function ComingSoonCard({ path }: { path: Path }) {
             placeItems: "center",
           }}
         >
-          <Icon name={pathIcon(path.slug)} />
+          <Icon name={courseIcon(path.slug)} />
         </div>
         <span className="xl-lock">
           <Icon name="lock" className="xl-ico--sm" /> Coming soon

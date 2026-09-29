@@ -12,7 +12,7 @@ import (
 type fakeStore struct {
 	getState   func(ctx context.Context, accountID, problemID string) (store.State, error)
 	listStates func(ctx context.Context, accountID string, ids []string) (map[string]store.State, error)
-	start      func(ctx context.Context, accountID, problemID string) (store.State, error)
+	start      func(ctx context.Context, accountID, problemID, pathSlug string) (store.State, error)
 	reveal     func(ctx context.Context, accountID, problemID string) (store.RevealResult, error)
 	logOutcome func(ctx context.Context, accountID, problemID, value string) (store.State, error)
 	pingErr    error
@@ -26,8 +26,8 @@ func (f *fakeStore) ListStates(ctx context.Context, a string, ids []string) (map
 	return f.listStates(ctx, a, ids)
 }
 
-func (f *fakeStore) StartAttempt(ctx context.Context, a, p string) (store.State, error) {
-	return f.start(ctx, a, p)
+func (f *fakeStore) StartAttempt(ctx context.Context, a, p, path string) (store.State, error) {
+	return f.start(ctx, a, p, path)
 }
 
 func (f *fakeStore) Reveal(ctx context.Context, a, p string) (store.RevealResult, error) {

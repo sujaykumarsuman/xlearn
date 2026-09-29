@@ -1,0 +1,10 @@
+// lint-expect: 0
+// lint-as: internal/coach/store/gen/api_key_config.sql.go
+// coach's generated SQL may read is_default until m1-10 (its `SELECT *` expands to it).
+
+package gen
+
+const getKey = `-- name: GetKey :one
+SELECT id, account_id, provider, is_default, created_at FROM coach.api_key_config
+WHERE id = $1
+`

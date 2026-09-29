@@ -49,7 +49,7 @@ describe("Progress", () => {
   it("renders the tiles, phase completion, pattern mastery and outcome mix", async () => {
     installFetchMock((url) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
-      if (url.includes("/api/progress")) return { status: 200, body: PROGRESS };
+      if (url.includes("/api/paths/dsa/progress")) return { status: 200, body: PROGRESS };
       return { status: 404 };
     });
     renderApp("/xlearn/dsa/progress");
@@ -74,7 +74,7 @@ describe("Progress", () => {
   it("shows the empty mock-trend state with no scored mocks", async () => {
     installFetchMock((url) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
-      if (url.includes("/api/progress")) {
+      if (url.includes("/api/paths/dsa/progress")) {
         return {
           status: 200,
           body: {

@@ -1,10 +1,11 @@
-// Progress data hook for the BFF (docs/architecture/api.md, GET /progress `agg`, S09).
-// The gateway composes the assessment read-model projections (tiles, revision heatmap,
-// per-problem mastery, mock trend, outcome mix) with the curriculum taxonomy (by-phase
-// completion, by-pattern mastery). All numbers come from projections; curriculum only
-// supplies the grouping (pattern names, phase week-ranges, the real problem total).
+// Progress data hook for the BFF (docs/architecture/api.md, GET /paths/{slug}/progress
+// `agg`, S09; course-scoped since m1-03). The gateway composes the assessment read-model
+// projections (tiles, revision heatmap, per-problem mastery, mock trend, outcome mix) with
+// the curriculum taxonomy (by-phase completion, by-pattern mastery). All numbers come from
+// projections; curriculum only supplies the grouping (pattern names, phase week-ranges,
+// the real problem total).
 import { useQuery } from "@tanstack/react-query";
-import { ApiRequestError, apiFetch } from "./api";
+import { ApiRequestError, apiFetch, coursePathApi } from "./api";
 import type { MockTrend } from "./mock";
 import type { WeakArea } from "./mistakes";
 
@@ -50,7 +51,8 @@ export interface PatternMastery {
   pct: number;
 }
 
-/** GET /progress (agg) payload. Sections are null when their upstream degraded. */
+/** GET /paths/{slug}/progress (agg) payload. Sections are null when their upstream
+ *  degraded. */
 export interface ProgressData {
   summary: ProgressSummary;
   heatmap: { days: HeatmapDay[] } | null;
@@ -65,10 +67,11 @@ export interface ProgressData {
   revisionsDue: number;
 }
 
-/** useProgress fetches the composed Progress aggregation. */
-export function useProgress() {
+/** useProgress fetches a course's composed Progress aggregation. */
+export function useProgress(slug: string) {
   return useQuery<ProgressData, ApiRequestError>({
-    queryKey: ["progress"],
-    queryFn: () => apiFetch<ProgressData>("/progress"),
+    queryKey: ["progress", slug],
+    queryFn: () => apiFetch<ProgressData>(coursePathApi(slug, "/progress")),
+    enabled: slug !== "",
   });
 }

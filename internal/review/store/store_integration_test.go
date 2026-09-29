@@ -108,7 +108,7 @@ func TestStoreIntegration(t *testing.T) {
 		if n != 1 {
 			t.Fatalf("owed attempt scheduled %d, want 1", n)
 		}
-		items, err := st.DueQueue(ctx, acct, 10)
+		items, err := st.DueQueue(ctx, acct, "dsa", 10)
 		if err != nil {
 			t.Fatalf("due queue: %v", err)
 		}
@@ -247,7 +247,7 @@ func TestStoreIntegration(t *testing.T) {
 		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", "100", "clean", true, time.Now()); err != nil {
 			t.Fatalf("schedule: %v", err)
 		}
-		items, err := st.DueQueue(ctx, acct, 10)
+		items, err := st.DueQueue(ctx, acct, "dsa", 10)
 		if err != nil {
 			t.Fatalf("due queue: %v", err)
 		}
@@ -343,7 +343,7 @@ func countOutbox(ctx context.Context, t *testing.T, st *store.PgStore, accountID
 
 func touchByLevel(ctx context.Context, t *testing.T, st *store.PgStore, accountID string, level int) store.DueItem {
 	t.Helper()
-	items, err := st.DueQueue(ctx, accountID, 100)
+	items, err := st.DueQueue(ctx, accountID, "dsa", 100)
 	if err != nil {
 		t.Fatalf("due queue: %v", err)
 	}
@@ -384,7 +384,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", problem, "miss", true, time.Now()); err != nil {
 			t.Fatalf("problem_solved miss: %v", err)
 		}
-		open, err := st.ListMistakes(ctx, acct, "open")
+		open, err := st.ListMistakes(ctx, acct, "dsa", "open")
 		if err != nil {
 			t.Fatalf("list mistakes: %v", err)
 		}
@@ -398,7 +398,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", problem, "rough", true, time.Now()); err != nil {
 			t.Fatalf("second below-clean: %v", err)
 		}
-		open, _ = st.ListMistakes(ctx, acct, "open")
+		open, _ = st.ListMistakes(ctx, acct, "dsa", "open")
 		if len(open) != 1 {
 			t.Fatalf("after repeat miss: open entries = %d, want 1 (one-open-entry invariant)", len(open))
 		}
@@ -411,7 +411,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 		if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", problem, "clean", true, time.Now()); err != nil {
 			t.Fatalf("clean solve: %v", err)
 		}
-		if ms, _ := st.ListMistakes(ctx, acct, ""); len(ms) != 0 {
+		if ms, _ := st.ListMistakes(ctx, acct, "dsa", ""); len(ms) != 0 {
 			t.Fatalf("clean solve opened %d mistakes, want 0", len(ms))
 		}
 
@@ -439,10 +439,10 @@ func TestMistakeJournalIntegration(t *testing.T) {
 		if _, err := st.Score(ctx, acct, touchByLevel(ctx, t, st, acct, 2).ItemID, pass); err != nil {
 			t.Fatalf("pass day3: %v", err)
 		}
-		if open, _ := st.ListMistakes(ctx, acct, "open"); len(open) != 0 {
+		if open, _ := st.ListMistakes(ctx, acct, "dsa", "open"); len(open) != 0 {
 			t.Fatalf("after 2 clean revisits: open entries = %d, want 0 (closed)", len(open))
 		}
-		if closed, _ := st.ListMistakes(ctx, acct, "closed"); len(closed) != 1 || closed[0].RevisitCount != 2 {
+		if closed, _ := st.ListMistakes(ctx, acct, "dsa", "closed"); len(closed) != 1 || closed[0].RevisitCount != 2 {
 			t.Fatalf("closed entries = %+v, want one with count 2", closed)
 		}
 		if c := countOutbox(ctx, t, st, acct, store.SubjectMistakeClosed); c != 1 {
@@ -456,7 +456,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 		if m := onlyOpen(ctx, t, st, acct); m.RevisitCount != 0 {
 			t.Fatalf("after re-open: count = %d, want 0", m.RevisitCount)
 		}
-		if closed, _ := st.ListMistakes(ctx, acct, "closed"); len(closed) != 0 {
+		if closed, _ := st.ListMistakes(ctx, acct, "dsa", "closed"); len(closed) != 0 {
 			t.Fatalf("after re-open: closed entries = %d, want 0", len(closed))
 		}
 		if c := countOutbox(ctx, t, st, acct, store.SubjectMistakeOpened); c != 2 {
@@ -496,7 +496,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 		if _, err := st.Score(ctx, acct, touchByLevel(ctx, t, st, acct, 1).ItemID, pass); err != nil {
 			t.Fatalf("pass: %v", err)
 		}
-		if ms, _ := st.ListMistakes(ctx, acct, ""); len(ms) != 0 {
+		if ms, _ := st.ListMistakes(ctx, acct, "dsa", ""); len(ms) != 0 {
 			t.Fatalf("journal has %d entries, want 0 (no mistake for a clean problem)", len(ms))
 		}
 	})
@@ -512,7 +512,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 		}
 		start := time.Now().Add(-24 * time.Hour)
 		end := time.Now().Add(24 * time.Hour)
-		counts, err := st.CountOpenMistakesByCategory(ctx, acct, start, end)
+		counts, err := st.CountOpenMistakesByCategory(ctx, acct, "dsa", start, end)
 		if err != nil {
 			t.Fatalf("count by category: %v", err)
 		}
@@ -520,14 +520,14 @@ func TestMistakeJournalIntegration(t *testing.T) {
 			t.Fatalf("counts = %v, want off_by_one:1", counts)
 		}
 		weekOf := time.Date(2026, 9, 21, 0, 0, 0, 0, time.UTC)
-		if err := st.SaveWeakAreaSnapshot(ctx, acct, weekOf, "off_by_one", counts); err != nil {
+		if err := st.SaveWeakAreaSnapshot(ctx, acct, "dsa", weekOf, "off_by_one", counts); err != nil {
 			t.Fatalf("save snapshot: %v", err)
 		}
 		// Idempotent per week_of: a second save upserts, doesn't duplicate.
-		if err := st.SaveWeakAreaSnapshot(ctx, acct, weekOf, "off_by_one", counts); err != nil {
+		if err := st.SaveWeakAreaSnapshot(ctx, acct, "dsa", weekOf, "off_by_one", counts); err != nil {
 			t.Fatalf("save snapshot (rerun): %v", err)
 		}
-		wa, found, err := st.WeakAreaCurrent(ctx, acct)
+		wa, found, err := st.WeakAreaCurrent(ctx, acct, "dsa")
 		if err != nil || !found {
 			t.Fatalf("weak area current: found=%v err=%v", found, err)
 		}
@@ -547,7 +547,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 			if _, err := st.HandleProblemSolved(ctx, newTestUUID(), acct, "dsa", problem, "clean", true, time.Now()); err != nil {
 				t.Fatalf("iter %d: clean solve: %v", i, err)
 			}
-			if _, err := st.CreateMistake(ctx, acct, store.MistakeInput{ProblemID: problem, Category: "off_by_one", Status: "closed"}); err != nil {
+			if _, err := st.CreateMistake(ctx, acct, "dsa", store.MistakeInput{ProblemID: problem, Category: "off_by_one", Status: "closed"}); err != nil {
 				t.Fatalf("iter %d: seed closed entry: %v", i, err)
 			}
 			day1 := touchByLevel(ctx, t, st, acct, 1)
@@ -567,7 +567,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 			if errOpen != nil || errScore != nil {
 				t.Fatalf("iter %d: concurrent ops errored (no serialisation?): open=%v score=%v", i, errOpen, errScore)
 			}
-			open, err := st.ListMistakes(ctx, acct, "open")
+			open, err := st.ListMistakes(ctx, acct, "dsa", "open")
 			if err != nil {
 				t.Fatalf("iter %d: list open: %v", i, err)
 			}
@@ -610,7 +610,7 @@ func TestMistakeJournalIntegration(t *testing.T) {
 // onlyOpen returns the account's single open mistake, failing if there isn't exactly one.
 func onlyOpen(ctx context.Context, t *testing.T, st *store.PgStore, accountID string) store.Mistake {
 	t.Helper()
-	open, err := st.ListMistakes(ctx, accountID, "open")
+	open, err := st.ListMistakes(ctx, accountID, "dsa", "open")
 	if err != nil {
 		t.Fatalf("list open mistakes: %v", err)
 	}

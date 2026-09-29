@@ -56,10 +56,13 @@ func fullRubric() map[string]int {
 
 func TestStartMock(t *testing.T) {
 	var gotSet, gotProblem, gotDiff string
-	fs := &fakeStore{createMock: func(_ context.Context, acct, setID, problemID, difficulty string, started, deadline time.Time) (store.MockSession, error) {
+	fs := &fakeStore{createMock: func(_ context.Context, acct, pathSlug, setID, problemID, difficulty string, started, deadline time.Time) (store.MockSession, error) {
 		gotSet, gotProblem, gotDiff = setID, problemID, difficulty
 		if acct != testAccount {
 			t.Fatalf("account = %q", acct)
+		}
+		if pathSlug != "dsa" { // no ?path= (a v1.6.0 gateway): the default course
+			t.Fatalf("path = %q, want dsa", pathSlug)
 		}
 		if deadline.Sub(started) != store.MockDuration {
 			t.Fatalf("window = %v, want 45m", deadline.Sub(started))
@@ -95,7 +98,7 @@ func TestStartMock(t *testing.T) {
 }
 
 func TestStartMockValidation(t *testing.T) {
-	fs := &fakeStore{createMock: func(context.Context, string, string, string, string, time.Time, time.Time) (store.MockSession, error) {
+	fs := &fakeStore{createMock: func(context.Context, string, string, string, string, string, time.Time, time.Time) (store.MockSession, error) {
 		t.Fatal("store must not be called on invalid setup")
 		return store.MockSession{}, nil
 	}}
@@ -121,7 +124,7 @@ func TestStartMockValidation(t *testing.T) {
 }
 
 func TestStartMockDefaultsDifficulty(t *testing.T) {
-	fs := &fakeStore{createMock: func(_ context.Context, _, _, _, difficulty string, s, d time.Time) (store.MockSession, error) {
+	fs := &fakeStore{createMock: func(_ context.Context, _, _, _, _, difficulty string, s, d time.Time) (store.MockSession, error) {
 		if difficulty != "med" {
 			t.Fatalf("difficulty = %q, want defaulted med", difficulty)
 		}
@@ -169,7 +172,7 @@ func TestGetScoredMockReturnsRubric(t *testing.T) {
 		m := liveSession()
 		m.ID = id
 		m.Status = store.StatusScored
-		m.Total35 = &total
+		m.Total = &total
 		scores := []store.RubricScore{
 			{Dimension: "communication", Score: 4},
 			{Dimension: "complexity", Score: 3},
@@ -208,7 +211,7 @@ func TestScoreMock(t *testing.T) {
 		m := liveSession()
 		m.ID = id
 		m.Status = store.StatusScored
-		m.Total35 = &total
+		m.Total = &total
 		out := make([]store.RubricScore, 0, len(scores))
 		for _, d := range store.Dimensions {
 			out = append(out, store.RubricScore{Dimension: d, Score: scores[d]})
@@ -258,14 +261,14 @@ func TestScoreMockRejectsBadRubric(t *testing.T) {
 }
 
 func TestTrend(t *testing.T) {
-	fs := &fakeStore{trend: func(_ context.Context, acct string) ([]store.TrendPoint, error) {
+	fs := &fakeStore{trend: func(_ context.Context, acct, _ string) ([]store.TrendPoint, error) {
 		if acct != testAccount {
 			t.Fatalf("account = %q", acct)
 		}
 		now := time.Now()
 		return []store.TrendPoint{
-			{MockID: "m1", SetID: "set-05", Date: now.AddDate(0, 0, -14), StartedAt: now.AddDate(0, 0, -14), Total35: 20},
-			{MockID: "m2", SetID: "set-07", Date: now, StartedAt: now, Total35: 24},
+			{MockID: "m1", SetID: "set-05", Date: now.AddDate(0, 0, -14), StartedAt: now.AddDate(0, 0, -14), Total: 20},
+			{MockID: "m2", SetID: "set-07", Date: now, StartedAt: now, Total: 24},
 		}, nil
 	}}
 	h := newTestService(fs).Handler()

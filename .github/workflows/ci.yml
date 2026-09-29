@@ -43,6 +43,17 @@ jobs:
         run: |
           sh hack/lint-migrations.sh --self-test
           sh hack/lint-migrations.sh
+      # M1b gates (m1-03): no DSA slug literal outside the allowlist in internal/ and
+      # web/src/ (course.DefaultSlug is the one spelling), and no query on an M1c-drop
+      # column or the retired (account_id, week_of) conflict target (m1-08 reuses it).
+      - name: Course-literal gate
+        run: |
+          sh hack/lint-course-literals.sh --self-test
+          sh hack/lint-course-literals.sh
+      - name: Dropped-column gate
+        run: |
+          sh hack/lint-dropped-columns.sh --self-test
+          sh hack/lint-dropped-columns.sh
       # The default lane (no build tag) runs unit tests + the OpenAPI drift check
       # (internal/gateway/openapi_drift_test.go), which keeps openapi.yaml in sync with
       # the gateway route table. The real-broker e2e is tagged `e2e` and runs separately.

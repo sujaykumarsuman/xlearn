@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import type { IconName } from "./Icon";
 import { Icon } from "./Icon";
+import { useCourse } from "../lib/course";
 import {
   CoachChatError,
   streamCoachChat,
@@ -254,14 +255,27 @@ interface CachedProblem {
   state?: { stageReached?: string; status?: string; lastOutcome?: string | null };
 }
 
-/** useCoachContext derives the page context from the route (+ the cached Problem
- *  aggregate for the richer Problem chip). It uses the pathname, not route params,
- *  because the panel is mounted in the layout above the routed screen. */
+/**
+ * useCoachContext derives the page context from the route (+ the cached Problem
+ * aggregate for the richer Problem chip). It uses the pathname and useCourse(), not route
+ * params, because the panel is mounted in the layout above the routed screen.
+ *
+ * The context is the coach thread key (coach_thread UNIQUE (account_id, page_context)),
+ * so every course-scoped context carries its course (m1-03, t0 §7): `<course>:concept:<slug>`,
+ * `<course>:week:<n>`, `<course>:roadmap|dashboard|revision|mistakes|mock|progress` —
+ * otherwise week 3 of two courses would share one thread. A problem keeps
+ * `problem:<id>` (ids are global), and the account-wide contexts (`catalog`, `settings`,
+ * `general`) are unchanged. Course contexts exist only inside an active course: an
+ * unknown or coming-soon course's page (NotFound, the teaser) is `general`.
+ */
 function useCoachContext(pathname: string): CoachContext {
   const qc = useQueryClient();
+  const course = useCourse();
   const p = pathname.replace(/\/+$/, "") || "/";
+  const rest = course.state === "active" ? courseRest(p, course.slug) : null;
+  if (rest === null) return fromGeneric(accountContext(p));
 
-  const problem = p.match(/^\/dsa\/problem\/([^/]+)$/);
+  const problem = rest.match(/^problem\/([^/]+)$/);
   if (problem) {
     const id = decodeURIComponent(problem[1]!);
     const cached = qc.getQueryData<CachedProblem>(["problem", id]);
@@ -285,12 +299,12 @@ function useCoachContext(pathname: string): CoachContext {
     };
   }
 
-  const concept = p.match(/^\/dsa\/concept\/([^/]+)$/);
+  const concept = rest.match(/^concept\/([^/]+)$/);
   if (concept) {
     const slug = decodeURIComponent(concept[1]!);
     const title = titleFromSlug(slug);
     return {
-      context: `concept:${slug}`,
+      context: `${course.slug}:concept:${slug}`,
       kind: "concept",
       label: `Concept — ${title}`,
       short: title,
@@ -300,11 +314,11 @@ function useCoachContext(pathname: string): CoachContext {
     };
   }
 
-  const week = p.match(/^\/dsa\/week\/(\d+)$/);
+  const week = rest.match(/^week\/(\d+)$/);
   if (week) {
     const n = week[1]!;
     return {
-      context: `week:${n}`,
+      context: `${course.slug}:week:${n}`,
       kind: "week",
       label: `Week ${n}`,
       short: `Week ${n}`,
@@ -313,34 +327,46 @@ function useCoachContext(pathname: string): CoachContext {
     };
   }
 
-  const [context, label, kind, icon, short] = genericContext(p);
-  return {
-    context,
-    kind,
-    label,
-    short,
-    chipIcon: icon,
-    suggestions: genericSuggestions(kind),
-  };
+  const screen = COURSE_SCREEN_CONTEXT.get(rest);
+  if (screen) {
+    const [kind, label, icon, short] = screen;
+    return fromGeneric([`${course.slug}:${kind}`, label, kind, icon, short]);
+  }
+  // An unknown sub-route of the course renders NotFound: no course context.
+  return fromGeneric(accountContext(p));
 }
 
-function genericContext(p: string): [string, string, string, IconName, string] {
-  switch (true) {
-    case p === "/":
+/** courseRest is the part of path p below the course root ("" at the root itself), or
+ *  null when p isn't inside that course. */
+function courseRest(p: string, course: string): string | null {
+  if (p === `/${course}`) return "";
+  return p.startsWith(`/${course}/`) ? p.slice(course.length + 2) : null;
+}
+
+/** A generic context: [context key, chip label, kind, chip icon, intro noun]. */
+type GenericContext = [string, string, string, IconName, string];
+
+function fromGeneric([context, label, kind, icon, short]: GenericContext): CoachContext {
+  return { context, kind, label, short, chipIcon: icon, suggestions: genericSuggestions(kind) };
+}
+
+/** The course screens with a generic context, by the path below the course root:
+ *  [kind, chip label, chip icon, intro noun]. The key is `<course>:<kind>`. */
+const COURSE_SCREEN_CONTEXT = new Map<string, [string, string, IconName, string]>([
+  ["", ["roadmap", "Roadmap", "map", "the roadmap"]],
+  ["dashboard", ["dashboard", "Today", "today", "your plan for today"]],
+  ["revision", ["revision", "Revision", "refresh", "your revisions"]],
+  ["mistakes", ["mistakes", "Mistakes", "journal", "your mistake journal"]],
+  ["mock", ["mock", "Mock interview", "target", "mock interviews"]],
+  ["progress", ["progress", "Progress", "chart", "your progress"]],
+]);
+
+/** accountContext is the context of an account-wide page (not course-scoped). */
+function accountContext(p: string): GenericContext {
+  switch (p) {
+    case "/":
       return ["catalog", "Catalog", "catalog", "grid", "the catalog"];
-    case p === "/dsa":
-      return ["roadmap", "Roadmap", "roadmap", "map", "the roadmap"];
-    case p === "/dsa/dashboard":
-      return ["dashboard", "Today", "dashboard", "today", "your plan for today"];
-    case p === "/dsa/revision":
-      return ["revision", "Revision", "revision", "refresh", "your revisions"];
-    case p === "/dsa/mistakes":
-      return ["mistakes", "Mistakes", "mistakes", "journal", "your mistake journal"];
-    case p === "/dsa/mock":
-      return ["mock", "Mock interview", "mock", "target", "mock interviews"];
-    case p === "/dsa/progress":
-      return ["progress", "Progress", "progress", "chart", "your progress"];
-    case p === "/settings":
+    case "/settings":
       return ["settings", "Settings", "settings", "settings", "your settings"];
     default:
       return ["general", "xLearn", "general", "spark", "this screen"];

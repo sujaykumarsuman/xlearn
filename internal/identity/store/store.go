@@ -7,7 +7,6 @@ package store
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -18,14 +17,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store/gen"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/events"
 )
 
-// Event subject + version for the account-created fact (events.md). The relay
-// publishes these to the XLEARN_IDENTITY JetStream stream.
-const (
-	SubjectAccountCreated = "xlearn.identity.account_created"
-	accountCreatedVersion = 1
-)
+// SubjectAccountCreated is the account-created fact (events.md). The relay publishes it
+// to the XLEARN_IDENTITY JetStream stream in a v2 envelope (m1-03), account-scoped, so
+// without path_slug.
+const SubjectAccountCreated = "xlearn.identity.account_created"
 
 // Errors mapped to HTTP status by the handlers.
 var (
@@ -171,9 +169,11 @@ type Store interface {
 	// step (Finish / Skip).
 	CompleteOnboarding(ctx context.Context, accountID string) (Onboarding, error)
 	// StartEnrollment enrolls the account in a path (F002). Idempotent: a repeat start
-	// only re-activates the row and keeps the original started_at. ListEnrollments
-	// returns all of an account's enrollments (surfaced on GET /me).
-	StartEnrollment(ctx context.Context, accountID, pathSlug string) (Enrollment, error)
+	// only re-activates the row and keeps the original started_at. publicVisible is the
+	// course manifest's public_stats.default_visible (D7), resolved by the caller and
+	// written on insert only. ListEnrollments returns all of an account's enrollments
+	// (surfaced on GET /me).
+	StartEnrollment(ctx context.Context, accountID, pathSlug string, publicVisible bool) (Enrollment, error)
 	ListEnrollments(ctx context.Context, accountID string) ([]Enrollment, error)
 	CreateSession(ctx context.Context, id, accountID string, expiresAt time.Time) (Session, error)
 	GetValidSession(ctx context.Context, id string) (Session, error)
@@ -536,8 +536,9 @@ func (s *PgStore) CompleteOnboarding(ctx context.Context, accountID string) (Onb
 	return toOnboarding(row), nil
 }
 
-// StartEnrollment enrolls the account in a path (idempotent; F002).
-func (s *PgStore) StartEnrollment(ctx context.Context, accountID, pathSlug string) (Enrollment, error) {
+// StartEnrollment enrolls the account in a path (idempotent; F002), with the course's
+// default public visibility on insert.
+func (s *PgStore) StartEnrollment(ctx context.Context, accountID, pathSlug string, publicVisible bool) (Enrollment, error) {
 	uid, err := parseUUID(accountID)
 	if err != nil {
 		return Enrollment{}, ErrNotFound
@@ -545,7 +546,7 @@ func (s *PgStore) StartEnrollment(ctx context.Context, accountID, pathSlug strin
 	row, err := s.q.StartEnrollment(ctx, gen.StartEnrollmentParams{
 		AccountID:     uid,
 		PathSlug:      pathSlug,
-		PublicVisible: PublicVisibleDefault(pathSlug),
+		PublicVisible: publicVisible,
 	})
 	if err != nil {
 		return Enrollment{}, mapErr(err)
@@ -636,18 +637,12 @@ func (s *PgStore) MarkOutboxSent(ctx context.Context, eventID string) error {
 
 // --- envelope + conversions ---
 
-// marshalAccountCreated builds the events.md envelope for account_created.
+// marshalAccountCreated builds the account_created envelope: v2 (m1-03), account-scoped,
+// so no path_slug. The data fields are v1's (the payload is append-only).
 func marshalAccountCreated(eventID, accountID, provider, displayName string, occurredAt time.Time) ([]byte, error) {
-	return json.Marshal(map[string]any{
-		"event_id":    eventID,
-		"subject":     SubjectAccountCreated,
-		"occurred_at": occurredAt.UTC().Format(time.RFC3339Nano),
-		"version":     accountCreatedVersion,
-		"account_id":  accountID,
-		"data": map[string]any{
-			"provider":     provider,
-			"display_name": displayName,
-		},
+	return events.NewEnvelope(events.EnvelopeV2, eventID, SubjectAccountCreated, accountID, "", occurredAt, map[string]any{
+		"provider":     provider,
+		"display_name": displayName,
 	})
 }
 

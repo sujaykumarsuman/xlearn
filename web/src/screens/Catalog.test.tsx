@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 import { routes } from "../router";
+import { DSA_PATH, DSA_VIEW, ZZ_FIXTURE_PATH, catalog } from "../test/courses";
 import { authedMe, enrolled, installFetchMock, restoreFetch } from "../test/fetchMock";
 
 function renderApp(initialPath: string) {
@@ -24,6 +25,8 @@ const PATHS = {
       summary: "From arrays to graphs and DP.",
       problem_total: 151,
       week_total: 16,
+      // The learner-safe course view (m1-03): "Go-first" comes from its primary_language.
+      course: DSA_VIEW,
     },
     {
       slug: "system-design",
@@ -72,7 +75,7 @@ describe("Catalog screen", () => {
     installFetchMock((url) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa", true, enrolled("dsa", new Date().toISOString())) };
       if (url.endsWith("/api/paths")) return { status: 200, body: PATHS };
-      if (url.endsWith("/api/dashboard"))
+      if (url.endsWith("/api/paths/dsa/dashboard"))
         return { status: 200, body: { stats: { streak: { current: 3, longest: 5 }, solved: { count: 4, total: 151 }, revisionsDue: 2, mock: { best: 0, last: 0, count: 0, target: 24 } }, plan: [], week: null, revisions: null, weakArea: null, reminders: [] } };
       return { status: 404 };
     });
@@ -110,5 +113,32 @@ describe("Catalog screen", () => {
     expect(await screen.findByText(/No learning paths yet/)).toBeInTheDocument();
     // Not the populated body: no "More paths" header, no engine footer.
     expect(screen.queryByText(/More paths/)).not.toBeInTheDocument();
+  });
+
+  it("gives each started active course its own summary from its own dashboard (m1-03)", async () => {
+    const today = new Date().toISOString();
+    const dash = (streak: number) => ({
+      stats: { streak: { current: streak, longest: streak }, solved: { count: 0, total: 1 }, revisionsDue: 0, mock: { best: 0, last: 0, count: 0, target: 24 } },
+      plan: [],
+      week: null,
+      revisions: null,
+      weakArea: null,
+      reminders: [],
+    });
+    const fn = installFetchMock((url) => {
+      if (url.endsWith("/api/me"))
+        return { status: 200, body: authedMe("dsa", true, [...enrolled("dsa", today), ...enrolled("zz-fixture", today)]) };
+      if (url.endsWith("/api/paths")) return { status: 200, body: catalog(DSA_PATH, ZZ_FIXTURE_PATH) };
+      if (url.endsWith("/api/paths/dsa/dashboard")) return { status: 200, body: dash(3) };
+      if (url.endsWith("/api/paths/zz-fixture/dashboard")) return { status: 200, body: dash(7) };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/");
+
+    expect(await screen.findByText(/3-day/)).toBeInTheDocument();
+    expect(await screen.findByText(/7-day/)).toBeInTheDocument();
+    const continues = screen.getAllByRole("link", { name: /continue/i }).map((a) => a.getAttribute("href"));
+    expect(continues).toEqual(["/xlearn/dsa/dashboard", "/xlearn/zz-fixture/dashboard"]);
+    expect(fn.mock.calls.some(([u]) => String(u).endsWith("/api/v1/dashboard"))).toBe(false);
   });
 });
