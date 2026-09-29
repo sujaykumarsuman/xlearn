@@ -1,0 +1,36 @@
+auth@1440.png                identical
+auth@390.png                 identical
+catalog@1440.png             identical
+catalog@390.png              identical
+coming-soon@1440.png         8937 px differ
+coming-soon@390.png          8101 px differ
+concept@1440.png             identical
+concept@390.png              identical
+mistakes@1440.png            identical
+mistakes@390.png             identical
+mock@1440.png                identical
+mock@390.png                 identical
+notfound-sub@1440.png        identical
+notfound-sub@390.png         identical
+notfound@1440.png            identical
+notfound@390.png             identical
+problem-arena@1440.png       identical
+problem-arena@390.png        identical
+problem-solved@1440.png      identical
+problem-solved@390.png       identical
+problems@1440.png            identical
+problems@390.png             identical
+progress@1440.png            identical
+progress@390.png             identical
+revision@1440.png            identical
+revision@390.png             identical
+roadmap@1440.png             identical
+roadmap@390.png              identical
+settings@1440.png            17 px differ
+settings@390.png             17 px differ
+switcher@1440.png            identical
+switcher@390.png             identical
+today@1440.png               identical
+today@390.png                identical
+week1@1440.png               identical
+week1@390.png                identical
