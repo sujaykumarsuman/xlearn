@@ -211,3 +211,21 @@ FORMAT=conf|yaml` (public keys only). `make nats-acl-test` (CI job `nats-acl`) b
 with the render and proves the allowed/denied matrix for the 6 services + ops and the three legacy
 stages. **Standing rule:** a new stream, durable or subject re-renders the golden, and its infra
 ACL PR merges before the consuming service's tag.
+
+## NATS auth (v2, live since mi-06)
+
+Since **N3 (2026-09-29T14:26:46Z)** every connection to NATS authenticates with **its own nkey user** in `$G`
+([ADR-0035 §2](../adr/0035-v2-operations-nats-auth-limits-capacity.md#2-nats-auth-nkey-users-fine-acls-server-first)).
+Live users are practice, review, assessment and identity, plus the offline `ops` break-glass identity. judge and coach join
+with their own ACL PRs (m3-07, l-01).
+- **Fine ACLs, rendered, never hand-written.** `infra/infrastructure/messaging/release.yaml` carries the block
+  `make nats-acl-render` produces from `topology.go` (see above). The public keys there are plaintext. Each seed is a SOPS
+  secret `xlearn-nats-<svc>` mounted at `/var/run/secrets/nats/seed` (`NATS_NKEY_SEED_FILE`, `NATS_INBOX_PREFIX=_INBOX_<svc>`).
+- **`legacy`** (the N1 bridge for seedless clients through `no_auth_user`) is **deny `>`** since N3. Its password must stay
+  plaintext, because a bcrypt hash breaks `no_auth_user`. N4 ([mi-11](../v2/sprints/sprint-mi-11.md)) removes it. A plain
+  `host-verify --cluster` checks the live stage (`PIN_NATS_STAGE`).
+- **Standing rule:** a new stream, consumer or subject needs its re-rendered block merged in `infra` **before** the
+  consuming service's tag. Otherwise the service gets a permission violation, which its `ErrorHandler` logs at ERROR, and
+  the outbox holds the rows.
+- **Manual access** goes only through [the break-glass runbook](../v2/runbooks/nats-break-glass.md) (port-forward plus the
+  offline ops seed), and every use is logged in `status.md`.
