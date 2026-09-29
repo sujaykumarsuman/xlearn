@@ -301,7 +301,8 @@ func (h *courseHarness) do(method, path, body string) (int, []byte) {
 	}
 	req, _ := http.NewRequestWithContext(context.Background(), method, h.gwServer.URL+"/xlearn/api/v1"+path, rdr)
 	req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: "sess-1"})
-	if body != "" {
+	if method != http.MethodGet {
+		// Like the SPA: every write is JSON, with or without a body (security.go).
 		req.Header.Set("Content-Type", "application/json")
 	}
 	resp, err := http.DefaultClient.Do(req)

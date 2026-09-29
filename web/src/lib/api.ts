@@ -55,9 +55,27 @@ export class ApiRequestError extends Error {
 }
 
 /**
+ * requestHeaders builds apiFetch's headers: `Accept: application/json` always, and
+ * `Content-Type: application/json` on every non-GET/HEAD call, with or without a body. The
+ * gateway refuses a mutating /api call that isn't JSON (415 unsupported_media_type) — the
+ * cross-site write guard (m1-04; ADR-0033 §9). A caller's own headers win; a Content-Type
+ * the caller already set (any casing) is not doubled.
+ */
+function requestHeaders(init?: RequestInit): Headers {
+  const headers = new Headers(init?.headers);
+  if (!headers.has("Accept")) headers.set("Accept", "application/json");
+  const method = (init?.method ?? "GET").toUpperCase();
+  if (method !== "GET" && method !== "HEAD" && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  return headers;
+}
+
+/**
  * apiFetch calls the BFF at `${API_BASE}${path}` with cookie credentials and
- * JSON handling. On a non-2xx it decodes the error envelope and throws
- * ApiRequestError. `path` must start with "/".
+ * JSON handling (every write is sent as application/json — see requestHeaders).
+ * On a non-2xx it decodes the error envelope and throws ApiRequestError. `path`
+ * must start with "/".
  */
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
@@ -68,10 +86,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
       credentials: "include",
       ...init,
       signal: init?.signal ?? controller.signal,
-      headers: {
-        Accept: "application/json",
-        ...(init?.headers ?? {}),
-      },
+      headers: requestHeaders(init),
     });
   } catch (err) {
     // A timeout aborts the request — surface it as an error the screen can render,

@@ -43,6 +43,7 @@ func TestBFFPatchMeForwardsBody(t *testing.T) {
 func TestBFFPatchMeUnauthenticated(t *testing.T) {
 	h := newBFFHarness(t)
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPatch, h.gwServer.URL+"/xlearn/api/me", strings.NewReader(`{"display_name":"x"}`))
+	req.Header.Set("Content-Type", "application/json")
 	resp, err := noRedirect().Do(req)
 	if err != nil {
 		t.Fatalf("PATCH /me: %v", err)

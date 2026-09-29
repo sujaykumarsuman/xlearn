@@ -212,6 +212,9 @@ func (h *revisionHarness) do(t *testing.T, method, path, body string, cookie boo
 		r, _ = http.NewRequestWithContext(context.Background(), method, h.gwServer.URL+path, nil)
 	} else {
 		r, _ = http.NewRequestWithContext(context.Background(), method, h.gwServer.URL+path, strings.NewReader(body))
+	}
+	if method != http.MethodGet {
+		// Like the SPA: every write is JSON, with or without a body (security.go).
 		r.Header.Set("Content-Type", "application/json")
 	}
 	if cookie {

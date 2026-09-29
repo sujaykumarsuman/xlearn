@@ -199,6 +199,9 @@ func (h *problemHarness) do(t *testing.T, method, path, body string) *http.Respo
 		r, _ = http.NewRequestWithContext(context.Background(), method, h.gwServer.URL+path, nil)
 	} else {
 		r, _ = http.NewRequestWithContext(context.Background(), method, h.gwServer.URL+path, strings.NewReader(body))
+	}
+	if method != http.MethodGet {
+		// Like the SPA: every write is JSON, with or without a body (security.go).
 		r.Header.Set("Content-Type", "application/json")
 	}
 	r.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: "sess-1"})
@@ -413,6 +416,7 @@ func TestBFFOutcomeProxies(t *testing.T) {
 func TestBFFProblemWriteRequiresSession(t *testing.T) {
 	h := newProblemHarness(t)
 	req, _ := http.NewRequest(http.MethodPost, h.gwServer.URL+"/xlearn/api/problems/16/attempt/start", nil)
+	req.Header.Set("Content-Type", "application/json")
 	resp, err := noRedirect().Do(req) // no session cookie
 	if err != nil {
 		t.Fatalf("req: %v", err)

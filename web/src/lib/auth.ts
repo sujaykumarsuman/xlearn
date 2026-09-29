@@ -152,18 +152,27 @@ export function useSetUsername() {
   });
 }
 
+/** POST /me/password result. `reauth: true` means identity revoked every session of the
+ *  account, this one included (m1-04) — the caller must send the learner to sign in again. */
+export interface SetPasswordResult {
+  ok: boolean;
+  reauth?: boolean;
+}
+
 /** useSetPassword sets or changes the account password (Settings). `current_password` is
- *  required only when the account already has one. */
+ *  required only when the account already has one. On `reauth` the session is gone, so the
+ *  cached account is dropped (as on logout) rather than refetched — the caller navigates to
+ *  /auth; otherwise /me is refreshed. */
 export function useSetPassword() {
   const qc = useQueryClient();
-  return useMutation<{ ok: boolean }, ApiRequestError, { current_password?: string; new_password: string }>({
+  return useMutation<SetPasswordResult, ApiRequestError, { current_password?: string; new_password: string }>({
     mutationFn: (body) =>
-      apiFetch<{ ok: boolean }>("/me/password", {
+      apiFetch<SetPasswordResult>("/me/password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+    onSuccess: (res) => (res?.reauth ? qc.clear() : qc.invalidateQueries({ queryKey: ["me"] })),
   });
 }
 

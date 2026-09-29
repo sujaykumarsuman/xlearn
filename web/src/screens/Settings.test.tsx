@@ -257,6 +257,57 @@ describe("Settings screen", () => {
     await waitFor(() => expect(posted).toEqual({ new_password: "brand-new-pass" }));
   });
 
+  it("a password change that revokes every session (reauth) sends the learner to sign in again", async () => {
+    // identity revokes every session on a password change (m1-04): after the POST, the old
+    // cookie is dead — GET /me 401s. The SPA drops the cached account and routes to /auth
+    // with a notice (a stale cached /me would bounce the learner straight back in).
+    let revoked = false;
+    let posted: unknown = null;
+    const me = authedMe("dsa");
+    installFetchMock((url, init) => {
+      if (url.endsWith("/api/me/password") && init?.method === "POST") {
+        posted = init?.body ? JSON.parse(String(init.body)) : null;
+        revoked = true;
+        return { status: 200, body: { ok: true, reauth: true } };
+      }
+      if (url.endsWith("/api/me")) {
+        return revoked
+          ? { status: 401, body: { error: { code: "unauthenticated" } } }
+          : { status: 200, body: { ...me, account: { ...me.account, has_password: true } } };
+      }
+      if (url.includes("/api/coach/key")) return { status: 200, body: { keys: [], connected: false, default_provider: "" } };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/settings?tab=account");
+
+    await screen.findByRole("heading", { name: /sign-in & security/i });
+    fireEvent.change(screen.getByLabelText(/current password/i), { target: { value: "old-password" } });
+    fireEvent.change(screen.getByLabelText(/^new password/i), { target: { value: "brand-new-pass" } });
+    fireEvent.click(screen.getByRole("button", { name: /^change password$/i }));
+
+    expect(await screen.findByText("Password changed — sign in again.")).toBeInTheDocument();
+    expect(posted).toEqual({ current_password: "old-password", new_password: "brand-new-pass" });
+    expect(screen.getByRole("button", { name: /continue with github/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /sign-in & security/i })).not.toBeInTheDocument();
+  });
+
+  it("asks to retry a password change when identity is busy (429 too_many_requests)", async () => {
+    installFetchMock((url, init) => {
+      if (url.endsWith("/api/me/password") && init?.method === "POST") return { status: 429, body: { error: { code: "too_many_requests" } } };
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.includes("/api/coach/key")) return { status: 200, body: { keys: [], connected: false, default_provider: "" } };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/settings?tab=account");
+
+    await screen.findByRole("heading", { name: /sign-in & security/i });
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "brand-new-pass" } });
+    fireEvent.click(screen.getByRole("button", { name: /set password/i }));
+    expect(await screen.findByText("Too many attempts right now — try again in a moment.")).toBeInTheDocument();
+    // Still on Settings — a throttled attempt is not a sign-out.
+    expect(screen.getByRole("heading", { name: /sign-in & security/i })).toBeInTheDocument();
+  });
+
   it("opens the tab named by ?tab= (the coach deep link)", async () => {
     settingsMock();
     renderApp("/xlearn/settings?tab=coach");

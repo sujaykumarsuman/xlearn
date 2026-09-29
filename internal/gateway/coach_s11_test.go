@@ -139,7 +139,8 @@ func (h *coachS11Harness) req(t *testing.T, method, path string, body string) *h
 	}
 	req, _ := http.NewRequestWithContext(context.Background(), method, h.gw.URL+path, rdr)
 	req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: "sess-1"})
-	if body != "" {
+	if method != http.MethodGet {
+		// Like the SPA: every write is JSON, with or without a body (security.go).
 		req.Header.Set("Content-Type", "application/json")
 	}
 	resp, err := noRedirect().Do(req)
@@ -237,6 +238,7 @@ func TestBFFCoachChatModeGatedOnContextNotClientField(t *testing.T) {
 func TestBFFCoachChatRequiresAuth(t *testing.T) {
 	h := newCoachS11Harness(t)
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, h.gw.URL+"/xlearn/api/coach/chat", strings.NewReader(`{"context":"dashboard","message":"hi"}`))
+	req.Header.Set("Content-Type", "application/json")
 	resp, err := noRedirect().Do(req)
 	if err != nil {
 		t.Fatalf("do: %v", err)

@@ -237,6 +237,7 @@ func TestBFFLogout(t *testing.T) {
 	h := newBFFHarness(t)
 	req, _ := http.NewRequest(http.MethodPost, h.gwServer.URL+"/xlearn/api/auth/logout", nil)
 	req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: "sess-1"})
+	req.Header.Set("Content-Type", "application/json") // the SPA sends JSON on every write (security.go)
 	resp, err := noRedirect().Do(req)
 	if err != nil {
 		t.Fatalf("logout: %v", err)
