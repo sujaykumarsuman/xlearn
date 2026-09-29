@@ -9,18 +9,18 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done — merged, ships in `v1.7.0` (2026-09-29, run r-32, [PR #99](https://github.com/sujaykumarsuman/xlearn/pull/99))
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Limiter package `internal/gateway/limit` + L1, L2, L5 + `X-Real-Ip` trust test | X | ⬜ |
-| 2 | L6 typed 413: `httpx.ReadBody` (`MaxBytesReader`) at the 11 request-body sites + the identity `forward` proxy + CI grep gate + SPA 429/413 handling | X | ⬜ |
-| 3 | P1 mock count only (D31) | X | ⬜ |
-| 4 | P2 visible courses: resolver `visible_courses[]` = enrolled ∩ visible ∩ active | X | ⬜ |
-| 5 | P4 + L4 public abuse limits (per-IP bucket, 60 s negative 404 cache, ≤ 8 cold composes) | X | ⬜ |
-| 6 | P10 public-shape allowlist test (+ date-only `joinedAt`) | X | ⬜ |
-| 7 | P11 suspended → uniform 404 on the next request | X | ⬜ |
-| 8 | L24 recorded: single gateway replica is a scale-out blocker | X | ⬜ |
+| 1 | Limiter package `internal/gateway/limit` + L1, L2, L5 + `X-Real-Ip` trust test | X | ✅ |
+| 2 | L6 typed 413: `httpx.ReadBody` (`MaxBytesReader`) at the 11 request-body sites + the identity `forward` proxy + CI grep gate + SPA 429/413 handling | X | ✅ |
+| 3 | P1 mock count only (D31) | X | ✅ |
+| 4 | P2 visible courses: resolver `visible_courses[]` = enrolled ∩ visible ∩ active | X | ✅ |
+| 5 | P4 + L4 public abuse limits (per-IP bucket, 60 s negative 404 cache, ≤ 8 cold composes) | X | ✅ |
+| 6 | P10 public-shape allowlist test (+ date-only `joinedAt`) | X | ✅ |
+| 7 | P11 suspended → uniform 404 on the next request | X | ✅ |
+| 8 | L24 recorded: single gateway replica is a scale-out blocker | X | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + milestone).
@@ -28,13 +28,13 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] [m1-04](sprint-m1-04.md) merged — `validateSession` returns `role`/`status`/`accepted`/`created_at`; the CSP and
+- [x] [m1-04](sprint-m1-04.md) merged — `validateSession` returns `role`/`status`/`accepted`/`created_at`; the CSP and
       JSON/`Sec-Fetch-Site` middleware is in the gateway chain; the `identity admin account suspend` verb exists (P11 test)
-- [ ] `v1.6.0` live ([m1-02](sprint-m1-02.md)): identity `account.status`, `account.profile_visibility`,
+- [x] `v1.6.0` live ([m1-02](sprint-m1-02.md)): identity `account.status`, `account.profile_visibility`,
       `path_enrollment.public_visible` exist
-- [ ] [m1-03](sprint-m1-03.md) merged: the compiled `internal/course` registry answers "is course X `active`?" in identity
+- [x] [m1-03](sprint-m1-03.md) merged: the compiled `internal/course` registry answers "is course X `active`?" in identity
       (enrollment validation) and the gateway (course resolution)
-- [ ] Gateway router serialization respected: no open peer PR edits `internal/gateway/{bff,public,gateway,cache}.go`
+- [x] Gateway router serialization respected: no open peer PR edits `internal/gateway/{bff,public,gateway,cache}.go`
       except [m1-10](sprint-m1-10.md)'s one additive coach route row (`gh pr list`, `git worktree list`, ListAgents)
 
 ## Goal
@@ -218,17 +218,17 @@ Sources: [rollout §10](../rollout-plan.md#10-public-dashboard-tasks) P11, [ADR-
 
 ## Acceptance criteria
 
-- [ ] **Typed 429 + `Retry-After`** under the load tests at exactly the L1/L2/L4/L5 thresholds (injected clock); below
+- [x] **Typed 429 + `Retry-After`** under the load tests at exactly the L1/L2/L4/L5 thresholds (injected clock); below
       them, the measured cold-load fan-out never 429s (table in the PR).
-- [ ] **Typed 413** `body_too_large` on oversize bodies at all 11 sites **and** through the identity `forward` proxy
+- [x] **Typed 413** `body_too_large` on oversize bodies at all 11 sites **and** through the identity `forward` proxy
       (oversize signup test). The CI grep gate fails on a new raw `r.Body` read, proxy or decoder. SPA 429s keep the
       server's `code`.
-- [ ] `X-Real-Ip` trust test green; `externalTrafficPolicy: Local` confirmed read-only.
-- [ ] **Public payload passes the allowlist test; no best/avg**; `joinedAt` date-only; the SPA tile shows the count only.
-- [ ] Public profile lists only enrolled ∩ visible ∩ active courses; `preview` never shown.
-- [ ] **Suspended profile 404s at once** (next request, warm cache).
-- [ ] L24 recorded in `services.md`; 429/413 documented in the API docs.
-- [ ] Every v1 e2e green. Golden = v1 except D31, 429s and the **date-only `joinedAt` on `/api/u/{username}`**
+- [x] `X-Real-Ip` trust test green; `externalTrafficPolicy: Local` confirmed read-only.
+- [x] **Public payload passes the allowlist test; no best/avg**; `joinedAt` date-only; the SPA tile shows the count only.
+- [x] Public profile lists only enrolled ∩ visible ∩ active courses; `preview` never shown.
+- [x] **Suspended profile 404s at once** (next request, warm cache).
+- [x] L24 recorded in `services.md`; 429/413 documented in the API docs.
+- [x] Every v1 e2e green. Golden = v1 except D31, 429s and the **date-only `joinedAt` on `/api/u/{username}`**
       (m1-07's tag checklist uses this exception list). CI green (incl. `sqlc diff`).
 
 ## Release
