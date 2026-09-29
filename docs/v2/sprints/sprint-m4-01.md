@@ -43,7 +43,8 @@ _Overall:_ ⬜ Not started
       [rollout §3](../rollout-plan.md#3-milestone-map) M4 entry
 - [ ] **AB16–AB18 frozen** ([ds-m4-01](sprint-ds-m4-01.md) merged; the merge is the freeze) — [rollout §3](../rollout-plan.md#3-milestone-map) M4 entry
 - [ ] **WIF result recorded** ([spk-03](sprint-spk-03.md) → t5 §15): WIF GO with the `check_jti` value, the exchange endpoint and
-      field names, access-token lifetime vs rotation interval — **or** the fallback (single-workspace key, 90 days) chosen
+      field names, access-token lifetime vs rotation interval — **or** the fallback (single-workspace key, 90 days) chosen;
+      mi-12 recorded the rule's scope (`workspace:developer` by default)
 - [ ] **Parallel sessions:** no open peer PR or worktree touches `internal/coach/**`, `internal/platform/**` or `internal/judge/**`
       (`gh pr list --state open`, `git worktree list`, ListAgents) — e.g. a `v1.15.x` judge fix; sequence with it
 
@@ -57,11 +58,15 @@ Give xLearn **one audited LLM layer** that judge and coach share, with the crede
   catalog and price table, usage parsing with golden tests. No SDK, no auto-retries, no `tools` field — by construction.
 - **Coach moves onto it with no behaviour change** (the BYO path m1-10 built stays byte-identical on the wire).
 - **`platform/llm/auth`** — Workload Identity Federation: exchange the k3s projected token for a short-lived
-  `workspace:inference` token, re-exchanging only when the token file's `iat` changes; the break-glass key only if WIF failed.
+  `workspace:developer` token (the scope mi-12 set; the Console offers no `workspace:inference`,
+  [t5 §15](../research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25) finding 1), lazily on first use, then
+  re-exchanging only when the token file's `iat` is newer; the break-glass key only if WIF failed.
 - **`RetentionPolicy`** replaces "zero retention": Messages API only, no Batch/Files/tools/Covered Models, `retention_class` for
-  the ledger, pack material refused unless ZDR or the owner's D24 attestation; the `anthropic-workspace-id` pin.
-- **Guards in CI:** a golden request-shape test and a lint that only `internal/judge/ai` may touch the platform credential; the
-  coach binary cannot load `LLM_*` configuration.
+  the ledger, pack material refused unless ZDR or the owner's D24 attestation; the workspace pin (exchange response, then the
+  `anthropic-workspace-id` header). **The credential doesn't enforce Messages-only** (under `workspace:developer` it reached Files
+  and Batches, 200/200): judge's request builder, the golden request-shape test and the CI lint do.
+- **Guards in CI:** a golden request-shape test with a key and endpoint allowlist, and a lint that only `internal/judge/ai` may
+  touch the platform credential; the coach binary cannot load `LLM_*` configuration.
 
 Everything ships dark in `v1.16.0`: the credential is lazy and `LLM_PLATFORM_ENABLED` stays `false`, so no provider call happens
 until [m4-07](sprint-m4-07.md) flips it for the cohort.
@@ -118,8 +123,8 @@ Sources: [t5 §7](../research/t5-platform-ai.md#7-quality-calibration-regression
 | `anthropic.go` | Messages API only: `POST /v1/messages` (streaming and non-streaming), `anthropic-version: 2023-06-01`, structured output via `output_config.format`; reads the `request-id` and `anthropic-workspace-id` response headers into `Resp`; `ListModels` (`GET /v1/models`) for the smoke. No other endpoint exists in the adapter (no Batch, Files, Skills, Agents). |
 | `openai.go` | Chat Completions **streaming** for coach BYO (m1-10's `store:false`, `include_usage`, reasoning-effort gating moved as is). `Complete` returns `ErrUnsupported` (no OpenAI platform use in v2.0). |
 | `errors.go` | m1-10's typed errors moved here — `ProviderError{Provider, Kind, Status, Code}`, kinds `Auth`, `Quota`, `RateLimited`, `ModelAccess`, `Region`, `Unavailable`, the sentinels and the `ErrProviderLimited` umbrella — plus the platform kinds judge needs: `InvalidRequest` (any other 400), `Refusal` (`stop_reason: refusal`), `ErrWorkspaceMismatch`, `ErrUnknownPrice`, `ErrUnsupported`; `RetryAfter` parsed from 429/529. Quota includes the workspace-limit 400, the org-limit 400 ("You have reached your specified API usage limits"), 429 `enforced_spend_limit_reached`, 402 `billing_error` and the credit-exhausted message (t5 §6). Classify by type/code, then status, then message; keep m1-10's Anthropic spend-limit matcher. |
-| `http.go` | Client constructors: platform clients get `ResponseHeaderTimeout` 30 s and **no retry anywhere in the package** (callers own retries so the 8-call cap and the ledger stay exact); coach keeps its streaming client (no overall timeout, per-call context). |
-| `redact.go` | `Redacted` implements `slog.LogValuer` → `[redacted N bytes]`; provider error bodies are read with a ≤ 8 KiB cap, parsed for type/code and **never** echoed into errors or logs. Allowed log fields only: request id, provider `request-id`, workspace id, model, effort, usage, µUSD, latency, outcome enum, label. |
+| `http.go` | Client constructors: platform clients get `ResponseHeaderTimeout` 30 s and **no retry anywhere in the package** (callers own retries so the 8-call cap and the ledger stay exact); coach keeps its streaming client (no overall timeout, per-call context). The one named exception is outside this package: the WIF token exchange's bounded retry (task 5), which is not a billed call. |
+| `redact.go` | `Redacted` implements `slog.LogValuer` → `[redacted N bytes]`; provider error bodies are read with a ≤ 8 KiB cap, parsed for type/code and **never** echoed into errors or logs. Allowed log fields only: request id, provider `request-id`, workspace id, model, effort, usage, µUSD, latency, outcome enum, label. The credential-prefix patterns include **`sk-ant-oat01-`** (the WIF access token shares it with other Anthropic OAuth tokens, [t5 §15](../research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25)) next to the API-key prefix. |
 
 ### 3 · Catalog, dated prices, usage → cost [X]
 
@@ -173,24 +178,39 @@ Sources: [ADR-0031 §2](../../adr/0031-platform-ai-and-two-tier-keys.md#2-creden
   `https://api.anthropic.com`; tests override), `LLM_KEY_LABEL`. Behaviour:
   - Read the projected file (≤ 16 KiB) and decode the JWT payload **without verifying it**, only for `iat`/`exp`/`jti` presence;
     the token itself is never logged, stored or put in an error.
-  - Cached access token valid for > 5 min → use it. Otherwise, if the file's `iat` is **newer** than the one last exchanged →
-    raw-HTTP `POST /v1/oauth/token` with exactly the request shape spk-03 recorded from the WIF reference (grant type, assertion,
-    org / service-account / federation-rule identifiers); cache `{access_token, expires_at, iat}`. If the file has **not**
-    rotated, keep the cached token to its expiry and then return `ErrUnavailable{reason: token_not_rotated}` — **never re-present a
-    used `jti`**. spk-03's invariant (access-token lifetime > rotation interval, kubelet refresh ≈ 80% of 3600 s) makes that
-    state transient; a unit test pins the measured numbers.
-  - Boot after an in-place restart: if the exchange answers `jti_reused` (only possible with `check_jti=true`), return
-    `ErrUnavailable{reason: jti_reused}` until the file rotates, logged once at WARN — no retry loop. Dormant but tested when
-    spk-03 set `check_jti=false`.
-  - An exchange 401/403 → `llm.ErrAuth` (m4-02 opens the breaker; the runbook's first suspect is JWKS drift after a k3s
-    SA-signing-key rotation).
+  - **First use (boot):** no exchange at process start; the first `Cred` call reads the file and exchanges. That works
+    even when the file was already exchanged before an in-place restart, because `check_jti=false` accepts a re-presented
+    `jti` ([t5 §15](../research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25) "Re-exchange rule").
+  - **Afterwards:** use the cached access token, and re-exchange only when the file's `iat` is **newer** than the one last
+    exchanged: every ~48–50 min and after every k3s restart, ≥ 10 min before the cached 3600 s token expires. If the file has
+    **not** rotated, run the cached token to its expiry, then return `ErrUnavailable{reason: token_not_rotated}` rather than
+    re-exchange the same file. spk-03's invariant (access-token lifetime 3600 s > rotation at 2881 s observed, ≤ ~2970 s) makes
+    that state unreachable while the kubelet rotates; a unit test pins the measured numbers.
+  - **Request** (t5 §15 "Exchange request shape"): raw-HTTP `POST /v1/oauth/token`, `content-type: application/json`, no
+    `anthropic-version` or `anthropic-beta` header. Body: `grant_type` = `urn:ietf:params:oauth:grant-type:jwt-bearer`,
+    `assertion` (the JWT verbatim, trailing newline trimmed, ≤ 16 KiB), `federation_rule_id`, `organization_id`,
+    `service_account_id`, and `workspace_id` (always sent). Cache `{access_token, expires_at, iat}`.
+  - **Response:** decode the 200 **leniently**: read `access_token`, `token_type`, `expires_in`, `scope` and `workspace_id`, and
+    ignore unknown fields (the undocumented `next_challenge` and `next_challenge_expires_in` belong to another grant); no
+    `DisallowUnknownFields`. **Pin:** refuse the token unless the response's `workspace_id` equals `LLM_ANTHROPIC_WORKSPACE_ID`
+    → `llm.ErrWorkspaceMismatch` (task 6 then checks the header on every response).
+  - **Errors:** every exchange 401/403 → `llm.ErrAuth` (m4-02 opens the breaker). The 401 is opaque by design: `jti` reuse,
+    audience, subject, workspace, JWKS drift and an archived rule all answer `authentication_error` "Authentication failed", and
+    the reason shows only in the Console's authentication history. So there is **no `jti_reused` branch**; the runbook's first
+    suspect is JWKS drift. A 400 `invalid_request_error` → `InvalidRequest`. **Transport errors and 5xx are retried a small fixed
+    number of times** inside the caller's context, then `ErrUnavailable`. t5 §15's re-exchange rule settles this: it is the one
+    named carve-out from task 7's no-retry lint, and `check_jti=false` makes a retry after a lost 200 safe. Never retry a 4xx.
   - Concurrent callers share one exchange (`singleflight`).
 - **`key.go`** — break-glass only: `LLM_ANTHROPIC_API_KEY` (from the SOPS secret, present only on the fallback or a WIF outage) →
   `x-api-key`. **Selection:** key present → key mode with a WARN on every start `platform AI: break-glass key in use (label=…)`;
   else complete WIF config + token file → WIF; else `ErrUnavailable{reason: no_credential}` (judge still starts; AI stays off).
 - **Never set or read `ANTHROPIC_API_KEY`** (it would shadow federation in any SDK) — enforced by task 7.
-- **Tests** against a fake token endpoint: exchange only on `iat` change; cache reuse; single-flight; `jti_reused`; 401 → `ErrAuth`;
-  token and access-token bytes absent from every log line and error (capture the `slog` handler at DEBUG); key-mode selection and
+- **Tests** against a fake token endpoint: no exchange before the first `Cred`; the first exchange of an already-exchanged file
+  (the restart case) succeeds; exchange only on a newer `iat`; cache reuse; `token_not_rotated` at expiry; single-flight; 401 and
+  403 → `ErrAuth` with no retry; 5xx and transport errors → the bounded retries, then `ErrUnavailable`; lenient decode with
+  `next_challenge*` and an unknown field present; an exchange-response `workspace_id` mismatch → `ErrWorkspaceMismatch`; the
+  request body golden (field names, trimmed newline, no version header); token and access-token bytes (the fake returns an
+  `sk-ant-oat01-…` token) absent from every log line and error (capture the `slog` handler at DEBUG); key-mode selection and
   WARN; missing file → `no_credential`.
 
 ### 6 · `RetentionPolicy`, platform request builder, workspace pin [X]
@@ -210,9 +230,11 @@ Sources: [ADR-0031 §4](../../adr/0031-platform-ai-and-two-tier-keys.md#4-retent
   `metadata.user_id` (the pseudonym m4-02 computes from `LLM_ENDUSER_SALT`), `inference_geo: "global"`. **Never**
   `temperature`/`top_p`/`top_k`, `tools`, `tool_choice`, `mcp_servers` or `container`, and never adaptive thinking with a visible
   display. Refuses a catalog entry that is not `platform_allowed` or is `retention: covered`, and `disabled` on a model without
-  `caps.thinking_off`.
-- **Workspace pin** — on every platform 2xx, `anthropic-workspace-id` must equal `LLM_ANTHROPIC_WORKSPACE_ID`, else
-  `ErrWorkspaceMismatch` (fail closed; m4-02 opens the breaker). `ModelResolved` and `RequestID` are always returned for the ledger.
+  `caps.thinking_off`. **This builder is the Messages-only enforcement**, with task 7's golden test and lint: the
+  `workspace:developer` credential itself reaches Files and Batches ([t5 §15](../research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25) finding 1).
+- **Workspace pin** — the exchange response's `workspace_id` is checked before first use (task 5); then on every platform 2xx,
+  `anthropic-workspace-id` must equal `LLM_ANTHROPIC_WORKSPACE_ID`, else `ErrWorkspaceMismatch` (fail closed; m4-02 opens the
+  breaker). `ModelResolved` and `RequestID` are always returned for the ledger.
 
 ### 7 · Guards: golden request shape + boundary lints [X]
 
@@ -223,7 +245,10 @@ Sources: [t5 §3](../research/t5-platform-ai.md#3-where-the-platform-key-lives-a
   request for Opus 5.5 is refused, and a **top-level key allowlist**
   (`model, max_tokens, system, messages, output_config, thinking, metadata, inference_geo, stream`) rejects anything else —
   `tools`, `tool_choice`, `mcp_servers`, `container`, `temperature`, `top_p`, `top_k` fail by name. A reflect test asserts `Req`
-  has no such field.
+  has no such field. An **endpoint allowlist** test drives every exported platform path through a recording transport and
+  fails on any request other than `POST /v1/messages` and `GET /v1/models` (the smoke), plus `POST /v1/oauth/token` from
+  `llm/auth`. That proves no Files or Batches call (`/v1/files`, `/v1/messages/batches`) exists, which the `workspace:developer`
+  credential would otherwise allow.
 - **Boundary lints** (`internal/platform/llm/boundary_test.go`, using `go list -deps -json ./...`; they run in CI's `go test`):
   1. only `internal/judge/ai` imports `internal/platform/llm/auth` (the "credential use only from `internal/judge/ai`" lint);
   2. `cmd/coach`'s dependency closure contains neither `internal/platform/llm/auth` nor any `internal/judge/...` package;
@@ -232,7 +257,10 @@ Sources: [t5 §3](../research/t5-platform-ai.md#3-where-the-platform-key-lives-a
   4. **the coach binary cannot load `LLM_*` config:** no `LLM_` getenv under `internal/coach/**` or `cmd/coach/**`, and
      `coach.LoadConfig()` with every `LLM_*` variable set equals the config without them;
   5. no provider SDK in `go.mod` (`github.com/anthropics/…`, `github.com/openai/…`) and no request-reissuing loop in
-     `internal/platform/llm` (no SDK-style auto-retries).
+     `internal/platform/llm/...` (no SDK-style auto-retries). **One named carve-out:** the token exchange's bounded retry of
+     transport errors and 5xx in `llm/auth/wif.go` (task 5; [t5 §15](../research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25)
+     "Re-exchange rule"). The lint allows that one function by name; an exchange isn't a billed call, so the ledger and the
+     8-call cap stay exact.
 
 ### 8 · judge wiring (dark) + `judge admin llm-smoke` [X]
 
@@ -243,7 +271,7 @@ Sources: [t5 §3](../research/t5-platform-ai.md#3-where-the-platform-key-lives-a
 - **`cmd/judge/main.go`** — builds the AI config and source and hands them to the service (m4-02 attaches the Scorer).
 - **`judge admin llm-smoke`** (in the `judge admin` dispatcher from [m3-14](sprint-m3-14.md)) — works regardless of
   `LLM_PLATFORM_ENABLED` and **spends nothing**: pick the source, get a credential (timed), call `GET /v1/models` (timed; allowed
-  by `workspace:inference`), check the `anthropic-workspace-id` header when present, confirm `claude-sonnet-5` and
+  under the rule's scope), check the `anthropic-workspace-id` header when present, confirm `claude-sonnet-5` and
   `claude-opus-5-5` are listed. Print only: mode (`wif|key`), label, token `iat`/`exp`, `expires_in`, latencies, statuses, ✓/✗
   per check; exit non-zero on any ✗; one admin-audit row (verb, result enum; no secret). The definitive workspace pin on Messages
   runs with the first ledgered call (m4-02 path).
@@ -259,16 +287,20 @@ Sources: [t5 §3](../research/t5-platform-ai.md#3-where-the-platform-key-lives-a
 - `docs/v2/runbooks/platform-ai-provider.md` (created by [mi-12](sprint-mi-12.md)) gains: **Smoke from the judge pod**
   (`ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-judge -- judge admin llm-smoke'`, expected output); **Break-glass switch**
   (owner writes the key into the SOPS file and bumps `xlearn.dev/llm-rev` → judge logs the key-mode WARN; removing it returns to
-  WIF); **An exchange 401** (check `host-verify --cluster` for the JWKS kid drift WARN → re-paste the JWKS per the runbook).
-- No new ADR expected (this implements ADR-0031 §1–§4). If spk-03's numbers force a different re-exchange rule than t5 §3, add a
-  dated note to [ADR-0031](../../adr/0031-platform-ai-and-two-tier-keys.md) §2.
+  WIF); **An exchange 401** (every denial is the same opaque 401, so the owner reads the reason in the Console's authentication
+  history; check `host-verify --cluster` for the JWKS kid drift WARN → re-paste the JWKS per the runbook).
+- No new ADR expected (this implements ADR-0031 §1–§4; mi-12 folded t5 §15's re-exchange rule into §2). If this sprint's rule has
+  to depart from t5 §15, add a dated note to [ADR-0031](../../adr/0031-platform-ai-and-two-tier-keys.md) §2.
 
 ### 10 · Real-workspace smoke from the judge pod [X]
 
 Cannot run before the code is deployed, and M4 ships in one tag, so it is **not** an m4-07 entry gate. It runs in
 **[m4-07](sprint-m4-07.md) task 7's after-tag reads**, after `v1.16.0` rolls out and **before** task 8 (the
 `LLM_PLATFORM_ENABLED=true` infra PR): `ssh sujaykumar-vps 'k3s kubectl exec -n xlearn deploy/xlearn-judge -- judge admin llm-smoke'` must
-pass (WIF mode, exchange latency recorded, Models 200, workspace header matching when present, both models listed). Not a host
+pass (WIF mode, exchange latency recorded, Models 200, workspace header matching when present, both models listed). **Run it
+twice, back to back:** each `kubectl exec` is a fresh process with no cached token, so the second run re-presents the file's used
+`jti`. That is spk-03's Q-W3 re-run under `check_jti=false` (a) and (b), which [mi-12](sprint-mi-12.md) task 8 hands here by
+default. Both runs must pass and print the same `iat`; a 401 on the second means `check_jti` is still on, so the owner unticks it. Not a host
 script: it is the xlearn verb from task 8 run through `kubectl exec`. **Semantics are this sprint's:** `GET /v1/models` only,
 **spends nothing and writes no ledger row** (only its admin-audit row) — m4-02's `llm_call.purpose` has no `smoke` value; the first
 ledgered call is the first real analysis after task 8, which also runs the definitive workspace pin on Messages. The output goes
@@ -285,12 +317,16 @@ into this sprint file and the status.md decisions log. A failure blocks the flag
 - [ ] Coach's unpriced cases unchanged: a custom model id or a reply without usage stores `est_cost_micros` NULL and the chat succeeds.
 - [ ] Boundary lints green in CI: only `internal/judge/ai` imports `llm/auth`; the coach binary cannot load `LLM_*`; no
       `ANTHROPIC_API_KEY`; no provider SDK; no auto-retry.
-- [ ] WIF source: exchange only on `iat` change, single-flight, `jti_reused` and 401 handled without loops, no token material in
-      any log or error; break-glass key selection with its WARN.
+- [ ] WIF source: lazy first exchange, then re-exchange only on a newer `iat`; single-flight; every 401/403 → `ErrAuth` without a
+      loop (no `jti_reused` branch); bounded retry on transport errors and 5xx only; lenient decode (`next_challenge*` ignored); the
+      exchange response's `workspace_id` pinned; no token material (`sk-ant-oat01-…` included) in any log or error; break-glass
+      key selection with its WARN.
+- [ ] Endpoint allowlist green: no platform request other than Messages, Models and the token exchange (no Files, no Batches).
 - [ ] `RetentionPolicy.AllowsPackMaterial()` false unless `zdr` or `LLM_ACCEPT_STD_RETENTION=true`; covered / non-platform models
       refused; a workspace-header mismatch returns `ErrWorkspaceMismatch`.
-- [ ] `judge admin llm-smoke` passes in compose; **the from-the-pod run against the real workspace passes after `v1.16.0` deploys**
-      (dark; no spend, no ledger row; executed in m4-07 task 7's after-tag reads, before task 8, and recorded here).
+- [ ] `judge admin llm-smoke` passes in compose; **the from-the-pod run against the real workspace passes twice after `v1.16.0` deploys**
+      (dark; no spend, no ledger row; executed in m4-07 task 7's after-tag reads, before task 8, and recorded here; the second run
+      is the Q-W3 re-run).
 - [ ] CI green (gofmt, vet, `go test -race ./...`, e2e lane, `sqlc diff` — this sprint adds no migration).
 
 ## Release
@@ -310,20 +346,24 @@ credential mode and the re-exchange rule.
 
 ## Risks / watch-outs
 
-- **Inline JWKS rotation at k3s upgrades.** Inline JWKS has no auto-refresh: a k3s SA-signing-key rotation (upgrade, rebuild,
-  `certificate rotate`) makes every exchange 401 → breaker → manual grading. Documented in the runbook; `host-verify --cluster`
+- **Inline JWKS rotation.** Inline JWKS has no auto-refresh. It survives k3s restarts and `k3s certificate rotate` (spk-03); it
+  changes only with `k3s certificate rotate-ca` carrying a new `service.key`, or on a node rebuilt without the old `service.key`
+  ([t5 §15](../research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25) finding 4). After either, every exchange 401s → breaker → manual grading. Documented in the runbook; `host-verify --cluster`
   WARNs on kid drift (mi-12); the owner re-pastes. Never "fix" it by switching to the key silently.
 - **Coach regression.** This moves the most-used AI surface; the byte-level goldens are captured before the move for that reason.
   Don't regenerate them to make a failing test pass — a diff is a behaviour change. The easy one to miss: `llm.Cost` refuses
   unknown prices, coach must not (NULL cost, chat succeeds).
 - **WIF request-shape drift.** Use exactly the shape spk-03 recorded from the WIF reference; the golden and the pod smoke catch a
   change. Don't guess field names.
-- **Re-presenting a used `jti`.** Re-exchange only on a newer `iat`; if the file hasn't rotated, run the cached token to expiry and
-  go unavailable. A loop that retries the same file is a bug even with `check_jti=false`.
+- **Re-presenting a used `jti`.** `check_jti=false` makes the lazy boot exchange and the bounded transport/5xx retry safe. Beyond
+  those, re-exchange only on a newer `iat`; if the file hasn't rotated, run the cached token to expiry and go unavailable. A loop
+  that re-exchanges the same file is a bug.
 - **Break-glass drift.** Key mode is loud on every start and the key's 90-day expiry is a status.md manual check (D34). Never name it
   `ANTHROPIC_API_KEY`.
 - **"No auto-retries" creeping back.** The ledger and the 8-call cap (m4-02) are only exact if the adapters never retry; the lint and
-  review enforce it.
+  review enforce it. The token exchange's bounded retry is the one named carve-out.
+- **The credential isn't Messages-only.** Under `workspace:developer` the access token reaches Files and Batches (spk-03: 200/200).
+  Never add another endpoint to the adapter; the request builder, the golden test and the endpoint allowlist are the enforcement.
 - **Cost of a wrong price.** Prices are copied on the day with `as_of`; an unknown price refuses the call rather than recording $0.
 - **Parallel names.** [m4-02](sprint-m4-02.md) builds directly on `llm.Req`, the typed errors and `RetentionPolicy`; keep the names stable
   once merged.

@@ -127,7 +127,7 @@ stringData:
 **`RetentionPolicy` (replaces `ZeroRetention bool`).** Every platform call:
 - **Anthropic:** Messages API only. No Batch (29-day retention), Files, code execution, server tools or Covered Models (verified).
 - **OpenAI:** explicit `store:false`. No `previous_response_id`, background mode, Files or Batch.
-- `workspace:inference` enforces most of this at the credential; the request builder enforces the rest.
+- `workspace:inference` enforces most of this at the credential; the request builder enforces the rest. *2026-09-25 ([§15](#15-wif-spike-result-spk-03-2026-09-25) finding 1): no longer holds. The rule is `workspace:developer`, which reaches Files and Batches, so the request builder, the golden request-shape test and the CI lint enforce all of it.*
 - `retention_class ∈ {provider_std, zdr}` is written to the ledger.
 - ZDR is requested opportunistically (verified: per org, through sales).
 - `Score` refuses to run unless `zdr=true` **or** the owner has attested `LLM_ACCEPT_STD_RETENTION=true` (Q1).
@@ -822,6 +822,11 @@ The confirming re-run of (a) and (b) under `check_jti=false` is handed to mi-12,
 4. **Maintenance (§2).** Paste the JWKS inline as the `keys` array. It survives k3s restarts and `k3s certificate rotate`. It changes only with `k3s certificate rotate-ca` carrying a new `service.key`, or on a node rebuilt without the old `service.key`. After either, re-paste it: exchanges 401 until then (breaker → manual grading). `host-verify --cluster`'s kid check shows the drift (mi-12 task 6). A k3s restart does re-issue every projected token, but that is only a newer `iat` for judge to re-exchange.
 5. **Provider-side controls (§2, §5, §8).** The org's monthly spend limit is **$5** today (owner, 2026-09-25). No workspace can spend past it. **D43 (owner, 2026-09-26):** before mi-12 the org limit is set to **$20**: `xlearn-platform-prod` $15 plus `xlearn-calib` $5. Before M4 calibration it rises to about **$45**, with `xlearn-calib` at $30. The v3 opening ($100 prod) re-sizes it. These are the mi-12 and m4-03/m4-07 before-launch items.
 6. **Org.** WIF works in the owner's current org. The dedicated-org question stays with mi-12 (t5 §3's "Org" row); if a new org is created, re-check WIF there.
+
+**Folded 2026-09-29 (doc debt, ADR-0031 still Proposed):**
+- **mi-12** (plan and prompt): task 1 lists findings 1–6 as the ADR-0031 fold list, plus the feasibility D24/matrix wording. Task 2/3 and the before-launch block carry the `keys` array, `check_jti` off, the rule lifetime (1 h, set explicitly) and the scope decision (default `workspace:developer`). The Console clean-up below is now a before-launch item. The Q-W3 re-run rides m4-01 task 10's pod smoke, run twice, by default.
+- **m4-01** (plan and prompt): this section's re-exchange rule, with its bounded transport/5xx retry as the one no-retry-lint carve-out. Also no `jti_reused` branch, the exchange-response `workspace_id` pin, lenient decode, the `sk-ant-oat01-` redaction pattern and an endpoint allowlist test.
+- **m4-02:** the breaker row. **m4-07:** the canary and the smoke run twice.
 
 **Throwaway resources:** the namespace `wif-spike` and the VM `xlearn-wif` were deleted on 2026-09-25 (`multipass delete --purge`; `multipass list` shows no instances, so `xl-spike` is gone too). The Console objects (rule, issuer, service account, workspace) are left for the owner's clean-up (status.md → Open owner items). The issuer is inert once the VM is purged, because its signing key went with the VM. It must still be deleted before mi-12 creates the production issuer, which uses the same `issuer_url`.
 

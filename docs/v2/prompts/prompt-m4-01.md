@@ -14,7 +14,7 @@
   [t5 §5](../research/t5-platform-ai.md#5-cost-model) (prices), [t5 §6](../research/t5-platform-ai.md#6-budgets-metering-and-abuse-controls)
   (usage semantics, provider error mapping), [t5 §7](../research/t5-platform-ai.md#7-quality-calibration-regression-and-injection-defences)
   item 1 (`platform/llm` shape), [t5 §8](../research/t5-platform-ai.md#8-privacy-and-residency) (logging), and **t5 §15** (the spk-03
-  WIF result: endpoint and field names, `check_jti`, lifetime vs rotation) in [`../research/t5-platform-ai.md`](../research/t5-platform-ai.md).
+  WIF result: endpoint and field names, `check_jti`, the scope, the re-exchange rule, lifetime vs rotation; it overrides §3 where they conflict) in [`../research/t5-platform-ai.md`](../research/t5-platform-ai.md).
 - The Anthropic [WIF reference](https://platform.claude.com/docs/en/manage-claude/wif-reference) and
   [WIF with Kubernetes](https://platform.claude.com/docs/en/manage-claude/wif-providers/kubernetes) — the exchange request shape.
 - [ADR-0035 §5](../../adr/0035-v2-operations-nats-auth-limits-capacity.md#5-capacity-the-memory-sum-rule-triggers-and-ordered-responses) (memory sum),
@@ -32,8 +32,10 @@ Platform AI (M4) is owner-paid and judge-owned: `internal/judge/ai` will hold th
 `internal/platform/llm` holds the policy-free adapters, catalog and prices that both judge and the BYO coach use. Today those
 adapters live inside coach (`internal/coach/providers.go`, `catalog.go`, hardened by m1-10: typed errors, `store:false`, usage and
 cost). This sprint lifts them into `internal/platform/llm` without changing coach's behaviour, adds the **WIF** credential
-(exchange the k3s projected token for a short-lived `workspace:inference` token) with the break-glass key as the only fallback,
-replaces "zero retention" with **`RetentionPolicy`**, and adds the CI guards ADR-0031 requires. mi-12 already put the secret, the
+(exchange the k3s projected token for a short-lived `workspace:developer` token: the Console offers no `workspace:inference`,
+t5 §15 finding 1) with the break-glass key as the only fallback, replaces "zero retention" with **`RetentionPolicy`**, and adds the
+CI guards ADR-0031 requires. The credential's scope reaches Files and Batches, so **judge's request builder, the golden
+request-shape test and the CI lint are the Messages-only enforcement**, not the credential. mi-12 already put the secret, the
 non-secret values (`LLM_PLATFORM_ENABLED=false`), the projected token and the 443 egress on the judge pod; this sprint changes no
 infra. Everything is dark and lazy until [m4-07](../sprints/sprint-m4-07.md) tags `v1.16.0` and flips the flag for the cohort.
 
@@ -46,8 +48,8 @@ infra. Everything is dark and lazy until [m4-07](../sprints/sprint-m4-07.md) tag
       `/xlearn/api/v1/healthz` reports it, and `v1.14.0` exists.
 - [ ] `ev-acceptance-set` ✅ in status.md (≥ 70 labelled: ≥ 40 test + 30 dev).
 - [ ] AB16–AB18 frozen: [ds-m4-01](../sprints/sprint-ds-m4-01.md)'s PR merged (the three board files are on `main`; the merge is the freeze).
-- [ ] t5 §15 (spk-03) exists and states WIF GO + `check_jti` (or the fallback); note the exchange field names and the
-      access-token lifetime vs rotation interval.
+- [ ] t5 §15 (spk-03) exists and states WIF GO + `check_jti` (or the fallback); note the exchange field names, the
+      re-exchange rule and the access-token lifetime vs rotation interval. mi-12 recorded the rule's scope (`workspace:developer` by default).
 - [ ] Parallel sessions: `gh pr list --state open`, `git worktree list`, ListAgents — no peer PR or worktree touches
       `internal/coach/**`, `internal/platform/**` or `internal/judge/**`.
 
@@ -62,12 +64,13 @@ infra. Everything is dark and lazy until [m4-07](../sprints/sprint-m4-07.md) tag
    `est_cost_micros` NULL and succeed). Commit green. **Never regenerate these later** — a diff means behaviour changed.
 3. **[X] Core package (task 2)** — create `internal/platform/llm/`: `llm.go` (`Provider`, `Req` with **no** tools/tool-choice/MCP/
    container/temperature/top_p/top_k field, `Resp`, `Cred`, `Block`, `Message`), `anthropic.go` (Messages only, streaming +
-   non-streaming, `output_config.format`, `request-id` and `anthropic-workspace-id` into `Resp`, `ListModels`), `openai.go` (chat
+   non-streaming, `output_config.format`, `request-id` and `anthropic-workspace-id` into `Resp`, `ListModels`; no other endpoint), `openai.go` (chat
    streaming for coach; `Complete` → `ErrUnsupported`), `errors.go` (move m1-10's kinds and sentinels; add `InvalidRequest`,
    `Refusal`, `ErrWorkspaceMismatch`, `ErrUnknownPrice`, `ErrUnsupported`, `RetryAfter`; map the workspace/org-limit 400s, 429
    `enforced_spend_limit_reached`, 402 `billing_error` and credit-exhausted to Quota), `http.go` (platform client with
-   `ResponseHeaderTimeout` 30 s; no retries anywhere), `redact.go` (`slog.LogValuer` → `[redacted N bytes]`; error bodies read
-   ≤ 8 KiB, parsed, never echoed).
+   `ResponseHeaderTimeout` 30 s; no retries anywhere in `llm`; the token exchange's bounded retry in step 6 is the one named
+   carve-out), `redact.go` (`slog.LogValuer` → `[redacted N bytes]`; error bodies read ≤ 8 KiB, parsed, never echoed; the
+   credential-prefix patterns include **`sk-ant-oat01-`**, the WIF access token's prefix, t5 §15).
 4. **[X] Catalog, prices, usage (task 3)** — move `internal/coach/catalog.go` to `internal/platform/llm/catalog.go` with `class`,
    `caps` (incl. `thinking_off`: Sonnet 5 yes, Opus 5.5 no), `retention`, `retire_not_before`, `byo_visible`, `platform_allowed` (Sonnet 5 and Opus 5.5 platform-allowed; Haiku 4.5 and
    Fable 5.1 not). `prices.go` with effective dates, `prices_v`, µUSD per MTok for input / 5 m write / 1 h write (2×) / cache read /
@@ -77,12 +80,19 @@ infra. Everything is dark and lazy until [m4-07](../sprints/sprint-m4-07.md) tag
    aliases of the `llm` ones; `internal/coach/catalog.go` becomes the `byo_visible` view; coach maps `llm.ErrUnknownPrice` to a
    NULL `est_cost_micros` (never refuses a chat); coach gains no `LLM_*` config. Run the
    step-2 goldens, `go test ./internal/coach/... ./internal/gateway/...` and the e2e lane: **no test edits except import paths**.
-6. **[X] WIF + key sources (task 5)** — `internal/platform/llm/auth/{source,wif,key}.go` exactly per the plan: decode the projected
-   token's payload without verifying it (only `iat`/`exp`); cached access token if > 5 min left; exchange (raw HTTP `POST /v1/oauth/token`,
-   the field names from t5 §15 / the WIF reference) **only when the file's `iat` is newer**; otherwise run the cached token to expiry,
-   then `ErrUnavailable{token_not_rotated}`; `jti_reused` → unavailable until rotation, WARN once; 401/403 → `ErrAuth`; `singleflight`.
+6. **[X] WIF + key sources (task 5)** — `internal/platform/llm/auth/{source,wif,key}.go` exactly per the plan and t5 §15's
+   "Re-exchange rule": decode the projected token's payload without verifying it (only `iat`/`exp`); **exchange lazily** on the first
+   `Cred` (never at boot; a file already exchanged before an in-place restart is fine under `check_jti=false`); afterwards use the
+   cached token and re-exchange **only when the file's `iat` is newer**; if it hasn't rotated, run the cached token to expiry, then
+   `ErrUnavailable{token_not_rotated}`. Request: raw HTTP `POST /v1/oauth/token`, JSON, the field names from t5 §15 (`grant_type`
+   jwt-bearer, `assertion` trimmed, `federation_rule_id`, `organization_id`, `service_account_id`, `workspace_id` always sent), no
+   version header. **Decode the 200 leniently** (ignore `next_challenge*` and any unknown field). **Pin** the response's
+   `workspace_id` to `LLM_ANTHROPIC_WORKSPACE_ID` → else `ErrWorkspaceMismatch`. **Every 401/403 → `ErrAuth`** (the denial is
+   opaque, so there is no `jti_reused` branch); 400 → `InvalidRequest`; transport errors and 5xx retried a small fixed number of
+   times inside the caller's context, then `ErrUnavailable` (t5 §15 settles the retry question; never retry a 4xx); `singleflight`.
    Key mode when `LLM_ANTHROPIC_API_KEY` is present (WARN every start), else WIF, else `no_credential`. Tests against a fake token
-   endpoint, including a DEBUG-level log capture proving no token/access-token/key bytes appear anywhere.
+   endpoint per the plan's list, including a DEBUG-level log capture proving no token/access-token (`sk-ant-oat01-…`)/key bytes
+   appear anywhere.
 7. **[X] Retention + builder + pin (task 6)** — `retention.go` (`LLM_RETENTION_CLASS` default `provider_std`, `LLM_ACCEPT_STD_RETENTION`
    default `false`, `AllowsPackMaterial()`), `request_platform.go` (explicit effort; `thinking` from the caller's mode —
    `{adaptive, display: omitted}` by default or `{disabled}` for the `low-nothink` analyzer candidate, refused on a model without
@@ -91,10 +101,11 @@ infra. Everything is dark and lazy until [m4-07](../sprints/sprint-m4-07.md) tag
    `anthropic-workspace-id` pin on every platform 2xx → `ErrWorkspaceMismatch`. Verify each parameter name against the current API
    reference and record it in the golden.
 8. **[X] Guards (task 7)** — `request_golden_test.go` (+ `testdata/`) with goldens for analyze (both thinking modes), score and
-   feedback shapes and the top-level key allowlist; a reflect test on `Req`;
+   feedback shapes and the top-level key allowlist; a reflect test on `Req`; the **endpoint allowlist** test (only
+   `POST /v1/messages`, `GET /v1/models` and `llm/auth`'s `POST /v1/oauth/token`, so no Files or Batches call exists);
    `boundary_test.go` using `go list -deps -json ./...` for the five lints in the plan (only `internal/judge/ai` imports `llm/auth`;
    `cmd/coach` closure excludes `llm/auth` and `internal/judge/...`; no bare `ANTHROPIC_API_KEY`; the coach binary cannot load `LLM_*`;
-   no provider SDK and no auto-retry). They run in CI's existing `go test -race ./...` step — no workflow change needed.
+   no provider SDK and no auto-retry, with the token exchange's bounded retry as the one carve-out, allowed by name). They run in CI's existing `go test -race ./...` step — no workflow change needed.
 9. **[X] judge wiring (task 8)** — `internal/judge/ai/config.go`, `internal/judge/ai/credential.go` (lazy source; no exchange at boot),
    `cmd/judge/main.go` wiring; `judge admin llm-smoke` in m3-14's dispatcher: credential (timed) → `GET /v1/models` (timed) → workspace
    header when present → both models listed; prints mode, label, `iat`/`exp`, `expires_in`, latencies, ✓/✗; non-zero on ✗; one
@@ -104,8 +115,9 @@ infra. Everything is dark and lazy until [m4-07](../sprints/sprint-m4-07.md) tag
     `LLM_PLATFORM_ENABLED=false` and no admin verb, judge makes zero provider requests (the fake's access log is empty). Paste both
     outputs into the PR.
 11. **[X] Docs (task 9)** — `docs/architecture/services.md` (judge, coach rows); append the three sections to
-    `docs/v2/runbooks/platform-ai-provider.md` (pod smoke, break-glass switch, exchange-401 triage). A dated note in ADR-0031 §2 only if
-    the re-exchange rule had to differ from t5 §3.
+    `docs/v2/runbooks/platform-ai-provider.md` (pod smoke, break-glass switch, exchange-401 triage: the 401 is opaque, so the owner
+    reads the reason in the Console's authentication history). A dated note in ADR-0031 §2 only if the re-exchange rule had to
+    differ from t5 §15 (which mi-12 folded into §2).
 12. **[X] Verify locally** — `gofmt -l .` empty, `go vet ./...`, `go test -race ./...`, `go test -tags e2e -race ./internal/e2e/...`,
     `sqlc diff` (clean; no migration here), and `npm --prefix web run build` (the embed step CI runs first).
 
@@ -144,9 +156,10 @@ infra. Everything is dark and lazy until [m4-07](../sprints/sprint-m4-07.md) tag
   session didn't already record them (skip any edit already done): **Artboards** rows AB16–AB18 → "frozen (PR #, date)", ds-m4-01 ✅
   on the board (and its Status rows and _Overall_ ✅ in its sprint file), and event `ev-freeze-ds-m4-01` ✅ ("automatic at the
   ds-m4-01 merge") if status.md still lists it. Flag inventory unchanged (`LLM_PLATFORM_ENABLED` is a permanent kill switch, still `false`).
-- **Decisions log:** credential mode shipped (WIF with `check_jti=<value>` or break-glass key), the re-exchange rule (new `iat` only;
-  cached token to expiry; never a used `jti`), `platform_allowed` models (Sonnet 5, Opus 5.5), the price table's `as_of`.
-- ADRs: none expected; a dated note in ADR-0031 §2 only if the re-exchange rule departs from t5 §3.
+- **Decisions log:** credential mode shipped (WIF with `check_jti=<value>` and the rule's scope, or break-glass key), the re-exchange
+  rule (lazy first exchange; new `iat` only; cached token to expiry; bounded transport/5xx retry; every 401/403 → `ErrAuth`),
+  `platform_allowed` models (Sonnet 5, Opus 5.5), the price table's `as_of`.
+- ADRs: none expected; a dated note in ADR-0031 §2 only if the re-exchange rule departs from t5 §15.
 
 ## Done when (acceptance)
 
@@ -156,10 +169,11 @@ infra. Everything is dark and lazy until [m4-07](../sprints/sprint-m4-07.md) tag
       `{adaptive, display: omitted}` or `{disabled}`, both golden).
 - [ ] Coach's custom-id / no-usage exchanges still store `est_cost_micros` NULL and succeed.
 - [ ] Boundary lints green: only `internal/judge/ai` imports `llm/auth`; the coach binary cannot load `LLM_*`; no `ANTHROPIC_API_KEY`; no SDK; no auto-retry.
-- [ ] WIF source: exchange on `iat` change only, single-flight, `jti_reused` and 401 without loops, no token material in logs/errors; key mode WARNs.
+- [ ] WIF source: lazy first exchange, then only on a newer `iat`; single-flight; every 401/403 → `ErrAuth` without loops (no `jti_reused` branch); bounded transport/5xx retry only; lenient decode; exchange-response `workspace_id` pinned; no token material (`sk-ant-oat01-…` included) in logs/errors; key mode WARNs.
+- [ ] Endpoint allowlist green: Messages, Models and the token exchange only (no Files, no Batches).
 - [ ] `RetentionPolicy` refuses pack material unless `zdr` or `LLM_ACCEPT_STD_RETENTION=true`; covered / non-platform models refused; workspace mismatch → `ErrWorkspaceMismatch`.
-- [ ] `judge admin llm-smoke` passes in compose (spends nothing, writes no ledger row); the real-workspace pod smoke is scheduled
-      in m4-07 task 7's after-tag reads, before its task 8 (task 10 🔄).
+- [ ] `judge admin llm-smoke` passes in compose (spends nothing, writes no ledger row); the real-workspace pod smoke (run twice: the
+      second run is spk-03's Q-W3 re-run) is scheduled in m4-07 task 7's after-tag reads, before its task 8 (task 10 🔄).
 - [ ] CI green incl. `sqlc diff`.
 
 ## Ship (land-and-sync — owner approval pre-granted)
@@ -168,6 +182,6 @@ infra. Everything is dark and lazy until [m4-07](../sprints/sprint-m4-07.md) tag
 
 1. Branch, then conventional commit(s) with the attribution lines, then push, then a PR in every repo touched (`../infra` PRs first where the order requires it; infra PRs are never folded into a tag). (Branch `feat/m4-01-platform-llm`, commits such as `feat(llm): …` and `refactor(coach): …`; this repo only.)
 2. Once CI is green (fix, then merge, on failure), squash-merge. Never enable auto-merge.
-3. **Release action — merge only (ships in `v1.16.0`):** Nothing deploys; it ships in `v1.16.0` (cut by [m4-07](../sprints/sprint-m4-07.md)). Don't tag. No infra PR. Flux deploys nothing new until that tag, so the pod smoke (task 10) runs there, in m4-07 task 7's after-tag reads, before its task 8.
+3. **Release action — merge only (ships in `v1.16.0`):** Nothing deploys; it ships in `v1.16.0` (cut by [m4-07](../sprints/sprint-m4-07.md)). Don't tag. No infra PR. Flux deploys nothing new until that tag, so the pod smoke (task 10, run twice) runs there, in m4-07 task 7's after-tag reads, before its task 8.
 4. Update status: the sprint file and `docs/v2/status.md`, in the same PR or a follow-up docs PR merged the same way.
 5. Run `git checkout main && git pull` in every repo touched (xlearn). If a clean peer worktree holds `main`, use `git -C <worktree> merge --ff-only origin/main` and then `git switch --detach main`.

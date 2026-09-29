@@ -159,7 +159,7 @@ placement, single-node fit, GitOps/SOPS fit, cost, and the topic/ADR that decide
 | Canonical Livepatch (Ubuntu Pro personal) | **Declined** (owner): unattended upgrades plus the monthly reboot instead | — | — | — | — | T3 · D22 |
 | gVisor (runsc) | **Declined for v2.0** (no per-process limits inside a sandbox); revisit for the execute step on open signup | — | — | — | — | T3 · ADR-0030 |
 | Platform LLM provider: Anthropic `claude-sonnet-5` (+ Opus 5.5 for escalation and re-grade) | **Adopt**; one provider in v2.0 | external API | ✅ no node cost | dedicated workspace `xlearn-platform-prod`; hard limit + Console alerts; credits with auto-reload off | **≤ $100/month ceiling** (≈ $26–63 at 20 learners, DSA-only) | T5 · ADR-0031 |
-| Anthropic Workload Identity Federation (k3s SA token → short-lived token, `workspace:inference`) | **Adopt, gated by a ≤ ½-day spike before M4**; fallback: an expiring single-workspace key | judge pod (projected token) | ✅ | inline JWKS pasted into Anthropic (re-paste if the k3s SA signing key rotates) | $0 | T5 · ADR-0031 |
+| Anthropic Workload Identity Federation (k3s SA token → short-lived token, `workspace:inference`) | **Adopt, gated by a ≤ ½-day spike before M4**; fallback: an expiring single-workspace key. *2026-09-25 (spk-03, [t5 §15](research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25)): GO; the Console offers only `workspace:developer`, so the request builder enforces Messages-only; mi-12 amends this row at ADR-0031 acceptance* | judge pod (projected token) | ✅ | inline JWKS pasted into Anthropic (re-paste if the k3s SA signing key rotates) | $0 | T5 · ADR-0031 |
 | SOPS secret `xlearn-judge-llm` (HMAC salt; break-glass key) | **Adopt** | `xlearn` ns | ✅ | existing `apps/secrets` rule; rotation via `podAnnotations` bump | $0 | T5 · ADR-0031 |
 | judge **egress** NetworkPolicy (default deny; DNS, PG, NATS, runner, 443 to non-cluster) | **Adopt as an M4 gate** (moved from T3 Track B) | `xlearn` ns | ✅ | chart 0.3.0 egress template | $0 | T5 · ADR-0031 |
 | `xlearn-calib` calibration workspace | **Adopt** for acceptance and calibration runs (never in the cluster) | owner machine / private CI | — | GitHub OIDC WIF or a short-expiry personal key | $5/month until M4, ~$30 for M4 bring-up (D43); ~$10–30 analyzer + $20–60 per rubric one-off | T5 · ADR-0031 |
@@ -656,7 +656,7 @@ They were synthesized into one draft, which got two adversarial critiques: escap
   - **The coach stays BYO** for chat and T6 interviews.
   - **No BYO for platform tasks** in v2.0.
 - **Credential.**
-  - **Workload Identity Federation:** a k3s SA token is exchanged for a short-lived `workspace:inference` token in a dedicated workspace. A ½-day spike before M4 gates it; the fallback is an expiring key.
+  - **Workload Identity Federation:** a k3s SA token is exchanged for a short-lived `workspace:inference` token in a dedicated workspace. A ½-day spike before M4 gates it; the fallback is an expiring key. *2026-09-25 (spk-03, [t5 §15](research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25)): GO with scope `workspace:developer` (the Console has no `workspace:inference`); Messages-only rests on the request builder. mi-12 amends this at ADR-0031 acceptance.*
   - **judge gets default-deny egress** (an M4 gate).
   - No tools, Batch or Files. Prompts and learner content are never logged, and a canary test enforces that.
 - **Model.**
