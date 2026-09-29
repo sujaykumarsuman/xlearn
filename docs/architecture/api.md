@@ -10,6 +10,17 @@ service APIs are in [`services.md`](services.md). Auth model: [ADR-0006](../adr/
 - **Auth:** HttpOnly `Secure` `SameSite=Lax` session cookie. `credentials: include` from the SPA.
   Unauthenticated → `401` with `{ "error": { "code": "unauthenticated" } }`; the SPA redirects to OAuth.
 - **Content type:** `application/json`; streaming coach responses use **SSE** (`text/event-stream`).
+- **Cross-site write checks (M1b, m1-04; [ADR-0033](../adr/0033-invite-only-admission-and-owner-admin.md) §9):**
+  every mutating call (`POST`/`PUT`/`PATCH`/`DELETE` on `/api/…`) must be `Content-Type: application/json`
+  (with or without a body) → else `415 unsupported_media_type`, and a `Sec-Fetch-Site` header, when present,
+  must be `same-origin` or `none` → else `403 cross_site_request`. The OAuth start form POST
+  (`/auth/{provider}/start`) keeps only the `Sec-Fetch-Site` check. The SPA shell carries a strict CSP
+  (`script-src 'self'`, `form-action 'self' https://github.com`); every response carries `nosniff`.
+- **Sessions (m1-04):** a suspended account's sessions stop validating at once. A password change revokes
+  every session of the account, the caller's included: `POST /me/password` answers `{ok:true, reauth:true}`
+  and clears the cookie. Login, sign-up and password change may answer `429 too_many_requests` with
+  `Retry-After: 1` while identity's two bcrypt slots are busy (L3). OAuth for a suspended account redirects
+  to `/auth?error=account_unavailable`.
 - **Errors:** consistent envelope `{ "error": { "code", "message", "details"? } }`; HTTP status
   reflects the class (`400/401/403/404/409/422/429/5xx`).
 - **IDs & time:** string ids as in the domain; timestamps ISO-8601 UTC. Pagination via `?cursor=&limit=`.
