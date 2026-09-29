@@ -1,0 +1,476 @@
+diff --color -ru /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/dashboard.json /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/dashboard.json
+--- /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/dashboard.json	2026-09-29 12:21:21
++++ /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/dashboard.json	2026-09-29 19:16:30
+@@ -12,7 +12,6 @@
+     {
+       "difficulty": "med",
+       "kind": "problem",
+-      "pattern": "PATTERN-SENTINEL-1.",
+       "problemId": "1",
+       "status": "attempting",
+       "title": "Problem 1"
+@@ -37,9 +36,6 @@
+         "itemId": "rev-2",
+         "mockMode": false,
+         "problem": {
+-          "concepts": [
+-            "CONCEPT-SENTINEL-2."
+-          ],
+           "difficulty": "med",
+           "id": "2",
+           "is_reinforcement": false,
+@@ -47,7 +43,6 @@
+           "links": [],
+           "neetcode_url": "",
+           "path_slug": "dsa",
+-          "pattern": "PATTERN-SENTINEL-2.",
+           "role": "core",
+           "title": "Problem 2",
+           "week_n": 1
+@@ -109,11 +104,7 @@
+         "id": "m-1",
+         "insight": "z",
+         "mistake": "x",
+-        "pattern": "MISTAKE-PATTERN-SENTINEL-1.",
+         "problem": {
+-          "concepts": [
+-            "CONCEPT-SENTINEL-1."
+-          ],
+           "difficulty": "med",
+           "id": "1",
+           "is_reinforcement": false,
+@@ -121,7 +112,6 @@
+           "links": [],
+           "neetcode_url": "",
+           "path_slug": "dsa",
+-          "pattern": "PATTERN-SENTINEL-1.",
+           "role": "core",
+           "title": "Problem 1",
+           "week_n": 1
+@@ -138,11 +128,7 @@
+         "id": "m-2",
+         "insight": "z",
+         "mistake": "x",
+-        "pattern": "MISTAKE-PATTERN-SENTINEL-2.",
+         "problem": {
+-          "concepts": [
+-            "CONCEPT-SENTINEL-2."
+-          ],
+           "difficulty": "med",
+           "id": "2",
+           "is_reinforcement": false,
+@@ -150,7 +136,6 @@
+           "links": [],
+           "neetcode_url": "",
+           "path_slug": "dsa",
+-          "pattern": "PATTERN-SENTINEL-2.",
+           "role": "core",
+           "title": "Problem 2",
+           "week_n": 1
+diff --color -ru /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/paths_dsa_mistakes.json /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/paths_dsa_mistakes.json
+--- /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/paths_dsa_mistakes.json	2026-09-29 12:21:21
++++ /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/paths_dsa_mistakes.json	2026-09-29 19:16:30
+@@ -6,11 +6,7 @@
+       "id": "m-1",
+       "insight": "z",
+       "mistake": "x",
+-      "pattern": "MISTAKE-PATTERN-SENTINEL-1.",
+       "problem": {
+-        "concepts": [
+-          "CONCEPT-SENTINEL-1."
+-        ],
+         "difficulty": "med",
+         "id": "1",
+         "is_reinforcement": false,
+@@ -18,7 +14,6 @@
+         "links": [],
+         "neetcode_url": "",
+         "path_slug": "dsa",
+-        "pattern": "PATTERN-SENTINEL-1.",
+         "role": "core",
+         "title": "Problem 1",
+         "week_n": 1
+@@ -35,11 +30,7 @@
+       "id": "m-2",
+       "insight": "z",
+       "mistake": "x",
+-      "pattern": "MISTAKE-PATTERN-SENTINEL-2.",
+       "problem": {
+-        "concepts": [
+-          "CONCEPT-SENTINEL-2."
+-        ],
+         "difficulty": "med",
+         "id": "2",
+         "is_reinforcement": false,
+@@ -47,7 +38,6 @@
+         "links": [],
+         "neetcode_url": "",
+         "path_slug": "dsa",
+-        "pattern": "PATTERN-SENTINEL-2.",
+         "role": "core",
+         "title": "Problem 2",
+         "week_n": 1
+diff --color -ru /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/paths_dsa_problems.json /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/paths_dsa_problems.json
+--- /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/paths_dsa_problems.json	2026-09-29 12:21:21
++++ /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/paths_dsa_problems.json	2026-09-29 19:16:30
+@@ -1,9 +1,6 @@
+ {
+   "problems": [
+     {
+-      "concepts": [
+-        "CONCEPT-SENTINEL-1."
+-      ],
+       "difficulty": "med",
+       "id": "1",
+       "is_reinforcement": false,
+@@ -11,15 +8,11 @@
+       "links": [],
+       "neetcode_url": "",
+       "path_slug": "dsa",
+-      "pattern": "PATTERN-SENTINEL-1.",
+       "role": "core",
+       "title": "Problem 1",
+       "week_n": 1
+     },
+     {
+-      "concepts": [
+-        "CONCEPT-SENTINEL-2."
+-      ],
+       "difficulty": "med",
+       "id": "2",
+       "is_reinforcement": false,
+@@ -27,7 +20,6 @@
+       "links": [],
+       "neetcode_url": "",
+       "path_slug": "dsa",
+-      "pattern": "PATTERN-SENTINEL-2.",
+       "role": "core",
+       "title": "Problem 2",
+       "week_n": 1
+diff --color -ru /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/paths_dsa_revision_due.json /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/paths_dsa_revision_due.json
+--- /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/paths_dsa_revision_due.json	2026-09-29 12:21:21
++++ /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/paths_dsa_revision_due.json	2026-09-29 19:16:30
+@@ -8,9 +8,6 @@
+       "itemId": "rev-2",
+       "mockMode": false,
+       "problem": {
+-        "concepts": [
+-          "CONCEPT-SENTINEL-2."
+-        ],
+         "difficulty": "med",
+         "id": "2",
+         "is_reinforcement": false,
+@@ -18,7 +15,6 @@
+         "links": [],
+         "neetcode_url": "",
+         "path_slug": "dsa",
+-        "pattern": "PATTERN-SENTINEL-2.",
+         "role": "core",
+         "title": "Problem 2",
+         "week_n": 1
+diff --color -ru /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/paths_dsa_weak-area.json /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/paths_dsa_weak-area.json
+--- /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/paths_dsa_weak-area.json	2026-09-29 12:21:21
++++ /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/paths_dsa_weak-area.json	2026-09-29 19:16:30
+@@ -6,11 +6,7 @@
+       "id": "m-1",
+       "insight": "z",
+       "mistake": "x",
+-      "pattern": "MISTAKE-PATTERN-SENTINEL-1.",
+       "problem": {
+-        "concepts": [
+-          "CONCEPT-SENTINEL-1."
+-        ],
+         "difficulty": "med",
+         "id": "1",
+         "is_reinforcement": false,
+@@ -18,7 +14,6 @@
+         "links": [],
+         "neetcode_url": "",
+         "path_slug": "dsa",
+-        "pattern": "PATTERN-SENTINEL-1.",
+         "role": "core",
+         "title": "Problem 1",
+         "week_n": 1
+@@ -35,11 +30,7 @@
+       "id": "m-2",
+       "insight": "z",
+       "mistake": "x",
+-      "pattern": "MISTAKE-PATTERN-SENTINEL-2.",
+       "problem": {
+-        "concepts": [
+-          "CONCEPT-SENTINEL-2."
+-        ],
+         "difficulty": "med",
+         "id": "2",
+         "is_reinforcement": false,
+@@ -47,7 +38,6 @@
+         "links": [],
+         "neetcode_url": "",
+         "path_slug": "dsa",
+-        "pattern": "PATTERN-SENTINEL-2.",
+         "role": "core",
+         "title": "Problem 2",
+         "week_n": 1
+diff --color -ru /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/paths_dsa_weeks_1.json /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/paths_dsa_weeks_1.json
+--- /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/paths_dsa_weeks_1.json	2026-09-29 12:21:21
++++ /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/paths_dsa_weeks_1.json	2026-09-29 19:16:30
+@@ -11,9 +11,6 @@
+   },
+   "problems": [
+     {
+-      "concepts": [
+-        "CONCEPT-SENTINEL-1."
+-      ],
+       "difficulty": "med",
+       "id": "1",
+       "is_reinforcement": false,
+@@ -21,15 +18,11 @@
+       "links": [],
+       "neetcode_url": "",
+       "path_slug": "dsa",
+-      "pattern": "PATTERN-SENTINEL-1.",
+       "role": "core",
+       "title": "Problem 1",
+       "week_n": 1
+     },
+     {
+-      "concepts": [
+-        "CONCEPT-SENTINEL-2."
+-      ],
+       "difficulty": "med",
+       "id": "2",
+       "is_reinforcement": false,
+@@ -37,7 +30,6 @@
+       "links": [],
+       "neetcode_url": "",
+       "path_slug": "dsa",
+-      "pattern": "PATTERN-SENTINEL-2.",
+       "role": "core",
+       "title": "Problem 2",
+       "week_n": 1
+diff --color -ru /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/problems_1.json /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/problems_1.json
+--- /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/problems_1.json	2026-09-29 12:21:21
++++ /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/problems_1.json	2026-09-29 19:16:30
+@@ -6,9 +6,6 @@
+     "scheduled": true
+   },
+   "problem": {
+-    "concepts": [
+-      "CONCEPT-SENTINEL-1."
+-    ],
+     "difficulty": "med",
+     "id": "1",
+     "is_reinforcement": false,
+@@ -16,7 +13,6 @@
+     "links": [],
+     "neetcode_url": "",
+     "path_slug": "dsa",
+-    "pattern": "PATTERN-SENTINEL-1.",
+     "role": "core",
+     "title": "Problem 1",
+     "week_n": 1
+diff --color -ru /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/problems_1_practice-1.json /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/problems_1_practice-1.json
+--- /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/problems_1_practice-1.json	2026-09-29 12:21:21
++++ /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/problems_1_practice-1.json	2026-09-29 19:16:30
+@@ -1,8 +1,5 @@
+ {
+   "problem": {
+-    "concepts": [
+-      "CONCEPT-SENTINEL-1."
+-    ],
+     "difficulty": "med",
+     "id": "1",
+     "is_reinforcement": false,
+@@ -10,7 +7,6 @@
+     "links": [],
+     "neetcode_url": "",
+     "path_slug": "dsa",
+-    "pattern": "PATTERN-SENTINEL-1.",
+     "role": "core",
+     "title": "Problem 1",
+     "week_n": 1
+@@ -23,40 +19,6 @@
+       "language": "",
+       "order": 1,
+       "stage": "attempt"
+-    },
+-    {
+-      "body_md": "HINT-SENTINEL-1.",
+-      "code": "",
+-      "kind": "key_observation",
+-      "language": "",
+-      "order": 1,
+-      "stage": "hint"
+-    },
+-    {
+-      "body_md": "",
+-      "code": "SOLUTION-SENTINEL-1.",
+-      "kind": "code",
+-      "language": "go",
+-      "order": 1,
+-      "stage": "solution"
+-    },
+-    {
+-      "body_md": "",
+-      "code": "",
+-      "kind": "solution_facts",
+-      "language": "",
+-      "order": 2,
+-      "solution_facts": {
+-        "complexity": {
+-          "space": [
+-            "O(1)"
+-          ],
+-          "time": [
+-            "FACTS-SENTINEL-1."
+-          ]
+-        }
+-      },
+-      "stage": "solution"
+     }
+   ],
+   "state": {
+diff --color -ru /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/problems_2.json /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/problems_2.json
+--- /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/problems_2.json	2026-09-29 12:21:21
++++ /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/problems_2.json	2026-09-29 19:16:30
+@@ -6,9 +6,6 @@
+     "scheduled": true
+   },
+   "problem": {
+-    "concepts": [
+-      "CONCEPT-SENTINEL-2."
+-    ],
+     "difficulty": "med",
+     "id": "2",
+     "is_reinforcement": false,
+@@ -16,7 +13,6 @@
+     "links": [],
+     "neetcode_url": "",
+     "path_slug": "dsa",
+-    "pattern": "PATTERN-SENTINEL-2.",
+     "role": "core",
+     "title": "Problem 2",
+     "week_n": 1
+@@ -29,40 +25,6 @@
+       "language": "",
+       "order": 1,
+       "stage": "attempt"
+-    },
+-    {
+-      "body_md": "HINT-SENTINEL-2.",
+-      "code": "",
+-      "kind": "key_observation",
+-      "language": "",
+-      "order": 1,
+-      "stage": "hint"
+-    },
+-    {
+-      "body_md": "",
+-      "code": "SOLUTION-SENTINEL-2.",
+-      "kind": "code",
+-      "language": "go",
+-      "order": 1,
+-      "stage": "solution"
+-    },
+-    {
+-      "body_md": "",
+-      "code": "",
+-      "kind": "solution_facts",
+-      "language": "",
+-      "order": 2,
+-      "solution_facts": {
+-        "complexity": {
+-          "space": [
+-            "O(1)"
+-          ],
+-          "time": [
+-            "FACTS-SENTINEL-2."
+-          ]
+-        }
+-      },
+-      "stage": "solution"
+     }
+   ],
+   "state": {
+diff --color -ru /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/problems_2_practice-1.json /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/problems_2_practice-1.json
+--- /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/problems_2_practice-1.json	2026-09-29 12:21:21
++++ /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/problems_2_practice-1.json	2026-09-29 19:16:30
+@@ -1,8 +1,5 @@
+ {
+   "problem": {
+-    "concepts": [
+-      "CONCEPT-SENTINEL-2."
+-    ],
+     "difficulty": "med",
+     "id": "2",
+     "is_reinforcement": false,
+@@ -10,7 +7,6 @@
+     "links": [],
+     "neetcode_url": "",
+     "path_slug": "dsa",
+-    "pattern": "PATTERN-SENTINEL-2.",
+     "role": "core",
+     "title": "Problem 2",
+     "week_n": 1
+@@ -23,40 +19,6 @@
+       "language": "",
+       "order": 1,
+       "stage": "attempt"
+-    },
+-    {
+-      "body_md": "HINT-SENTINEL-2.",
+-      "code": "",
+-      "kind": "key_observation",
+-      "language": "",
+-      "order": 1,
+-      "stage": "hint"
+-    },
+-    {
+-      "body_md": "",
+-      "code": "SOLUTION-SENTINEL-2.",
+-      "kind": "code",
+-      "language": "go",
+-      "order": 1,
+-      "stage": "solution"
+-    },
+-    {
+-      "body_md": "",
+-      "code": "",
+-      "kind": "solution_facts",
+-      "language": "",
+-      "order": 2,
+-      "solution_facts": {
+-        "complexity": {
+-          "space": [
+-            "O(1)"
+-          ],
+-          "time": [
+-            "FACTS-SENTINEL-2."
+-          ]
+-        }
+-      },
+-      "stage": "solution"
+     }
+   ],
+   "state": {
+diff --color -ru /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/problems_4.json /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/problems_4.json
+--- /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/before/problems_4.json	2026-09-29 12:21:21
++++ /private/tmp/claude-501/-Users-sujaykumar-go-src-github-com-sujaykumarsuman-xlearn/59cf594b-f918-4789-b033-083e8c78e414/scratchpad/golden/after/problems_4.json	2026-09-29 19:16:30
+@@ -6,9 +6,6 @@
+     "scheduled": true
+   },
+   "problem": {
+-    "concepts": [
+-      "CONCEPT-SENTINEL-4."
+-    ],
+     "difficulty": "med",
+     "id": "4",
+     "is_reinforcement": false,
+@@ -16,7 +13,6 @@
+     "links": [],
+     "neetcode_url": "",
+     "path_slug": "dsa",
+-    "pattern": "PATTERN-SENTINEL-4.",
+     "role": "core",
+     "title": "Problem 4",
+     "week_n": 1

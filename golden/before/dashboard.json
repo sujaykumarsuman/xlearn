@@ -1,0 +1,227 @@
+{
+  "plan": [
+    {
+      "dayLabel": "Day 3",
+      "itemId": "rev-2",
+      "kind": "review",
+      "mockMode": false,
+      "problemId": "2",
+      "title": "Problem 2",
+      "touchLevel": 2
+    },
+    {
+      "difficulty": "med",
+      "kind": "problem",
+      "pattern": "PATTERN-SENTINEL-1.",
+      "problemId": "1",
+      "status": "attempting",
+      "title": "Problem 1"
+    },
+    {
+      "difficulty": "med",
+      "kind": "problem",
+      "pattern": "PATTERN-SENTINEL-4.",
+      "problemId": "4",
+      "status": "available",
+      "title": "Problem 4"
+    }
+  ],
+  "reminders": [],
+  "revisions": {
+    "dueCount": 1,
+    "items": [
+      {
+        "dayLabel": "Day 3",
+        "due": true,
+        "dueDate": "2026-09-28T00:00:00Z",
+        "itemId": "rev-2",
+        "mockMode": false,
+        "problem": {
+          "concepts": [
+            "CONCEPT-SENTINEL-2."
+          ],
+          "difficulty": "med",
+          "id": "2",
+          "is_reinforcement": false,
+          "leetcode_url": "",
+          "links": [],
+          "neetcode_url": "",
+          "path_slug": "dsa",
+          "pattern": "PATTERN-SENTINEL-2.",
+          "role": "core",
+          "title": "Problem 2",
+          "week_n": 1
+        },
+        "problemId": "2",
+        "status": "pending",
+        "touchLevel": 2
+      },
+      {
+        "dayLabel": "Day 1",
+        "due": false,
+        "dueDate": "2099-10-08T00:00:00Z",
+        "itemId": "rev-3",
+        "mockMode": false,
+        "problem": {
+          "concepts": [
+            "CONCEPT-SENTINEL-3."
+          ],
+          "difficulty": "med",
+          "id": "3",
+          "is_reinforcement": false,
+          "leetcode_url": "",
+          "links": [],
+          "neetcode_url": "",
+          "path_slug": "dsa",
+          "pattern": "PATTERN-SENTINEL-3.",
+          "role": "core",
+          "title": "Problem 3",
+          "week_n": 1
+        },
+        "problemId": "3",
+        "status": "pending",
+        "touchLevel": 1
+      }
+    ]
+  },
+  "stats": {
+    "mock": {
+      "best": 0,
+      "count": 0,
+      "last": 0,
+      "target": 24
+    },
+    "revisionsDue": 1,
+    "solved": {
+      "count": 2,
+      "total": 4
+    },
+    "streak": {
+      "current": 2,
+      "longest": 3
+    }
+  },
+  "weakArea": {
+    "entries": [
+      {
+        "category": "",
+        "createdAt": "2026-09-22T00:00:00Z",
+        "id": "m-1",
+        "insight": "z",
+        "mistake": "x",
+        "pattern": "MISTAKE-PATTERN-SENTINEL-1.",
+        "problem": {
+          "concepts": [
+            "CONCEPT-SENTINEL-1."
+          ],
+          "difficulty": "med",
+          "id": "1",
+          "is_reinforcement": false,
+          "leetcode_url": "",
+          "links": [],
+          "neetcode_url": "",
+          "path_slug": "dsa",
+          "pattern": "PATTERN-SENTINEL-1.",
+          "role": "core",
+          "title": "Problem 1",
+          "week_n": 1
+        },
+        "problemId": "1",
+        "revisitCount": 0,
+        "revisitDate": null,
+        "rootCause": "y",
+        "status": "open"
+      },
+      {
+        "category": "",
+        "createdAt": "2026-09-22T00:00:00Z",
+        "id": "m-2",
+        "insight": "z",
+        "mistake": "x",
+        "pattern": "MISTAKE-PATTERN-SENTINEL-2.",
+        "problem": {
+          "concepts": [
+            "CONCEPT-SENTINEL-2."
+          ],
+          "difficulty": "med",
+          "id": "2",
+          "is_reinforcement": false,
+          "leetcode_url": "",
+          "links": [],
+          "neetcode_url": "",
+          "path_slug": "dsa",
+          "pattern": "PATTERN-SENTINEL-2.",
+          "role": "core",
+          "title": "Problem 2",
+          "week_n": 1
+        },
+        "problemId": "2",
+        "revisitCount": 0,
+        "revisitDate": null,
+        "rootCause": "y",
+        "status": "open"
+      },
+      {
+        "category": "",
+        "createdAt": "2026-09-22T00:00:00Z",
+        "id": "m-3",
+        "insight": "z",
+        "mistake": "x",
+        "pattern": "MISTAKE-PATTERN-SENTINEL-3.",
+        "problem": {
+          "concepts": [
+            "CONCEPT-SENTINEL-3."
+          ],
+          "difficulty": "med",
+          "id": "3",
+          "is_reinforcement": false,
+          "leetcode_url": "",
+          "links": [],
+          "neetcode_url": "",
+          "path_slug": "dsa",
+          "pattern": "PATTERN-SENTINEL-3.",
+          "role": "core",
+          "title": "Problem 3",
+          "week_n": 1
+        },
+        "problemId": "3",
+        "revisitCount": 0,
+        "revisitDate": null,
+        "rootCause": "y",
+        "status": "open"
+      }
+    ],
+    "weakArea": {
+      "category": "wrong_pattern",
+      "count": 3
+    }
+  },
+  "week": {
+    "n": 1,
+    "problems": [
+      {
+        "problemId": "1",
+        "status": "attempting",
+        "title": "Problem 1"
+      },
+      {
+        "problemId": "2",
+        "status": "solved",
+        "title": "Problem 2"
+      },
+      {
+        "problemId": "3",
+        "status": "solved",
+        "title": "Problem 3"
+      },
+      {
+        "problemId": "4",
+        "status": "available",
+        "title": "Problem 4"
+      }
+    ],
+    "solved": 2,
+    "title": "Week one",
+    "total": 4
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "problems": [
+    {
+      "concepts": [
+        "CONCEPT-SENTINEL-1."
+      ],
+      "difficulty": "med",
+      "id": "1",
+      "is_reinforcement": false,
+      "leetcode_url": "",
+      "links": [],
+      "neetcode_url": "",
+      "path_slug": "dsa",
+      "pattern": "PATTERN-SENTINEL-1.",
+      "role": "core",
+      "title": "Problem 1",
+      "week_n": 1
+    },
+    {
+      "concepts": [
+        "CONCEPT-SENTINEL-2."
+      ],
+      "difficulty": "med",
+      "id": "2",
+      "is_reinforcement": false,
+      "leetcode_url": "",
+      "links": [],
+      "neetcode_url": "",
+      "path_slug": "dsa",
+      "pattern": "PATTERN-SENTINEL-2.",
+      "role": "core",
+      "title": "Problem 2",
+      "week_n": 1
+    },
+    {
+      "concepts": [
+        "CONCEPT-SENTINEL-3."
+      ],
+      "difficulty": "med",
+      "id": "3",
+      "is_reinforcement": false,
+      "leetcode_url": "",
+      "links": [],
+      "neetcode_url": "",
+      "path_slug": "dsa",
+      "pattern": "PATTERN-SENTINEL-3.",
+      "role": "core",
+      "title": "Problem 3",
+      "week_n": 1
+    },
+    {
+      "concepts": [
+        "CONCEPT-SENTINEL-4."
+      ],
+      "difficulty": "med",
+      "id": "4",
+      "is_reinforcement": false,
+      "leetcode_url": "",
+      "links": [],
+      "neetcode_url": "",
+      "path_slug": "dsa",
+      "pattern": "PATTERN-SENTINEL-4.",
+      "role": "core",
+      "title": "Problem 4",
+      "week_n": 1
+    }
+  ]
+}

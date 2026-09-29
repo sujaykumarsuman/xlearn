@@ -1,0 +1,48 @@
+{
+  "gate": {
+    "currentWeek": 1,
+    "enrolled": true,
+    "problemWeek": 1,
+    "scheduled": true
+  },
+  "problem": {
+    "difficulty": "med",
+    "id": "1",
+    "is_reinforcement": false,
+    "leetcode_url": "",
+    "links": [],
+    "neetcode_url": "",
+    "path_slug": "dsa",
+    "role": "core",
+    "title": "Problem 1",
+    "week_n": 1
+  },
+  "sections": [
+    {
+      "body_md": "statement 1",
+      "code": "",
+      "kind": "summary",
+      "language": "",
+      "order": 1,
+      "stage": "attempt"
+    }
+  ],
+  "state": {
+    "currentTouch": 0,
+    "firstSolvedAt": null,
+    "lastOutcome": null,
+    "problemId": "1",
+    "revealedEarly": false,
+    "stageReached": "attempt",
+    "status": "attempting",
+    "timer": {
+      "deadlineAt": "2099-01-01T00:00:00Z",
+      "expired": false,
+      "kind": "attempt",
+      "remainingSeconds": 900
+    },
+    "unlockedStages": [
+      "attempt"
+    ]
+  }
+}

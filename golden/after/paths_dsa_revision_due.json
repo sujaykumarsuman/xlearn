@@ -1,0 +1,53 @@
+{
+  "dueCount": 1,
+  "items": [
+    {
+      "dayLabel": "Day 3",
+      "due": true,
+      "dueDate": "2026-09-28T00:00:00Z",
+      "itemId": "rev-2",
+      "mockMode": false,
+      "problem": {
+        "difficulty": "med",
+        "id": "2",
+        "is_reinforcement": false,
+        "leetcode_url": "",
+        "links": [],
+        "neetcode_url": "",
+        "path_slug": "dsa",
+        "role": "core",
+        "title": "Problem 2",
+        "week_n": 1
+      },
+      "problemId": "2",
+      "status": "pending",
+      "touchLevel": 2
+    },
+    {
+      "dayLabel": "Day 1",
+      "due": false,
+      "dueDate": "2099-10-08T00:00:00Z",
+      "itemId": "rev-3",
+      "mockMode": false,
+      "problem": {
+        "concepts": [
+          "CONCEPT-SENTINEL-3."
+        ],
+        "difficulty": "med",
+        "id": "3",
+        "is_reinforcement": false,
+        "leetcode_url": "",
+        "links": [],
+        "neetcode_url": "",
+        "path_slug": "dsa",
+        "pattern": "PATTERN-SENTINEL-3.",
+        "role": "core",
+        "title": "Problem 3",
+        "week_n": 1
+      },
+      "problemId": "3",
+      "status": "pending",
+      "touchLevel": 1
+    }
+  ]
+}

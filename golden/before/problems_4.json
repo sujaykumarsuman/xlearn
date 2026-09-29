@@ -1,0 +1,46 @@
+{
+  "gate": {
+    "currentWeek": 1,
+    "enrolled": true,
+    "problemWeek": 1,
+    "scheduled": true
+  },
+  "problem": {
+    "concepts": [
+      "CONCEPT-SENTINEL-4."
+    ],
+    "difficulty": "med",
+    "id": "4",
+    "is_reinforcement": false,
+    "leetcode_url": "",
+    "links": [],
+    "neetcode_url": "",
+    "path_slug": "dsa",
+    "pattern": "PATTERN-SENTINEL-4.",
+    "role": "core",
+    "title": "Problem 4",
+    "week_n": 1
+  },
+  "sections": [
+    {
+      "body_md": "statement 4",
+      "code": "",
+      "kind": "summary",
+      "language": "",
+      "order": 1,
+      "stage": "attempt"
+    }
+  ],
+  "state": {
+    "currentTouch": 0,
+    "firstSolvedAt": null,
+    "lastOutcome": null,
+    "problemId": "4",
+    "revealedEarly": false,
+    "status": "available",
+    "timer": null,
+    "unlockedStages": [
+      "attempt"
+    ]
+  }
+}

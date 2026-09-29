@@ -1,0 +1,225 @@
+{
+  "concepts": [
+    {
+      "slug": "hashing",
+      "title": "Hashing"
+    }
+  ],
+  "path": {
+    "slug": "dsa",
+    "week_total": 1
+  },
+  "problems": [
+    {
+      "concepts": [
+        "CONCEPT-SENTINEL-1."
+      ],
+      "difficulty": "med",
+      "id": "1",
+      "is_reinforcement": false,
+      "leetcode_url": "",
+      "links": [],
+      "neetcode_url": "",
+      "path_slug": "dsa",
+      "pattern": "PATTERN-SENTINEL-1.",
+      "role": "core",
+      "title": "Problem 1",
+      "week_n": 1
+    },
+    {
+      "concepts": [
+        "CONCEPT-SENTINEL-2."
+      ],
+      "difficulty": "med",
+      "id": "2",
+      "is_reinforcement": false,
+      "leetcode_url": "",
+      "links": [],
+      "neetcode_url": "",
+      "path_slug": "dsa",
+      "pattern": "PATTERN-SENTINEL-2.",
+      "role": "core",
+      "title": "Problem 2",
+      "week_n": 1
+    },
+    {
+      "concepts": [
+        "CONCEPT-SENTINEL-3."
+      ],
+      "difficulty": "med",
+      "id": "3",
+      "is_reinforcement": false,
+      "leetcode_url": "",
+      "links": [],
+      "neetcode_url": "",
+      "path_slug": "dsa",
+      "pattern": "PATTERN-SENTINEL-3.",
+      "role": "core",
+      "title": "Problem 3",
+      "week_n": 1
+    },
+    {
+      "concepts": [
+        "CONCEPT-SENTINEL-4."
+      ],
+      "difficulty": "med",
+      "id": "4",
+      "is_reinforcement": false,
+      "leetcode_url": "",
+      "links": [],
+      "neetcode_url": "",
+      "path_slug": "dsa",
+      "pattern": "PATTERN-SENTINEL-4.",
+      "role": "core",
+      "title": "Problem 4",
+      "week_n": 1
+    }
+  ],
+  "userState": {
+    "problems": {
+      "1": {
+        "currentTouch": 0,
+        "lastOutcome": null,
+        "status": "attempting",
+        "touches": [
+          {
+            "dueDate": null,
+            "level": 1,
+            "result": "none"
+          },
+          {
+            "dueDate": null,
+            "level": 2,
+            "result": "none"
+          },
+          {
+            "dueDate": null,
+            "level": 3,
+            "result": "none"
+          },
+          {
+            "dueDate": null,
+            "level": 4,
+            "result": "none"
+          },
+          {
+            "dueDate": null,
+            "level": 5,
+            "result": "none"
+          }
+        ]
+      },
+      "2": {
+        "currentTouch": 1,
+        "lastOutcome": "assisted",
+        "status": "solved",
+        "touches": [
+          {
+            "dueDate": null,
+            "level": 1,
+            "result": "none"
+          },
+          {
+            "dueDate": null,
+            "level": 2,
+            "result": "none"
+          },
+          {
+            "dueDate": null,
+            "level": 3,
+            "result": "none"
+          },
+          {
+            "dueDate": null,
+            "level": 4,
+            "result": "none"
+          },
+          {
+            "dueDate": null,
+            "level": 5,
+            "result": "none"
+          }
+        ]
+      },
+      "3": {
+        "currentTouch": 0,
+        "lastOutcome": "clean",
+        "status": "solved",
+        "touches": [
+          {
+            "dueDate": null,
+            "level": 1,
+            "result": "none"
+          },
+          {
+            "dueDate": null,
+            "level": 2,
+            "result": "none"
+          },
+          {
+            "dueDate": null,
+            "level": 3,
+            "result": "none"
+          },
+          {
+            "dueDate": null,
+            "level": 4,
+            "result": "none"
+          },
+          {
+            "dueDate": null,
+            "level": 5,
+            "result": "none"
+          }
+        ]
+      },
+      "4": {
+        "currentTouch": 0,
+        "lastOutcome": null,
+        "status": "available",
+        "touches": [
+          {
+            "dueDate": null,
+            "level": 1,
+            "result": "none"
+          },
+          {
+            "dueDate": null,
+            "level": 2,
+            "result": "none"
+          },
+          {
+            "dueDate": null,
+            "level": 3,
+            "result": "none"
+          },
+          {
+            "dueDate": null,
+            "level": 4,
+            "result": "none"
+          },
+          {
+            "dueDate": null,
+            "level": 5,
+            "result": "none"
+          }
+        ]
+      }
+    },
+    "week": {
+      "byDifficulty": {
+        "easy": 0,
+        "hard": 0,
+        "med": 4
+      },
+      "coreTotal": 4,
+      "populated": true,
+      "solved": 2
+    }
+  },
+  "week": {
+    "n": 1,
+    "thesis": "t",
+    "title": "Week one"
+  }
+}

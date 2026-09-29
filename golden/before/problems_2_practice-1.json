@@ -1,0 +1,75 @@
+{
+  "problem": {
+    "concepts": [
+      "CONCEPT-SENTINEL-2."
+    ],
+    "difficulty": "med",
+    "id": "2",
+    "is_reinforcement": false,
+    "leetcode_url": "",
+    "links": [],
+    "neetcode_url": "",
+    "path_slug": "dsa",
+    "pattern": "PATTERN-SENTINEL-2.",
+    "role": "core",
+    "title": "Problem 2",
+    "week_n": 1
+  },
+  "sections": [
+    {
+      "body_md": "statement 2",
+      "code": "",
+      "kind": "summary",
+      "language": "",
+      "order": 1,
+      "stage": "attempt"
+    },
+    {
+      "body_md": "HINT-SENTINEL-2.",
+      "code": "",
+      "kind": "key_observation",
+      "language": "",
+      "order": 1,
+      "stage": "hint"
+    },
+    {
+      "body_md": "",
+      "code": "SOLUTION-SENTINEL-2.",
+      "kind": "code",
+      "language": "go",
+      "order": 1,
+      "stage": "solution"
+    },
+    {
+      "body_md": "",
+      "code": "",
+      "kind": "solution_facts",
+      "language": "",
+      "order": 2,
+      "solution_facts": {
+        "complexity": {
+          "space": [
+            "O(1)"
+          ],
+          "time": [
+            "FACTS-SENTINEL-2."
+          ]
+        }
+      },
+      "stage": "solution"
+    }
+  ],
+  "state": {
+    "currentTouch": 0,
+    "firstSolvedAt": null,
+    "lastOutcome": null,
+    "problemId": "2",
+    "revealedEarly": false,
+    "stageReached": "",
+    "status": "available",
+    "timer": null,
+    "unlockedStages": [
+      "attempt"
+    ]
+  }
+}

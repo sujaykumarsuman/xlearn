@@ -1,0 +1,47 @@
+{
+  "gate": {
+    "currentWeek": 1,
+    "enrolled": true,
+    "problemWeek": 1,
+    "scheduled": true
+  },
+  "problem": {
+    "concepts": [
+      "CONCEPT-SENTINEL-3."
+    ],
+    "difficulty": "med",
+    "id": "3",
+    "is_reinforcement": false,
+    "leetcode_url": "",
+    "links": [],
+    "neetcode_url": "",
+    "path_slug": "dsa",
+    "pattern": "PATTERN-SENTINEL-3.",
+    "role": "core",
+    "title": "Problem 3",
+    "week_n": 1
+  },
+  "sections": [
+    {
+      "body_md": "statement 3",
+      "code": "",
+      "kind": "summary",
+      "language": "",
+      "order": 1,
+      "stage": "attempt"
+    }
+  ],
+  "state": {
+    "currentTouch": 0,
+    "firstSolvedAt": "2026-09-21T00:00:00Z",
+    "lastOutcome": "clean",
+    "problemId": "3",
+    "revealedEarly": false,
+    "stageReached": "attempt",
+    "status": "solved",
+    "timer": null,
+    "unlockedStages": [
+      "attempt"
+    ]
+  }
+}

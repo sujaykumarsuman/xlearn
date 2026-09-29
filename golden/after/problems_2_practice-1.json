@@ -1,0 +1,37 @@
+{
+  "problem": {
+    "difficulty": "med",
+    "id": "2",
+    "is_reinforcement": false,
+    "leetcode_url": "",
+    "links": [],
+    "neetcode_url": "",
+    "path_slug": "dsa",
+    "role": "core",
+    "title": "Problem 2",
+    "week_n": 1
+  },
+  "sections": [
+    {
+      "body_md": "statement 2",
+      "code": "",
+      "kind": "summary",
+      "language": "",
+      "order": 1,
+      "stage": "attempt"
+    }
+  ],
+  "state": {
+    "currentTouch": 0,
+    "firstSolvedAt": null,
+    "lastOutcome": null,
+    "problemId": "2",
+    "revealedEarly": false,
+    "stageReached": "",
+    "status": "available",
+    "timer": null,
+    "unlockedStages": [
+      "attempt"
+    ]
+  }
+}
