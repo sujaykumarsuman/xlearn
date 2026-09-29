@@ -75,6 +75,10 @@ type Querier interface {
 	ListEnrollments(ctx context.Context, accountID pgtype.UUID) ([]IdentityPathEnrollment, error)
 	// The providers linked to an account (Settings shows what's connected).
 	ListOauthProviders(ctx context.Context, accountID pgtype.UUID) ([]string, error)
+	// The public profile's course scope (m1-05 P2; ADR-0033 §13; D7): the slugs of the
+	// account's enrollments the learner left publicly visible. The service intersects them with
+	// the course registry's `active` courses, so preview / coming_soon / retired never show.
+	ListPublicVisibleCourses(ctx context.Context, accountID pgtype.UUID) ([]string, error)
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]IdentityOutbox, error)
 	MarkOutboxSent(ctx context.Context, eventID pgtype.UUID) error
 	// Revoke every live session of an account (m1-04): a password change (the caller's

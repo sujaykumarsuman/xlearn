@@ -112,3 +112,62 @@ func TestSessionStatusJoinAndRevokeAll(t *testing.T) {
 		t.Fatal("the password change revoked another account's session")
 	}
 }
+
+// m1-05 (P2): ListPublicVisibleCourses returns the account's enrollments with
+// public_visible set, oldest first. Hidden enrollments and other accounts' are not listed,
+// a re-start never flips the flag, and an account with none gets an empty slice.
+func TestListPublicVisibleCourses(t *testing.T) {
+	dsn := os.Getenv("XLEARN_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("set XLEARN_TEST_DATABASE_URL to run the identity store integration test")
+	}
+	ctx := context.Background()
+	if err := store.Migrate(ctx, dsn, testLogger()); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("pool: %v", err)
+	}
+	defer pool.Close()
+	st := store.New(pool)
+
+	a, err := st.CreateEmailAccount(ctx, "m105-"+newTestID()+"@example.com", "$2a$10$abcdefghijklmnopqrstuv", "Visible")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := st.CreateEmailAccount(ctx, "m105-"+newTestID()+"@example.com", "$2a$10$abcdefghijklmnopqrstuv", "Other")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := st.ListPublicVisibleCourses(ctx, a.ID); err != nil || got == nil || len(got) != 0 {
+		t.Fatalf("no enrollments: %#v, %v; want an empty slice", got, err)
+	}
+	for _, e := range []struct {
+		acct, slug string
+		visible    bool
+	}{
+		{a.ID, "course-a", true},
+		{a.ID, "course-hidden", false},
+		{a.ID, "course-b", true},
+		{b.ID, "course-other", true},
+	} {
+		if _, err := st.StartEnrollment(ctx, e.acct, e.slug, e.visible); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A re-start keeps the learner's (here: the inserted) visibility.
+	if _, err := st.StartEnrollment(ctx, a.ID, "course-hidden", true); err != nil {
+		t.Fatal(err)
+	}
+	got, err := st.ListPublicVisibleCourses(ctx, a.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0] != "course-a" || got[1] != "course-b" {
+		t.Fatalf("ListPublicVisibleCourses = %v, want [course-a course-b]", got)
+	}
+	if _, err := st.ListPublicVisibleCourses(ctx, "not-a-uuid"); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("a malformed id: %v, want ErrNotFound", err)
+	}
+}

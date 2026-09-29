@@ -3,9 +3,10 @@ package gateway
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/sujaykumarsuman/xlearn/internal/platform/httpx"
 )
 
 // This file is the gateway's mistake-journal / weak-area / dashboard surface (S07).
@@ -118,13 +119,15 @@ func (g *Gateway) proxyReviewWrite(w http.ResponseWriter, r *http.Request, metho
 	if !ok {
 		return
 	}
-	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
+	reqBody, ok := httpx.ReadBody(w, r, httpx.BodyLimitDefault)
+	if !ok {
 		return
 	}
-	var body []byte
-	var status int
+	var (
+		body   []byte
+		status int
+		err    error
+	)
 	switch method {
 	case http.MethodPatch:
 		body, status, err = g.review.patch(r.Context(), token, upstreamPath, reqBody)

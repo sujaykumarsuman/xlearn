@@ -323,6 +323,28 @@ func (f *fakeStore) ListEnrollments(_ context.Context, accountID string) ([]stor
 	return append([]store.Enrollment(nil), f.enrollments[accountID]...), nil
 }
 
+func (f *fakeStore) ListPublicVisibleCourses(_ context.Context, accountID string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := []string{}
+	for _, e := range f.enrollments[accountID] {
+		if f.publicVisible[accountID+"|"+e.PathSlug] {
+			out = append(out, e.PathSlug)
+		}
+	}
+	return out, nil
+}
+
+// setPublicVisible flips an enrollment's public_visible (m2-03's toggle does it for real).
+func (f *fakeStore) setPublicVisible(accountID, pathSlug string, visible bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.publicVisible == nil {
+		f.publicVisible = map[string]bool{}
+	}
+	f.publicVisible[accountID+"|"+pathSlug] = visible
+}
+
 func (f *fakeStore) CreateSession(_ context.Context, id, accountID string, expiresAt time.Time) (store.Session, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

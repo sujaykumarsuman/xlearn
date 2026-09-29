@@ -1,0 +1,10 @@
+// lint-expect: 0
+// lint-as: internal/gateway/bff_test.go
+// Test files (fake upstreams read whole bodies) are not scanned.
+
+package gateway
+
+func fake(w http.ResponseWriter, r *http.Request) {
+	b, _ := io.ReadAll(r.Body)
+	_ = json.NewDecoder(r.Body).Decode(&b)
+}

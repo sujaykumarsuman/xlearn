@@ -74,6 +74,9 @@ type Options struct {
 	// (S12). Zero (the default in tests) disables caching so behaviour is unchanged;
 	// the deployment sets a short TTL (env AGG_CACHE_TTL, default 15s).
 	AggCacheTTL time.Duration
+	// Now is the clock of the in-process request limits and the public profile's negative
+	// cache (m1-05). Nil means time.Now; tests inject a fake so they never sleep.
+	Now func() time.Time
 }
 
 // Gateway serves the SPA, the app BFF API and the k8s probes.
@@ -99,6 +102,12 @@ type Gateway struct {
 	cache         *aggCache
 	courses       *course.Registry
 	api           *http.ServeMux
+
+	// The in-process limits (limits.go; ADR-0035 §4) and the public profile's abuse
+	// controls (public.go; L4). Process-local state: see L24 in services.md.
+	limits     *gatewayLimits
+	publicNeg  *negativeCache
+	composeSem chan struct{}
 }
 
 // New builds a Gateway. Readiness is trivially OK this sprint (stateless; no DB).
@@ -125,6 +134,13 @@ func New(opt Options) *Gateway {
 	if g.courses == nil {
 		g.courses = course.Embedded()
 	}
+	now := opt.Now
+	if now == nil {
+		now = time.Now
+	}
+	g.limits = newGatewayLimits(now)
+	g.publicNeg = newNegativeCache(publicNegativeTTL, now)
+	g.composeSem = make(chan struct{}, publicMaxComposes)
 	if opt.IdentityBaseURL != "" {
 		g.identity = newIdentityClient(opt.IdentityBaseURL)
 	}

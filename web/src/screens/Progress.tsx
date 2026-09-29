@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Icon } from "../components/Icon";
+import { limitErrorMessage } from "../lib/api";
 import { CompletionByPhase, Heatmap, PatternMasteryPanel } from "../components/ProgressViews";
 import { coursePath, useCourseSlug } from "../lib/course";
 import { useProgress } from "../lib/progress";
@@ -33,7 +34,7 @@ export default function Progress() {
       {q.isError && (
         <div className="xl-panel" style={{ padding: 20, display: "flex", alignItems: "center", gap: 12 }}>
           <Icon name="alert" />
-          <span style={{ flex: 1, color: "var(--ds-dim)" }}>Couldn’t load your progress.</span>
+          <span style={{ flex: 1, color: "var(--ds-dim)" }}>{limitErrorMessage(q.error) ?? "Couldn’t load your progress."}</span>
           <button type="button" className="ds-btn ds-btn--secondary ds-btn--sm" onClick={() => q.refetch()}>
             Retry
           </button>

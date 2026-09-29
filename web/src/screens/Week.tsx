@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../components/Icon";
+import { limitErrorMessage } from "../lib/api";
 import { coursePath, courseShortCode, useCourse, useCourseSlug } from "../lib/course";
 import type { ConceptRef, Problem, ProblemState, Touch, WeekAggregate } from "../lib/curriculum";
 import { useWeek } from "../lib/curriculum";
@@ -67,7 +68,7 @@ export default function Week() {
         <div className="xl-panel" style={{ padding: 20, display: "flex", alignItems: "center", gap: 12 }}>
           <Icon name="alert" />
           <span className="xl-mut" style={{ flex: 1 }}>
-            {week.error?.status === 404 ? `Week ${nParam} isn’t part of this path yet.` : "Couldn’t load this week."}
+            {week.error?.status === 404 ? `Week ${nParam} isn’t part of this path yet.` : (limitErrorMessage(week.error) ?? "Couldn’t load this week.")}
           </span>
           {week.error?.status !== 404 && (
             <button type="button" className="ds-btn ds-btn--secondary ds-btn--sm" onClick={() => week.refetch()}>

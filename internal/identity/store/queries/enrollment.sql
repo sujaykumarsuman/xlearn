@@ -14,3 +14,11 @@ RETURNING *;
 SELECT * FROM identity.path_enrollment
 WHERE account_id = $1
 ORDER BY started_at;
+
+-- name: ListPublicVisibleCourses :many
+-- The public profile's course scope (m1-05 P2; ADR-0033 §13; D7): the slugs of the
+-- account's enrollments the learner left publicly visible. The service intersects them with
+-- the course registry's `active` courses, so preview / coming_soon / retired never show.
+SELECT path_slug FROM identity.path_enrollment
+WHERE account_id = $1 AND public_visible
+ORDER BY started_at, path_slug;

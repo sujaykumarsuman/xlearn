@@ -13,7 +13,7 @@ MODULE  := github.com/sujaykumarsuman/xlearn
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X $(MODULE).Version=$(VERSION)
 
-.PHONY: all web build run test lint go-test go-lint web-test web-lint lint-migrations contentlint packlint install-hooks uninstall-hooks clean nats-acl-render nats-acl-test
+.PHONY: all web build run test lint go-test go-lint web-test web-lint lint-migrations lint-bodies contentlint packlint install-hooks uninstall-hooks clean nats-acl-render nats-acl-test
 
 all: build
 
@@ -57,6 +57,15 @@ go-test:
 lint-migrations:
 	sh hack/lint-migrations.sh --self-test
 	sh hack/lint-migrations.sh
+
+## ---- request bodies (ADR-0035 §4 L6; m1-05) ----
+# The body gate (hack/lint-bodies.sh): no LimitReader(r.Body / ReadAll(r.Body under
+# internal/gateway and internal/platform, and in the gateway no raw r.Body handed to
+# http.NewRequest* and no json.NewDecoder(r.Body) — bodies go through httpx.ReadBody or a
+# MaxBytesReader so an oversize one gets the typed 413. CI's `go` job runs the same two.
+lint-bodies:
+	sh hack/lint-bodies.sh --self-test
+	sh hack/lint-bodies.sh
 
 ## ---- public content (curriculum/) ----
 # The public content checks (cmd/contentlint; t1 §7.2): schema + strict decode, id and
@@ -108,7 +117,7 @@ uninstall-hooks:
 	git config --unset core.hooksPath || true
 
 ## ---- aggregate ----
-lint: go-lint lint-migrations web-lint
+lint: go-lint lint-migrations lint-bodies web-lint
 test: go-test web-test
 
 clean:

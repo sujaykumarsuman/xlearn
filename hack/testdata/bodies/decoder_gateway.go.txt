@@ -1,0 +1,9 @@
+// lint-expect: 1
+// lint-as: internal/gateway/decode.go
+// Decoding straight off the request reads an uncapped body.
+
+package gateway
+
+func decode(r *http.Request, v any) error {
+	return json.NewDecoder(r.Body).Decode(v)
+}

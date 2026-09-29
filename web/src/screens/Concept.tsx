@@ -1,5 +1,6 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Icon } from "../components/Icon";
+import { limitErrorMessage } from "../lib/api";
 import { InlineMD, Markdown } from "../components/Markdown";
 import { coursePath, useCourseSlug } from "../lib/course";
 import type { Concept as ConceptData, Problem } from "../lib/curriculum";
@@ -36,7 +37,7 @@ export default function Concept() {
           <div className="xl-panel" style={{ padding: 20, display: "flex", alignItems: "center", gap: 12 }}>
             <Icon name="alert" />
             <span className="xl-mut" style={{ flex: 1 }}>
-              {concept.error?.status === 404 ? "This concept doesn’t exist yet." : "Couldn’t load this concept."}
+              {concept.error?.status === 404 ? "This concept doesn’t exist yet." : (limitErrorMessage(concept.error) ?? "Couldn’t load this concept.")}
             </span>
             {concept.error?.status !== 404 && (
               <button type="button" className="ds-btn ds-btn--secondary ds-btn--sm" onClick={() => concept.refetch()}>

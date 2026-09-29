@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/sujaykumarsuman/xlearn/internal/platform/httpx"
 )
 
 // assessmentClient calls the internal assessment service (the timed mock aggregate).
@@ -85,9 +87,8 @@ func (g *Gateway) handleStartMock(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
+	reqBody, ok := httpx.ReadBody(w, r, httpx.BodyLimitDefault)
+	if !ok {
 		return
 	}
 	body, status, err := g.assessment.post(r.Context(), token, withPath("/mocks", slug), reqBody)
@@ -146,9 +147,8 @@ func (g *Gateway) handleScoreMock(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
+	reqBody, ok := httpx.ReadBody(w, r, httpx.BodyLimitDefault)
+	if !ok {
 		return
 	}
 	upstream := "/mocks/" + url.PathEscape(r.PathValue("id")) + "/score"

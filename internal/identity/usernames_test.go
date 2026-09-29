@@ -3,9 +3,14 @@ package identity
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course"
+	"github.com/sujaykumarsuman/xlearn/internal/course/coursetest"
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 )
@@ -111,10 +116,14 @@ func TestInternalByUsernameReturnsPublicFieldsOnly(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	for _, want := range []string{"account_id", "username", "display_name", "created_at", "region"} {
+	for _, want := range []string{"account_id", "username", "display_name", "created_at", "region", "visible_courses"} {
 		if _, ok := body[want]; !ok {
 			t.Errorf("public payload missing %q", want)
 		}
+	}
+	// No enrollments: an empty array, never null (the gateway iterates it).
+	if vc, ok := body["visible_courses"].([]any); !ok || len(vc) != 0 {
+		t.Errorf("visible_courses = %#v, want []", body["visible_courses"])
 	}
 	// region is a COARSE UTC-offset band, never the IANA zone. The fake account is UTC.
 	if body["region"] != "UTC" {
@@ -129,6 +138,86 @@ func TestInternalByUsernameReturnsPublicFieldsOnly(t *testing.T) {
 	// Unknown username → 404.
 	if rec := doJSON(t, svc.handleInternalGetAccountByUsername, http.MethodGet, "/internal/accounts/by-username/ghost", nil, nil, map[string]string{"username": "ghost"}); rec.Code != http.StatusNotFound {
 		t.Fatalf("unknown username status %d, want 404", rec.Code)
+	}
+}
+
+// resolveByUsername drives the internal public-profile resolver.
+func resolveByUsername(t *testing.T, svc *Service, name string) (int, string, []string) {
+	t.Helper()
+	rec := doJSON(t, svc.handleInternalGetAccountByUsername, http.MethodGet, "/internal/accounts/by-username/"+name, nil, nil, map[string]string{"username": name})
+	var body struct {
+		VisibleCourses []string `json:"visible_courses"`
+	}
+	_ = json.Unmarshal(rec.Body.Bytes(), &body)
+	return rec.Code, rec.Body.String(), body.VisibleCourses
+}
+
+// P2 (m1-05; ADR-0033 §13): visible_courses = enrolled ∩ public_visible ∩ `active`.
+func TestInternalByUsernameVisibleCourses(t *testing.T) {
+	ctx := context.Background()
+	st := newFakeStore()
+	svc := NewService(testConfig(), st, nil, coursetest.Registry(t), slog.New(slog.NewJSONHandler(io.Discard, nil)))
+	acct, _, _ := st.FindOrCreateAccount(ctx, store.OAuthUpsert{Provider: "github", ProviderUserID: "1", DisplayName: "Ada", Email: "ada@example.com"})
+	if _, err := st.SetUsername(ctx, acct.ID, "ada"); err != nil {
+		t.Fatal(err)
+	}
+	// Enrolled and visible: the default course; plus a preview enrollment (the owner's
+	// cohort can enroll in one) and, directly in the store, the non-enrollable statuses —
+	// none of which may ever show. The fixture active course is not enrolled yet.
+	for _, slug := range []string{course.DefaultSlug, coursetest.FixturePreview, coursetest.FixtureComingSoon, coursetest.FixtureRetired} {
+		if _, err := st.StartEnrollment(ctx, acct.ID, slug, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want := func(step string, slugs ...string) {
+		t.Helper()
+		code, body, got := resolveByUsername(t, svc, "ada")
+		if code != http.StatusOK {
+			t.Fatalf("%s: status %d %s", step, code, body)
+		}
+		if strings.Join(got, ",") != strings.Join(slugs, ",") {
+			t.Fatalf("%s: visible_courses = %v, want %v", step, got, slugs)
+		}
+	}
+	want("active-but-not-enrolled excluded; preview/coming_soon/retired excluded", course.DefaultSlug)
+
+	// Enrolled but hidden: excluded.
+	if _, err := st.StartEnrollment(ctx, acct.ID, coursetest.FixtureActive, false); err != nil {
+		t.Fatal(err)
+	}
+	want("enrolled-but-hidden excluded", course.DefaultSlug)
+
+	st.setPublicVisible(acct.ID, coursetest.FixtureActive, true)
+	want("enrolled and visible shown", course.DefaultSlug, coursetest.FixtureActive)
+
+	st.setPublicVisible(acct.ID, course.DefaultSlug, false)
+	want("the default course hidden too", coursetest.FixtureActive)
+}
+
+// P11 (m1-05): the resolver answers only an ACTIVE account; a suspended one gets exactly
+// the unknown username's 404, and a reactivated one resolves again.
+func TestInternalByUsernameSuspendedIs404(t *testing.T) {
+	ctx := context.Background()
+	st := newFakeStore()
+	svc := newTestService(st, nil)
+	acct, _, _ := st.FindOrCreateAccount(ctx, store.OAuthUpsert{Provider: "github", ProviderUserID: "1", DisplayName: "Ada", Email: "ada@example.com"})
+	if _, err := st.SetUsername(ctx, acct.ID, "ada"); err != nil {
+		t.Fatal(err)
+	}
+	if code, body, _ := resolveByUsername(t, svc, "ada"); code != http.StatusOK {
+		t.Fatalf("active: %d %s", code, body)
+	}
+	_, unknown, _ := resolveByUsername(t, svc, "ghost")
+
+	st.setRoleStatus(acct.ID, "", store.StatusSuspended)
+	code, body, _ := resolveByUsername(t, svc, "ada")
+	if code != http.StatusNotFound || body != unknown {
+		t.Fatalf("suspended: %d %s, want the unknown username's 404 %s", code, body, unknown)
+	}
+
+	st.setRoleStatus(acct.ID, "", store.StatusActive)
+	if code, body, _ := resolveByUsername(t, svc, "ada"); code != http.StatusOK {
+		t.Fatalf("reactivated: %d %s", code, body)
 	}
 }
 

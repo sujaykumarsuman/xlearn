@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Icon } from "../components/Icon";
+import { limitErrorMessage } from "../lib/api";
 import type { IconName } from "../components/Icon";
 import { Markdown } from "../components/Markdown";
 import { coursePath, useCourse, useCourseSlug } from "../lib/course";
@@ -52,7 +53,7 @@ export default function Problem() {
         <div className="xl-panel" style={{ padding: 20, display: "flex", alignItems: "center", gap: 12 }}>
           <Icon name="alert" />
           <span className="xl-mut" style={{ flex: 1 }}>
-            {q.error?.status === 404 ? "This problem doesn’t exist yet." : "Couldn’t load this problem."}
+            {q.error?.status === 404 ? "This problem doesn’t exist yet." : (limitErrorMessage(q.error) ?? "Couldn’t load this problem.")}
           </span>
           {q.error?.status !== 404 && (
             <button type="button" className="ds-btn ds-btn--secondary ds-btn--sm" onClick={() => q.refetch()}>

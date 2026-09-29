@@ -1,0 +1,11 @@
+// lint-expect: 0
+// lint-as: internal/platform/auth/verify.go
+// The proxy and decoder rules are gateway-only; the platform tree gets the read rule.
+
+package auth
+
+func decode(r *http.Request, v any) error {
+	req, _ := http.NewRequest(http.MethodPost, "http://x", r.Body)
+	_ = req
+	return json.NewDecoder(r.Body).Decode(v)
+}

@@ -19,6 +19,22 @@ Legend — **Deploy:** `edge` = has Traefik route; `internal` = ClusterIP only. 
 - **Key endpoints:** see [`api.md`](api.md) (external surface = the gateway's surface).
 - **Notes:** screen aggregation lives here precisely because services can't cross-join
   ([ADR-0005](../adr/0005-data-ownership-and-migrations.md)).
+- **Limits (m1-05, [ADR-0035 §4](../adr/0035-v2-operations-nats-auth-limits-capacity.md#4-limits-inventory)):**
+  in-process token buckets (`internal/gateway/limit`), keyed by `X-Real-Ip` (set by Traefik,
+  `externalTrafficPolicy: Local`, no CDN; never `X-Forwarded-For`) or by the validated account. L1 login
+  10/min per IP (burst 5) + 5 failures / 15 min per identifier (SHA-256 of the normalised identifier);
+  L2 signup and `POST /auth/{provider}/start` 5/min per IP each; L4 `GET /api/u/{username}` 60/min per IP
+  (burst 20), a 60 s negative 404 cache and ≤ 8 concurrent cold composes (`429 busy`); L5 per account, at
+  `authSession`: 20 req/s (burst 40), mutating 5 req/s (burst 10). A refusal is `429 rate_limited` with
+  `Retry-After`. L6: every request body ≤ 1 MiB through `httpx.ReadBody`, and the identity auth proxy
+  through `http.MaxBytesReader` → `413 body_too_large` (CI: `hack/lint-bodies.sh`). Probes, JWKS, app
+  health and static assets are exempt. Every map is bounded (≤ 16 384 keys, idle ≥ 10 min swept).
+- **Scale-out blocker (L24):** the gateway runs as a **single replica**, and it holds process-local state
+  that a second replica would split: the aggregation-cache epoch **and** all the limiter state (the
+  L1/L2/L4/L5 buckets, the L1 failure windows, the negative 404 cache, the compose semaphore). Two replicas
+  would each admit a full burst and could serve a stale composed payload after a write on the other.
+  Scaling out needs shared state (or sticky routing) first ([ADR-0035 §4](../adr/0035-v2-operations-nats-auth-limits-capacity.md#4-limits-inventory)
+  L24; [rollout §12](../v2/rollout-plan.md#12-downstream-constraints-for-the-build-plan-session)).
 
 ## identity · `internal`
 
