@@ -1,0 +1,10 @@
+// lint-expect: 1
+// lint-as: internal/gateway/other.go
+// http.NewRequest without a context is the same hit.
+
+package gateway
+
+func proxy(r *http.Request) {
+	req, _ := http.NewRequest(http.MethodPost, "http://review/x", r.Body)
+	_ = req
+}

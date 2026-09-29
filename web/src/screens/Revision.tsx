@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Icon } from "../components/Icon";
+import { limitErrorMessage } from "../lib/api";
 import { coursePath, useCourseSlug } from "../lib/course";
 import {
   TOUCH_DOT_LABELS,
@@ -54,7 +55,7 @@ export default function Revision() {
       {q.isError && (
         <div className="xl-panel" style={{ padding: 20, display: "flex", alignItems: "center", gap: 12 }}>
           <Icon name="alert" />
-          <span className="xl-mut" style={{ flex: 1 }}>Couldn’t load your revision queue.</span>
+          <span className="xl-mut" style={{ flex: 1 }}>{limitErrorMessage(q.error) ?? "Couldn’t load your revision queue."}</span>
           <button type="button" className="ds-btn ds-btn--secondary ds-btn--sm" onClick={() => q.refetch()}>
             Retry
           </button>

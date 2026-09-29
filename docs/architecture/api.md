@@ -22,7 +22,21 @@ service APIs are in [`services.md`](services.md). Auth model: [ADR-0006](../adr/
   `Retry-After: 1` while identity's two bcrypt slots are busy (L3). OAuth for a suspended account redirects
   to `/auth?error=account_unavailable`.
 - **Errors:** consistent envelope `{ "error": { "code", "message", "details"? } }`; HTTP status
-  reflects the class (`400/401/403/404/409/422/429/5xx`).
+  reflects the class (`400/401/403/404/409/413/422/429/5xx`).
+- **Limits (M1b, m1-05; [ADR-0035](../adr/0035-v2-operations-nats-auth-limits-capacity.md) §4) fail loudly:**
+  - `429` with a `Retry-After` header (whole seconds) and
+    `{"error":{"code":"rate_limited","message":…,"retry_after":N}}` — L1 `POST /auth/login` (10/min per IP,
+    burst 5; and 5 failures / 15 min per identifier, answered without calling identity), L2
+    `POST /auth/signup` and `POST /auth/{provider}/start` (5/min per IP each), L4 `GET /u/{username}` (60/min
+    per IP, burst 20), L5 every authenticated call (20/s per account, burst 40; writes also 5/s, burst 10).
+  - `429 {"error":{"code":"busy",…,"retry_after":1}}` (`Retry-After: 1`) — the public profile's cold-compose
+    cap (≤ 8 at once).
+  - Other services' 429s keep their own codes (identity's `too_many_requests`, the coach's
+    `provider_limited`); the SPA keeps the server's `code`/`reason` and only adds `retryAfter`.
+  - `413 {"error":{"code":"body_too_large","message":…,"limit":N}}` — any request body over its cap
+    (`N` bytes; 1 MiB by default, 8 KiB for `POST /auth/login`), including the proxied auth routes.
+  - The per-IP key is `X-Real-Ip` as Traefik sets it; exempt: `/healthz`, `/readyz`, `/api/healthz`, JWKS,
+    static assets.
 - **IDs & time:** string ids as in the domain; timestamps ISO-8601 UTC. Pagination via `?cursor=&limit=`.
 - **Versioning:** `/xlearn/api/v1` is the 1.0 surface (introduced at the 1.0 milestone, S12); the
   unversioned `/xlearn/api` is kept as a same-origin compat alias ([ADR-0021](../adr/0021-release-tagging-and-api-versioning.md)).
@@ -92,6 +106,16 @@ service APIs are in [`services.md`](services.md). Auth model: [ADR-0006](../adr/
 | `GET` | `/paths/{slug}/dashboard` **agg** | The course's "Today": daily plan, due reviews, weak area, streak, stats. | practice + review + assessment + curriculum |
 | `GET` | `/paths/{slug}/progress` **agg** | The course's coverage, heatmap, mastery, rubric trend, outcome mix. | assessment (+ review) |
 | `POST` · `GET` · `GET` · `GET` | `/mocks` · `/mocks/trend` · `/dashboard` · `/progress` | *Deprecated DSA aliases* of the rows above. | as above |
+| `GET` | `/u/{username}` **agg** | The **public** profile — no session (F009, [ADR-0024](../adr/0024-public-user-dashboards-and-usernames.md)). See below. | identity (resolver) + assessment + curriculum |
+
+**Public profile shape (M1b, m1-05; [ADR-0033](../adr/0033-invite-only-admission-and-owner-admin.md) §13).**
+`user{username, displayName, joinedAt, region}` · `totals{solved, streak{current, longest}}` · `mock{count}` ·
+`heatmap{days[]{date, solves, reviews}}` (or `null`) · `courses[]{slug, title, solved, total, pct, phases[], patterns[]}`
+— and nothing else (an allowlist test pins it). `joinedAt` is a date (`YYYY-MM-DD`); no value carries a
+sub-day timestamp. The mock tile is the **count only** (D31: best/average stay on the authed Progress).
+`courses` lists only enrolled ∩ publicly visible ∩ `active` courses (`preview` never). An unknown,
+malformed or **suspended** username is the same `404 not_found`, at once; a 404 is cached for 60 s, so a
+newly claimed or reactivated username can take up to a minute to appear.
 
 ### Coach
 | Method | Path | Purpose | Backed by |

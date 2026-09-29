@@ -14,6 +14,7 @@ import (
 
 	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/httpx"
 )
 
 // apiRoute is one registered BFF endpoint. The set of routes is a first-class value
@@ -205,9 +206,8 @@ func (g *Gateway) handlePatchMe(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
+	reqBody, ok := httpx.ReadBody(w, r, httpx.BodyLimitDefault)
+	if !ok {
 		return
 	}
 	body, status, err := g.identity.patchAccount(r.Context(), token, accountID, reqBody)
@@ -230,9 +230,8 @@ func (g *Gateway) handleOnboardingStep(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
+	reqBody, ok := httpx.ReadBody(w, r, httpx.BodyLimitDefault)
+	if !ok {
 		return
 	}
 	body, status, err := g.identity.onboardingStep(r.Context(), token, reqBody)
@@ -267,6 +266,11 @@ func (g *Gateway) handleAuthProxy(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "identity not configured")
 		return
 	}
+	// L2: POST /auth/{provider}/start is 5/min per IP. The GET callback is not limited: it
+	// is the provider redirecting the browser back.
+	if r.Method == http.MethodPost && !allowIP(w, r, g.limits.signupIP, "start") {
+		return
+	}
 	// r.URL.Path here is the stripped app path, e.g. /api/auth/github/start.
 	upstreamPath := "/auth/" + r.PathValue("provider") + "/" + lastSegment(r.URL.Path)
 	g.identity.forward(w, r, upstreamPath)
@@ -275,9 +279,14 @@ func (g *Gateway) handleAuthProxy(w http.ResponseWriter, r *http.Request) {
 // handleAuthSignup / handleAuthLogin forward the email/password body to identity, which
 // creates/authenticates the account and sets the session cookie on its JSON response
 // (ADR-0023). The gateway passes Set-Cookie back so the browser talks only to the gateway.
+// Signup is L2 (5/min per IP); login is L1 (limits.go: per IP plus the per-identifier
+// failure window).
 func (g *Gateway) handleAuthSignup(w http.ResponseWriter, r *http.Request) {
 	if g.identity == nil {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "identity not configured")
+		return
+	}
+	if !allowIP(w, r, g.limits.signupIP, "signup") {
 		return
 	}
 	g.identity.forward(w, r, "/auth/signup")
@@ -288,7 +297,7 @@ func (g *Gateway) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "identity not configured")
 		return
 	}
-	g.identity.forward(w, r, "/auth/login")
+	g.loginWithLimits(w, r)
 }
 
 // handleSetPassword forwards a set/change-password request to identity's
@@ -302,9 +311,8 @@ func (g *Gateway) handleSetPassword(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
+	reqBody, ok := httpx.ReadBody(w, r, httpx.BodyLimitDefault)
+	if !ok {
 		return
 	}
 	body, status, err := g.identity.setPassword(r.Context(), token, accountID, reqBody)
@@ -359,9 +367,8 @@ func (g *Gateway) handleSetUsername(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
+	reqBody, ok := httpx.ReadBody(w, r, httpx.BodyLimitDefault)
+	if !ok {
 		return
 	}
 	body, status, err := g.identity.setUsername(r.Context(), token, accountID, reqBody)
@@ -790,9 +797,8 @@ func (g *Gateway) proxyPracticeWrite(w http.ResponseWriter, r *http.Request, pro
 	if !ok {
 		return
 	}
-	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
+	reqBody, ok := httpx.ReadBody(w, r, httpx.BodyLimitDefault)
+	if !ok {
 		return
 	}
 	body, status, err := g.practice.post(r.Context(), token, withPath(upstreamPath, slug), reqBody)
@@ -894,9 +900,8 @@ func (g *Gateway) handleRevisionScore(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
+	reqBody, ok := httpx.ReadBody(w, r, httpx.BodyLimitDefault)
+	if !ok {
 		return
 	}
 	upstream := "/revisions/" + url.PathEscape(r.PathValue("itemId")) + "/score"
@@ -956,10 +961,14 @@ func (g *Gateway) authAccount(w http.ResponseWriter, r *http.Request) (string, b
 // authSession validates the session cookie with identity and returns what
 // session-validate reports (sessionInfo), or writes the 401 envelope and returns
 // ok=false. It asks identity on EVERY request and the gateway never caches status or
-// role: a suspend or a set-role applies on the caller's next request (m1-05's P11 relies
-// on it). The answer is remembered for the rest of THIS request only (rememberSession),
-// which is where the course-visibility cohort bit reads it, and a second authSession in
-// the same request reuses it instead of calling identity twice.
+// role: a suspend or a set-role applies on the caller's next request. The answer is
+// remembered for the rest of THIS request only (rememberSession), which is where the
+// course-visibility cohort bit reads it, and a second authSession in the same request
+// reuses it instead of calling identity twice.
+//
+// It is also L5's single enforcement point (m1-05): right after validation, the account's
+// token buckets (limits.go allowAccount) run once per request. A refusal is the typed 429
+// and ok=false, like any other auth failure.
 func (g *Gateway) authSession(w http.ResponseWriter, r *http.Request) (sessionInfo, bool) {
 	if info, ok := requestSession(r); ok {
 		return info, true
@@ -976,6 +985,9 @@ func (g *Gateway) authSession(w http.ResponseWriter, r *http.Request) (sessionIn
 	info, err := g.identity.validateSession(r.Context(), c.Value)
 	if err != nil {
 		writeUnauthenticated(w)
+		return sessionInfo{}, false
+	}
+	if !g.allowAccount(w, r, info.AccountID) {
 		return sessionInfo{}, false
 	}
 	rememberSession(r, info)
@@ -1260,17 +1272,39 @@ func (c *curriculumClient) get(ctx context.Context, path string) ([]byte, int, e
 	return body, resp.StatusCode, err
 }
 
-// forward proxies an OAuth request to identity, passing cookies + query and
-// copying status, Location and Set-Cookie back (no redirect following).
+// forward proxies an auth request (signup, login, OAuth start/callback, dev login) to
+// identity, passing cookies + query and copying status, Location and Set-Cookie back (no
+// redirect following).
+//
+// The body is capped (L6): it streams through http.MaxBytesReader at BodyLimitDefault,
+// never as the raw request body. A declared Content-Length over the cap is a 413 before
+// identity is dialled; a chunked body that overruns surfaces from the client as a
+// *http.MaxBytesError and becomes the same typed 413, not a 502.
 func (c *identityClient) forward(w http.ResponseWriter, r *http.Request, upstreamPath string) {
+	if r.ContentLength > httpx.BodyLimitDefault {
+		httpx.WriteBodyTooLarge(w, httpx.BodyLimitDefault)
+		return
+	}
 	target := c.baseURL + upstreamPath
 	if r.URL.RawQuery != "" {
 		target += "?" + r.URL.RawQuery
 	}
-	req, err := http.NewRequestWithContext(r.Context(), r.Method, target, r.Body)
+	var body io.Reader
+	if r.Body != nil && r.Body != http.NoBody {
+		body = http.MaxBytesReader(w, r.Body, httpx.BodyLimitDefault)
+	}
+	req, err := http.NewRequestWithContext(r.Context(), r.Method, target, body)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal", "proxy build failed")
 		return
+	}
+	// Keep the declared length so identity sees the framing the client sent (NewRequest
+	// can't see through the MaxBytesReader); an unknown length stays chunked.
+	if body != nil {
+		req.ContentLength = r.ContentLength
+		if r.ContentLength == 0 {
+			req.Body, req.ContentLength = http.NoBody, 0
+		}
 	}
 	if ct := r.Header.Get("Content-Type"); ct != "" {
 		req.Header.Set("Content-Type", ct)
@@ -1280,6 +1314,10 @@ func (c *identityClient) forward(w http.ResponseWriter, r *http.Request, upstrea
 	}
 	resp, err := c.proxyc.Do(req)
 	if err != nil {
+		if httpx.IsBodyTooLarge(err) {
+			httpx.WriteBodyTooLarge(w, httpx.BodyLimitDefault)
+			return
+		}
 		writeError(w, http.StatusBadGateway, "upstream", "identity unavailable")
 		return
 	}

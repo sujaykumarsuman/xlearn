@@ -16,9 +16,9 @@ function renderApp(initialPath: string) {
 }
 
 const adaProfile = {
-  user: { username: "ada", displayName: "Ada Lovelace", joinedAt: "2026-01-01T00:00:00Z", region: "UTC+05:30" },
+  user: { username: "ada", displayName: "Ada Lovelace", joinedAt: "2026-01-01", region: "UTC+05:30" },
   totals: { solved: 12, streak: { current: 5, longest: 9 } },
-  mock: { count: 2, best: 24, average: 22 },
+  mock: { count: 2 },
   heatmap: { days: [{ date: "2026-09-20", solves: 1, reviews: 2 }] },
   courses: [
     {
@@ -73,6 +73,47 @@ describe("UserDashboard (public /xlearn/u/<username>)", () => {
     // Authenticated viewer → the app's account menu, and NO "Sign in" link.
     expect(await screen.findByRole("button", { name: /account menu/i })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /^sign in$/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the mock COUNT only (D31) and the join month from a date-only joinedAt", async () => {
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 401, body: { error: { code: "unauthenticated" } } };
+      if (url.includes("/api/u/ada")) return { status: 200, body: adaProfile };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/u/ada");
+
+    const label = await screen.findByText("Mocks");
+    const tile = label.closest(".xl-stat");
+    expect(tile?.querySelector(".xl-stat__v")?.textContent).toBe("2");
+    expect(screen.queryByText("No mocks yet")).not.toBeInTheDocument();
+    expect(screen.queryByText(/mock best/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/avg/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\/ 35/)).not.toBeInTheDocument();
+    // "YYYY-MM-DD" renders as "Joined <Mon YYYY>" (formatted in UTC: never the month before).
+    expect(screen.getByText(/^Joined /).textContent).toMatch(/^Joined Jan\w* 2026$/);
+  });
+
+  it("says No mocks yet at zero", async () => {
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 401, body: { error: { code: "unauthenticated" } } };
+      if (url.includes("/api/u/ada")) return { status: 200, body: { ...adaProfile, mock: { count: 0 } } };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/u/ada");
+
+    expect(await screen.findByText("No mocks yet")).toBeInTheDocument();
+  });
+
+  it("shows the retry copy on a 429, with the server's wait", async () => {
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 401, body: { error: { code: "unauthenticated" } } };
+      if (url.includes("/api/u/ada")) return { status: 429, body: { error: { code: "rate_limited", retry_after: 30 } } };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/u/ada");
+
+    expect(await screen.findByText("Too many requests — try again in 30 s.")).toBeInTheDocument();
   });
 
   it("collapses and expands per-course detail", async () => {

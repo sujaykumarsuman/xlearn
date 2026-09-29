@@ -35,7 +35,7 @@ export default function Catalog() {
       {paths.isLoading && <LoadingState label="Loading paths…" />}
 
       {paths.isError && (
-        <ErrorState message="Couldn’t load the catalog." onRetry={() => paths.refetch()} />
+        <ErrorState message="Couldn’t load the catalog." error={paths.error} onRetry={() => paths.refetch()} />
       )}
 
       {paths.data && <CatalogBody paths={paths.data.paths} me={me.data} />}

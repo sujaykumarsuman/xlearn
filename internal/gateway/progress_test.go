@@ -49,7 +49,7 @@ func newAggHarness(t *testing.T) *aggHarness {
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"account_id": "acct-1", "username": "ada",
 				"display_name": "Ada Lovelace", "created_at": "2026-01-01T00:00:00Z",
-				"region": "UTC+05:30",
+				"region": "UTC+05:30", "visible_courses": []string{"dsa"},
 			})
 		},
 	}))

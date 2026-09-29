@@ -58,7 +58,7 @@ export default function Roadmap() {
       {detail.isLoading && <LoadingState label="Loading roadmap…" />}
 
       {detail.isError && (
-        <ErrorState message="Couldn’t load the roadmap." onRetry={() => detail.refetch()} />
+        <ErrorState message="Couldn’t load the roadmap." error={detail.error} onRetry={() => detail.refetch()} />
       )}
 
       {detail.data && detail.data.phases.length === 0 && (

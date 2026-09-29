@@ -1,0 +1,10 @@
+// lint-expect: 1
+// lint-as: internal/platform/httpx/helper.go
+// An uncapped read in the platform tree is a hit too.
+
+package httpx
+
+func read(r *http.Request) []byte {
+	b, _ := io.ReadAll(r.Body)
+	return b
+}

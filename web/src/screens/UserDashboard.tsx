@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { Icon, IconSprite, type IconName } from "../components/Icon";
 import { CompletionByPhase, HeatmapGrid, PatternMasteryPanel } from "../components/ProgressViews";
 import { Topbar } from "../components/Topbar";
+import { limitErrorMessage } from "../lib/api";
 import { useMe } from "../lib/auth";
 import { usePublicProfile } from "../lib/profile";
 import type { PublicProfile, PublicProfileCourse } from "../lib/profile";
@@ -33,7 +34,7 @@ export default function UserDashboard() {
           ) : (
             <div className="xl-panel" style={{ padding: 20, display: "flex", alignItems: "center", gap: 12 }}>
               <Icon name="alert" />
-              <span style={{ flex: 1, color: "var(--ds-dim)" }}>Couldn’t load this profile.</span>
+              <span style={{ flex: 1, color: "var(--ds-dim)" }}>{limitErrorMessage(q.error) ?? "Couldn’t load this profile."}</span>
               <button type="button" className="ds-btn ds-btn--secondary ds-btn--sm" onClick={() => q.refetch()}>
                 Retry
               </button>
@@ -146,7 +147,8 @@ function ActivityCard({ days }: { days: HeatmapDay[] }) {
 
 // --- right column: totals + courses ---
 
-/** The account-wide totals row: problems solved, current streak, mock best. */
+/** The account-wide totals row: problems solved, current streak, mocks taken (the count
+ *  only — D31: mock scores stay on the learner's own Progress). */
 function TotalsRow({ data }: { data: PublicProfile }) {
   const { totals, mock } = data;
   return (
@@ -173,26 +175,10 @@ function TotalsRow({ data }: { data: PublicProfile }) {
           <span style={{ color: "var(--ds-violet)" }}>
             <Icon name="target" className="xl-ico--sm" />
           </span>{" "}
-          Mock best
+          Mocks
         </div>
-        {mock.count === 0 ? (
-          <>
-            <div className="xl-stat__v">
-              —<span style={{ fontSize: 13, color: "var(--ds-muted)" }}> / 35</span>
-            </div>
-            <div className="xl-stat__d">No mocks yet</div>
-          </>
-        ) : (
-          <>
-            <div className="xl-stat__v">
-              {mock.best}
-              <span style={{ fontSize: 13, color: "var(--ds-muted)" }}> / 35</span>
-            </div>
-            <div className="xl-stat__d">
-              Avg {mock.average} · {mock.count} mock{mock.count === 1 ? "" : "s"}
-            </div>
-          </>
-        )}
+        <div className="xl-stat__v">{mock.count}</div>
+        {mock.count === 0 && <div className="xl-stat__d">No mocks yet</div>}
       </div>
     </div>
   );
@@ -289,10 +275,13 @@ function NotFoundProfile({ username }: { username: string }) {
   );
 }
 
+/** formatJoined renders the join date ("YYYY-MM-DD" from the public route; an older
+ *  RFC 3339 value still parses) as "<Mon YYYY>". It formats in UTC: a bare date parses as
+ *  UTC midnight, which a viewer west of UTC would otherwise see as the previous month. */
 function formatJoined(iso: string): string {
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return "";
-  return new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short" });
+  return new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short", timeZone: "UTC" });
 }
 
 function ProfileSkeleton() {

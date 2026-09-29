@@ -27,8 +27,14 @@ info:
     downstream audience (ADR-0006); clients never see it.
 
     **Errors.** Every error is the envelope `{"error":{"code","message"?,"details"?}}`;
-    the HTTP status reflects the class (`400/401/403/404/409/422/429/5xx`). A failed
+    the HTTP status reflects the class (`400/401/403/404/409/413/422/429/5xx`). A failed
     upstream is `502 {"error":{"code":"upstream"}}`; an unconfigured one is `503`.
+
+    **Limits (m1-05, ADR-0035 §4) fail loudly.** Any authenticated route may answer
+    `429 rate_limited` (L5: 20 req/s per account, burst 40; writes also 5/s, burst 10), and
+    any route with a request body `413 body_too_large` (1 MiB by default). A 429 carries
+    `Retry-After` (seconds) and `retry_after` in the envelope; a 413 carries `limit` (bytes).
+    Routes with their own limits list them (login, sign-up, OAuth start, the public profile).
 
     **Aggregations.** Endpoints marked `agg` fan out to several services server-side
     (Week, Problem, Dashboard, Progress). Each degrades a section independently rather
@@ -226,13 +232,20 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "403": { description: "Sign-up is closed (`signup_closed`); checked before the body is read." }
         "409": { description: An account with this email already exists. }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "422": { $ref: "#/components/responses/Unprocessable" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         "503": { $ref: "#/components/responses/Unavailable" }
   /auth/login:
     post:
       tags: [account]
       operationId: login
       summary: Email/password sign-in; sets a session cookie (ADR-0023). Uniform 401 on failure.
+      description: |
+        L1 (m1-05): 10/min per client IP (burst 5), and 5 failed sign-ins per identifier
+        (email or username, normalised) in 15 minutes — past that, `429 rate_limited` until
+        the oldest failure ages out, without asking identity; a successful sign-in clears
+        the identifier. The body is capped at 8 KiB (`413 body_too_large`).
       security: []
       requestBody:
         required: true
@@ -243,6 +256,8 @@ paths:
         "200": { description: Signed in; session cookie set. }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         "503": { $ref: "#/components/responses/Unavailable" }
   /auth/{provider}/start:
     post:
@@ -260,6 +275,7 @@ paths:
       responses:
         "302": { description: Redirect to the OAuth provider (sets an oauth-tx cookie). }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         "503": { $ref: "#/components/responses/Unavailable" }
   /auth/{provider}/callback:
     get:
@@ -905,8 +921,12 @@ paths:
       summary: PUBLIC user dashboard (F009 / ADR-0024) — non-PII stats + merged activity heatmap. No session.
       description: >-
         The only unauthenticated /api route. Resolves a username to non-PII public stats only
-        (never email/PII): per-course completion + pattern mastery, account-wide solved count,
-        streak, mock stats, and one activity heatmap merged across courses. Short-cached per user.
+        (never email/PII): per-course completion + pattern mastery for the enrolled, publicly
+        visible, active courses (never preview), the account-wide solved count and streak, the
+        mock COUNT (D31), and one activity heatmap merged across courses. Short-cached per user.
+        An unknown, malformed or suspended username is the same 404 (m1-05 P11), cached for 60 s.
+        L4: 60/min per client IP (burst 20) → 429 rate_limited; at most 8 cold composes at once
+        → 429 busy (Retry-After 1).
       security: []
       parameters:
         - { name: username, in: path, required: true, schema: { type: string } }
@@ -917,6 +937,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/PublicProfile" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         "502": { $ref: "#/components/responses/BadGateway" }
         "503": { $ref: "#/components/responses/Unavailable" }
   /coach/key:
@@ -1108,6 +1129,26 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    RateLimited:
+      description: |
+        A gateway limit refused the request for now (ADR-0035 §4): `rate_limited` (a token
+        bucket or the login failure window) or `busy` (the public profile's compose cap).
+        Other services' 429s keep their own codes (identity's `too_many_requests`, the
+        coach's `provider_limited`).
+      headers:
+        Retry-After:
+          description: Whole seconds until a retry can succeed.
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+          example: { error: { code: rate_limited, message: Too many requests. Try again in a moment., retry_after: 6 } }
+    PayloadTooLarge:
+      description: The request body is over its cap (L6); `limit` is the cap in bytes.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+          example: { error: { code: body_too_large, message: request body too large, limit: 1048576 } }
 
   schemas:
     Error:
@@ -1116,6 +1157,9 @@ components:
       properties:
         code: { type: string }
         message: { type: string }
+        reason: { type: string, description: Refines some codes (e.g. the coach's provider_limited). }
+        retry_after: { type: integer, description: "On a 429: seconds until a retry can succeed (= Retry-After)." }
+        limit: { type: integer, description: "On a 413 body_too_large: the body cap in bytes." }
         details: {}
     ErrorEnvelope:
       type: object
@@ -1143,14 +1187,18 @@ components:
         created_at: { type: string, format: date-time }
     PublicProfile:
       type: object
-      description: Public user dashboard payload (F009 / ADR-0024) — non-PII aggregates only.
+      additionalProperties: false
+      description: >-
+        Public user dashboard payload (F009 / ADR-0024) — non-PII aggregates only. The shape
+        is pinned by an allowlist test (m1-05 P10): no item ids, per-item patterns, sub-day
+        timestamps, scores, prose or transcripts.
       properties:
         user:
           type: object
           properties:
             username: { type: string }
             displayName: { type: string }
-            joinedAt: { type: string, format: date-time }
+            joinedAt: { type: string, format: date, description: "The join date (YYYY-MM-DD, UTC); never a sub-day timestamp." }
             region: { type: string, description: "Coarse UTC-offset band (e.g. UTC+05:30) — never the IANA zone/city (F009)." }
         totals:
           type: object
@@ -1163,15 +1211,15 @@ components:
                 longest: { type: integer }
         mock:
           type: object
+          description: The mock count only (D31); scores stay on the learner's own Progress.
           properties:
             count: { type: integer }
-            best: { type: integer }
-            average: { type: integer }
         heatmap:
           type: [object, "null"]
           description: "{ days: [{date, solves, reviews}] } merged across courses, or null when the projection is unavailable."
         courses:
           type: array
+          description: Only the enrolled, publicly visible, active courses (never preview).
           items:
             type: object
             properties:

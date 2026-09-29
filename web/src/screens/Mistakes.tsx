@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Icon } from "../components/Icon";
+import { limitErrorMessage } from "../lib/api";
 import { useCourseSlug } from "../lib/course";
 import {
   MISTAKE_CATEGORIES,
@@ -85,7 +86,7 @@ export default function Mistakes() {
       {q.isError && (
         <div className="xl-panel" style={{ padding: 20, display: "flex", alignItems: "center", gap: 12 }}>
           <Icon name="alert" />
-          <span className="xl-mut" style={{ flex: 1 }}>Couldn’t load your mistake journal.</span>
+          <span className="xl-mut" style={{ flex: 1 }}>{limitErrorMessage(q.error) ?? "Couldn’t load your mistake journal."}</span>
           <button type="button" className="ds-btn ds-btn--secondary ds-btn--sm" onClick={() => q.refetch()}>
             Retry
           </button>

@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/sujaykumarsuman/xlearn/internal/platform/httpx"
 )
 
 // coachEmptyKey is the "no key — coach off" empty state (api.md GET /coach/key). It is
@@ -156,9 +158,8 @@ func (g *Gateway) handlePutCoachKey(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
+	reqBody, ok := httpx.ReadBody(w, r, httpx.BodyLimitDefault)
+	if !ok {
 		return
 	}
 	body, status, err := g.coach.putKey(r.Context(), token, reqBody)
@@ -244,9 +245,8 @@ func (g *Gateway) handleCoachChat(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "coach not configured")
 		return
 	}
-	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "could not read body")
+	reqBody, ok := httpx.ReadBody(w, r, httpx.BodyLimitDefault)
+	if !ok {
 		return
 	}
 	token, ok := g.mintForCoachW(w, accountID)

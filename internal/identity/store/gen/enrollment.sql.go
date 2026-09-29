@@ -43,6 +43,35 @@ func (q *Queries) ListEnrollments(ctx context.Context, accountID pgtype.UUID) ([
 	return items, nil
 }
 
+const listPublicVisibleCourses = `-- name: ListPublicVisibleCourses :many
+SELECT path_slug FROM identity.path_enrollment
+WHERE account_id = $1 AND public_visible
+ORDER BY started_at, path_slug
+`
+
+// The public profile's course scope (m1-05 P2; ADR-0033 §13; D7): the slugs of the
+// account's enrollments the learner left publicly visible. The service intersects them with
+// the course registry's `active` courses, so preview / coming_soon / retired never show.
+func (q *Queries) ListPublicVisibleCourses(ctx context.Context, accountID pgtype.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listPublicVisibleCourses, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var path_slug string
+		if err := rows.Scan(&path_slug); err != nil {
+			return nil, err
+		}
+		items = append(items, path_slug)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const startEnrollment = `-- name: StartEnrollment :one
 INSERT INTO identity.path_enrollment (account_id, path_slug, public_visible)
 VALUES ($1, $2, $3)

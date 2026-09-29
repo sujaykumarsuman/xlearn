@@ -188,6 +188,9 @@ type Store interface {
 	// (surfaced on GET /me).
 	StartEnrollment(ctx context.Context, accountID, pathSlug string, publicVisible bool) (Enrollment, error)
 	ListEnrollments(ctx context.Context, accountID string) ([]Enrollment, error)
+	// ListPublicVisibleCourses returns the slugs of the account's enrollments with
+	// public_visible set (m1-05 P2); the public-profile resolver keeps the active ones.
+	ListPublicVisibleCourses(ctx context.Context, accountID string) ([]string, error)
 	CreateSession(ctx context.Context, id, accountID string, expiresAt time.Time) (Session, error)
 	// GetValidSession returns a non-revoked, unexpired session of an ACTIVE account with
 	// the account's role/status/accepted_at; ErrNotFound otherwise (a suspended account's
@@ -602,6 +605,20 @@ func (s *PgStore) ListEnrollments(ctx context.Context, accountID string) ([]Enro
 		out = append(out, toEnrollment(r))
 	}
 	return out, nil
+}
+
+// ListPublicVisibleCourses returns the slugs of the account's enrollments marked
+// public_visible (oldest first). The caller intersects them with the active courses.
+func (s *PgStore) ListPublicVisibleCourses(ctx context.Context, accountID string) ([]string, error) {
+	uid, err := parseUUID(accountID)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	slugs, err := s.q.ListPublicVisibleCourses(ctx, uid)
+	if err != nil {
+		return nil, mapErr(err)
+	}
+	return slugs, nil
 }
 
 // CreateSession inserts a session row with the opaque id and expiry.

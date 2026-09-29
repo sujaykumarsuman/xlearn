@@ -2,6 +2,7 @@
 // so the three data states look and behave identically and stay on the design system —
 // no ad-hoc per-screen markup. They reuse theme.css/app.css classes verbatim.
 import type { ReactNode } from "react";
+import { limitErrorMessage } from "../lib/api";
 import { Icon, type IconName } from "./Icon";
 
 /**
@@ -50,13 +51,16 @@ export function LoadingState({ label }: { label?: string }) {
 
 /**
  * ErrorState is the DS error surface: an alert panel with an optional Retry. role="alert"
- * so screen readers announce it when it appears.
+ * so screen readers announce it when it appears. Given the failed request's `error`, a 429
+ * or 413 shows its retry copy instead of `message` (m1-05; api.ts limitErrorMessage).
  */
 export function ErrorState({
   message = "Something went wrong.",
+  error,
   onRetry,
 }: {
   message?: string;
+  error?: unknown;
   onRetry?: () => void;
 }) {
   return (
@@ -67,7 +71,7 @@ export function ErrorState({
     >
       <Icon name="alert" />
       <span className="xl-mut" style={{ flex: 1 }}>
-        {message}
+        {limitErrorMessage(error) ?? message}
       </span>
       {onRetry && (
         <button type="button" className="ds-btn ds-btn--secondary ds-btn--sm" onClick={onRetry}>

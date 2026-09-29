@@ -286,6 +286,9 @@ func newCourseHarness(t *testing.T, cacheTTL time.Duration) *courseHarness {
 		CoachBaseURL: coach.URL, AudienceCoach: "coach",
 		Courses:     coursetest.Registry(t),
 		AggCacheTTL: cacheTTL,
+		// These tests sweep every route for one account far faster than a learner can;
+		// they are about course resolution, not L5, so the limits' clock ticks.
+		Now: tickingClock(),
 	})
 	h.gwServer = httptest.NewServer(gw.Handler())
 	t.Cleanup(h.gwServer.Close)

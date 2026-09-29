@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/sujaykumarsuman/xlearn/internal/course"
 	"github.com/sujaykumarsuman/xlearn/internal/identity/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 )
@@ -76,6 +77,14 @@ func (s *Service) handleUsernameAvailable(w http.ResponseWriter, r *http.Request
 // /internal/* endpoints (ADR-0016) it exposes ONLY non-PII public fields — never email,
 // OAuth identities, timezone, budget or session data — so the public dashboard can never
 // leak PII no matter what the gateway composes on top.
+//
+// m1-05 (ADR-0033 §13):
+//   - P11: it answers only an ACTIVE account. A suspended one gets the same uniform 404 as
+//     an unknown username, and the gateway re-resolves on every public request (it never
+//     caches a positive resolve), so a suspend hides the profile on the very next request.
+//   - P2: visible_courses is the account's enrolled ∩ public_visible ∩ `active` courses (the
+//     compiled course registry). preview, coming_soon and retired never appear, the owner's
+//     cohort preview enrollments included. Always an array (empty, never null).
 func (s *Service) handleInternalGetAccountByUsername(w http.ResponseWriter, r *http.Request) {
 	name := normalizeUsername(r.PathValue("username"))
 	if validateUsername(name) != nil {
@@ -88,6 +97,21 @@ func (s *Service) handleInternalGetAccountByUsername(w http.ResponseWriter, r *h
 		s.mapStoreErr(w, err)
 		return
 	}
+	if acct.Status != store.StatusActive {
+		s.mapStoreErr(w, store.ErrNotFound) // byte-identical to an unknown username's 404
+		return
+	}
+	enrolled, err := s.store.ListPublicVisibleCourses(r.Context(), acct.ID)
+	if err != nil {
+		s.mapStoreErr(w, err)
+		return
+	}
+	visible := make([]string, 0, len(enrolled))
+	for _, slug := range enrolled {
+		if m, ok := s.courses.Lookup(slug); ok && m.Status == course.StatusActive {
+			visible = append(visible, slug)
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"account_id":   acct.ID,
 		"username":     acct.Username,
@@ -95,7 +119,8 @@ func (s *Service) handleInternalGetAccountByUsername(w http.ResponseWriter, r *h
 		"created_at":   acct.CreatedAt.UTC().Format(time.RFC3339),
 		// A COARSE region (F009 review): only the account's UTC offset band, derived
 		// server-side from the timezone — never the IANA zone/city (that stays PII).
-		"region": utcOffsetLabel(acct.Timezone),
+		"region":          utcOffsetLabel(acct.Timezone),
+		"visible_courses": visible,
 	})
 }
 

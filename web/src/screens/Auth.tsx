@@ -359,11 +359,25 @@ function noticeMessage(code: string | null): string | null {
   }
 }
 
+/** formatWait renders a Retry-After in seconds as "N s", or whole minutes past one minute
+ *  (L1's per-identifier lockout lasts up to 15 min). */
+function formatWait(seconds: number): string {
+  if (seconds < 60) return `${seconds} s`;
+  const min = Math.ceil(seconds / 60);
+  return `${min} min`;
+}
+
 function emailAuthErrorMessage(err: ApiRequestError, mode: "signin" | "signup"): string {
   // identity sheds load with 429 too_many_requests (Retry-After: 1) while bcrypt is busy
-  // (L3); a per-IP limit may answer a bare 429 with no envelope.
+  // (L3); the gateway answers 429 rate_limited for L1 (login per IP and per identifier)
+  // and L2 (signup per IP), with the wait in Retry-After (m1-05).
   if (err.code === "too_many_requests" || err.status === 429) {
-    return "Too many attempts right now — try again in a moment.";
+    return err.retryAfter && err.retryAfter > 1
+      ? `Too many attempts — try again in ${formatWait(err.retryAfter)}.`
+      : "Too many attempts right now — try again in a moment.";
+  }
+  if (err.status === 413) {
+    return "That’s too large to send.";
   }
   switch (err.code) {
     case "email_taken":
@@ -469,7 +483,7 @@ function StepPath({
 
   if (!paths.data) {
     return paths.isError && !paths.isFetching ? (
-      <ErrorState message="Couldn’t load the paths." onRetry={() => paths.refetch()} />
+      <ErrorState message="Couldn’t load the paths." error={paths.error} onRetry={() => paths.refetch()} />
     ) : (
       <Spinner label="Loading paths…" />
     );

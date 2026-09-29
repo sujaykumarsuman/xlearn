@@ -41,7 +41,7 @@ export default function Problems() {
 
       {problems.isLoading && <LoadingState label="Loading problems…" />}
       {problems.isError && (
-        <ErrorState message="Couldn’t load the problem list." onRetry={() => problems.refetch()} />
+        <ErrorState message="Couldn’t load the problem list." error={problems.error} onRetry={() => problems.refetch()} />
       )}
       {problems.data && problems.data.problems.length === 0 && (
         <EmptyState icon="list" title="No problems yet">

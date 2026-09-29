@@ -1,0 +1,10 @@
+// lint-expect: 1
+// lint-as: internal/gateway/coach.go
+// The v1 silent truncation L6 replaced.
+
+package gateway
+
+func (g *Gateway) handle(w http.ResponseWriter, r *http.Request) {
+	reqBody, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	_, _ = reqBody, err
+}

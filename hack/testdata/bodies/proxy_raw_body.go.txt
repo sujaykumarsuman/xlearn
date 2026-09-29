@@ -1,0 +1,10 @@
+// lint-expect: 1
+// lint-as: internal/gateway/bff.go
+// The v1 identity forward: the raw body streamed upstream with no cap.
+
+package gateway
+
+func (c *identityClient) forward(w http.ResponseWriter, r *http.Request, target string) {
+	req, err := http.NewRequestWithContext(r.Context(), r.Method, target, r.Body)
+	_, _ = req, err
+}
