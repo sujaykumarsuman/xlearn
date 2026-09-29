@@ -168,13 +168,15 @@ describe("Markdown XSS corpus", () => {
   it.each(BOMBS)("%s renders in bounded time", (_name, source) => {
     // The bound is on the renderer (parse, sanitize, React elements → markup). jsdom's
     // own node insertion is quadratic on a 900-deep tree (~1.5 s here), which a browser's
-    // isn't, so the DOM render below is checked for safety but not timed.
+    // isn't, so the DOM render below is checked for safety but not timed. The budget catches
+    // a catastrophic (exponential) blow-up, not a slow runner: the ~90 KB indented-list bomb
+    // took 2.6 s on a CI runner (vs < 1 s locally), so the bound is generous.
     const t0 = performance.now();
     renderToStaticMarkup(<Markdown source={source} resolveAsset={() => null} />);
-    expect(performance.now() - t0).toBeLessThan(2000);
+    expect(performance.now() - t0).toBeLessThan(10_000);
     const { container } = render(<Markdown source={source} resolveAsset={() => null} />);
     assertSafe(container, []);
-  }, 15_000);
+  }, 40_000);
 });
 
 describe("Markdown profile", () => {
