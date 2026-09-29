@@ -265,7 +265,7 @@ function ProblemRow({ problem, state }: { problem: Problem; state?: ProblemState
         <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <b style={{ fontSize: 13.5 }}>{problem.title}</b>
           <span className={DIFF_CLASS[problem.difficulty]}>{DIFF_LABEL[problem.difficulty]}</span>
-          <span className="xl-pat">{problem.pattern}</span>
+          {problem.pattern && <span className="xl-pat">{problem.pattern}</span>}
           {problem.is_reinforcement && (
             <span className="ds-chip ds-chip--xs ds-mono" style={{ color: "var(--ds-violet)" }}>
               <Icon name="refresh" className="" /> reinforcement

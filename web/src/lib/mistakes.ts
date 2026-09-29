@@ -44,7 +44,8 @@ export interface MistakeProblem {
   id: string;
   title: string;
   difficulty: "easy" | "med" | "hard";
-  pattern: string;
+  /** Absent while the item is live (m1-06 withhold). */
+  pattern?: string;
   week_n: number;
 }
 
@@ -53,7 +54,8 @@ export interface MistakeProblem {
 export interface Mistake {
   id: string;
   problemId: string;
-  pattern: string;
+  /** The entry's pattern; absent while the item is live (m1-06 withhold). */
+  pattern?: string;
   mistake: string;
   rootCause: string;
   insight: string;

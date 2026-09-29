@@ -458,6 +458,18 @@ function ReadingPane({ sections }: { sections: ProblemSection[] }) {
 }
 
 function SectionBlock({ section }: { section: ProblemSection }) {
+  // The solution-stage facts block (m1-06): only delivered once the solution stage is
+  // unlocked and the item isn't live, so it renders as served.
+  if (section.kind === "solution_facts") {
+    const c = section.solution_facts?.complexity;
+    if (!c || (!c.time?.length && !c.space?.length)) return null;
+    return (
+      <p style={{ margin: 0 }}>
+        <b>Complexity</b> — time <code>{(c.time ?? []).join(", ") || "—"}</code> · space{" "}
+        <code>{(c.space ?? []).join(", ") || "—"}</code>
+      </p>
+    );
+  }
   if (section.code) {
     return <pre className="xl-code">{section.code}</pre>;
   }

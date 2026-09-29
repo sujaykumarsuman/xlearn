@@ -1,20 +1,28 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Icon } from "../components/Icon";
 import { limitErrorMessage } from "../lib/api";
-import { coursePath, useCourseSlug } from "../lib/course";
+import { coursePath, useCourse, useCourseSlug } from "../lib/course";
+import type { CourseViewBand } from "../lib/curriculum";
 import {
   TOUCH_DOT_LABELS,
+  bandDuration,
+  bandFor,
+  bandTimerSecs,
   dayLabelFor,
+  formatMMSS,
+  formatNextReview,
+  nextReviewDate,
   scoreRevision,
   useDueRevision,
 } from "../lib/revision";
 import type { DueItem, RevisionProblem, ScoreInput, ScoreResult } from "../lib/revision";
+import "../styles/revision.css";
 
-// The re-solve runs on a 20-minute timer (R-SR2) — a re-solve from a blank editor,
-// never a re-read.
-const REVISION_TIMER_SECONDS = 20 * 60;
+// v1's re-solve timer (R-SR2), used only when the course view carries no timed band for
+// the touch's level — the band's timer_s is the source (AB03).
+const FALLBACK_TIMER_SECONDS = 20 * 60;
 // The auto-pass pattern-naming threshold (R-SR2): named in under two minutes.
 const NAME_PATTERN_MAX_SECS = 120;
 
@@ -25,26 +33,39 @@ const DIFF_CLASS: Record<RevisionProblem["difficulty"], string> = {
 };
 const DIFF_LABEL: Record<RevisionProblem["difficulty"], string> = { easy: "Easy", med: "Medium", hard: "Hard" };
 
+type Bands = readonly CourseViewBand[] | undefined;
+
 /**
- * Revision (`/xlearn/:course/revision`): the course's prioritised five-touch queue backed
- * by the BFF agg (GET /paths/{course}/revision/due). Reviews are re-solves from a blank
- * editor, not re-reads, and they take priority over new problems (R-SR5). Each re-solve
- * runs on a 20:00 timer and is auto-scored (R-SR2): a pass advances the touch (Day
- * 1→3→7→21→45), a miss resets it to Day 1 (R-SR3). Day 21 & 45 run under mock
- * conditions (R-SR4).
+ * Revision (`/xlearn/:course/revision`, AB03 v2): the course's prioritised five-touch
+ * queue backed by the BFF agg (GET /paths/{course}/revision/due). Reviews are re-solves
+ * from a blank editor, not re-reads, and they take priority over new problems (R-SR5).
+ * Each card carries a format badge from the course manifest's revision band for its
+ * touch level (label, timer or ~minutes, mock conditions). A due touch never shows the
+ * pattern it tests: the gateway withholds it (m1-06), so the card shows the "Pattern
+ * hidden while due" lock; the chip appears only when the payload carries the pattern —
+ * a not-due, solved item, or the score result once the touch has concluded. A re-solve
+ * runs on the band's timer and is auto-scored (R-SR2): a pass advances the touch, a miss
+ * resets it to Day 1 (R-SR3) and opens a mistake entry.
  */
 export default function Revision() {
+  const course = useCourse();
   const q = useDueRevision(useCourseSlug());
+  const bands = course.view?.revision?.bands;
 
   return (
     <div>
-      <div className="xl-page-h" style={{ borderBottom: "1px solid var(--ds-line)", paddingBottom: 16, marginBottom: 20 }}>
+      <div className="xl-page-h rv-pageh">
         <div>
-          <div className="xl-eyebrow">Spaced repetition · the five-touch schedule</div>
-          <h1 style={{ marginTop: 6, fontSize: 26, fontWeight: 700, letterSpacing: "-.3px" }}>Revision queue</h1>
+          <div className="xl-eyebrow">
+            Spaced repetition<span className="rv-wide"> · the five-touch schedule</span>
+          </div>
+          <h1 className="rv-h1">Revision queue</h1>
           <p style={{ margin: "8px 0 0", fontSize: 13.5, color: "var(--ds-dim)", maxWidth: 640 }}>
-            Reviews are <b style={{ color: "var(--ds-text)" }}>re-solves from a blank editor</b>, not re-reads — and they
-            take priority over new problems.{" "}
+            <span className="rv-wide">
+              Reviews are <b style={{ color: "var(--ds-text)" }}>re-solves from a blank editor</b>, not re-reads — and
+              they take priority over new problems.
+            </span>
+            <span className="rv-narrow">Re-solves from a blank editor, not re-reads.</span>{" "}
             {q.data && <span style={{ color: "var(--ds-text)", fontWeight: 600 }}>{q.data.dueCount} due today.</span>}
           </p>
         </div>
@@ -62,12 +83,12 @@ export default function Revision() {
         </div>
       )}
 
-      {q.data && <Queue items={q.data.items} />}
+      {q.data && <Queue items={q.data.items} bands={bands} />}
     </div>
   );
 }
 
-function Queue({ items }: { items: DueItem[] }) {
+function Queue({ items, bands }: { items: DueItem[]; bands: Bands }) {
   const qc = useQueryClient();
   const slug = useCourseSlug();
   const [active, setActive] = useState<string | null>(null);
@@ -80,6 +101,8 @@ function Queue({ items }: { items: DueItem[] }) {
 
   const dueItems = useMemo(() => items.filter((it) => it.due), [items]);
   const upcoming = useMemo(() => items.filter((it) => !it.due), [items]);
+  // AB03-F6: the next review is the earliest upcoming touch the payload carries.
+  const nextReview = useMemo(() => nextReviewDate(items), [items]);
 
   // Group the due items by touch day (Day 1 → Day 45), in ladder order.
   const groups = useMemo(() => {
@@ -105,6 +128,7 @@ function Queue({ items }: { items: DueItem[] }) {
 
   const cardProps = (it: DueItem) => ({
     item: it,
+    bands,
     isActive: active === it.itemId,
     result: active === it.itemId ? result : null,
     submitting: scoreM.isPending,
@@ -118,45 +142,32 @@ function Queue({ items }: { items: DueItem[] }) {
   });
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 300px", gap: 22, alignItems: "start" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 22, minWidth: 0 }}>
+    <div className="rv-grid">
+      <div className="rv-col">
         {dueItems.length > 0 && firstDue && active === null && (
           <div className="ds-card ds-card--teal" style={{ padding: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
             <Icon name="refresh" />
-            <div style={{ flex: 1, minWidth: 200 }}>
+            <div className="rv-banner__txt">
               <b style={{ fontSize: 13.5 }}>{dueItems.length} review{dueItems.length === 1 ? "" : "s"} due — clear these before new problems.</b>
-              <div style={{ fontSize: 12, color: "var(--ds-dim)", marginTop: 2 }}>
+              <div className="rv-banner__sub" style={{ fontSize: 12, color: "var(--ds-dim)", marginTop: 2 }}>
                 Start with the most fragile (Day 1) touches while they’re fresh.
               </div>
             </div>
-            <button type="button" className="ds-btn ds-btn--primary ds-btn--sm" onClick={() => cardProps(firstDue).onStart()}>
+            <button type="button" className="ds-btn ds-btn--primary ds-btn--sm rv-block" onClick={() => cardProps(firstDue).onStart()}>
               <Icon name="play" className="xl-ico--sm" /> Start next review
             </button>
           </div>
         )}
 
-        {dueItems.length === 0 && (
-          <div className="ds-card ds-card--teal" style={{ padding: 20, display: "flex", alignItems: "center", gap: 12 }}>
-            <Icon name="check" />
-            <div>
-              <b style={{ fontSize: 13.5 }}>Queue clear — no reviews due.</b>
-              <div style={{ fontSize: 12, color: "var(--ds-dim)", marginTop: 2 }}>
-                New problems unlock while the queue is empty. Solve one and its five touches schedule automatically.
-              </div>
-            </div>
-            <Link className="ds-btn ds-btn--secondary ds-btn--sm" to={coursePath(slug)} style={{ marginLeft: "auto" }}>
-              Roadmap
-            </Link>
-          </div>
-        )}
+        {dueItems.length === 0 && <CaughtUp next={nextReview} slug={slug} />}
 
         {groups.map((g) => (
           <section key={g.level} className="xl-sect" style={{ marginBottom: 0 }}>
             <div className="xl-sect__h">
               <h2>
-                Due · {dayLabelFor(g.level)}{isMockLevel(g.level) ? " · mock conditions" : ""}
+                Due · {dayLabelFor(g.level)}{isMockLevel(bands, g.level) ? " · mock conditions" : ""}
               </h2>
-              <span className="ds-mono" style={{ fontSize: 11, color: "var(--ds-muted)" }}>
+              <span className="ds-mono" style={{ fontSize: 11, color: "var(--ds-dim)" }}>
                 touch {g.level}
               </span>
             </div>
@@ -175,17 +186,38 @@ function Queue({ items }: { items: DueItem[] }) {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {upcoming.map((it) => (
-                <UpcomingCard key={it.itemId} item={it} />
+                <UpcomingCard key={it.itemId} item={it} bands={bands} />
               ))}
             </div>
           </section>
         )}
       </div>
 
-      <aside style={{ display: "flex", flexDirection: "column", gap: 16, position: "sticky", top: 0 }}>
+      <aside className="rv-rail">
         <HowItWorks />
         <TouchLegend />
       </aside>
+    </div>
+  );
+}
+
+// --- AB03-F6: empty / caught up ---
+
+function CaughtUp({ next, slug }: { next: Date | null; slug: string }) {
+  return (
+    <div className="ds-card ds-card--teal" role="status" style={{ padding: 20, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      <Icon name="check" />
+      <div className="rv-banner__txt">
+        <b style={{ fontSize: 13.5 }}>
+          Nothing due today.{next ? ` Next review: ${formatNextReview(next)}.` : ""}
+        </b>
+        <div style={{ fontSize: 12, color: "var(--ds-dim)", marginTop: 2 }}>
+          New problems unlock while the queue is empty. Solve one and its five touches schedule automatically.
+        </div>
+      </div>
+      <Link className="ds-btn ds-btn--secondary ds-btn--sm rv-block" to={coursePath(slug)}>
+        Roadmap
+      </Link>
     </div>
   );
 }
@@ -194,6 +226,7 @@ function Queue({ items }: { items: DueItem[] }) {
 
 interface CardProps {
   item: DueItem;
+  bands: Bands;
   isActive: boolean;
   result: ScoreResult | null;
   submitting: boolean;
@@ -202,57 +235,108 @@ interface CardProps {
   onDone: () => void;
 }
 
-function ReviewCard({ item, isActive, result, submitting, onStart, onSubmit, onDone }: CardProps) {
+function ReviewCard({ item, bands, isActive, result, submitting, onStart, onSubmit, onDone }: CardProps) {
+  const band = bandFor(bands, item.touchLevel);
+  const mock = isMockLevel(bands, item.touchLevel);
+  // Once scored, the touch has concluded: the score response carries the pattern
+  // (AB03-F3/F4), revealed in the card header and the result.
+  const revealed = result?.problem?.pattern;
   return (
     <div className={isActive ? "xl-panel" : "ds-card"} style={{ padding: isActive ? 0 : 14 }}>
       <div style={{ padding: isActive ? "14px 16px" : 0, borderBottom: isActive ? "1px solid var(--ds-line)" : "none" }}>
-        <ProblemLine item={item} />
-        <TouchDots level={item.touchLevel} />
+        <ProblemLine item={item} band={band} pattern={revealed ?? item.problem?.pattern} />
+        {!result && <TouchDots level={item.touchLevel} mock={mock} />}
         {!isActive && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 12 }}>
-            <span style={{ fontSize: 11.5, color: "var(--ds-muted)" }}>{touchNote(item.touchLevel)}</span>
-            <button type="button" className="ds-btn ds-btn--secondary ds-btn--sm" onClick={onStart}>
+          <div className="rv-foot">
+            <span>{touchNote(item.touchLevel, mock)}</span>
+            <button type="button" className="ds-btn ds-btn--secondary ds-btn--sm rv-block" onClick={onStart}>
               <Icon name="refresh" className="xl-ico--sm" /> Re-solve from blank
             </button>
           </div>
         )}
       </div>
 
-      {isActive && !result && <ResolvePanel item={item} submitting={submitting} onSubmit={onSubmit} />}
-      {isActive && result && <ResultPanel result={result} onDone={onDone} />}
+      {isActive && !result && (
+        <ResolvePanel item={item} timerSecs={bandTimerSecs(band) ?? FALLBACK_TIMER_SECONDS} submitting={submitting} onSubmit={onSubmit} />
+      )}
+      {isActive && result && <ResultPanel result={result} bands={bands} revealed={revealed} onDone={onDone} />}
     </div>
   );
 }
 
-function ProblemLine({ item }: { item: DueItem }) {
+/** One problem line (AB03-F1 row): #id, title link, difficulty, then the pattern slot,
+ *  the band's format badge and v1's violet mock badge. Wide it is one wrapping row;
+ *  narrow the badges drop under the title (F9, revision.css). */
+function ProblemLine({ item, band, pattern }: { item: DueItem; band: CourseViewBand | undefined; pattern: string | undefined }) {
   const slug = useCourseSlug();
   const p = item.problem;
+  const hasBadges = !!p || !!band || item.mockMode;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-      <span className="ds-mono" style={{ fontSize: 12, color: "var(--ds-muted)" }}>#{item.problemId}</span>
-      <Link
-        to={coursePath(slug, "problem", item.problemId)}
-        style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ds-text)", textDecoration: "none" }}
-      >
-        {p?.title ?? `Problem ${item.problemId}`}
-      </Link>
-      {p && <span className={DIFF_CLASS[p.difficulty]}>{DIFF_LABEL[p.difficulty]}</span>}
-      {p?.pattern && (
-        <span className="xl-pat">
-          <Icon name="layers" className="xl-ico--sm" /> {p.pattern}
-        </span>
+    <div className="rv-line">
+      <div className="rv-line__head">
+        <span className="ds-mono" style={{ fontSize: 12, color: "var(--ds-dim)" }}>#{item.problemId}</span>
+        <Link
+          to={coursePath(slug, "problem", item.problemId)}
+          style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ds-text)", textDecoration: "none" }}
+        >
+          {p?.title ?? `Problem ${item.problemId}`}
+        </Link>
+        {p && <span className={DIFF_CLASS[p.difficulty]}>{DIFF_LABEL[p.difficulty]}</span>}
+      </div>
+      {hasBadges && (
+        <div className="rv-line__badges">
+          {pattern ? (
+            <PatternChip pattern={pattern} />
+          ) : (
+            // The payload resolved the problem but carries no pattern: the gateway withheld
+            // it while the item is live (or never solved). Nothing to reveal in the DOM.
+            p && (
+              <span className="xl-lock">
+                <Icon name="lock" className="xl-ico--sm" /> Pattern hidden while due
+              </span>
+            )
+          )}
+          {band && <FormatBadge band={band} />}
+          {item.mockMode && <span className="ds-badge ds-badge--violet">mock</span>}
+        </div>
       )}
-      {item.mockMode && <span className="ds-badge ds-badge--violet">mock</span>}
     </div>
   );
 }
 
-function TouchDots({ level, override }: { level: number; override?: string }) {
+function PatternChip({ pattern }: { pattern: string }) {
+  return (
+    <span className="xl-pat">
+      <Icon name="layers" className="xl-ico--sm" /> {pattern}
+    </span>
+  );
+}
+
+/** FormatBadge is the touch format from the manifest band (AB03 rule strip): its label,
+ *  "mock conditions" when the band runs in mock mode, and a timed band's mm:ss or an
+ *  untimed band's "~N min". Nothing is hard-coded. */
+function FormatBadge({ band }: { band: CourseViewBand }) {
+  const dur = bandDuration(band);
+  return (
+    <span className="xl-tag rv-fmt">
+      <Icon name="clock" className="xl-ico--sm" /> {band.label}
+      {band.mock_mode ? " · mock conditions" : ""}
+      {dur && (
+        <>
+          {" · "}
+          <b>{dur}</b>
+        </>
+      )}
+    </span>
+  );
+}
+
+function TouchDots({ level, mock, override }: { level: number; mock?: boolean; override?: string }) {
   return (
     <>
       <div className="xl-touch" style={{ marginTop: 10 }}>
         {TOUCH_DOT_LABELS.map((_, i) => {
-          const mod = i + 1 === level ? (override ?? (isMockLevel(level) ? "xl-touch__d--mock" : "xl-touch__d--due")) : "";
+          const mod = i + 1 === level ? (override ?? (mock ? "xl-touch__d--mock" : "xl-touch__d--due")) : "";
           return <span key={i} className={`xl-touch__d${mod ? " " + mod : ""}`} />;
         })}
       </div>
@@ -265,15 +349,16 @@ function TouchDots({ level, override }: { level: number; override?: string }) {
   );
 }
 
-function UpcomingCard({ item }: { item: DueItem }) {
+function UpcomingCard({ item, bands }: { item: DueItem; bands: Bands }) {
+  const mock = isMockLevel(bands, item.touchLevel);
   return (
     <div className="ds-card" style={{ padding: 14, opacity: 0.85 }}>
-      <ProblemLine item={item} />
-      <TouchDots level={item.touchLevel} />
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 12 }}>
-        <span style={{ fontSize: 11.5, color: "var(--ds-muted)" }}>
+      <ProblemLine item={item} band={bandFor(bands, item.touchLevel)} pattern={item.problem?.pattern} />
+      <TouchDots level={item.touchLevel} mock={mock} />
+      <div className="rv-foot">
+        <span>
           {dayLabelFor(item.touchLevel)}
-          {isMockLevel(item.touchLevel) ? " · mock conditions" : ""} · due {formatDueDate(item.dueDate)}
+          {mock ? " · mock conditions" : ""} · due {formatDueDate(item.dueDate)}
         </span>
         <span className="ds-badge" style={{ fontSize: 10.5 }}>Not due yet</span>
       </div>
@@ -281,10 +366,11 @@ function UpcomingCard({ item }: { item: DueItem }) {
   );
 }
 
-// --- the re-solve panel: a 20:00 timer, a blank editor, and the three auto-score inputs ---
+// --- the re-solve panel (AB03-F2): the band's timer, a blank editor, and the three
+// auto-score inputs. The pattern stays hidden: the learner names it. ---
 
-function ResolvePanel({ item, submitting, onSubmit }: { item: DueItem; submitting: boolean; onSubmit: (i: ScoreInput) => void }) {
-  const remaining = useCountdown(REVISION_TIMER_SECONDS);
+function ResolvePanel({ item, timerSecs, submitting, onSubmit }: { item: DueItem; timerSecs: number; submitting: boolean; onSubmit: (i: ScoreInput) => void }) {
+  const remaining = useCountdown(timerSecs);
   const [namedAt, setNamedAt] = useState<number | null>(null);
   const [statedComplexity, setStatedComplexity] = useState(false);
   const [solvedInTimer, setSolvedInTimer] = useState(true);
@@ -295,8 +381,9 @@ function ResolvePanel({ item, submitting, onSubmit }: { item: DueItem; submittin
     if (expired) setSolvedInTimer(false);
   }, [expired]);
 
-  const elapsed = REVISION_TIMER_SECONDS - remaining;
+  const elapsed = timerSecs - remaining;
   const namedSecs = namedAt ?? elapsed;
+  const timerLabel = formatMMSS(timerSecs);
 
   // If the learner never tapped "Named the pattern", submit a value that FAILS the
   // R-SR2 pattern check (>= 2 min) rather than the small elapsed time — an un-affirmed
@@ -309,23 +396,34 @@ function ResolvePanel({ item, submitting, onSubmit }: { item: DueItem; submittin
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Icon name="clock" className="xl-ico--sm" />
-          <span style={{ fontSize: 12.5, color: "var(--ds-dim)" }}>Re-solve from blank — no peeking at the solution.</span>
+          <span style={{ fontSize: 12.5, color: "var(--ds-dim)" }}>
+            <span className="rv-wide">Re-solve from blank — no peeking at the solution.</span>
+            <span className="rv-narrow">No peeking at the solution.</span>
+          </span>
         </span>
-        <span
+        <b
           className="ds-mono"
-          style={{ fontSize: 20, fontVariantNumeric: "tabular-nums", color: expired ? "var(--ds-err)" : remaining <= 120 ? "var(--ds-warn)" : "var(--ds-teal)" }}
+          role="timer"
+          aria-label={`${formatMMSS(remaining)} remaining`}
+          style={{ fontSize: 20, fontWeight: 400, fontVariantNumeric: "tabular-nums", color: expired ? "var(--ds-err)" : remaining <= 120 ? "var(--ds-warn)" : "var(--ds-teal)" }}
         >
           {formatMMSS(remaining)}
+        </b>
+        {/* role="timer" isn't announced; the milestones (5:00, 2:00, 0:00) are, once each. */}
+        <span className="rv-sr" aria-live="polite">
+          {timerMilestone(remaining, timerSecs)}
         </span>
       </div>
 
       <textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
+        aria-label="Your re-solve"
         placeholder={`// re-implement #${item.problemId} from memory — a blank editor, not a re-read`}
         spellCheck={false}
         className="ds-mono"
         style={{
+          display: "block",
           width: "100%",
           minHeight: 150,
           resize: "vertical",
@@ -340,7 +438,7 @@ function ResolvePanel({ item, submitting, onSubmit }: { item: DueItem; submittin
         }}
       />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+      <div className="rv-tiles">
         <ScoreCheck
           label="Named the pattern"
           hint={namedAt === null ? "tap the moment you recognise the pattern" : `named at ${formatMMSS(namedSecs)} ${namedSecs < NAME_PATTERN_MAX_SECS ? "✓ under 2 min" : "✗ over 2 min"}`}
@@ -350,7 +448,7 @@ function ResolvePanel({ item, submitting, onSubmit }: { item: DueItem; submittin
         />
         <ScoreCheck
           label="Solved within the timer"
-          hint={expired ? "the 20:00 timer elapsed" : "solved before the 20:00 timer"}
+          hint={expired ? `the ${timerLabel} timer elapsed` : `solved before the ${timerLabel} timer`}
           checked={solvedInTimer}
           ok={solvedInTimer}
           onToggle={() => setSolvedInTimer((v) => !v)}
@@ -364,7 +462,7 @@ function ResolvePanel({ item, submitting, onSubmit }: { item: DueItem; submittin
         />
       </div>
 
-      <p style={{ fontSize: 11.5, color: "var(--ds-muted)", margin: "0 0 12px" }}>
+      <p style={{ fontSize: 11.5, color: "var(--ds-dim)", margin: "0 0 12px" }}>
         Scored automatically — passes only if the pattern is named in under 2 minutes, solved in-timer, and complexity
         stated. Any miss resets this problem to Day 1.
       </p>
@@ -381,8 +479,9 @@ function ScoreCheck({ label, hint, checked, ok, onToggle }: { label: string; hin
     <button
       type="button"
       onClick={onToggle}
-      className={checked ? "ds-card ds-card--interactive" : "ds-card"}
-      style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", textAlign: "left", cursor: "pointer", width: "100%" }}
+      aria-pressed={checked}
+      className={`${checked ? "ds-card ds-card--interactive" : "ds-card"} rv-tile`}
+      style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", textAlign: "left", cursor: "pointer", width: "100%", color: "var(--ds-text)" }}
     >
       <span
         className={`xl-touch__d${checked ? (ok ? " xl-touch__d--pass" : " xl-touch__d--fail") : ""}`}
@@ -390,36 +489,63 @@ function ScoreCheck({ label, hint, checked, ok, onToggle }: { label: string; hin
       />
       <span style={{ flex: 1 }}>
         <span style={{ fontSize: 12.5, fontWeight: 600, display: "block" }}>{label}</span>
-        <span style={{ fontSize: 10.5, color: "var(--ds-muted)" }}>{hint}</span>
+        <span style={{ fontSize: 11, color: "var(--ds-dim)" }}>{hint}</span>
       </span>
       {checked && <Icon name={ok ? "check" : "close"} className="xl-ico--sm" />}
     </button>
   );
 }
 
-function ResultPanel({ result, onDone }: { result: ScoreResult; onDone: () => void }) {
+// --- the scored result (AB03-F3 pass / F4 fail): the touch has concluded, so the
+// pattern is revealed; a miss links the mistake entry it opened. ---
+
+function ResultPanel({ result, bands, revealed, onDone }: { result: ScoreResult; bands: Bands; revealed: string | undefined; onDone: () => void }) {
   const slug = useCourseSlug();
   const pass = result.autoPass;
+  const nextRef = useRef<HTMLButtonElement>(null);
+  // Focus moves to "Next review" when the result lands (AB03-F3 a11y).
+  useEffect(() => {
+    nextRef.current?.focus();
+  }, []);
   return (
     <div className="xl-panel__b" style={{ padding: 16 }}>
-      <div className={`ds-card ${pass ? "ds-card--teal" : ""}`} style={{ padding: 16, borderColor: pass ? undefined : "rgba(230,90,90,.35)" }}>
+      <div className={`ds-card ${pass ? "ds-card--teal" : ""}`} role="status" style={{ padding: 16, borderColor: pass ? undefined : "rgba(242,109,109,.35)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
           <Icon name={pass ? "check" : "alert"} className="xl-ico--sm" />
           <b style={{ fontSize: 13.5, color: pass ? "var(--ds-ok)" : "var(--ds-err)" }}>
             {pass ? `Auto-logged · Passed — advances to ${result.nextDayLabel || "the ladder’s end"}` : "Auto-logged · Missed — reset to Day 1"}
           </b>
         </div>
-        <p style={{ margin: "0 0 6px", fontSize: 12.5, color: "var(--ds-dim)" }}>
+        <p style={{ margin: "0 0 8px", fontSize: 12.5, color: "var(--ds-dim)" }}>
           {pass
             ? result.nextTouchLevel > 0
-              ? `All three auto-checks cleared. Next review ${result.nextDayLabel}${isMockLevel(result.nextTouchLevel) ? " (mock conditions)" : ""}.`
+              ? `All three auto-checks cleared. Next review ${result.nextDayLabel}${isMockLevel(bands, result.nextTouchLevel) ? " (mock conditions)" : ""}.`
               : "Day 45 cleared — this problem has completed the five-touch ladder. Strong retention."
             : "One of the three checks failed (pattern < 2 min · solved in-timer · complexity stated), so the schedule rebuilds from Day 1 — the memory needs another pass."}
         </p>
+        {(revealed || !pass) && (
+          <div className={`rv-reveal${pass ? " rv-reveal--patonly" : ""}`}>
+            {revealed && (
+              <span className="rv-reveal__pat">
+                Pattern <PatternChip pattern={revealed} />
+              </span>
+            )}
+            {revealed && !pass && (
+              <span className="rv-reveal__pat" aria-hidden="true">
+                ·
+              </span>
+            )}
+            {!pass && (
+              <Link to={coursePath(slug, "mistakes")} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                A mistake entry is open <Icon name="arrow" className="xl-ico--sm" />
+              </Link>
+            )}
+          </div>
+        )}
         <TouchDots level={pass ? Math.max(result.touchLevel, result.nextTouchLevel || result.touchLevel) : 1} override={pass ? "xl-touch__d--pass" : "xl-touch__d--fail"} />
       </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-        <button type="button" className="ds-btn ds-btn--primary ds-btn--sm" onClick={onDone}>
+      <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+        <button ref={nextRef} type="button" className="ds-btn ds-btn--primary ds-btn--sm" onClick={onDone}>
           Next review
         </button>
         <Link className="ds-btn ds-btn--secondary ds-btn--sm" to={coursePath(slug, "problem", result.problemId)}>
@@ -490,7 +616,7 @@ function TouchLegend() {
 
 function LegendKey({ mod, label }: { mod: string; label: string }) {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--ds-muted)" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--ds-dim)" }}>
       <span className={`xl-touch__d ${mod}`} /> {label}
     </span>
   );
@@ -498,13 +624,25 @@ function LegendKey({ mod, label }: { mod: string; label: string }) {
 
 // --- helpers ---
 
-function isMockLevel(level: number): boolean {
-  return level === 4 || level === 5;
+/** isMockLevel reports whether a ladder level runs under mock conditions: the course
+ *  band's mock_mode, or v1's Day 21 / Day 45 rule when the view carries no band. */
+function isMockLevel(bands: Bands, level: number): boolean {
+  const band = bandFor(bands, level);
+  return band ? band.mock_mode : level === 4 || level === 5;
 }
 
-function touchNote(level: number): string {
-  if (isMockLevel(level)) return `${dayLabelFor(level)} · mock conditions — talk aloud, no notes`;
+function touchNote(level: number, mock: boolean): string {
+  if (mock) return `${dayLabelFor(level)} · mock conditions — talk aloud, no notes`;
   return `${dayLabelFor(level)} touch · re-solve from a blank editor`;
+}
+
+/** timerMilestone is the screen-reader announcement for the re-solve timer: set only at
+ *  5:00, 2:00 and 0:00 (each passed once), empty before the first. */
+function timerMilestone(remaining: number, total: number): string {
+  if (remaining <= 0) return "Time is up.";
+  if (remaining <= 120 && total > 120) return "2 minutes remaining.";
+  if (remaining <= 300 && total > 300) return "5 minutes remaining.";
+  return "";
 }
 
 // useCountdown counts down from `seconds` once per second, clamped at 0. It re-seeds
@@ -522,12 +660,6 @@ function useCountdown(seconds: number): number {
   return remaining;
 }
 
-function formatMMSS(secs: number): string {
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
-
 function formatDueDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "soon";
@@ -536,7 +668,7 @@ function formatDueDate(iso: string): string {
 
 function QueueSkeleton() {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 300px", gap: 22, alignItems: "start" }}>
+    <div className="rv-grid">
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div className="xl-skel" style={{ height: 64 }} />
         <div className="xl-skel" style={{ height: 96 }} />

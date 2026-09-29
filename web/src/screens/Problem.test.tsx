@@ -157,4 +157,37 @@ describe("Problem workspace", () => {
     expect(screen.getByText(/Five-touch revision schedule created/)).toBeInTheDocument();
     expect(screen.getByText(/re-attempt queued for Day 3/)).toBeInTheDocument();
   });
+
+  // m1-06: the server decides — the pattern chip renders only when the payload carries
+  // `pattern` (withheld while live, and before the hint stage of an unsolved item).
+  it("renders the pattern chip only when the payload carries the pattern", async () => {
+    const { pattern: _withheld, ...withoutPattern } = PROBLEM;
+    void _withheld;
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.includes("/api/problems/16")) return { status: 200, body: { ...agg("attempting", "attempt", ["attempt"], [STATEMENT]), problem: withoutPattern } };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/dsa/problem/16");
+
+    expect(await screen.findByRole("heading", { level: 1, name: "3Sum" })).toBeInTheDocument();
+    expect(document.querySelector(".xl-pat")).toBeNull();
+    expect(screen.queryByText("Two Pointers")).not.toBeInTheDocument();
+  });
+
+  it("renders the solution-stage facts block when it is delivered", async () => {
+    const FACTS = { stage: "solution", kind: "solution_facts", order: 2, body_md: "", code: "", solution_facts: { complexity: { time: ["O(n^2)"], space: ["O(1)", "O(log n)"] } } };
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.includes("/api/problems/16"))
+        return { status: 200, body: agg("attempting", "solution", ["attempt", "hint", "solution"], [STATEMENT, HINT, SOLUTION, FACTS]) };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/dsa/problem/16");
+
+    expect(await screen.findByText("O(n^2)")).toBeInTheDocument();
+    expect(screen.getByText("O(1), O(log n)")).toBeInTheDocument();
+    // The pattern chip is present here (the payload carries it).
+    expect(document.querySelector(".xl-pat")).not.toBeNull();
+  });
 });
