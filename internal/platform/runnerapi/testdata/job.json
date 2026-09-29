@@ -1,0 +1,66 @@
+{
+  "id": "job-0001",
+  "profile": "go@1.26",
+  "harness": "func-json@1",
+  "mode": "submit",
+  "files": [
+    {
+      "path": "solution.go",
+      "data": "cGFja2FnZSBtYWluCgpmdW5jIHR3b1N1bShudW1zIFtdaW50LCB0YXJnZXQgaW50KSBbXWludCB7IHJldHVybiBuaWwgfQo="
+    },
+    {
+      "path": "zz_xl_harness.go",
+      "data": "cGFja2FnZSBtYWluCgpmdW5jIG1haW4oKSB7fQo="
+    }
+  ],
+  "hidden_files": [
+    {
+      "path": "hidden_test.go",
+      "data": "cGFja2FnZSBtYWluCg=="
+    }
+  ],
+  "cases": [
+    {
+      "opaque_id": "c1",
+      "group": "sample",
+      "size": 3
+    },
+    {
+      "opaque_id": "c2",
+      "group": "edge",
+      "size": 0
+    },
+    {
+      "opaque_id": "c3",
+      "group": "random",
+      "size": 5
+    },
+    {
+      "opaque_id": "c4",
+      "group": "perf",
+      "size": 4
+    }
+  ],
+  "tests": [
+    {
+      "name": "TestRace"
+    }
+  ],
+  "limits": {
+    "case": {
+      "cpu_ms": 1000,
+      "mem_mb": 256,
+      "output_kb": 64
+    },
+    "compile": {
+      "cpu_ms": 15000,
+      "mem_mb": 768
+    }
+  },
+  "stop_group_on": {
+    "perf": "tle",
+    "sample": "any_fail"
+  },
+  "count": 1,
+  "output_mode": "bytes"
+}

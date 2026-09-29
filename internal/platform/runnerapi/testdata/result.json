@@ -1,0 +1,84 @@
+{
+  "compile": {
+    "ok": true,
+    "diags": [
+      {
+        "file": "solution.go",
+        "line": 3,
+        "col": 6,
+        "msg": "declared and not used: x"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "opaque_id": "c1",
+      "term": "ok",
+      "exit_code": 0,
+      "cpu_ms": 3,
+      "wall_ms": 5,
+      "peak_kb": 812,
+      "output": "WzAsMV0=",
+      "output_sha256": "b2bfa5d4d6f2f6e7d8d2ac6a0a4b3d9f0b1e2a3c4d5e6f708192a3b4c5d6e7f8",
+      "output_bytes": 5
+    },
+    {
+      "opaque_id": "c2",
+      "term": "signal",
+      "signal": "SIGSYS",
+      "exit_code": 0,
+      "cpu_ms": 1,
+      "wall_ms": 2,
+      "peak_kb": 640,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "output_bytes": 0
+    },
+    {
+      "opaque_id": "c3",
+      "term": "tle",
+      "exit_code": 0,
+      "cpu_ms": 1500,
+      "wall_ms": 1510,
+      "peak_kb": 900,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "output_bytes": 0,
+      "quiet": true
+    },
+    {
+      "opaque_id": "c4",
+      "term": "not_run",
+      "exit_code": 0,
+      "cpu_ms": 0,
+      "wall_ms": 0,
+      "peak_kb": 0,
+      "output_bytes": 0
+    }
+  ],
+  "tests": [
+    {
+      "test": "TestRace",
+      "action": "pass",
+      "elapsed": 0.01
+    }
+  ],
+  "throttled": false,
+  "versions": {
+    "runner": "runner-v1.0.0",
+    "image_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "profile": "go@1.26",
+    "toolchain": "go1.26.8",
+    "profile_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "cpu_model": "AMD EPYC 9355P 32-Core Processor",
+    "canary_median_us": 152000,
+    "boot_epoch": "xlearn-runner-7d9f/1790000000000000000/0123456789abcdef"
+  },
+  "telemetry": {
+    "steal_pct": 2.5,
+    "canary_ratio": 1.04,
+    "busy_ms": 4200,
+    "other_slot_busy": true,
+    "quiet_reruns": 1,
+    "slot_ms": 3100,
+    "tests_cap_hit": false
+  }
+}
