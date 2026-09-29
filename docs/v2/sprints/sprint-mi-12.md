@@ -29,7 +29,8 @@ _Overall:_ ⬜ Not started
 ## Entry gates
 
 - [ ] **MI-13 done** ([m3-07](sprint-m3-07.md)): `xlearn-judge` Ready on prod, born with default-deny egress (DNS, PG, NATS, runner, `xlearn-gateway` :8080 for JWKS, `xlearn-identity` :8081 for the erase re-verify)
-- [ ] **WIF spike reported** ([spk-03](sprint-spk-03.md)): WIF **GO** with the `check_jti` decision and the measured refresh time, **or** the fallback (single-workspace key, 90-day expiry) chosen; the throwaway workspace and rule deleted
+- [ ] **WIF spike reported** ([spk-03](sprint-spk-03.md)): WIF **GO** with the `check_jti` decision and the measured refresh time, **or** the fallback (single-workspace key, 90-day expiry) chosen
+- [ ] **spk-03 Console objects cleaned up:** rule, issuer and service account deleted; workspace archived. This is an owner before-launch item (task 3; the production issuer reuses the same `issuer_url`), so this gate only checks that the launch attests it. The session never deletes Console objects itself
 - [ ] **MI-1 done** (`ev-mi1`): 2FA on the owner's Anthropic account (rollout §2: MI-1 unblocks the M4 provider accounts). This is a before-launch owner item, attested by launching the prompt
 - [ ] **Chart 0.3.0 egress template** in use by `apps/xlearn-judge.yaml` ([mi-01](sprint-mi-01.md), set by m3-07)
 - [ ] **Parallel sessions:** no open peer PR edits `../infra/apps/xlearn-judge.yaml` (e.g. [mi-11](sprint-mi-11.md)'s MI-15 egress, an evalpack bump) or `docs/adr/0031-*` (`gh pr list` in both repos, `git worktree list`, ListAgents) — else sequence with it
@@ -87,14 +88,35 @@ Edit `docs/adr/0031-platform-ai-and-two-tier-keys.md`. **First check whether the
 folded §8 into the body** (0031 stayed Proposed, but 0033/0035's amendments may have been folded then): if §8 is gone or
 already a dated history, skip the §4/§5/Consequences/§8 bullets below and only add the spike result, the egress list, the
 Maintenance note and the Status line; otherwise fold as described.
-- **Status** → `Accepted (2026-12-DD). WIF spike (spk-03, <date>): GO, check_jti=<true|false>` — or
-  `… fallback: a single-workspace service-account key (90-day expiry) is the primary credential`.
-- **§2 Credential** gains a *Spike result* list: is `jti` present in k3s projected tokens; the rotation
-  cadence (the kubelet refreshes at ≈ 80% of the 3600 s TTL, so ≈ every 48 min); does an in-place container
-  restart re-present a used `jti` (`jti_reused`) and therefore `check_jti=false` on this one-rule issuer;
-  the measured exchange + first Messages call time. On the fallback: the key is created only in the
-  `xlearn-platform-prod` workspace, 90-day provider-side expiry, SOPS-held, expiry date as a manual check in
-  status.md (D34), and WIF is retried at the next k3s minor.
+- **Status** → `Accepted (2026-12-DD). WIF spike (spk-03, 2026-09-25): GO, check_jti=false, scope workspace:developer`
+  (or the scope task 3 recorded) — or `… fallback: a single-workspace service-account key (90-day expiry) is the primary credential`.
+- **§2 Credential** gains a *Spike result* list: `jti` is present in k3s projected tokens; the kubelet rotates
+  the file at ≈ 80% of the 3600 s TTL plus up to one pod sync (2881 s measured; at most ~2970 s); an in-place
+  container restart re-presents the used `jti` and gets an opaque 401 until the next rotation, hence
+  `check_jti=false` on this one-rule issuer; exchange p50 0.33 s + first Messages call p50 1.61 s. On the
+  fallback: the key is created only in the `xlearn-platform-prod` workspace, 90-day provider-side expiry,
+  SOPS-held, expiry date as a manual check in status.md (D34), and WIF is retried at the next k3s minor.
+- **The spk-03 fold list: [t5 §15](../research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25)'s "Findings
+  that amend ADR-0031", 1–6, all go into the body:**
+  1. **Scope (§2, Consequences).** §2's scope becomes **`workspace:developer`**: the Console offers no
+     `workspace:inference`. An Admin-API rule with `workspace:inference` replaces it only if a Files call then
+     returns 403 (task 3's decision). Drop the Consequences line "The inference-only scope blocks Files, Batch and
+     agents". Say instead that judge's request builder (Messages only; no `tools`, `mcp_servers` or `container`),
+     the golden request-shape test and the CI lint ([m4-01](sprint-m4-01.md) task 7) enforce Messages-only, not the credential.
+  2. **Credential (§2).** WIF GO; `check_jti=false` on the one-rule issuer; rule token lifetime 1 h, set explicitly;
+     `expirationSeconds: 3600`; t5 §15's re-exchange rule and lifetime invariant.
+  3. **Workspace pinning (§2).** The exchange response's `workspace_id` is checked before first use, then
+     `anthropic-workspace-id` on each response. The rule refuses `workspace_id: default`, so the service account's
+     Default-workspace membership doesn't widen the credential.
+  4. **Maintenance (§2).** The inline JWKS is the `keys` array. It survives k3s restarts and `k3s certificate rotate`, and
+     changes only with `k3s certificate rotate-ca` carrying a new `service.key` or on a node rebuilt without the old
+     one; re-paste it after either (see the §2 *Maintenance* bullet below).
+  5. **Provider-side controls (§2, §5, §8).** No workspace can spend past the org limit; D43's amounts (the §5 bullet below).
+  6. **Org.** WIF works in the owner's current org. If a dedicated org is created (task 2's Org row), re-check WIF there.
+- **D24 and the matrix (feasibility.md):** D24 stands. Amend the dependency-matrix WIF row and the T5 *Credential* bullet to
+  `workspace:developer` with Messages-only enforced by the request builder, golden test and lint, replacing the dated
+  pointers the 2026-09-29 doc fold left there. Add a dated clause to D24's row saying its "Messages API only" rests on
+  the request builder, not the credential scope.
 - **§2 Egress** lists judge's full allow-list: kube-dns :53, PG :5432, NATS :4222, the runner, `xlearn-gateway`
   :8080 (JWKS, since m3-07), **`xlearn-identity` :8081** (since M3 — m3-07, the erase re-verify — reused by M4's
   `/internal/accounts/{id}` read, m4-02), and **TCP 443** to non-cluster addresses (the only M4 addition, this sprint).
@@ -124,12 +146,12 @@ v3-raise procedures; source:
 | Workspace | `xlearn-platform-prod` (the Default workspace can't carry limits). Monthly **hard limit $15**; Console spend alerts at **50% and 80%**; the app cap **$12** lives in judge (m4-02). |
 | Rate limits | Low per-model RPM / OTPM on `claude-sonnet-5` and Opus 5.5 (start low, *inferred*: ~20 RPM, ~40k OTPM; m4-07 re-sizes after the acceptance run). |
 | Billing | Prepaid credits ≈ 1–2 × the ceiling ($15–30); **auto-reload OFF** (it has no monthly cap); credits expire after 1 year. |
-| WIF | Service account `xlearn-judge`, member of `xlearn-platform-prod` only. Issuer = the cluster `iss` (`https://kubernetes.default.svc.cluster.local`, read live: `ssh sujaykumar-vps 'sudo k3s kubectl get --raw /.well-known/openid-configuration'`), `jwks.type: inline` = the output of `ssh sujaykumar-vps 'sudo k3s kubectl get --raw /openid/v1/jwks'` (public keys). Rule: `subject_prefix: system:serviceaccount:xlearn:xlearn-judge` (no `*`), `audience: https://api.anthropic.com`, `oauth_scope: workspace:inference`, `token_lifetime_seconds: 3600`, one workspace, `check_jti` per spk-03. |
-| Hand-over | The non-secret IDs the infra values need: org, workspace, service account, federation rule; the `LLM_KEY_LABEL` (`wif-xlearn-platform-prod`); the JWKS `kid`s pasted (→ `hack/expected-jwks-kids.txt` and its embedded copy in `host-verify.sh`, task 6). |
+| WIF | Service account `xlearn-judge`, member of `xlearn-platform-prod` only. Issuer = the cluster `iss` (`https://kubernetes.default.svc.cluster.local`, read live: `ssh sujaykumar-vps 'sudo k3s kubectl get --raw /.well-known/openid-configuration'`), `jwks.type: inline` = the **`keys` array** from `ssh sujaykumar-vps 'sudo k3s kubectl get --raw /openid/v1/jwks'` (public keys; the Console field takes the array, not the `{"keys": […]}` wrapper); **`check_jti` off** ("Enforce single-use tokens (JTI replay protection)" unticked; it defaults on); max JWT lifetime 1 h (the default). Rule: `subject_prefix: system:serviceaccount:xlearn:xlearn-judge` (no `*`), `audience: https://api.anthropic.com`, `oauth_scope: workspace:developer` (the Console offers no `workspace:inference`; an Admin-API rule with `workspace:inference` only if a Files call then returns 403, task 3), **token lifetime 1 h, set explicitly** (the Console defaults to 10 min), one workspace ([t5 §15](../research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25) "Values mi-12 sets"). |
+| Hand-over | The non-secret IDs the infra values need: org, workspace, service account, federation rule; the rule's scope; the `LLM_KEY_LABEL` (`wif-xlearn-platform-prod`); the JWKS `kid`s pasted (→ `hack/expected-jwks-kids.txt` and its embedded copy in `host-verify.sh`, task 6). |
 | `xlearn-calib` | A separate workspace for the analyzer acceptance run (~$10–30, m4-07) and later calibration (~$20–60 per rubric): its own hard limit of **$5/month until M4** (D43: org cap $20 = $15 + $5), raised to **about $30 for M4 bring-up** before m4-03/m4-07 ([t5 §5](../research/t5-platform-ai.md#5-cost-model)) with its own Console alerts — separate from the $15 prod limit — and a personal key with a 7–30-day expiry for owner-machine runs, **never in the cluster**. |
 | Break-glass | Only on the spk-03 fallback or a WIF outage: a single-workspace service-account key, **90-day expiry**; the **owner** writes it into the SOPS file (`sops ../infra/apps/secrets/xlearn-judge-llm.enc.yaml`) — no agent handles it; expiry date into status.md (manual check); bump `xlearn.dev/llm-rev`. Never name it `ANTHROPIC_API_KEY`. |
 | Kill switches (fastest first) | Console: disable the rule/key or drop the limit → 401/400 → breaker → manual · `judge admin breaker open` (`kubectl exec`) · `LLM_PLATFORM_ENABLED=false` (infra PR) · per-account `ai_disabled` (owner). |
-| Maintenance | JWKS re-paste when `host-verify --cluster` WARNs on kid drift (check after every k3s upgrade and in the monthly window); monthly ledger vs Console (procedure added by m4-07); `retire_not_before` before any model change; no Admin keys in the cluster; ZDR requested opportunistically (sales). |
+| Maintenance | JWKS re-paste when `host-verify --cluster` WARNs on kid drift (check after every k3s upgrade and in the monthly window; the JWKS survives k3s restarts and `k3s certificate rotate`, and changes only after `rotate-ca` with a new `service.key` or on a node rebuilt without the old one, t5 §15); monthly ledger vs Console (procedure added by m4-07); `retire_not_before` before any model change; no Admin keys in the cluster; ZDR requested opportunistically (sales). |
 | v3 opening | Raise to $100 / $80, re-sized with `SEAT_CAP` ([rollout §11](../rollout-plan.md#11-opening-gates-v3)). |
 
 ### 3 · Provider Console setup [O, before launch]
@@ -137,16 +159,26 @@ v3-raise procedures; source:
 Calendar event `ev-provider-runbook`, done by the owner **before launching this sprint's prompt** (~45 min;
 provider-console work is owner-only, D40). The checklist is the prompt's *Before you launch (owner)* block,
 built from the task 2 table rows:
+- **first, the spk-03 clean-up**, in this order: delete the rule `xlearn-wif-spike-probe`, then the issuer
+  `xlearn-wif-spike-k3s`, then the service account `xlearn-wif-spike`; then archive the workspace
+  `xlearn-wif-spike` (IDs in [status.md → Open owner items](../status.md#open-owner-items)). The production issuer uses
+  the same `issuer_url`, so this comes before it. Owner-only: the session never deletes Console objects;
 - the org, with 2FA on;
 - `xlearn-platform-prod` with the $15 hard limit, alerts at 50%/80%, low RPM/OTPM, and prepaid credits with
   auto-reload off;
-- the service account `xlearn-judge`, the inline-JWKS issuer and the rule;
+- the service account `xlearn-judge`; the issuer with the inline JWKS pasted as the **`keys` array** and
+  **`check_jti` off** (unticked); the rule with **token lifetime 1 h, set explicitly**;
+- **the rule's scope, a decision with a pre-decided default: `workspace:developer`**, the least privilege the Console
+  offers. The alternative is owner-only and optional: create the rule through the Admin API
+  (`POST /v1/organizations/federation_rules`, an `org:admin` OAuth caller that never reaches an agent or the cluster) with
+  `workspace:inference`, and keep it only if a Files call with its token then returns 403. Without that proof, use
+  `workspace:developer`. Either way the request builder is the Messages-only enforcement ([t5 §15](../research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25) finding 1);
 - `xlearn-calib` with its own limit and alerts.
 
 The owner reads the issuer URL and the JWKS JSON (public keys) live, with the two read-only commands in the
 task 2 WIF row. At launch they hand over the non-secret IDs (org, workspace, service account, federation
-rule), the `LLM_KEY_LABEL` and the pasted `kid`s. Launching attests the setup is done: the session can't see
-the Console, so it records the date and the IDs in the runbook and status.md.
+rule), the rule's scope, the `LLM_KEY_LABEL` and the pasted `kid`s. Launching attests the setup is done (the
+clean-up included): the session can't see the Console, so it records the date, the scope and the IDs in the runbook and status.md.
 
 **If the setup turns out to be missing at launch:** tasks 1, 2, 4, 6 and 7 still land. Task 5 isn't opened,
 so no draft PR is left behind. Tasks 3 and 5 go ⛔ "waiting on ev-provider-runbook" in status.md, and
@@ -257,11 +289,19 @@ repo** (the AGENT.md never-copy rule, [m3-01](sprint-m3-01.md)) — not into the
   client in the image; `kubectl debug` is forbidden). It is proven by `judge admin llm-smoke` from the pod —
   [m4-01](sprint-m4-01.md) task 10, run as [m4-07](sprint-m4-07.md)'s first step after `v1.16.0` rolls out. A dial timeout there
   reopens task 4. `xlearn-identity:8081` is already exercised by judge's erase re-verify (m3-07's smoke).
+- **Q-W3 re-run under `check_jti=false`** (the spk-03 hand-off; t5 §15 expects (a) 200 and (b) 200). mi-12 can't
+  exchange a token: the v1.15 judge image has no client, `ssh` is read-only here, and no agent handles a token. **Default
+  carrier:** the first client, [m4-01](sprint-m4-01.md) task 10's pod smoke, run **twice back to back** in m4-07's after-tag
+  reads. Each `kubectl exec` is a fresh process with no cached token, so the second run re-presents the file's used
+  `jti` (Q-W3 (a)), and that is also what an in-place restart does (Q-W3 (b)). Both runs must print the same `iat` and
+  pass; a 401 on the second means `check_jti` is still on, so the owner unticks it (breaker/manual meanwhile). mi-12
+  may pick another carrier that respects its constraints. Record the carrier in the spk-03 → mi-12 hand-off row.
 - `docs/v2/status.md`: MI table MI-14 ✅ (PR numbers); flag inventory — `LLM_PLATFORM_ENABLED` present, `false`
   (kill switch; m4-07 flips it); events — `ev-provider-runbook` ✅ date, `ev-acceptance-set` ⬜ (template ready);
   manual checks — JWKS kids + date (and the break-glass key expiry on the fallback); accepted-risk register —
   inline JWKS rotation, DNS tunnelling / own-output exfiltration (accepted, owner-only v2); decisions log — ADR-0031
-  Accepted (WIF GO/fallback, `check_jti`), "M4 adds only TCP 443 (judge → identity :8081 exists since m3-07)".
+  Accepted (WIF GO/fallback, `check_jti`, the rule's scope), "M4 adds only TCP 443 (judge → identity :8081 exists since m3-07)";
+  hand-offs — spk-03 → mi-12 ✅ with the Q-W3 re-run's carrier; open owner items — the spk-03 Console clean-up ✅ (attested at launch).
 - [rollout §12](../rollout-plan.md#12-downstream-constraints-for-the-build-plan-session)'s "M4 adds only 443" stands
   (m3-07 moved judge → identity forward to M3) — no rollout edit.
 
@@ -270,7 +310,7 @@ repo** (the AGENT.md never-copy rule, [m3-01](sprint-m3-01.md)) — not into the
 - [ ] [ADR-0031](../../adr/0031-platform-ai-and-two-tier-keys.md) **Accepted** with the spk-03 result and the T7 amendments folded into its body; ADR index row updated
 - [ ] judge's NetworkPolicy adds exactly **one** egress rule — **TCP 443 to non-cluster addresses** — nothing else new; m3-07's **`xlearn-identity` :8081** rule present (before/after diff in the PR); judge Ready and a cohort judged submit still grades. Policy verified here; functional 443 reachability is proven by `judge admin llm-smoke` from the pod ([m4-01](sprint-m4-01.md) task 10, m4-07 step 1)
 - [ ] `xlearn-judge-llm` loaded via `envFrom`; `LLM_PLATFORM_ENABLED=false`; the projected token (audience `https://api.anthropic.com`, 3600 s) mounted at `/var/run/secrets/anthropic.com/token` with automount still off
-- [ ] Runbook merged; org limit **$20** (D43), Console limit **$15** (`xlearn-calib` **$5**), alerts **50%/80%**, auto-reload **off**, WIF issuer/rule/service account set (the owner's before-launch setup, attested at launch and recorded with its date and IDs)
+- [ ] Runbook merged; org limit **$20** (D43), Console limit **$15** (`xlearn-calib` **$5**), alerts **50%/80%**, auto-reload **off**, WIF issuer/rule/service account set (`keys` array, `check_jti` off, rule lifetime 1 h set explicitly, the scope recorded) and the spk-03 Console objects cleaned up (the owner's before-launch setup, attested at launch and recorded with its date and IDs)
 - [ ] `host-verify --cluster` green, with the JWKS kid check reporting **PASS** from the embedded kid block (not INFO-skip; WIF path), a forced-drift run showing the WARN, and `/root/host-verify.sh` refreshed
 - [ ] Acceptance-set template merged in `xlearn-evalpack` (schema, README, dev/test dirs, CI validation, excluded from the pack image)
 

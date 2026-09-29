@@ -223,7 +223,7 @@ Sources: [t5 §6](../research/t5-platform-ai.md#6-budgets-metering-and-abuse-con
 |---|---|
 | Quota: workspace-limit 400, org-limit 400, 429 `enforced_spend_limit_reached`, 402 `billing_error`, credit exhausted | Open the global breaker (`provider_quota`) until the UTC month resets or the owner closes it; `ErrBudgetExhausted`. **Spend anomaly:** if the ledger's app month-to-date is under 70 % of `LLM_PROVIDER_LIMIT_USD`, the reason is `external_spend_or_ledger_bug` instead (someone else is spending on the workspace, or the ledger is wrong) |
 | Any other 400 on a locally validated request, 3 in a row | Open (`repeated_400`) |
-| 401/403, token-exchange 401, `no_credential`, a persisting `jti_reused` | Open (`auth`); queued jobs stop retrying |
+| 401/403 (Messages or the token exchange; every exchange denial is the same opaque 401, [t5 §15](../research/t5-platform-ai.md#15-wif-spike-result-spk-03-2026-09-25)), `no_credential` | Open (`auth`); queued jobs stop retrying |
 | `ErrWorkspaceMismatch` | Open (`workspace_mismatch`) |
 | Resolved model ≠ calibrated id | Stop Score/Analyze (→ manual); open (`model_mismatch`) |
 | 429 with `retry-after`, 529 | Re-queue with `run_after` (no breaker) |
