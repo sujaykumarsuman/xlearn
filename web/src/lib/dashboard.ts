@@ -33,7 +33,8 @@ export interface PlanProblem {
   problemId: string;
   title: string;
   difficulty: "easy" | "med" | "hard";
-  pattern: string;
+  /** Absent while the item is live (m1-06 withhold): render the chip only when present. */
+  pattern?: string;
   status: "available" | "attempting" | "solved" | "locked";
 }
 

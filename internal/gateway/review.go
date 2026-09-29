@@ -124,6 +124,38 @@ func (g *Gateway) enrichDueQueue(ctx context.Context, body []byte) []byte {
 	return merged
 }
 
+// composeScoreResult adds the scored item's curriculum `problem` object to review's score
+// response (AB03 F3/F4 reveal the pattern after scoring). The object goes through the
+// list withholding with the item's fresh state, so an item still live another way (an
+// open attempt, another due touch) keeps its pattern hidden. An unresolvable problem is
+// `problem: null`; an unparseable response is passed through unchanged.
+func (g *Gateway) composeScoreResult(ctx context.Context, accountID string, body []byte) []byte {
+	var res map[string]json.RawMessage
+	if err := json.Unmarshal(body, &res); err != nil || res == nil {
+		return body
+	}
+	var problemID string
+	if raw, ok := res["problemId"]; ok {
+		_ = json.Unmarshal(raw, &problemID)
+	}
+	if problemID == "" || g.curriculum == nil {
+		return body
+	}
+	meta := g.curriculumProblemMeta(ctx, problemID)
+	if len(meta) == 0 {
+		res["problem"] = json.RawMessage("null")
+	} else {
+		slug := itemPathSlug(coachProblemPathSlug(meta))
+		states, _ := g.itemStates(ctx, accountID, slug, []string{problemID}, stateInputs{})
+		res["problem"] = stripItemObject(meta, withhold(stateOf(states, problemID), surfaceList))
+	}
+	out, err := json.Marshal(res)
+	if err != nil {
+		return body
+	}
+	return out
+}
+
 // curriculumProblemMeta fetches a single problem's `problem` object from curriculum,
 // or nil when it can't be resolved (curriculum down, unknown id, malformed body). Used
 // on the single-id enrichment paths (mock view, coach context).

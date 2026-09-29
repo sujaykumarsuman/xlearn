@@ -104,6 +104,25 @@ type sectionJSON struct {
 	Code   string `json:"code"`
 	// Language is a code section's language ("" for prose; m1-03).
 	Language string `json:"language"`
+	// SolutionFacts is set only on the solution-stage block of kind "solution_facts"
+	// (m1-06, t1 §4): an item's solution facts are served nowhere else — never top-level,
+	// never on list or bulk routes — so the gateway's stage filter gates them.
+	SolutionFacts json.RawMessage `json:"solution_facts,omitempty"`
+}
+
+// sectionKindSolutionFacts is the solution-stage block that carries solution_facts.
+const sectionKindSolutionFacts = "solution_facts"
+
+// solutionFactsSection is the solution-stage block for an item's facts, ordered after
+// the item's other solution sections.
+func solutionFactsSection(facts json.RawMessage, sections []sectionJSON) sectionJSON {
+	order := 0
+	for _, s := range sections {
+		if s.Stage == "solution" && s.Order > order {
+			order = s.Order
+		}
+	}
+	return sectionJSON{Stage: "solution", Kind: sectionKindSolutionFacts, Order: order + 1, SolutionFacts: facts}
 }
 
 // conceptJSON is a concept's reading. The v1 code_template is the course's primary
@@ -354,6 +373,9 @@ func (s *Service) handleGetProblem(w http.ResponseWriter, r *http.Request) {
 			Stage: sec.Stage, Kind: sec.Kind, Order: sec.Order, BodyMD: sec.BodyMD, Code: sec.Code,
 			Language: sec.Language,
 		})
+	}
+	if len(problem.SolutionFacts) > 0 {
+		sectionsOut = append(sectionsOut, solutionFactsSection(problem.SolutionFacts, sectionsOut))
 	}
 	summary := problem.GradingSummary
 	if len(summary) == 0 {

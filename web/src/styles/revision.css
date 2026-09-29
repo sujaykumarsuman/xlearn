@@ -1,0 +1,58 @@
+/* Revision v2 (AB03 F1–F4, F6, F9; sprint m1-06). Screen-local layout that inline styles
+   can't express: the < 1024 px collapse of the queue + right rail, the narrow (F9) card
+   layout, the stacked criteria tiles and the format badge's bold timer. Prefix rv-;
+   tokens only; never restyles a ds- or xl- class. */
+
+.rv-pageh { border-bottom: 1px solid var(--ds-line); padding-bottom: 16px; margin-bottom: 20px; }
+.rv-h1 { margin-top: 6px; font-size: 26px; font-weight: 700; letter-spacing: -.3px; }
+.rv-narrow { display: none; }
+
+.rv-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; align-items: start; }
+.rv-col { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.rv-banner__txt { flex: 1; min-width: 200px; }
+.rv-rail { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 0; }
+
+/* One problem line: #id, title, difficulty, then the lock-or-chip, format and mock badges.
+   Wide, it is a single wrapping row (the two groups are transparent to the flex layout);
+   narrow, the badges drop to their own line under the title (F9). */
+.rv-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rv-line__head, .rv-line__badges { display: contents; }
+.rv-fmt b { font-family: var(--ds-font-mono); font-weight: 600; color: var(--ds-text); }
+
+.rv-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.rv-foot > span { font-size: 11.5px; color: var(--ds-dim); }
+
+.rv-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.rv-reveal { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--ds-dim); margin: 10px 0 2px; }
+.rv-reveal__pat { display: inline-flex; align-items: center; gap: 8px; }
+
+/* Visually hidden, still announced (the timer's 5:00 / 2:00 / 0:00 milestones). */
+.rv-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* < 1024 px: the right rail drops below the queue. */
+@media (max-width: 1023px) {
+  .rv-grid { grid-template-columns: minmax(0, 1fr); }
+  .rv-rail { position: static; }
+}
+
+/* Narrow (F9, 390 px): badges wrap under the title, card buttons go full width, the
+   criteria tiles stack one per row (>= 44 px tall), and the compact header copy shows. */
+@media (max-width: 720px) {
+  .rv-pageh { padding-bottom: 14px; margin-bottom: 16px; }
+  .rv-h1 { font-size: 22px; }
+  .rv-wide { display: none; }
+  .rv-narrow { display: inline; }
+
+  .rv-line { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .rv-line__head, .rv-line__badges { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .rv-banner__txt { flex: 1 1 0; min-width: 0; }
+  .rv-banner__sub { display: none; }
+  .rv-block { width: 100%; }
+
+  .rv-tiles { grid-template-columns: minmax(0, 1fr); }
+  .rv-tile { min-height: 44px; }
+
+  /* The revealed chip already sits under the title: the result keeps only the link. */
+  .rv-reveal__pat, .rv-reveal--patonly { display: none; }
+}

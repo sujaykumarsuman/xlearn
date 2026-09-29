@@ -139,7 +139,12 @@ func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		reminimalRaw json.RawMessage
 		roadmapRaw   []byte
 		problemsRaw  []byte
-		wg           sync.WaitGroup
+		// Withholding inputs (m1-06): review's due set and the items the page shows.
+		dueSet      map[string]bool
+		dueOK       = g.review == nil // not configured: nothing is due
+		dueIDs      []string
+		weakAreaIDs []string
+		wg          sync.WaitGroup
 	)
 
 	if g.assessment != nil && aToken != "" {
@@ -154,6 +159,8 @@ func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			ctx, cancel := context.WithTimeout(r.Context(), aggCallTimeout)
 			defer cancel()
 			if body, status, err := g.review.get(ctx, rToken, withPath("/revisions/due", slug)); err == nil && status == http.StatusOK {
+				dueSet, dueOK = parseDueSet(body)
+				dueIDs = listItemIDs(body, "items")
 				dueRaw = g.enrichDueQueue(ctx, body)
 			}
 		}()
@@ -162,6 +169,7 @@ func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			ctx, cancel := context.WithTimeout(r.Context(), aggCallTimeout)
 			defer cancel()
 			if body, status, err := g.review.get(ctx, rToken, withPath("/weak-area/current", slug)); err == nil && status == http.StatusOK {
+				weakAreaIDs = listItemIDs(body, "entries")
 				weakAreaRaw = g.enrichMistakeEnvelope(ctx, body, "entries")
 			}
 		}()
@@ -214,8 +222,15 @@ func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	weekProblems := coreProblemsInWeek(problems.Problems, curWeek)
 
 	// Per-problem practice status for the current week (attempting/solved/available) — a
-	// single call after the week is known; degrades to the projection's solved set.
-	statuses := g.currentWeekStatuses(r, accountID, curWeek, weekProblems, solvedSet)
+	// single call after the week is known; degrades to the projection's solved set. The
+	// same call carries every other item the page shows (the due queue, the weak area),
+	// whose practice state the withholding needs.
+	shown := make([]string, 0, len(dueIDs)+len(weakAreaIDs))
+	shown = append(append(shown, dueIDs...), weakAreaIDs...)
+	statuses, pItems, pOK := g.currentWeekStatuses(r, accountID, curWeek, weekProblems, solvedSet, shown)
+	states, complete := g.combineStates(dedupeIDs(append(shown, problemIDs(weekProblems)...)), stateInputs{
+		practice: pItems, practiceKnown: true, practiceOK: pOK, due: dueSet, dueKnown: true, dueOK: dueOK,
+	})
 
 	dueItems := parseDueItems(dueRaw)
 	dueCount := 0
@@ -235,9 +250,16 @@ func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	plan := buildPlan(dueItems, weekProblems, statuses)
 	week := buildWeek(curWeek, roadmap.Weeks, weekProblems, statuses)
 
+	// Withhold live items' answer-bearing fields on every card the page shows (m1-06).
+	if len(dueRaw) > 0 {
+		dueRaw = withholdListBody(dueRaw, "items", states)
+	}
+	if len(weakAreaRaw) > 0 {
+		weakAreaRaw = withholdListBody(weakAreaRaw, "entries", states)
+	}
 	out := map[string]json.RawMessage{
 		"stats":     mustJSON(stats),
-		"plan":      mustJSON(plan),
+		"plan":      withholdListArray(mustJSON(plan), states),
 		"week":      orNull(mustJSONOrNull(week)),
 		"revisions": orNull(dueRaw),
 		"weakArea":  orNull(weakAreaRaw),
@@ -253,7 +275,8 @@ func (g *Gateway) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	// or the curriculum problem index), the body carries placeholder/zeroed stats, so
 	// caching it would pin that degraded snapshot for the whole TTL even after the
 	// upstream recovers. Skip the cache and recompute next time instead.
-	if len(summaryRaw) > 0 && len(problemsRaw) > 0 {
+	// A fail-closed withholding (practice or review down) is not cached either.
+	if len(summaryRaw) > 0 && len(problemsRaw) > 0 && complete {
 		g.cache.putFresh(accountID, cacheName, body, cacheEpoch)
 	}
 	passthrough(w, http.StatusOK, body)
@@ -274,7 +297,10 @@ func (g *Gateway) fanGet(r *http.Request, wg *sync.WaitGroup, get func(context.C
 
 // currentWeekStatuses asks practice for the current week's per-problem status. It falls
 // back to the assessment solved set (solved vs available) when practice is unavailable.
-func (g *Gateway) currentWeekStatuses(r *http.Request, accountID string, week int, weekProblems []problemIndexItem, solvedSet map[string]bool) map[string]string {
+// The one call also covers `extra` (the other items the page shows): their practice
+// states come back as items for the withholding, with ok=false when practice failed
+// (practice not configured is ok=true with nothing to report).
+func (g *Gateway) currentWeekStatuses(r *http.Request, accountID string, week int, weekProblems []problemIndexItem, solvedSet map[string]bool, extra []string) (map[string]string, map[string]practiceItem, bool) {
 	out := make(map[string]string, len(weekProblems))
 	for _, p := range weekProblems {
 		if solvedSet[p.ID] {
@@ -283,34 +309,41 @@ func (g *Gateway) currentWeekStatuses(r *http.Request, accountID string, week in
 			out[p.ID] = "available"
 		}
 	}
-	if g.practice == nil || len(weekProblems) == 0 {
-		return out
+	ids := dedupeIDs(append(problemIDs(weekProblems), extra...))
+	if g.practice == nil || len(ids) == 0 {
+		return out, map[string]practiceItem{}, true
 	}
 	token, ok := g.mintForPractice(accountID)
 	if !ok {
-		return out
-	}
-	ids := make([]string, 0, len(weekProblems))
-	for _, p := range weekProblems {
-		ids = append(ids, p.ID)
+		return out, nil, false
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), aggCallTimeout)
 	defer cancel()
 	body, status, err := g.practice.get(ctx, token,
 		"/state?week="+url.QueryEscape(strconv.Itoa(week))+"&ids="+url.QueryEscape(strings.Join(ids, ",")))
 	if err != nil || status != http.StatusOK {
-		return out
+		return out, nil, false
 	}
 	states, ok := parseWeekStates(body)
-	if !ok {
-		return out
+	items, iok := parsePracticeItems(body)
+	if !ok || !iok {
+		return out, nil, false
 	}
-	for id, st := range states {
-		if st.Status != "" {
-			out[id] = st.Status
+	for _, p := range weekProblems {
+		if st, found := states[p.ID]; found && st.Status != "" {
+			out[p.ID] = st.Status
 		}
 	}
-	return out
+	return out, items, true
+}
+
+// problemIDs lists the ids of index items, in order.
+func problemIDs(items []problemIndexItem) []string {
+	ids := make([]string, 0, len(items))
+	for _, p := range items {
+		ids = append(ids, p.ID)
+	}
+	return ids
 }
 
 // currentWeek returns the lowest week number that still has an unsolved core problem, or

@@ -104,6 +104,11 @@ type Problem struct {
 	// grading summary (a JSON object).
 	ContractHash   string
 	GradingSummary json.RawMessage
+	// SolutionFacts are the item's public solution facts (the frozen item schema's
+	// solution_facts, a JSON object), served only inside the solution-stage block of
+	// GET /problems/{id} (m1-06). Not persisted yet: m2-01's `spec` column fills it; nil
+	// means none.
+	SolutionFacts json.RawMessage
 }
 
 // Section is one stage-scoped content section of a problem.

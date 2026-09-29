@@ -28,6 +28,10 @@ type problemHarness struct {
 	lastPracticeMethod  string
 	practiceStateStatus int  // status the fake practice GET /state/{id} returns (default 200)
 	notEnrolled         bool // when set, the fake identity reports acct-1 as NOT started (gate → 403)
+	// stateStatus / stateUnlocked override the fake GET /state/{id} (default: attempting,
+	// attempt stage only, timer running).
+	stateStatus   string
+	stateUnlocked []string
 }
 
 func newProblemHarness(t *testing.T) *problemHarness {
@@ -81,6 +85,8 @@ func newProblemHarness(t *testing.T) *problemHarness {
 				map[string]any{"stage": "attempt", "kind": "summary", "order": 1, "body_md": "statement", "code": ""},
 				map[string]any{"stage": "hint", "kind": "key_observation", "order": 1, "body_md": "hint text", "code": ""},
 				map[string]any{"stage": "solution", "kind": "code", "order": 1, "body_md": "", "code": "func threeSum(){}"},
+				map[string]any{"stage": "solution", "kind": "solution_facts", "order": 2, "body_md": "", "code": "",
+					"solution_facts": map[string]any{"complexity": map[string]any{"time": []string{"O(n^2)"}, "space": []string{"O(1)"}}}},
 			},
 		})
 	})
@@ -125,13 +131,23 @@ func newProblemHarness(t *testing.T) *problemHarness {
 			_, _ = w.Write([]byte(`{"error":{"code":"boom"}}`))
 			return
 		}
-		// Attempting, only the attempt stage unlocked, timer running.
-		_ = json.NewEncoder(w).Encode(map[string]any{"state": map[string]any{
+		// Attempting, only the attempt stage unlocked, timer running (unless overridden).
+		st := map[string]any{
 			"problemId": r.PathValue("problemId"), "status": "attempting", "stageReached": "attempt",
 			"unlockedStages": []string{"attempt"}, "currentTouch": 0, "lastOutcome": nil,
 			"firstSolvedAt": nil, "revealedEarly": false,
 			"timer": map[string]any{"kind": "attempt", "deadlineAt": "2099-01-01T00:00:00Z", "remainingSeconds": 900, "expired": false},
-		}})
+		}
+		if h.stateStatus != "" {
+			st["status"], st["timer"] = h.stateStatus, nil
+			if h.stateStatus == "solved" {
+				st["firstSolvedAt"] = "2026-09-20T00:00:00Z"
+			}
+		}
+		if h.stateUnlocked != nil {
+			st["unlockedStages"] = h.stateUnlocked
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"state": st})
 	})
 	practiceMux.HandleFunc("GET /state", func(w http.ResponseWriter, r *http.Request) {
 		h.lastPracticePath, h.lastPracticeMethod = r.URL.Path+"?"+r.URL.RawQuery, r.Method
@@ -365,7 +381,8 @@ func TestBFFPracticeArenaOpen(t *testing.T) {
 }
 
 // TestBFFProblemAggPracticeDeliversAllStages: the arena GET (?practice=1) delivers ALL
-// stages (statement + hint + solution) for study, without touching practice.
+// stages (statement + hint + solution) for study of an item that isn't live, and never
+// writes practice state (m1-06: it only READS whether the item is live).
 func TestBFFProblemAggPracticeDeliversAllStages(t *testing.T) {
 	h := newProblemHarness(t)
 	h.notEnrolled = true
@@ -388,9 +405,9 @@ func TestBFFProblemAggPracticeDeliversAllStages(t *testing.T) {
 	if !stages["attempt"] || !stages["hint"] || !stages["solution"] {
 		t.Fatalf("practice agg should deliver all stages, got %+v", out.Sections)
 	}
-	// The arena GET must not fetch practice state.
-	if h.lastPracticePath != "" {
-		t.Fatalf("practice agg touched practice (%q)", h.lastPracticePath)
+	// The arena GET may read the item's state (is it live?) but must never write it.
+	if h.lastPracticePath != "" && (h.lastPracticeMethod != http.MethodGet || !strings.HasPrefix(h.lastPracticePath, "/state?")) {
+		t.Fatalf("practice agg did more than read state: %s %q", h.lastPracticeMethod, h.lastPracticePath)
 	}
 }
 
@@ -467,5 +484,45 @@ func TestBFFWeekPopulatedFromPractice(t *testing.T) {
 	// The gateway asks practice for exactly the week's problem ids.
 	if !strings.Contains(h.lastPracticePath, "ids=16") {
 		t.Fatalf("practice /state should be scoped to the week's ids; got %q", h.lastPracticePath)
+	}
+}
+
+// TestBFFProblemSolutionFactsWithSolutionStage (m1-06 task 5): curriculum serves an item's
+// solution_facts only in a solution-stage block, so the workspace delivers them only once
+// the solution stage is unlocked — and, through withhold(), never while the item is live.
+func TestBFFProblemSolutionFactsWithSolutionStage(t *testing.T) {
+	cases := []struct {
+		name      string
+		status    string
+		unlocked  []string
+		wantFacts bool
+	}{
+		{"open attempt, attempt stage", "", []string{"attempt"}, false},
+		{"open attempt, hint stage", "", []string{"attempt", "hint"}, false},
+		{"open attempt, solution stage", "", []string{"attempt", "hint", "solution"}, true},
+		{"solved blind", "solved", []string{"attempt"}, false},
+		{"solved via the solution", "solved", []string{"attempt", "hint", "solution"}, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := newProblemHarness(t)
+			h.stateStatus, h.stateUnlocked = c.status, c.unlocked
+			resp := h.do(t, http.MethodGet, "/xlearn/api/problems/16", "")
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("status %d: %s", resp.StatusCode, body)
+			}
+			if got := strings.Contains(string(body), `"solution_facts"`); got != c.wantFacts {
+				t.Fatalf("solution_facts delivered = %v, want %v: %s", got, c.wantFacts, body)
+			}
+			var out struct {
+				Problem map[string]any `json:"problem"`
+			}
+			_ = json.Unmarshal(body, &out)
+			if _, top := out.Problem["solution_facts"]; top {
+				t.Fatal("solution_facts must never be top-level on the problem")
+			}
+		})
 	}
 }

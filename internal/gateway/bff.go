@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/course"
@@ -33,7 +34,30 @@ type apiRoute struct {
 	// test checks). The SPA stops calling aliases in v1.7.0; they stay for open v1.6.0
 	// tabs at least through v1.8.0 (ADR-0034 §1.1; status.md records the removal tag).
 	Alias bool
+	// Withhold declares how the route treats answer-bearing item fields (m1-06): it either
+	// composes item data through withhold() (withholdApplies) or is exempt with a reviewed
+	// reason. withhold_routes_test.go fails CI for a route without one.
+	Withhold withholdPolicy
 }
+
+// Reviewed exemption reasons shared by several routes (withhold_routes_test.go lists
+// every exempt route with its reason).
+const (
+	whyOps         = "ops endpoint; no item data"
+	whyAuth        = "auth flow; no item data"
+	whyAccount     = "account read or write; no item data"
+	whyCatalog     = "course catalog or roadmap; no item fields"
+	whyConcept     = "concept reading; no item fields (its item chips come from the week view, which applies withhold)"
+	whyProgress    = "progress aggregate: counts and pattern-mastery totals, no per-item answer field"
+	whyPracticeW   = "practice write: returns practice state only, no content fields"
+	whyMistakeW    = "mistake write: echoes the learner's own entry"
+	whyMock        = "mock session: the mock brief names its problem; t1 §10's surface list has no mock row (M6 redesigns mocks)"
+	whyMockTrend   = "mock trend: rubric totals, no item data"
+	whyPublic      = "public profile: aggregates only (publicShapeAllowlist, m1-05)"
+	whyCoachKey    = "coach key config (masked); no item data"
+	whyCoachThread = "coach thread: the learner's own chat history; the problem context is withheld when the chat is composed"
+	whyEnroll      = "enrollment write; returns the enrollment"
+)
 
 // apiRoutes is the authoritative BFF route table. Order is irrelevant to correctness
 // (Go 1.22's ServeMux matches most-specific-first, so /mocks/trend beats /mocks/{id}
@@ -41,88 +65,88 @@ type apiRoute struct {
 func (g *Gateway) apiRoutes() []apiRoute {
 	return []apiRoute{
 		// System / auth infra.
-		{Method: "GET", Pattern: "/api/healthz", Handler: g.appHealth},
-		{Method: "GET", Pattern: "/.well-known/jwks.json", Handler: g.handleJWKS},
+		{Method: "GET", Pattern: "/api/healthz", Handler: g.appHealth, Withhold: exempt(whyOps)},
+		{Method: "GET", Pattern: "/.well-known/jwks.json", Handler: g.handleJWKS, Withhold: exempt(whyOps)},
 		// Account + onboarding (identity-backed). OAuth start/callback are proxied so the
 		// browser only ever talks to the gateway origin.
-		{Method: "GET", Pattern: "/api/me", Handler: g.handleMe, Doc: true},
-		{Method: "PATCH", Pattern: "/api/me", Handler: g.handlePatchMe, Doc: true},
+		{Method: "GET", Pattern: "/api/me", Handler: g.handleMe, Doc: true, Withhold: exempt(whyAccount)},
+		{Method: "PATCH", Pattern: "/api/me", Handler: g.handlePatchMe, Doc: true, Withhold: exempt(whyAccount)},
 		// Account & sign-in management (ADR-0023): set/change password + disconnect a provider.
-		{Method: "POST", Pattern: "/api/me/password", Handler: g.handleSetPassword, Doc: true},
-		{Method: "DELETE", Pattern: "/api/me/oauth/{provider}", Handler: g.handleUnlinkOAuth, Doc: true},
+		{Method: "POST", Pattern: "/api/me/password", Handler: g.handleSetPassword, Doc: true, Withhold: exempt(whyAccount)},
+		{Method: "DELETE", Pattern: "/api/me/oauth/{provider}", Handler: g.handleUnlinkOAuth, Doc: true, Withhold: exempt(whyAccount)},
 		// Username (F009 / ADR-0024): claim/change + availability check (session-gated).
-		{Method: "POST", Pattern: "/api/me/username", Handler: g.handleSetUsername, Doc: true},
-		{Method: "GET", Pattern: "/api/username/available", Handler: g.handleUsernameAvailable, Doc: true},
-		{Method: "POST", Pattern: "/api/auth/logout", Handler: g.handleLogout, Doc: true},
-		{Method: "POST", Pattern: "/api/onboarding/step", Handler: g.handleOnboardingStep, Doc: true},
+		{Method: "POST", Pattern: "/api/me/username", Handler: g.handleSetUsername, Doc: true, Withhold: exempt(whyAccount)},
+		{Method: "GET", Pattern: "/api/username/available", Handler: g.handleUsernameAvailable, Doc: true, Withhold: exempt(whyAccount)},
+		{Method: "POST", Pattern: "/api/auth/logout", Handler: g.handleLogout, Doc: true, Withhold: exempt(whyAuth)},
+		{Method: "POST", Pattern: "/api/onboarding/step", Handler: g.handleOnboardingStep, Doc: true, Withhold: exempt(whyAccount)},
 		// Email/password auth (ADR-0023): fetch-based signup/login (session cookie on the JSON
 		// response). OAuth start/callback are the browser-redirect flow; `?link=1` on start
 		// connects the provider to the signed-in account.
-		{Method: "POST", Pattern: "/api/auth/signup", Handler: g.handleAuthSignup, Doc: true},
-		{Method: "POST", Pattern: "/api/auth/login", Handler: g.handleAuthLogin, Doc: true},
-		{Method: "POST", Pattern: "/api/auth/{provider}/start", Handler: g.handleAuthProxy, Doc: true},
-		{Method: "GET", Pattern: "/api/auth/{provider}/callback", Handler: g.handleAuthProxy, Doc: true},
+		{Method: "POST", Pattern: "/api/auth/signup", Handler: g.handleAuthSignup, Doc: true, Withhold: exempt(whyAuth)},
+		{Method: "POST", Pattern: "/api/auth/login", Handler: g.handleAuthLogin, Doc: true, Withhold: exempt(whyAuth)},
+		{Method: "POST", Pattern: "/api/auth/{provider}/start", Handler: g.handleAuthProxy, Doc: true, Withhold: exempt(whyAuth)},
+		{Method: "GET", Pattern: "/api/auth/{provider}/callback", Handler: g.handleAuthProxy, Doc: true, Withhold: exempt(whyAuth)},
 		// Local-only dev login (F002 / ADR-0022): proxied to identity, which 404s them
 		// unless DEV_AUTH is set. Undocumented (Doc:false) — never part of the prod surface.
-		{Method: "POST", Pattern: "/api/auth/dev/login", Handler: g.handleAuthDevProxy},
-		{Method: "GET", Pattern: "/api/auth/dev/enabled", Handler: g.handleAuthDevProxy},
+		{Method: "POST", Pattern: "/api/auth/dev/login", Handler: g.handleAuthDevProxy, Withhold: exempt(whyAuth)},
+		{Method: "GET", Pattern: "/api/auth/dev/enabled", Handler: g.handleAuthDevProxy, Withhold: exempt(whyAuth)},
 		// Per-user course enrollment (F002): starting a course is an explicit, durable
 		// action; only an active course can be started (ADR-0033 §12 row 8).
-		{Method: "POST", Pattern: "/api/paths/{slug}/start", Handler: g.handleStartPath, Doc: true},
+		{Method: "POST", Pattern: "/api/paths/{slug}/start", Handler: g.handleStartPath, Doc: true, Withhold: exempt(whyEnroll)},
 		// The course catalog + course content (read-only, session-gated). Every
 		// /api/paths/{slug}/… route resolves {slug} against the compiled-in manifests
 		// (course.go). The week route is a BFF aggregation (api.md `agg`): the gateway
 		// layers per-user five-touch/solve state onto curriculum content (ADR-0005/0013).
-		{Method: "GET", Pattern: "/api/paths", Handler: g.handleListPaths, Doc: true},
-		{Method: "GET", Pattern: "/api/paths/{slug}", Handler: g.handleGetPath, Doc: true},
-		{Method: "GET", Pattern: "/api/paths/{slug}/problems", Handler: g.handleListPathProblems, Doc: true},
-		{Method: "GET", Pattern: "/api/paths/{slug}/weeks/{n}", Handler: g.handleGetWeek, Doc: true},
-		{Method: "GET", Pattern: "/api/paths/{slug}/concepts/{c}", Handler: g.handleGetConcept, Doc: true},
+		{Method: "GET", Pattern: "/api/paths", Handler: g.handleListPaths, Doc: true, Withhold: exempt(whyCatalog)},
+		{Method: "GET", Pattern: "/api/paths/{slug}", Handler: g.handleGetPath, Doc: true, Withhold: exempt(whyCatalog)},
+		{Method: "GET", Pattern: "/api/paths/{slug}/problems", Handler: g.handleListPathProblems, Doc: true, Withhold: withholdApplies},
+		{Method: "GET", Pattern: "/api/paths/{slug}/weeks/{n}", Handler: g.handleGetWeek, Doc: true, Withhold: withholdApplies},
+		{Method: "GET", Pattern: "/api/paths/{slug}/concepts/{c}", Handler: g.handleGetConcept, Doc: true, Withhold: exempt(whyConcept)},
 		// Course-scoped aggregates (m1-03, t0 §7): the same handlers the DSA aliases below run.
-		{Method: "GET", Pattern: "/api/paths/{slug}/dashboard", Handler: g.handleDashboard, Doc: true},
-		{Method: "GET", Pattern: "/api/paths/{slug}/progress", Handler: g.handleProgress, Doc: true},
-		{Method: "GET", Pattern: "/api/paths/{slug}/revision/due", Handler: g.handleRevisionDue, Doc: true},
-		{Method: "GET", Pattern: "/api/paths/{slug}/mistakes", Handler: g.handleMistakes, Doc: true},
-		{Method: "POST", Pattern: "/api/paths/{slug}/mistakes", Handler: g.handleCreateMistake, Doc: true},
-		{Method: "GET", Pattern: "/api/paths/{slug}/weak-area", Handler: g.handleWeakArea, Doc: true},
-		{Method: "POST", Pattern: "/api/paths/{slug}/mocks", Handler: g.handleStartMock, Doc: true},
-		{Method: "GET", Pattern: "/api/paths/{slug}/mocks/trend", Handler: g.handleMockTrend, Doc: true},
+		{Method: "GET", Pattern: "/api/paths/{slug}/dashboard", Handler: g.handleDashboard, Doc: true, Withhold: withholdApplies},
+		{Method: "GET", Pattern: "/api/paths/{slug}/progress", Handler: g.handleProgress, Doc: true, Withhold: exempt(whyProgress)},
+		{Method: "GET", Pattern: "/api/paths/{slug}/revision/due", Handler: g.handleRevisionDue, Doc: true, Withhold: withholdApplies},
+		{Method: "GET", Pattern: "/api/paths/{slug}/mistakes", Handler: g.handleMistakes, Doc: true, Withhold: withholdApplies},
+		{Method: "POST", Pattern: "/api/paths/{slug}/mistakes", Handler: g.handleCreateMistake, Doc: true, Withhold: exempt(whyMistakeW)},
+		{Method: "GET", Pattern: "/api/paths/{slug}/weak-area", Handler: g.handleWeakArea, Doc: true, Withhold: withholdApplies},
+		{Method: "POST", Pattern: "/api/paths/{slug}/mocks", Handler: g.handleStartMock, Doc: true, Withhold: exempt(whyMock)},
+		{Method: "GET", Pattern: "/api/paths/{slug}/mocks/trend", Handler: g.handleMockTrend, Doc: true, Withhold: exempt(whyMockTrend)},
 		// Items by GLOBAL id: the course comes from the item's path_slug (curriculum) or,
 		// for revision items, mistakes and mocks, from the owning service's row. The
 		// Problem GET is a BFF aggregation (content limited to unlocked stages + practice
 		// state + timer); the writes proxy to practice.
-		{Method: "GET", Pattern: "/api/problems/{id}", Handler: g.handleGetProblem, Doc: true},
-		{Method: "POST", Pattern: "/api/problems/{id}/attempt/start", Handler: g.handleAttemptStart, Doc: true},
-		{Method: "POST", Pattern: "/api/problems/{id}/reveal", Handler: g.handleReveal, Doc: true},
-		{Method: "POST", Pattern: "/api/problems/{id}/outcome", Handler: g.handleOutcome, Doc: true},
+		{Method: "GET", Pattern: "/api/problems/{id}", Handler: g.handleGetProblem, Doc: true, Withhold: withholdApplies},
+		{Method: "POST", Pattern: "/api/problems/{id}/attempt/start", Handler: g.handleAttemptStart, Doc: true, Withhold: exempt(whyPracticeW)},
+		{Method: "POST", Pattern: "/api/problems/{id}/reveal", Handler: g.handleReveal, Doc: true, Withhold: exempt(whyPracticeW)},
+		{Method: "POST", Pattern: "/api/problems/{id}/outcome", Handler: g.handleOutcome, Doc: true, Withhold: exempt(whyPracticeW)},
 		// Revision (review). External /revision maps to review's internal /revisions.
-		{Method: "POST", Pattern: "/api/revision/{itemId}/score", Handler: g.handleRevisionScore, Doc: true},
+		{Method: "POST", Pattern: "/api/revision/{itemId}/score", Handler: g.handleRevisionScore, Doc: true, Withhold: withholdApplies},
 		// Mistake journal edits (review).
-		{Method: "PATCH", Pattern: "/api/mistakes/{id}", Handler: g.handlePatchMistake, Doc: true},
+		{Method: "PATCH", Pattern: "/api/mistakes/{id}", Handler: g.handlePatchMistake, Doc: true, Withhold: exempt(whyMistakeW)},
 		// Mock interview (assessment). /mocks/trend (an alias below) is more specific than
 		// /mocks/{id}, so it wins regardless of order.
-		{Method: "GET", Pattern: "/api/mocks/{id}", Handler: g.handleGetMock, Doc: true},
-		{Method: "POST", Pattern: "/api/mocks/{id}/score", Handler: g.handleScoreMock, Doc: true},
+		{Method: "GET", Pattern: "/api/mocks/{id}", Handler: g.handleGetMock, Doc: true, Withhold: exempt(whyMock)},
+		{Method: "POST", Pattern: "/api/mocks/{id}/score", Handler: g.handleScoreMock, Doc: true, Withhold: exempt(whyMock)},
 		// DSA aliases (ADR-0034 §1.1): the v1 routes without a course, served by the
 		// course-scoped handler with course.DefaultSlug (the course a v1 caller means).
-		{Method: "GET", Pattern: "/api/concepts/{slug}", Handler: g.aliasConcept, Doc: true, Alias: true},
-		{Method: "GET", Pattern: "/api/revision/due", Handler: g.alias(g.handleRevisionDue), Doc: true, Alias: true},
-		{Method: "GET", Pattern: "/api/mistakes", Handler: g.alias(g.handleMistakes), Doc: true, Alias: true},
-		{Method: "POST", Pattern: "/api/mistakes", Handler: g.alias(g.handleCreateMistake), Doc: true, Alias: true},
-		{Method: "GET", Pattern: "/api/weak-area", Handler: g.alias(g.handleWeakArea), Doc: true, Alias: true},
-		{Method: "POST", Pattern: "/api/mocks", Handler: g.alias(g.handleStartMock), Doc: true, Alias: true},
-		{Method: "GET", Pattern: "/api/mocks/trend", Handler: g.alias(g.handleMockTrend), Doc: true, Alias: true},
-		{Method: "GET", Pattern: "/api/progress", Handler: g.alias(g.handleProgress), Doc: true, Alias: true},
-		{Method: "GET", Pattern: "/api/dashboard", Handler: g.alias(g.handleDashboard), Doc: true, Alias: true},
+		{Method: "GET", Pattern: "/api/concepts/{slug}", Handler: g.aliasConcept, Doc: true, Alias: true, Withhold: exempt(whyConcept)},
+		{Method: "GET", Pattern: "/api/revision/due", Handler: g.alias(g.handleRevisionDue), Doc: true, Alias: true, Withhold: withholdApplies},
+		{Method: "GET", Pattern: "/api/mistakes", Handler: g.alias(g.handleMistakes), Doc: true, Alias: true, Withhold: withholdApplies},
+		{Method: "POST", Pattern: "/api/mistakes", Handler: g.alias(g.handleCreateMistake), Doc: true, Alias: true, Withhold: exempt(whyMistakeW)},
+		{Method: "GET", Pattern: "/api/weak-area", Handler: g.alias(g.handleWeakArea), Doc: true, Alias: true, Withhold: withholdApplies},
+		{Method: "POST", Pattern: "/api/mocks", Handler: g.alias(g.handleStartMock), Doc: true, Alias: true, Withhold: exempt(whyMock)},
+		{Method: "GET", Pattern: "/api/mocks/trend", Handler: g.alias(g.handleMockTrend), Doc: true, Alias: true, Withhold: exempt(whyMockTrend)},
+		{Method: "GET", Pattern: "/api/progress", Handler: g.alias(g.handleProgress), Doc: true, Alias: true, Withhold: exempt(whyProgress)},
+		{Method: "GET", Pattern: "/api/dashboard", Handler: g.alias(g.handleDashboard), Doc: true, Alias: true, Withhold: withholdApplies},
 		// PUBLIC user dashboard (F009 / ADR-0024): the ONLY unauthenticated /api route —
 		// resolves a username to non-PII public stats + a merged activity heatmap.
-		{Method: "GET", Pattern: "/api/u/{username}", Handler: g.handlePublicProfile, Doc: true},
+		{Method: "GET", Pattern: "/api/u/{username}", Handler: g.handlePublicProfile, Doc: true, Withhold: exempt(whyPublic)},
 		// Coach (S11): masked key CRUD, per-page thread, and the SSE chat relay.
-		{Method: "GET", Pattern: "/api/coach/key", Handler: g.handleCoachKey, Doc: true},
-		{Method: "PUT", Pattern: "/api/coach/key", Handler: g.handlePutCoachKey, Doc: true},
-		{Method: "DELETE", Pattern: "/api/coach/key", Handler: g.handleDeleteCoachKey, Doc: true},
-		{Method: "GET", Pattern: "/api/coach/thread", Handler: g.handleCoachThread, Doc: true},
-		{Method: "POST", Pattern: "/api/coach/chat", Handler: g.handleCoachChat, Doc: true},
+		{Method: "GET", Pattern: "/api/coach/key", Handler: g.handleCoachKey, Doc: true, Withhold: exempt(whyCoachKey)},
+		{Method: "PUT", Pattern: "/api/coach/key", Handler: g.handlePutCoachKey, Doc: true, Withhold: exempt(whyCoachKey)},
+		{Method: "DELETE", Pattern: "/api/coach/key", Handler: g.handleDeleteCoachKey, Doc: true, Withhold: exempt(whyCoachKey)},
+		{Method: "GET", Pattern: "/api/coach/thread", Handler: g.handleCoachThread, Doc: true, Withhold: exempt(whyCoachThread)},
+		{Method: "POST", Pattern: "/api/coach/chat", Handler: g.handleCoachChat, Doc: true, Withhold: withholdApplies},
 	}
 }
 
@@ -492,17 +516,35 @@ func (g *Gateway) handleGetPath(w http.ResponseWriter, r *http.Request) {
 	g.proxyCurriculum(w, r, "/paths/"+url.PathEscape(slug))
 }
 
-// handleListPathProblems proxies the whole problem index for a course (the Problems
-// arena, review round 2 — a flat list you can browse + attempt any problem from).
+// handleListPathProblems serves the whole problem index for a course (the Problems
+// arena, review round 2 — a flat list you can browse + attempt any problem from), with
+// the list withholding applied: a live item's pattern and concepts are dropped (m1-06).
 func (g *Gateway) handleListPathProblems(w http.ResponseWriter, r *http.Request) {
-	if _, ok := g.authAccount(w, r); !ok {
+	accountID, ok := g.authAccount(w, r)
+	if !ok {
 		return
 	}
 	slug := r.PathValue("slug")
 	if _, ok := g.requireCourse(w, r, slug); !ok {
 		return
 	}
-	g.proxyCurriculum(w, r, "/paths/"+url.PathEscape(slug)+"/problems")
+	if g.curriculum == nil {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "curriculum not configured")
+		return
+	}
+	upstream := "/paths/" + url.PathEscape(slug) + "/problems"
+	body, status, err := g.curriculum.get(r.Context(), upstream)
+	if err != nil {
+		g.log.Error("bff curriculum call failed", "path", upstream, "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "curriculum unavailable")
+		return
+	}
+	if status != http.StatusOK {
+		passthrough(w, status, body)
+		return
+	}
+	states, _ := g.itemStates(r.Context(), accountID, slug, listItemIDs(body, "problems"), stateInputs{})
+	passthrough(w, http.StatusOK, withholdListBody(body, "problems", states))
 }
 
 // handleGetWeek is the week BFF aggregation (api.md `agg`): it fetches the curriculum
@@ -545,18 +587,35 @@ func (g *Gateway) handleGetWeek(w http.ResponseWriter, r *http.Request) {
 		passthrough(w, status, body)
 		return
 	}
-	states, populated := g.weekPracticeStates(r, accountID, body)
+	// Review's due set (for the withholding) is fetched alongside practice's states.
+	var (
+		in stateInputs
+		wg sync.WaitGroup
+	)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		in.due, in.dueOK = g.fetchDueSet(r.Context(), accountID, r.PathValue("slug"))
+		in.dueKnown = true
+	}()
+	states, items, populated := g.weekPracticeStates(r, accountID, body)
+	wg.Wait()
 	merged, err := aggregateWeek(body, states, populated)
 	if err != nil {
 		g.log.Error("bff week aggregation: merge failed", "path", upstream, "err", err)
 		writeError(w, http.StatusBadGateway, "upstream", "curriculum returned malformed content")
 		return
 	}
+	// Withhold live items' answer-bearing fields (m1-06), reusing practice's answer.
+	in.practice, in.practiceKnown, in.practiceOK = items, g.practice != nil, populated
+	wstates, complete := g.itemStates(r.Context(), accountID, r.PathValue("slug"), problemIDsFromWeek(body), in)
+	merged = withholdListBody(merged, "problems", wstates)
 	// Only cache when practice actually sourced the solve state. When practice is
 	// degraded the merge is the honest placeholder (every problem "available",
 	// populated:false); caching that would pin the learner's progress as unsolved for
-	// the whole TTL after practice recovers, so recompute next time instead.
-	if populated {
+	// the whole TTL after practice recovers, so recompute next time instead. The same
+	// holds for a fail-closed withholding (review down).
+	if populated && complete {
 		g.cache.putFresh(accountID, cacheName, merged, cacheEpoch)
 	}
 	passthrough(w, http.StatusOK, merged)
@@ -564,37 +623,39 @@ func (g *Gateway) handleGetWeek(w http.ResponseWriter, r *http.Request) {
 
 // weekPracticeStates fetches the learner's practice states for the week's problems.
 // It parses the problem ids out of the curriculum content, calls practice
-// GET /state?ids=…, and returns the states keyed by id plus a `populated` flag
-// (false when practice is unavailable — the honest placeholder path, ADR-0013).
-func (g *Gateway) weekPracticeStates(r *http.Request, accountID string, content []byte) (map[string]practiceProblemState, bool) {
+// GET /state?ids=…, and returns the states keyed by id (the rollup's slice and the
+// withholding's) plus a `populated` flag (false when practice is unavailable — the
+// honest placeholder path, ADR-0013).
+func (g *Gateway) weekPracticeStates(r *http.Request, accountID string, content []byte) (map[string]practiceProblemState, map[string]practiceItem, bool) {
 	if g.practice == nil {
-		return nil, false
+		return nil, nil, false
 	}
 	ids := problemIDsFromWeek(content)
 	if len(ids) == 0 {
 		// No problems to look up: still "populated" (practice exists; nothing to fill).
-		return map[string]practiceProblemState{}, true
+		return map[string]practiceProblemState{}, map[string]practiceItem{}, true
 	}
 	token, ok := g.mintForPractice(accountID)
 	if !ok {
-		return nil, false
+		return nil, nil, false
 	}
 	n := r.PathValue("n")
 	pbody, pstatus, perr := g.practice.get(r.Context(), token, "/state?week="+url.QueryEscape(n)+"&ids="+url.QueryEscape(strings.Join(ids, ",")))
 	if perr != nil {
 		g.log.Warn("bff week aggregation: practice call failed; placeholder state", "err", perr)
-		return nil, false
+		return nil, nil, false
 	}
 	if pstatus != http.StatusOK {
 		g.log.Warn("bff week aggregation: practice non-200; placeholder state", "status", pstatus)
-		return nil, false
+		return nil, nil, false
 	}
 	states, ok := parseWeekStates(pbody)
-	if !ok {
+	items, iok := parsePracticeItems(pbody)
+	if !ok || !iok {
 		g.log.Warn("bff week aggregation: malformed practice states; placeholder state")
-		return nil, false
+		return nil, nil, false
 	}
-	return states, true
+	return states, items, true
 }
 
 // handleGetProblem is the Problem workspace BFF aggregation (api.md `agg`): it
@@ -632,12 +693,16 @@ func (g *Gateway) handleGetProblem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Practice arena (?practice=1): a study view. Deliver ALL sections (all stages) with a
-	// default (available, no-timer) state and DON'T touch practice — so opening a problem
-	// in the arena creates no course-affecting state. The course flow reads practice state
-	// + gates sections to the unlocked stages as usual.
+	// default (available, no-timer) state and never WRITE practice state — so opening a
+	// problem in the arena creates no course-affecting state. It only reads whether the
+	// item is live (m1-06): a live item's arena view is the attempt stage only, with no
+	// pattern, concepts or facts. The course flow reads practice state + gates sections
+	// to the unlocked stages as usual.
 	if r.URL.Query().Get("practice") == "1" {
+		states, _ := g.itemStates(r.Context(), accountID, slug, []string{id}, stateInputs{})
 		stateRaw, _ := defaultProblemState(id)
-		merged, err := aggregateProblem(body, stateRaw, map[string]bool{"attempt": true, "hint": true, "solution": true})
+		all := map[string]bool{stageAttempt: true, stageHint: true, stageSolution: true}
+		merged, err := withholdProblemBody(body, stateRaw, all, withhold(stateOf(states, id), surfaceArena))
 		if err != nil {
 			g.log.Error("bff problem aggregation (practice): merge failed", "id", id, "err", err)
 			writeError(w, http.StatusBadGateway, "upstream", "curriculum returned malformed content")
@@ -647,8 +712,29 @@ func (g *Gateway) handleGetProblem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stateRaw, unlocked := g.problemState(r, accountID, id)
-	merged, err := aggregateProblem(body, stateRaw, unlocked)
+	// The course workspace: practice's full state and review's due set, in parallel.
+	var (
+		stateRaw json.RawMessage
+		unlocked map[string]bool
+		pItem    practiceItem
+		pOK      bool
+		in       stateInputs
+		wg       sync.WaitGroup
+	)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		stateRaw, unlocked, pItem, pOK = g.problemState(r, accountID, id)
+	}()
+	go func() {
+		defer wg.Done()
+		in.due, in.dueOK = g.fetchDueSet(r.Context(), accountID, slug)
+	}()
+	wg.Wait()
+	in.dueKnown, in.practiceKnown, in.practiceOK = true, true, pOK
+	in.practice = map[string]practiceItem{id: pItem}
+	states, _ := g.combineStates([]string{id}, in)
+	merged, err := withholdProblemBody(body, stateRaw, unlocked, withhold(stateOf(states, id), surfaceWorkspace))
 	if err != nil {
 		g.log.Error("bff problem aggregation: merge failed", "id", id, "err", err)
 		writeError(w, http.StatusBadGateway, "upstream", "curriculum returned malformed content")
@@ -696,26 +782,33 @@ func (g *Gateway) injectProblemGate(ctx context.Context, accountID, slug, proble
 }
 
 // problemState fetches the learner's practice state for a problem, returning the raw
-// state JSON to embed and the set of unlocked stages to filter sections by. When
-// practice is unavailable it degrades to the default state (available, statement-only)
-// so the workspace still renders.
-func (g *Gateway) problemState(r *http.Request, accountID, id string) (json.RawMessage, map[string]bool) {
-	if g.practice != nil {
-		if token, ok := g.mintForPractice(accountID); ok {
-			pbody, pstatus, perr := g.practice.get(r.Context(), token, "/state/"+url.PathEscape(id))
-			if perr != nil {
-				g.log.Warn("bff problem aggregation: practice call failed; using default state", "id", id, "err", perr)
-			} else if pstatus == http.StatusOK {
-				if raw, unlocked, ok := parseProblemState(pbody); ok {
-					return raw, unlocked
-				}
-				g.log.Warn("bff problem aggregation: malformed practice state; using default", "id", id)
-			} else {
-				g.log.Warn("bff problem aggregation: practice returned non-200; using default state", "id", id, "status", pstatus)
+// state JSON to embed, the set of unlocked stages to filter sections by, the slice
+// withholding reads, and whether practice answered. When practice is unavailable it
+// degrades to the default state (available, statement-only) so the workspace still
+// renders, with ok=false (the withholding then fails closed). Practice not configured
+// is ok=true: there is no attempt to report.
+func (g *Gateway) problemState(r *http.Request, accountID, id string) (json.RawMessage, map[string]bool, practiceItem, bool) {
+	if g.practice == nil {
+		raw, unlocked := defaultProblemState(id)
+		return raw, unlocked, practiceItem{}, true
+	}
+	if token, ok := g.mintForPractice(accountID); ok {
+		pbody, pstatus, perr := g.practice.get(r.Context(), token, "/state/"+url.PathEscape(id))
+		if perr != nil {
+			g.log.Warn("bff problem aggregation: practice call failed; using default state", "id", id, "err", perr)
+		} else if pstatus == http.StatusOK {
+			raw, unlocked, ok := parseProblemState(pbody)
+			item, iok := parsePracticeItem(pbody)
+			if ok && iok {
+				return raw, unlocked, item, true
 			}
+			g.log.Warn("bff problem aggregation: malformed practice state; using default", "id", id)
+		} else {
+			g.log.Warn("bff problem aggregation: practice returned non-200; using default state", "id", id, "status", pstatus)
 		}
 	}
-	return defaultProblemState(id)
+	raw, unlocked := defaultProblemState(id)
+	return raw, unlocked, practiceItem{}, false
 }
 
 // handleAttemptStart proxies POST /problems/{id}/attempt/start to practice (enrollment-gated).
@@ -882,11 +975,31 @@ func (g *Gateway) handleRevisionDue(w http.ResponseWriter, r *http.Request) {
 		passthrough(w, status, body)
 		return
 	}
-	passthrough(w, http.StatusOK, g.enrichDueQueue(r.Context(), body))
+	// Every due item is live (a due touch), so its pattern and concepts are withheld; an
+	// upcoming row keeps them unless the item is live another way (m1-06). The due set is
+	// this very body; practice is asked while curriculum enriches.
+	due, dueOK := parseDueSet(body)
+	var (
+		states   map[string]itemState
+		enriched []byte
+		wg       sync.WaitGroup
+	)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		states, _ = g.itemStates(r.Context(), accountID, slug, listItemIDs(body, "items"),
+			stateInputs{due: due, dueKnown: true, dueOK: dueOK})
+	}()
+	enriched = g.enrichDueQueue(r.Context(), body)
+	wg.Wait()
+	passthrough(w, http.StatusOK, withholdListBody(enriched, "items", states))
 }
 
 // handleRevisionScore proxies the auto-score submission to review (POST
-// /revisions/{id}/score), passing its status + JSON envelope straight through.
+// /revisions/{id}/score), passing its status + JSON envelope through. A successful
+// result gains the item's curriculum `problem` (m1-06, AB03 F3/F4): the touch has
+// concluded, so the pattern it tested is revealed — unless the item is still live
+// another way, when the list withholding strips it.
 func (g *Gateway) handleRevisionScore(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := g.authAccount(w, r)
 	if !ok {
@@ -914,6 +1027,9 @@ func (g *Gateway) handleRevisionScore(w http.ResponseWriter, r *http.Request) {
 	// A re-solve advances/resets the touch ladder + due queue → invalidate this
 	// account's cached Dashboard/Week.
 	g.invalidateAgg(status, accountID)
+	if status == http.StatusOK {
+		body = g.composeScoreResult(r.Context(), accountID, body)
+	}
 	passthrough(w, status, body)
 }
 

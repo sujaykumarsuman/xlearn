@@ -1346,6 +1346,23 @@ components:
               start_min: { type: integer }
               end_min: { type: integer }
         primary_language: { type: string }
+        revision:
+          type: object
+          description: |
+            The touch format per ladder band (m1-06; AB03's format badges): display fields
+            only, never the pass criteria. Absent without a revision block.
+          properties:
+            bands:
+              type: array
+              items:
+                type: object
+                properties:
+                  levels: { type: array, items: { type: integer } }
+                  format: { type: string }
+                  label: { type: string }
+                  timer_s: { type: integer, description: "0/absent = untimed." }
+                  est_minutes: { type: integer, description: "plan.est_minutes[touch_<format>]." }
+                  mock_mode: { type: boolean }
     Phase:
       type: object
       properties:
@@ -1378,7 +1395,15 @@ components:
         week_n: { type: integer }
         title: { type: string }
         difficulty: { $ref: "#/components/schemas/Difficulty" }
-        pattern: { type: string }
+        pattern:
+          type: string
+          description: |
+            Withheld (absent) while the item is live — an open counted attempt or a due touch —
+            and, in the workspace, before the hint stage of an unsolved item (m1-06 withhold()).
+        concepts:
+          type: array
+          items: { type: string }
+          description: Concept refs; withheld exactly like `pattern` (m1-06).
         leetcode_url: { type: string, description: "Derived from links (kind leetcode)." }
         neetcode_url: { type: string, description: "Derived from links (kind neetcode)." }
         is_reinforcement: { type: boolean, description: "Derived: role == reinforcement." }
@@ -1498,7 +1523,10 @@ components:
         problem: { $ref: "#/components/schemas/ProblemDetail" }
         sections:
           type: array
-          description: Only the learner's UNLOCKED stage sections (R-PF1).
+          description: |
+            Only the learner's UNLOCKED stage sections (R-PF1), less the withheld stages: a
+            due-touch item shows the attempt stage only, and a live item's arena view
+            (`?practice=1`) too (m1-06).
           items:
             type: object
             properties:
@@ -1507,6 +1535,12 @@ components:
               order: { type: integer }
               body_md: { type: string }
               code: { type: string }
+              language: { type: string }
+              solution_facts:
+                type: object
+                description: |
+                  Only on the solution-stage block of kind `solution_facts` (m1-06): an item's
+                  solution facts are served nowhere else.
         state: { $ref: "#/components/schemas/PracticeState" }
     RevealResponse:
       type: object
@@ -1561,6 +1595,14 @@ components:
         nextTouchLevel: { type: integer }
         nextDayLabel: { type: string }
         nextDueDate: { type: [string, "null"] }
+        problem:
+          description: |
+            The scored item's curriculum problem (m1-06, AB03 F3/F4): the touch has concluded, so
+            its pattern is revealed — unless the item is still live another way. null when
+            curriculum can't resolve it.
+          oneOf:
+            - { $ref: "#/components/schemas/Problem" }
+            - { type: "null" }
     Mistake:
       type: object
       properties:

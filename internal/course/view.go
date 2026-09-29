@@ -28,6 +28,26 @@ type View struct {
 	MockRail []ViewRailPhase `json:"mock_rail,omitempty"`
 	// PrimaryLanguage is the course's primary language (the "Go-first" note), "" if none.
 	PrimaryLanguage string `json:"primary_language,omitempty"`
+	// Revision is the touch format per ladder band — display fields only (m1-06, AB03's
+	// format badges); never the pass criteria. Absent without a revision block.
+	Revision *ViewRevision `json:"revision,omitempty"`
+}
+
+// ViewRevision is the revision block of the learner view.
+type ViewRevision struct {
+	Bands []ViewBand `json:"bands"`
+}
+
+// ViewBand is one band's display: its ladder levels, format and label, its timer (0 =
+// untimed), the planning estimate for a touch in it (plan.est_minutes["touch_" +
+// format], 0 if the plan has none) and whether it runs under mock conditions.
+type ViewBand struct {
+	Levels     []int  `json:"levels"`
+	Format     string `json:"format"`
+	Label      string `json:"label"`
+	TimerS     int    `json:"timer_s,omitempty"`
+	EstMinutes int    `json:"est_minutes,omitempty"`
+	MockMode   bool   `json:"mock_mode"`
 }
 
 // ViewNav is the nav block: the item noun and the titled groups of screens.
@@ -115,6 +135,23 @@ func (m *Manifest) LearnerView() View {
 	}
 	if m.Coach != nil {
 		v.PrimaryLanguage = m.Coach.PrimaryLanguage
+	}
+	if m.Revision != nil && len(m.Revision.Bands) > 0 {
+		rev := &ViewRevision{Bands: make([]ViewBand, 0, len(m.Revision.Bands))}
+		for _, b := range m.Revision.Bands {
+			vb := ViewBand{
+				Levels:   append([]int(nil), b.Levels...),
+				Format:   b.Format,
+				Label:    b.Label,
+				TimerS:   b.TimerS,
+				MockMode: b.MockMode,
+			}
+			if m.Plan != nil {
+				vb.EstMinutes, _ = m.Plan.TouchMinutes(b)
+			}
+			rev.Bands = append(rev.Bands, vb)
+		}
+		v.Revision = rev
 	}
 	return v
 }

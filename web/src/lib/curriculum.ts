@@ -62,6 +62,21 @@ export interface CourseView {
   mock_rail?: { label: string; start_min: number; end_min: number }[];
   /** The course's primary language code ("go" → the "Go-first" note); absent if none. */
   primary_language?: string;
+  /** The touch format per ladder band (m1-06; display fields only, never criteria keys).
+   *  Absent when the manifest has no revision block. */
+  revision?: { bands: CourseViewBand[] };
+}
+
+/** One revision band of a course view: the touch format for a set of ladder levels.
+ *  A timed band (`timer_s` > 0) shows its timer as mm:ss; an untimed one shows `~N min`
+ *  from `est_minutes` (the manifest's plan.est_minutes["touch_" + format]). */
+export interface CourseViewBand {
+  levels: number[];
+  format: string;
+  label: string;
+  timer_s?: number;
+  est_minutes?: number;
+  mock_mode: boolean;
 }
 
 /** A learning path (Catalog card + Roadmap header). `course` is the learner-safe course
@@ -121,14 +136,17 @@ export interface ConceptRef {
   title: string;
 }
 
-/** A problem row (difficulty drives the UI tokens; pattern → chip). */
+/** A problem row (difficulty drives the UI tokens; pattern → chip). `pattern` is absent
+ *  while the item is live (an open attempt or a due touch) and, in the workspace, before
+ *  the hint stage of an unsolved item: the gateway withholds it (m1-06), so render the
+ *  chip only when it is present. */
 export interface Problem {
   id: string;
   path_slug: string;
   week_n: number;
   title: string;
   difficulty: "easy" | "med" | "hard";
-  pattern: string;
+  pattern?: string;
   leetcode_url: string;
   neetcode_url: string;
   is_reinforcement: boolean;
@@ -200,6 +218,14 @@ export interface ProblemSection {
   order: number;
   body_md: string;
   code: string;
+  /** The item's public solution facts, carried only by the solution-stage block of kind
+   *  "solution_facts" (m1-06; never top-level, never on lists). */
+  solution_facts?: SolutionFacts;
+}
+
+/** Public facts about the reference solution (the frozen item schema's solution_facts). */
+export interface SolutionFacts {
+  complexity?: { time?: string[]; space?: string[] };
 }
 
 /** The server-authoritative countdown for the active stage (attempt 15m / hint 10m).
@@ -326,8 +352,10 @@ export function useConcept(course: string, slug: string) {
  *  comparing alphanumeric-normalized forms (so "Sliding Window" ↔ "sliding-window",
  *  "Prefix Sum" ↔ "prefix-sums"). Used to surface a concept's practice problems from
  *  the week it was opened from — real problems only, never fabricated links. */
-export function patternMatchesConcept(pattern: string, conceptSlugOrTitle: string): boolean {
+export function patternMatchesConcept(pattern: string | undefined, conceptSlugOrTitle: string): boolean {
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "").replace(/s$/, "");
+  // A live item's pattern is withheld (m1-06): it can't be matched, so it isn't listed.
+  if (!pattern) return false;
   const a = norm(pattern);
   const b = norm(conceptSlugOrTitle);
   if (!a || !b) return false;

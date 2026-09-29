@@ -790,6 +790,118 @@ a.xl-brand:hover {
 .cn-callout p:last-child {
   margin-bottom: 0;
 }
+/* Markdown v2 (ADR-0037): links, images, rules, tables and fenced code. */
+.cn a {
+  color: var(--ds-teal);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.cn img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 0 12px;
+  border-radius: var(--ds-radius);
+}
+.cn hr {
+  border: 0;
+  border-top: 1px solid var(--ds-line-2);
+  margin: 20px 0;
+}
+.cn del {
+  color: var(--ds-muted);
+}
+/* Wide tables scroll inside their own box. */
+.cn-table {
+  overflow-x: auto;
+  margin: 0 0 14px;
+}
+.cn-table table {
+  border-collapse: collapse;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.cn-table th,
+.cn-table td {
+  border: 1px solid var(--ds-line-2);
+  padding: 6px 12px;
+  text-align: left;
+  vertical-align: top;
+  color: var(--ds-dim);
+}
+.cn-table th {
+  background: var(--ds-panel-2);
+  color: var(--ds-text);
+  font-weight: 600;
+}
+.cn-table .cn-t--center {
+  text-align: center;
+}
+.cn-table .cn-t--right {
+  text-align: right;
+}
+/* Fenced code sits on the .xl-code surface; undo the inline-code chip inside it. */
+.cn pre.xl-code {
+  margin: 0 0 14px;
+}
+.cn pre.xl-code code {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+/* highlight.js token classes (the lazy highlighter emits only hljs-* spans), mapped
+   onto the same theme tokens as the hand-tokenized .xl-code .k/.fn/.s/.c/.n/.t. */
+.xl-code .hljs-keyword,
+.xl-code .hljs-selector-tag,
+.xl-code .hljs-doctag {
+  color: var(--ds-violet);
+}
+.xl-code .hljs-title,
+.xl-code .hljs-section {
+  color: var(--ds-info);
+}
+.xl-code .hljs-string,
+.xl-code .hljs-regexp,
+.xl-code .hljs-char,
+.xl-code .hljs-template-tag,
+.xl-code .hljs-template-variable,
+.xl-code .hljs-addition {
+  color: var(--ds-ok);
+}
+.xl-code .hljs-comment,
+.xl-code .hljs-quote {
+  color: var(--ds-muted);
+  font-style: italic;
+}
+.xl-code .hljs-number,
+.xl-code .hljs-literal,
+.xl-code .hljs-symbol,
+.xl-code .hljs-bullet {
+  color: var(--ds-warn);
+}
+.xl-code .hljs-built_in,
+.xl-code .hljs-type {
+  color: var(--ds-teal);
+}
+.xl-code .hljs-meta,
+.xl-code .hljs-attr,
+.xl-code .hljs-attribute,
+.xl-code .hljs-property,
+.xl-code .hljs-params {
+  color: var(--ds-dim);
+}
+.xl-code .hljs-deletion {
+  color: var(--ds-err);
+}
+.xl-code .hljs-emphasis {
+  font-style: italic;
+}
+.xl-code .hljs-strong {
+  font-weight: 700;
+}
 
 /* --- loading skeletons (Week / Concept) --- */
 /* A DS-toned placeholder block that pulses while an aggregation loads. */
