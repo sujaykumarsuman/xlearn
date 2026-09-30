@@ -305,10 +305,26 @@ func (s *Spawner) canaryRatio(slotIdx int) (float64, error) {
 	return float64(d) / float64(med), nil
 }
 
-// runCanary runs `runner canary` capless in <slot>/canary and returns its cgroup CPU time.
+// runCanary runs the canary twice back to back and returns the faster run. A CPU that just sat
+// idle (the quiet check's 10 s steal window, the 5-minute idle loop) runs its first pass ~30%
+// slow while its clock ramps (measured on the dev VM); the second pass is what the median
+// compares against.
 func (s *Spawner) runCanary(slotIdx int) (time.Duration, error) {
 	s.canaryMu.Lock()
 	defer s.canaryMu.Unlock()
+	a, err := s.canaryOnce(slotIdx)
+	if err != nil {
+		return 0, err
+	}
+	b, err := s.canaryOnce(slotIdx)
+	if err != nil {
+		return 0, err
+	}
+	return min(a, b), nil
+}
+
+// canaryOnce runs `runner canary` capless in <slot>/canary and returns its cgroup CPU time.
+func (s *Spawner) canaryOnce(slotIdx int) (time.Duration, error) {
 	leaf := filepath.Join(s.cg.Slot(slotIdx), "canary")
 	_ = s.cg.Wipe(leaf)
 	if err := cgroup.MkLeaf(leaf, cgroup.Limits{MemoryMax: 256 << 20, PidsMax: 16}); err != nil {

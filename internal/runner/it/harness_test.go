@@ -528,6 +528,10 @@ func assertClean(t testing.TB) {
 	}
 }
 
+func jsonEncode(w io.Writer, v any) error { return json.NewEncoder(w).Encode(v) }
+
+func itoa(n int) string { return strconv.Itoa(n) }
+
 func metric(t testing.TB, name string, v any) {
 	t.Helper()
 	t.Logf("RUNNER-IT-METRIC %s=%v", name, v)

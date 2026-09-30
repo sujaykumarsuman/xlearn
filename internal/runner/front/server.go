@@ -49,9 +49,11 @@ type Server struct {
 	closed   [ipc.Slots]bool
 	draining bool
 	quiet    int // the slot holding quiet-re-run exclusivity, or -1
-	running  map[int]context.CancelCauseFunc
-	seq      uint64
-	inflight sync.WaitGroup
+	// quietWait bounds the quiet re-run's wait (60 s); quietCheck is one QuietCheck's steal window.
+	quietWait, quietCheck time.Duration
+	running               map[int]context.CancelCauseFunc
+	seq                   uint64
+	inflight              sync.WaitGroup
 
 	served atomic.Int64
 	sigsys atomic.Int64
@@ -72,6 +74,7 @@ type profileEntry struct {
 // NewServer builds the front. The manifest came from the spawner at spawn time.
 func NewServer(cfg runner.Config, man *runner.Manifest, b Backend, log *slog.Logger) *Server {
 	s := &Server{cfg: cfg, man: man, backend: b, log: log, started: time.Now(), quiet: -1,
+		quietWait: measure.QuietWait, quietCheck: measure.QuietStealWindow,
 		running: map[int]context.CancelCauseFunc{}, drained: make(chan struct{}), profiles: map[string]profileEntry{}}
 	for _, pm := range man.Profiles {
 		if p, idx, ok := profile.Lookup(pm.Name); ok {

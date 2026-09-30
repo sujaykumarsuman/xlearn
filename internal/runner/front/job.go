@@ -375,7 +375,7 @@ func (jr *jobRun) enterQuiet(ctx context.Context) (func(), bool) {
 		}
 		s.mu.Unlock()
 	}
-	deadline := time.Now().Add(measure.QuietWait)
+	deadline := time.Now().Add(s.quietWait)
 	for {
 		s.mu.Lock()
 		otherBusy := s.busy[1-jr.slot]
@@ -389,7 +389,7 @@ func (jr *jobRun) enterQuiet(ctx context.Context) (func(), bool) {
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	for time.Until(deadline) > measure.QuietStealWindow {
+	for time.Until(deadline) > s.quietCheck {
 		qs, err := s.backend.QuietCheck(ctx, jr.slot)
 		if err != nil {
 			break

@@ -195,6 +195,8 @@ func TestClassify(t *testing.T) {
 			Outcome{Term: runnerapi.TermSignal, Signal: "SIGSEGV"}},
 		{"thread bomb: fatal exit at the pids cap", Evidence{Exited: true, ExitCode: 2, PidsMax: 4},
 			Outcome{Term: runnerapi.TermExitNonzero, ExitCode: 2, ForkLimit: true}},
+		{"thread bomb whose crash dump floods stderr: fork limit, not OLE", Evidence{Kill: KillOLE, FrontOLE: true, Signal: SIGKILL, PidsMax: 3},
+			Outcome{Term: runnerapi.TermSignal, Signal: "SIGKILL", ForkLimit: true}},
 		{"peak below baseline clamps at 0", Evidence{Exited: true, PeakBytes: 1, Baseline: 1 << 20},
 			Outcome{Term: runnerapi.TermOK}},
 	}

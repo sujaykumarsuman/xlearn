@@ -266,6 +266,14 @@ func Classify(e Evidence) Outcome {
 		o.Term, o.TimeFail = runnerapi.TermTLE, true
 	case e.Kill == KillCap:
 		o.Term, o.CapHit = runnerapi.TermTLE, true
+	case (e.Kill == KillOLE || e.FrontOLE) && e.PidsMax > 0:
+		// A process that hit its pids cap and then flooded an fd (the Go runtime's all-goroutine
+		// dump when it can't create a thread) is RE (fork limit), the cause, not OLE.
+		if e.Exited {
+			o.Term, o.ExitCode = runnerapi.TermExitNonzero, max(e.ExitCode, 1)
+		} else {
+			o.Term, o.Signal = runnerapi.TermSignal, SignalName(max(e.Signal, SIGKILL))
+		}
 	case e.Kill == KillOLE || e.FrontOLE:
 		o.Term = runnerapi.TermOLE
 	case e.Signal == SIGXCPU:

@@ -153,6 +153,42 @@ jobs:
           go-version-file: go.mod
       - run: make nats-acl-test
 
+  # The runner's Linux jail suite (m3-03, ADR-0030; build tag runner_it): the hostile corpus
+  # (MLE 100/100 with 0 container OOMs, TLE / TLE (idle) / OLE / RE, SIGSYS → signal + rotation,
+  # every network probe fails), the cleanup invariants over 1,000 case cgroups, the L14 caps and
+  # the API contract, against the real runner binary. The job container is the runner image's
+  # base (debian:trixie-slim, m3-15), privileged with a private cgroup namespace and the pod's
+  # limits (2 CPUs, 3 GiB), so "0 container OOMs" means what it says. It stands in for a local
+  # privileged VM run. It does NOT exercise the pod's user namespace, the Localhost AppArmor and
+  # pod seccomp profiles or the VAP: m3-15's VM rehearsal and mi-10 cover those.
+  runner-it:
+    runs-on: ubuntu-24.04
+    container:
+      image: debian:trixie-slim@sha256:a99cfc517144bc59b1978475ec53b46ecabec7e43635402ee5b77cc54cd1b20a
+      options: --privileged --cgroupns=private --memory=3g --cpus=2
+    env:
+      GO_VERSION: "1.26.8"
+      GO_SHA256: "d0f743b33e8d8945e6b1f432edd15785c70507121d6e2a723b21285eddf8b57b"
+    steps:
+      - name: Base packages
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends ca-certificates curl git make >/dev/null
+      - uses: actions/checkout@v4
+      - name: Pinned Go tarball (checksummed)
+        run: |
+          curl -fsSL -o /tmp/go.tgz "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
+          echo "${GO_SHA256}  /tmp/go.tgz" | sha256sum -c -
+          tar -C /usr/local -xzf /tmp/go.tgz
+          echo /usr/local/go/bin >> "$GITHUB_PATH"
+      - name: Jail environment
+        run: |
+          uname -r
+          id -u
+          cat /sys/fs/cgroup/cgroup.controllers /sys/fs/cgroup/memory.max /sys/fs/cgroup/cpu.max
+      - name: runner-it
+        run: make runner-it
+
   # Core-loop e2e over REAL JetStream + the transactional outbox (events.md Flows 1-4).
   # NATS runs IN-PROCESS (an embedded nats-server with JetStream), so the job needs only
   # a Postgres — the outbox → relay → JetStream → durable-consumer path is the production

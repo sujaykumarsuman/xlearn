@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -131,24 +132,26 @@ func TestCompileCapIsCE(t *testing.T) {
 // empty bounding set, NO_NEW_PRIVS, a root holding only /job and /w, and no /proc.
 func TestJailIdentity(t *testing.T) {
 	ensure(t)
-	job, in := newJob(t, "whoami", "testgo-open@0", "")
+	job, in := newJob(t, "whoami", "testgo-open@0", "/job "+env.goroot+" /w")
 	res := run(t, job, in)
 	c := res.Cases[0]
 	if c.Term != runnerapi.TermOK {
 		t.Fatalf("whoami: %+v", c)
 	}
 	var who struct {
-		UID         int      `json:"uid"`
-		EUID        int      `json:"euid"`
-		CapEff      uint64   `json:"cap_eff"`
-		CapPrm      uint64   `json:"cap_prm"`
-		CapInh      uint64   `json:"cap_inh"`
-		CapBnd      uint64   `json:"cap_bnd"`
-		CapgetErrno int      `json:"capget_errno"`
-		NoNewPrivs  int      `json:"no_new_privs"`
-		Root        []string `json:"root"`
-		Proc        bool     `json:"proc"`
-		Hostname    string   `json:"hostname"`
+		UID         int               `json:"uid"`
+		EUID        int               `json:"euid"`
+		CapEff      uint64            `json:"cap_eff"`
+		CapPrm      uint64            `json:"cap_prm"`
+		CapInh      uint64            `json:"cap_inh"`
+		CapBnd      uint64            `json:"cap_bnd"`
+		CapgetErrno int               `json:"capget_errno"`
+		NoNewPrivs  int               `json:"no_new_privs"`
+		Root        []string          `json:"root"`
+		Dev         []string          `json:"dev"`
+		Proc        bool              `json:"proc"`
+		Hostname    string            `json:"hostname"`
+		Probes      map[string]string `json:"write_probes"`
 	}
 	if err := json.Unmarshal(c.Output, &who); err != nil {
 		t.Fatalf("%v: %s", err, c.Output)
@@ -166,9 +169,26 @@ func TestJailIdentity(t *testing.T) {
 	if who.Proc {
 		t.Errorf("/proc is mounted in the jail")
 	}
-	root := strings.Join(who.Root, ",")
-	if root != "job,w" {
-		t.Errorf("jail root holds %q, want job,w", root)
+	// /dev holds only the /dev/null bind; /job is the artifact, /w the per-case tmpfs, and the
+	// profile's toolchain bind keeps its own path.
+	top := strings.Split(strings.TrimPrefix(env.goroot, "/"), "/")[0]
+	want := []string{"dev", "job", top, "w"}
+	sort.Strings(want)
+	if root := strings.Join(who.Root, ","); root != strings.Join(want, ",") {
+		t.Errorf("jail root holds %q, want %q", root, strings.Join(want, ","))
+	}
+	// The read-only bind rule (MS_BIND|MS_REC|MS_NOSUID|MS_NODEV|MS_RDONLY, no MS_PRIVATE; t3
+	// §16.2 block 3): the artifact and the toolchain refuse writes, /w takes them.
+	for _, dir := range []string{"/job", env.goroot} {
+		if !strings.Contains(who.Probes[dir], "read-only file system") {
+			t.Errorf("bind %s is not read-only: %q", dir, who.Probes[dir])
+		}
+	}
+	if who.Probes["/w"] != "rw" {
+		t.Errorf("/w is not writable: %q", who.Probes["/w"])
+	}
+	if strings.Join(who.Dev, ",") != "null" {
+		t.Errorf("jail /dev holds %v, want only null", who.Dev)
 	}
 	if who.Hostname != "xl" {
 		t.Errorf("hostname %q (a fresh UTS namespace)", who.Hostname)

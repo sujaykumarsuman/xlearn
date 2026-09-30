@@ -1,11 +1,14 @@
 // whoami reports the jail as seen from inside, as JSON on fd 4: UIDs, the capability sets
-// (capget), the bounding set (PR_CAPBSET_READ), NO_NEW_PRIVS, the root directory's entries,
-// whether /proc exists, and the hostname.
+// (capget), the bounding set (PR_CAPBSET_READ), NO_NEW_PRIVS, the root directory's and /dev's
+// entries, whether /proc exists, the hostname, and whether each directory named in its input
+// is writable (read-only binds must refuse with EROFS).
 package main
 
 import (
 	"encoding/json"
+	"io"
 	"os"
+	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -52,10 +55,30 @@ func main() {
 		}
 	}
 	out["root"] = names
+	var devs []string
+	if ents, err := os.ReadDir("/dev"); err == nil {
+		for _, e := range ents {
+			devs = append(devs, e.Name())
+		}
+	}
+	out["dev"] = devs
 	_, err := os.Stat("/proc/self")
 	out["proc"] = err == nil
 	host, _ := os.Hostname()
 	out["hostname"] = host
+
+	// Writability probes: one directory per input line ("rw" or the error).
+	in, _ := io.ReadAll(os.NewFile(3, "input"))
+	probes := map[string]string{}
+	for _, dir := range strings.Fields(string(in)) {
+		err := os.WriteFile(dir+"/.xl-rw-probe", []byte("x"), 0o644)
+		if err == nil {
+			probes[dir] = "rw"
+		} else {
+			probes[dir] = err.Error()
+		}
+	}
+	out["write_probes"] = probes
 	b, _ := json.Marshal(out)
 	os.NewFile(4, "result").Write(b)
 }

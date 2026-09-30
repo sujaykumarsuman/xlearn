@@ -174,11 +174,17 @@ func (s *Spawner) run() (int, error) {
 			code = <-frontDone
 		}
 	case err := <-serveErr:
-		// A broken or violated IPC pair: kill the front, clean up, exit (kubelet restarts us).
-		s.log.Error("ipc failed; killing the front", "err", err)
-		_ = unix.Kill(frontPid, unix.SIGKILL)
-		<-frontDone
-		code, runErr = 1, err
+		select {
+		case code = <-frontDone:
+			// The front exited (a drain or rotation) and closed its end of the pair.
+			s.log.Info("front exited", "code", code)
+		case <-time.After(2 * time.Second):
+			// A broken or violated IPC pair: kill the front, clean up, exit (kubelet restarts us).
+			s.log.Error("ipc failed; killing the front", "err", err)
+			_ = unix.Kill(frontPid, unix.SIGKILL)
+			<-frontDone
+			code, runErr = 1, err
+		}
 	}
 	cancel()
 	s.conn.Close()

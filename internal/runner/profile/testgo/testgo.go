@@ -93,6 +93,8 @@ func init() {
 	})
 
 	open := exec
+	// A toolchain-style read-only bind, so runner_it can prove binds refuse writes (EROFS).
+	open.Binds = []profile.Bind{{Source: goroot}}
 	open.Seccomp = profile.Seccomp{
 		Default:      profile.DefaultAllow,
 		Kill:         seccomp.Without(seccomp.Dangerous, "socket", "keyctl", "add_key", "request_key"),
