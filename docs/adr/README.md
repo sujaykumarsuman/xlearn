@@ -45,7 +45,7 @@ under [`../v1/`](../v1/) and [`../v2/`](../v2/).
 | [0027](0027-content-evalpack-and-user-data-model.md) | Content, private eval pack & per-user data model (v2 · T1) | Accepted (2026-09-24; §3, §6 amended by 0028; PAT alert and stream budget amended by 0035; D6 scope → the v2.x line, D35) |
 | [0028](0028-object-storage-and-backups.md) | Object storage & off-node backups for v2.0: none yet, design ready (v2 · T2) | Accepted (2026-09-24; §4 opscheck watch amended by 0035) |
 | [0029](0029-judge-contract-and-learning-signal.md) | Judge contract, judge archetypes & learning-signal v2 (v2 · T4) | Accepted (2026-09-24) |
-| [0030](0030-runner-technology-and-host-hardening.md) | Runner technology (sandbox) & host/cluster hardening (v2 · T3) | Proposed (accepted at the sandbox-spike GO in sprint m3-03, before M3; §5 A5 and host window amended by 0035) |
+| [0030](0030-runner-technology-and-host-hardening.md) | Runner technology (sandbox) & host/cluster hardening (v2 · T3) | Accepted (2026-09-30; spike GO; §5 amended by 0035, folded) |
 | [0031](0031-platform-ai-and-two-tier-keys.md) | Platform AI & two-tier keys (v2 · T5) | Proposed (accepted after the WIF spike in sprint mi-12, before M4; push alert dropped by 0035; "before learners" → v3 opening by 0033) |
 | [0032](0032-realtime-ai-mock-interviewer.md) | Realtime AI mock interviewer — M6 / v2.1 (v2 · T6) | Proposed (accepted with the S6 result in sprint ds-m6a-01, before the M6a design freeze) |
 | [0033](0033-invite-only-admission-and-owner-admin.md) | Invite-only admission, account roles and the owner admin CLI (v2 · T7) | Accepted (2026-09-24; stopgap shipped in v1.5.2: #51 auto-link fix, #52 `SIGNUP_MODE` closed; `DEV_AUTH` guard at M1b) |
