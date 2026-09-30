@@ -11,7 +11,7 @@
 
 > **D41 (owner, 2026-09-25): spikes first.** All four spikes run **before any build sprint**, so every design yes/no is answered before M1 starts: spk-01 and spk-02 on Fri 2026-09-25 (agent-only, after the MI-0 reboot), spk-03 and spk-04 on Sat 2026-09-26 (spk-03 after the owner's Console step; spk-04 with the owner present). For this sprint, overriding the text below:
 > - **Run on Sat 2026-09-26, with the owner present** (`ev-s6`). The "recommended after M3" timing is superseded; the owner accepted that results age.
-> - **A ≤ 1 h recheck runs before ds-m6a-01** (event `ev-s6-recheck`, non-blocking for everything before M6a): the same shells, the hard gates and M14 only, and a note if the winner or its price changed.
+> - **A ≤ 1 h recheck runs before ds-m6a-01** (event `ev-s6-recheck`): **non-blocking before M6a; it blocks ds-m6a-01's ADR-0032 acceptance** (D42). As D41 planned it: the same shells, the hard gates and M14 only, and a note if the winner or its price changed. **Superseded by D42 (2026-09-26):** it re-checks GPT-Live-1 with the fixed design only, per [t6 §16.3](../research/t6-realtime-interviewer.md#163-owner-decision-d42-the-fixed-design-and-the-re-check).
 > - **Sole-passer question, answered by the owner on 2026-09-25: yes.** If GPT-Live passes every hard gate and mini fails one, GPT-Live wins even when its M14 isn't a full point higher (a shell that fails a hard gate isn't viable).
 
 ## Status

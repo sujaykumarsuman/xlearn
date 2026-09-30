@@ -4,7 +4,7 @@
 > **Prereqs:** [mi-07](sprint-mi-07.md) (MI-9: private repo, probe, pull secret, `v0.1.0`) · [m3-01](sprint-m3-01.md) (`canon` hashes, `packspec`, `packlint check|hash|fingerprint`, the hook)
 > **Unblocks:** [m3-05](sprint-m3-05.md) (the fixture pack + the `packspec` manifest reader for its loader) · [m3-07](sprint-m3-07.md) (evalpack `v1.0.0` is built by this pipeline) · [m3-04](sprint-m3-04.md) (its entry gate: the harness package, wire format and checker registry created here) · owner event `ev-packs-14` (author and stamp the 14 pilot packs) · also **creates** three shared packages that later sprints extend, never duplicate: `internal/platform/harness` (Go half; [m3-04](sprint-m3-04.md) adds C++/Python), `internal/platform/checker` ([m3-06](sprint-m3-06.md)'s `code@1` imports it) and `internal/packspec/gen` (m3-06's perf cases import it) · [m3-13](sprint-m3-13.md) (TL re-gate), [spk-02](sprint-spk-02.md) (multi-arch pack image)
 > **Release action:** **merge only + an optional evalpack `v0.2.0` (below every range)** — `xlearn-evalpack` PR merged to `main`; `v0.2.0` only as the build → push → probe proof; **no `>=1.0.0` tag** (that is [m3-07](sprint-m3-07.md)) · plus an xlearn PR (packspec, packlint pipeline, shared packages, fixture, compose anchor) that ships in the next app tag with no runtime change
-> **Calendar:** October, before pack authoring ramps — ≈ 2026-10-12 → 10-16 (beside the owner's spike week; no owner time needed), after mi-07 lands by Fri 2026-10-09 · then the owner's `ev-packs-14` (author and stamp the 14 pilot packs with this pipeline) continues to mid-November
+> **Calendar:** October, before pack authoring ramps — ≈ 2026-10-12 → 10-16 (no owner time needed; D41 already ran the spikes on 2026-09-25/26), after mi-07 lands by Fri 2026-10-09 · then the owner's `ev-packs-14` (author and stamp the 14 pilot packs with this pipeline) continues to mid-November
 > **Execute with:** [`../prompts/prompt-m3-02.md`](../prompts/prompt-m3-02.md) — one prompt, one session.
 
 ## Status
@@ -257,8 +257,8 @@ package, never a second registry.
   COPY courses/dsa/ /courses/dsa/   # one COPY = one layer per course, courses sorted
   COPY manifest.json /manifest.json
   ```
-- `docker buildx build --platform linux/amd64,linux/arm64` (data only, identical layers; lets the arm64 spike VM and Apple-silicon compose
-  pull it — the spk-02 hand-off), `provenance: false`, `sbom: false`, `rewrite-timestamp=true` with `SOURCE_DATE_EPOCH` = the tag commit
+- `docker buildx build --platform linux/amd64,linux/arm64` (data only, identical layers; lets Apple-silicon compose pull it. The
+  spk-02 hand-off says the pack can stay `linux/amd64` and multi-arch is only for local arm64 dev), `provenance: false`, `sbom: false`, `rewrite-timestamp=true` with `SOURCE_DATE_EPOCH` = the tag commit
   time, so identical content gives an identical digest.
 - **Listing test** (`packlint listing`, before the push, and on PRs against a local build): the image may contain only `/manifest.json`
   and `/courses/<slug>/items/<id>/{cases.jsonl.zst, keys/**, anchors/**, exemplars/**}`. Anything else — `gen/`, `validate/`, `invalid/`,
@@ -267,6 +267,12 @@ package, never a second registry.
 - Then mi-07's probe (existence 200, anonymous 401/403, negative control 200).
 - **Optional:** tag `v0.2.0` to prove build → push → probe with format 1 (it builds only stamped items, so it may be empty — judge would be
   Ready with 0 evaluable). It sits below every `>=1.0.0 <2.0.0` range. **Never tag `>=1.0.0` here.**
+- **Retention (GHCR quota; doc debt F6-26).** Private package storage and pull transfer count against the account's allowance,
+  which mi-07 records in [status.md](../status.md#evalpack-pat-expiry-manual-d34) with the measured image size. Add the prune step
+  that t1 §3.6 and §6.1 assume ("GHCR keeps the last 10 versions", ≲ 400 MB stored): list the package versions and delete those
+  beyond the newest 10, never a version a live ImagePolicy selects or a judge pod mounts. Deleting a version is permanent, so the
+  step is dry-run by default (it prints what it would delete) and deletes only on an explicit `workflow_dispatch` input. Record the
+  built image's size in the status.md row.
 
 ### 7 · Synthetic fixture pack + `pack-fixture` CI job + compose anchor [X]
 

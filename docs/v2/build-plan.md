@@ -3,14 +3,14 @@
 **Per-version** execution plan for the v2 build. It turns the
 [rollout plan](rollout-plan.md) (the source: MI track, milestone map, gates, tag timeline, artboards) into
 **89 dependency-ordered sprints**, each a flat plan in [`sprints/`](sprints/) paired with one self-contained
-prompt in [`prompts/`](prompts/). Decisions live in the [feasibility log](feasibility.md) (D0–D35, plus D36–D39 = the build-plan session's BP1–BP4 and D40 = the owner's sprint merge directive) and the
+prompt in [`prompts/`](prompts/). Decisions live in the [feasibility log](feasibility.md) (D0–D35, plus D36–D39 = the build-plan session's BP1–BP4, D40 = the owner's sprint merge directive, D41 = spikes first, D42 = GPT-Live-1 with the fixed design (S6), D43 = the $20 Anthropic org limit and D44 = AI Builder) and the
 ADRs [0026](../adr/0026-per-course-extensibility-model.md)–[0035](../adr/0035-v2-operations-nats-auth-limits-capacity.md);
 the product scope is the [v2 PRD](../prd/xlearn-v2-prd.md). Live progress is in [`status.md`](status.md).
 **At a glance:** [execution-order.md](execution-order.md) clubs the 89 prompts into 19 workstreams and shows the
 run order week by week, with diagrams.
 If this file and an ADR disagree, the ADR wins and this file gets fixed.
 
-- **Build line:** v2 · **Live release:** v1.5.2 (signup closed) · **Planned:** 2026-09-24 (build-plan session, owner decisions BP1–BP4) · **Amended:** 2026-09-25 by **D40** (every prompt lands and syncs; launching it is the owner's approval).
+- **Build line:** v2 · **Live release:** v1.5.2 (signup closed) · **Planned:** 2026-09-24 (build-plan session, owner decisions BP1–BP4) · **Amended:** 2026-09-25 by **D40** (every prompt lands and syncs; launching it is the owner's approval) and **D41** (spikes first: all four spikes ran on 2026-09-25/26, before #1; their order numbers are unchanged); 2026-09-26 by **D42** (S6 → GPT-Live-1 with the fixed design; a ≤ 1 h `ev-s6-recheck` gates ds-m6a-01's ADR-0032 acceptance).
 - **What ships:** `v2.0.0` = owner-facing GA (MI + M1–M4 + P + L) · `v2.1.0` = interviewer GA (M6a + M6b) · M5 = a later 2.x minor · M6c = v2.2 (outline only).
 - **Where codes** (every task names one): **X** this repo · **I** `../infra` (GitOps PR, never `kubectl apply`) · **H** host scripts (`../infra/hack/`, applied by hand over `ssh sujaykumar-vps`) · **E** the private `xlearn-evalpack` repo · **O** owner-only action (done **before launch**, listed in the prompt's `## Before you launch (owner)` block; D40).
 
@@ -65,10 +65,10 @@ Rollout §3 numbers against this plan. **Build/release** sprints are comparable 
 
 ## Sprint table (recommended order)
 
-`#` is the global recommended execution order, sequenced by the BP4 calendar (the fixed-date spike week and host
-window sit in their week). **Tracks run in parallel:** `infra` (I/H PRs), `design` (board PRs; each merge is a
+`#` is the global recommended execution order, sequenced by the BP4 calendar (the fixed-date host window sits in
+its week; D41 ran the four spikes first, in W0, and kept their numbers). **Tracks run in parallel:** `infra` (I/H PRs), `design` (board PRs; each merge is a
 freeze), `content` (authoring tooling), `spike` (throwaway) and `product` interleave; only the **Prereqs** bind.
-**When:** W1 = Sep 25 → Oct 2 · W2 = Oct 5 → 9 · W3 = Oct 12 → 16 (spike week) · W4 = Oct 17 → 23 · W5 = Oct 24 → 30
+**When:** W0 = Sep 25 → 26 (the spikes, D41) · W1 = Sep 28 → Oct 2 · W2 = Oct 5 → 9 · W3 = Oct 12 → 16 · W4 = Oct 17 → 23 · W5 = Oct 24 → 30
 (host window Sat Oct 24); later windows are *(inferred)*. **Release** in bold = a tag or a stream release.
 Sprint ids are milestone-scoped: `mi-NN` sprint ids are **not** rollout step ids `MI-NN` (map in
 [status.md → MI track](status.md#mi-track-rollout-2)).
@@ -90,9 +90,9 @@ Sprint ids are milestone-scoped: `mi-NN` sprint ids are **not** rollout step ids
 | 13 | [mi-03](sprints/sprint-mi-03.md) | Fences: databases/messaging ingress, xlearn ingress (MI-5, MI-5a) | MI | infra | W2 | infra PRs only (MI-5 → MI-5a) | [mi-01](sprints/sprint-mi-01.md), [mi-02](sprints/sprint-mi-02.md) |
 | 14 | [m3-02](sprints/sprint-m3-02.md) | Evalpack pipeline: private CI gates, generic validator, image build (E) + compose fixture pack | M3 | content | Oct | merge only (evalpack `main`; optional `v0.2.0`) | [mi-07](sprints/sprint-mi-07.md), [m3-01](sprints/sprint-m3-01.md) |
 | 15 | [mi-04](sprints/sprint-mi-04.md) | Admin consoles to ops.sujaykumar.dev (MI-5b) | MI | infra | W2–4 | infra PRs only | — |
-| 16 | [spk-01](sprints/sprint-spk-01.md) | Sandbox mechanism spike P0–P2 (multipass arm64, throwaway) | MI | spike | W3 Mon–Wed | no merge (spike, throwaway); results docs PR | — |
-| 17 | [spk-02](sprints/sprint-spk-02.md) | P3 amd64 replay + image-volume spike (throwaway) | MI | spike | W3 Thu–Fri | no merge (spike, throwaway); results docs PR | [spk-01](sprints/sprint-spk-01.md), [mi-07](sprints/sprint-mi-07.md) |
-| 18 | [spk-03](sprints/sprint-spk-03.md) | WIF spike (≤ ½ day, throwaway) | MI | spike | W3 Fri, or before M4 | no merge (spike, throwaway); results docs PR | [spk-01](sprints/sprint-spk-01.md) |
+| 16 | [spk-01](sprints/sprint-spk-01.md) | Sandbox mechanism spike P0–P2 (multipass arm64, throwaway) | MI | spike | W0 · Fri 09-25 (D41) | no merge (spike, throwaway); results docs PR | — |
+| 17 | [spk-02](sprints/sprint-spk-02.md) | P3 amd64 replay + image-volume spike (throwaway) | MI | spike | W0 · Fri 09-25 (D41) | no merge (spike, throwaway); results docs PR | [spk-01](sprints/sprint-spk-01.md) |
+| 18 | [spk-03](sprints/sprint-spk-03.md) | WIF spike (≤ ½ day, throwaway) | MI | spike | W0 · Fri 09-25 (D41) | no merge (spike, throwaway); results docs PR | [spk-01](sprints/sprint-spk-01.md) |
 | 19 | [mi-06](sprints/sprint-mi-06.md) | NATS auth server-first: N1 → N2 → N3 (MI-7) | MI | infra | W3 | infra PRs only (N1, N2, N3) | [mi-05](sprints/sprint-mi-05.md), [m1-02](sprints/sprint-m1-02.md), [mi-03](sprints/sprint-mi-03.md), [mi-02](sprints/sprint-mi-02.md) |
 | 20 | [m1-03](sprints/sprint-m1-03.md) | Course resolution: gateway, BFF, SPA /:course/*, producers emit v2 (M1b) | M1 | product | W2–3 | merge only (ships in v1.7.0) | [m1-02](sprints/sprint-m1-02.md), [ds-m1-01](sprints/sprint-ds-m1-01.md) |
 | 21 | [m1-04](sprints/sprint-m1-04.md) | Identity security floor: roles, sessions, admin CLI, DEV_AUTH guard, L3, CSP (M1b) | M1 | product | W2–3 | merge only (ships in v1.7.0) | [m1-03](sprints/sprint-m1-03.md) |
@@ -145,7 +145,7 @@ Sprint ids are milestone-scoped: `mi-NN` sprint ids are **not** rollout step ids
 | 68 | [l-04](sprints/sprint-l-04.md) | Web erase for every non-owner → v1.17.0 (L-A/L-C) + L-exit rehearsal prep | L | product | Dec | **tag v1.17.0** (erase-class; + rehearsal PRs) | [l-05](sprints/sprint-l-05.md), [m4-07](sprints/sprint-m4-07.md) |
 | 69 | [ga-01](sprints/sprint-ga-01.md) | GA PR: .release-line = 2, T-1 default flips, rc rehearsal | GA | product | late Dec–Jan | merge only: the GA PR merges on CI green (+ optional `v2.0.0-rc.N`) | [l-04](sprints/sprint-l-04.md), [p-03](sprints/sprint-p-03.md), [m4-07](sprints/sprint-m4-07.md), [m3-13](sprints/sprint-m3-13.md), [mi-11](sprints/sprint-mi-11.md) |
 | 70 | [ga-02](sprints/sprint-ga-02.md) | Cut v2.0.0: pre-flip check, widen ranges, snapshot, tag, verify | GA | product | GA day | **tag v2.0.0** (widen first; GA snapshot) | [ga-01](sprints/sprint-ga-01.md) |
-| 71 | [spk-04](sprints/sprint-spk-04.md) | S6 voice-shell bake-off (owner present, throwaway) | M6a | spike | owner present, before the M6a freeze | no merge (spike, throwaway); results docs PR | — |
+| 71 | [spk-04](sprints/sprint-spk-04.md) | S6 voice-shell bake-off (owner present, throwaway) | M6a | spike | W0 · Sat 09-26, owner present (D41) | no merge (spike, throwaway); results docs PR | — |
 | 72 | [ds-m6a-01](sprints/sprint-ds-m6a-01.md) | Design M6a part 1 + ADR-0032 → Accepted: Mock-v2, setup/consent/pre-flight, live HUD text (AB13, AB24, AB25) | M6a | design | Q1 2027 | ADR-0032 docs PR, then land-and-sync; the merge is the design freeze | [spk-04](sprints/sprint-spk-04.md), [ds-m1-01](sprints/sprint-ds-m1-01.md) |
 | 73 | [ds-m6a-02](sprints/sprint-ds-m6a-02.md) | Design M6a part 2: grace/paused/resume, debrief + proposal, accessibility (AB26, AB27, AB28) | M6a | design | Q1 2027 | land-and-sync; the merge is the design freeze | [ds-m6a-01](sprints/sprint-ds-m6a-01.md), [ds-m1-01](sprints/sprint-ds-m1-01.md) |
 | 74 | [m6a-01](sprints/sprint-m6a-01.md) | Interview core: schema, state machine, failsafes, caps (L19) | M6a | product | Q1 2027 | merge only (ships dark in a v2.0.x patch) | [ds-m6a-02](sprints/sprint-ds-m6a-02.md), [ga-02](sprints/sprint-ga-02.md) |
@@ -172,7 +172,7 @@ Sprint ids are milestone-scoped: `mi-NN` sprint ids are **not** rollout step ids
 ```mermaid
 graph LR
   H0(["MI-0 H0 reboot · Fri 09-25"]) --> MI["MI infra track · 13 sprints"]
-  GO{"spike go-ahead · the spk-01 launch (D40)"} --> SPK["spike week 10-12 → 16 · spk-01, spk-02 (spk-03)"]
+  GO{"spike go-ahead · the spk-01 launch (D40)"} --> SPK["spikes first (D41) · 09-25 → 26 · spk-01, spk-02, spk-03"]
   SPK --> WIN(["host window · Sat 10-24"])
   WIN --> RUN["runner dark · mi-10 · runner-v1.0.0"]
   MI -->|MI-2| M1["M1 spine · v1.6.0 → v1.7.0 → v1.8.0"]
@@ -315,7 +315,6 @@ graph TD
   m109 --> m301 --> m302
   mi07 --> m302
   spk01 --> spk02
-  mi07 --> spk02
   spk01 --> spk03
   m102 --> mi06
   mi03 --> mi06
@@ -414,7 +413,7 @@ graph LR
 
 ## Calendar events (BP4)
 
-> **D41 (2026-09-25): spikes first.** spk-01 and spk-02 run Fri 2026-09-25 (agent-only, after MI-0), spk-03 and spk-04 Sat 2026-09-26, all before any build sprint; spk-02 uses `skriptvalley-vps` and a private registry, so it no longer waits for mi-07. The Oct 12–16 spike week below is superseded; S6 adds a ≤ 1 h `ev-s6-recheck` before ds-m6a-01. See [execution-order.md](execution-order.md) (wave W0).
+> **D41 (2026-09-25): spikes first.** spk-01 and spk-02 ran Fri 2026-09-25 (agent-only, after MI-0), spk-03 Fri 2026-09-25 (a day ahead of its Sat slot) and spk-04 Sat 2026-09-26, all before any build sprint; spk-02 used `skriptvalley-vps` and a private registry, so it no longer waits for mi-07. The planned Oct 12–16 spike week is gone; the rows below carry the D41 dates. **D42 (2026-09-26):** S6 → GPT-Live-1 with the fixed design; the ≤ 1 h `ev-s6-recheck` is non-blocking before M6a and blocks ds-m6a-01's ADR-0032 acceptance. See [execution-order.md](execution-order.md) (wave W0).
 
 Owner-only actions are **calendar events, not sprints** (tentative, owner-booked). **Since D40 nothing waits on the
 owner mid-session.** An owner-only action is done **before launch** of the sprint that needs it: that prompt's
@@ -428,9 +427,9 @@ is in [status.md → Owner calendar events](status.md#owner-calendar-events).
 | **Fri 2026-09-25** · before launch of spk-01 | **MI-0 H0 reboot** into kernel 6.8.0-142: copy `/tmp/xlearn-s0-vmstat.log` off the node first; `host-verify --pre-reboot --cluster` (GO 9/24); check the last weekly image; reboot; `host-verify --cluster` | infra#28 ✅ (recorded in [mi-02](sprints/sprint-mi-02.md)) | everything |
 | week 1 · at the latest before launch of mi-12 | MI-1 owner hygiene (Hostinger 2FA, 2 offline age-key copies, 2FA on GitHub/Anthropic/OpenAI) | — | M4 provider accounts; the opening |
 | ≈ 2026-10-05 · automatic at m1-01's merge | Item schema frozen → owner content track starts (~10 h/week) | [m1-01](sprints/sprint-m1-01.md) | pack authoring |
-| by Fri 2026-10-09 · before launch of mi-07 | Evalpack machine user + PAT (MI-9) | [mi-07](sprints/sprint-mi-07.md) | spk-02, M3 |
-| by Fri 2026-10-09 · before launch of spk-02 | **Spike go-ahead** (D23): **automatic since D40**, since launching spk-01 is the go-ahead and launching spk-03 is the WIF yes. The owner-only part is the **second-VPS answer** (an empty amd64 VPS with SSH access and reimage approval, or else the scratch-repo route) | — | spk-01, spk-02, spk-03 |
-| **Mon 2026-10-12 → Fri 2026-10-16** | **Spike week:** sandbox mechanism P0–P3 + eval-pack image-volume spike on a throwaway multipass/k3s; WIF (≤ ½ day) if it fits, else before M4 | [spk-01](sprints/sprint-spk-01.md), [spk-02](sprints/sprint-spk-02.md), [spk-03](sprints/sprint-spk-03.md) | MI-11, M3; M4 |
+| by Fri 2026-10-09 · before launch of mi-07 | Evalpack machine user + PAT (MI-9) · ✅ 2026-09-28 | [mi-07](sprints/sprint-mi-07.md) | m3-02, M3 |
+| ✅ 2026-09-25 (D41) · before launch of spk-02 | **Spike go-ahead** (D23): **automatic since D40**, since launching spk-01 is the go-ahead and launching spk-03 is the WIF yes. The owner-only part was the **second-VPS answer**: env A = `skriptvalley-vps` (D41) | — | spk-01, spk-02, spk-03 |
+| ✅ **Fri 2026-09-25** (D41; planned Mon 2026-10-12 → Fri 2026-10-16) | **The spikes:** sandbox mechanism P0–P3 + eval-pack image-volume spike (spk-01 on multipass arm64, spk-02 on `skriptvalley-vps`); WIF (≤ ½ day) the same day. All GO | [spk-01](sprints/sprint-spk-01.md), [spk-02](sprints/sprint-spk-02.md), [spk-03](sprints/sprint-spk-03.md) | MI-11, M3; M4 |
 | **Sat 2026-10-24** · before launch of mi-10 | **October host window:** MI-11 host sandbox block + L23 kubelet args + pid limits + k3s/CNPG bumps, batched with MI-11a limit hygiene. Snapshot first (owner, hPanel) | [mi-08](sprints/sprint-mi-08.md), [mi-09](sprints/sprint-mi-09.md) | MI-12 → M3 |
 | weeks 2–4 · before launch of mi-04 | MI-5b DNS record for `ops.sujaykumar.dev` at the registrar (the cert comes with mi-04's infra PR); new console bookmarks once it lands | [mi-04](sprints/sprint-mi-04.md) | the first `tester` (L-E) |
 | before launch of each contract, erase or GA tag sprint | Manual Hostinger snapshot in hPanel, 1-day retention: v1.8.0 ([m1-08](sprints/sprint-m1-08.md)), v1.12.0 ([l-02](sprints/sprint-l-02.md)), v1.17.0 ([l-04](sprints/sprint-l-04.md)), v2.0.0 ([ga-02](sprints/sprint-ga-02.md)), v2.1.0 ([m6b-04](sprints/sprint-m6b-04.md)) | the tag sprint | the tag |
@@ -441,12 +440,12 @@ is in [status.md → Owner calendar events](status.md#owner-calendar-events).
 | December (L exit), after the v1.17.0 tag | **Tester invite round-trip on production** (`invite` → `closed`): the owner and a tester are present (~1 h) | [l-04](sprints/sprint-l-04.md) | L exit → GA |
 | before the GA PR, in ga-01's session | No active `learner` account (strangers suspended or erased) | [ga-01](sprints/sprint-ga-01.md) | GA |
 | **GA day** (≈ Dec 2026–Jan 2027) · before launch of ga-02 | **GA snapshot** (owner, hPanel); ga-02 then merges the range-widening PR and tags `v2.0.0` | [ga-02](sprints/sprint-ga-02.md) | v2.0.0 |
-| any day the owner is present, before launch of ds-m6a-01 | **S6** voice-shell bake-off (≤ 1 day, $10 hard limit): launch spk-04 on a day the owner is present, after creating its two throwaway OpenAI projects and keys | [spk-04](sprints/sprint-spk-04.md) | ADR-0032 acceptance; M6a/M6b design |
+| ✅ **Sat 2026-09-26** (D41), owner present | **S6** voice-shell bake-off (≤ 1 day, $10 hard limit): both shells failed a hard gate; **D42:** GPT-Live-1 with the fixed design. Then, **before launch of ds-m6a-01**, the owner-present ≤ 1 h `ev-s6-recheck` of that design | [spk-04](sprints/sprint-spk-04.md) | ADR-0032 acceptance (the re-check); M6a/M6b design |
 | v3 (not in v2) | The owner's review of the **privacy-notice text** moved to the [v3 opening gates](rollout-plan.md#11-opening-gates-v3) (D40): [l-05](sprints/sprint-l-05.md) lands the agent-drafted text, and a revision is a content PR | [l-05](sprints/sprint-l-05.md) | the opening |
 | recurring | Evalpack PAT expiry check (manual, D34); monthly reboot window (D22) | [mi-07](sprints/sprint-mi-07.md), [mi-11](sprints/sprint-mi-11.md) | — |
 
-**Critical path** (rollout §6): GA = max(engineering chain, owner-hours chain). Engineering: spike go-ahead (the
-spk-01 launch) → spike week → host window → runner dark → M3 → M4 → GA (≈ late Dec). Owner hours: packs → pilot
+**Critical path** (rollout §6): GA = max(engineering chain, owner-hours chain). Engineering: the spikes (done
+2026-09-25/26, D41) → host window → runner dark → M3 → M4 → GA (≈ late Dec). Owner hours: packs → pilot
 content → acceptance set (≈ 43–71 h). BP3 took the hero design hours off this chain, and D40 took off the
 design-freeze reviews: boards freeze at their merge, and the owner may review afterwards. **The host-window date
 can slip M3 by a month; TR-STEAL firing early pulls R2 (2–3 days) ahead of M3.**
