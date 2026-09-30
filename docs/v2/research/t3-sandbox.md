@@ -1467,7 +1467,9 @@ in the throwaway driver, and the supervisor binary's own `go-sandbox` init calli
 | references (KILL), go-race, postgres + SQL balloon, C++/Python compiles | ✅ | ✅, nothing broke |
 
 - **Proposal to m3-03 (ADR-0030 delta): x86_64-only.** Nothing legitimate broke, and it closes the ia32 compat entry
-  point for every process in the runner pod.
+  point for every process in the runner pod. **Ratified (2026-09-30):** ADR-0030's acceptance ([m3-03](../sprints/sprint-m3-03.md),
+  [PR #104](https://github.com/sujaykumarsuman/xlearn/pull/104)) keeps x86_64-only, and [mi-09](../sprints/sprint-mi-09.md)'s
+  artefact table ships the file below verbatim (doc debt F1-14/F2-12/F5-14/F6-17).
 - Caveat: runc's bad-arch action is `KILL_THREAD`. In the multi-threaded supervisor, a stray compat syscall would
   leave a hung zombie leader, not a clean exit; the probe child had to be killed by hand. Inside the jail, the exec
   filter's `KILL_PROCESS` takes precedence, so a learner process dies cleanly.
@@ -1687,7 +1689,7 @@ pod), ahead of variant B. ADR-0027's image-volume line stands.
 
 Proposed ADR-0030 deltas (m3-03 folds these in when it accepts the ADR; this section doesn't edit it):
 - **Mechanism:** unchanged. go-sandbox `forkexec.Runner` with no user namespace, spawned via `CLONE_INTO_CGROUP`; the jail setup reproduces on amd64 kernel 6.8.0-142.
-- **Pod seccomp:** §16.1's recipe on amd64 (381 names; `pivot_root` added), with **`architectures: [SCMP_ARCH_X86_64]` proposed** (x86_64-only). Nothing legitimate broke, and it closes the ia32 `int $0x80` entry point that the three-arch baseline leaves open (§16.2, block 2). The file is recorded verbatim in §16.2 (sha256 `730a7a55…418d`), and mi-09 ships it. If m3-03 prefers the baseline, the only change is the `architectures` line.
+- **Pod seccomp:** §16.1's recipe on amd64 (381 names; `pivot_root` added), with **`architectures: [SCMP_ARCH_X86_64]` proposed** (x86_64-only). Nothing legitimate broke, and it closes the ia32 `int $0x80` entry point that the three-arch baseline leaves open (§16.2, block 2). The file is recorded verbatim in §16.2 (sha256 `730a7a55…418d`), and mi-09 ships it. If m3-03 prefers the baseline, the only change is the `architectures` line. **Ratified:** ADR-0030 kept x86_64-only at acceptance (m3-03, 2026-09-30).
 - **AppArmor:** the profile is recorded verbatim in §16.2 block 3 (sha256 `1d70ccd0…5775`), and mi-09 ships it. The broad `remount,` is replaced by `remount options=(ro, nosuid, noatime, bind) /,` (the jail root) and `remount options=(ro, nosuid, nodev, rbind) /jail/**,` (read-only binds), so no read-write remount is possible. Supervisor rule: read-only binds are `MS_BIND|MS_REC|MS_NOSUID|MS_NODEV|MS_RDONLY` without `MS_PRIVATE`, never go-sandbox's `WithBind(…, true)`.
 - **ASLR policy: none.** The Go 1.26 race runtime works in the jail under `mmap_rnd_bits=32` without calling `personality` (125/125 + 100/100 runs). The pod profile keeps RuntimeDefault's `personality` rule, so `ADDR_NO_RANDOMIZE` stays denied, and no exec profile allows `personality`. Never lower the host sysctl.
 - **GOCACHE:** not an in-pod overlay (EACCES on amd64 too). Use a **read-only seed in place** (`GOCACHE` = the seed, baked into the image or mounted as an image volume; `TMPDIR` on the case tmpfs), built with the exec profile's exact toolchain and flags: about 12 s → 0.35 s per compile on env A, with no per-case copy (§16.2). A8 re-measures the timing.
