@@ -20,8 +20,9 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 - [ADR-0030](../../adr/0030-runner-technology-and-host-hardening.md):
   - §5 Track A, step A6 (the host sandbox block);
   - §6, the patch cadence (D22);
-  - §7, the T7 amendment (L23 joins the window; MI-11a before A8).
-  It's still **Proposed**; [m3-03](../sprints/sprint-m3-03.md) accepts it. Don't edit it.
+  - the T7 amendment, now folded into §5 A6 and A8 (L23 joins the window; MI-11a before A8; §7 is a history line);
+  - "Spike results", its host-file diffs: what you ship.
+  It was **Accepted** on 2026-09-30 by [m3-03](../sprints/sprint-m3-03.md) task 1 ([PR #104](https://github.com/sujaykumarsuman/xlearn/pull/104)), which ratified the **x86_64-only** pod seccomp profile and the AppArmor remount rules. Don't edit it.
 - [ADR-0035](../../adr/0035-v2-operations-nats-auth-limits-capacity.md):
   - §4, the L23 row;
   - §5, the memory-sum rule (MI-11a gates MI-12);
@@ -36,7 +37,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
   - §9, the spike;
   - §13, the risks;
   - §15, the S0 facts (runc 1.4.2, containerd 2.3.4, no `config-v3.toml.d`, no subuid, `mmap_rnd_bits=32`).
-- The spike results in [t3](../research/t3-sandbox.md) §16: §16.1 (spk-01, P0–P2), §16.2 (spk-02, P3 amd64, including the amd64 pod-level seccomp profile verbatim), §16.3 (image volume: the "no node-level registry credentials" rule) and §16.4 (the MI-10 verdict and the ADR-0030 deltas), landed by [spk-01](../sprints/sprint-spk-01.md) and [spk-02](../sprints/sprint-spk-02.md). **This is your source for every host file.**
+- The spike results in [t3](../research/t3-sandbox.md) §16: §16.1 (spk-01, P0–P2), §16.2 (spk-02, P3 amd64, including the amd64 pod-level seccomp profile and the final AppArmor profile, both verbatim), §16.3 (image volume: the "no node-level registry credentials" rule) and §16.4 (the MI-10 verdict and the ADR-0030 deltas), landed by [spk-01](../sprints/sprint-spk-01.md) and [spk-02](../sprints/sprint-spk-02.md). **This is your source for every host file.**
 - [ADR-0027](../../adr/0027-content-evalpack-and-user-data-model.md) §2, the "Spike before M3" bullet. It's Accepted; your docs PR adds its dated note (step 12) and nothing else.
 - The neighbour plans:
   - [mi-02](../sprints/sprint-mi-02.md), the `host-verify --cluster` flags;
@@ -91,14 +92,26 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 
 1. **[H] Take the spike's final host artefacts** (plan task 1). From t3 §16.1–16.2, collect the final
    content, or the diffs against t3 §8.7, of:
-   - the containerd drop-in (or, if P0 recorded the fallback, the `config-v3.toml.tmpl`) and the AppArmor profile;
-   - the **amd64** pod-level seccomp profile (P3's file, not the arm64 P0 file);
+   - the containerd drop-in (or, if P0 recorded the fallback, the `config-v3.toml.tmpl`);
+   - the AppArmor profile: **t3 §16.2 block 3, verbatim**, `/etc/apparmor.d/xlearn-runner`, sha256
+     `1d70ccd07e453f1a169cdeeb3efb638cf6c3beb8d18fe0e14581ff8ecd295775`. Its remount rules replace the broad
+     `remount,` (which must not ship): only `remount options=(ro, nosuid, noatime, bind) /,` and
+     `remount options=(ro, nosuid, nodev, rbind) /jail/**,`, so no read-write remount is possible. Keep every
+     other rule as recorded, including `setpcap` and the `(rw, rbind, nosuid, rprivate) -> /jail/**` bind rule
+     that admits the jail's `/dev/null` bind;
+   - the **amd64** pod-level seccomp profile: **t3 §16.2 block 2, verbatim** (P3's file, not the arm64 P0 file),
+     `/var/lib/kubelet/seccomp/profiles/xlearn-runner.json`, sha256
+     `730a7a5535897636ac69de4c17547ae2c4d1169bedcc44486525faa8ae5f418d`, with
+     **`architectures: [SCMP_ARCH_X86_64]` (x86_64-only, ratified by ADR-0030)**;
    - the userns range and the `getsubids` package;
    - any sysctl change.
 
-   If you only have diffs, rebuild each file from t3 §8.7 plus the diffs. Hand the final caps list (5 caps,
-   or 4 without SETPCAP) to mi-10 via status.md; it's a runner value, not a host file. §16.3 adds one host
-   rule, not a file: **no node-level registry credentials** (step 4 asserts it).
+   Each of the two verbatim files is t3's fenced block plus one trailing newline; its sha256 must equal the
+   recorded one (it goes into `SANDBOX_SHA_*` and `hack/host-bom.txt`). If a copy's hash differs, fix the copy,
+   never the hash. If you only have diffs for another artefact, rebuild it from t3 §8.7 plus the diffs. The caps
+   list stays **5, `SETPCAP` required** (ADR-0030; already in status.md's m3-03 → mi-10 hand-off); it's a
+   runner value, not a host file. §16.3 adds one host rule, not a file: **no node-level registry credentials**
+   (step 4 asserts it).
 
 2. **[H] Sandbox block** (plan task 2). Replace block (8) `FUTURE (v2 T3)` in `host-bootstrap.sh` with a real block, moved
    **before** block (6) k3s, behind a new `--with-sandbox` flag.

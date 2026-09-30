@@ -67,7 +67,7 @@ branches, a dry-run proof and a merged runbook.
 - **Executing the window**: ev-host-window, Sat 2026-10-24. A separate session launched that day runs the
   runbook, and approval to run it on its date is pre-granted (D40). The owner's part is before that launch:
   the Hostinger manual snapshot, and hPanel/VNC reachable.
-- **Accepting ADR-0030**: [m3-03](sprint-m3-03.md) task 1. This sprint notes divergences from t3 §8.7 in its PR only. The window intentionally applies the §5 host block on the spike GO while ADR-0030 is still Proposed ([status.md decisions log](../status.md#decisions-log)).
+- **Accepting ADR-0030**: [m3-03](sprint-m3-03.md) task 1 did it (Accepted 2026-09-30, [PR #104](https://github.com/sujaykumarsuman/xlearn/pull/104)), ratifying the spike's host-file diffs this sprint ships, the x86_64-only pod seccomp profile included. This sprint notes divergences from t3 §8.7 in its PR only and doesn't edit the ADR. The window applies the §5 host block on the spike GO ([status.md decisions log](../status.md#decisions-log)).
 - **MI-11a limit hygiene**: [mi-08](sprint-mi-08.md). If mi-08 left them as pushed branches, the runbook opens and merges their PRs in the window; this sprint doesn't redo them.
 - **Runner deployment** (MI-12): [mi-10](sprint-mi-10.md). Runner caps and values live there, not on the host.
 - **Per-language exec seccomp allowlists** (Go, C++, Python, amd64): they ship **inside the runner image** ([m3-04](sprint-m3-04.md)). The host holds only the pod-level profile.
@@ -81,7 +81,7 @@ branches, a dry-run proof and a merged runbook.
 ### 1 · Take the spike's final host artefacts [H]
 
 Read the spike results in [t3](../research/t3-sandbox.md) §16: §16.1 (spk-01, P0–P2 on arm64), §16.2
-(spk-02, the P3 amd64 replay, including the **amd64 pod-level seccomp profile verbatim**) and §16.4 (the
+(spk-02, the P3 amd64 replay, including the **amd64 pod-level seccomp profile and the final AppArmor profile, both verbatim**) and §16.4 (the
 MI-10 verdict and the proposed ADR-0030 deltas). They name the chosen jail mechanism: go-sandbox `forkexec.Runner`
 without CLONE_NEWUSER (R1), or the nsjail `--disable_clone_newuser` fallback. For each host artefact,
 they also give its final content or its diff against [t3 §8.7](../research/t3-sandbox.md#87-host-level-changes-manual-scripted-recorded):
@@ -89,22 +89,29 @@ they also give its final content or its diff against [t3 §8.7](../research/t3-s
 | Artefact | t3 §8.7 baseline | Take from the spike |
 |---|---|---|
 | containerd drop-in | runtime `judge`, runc v2, `cgroup_writable`, `SystemdCgroup = true`; no `.tmpl`, no `BinaryName` | P0: merged into the rendered config? (P0 falls back to a minimal `.tmpl` if not, and records it) |
-| AppArmor `xlearn-runner` | abi 4.0, **no `userns` rule**, jail-path mounts, `pivot_root`, own cgroupfs writes, 5 caps, `deny ptrace` | P1: every rule the positive checks needed; whether `setpcap` stayed |
-| Pod-level seccomp `xlearn-runner.json` | RuntimeDefault + SYS_ADMIN, minus the new mount API, bpf/perf/fanotify, keyctl, io_uring, userfaultfd, lookup_dcookie, syslog; `socket()` limited to AF_UNIX and AF_INET/INET6 `SOCK_STREAM` | **P3 (amd64)**, the file replayed on amd64, with `architectures` x86_64/x86/x32. The arm64 P0 file is **not** the one to ship |
+| AppArmor `xlearn-runner` | abi 4.0, **no `userns` rule**, jail-path mounts, `pivot_root`, own cgroupfs writes, 5 caps, `deny ptrace` | **§16.2 block 3, verbatim**: `/etc/apparmor.d/xlearn-runner`, sha256 `1d70ccd07e453f1a169cdeeb3efb638cf6c3beb8d18fe0e14581ff8ecd295775`. **Remount rules:** no broad `remount,` (under it the supervisor remounted `/` and `/sys` read-write); only `remount options=(ro, nosuid, noatime, bind) /,` (the jail root after `pivot_root`) and `remount options=(ro, nosuid, nodev, rbind) /jail/**,` (read-only binds), so no read-write remount is possible anywhere. `setpcap` stays (required, ADR-0030). `mount options=(rw, rbind, nosuid, rprivate) -> /jail/**` stays too: it admits the jail's one read-write bind, `/dev/null` (m3-03; [mi-10](sprint-mi-10.md) proves it on the node). Keep the inert `mount fstype=overlay` rule (t3 allows dropping it) so the file stays byte-identical |
+| Pod-level seccomp `xlearn-runner.json` | RuntimeDefault + SYS_ADMIN, minus the new mount API, bpf/perf/fanotify, keyctl, io_uring, userfaultfd, lookup_dcookie, syslog; `socket()` limited to AF_UNIX and AF_INET/INET6 `SOCK_STREAM` | **§16.2 block 2, verbatim**: `/var/lib/kubelet/seccomp/profiles/xlearn-runner.json`, 7,035 bytes, sha256 `730a7a5535897636ac69de4c17547ae2c4d1169bedcc44486525faa8ae5f418d` (§16.1's recipe on amd64, 381 names, **`pivot_root` added**). **`architectures: [SCMP_ARCH_X86_64]`, x86_64-only**, not the x86_64/x86/x32 baseline: ratified by ADR-0030 at acceptance ([m3-03](sprint-m3-03.md), [PR #104](https://github.com/sujaykumarsuman/xlearn/pull/104)). Nothing legitimate broke, and it closes the ia32 `int $0x80` entry point. The arm64 P0 file is **not** the one to ship |
 | kubelet userns range | `kubelet:<start>:7208960` (110 × 65,536) in `/etc/subuid` + `/etc/subgid`; `getsubids` | P0: the range used and the recreate × 50 result; the package that ships `getsubids` on noble |
 | Sysctls | `io_uring_disabled=2`, `unprivileged_bpf_disabled=2`, `vm.unprivileged_userfaultfd=0`, `dmesg_restrict=1`, `kptr_restrict=2`; assert `perf_event_paranoid ≥ 3`; pin `apparmor_restrict_unprivileged_userns=1` | P0/P1: unchanged unless recorded |
 
 - **§16.3 (spk-02's image-volume block) adds a host rule, not a file:** no node-level registry credentials.
   The pack credential exists only as the `xlearn-evalpack-pull` imagePullSecret. Task 4 asserts it
   (`sandbox.registry-creds`), and task 10's runbook carries the rule.
+- **The two §16.2 files ship verbatim** (the AppArmor profile and the pod seccomp profile). Each heredoc's
+  sha256 must equal the recorded value above, and that value goes into its `SANDBOX_SHA_*` constant and its
+  `hack/host-bom.txt` line (task 4). The content of t3's fenced block plus **one trailing newline** reproduces
+  each recorded hash (7,035 and 2,207 bytes; checked 2026-09-30). If a copy's sha256 differs, fix the copy;
+  never re-record the hash.
 - **If §16 carries diffs only** for an artefact, rebuild that file from t3 §8.7 plus every recorded diff.
   The spike sessions never commit their VM files. Task 6 re-validates the rebuilt files.
 - **If the spike landed on R1-U** (a userns variant), the AppArmor profile gains exactly the `userns` rule the
   spike validated. Follow the record; don't improvise.
 - **PR description:** a table of artefact · t3 §8.7 · final · spike row that forced the change. ADR-0030 is
-  **not** edited here; m3-03 accepts it with the same table.
-- The caps list (5 caps, or 4 if P1 showed `SETPCAP` unneeded) is a runner **value**. Hand it to
-  [mi-10](sprint-mi-10.md) and record it in status.md. Only the AppArmor `capability` lines are a host concern.
+  **not** edited here; m3-03 accepted it (2026-09-30) with the same host-file diffs (its "Spike results"
+  section), so any divergence from them is a finding to report.
+- The caps list is a runner **value**: **5 caps, `SETPCAP` required** (ADR-0030; already in status.md's
+  m3-03 → [mi-10](sprint-mi-10.md) hand-off). Only the AppArmor `capability` lines are a host concern, and the
+  verbatim profile keeps all five.
 
 ### 2 · Sandbox block in `host-bootstrap.sh` [H]
 
