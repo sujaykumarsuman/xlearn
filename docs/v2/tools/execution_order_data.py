@@ -59,7 +59,7 @@ WAVES = [
     ("W0",  "Spike weekend (D41: spikes first)", "Sep 25 – 26"),
     ("W1",  "Week 1", "Sep 28 – Oct 2"),
     ("W2",  "Week 2", "Oct 5 – 9"),
-    ("W3",  "Week 3 · spike week", "Oct 12 – 16"),
+    ("W3",  "Week 3", "Oct 12 – 16"),
     ("W4",  "Week 4", "Oct 17 – 23"),
     ("W5",  "Late Oct · host window Sat Oct 24", "Oct 24 – Nov 1"),
     ("W6",  "Early Nov", "Nov 2 – 8"),
@@ -227,6 +227,6 @@ CLUB_EDGES = [
 # Calendar events (owner) for the timeline
 EVENTS = [
     ("H0 reboot", "2026-09-25"),
-    ("Spike week", "2026-10-12", "2026-10-16"),
+    ("Spikes first (D41)", "2026-09-25", "2026-09-26"),
     ("Host window", "2026-10-24"),
 ]

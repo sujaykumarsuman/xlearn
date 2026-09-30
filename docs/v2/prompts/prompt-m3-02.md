@@ -103,7 +103,9 @@ protocol (m3-04 adds C++/Python). v2 is owner-only (D35).
     order; the `selftest` job on the public fixture; a job summary with ids and counts only; add a weekly `schedule` to mi-07's probe.
 11. **[E] Image** — extend `build.yml`: `packlint build` → generated Dockerfile (one `COPY` per course + `manifest.json`), `buildx`
     `linux/amd64,linux/arm64`, `provenance: false`, `sbom: false`, `rewrite-timestamp` + `SOURCE_DATE_EPOCH`, the listing test
-    **before** the push, then the probe. Prove a planted `gen/` file fails the listing test, then remove it.
+    **before** the push, then the probe. Prove a planted `gen/` file fails the listing test, then remove it. Add the retention step
+    (plan task 6, GHCR quota): keep the newest 10 package versions, never one a live ImagePolicy selects or a judge pod mounts;
+    dry-run by default, deleting only on an explicit `workflow_dispatch` input (a deleted version is gone for good).
 12. **[E] README** — the authoring rules (plan task 8). Commit (`feat: pack format v1, packcheck gates, image build`) with the attribution
     lines; PR; the `selftest` + probe green; squash-merge. Optional: tag `v0.2.0` and check build → push → probe. **Never tag `>=1.0.0`.**
 13. **[X] Update status** (below) as an xlearn docs commit/PR if the code PR has already merged; then **Ship:** see **Ship** below.
@@ -140,7 +142,7 @@ protocol (m3-04 adds C++/Python). v2 is owner-only (D35).
 
 - [`../sprints/sprint-m3-02.md`](../sprints/sprint-m3-02.md): each task 🔄 → ✅; _Overall_ ✅ when all are.
 - [`../status.md`](../status.md): the Sprint board row; the **M3** row; **content status** (pipeline live, format 1, items stamped 0/14,
-  TLs provisional until m3-13, C++/Python gates pending m3-04); the **evalpack stream** row (`v0.2.0` + digest if tagged); **owner events**
+  TLs provisional until m3-13, C++/Python gates pending m3-04); the **evalpack stream** row (`v0.2.0` + digest if tagged); the **GHCR quota** row (the built image's size); **owner events**
   (`ev-packs-14`: pipeline ready — the owner's pack authoring continues; it doesn't gate this sprint); **Decisions log**: public code / private data; the three shared-package paths and who extends
   them; the manifest kept to t1 §3.3's shape; the `fixture` course instead of DSA items and the `FIXTURE_CONTENT_DIR` overlay
   contract for m3-05; the std-cache seed; the provisional TL scale; multi-arch; the `public-ref:` token.

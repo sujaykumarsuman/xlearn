@@ -1,7 +1,7 @@
 # Prompt — Sprint mi-07 · Evalpack plumbing (MI-9)
 
 > **One self-contained prompt = one sprint = one session.** Paste into a fresh coding session at the repo root.
-> **Plan:** [`../sprints/sprint-mi-07.md`](../sprints/sprint-mi-07.md)   ·   **Milestone:** MI (rollout step MI-9)   ·   **Prereqs:** none (owner event `ev-machine-user`, before launch); must land by Fri 2026-10-09
+> **Plan:** [`../sprints/sprint-mi-07.md`](../sprints/sprint-mi-07.md)   ·   **Milestone:** MI (rollout step MI-9)   ·   **Prereqs:** none (owner event `ev-machine-user`, before launch); must land by Fri 2026-10-09 (pack authoring and [m3-02](../sprints/sprint-m3-02.md) build on it)
 >
 > **Run twice.** The package grant and the helper run are owner steps, and they can only follow this prompt's own `v0.1.0` push. A session never waits on the owner (D40). So the **first launch** does steps 1–3, the helper PR (step 5a) and the record, and sets plan tasks 4–6 ⛔. The **re-run**, launched once the owner has done the re-run items below, does steps 4, 5b, 6 and the record.
 
@@ -15,7 +15,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 
 **Re-run** (after the first session has pushed `v0.1.0` and merged the helper):
 - [ ] In the `xlearn-evalpack` package settings, the package shows **Private** and is linked to `xlearn-evalpack`. Under "Manage access", the machine user has **Read**, and `xlearn-evalpack` keeps **Write** under "Manage Actions access" (the fallback is a read collaborator on the repo).
-- [ ] Locally: `docker login ghcr.io -u <machine-user> --password-stdin` (typed), then `docker pull ghcr.io/sujaykumarsuman/xlearn-evalpack:0.1.0` succeeds, then `docker logout ghcr.io`. An anonymous pull fails. Tell the session the result.
+- [ ] On the Mac, **never on the VPS** (a node-level registry login defeats the pack's pull-secret isolation): `docker login ghcr.io -u <machine-user> --password-stdin` (typed), then `docker pull ghcr.io/sujaykumarsuman/xlearn-evalpack:0.1.0` succeeds, then `docker logout ghcr.io`. An anonymous pull fails. Tell the session the result.
 - [ ] In `../infra` on an up-to-date `main`, run `hack/evalpack-pull-secret.sh`. It writes `apps/secrets/xlearn-evalpack-pull.enc.yaml` and `apps/secrets/xlearn-evalpack-pull-flux-system.enc.yaml`, encrypted; leave them uncommitted.
 
 ## Read first
@@ -37,7 +37,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
   - `.sops.yaml` (the `apps/secrets/*.enc.yaml` rule encrypts `data`/`stringData`);
   - `apps/image-automation.yaml` (the existing ImageRepositories and the header comment);
   - `hack/host-lint.sh`.
-- The consumers: [spk-02](../sprints/sprint-spk-02.md) (mounts `0.1.0` on Thu 2026-10-15), [m3-02](../sprints/sprint-m3-02.md) (the pipeline), [m3-07](../sprints/sprint-m3-07.md) (`v1.0.0`, the ImagePolicy, judge's volume).
+- The consumers: [m3-02](../sprints/sprint-m3-02.md) (the pipeline, on this scaffold), [m3-07](../sprints/sprint-m3-07.md) (`v1.0.0`, the ImagePolicy, judge's volume), and the owner's pack authoring (`ev-packs-14`). [spk-02](../sprints/sprint-spk-02.md) is done and no longer a consumer: D41 ran it on 2026-09-25 against a private registry (image volume GO, [t3 §16.3](../research/t3-sandbox.md#163-image-volume-spk-02)).
 
 ## Context
 
@@ -45,8 +45,8 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
   images are public, so the hidden data lives in a **fresh private repo** `xlearn-evalpack`. Its CI
   pushes a private `FROM scratch` data image to GHCR. Flux scans it with a machine-user PAT, and from M3
   judge mounts it as an image volume.
-- This sprint builds only the pipe: a `v0.1.0` scaffold image with no content. That's enough for the
-  image-volume spike and for authoring to start.
+- This sprint builds only the pipe: a `v0.1.0` scaffold image with no content. That's enough for m3-02's
+  pipeline and for authoring to start (the image-volume spike already ran, D41).
 - Two facts measured 2026-09-24 shape the probe:
   - an **unauthenticated** manifest GET on GHCR returns **401 even for a public image**;
   - a **missing** package answers 403 exactly like a private one.
@@ -91,7 +91,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 
 4. **[O, before the re-run] Package access + PAT pull** (plan task 4).
    - **First launch:** skip it. Set plan task 4 ⛔ "owner: package grant + PAT pull, then re-run". The package only exists since step 3, so this can't be a before-launch item of this launch.
-   - **Re-run:** the owner has granted the machine user **Read** on the package ("Manage access"), keeping `xlearn-evalpack` at **Write** under "Manage Actions access" (the fallback is a read collaborator on the repo). They've verified locally with `docker login ghcr.io -u <machine-user> --password-stdin` (typed), `docker pull ghcr.io/sujaykumarsuman/xlearn-evalpack:0.1.0` and `docker logout ghcr.io`; an anonymous pull must fail. Record their result, then re-run `probe` with `workflow_dispatch` to show the access change broke nothing.
+   - **Re-run:** the owner has granted the machine user **Read** on the package ("Manage access"), keeping `xlearn-evalpack` at **Write** under "Manage Actions access" (the fallback is a read collaborator on the repo). They've verified on the Mac, never on the VPS, with `docker login ghcr.io -u <machine-user> --password-stdin` (typed), `docker pull ghcr.io/sujaykumarsuman/xlearn-evalpack:0.1.0` and `docker logout ghcr.io`; an anonymous pull must fail. Record their result, then re-run `probe` with `workflow_dispatch` to show the access change broke nothing.
 
 5. **[I] Pull secrets + helper** (plan task 5):
    - **5a, first launch** (branch `feat/mi-9-evalpack-pull-helper` in `../infra`): the helper, the README rotation section and the host-lint change, as their own PR, merged (it's inert: a script and docs). The owner runs the helper before the re-run.
@@ -128,7 +128,11 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
    - in [`../status.md`](../status.md):
      - the **MI track** row MI-9 ✅, with repo date, CI run link, infra PRs, and the note "ImagePolicy → m3-07 (image before policy)". After the first launch it's 🔄 instead, with plan tasks 4–6 ⛔ "owner: package grant + PAT pull + helper run, then re-run";
      - the **evalpack PAT expiry** row: the expiry and a rotate-by date 14 days earlier (manual check, D34, event `ev-pat-expiry`);
-     - the **evalpack stream** row: `0.1.0` scaffold, its digest, "below every range; spk-02 input";
+     - the **evalpack stream** row: `0.1.0` scaffold, its digest, "below every range";
+     - the **GHCR quota** row, next to the PAT expiry (doc debt F6-26): the account's private-package allowance (the Packages
+       storage and data-transfer lines of its plan; pulls from outside GitHub Actions, like the node's, count as transfer) and the
+       measured size of `0.1.0`. Read what you can without a new credential; if the allowance isn't readable, record ⬜
+       "owner: read Settings → Billing" and carry on. m3-02 owns the retention/prune step;
      - the **Sprint board** row.
 
 ## Constraints
@@ -159,7 +163,7 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 ## Update status
 
 - Set each task row in [`../sprints/sprint-mi-07.md`](../sprints/sprint-mi-07.md) to 🔄 or ✅ (⛔ while waiting on an owner step, with the reason), and _Overall_ to ✅ when all seven are done.
-- Mirror the state in [`../status.md`](../status.md): the **Sprint board** row, the **MI track** row MI-9, the **evalpack PAT expiry** row, and the **evalpack stream** row.
+- Mirror the state in [`../status.md`](../status.md): the **Sprint board** row, the **MI track** row MI-9, the **evalpack PAT expiry** row, the **GHCR quota** row, and the **evalpack stream** row.
 - Add a **Decisions log** line for:
   - the probe design (token exchange, negative control, existence check);
   - the package access model you ended up with;
@@ -171,10 +175,10 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
 
 - [ ] `xlearn-evalpack` exists: PRIVATE, not a fork or template, and cloned at `../xlearn-evalpack`.
 - [ ] CI's privacy check PASSes on an exact **401/403** (at the anonymous token step, or on both the manifest and `tags/list` with an anonymous token). The authenticated existence check returns 200, and the public negative control returns 200. Any other code fails the job. The probe runs on every push.
-- [ ] `ghcr.io/sujaykumarsuman/xlearn-evalpack:0.1.0` is pullable with the machine-user PAT and not anonymously, and its digest is recorded (spk-02 input).
+- [ ] `ghcr.io/sujaykumarsuman/xlearn-evalpack:0.1.0` is pullable with the machine-user PAT (on the Mac) and not anonymously, and its digest and size are recorded.
 - [ ] The ImageRepository `xlearn-evalpack` is Ready and scans the private package with `secretRef` (`0.1.0` listed). There's no ImagePolicy, and `apps` is Ready.
 - [ ] Both pull secrets are committed SOPS-encrypted only and exist in `xlearn` and `flux-system`.
-- [ ] `docs/v2/status.md` shows MI-9 ✅, the PAT expiry and rotate-by dates, and the evalpack stream row.
+- [ ] `docs/v2/status.md` shows MI-9 ✅, the PAT expiry and rotate-by dates, the evalpack stream row and the GHCR quota row.
 - The first launch is done when steps 1–3, 5a and 7 have landed and plan tasks 4–6 are ⛔ for the owner. The re-run ticks the rest.
 
 ## Ship (land-and-sync — owner approval pre-granted)

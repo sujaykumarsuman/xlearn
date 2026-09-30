@@ -4,7 +4,7 @@
 > **Prereqs:** none. MI-5b depends on no other MI step ([rollout §2](../rollout-plan.md#2-mi-infra-track)); the owner adds the DNS record before launch (event `ev-mi5b-dns`)
 > **Unblocks:** [l-02](sprint-l-02.md) (hard gate: MI-5b live before the first `tester` is minted, `ev-first-tester`, prepared by [m1-04](sprint-m1-04.md)) · [l-04](sprint-l-04.md) (entry gate) · [mi-13](sprint-mi-13.md) (entry gate: the console hosts are final) · [m1-06](sprint-m1-06.md) / [m1-07](sprint-m1-07.md) (soft gate: before the M1 Markdown renderer ships in v1.7.0) · the v3 opening gate ([rollout §11](../rollout-plan.md#11-opening-gates-v3))
 > **Release action:** infra PR(s) only: two PRs, plus a third only if the acceptance fails. No xlearn tag. The status update is an xlearn docs PR
-> **Calendar:** weeks 2–4, target week 2 (Mon 2026-10-05 → Fri 2026-10-09). Avoid spike week (Mon 2026-10-12 → Fri 2026-10-16), when the owner is booked; the fallback is week 4 (by Fri 2026-10-23). MI-5b has float only until the first `tester` is minted (L-E, around the M2/M3 boundary; [rollout §6](../rollout-plan.md#6-critical-path-parallel-tracks-owner-calendar))
+> **Calendar:** weeks 2–4 (PRs 1 and 2 and 4a landed 2026-09-28). The follow-up for 4b needs only the owner's signed-in browser on `ops`; no spike week constrains it any more (D41 ran the spikes on 2026-09-25/26). MI-5b has float only until the first `tester` is minted (L-E, around the M2/M3 boundary; [rollout §6](../rollout-plan.md#6-critical-path-parallel-tracks-owner-calendar))
 > **Execute with:** [`../prompts/prompt-mi-04.md`](../prompts/prompt-mi-04.md) — one prompt, one session.
 
 ## Status

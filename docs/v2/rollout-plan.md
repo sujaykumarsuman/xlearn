@@ -72,8 +72,8 @@
 | MI-6 | **N0 code**, shipping dark in the next M1 tag that's ready:<ul><li>`topology.go` with golden-ACL, budget and subject-registry tests;</li><li>the dead-letter hook;</li><li>identity publishing `XLEARN_IDENTITY`;</li><li>nkey client options;</li><li>pinned `pgxpool` `MaxConns`.</li></ul>Also a **compose integration test with NATS 2.14 running the rendered `authorization` block**. Per service it runs `ensureStream`, a filtered consumer, fetch, ack and nak, and it asserts that the service is **denied** publishing on another service's subject, updating another service's stream, and purging. | X | ○ dark | — | MI-7 | next M1 tag |
 | MI-7 | **NATS auth, server-first.**<ul><li>**N1:** nkey users with fine ACLs, plus a `legacy` user and `no_auth_user: legacy`. This is the **one restart**.</li><li>**N2:** each service mounts its seed and sets its env.</li><li>**N3:** `legacy` gets `deny ">"` as a reload. Verify that no `legacy` connection exists right after the reload and again ≥ 24 h later (`host-verify --cluster`).</li></ul>N4 is in MI-15. | I | ◐ one restart; the outbox buffers | MI-6 merged (golden file); MI-6 tagged and its integration test green before N2; MI-5 before N3 | **M3; L-E** | weeks 2–4 |
 | **MI-8** | **Replaced (D34):** a **`host-verify --cluster` extension** (ADR-0035 §3) of read-only, on-demand checks:<ul><li>the memory-sum rule, including containers with no limit and no budget entry;</li><li>Flux objects not Ready;</li><li>OOMKills, > 3 restarts in 24 h, CNPG health;</li><li>PG or NATS PVC ≥ 60%, node disk ≥ 70%;</li><li>NATS `auth_required`, and any `legacy` connection after N3;</li><li>expected NetworkPolicies present;</li><li>sar steal and CPU (the TR-* thresholds).</li></ul>Not an alert. Run it after host changes and in the release checklist before contract, erase or GA tags. | H | ○ | MI-0 | M3 checklist reads; TR-* measurement | weeks 2–4 |
-| MI-9 | **Evalpack plumbing:**<ul><li>machine user; private repo and CI with the anonymous-GET probe;</li><li>private GHCR package;</li><li>PAT → SOPS pull secret in `xlearn` and `flux-system`;</li><li>ImageRepository + ImagePolicy `>=1.0.0 <2.0.0`.</li></ul>The PAT's expiry date goes in status.md as a manual check, not an alert. | E + O + I | ○ | — | M3; the image-volume spike | weeks 2–4 |
-| MI-10 | **Spike week** (D23; owner go-ahead): P0–P3 on multipass and the amd64 replay (Go, C++ and Python allowlists; TSAN), **plus the image-volume spike** on the same throwaway k3s. **Optionally the WIF spike too.** | scratch | ○ | owner go-ahead; MI-9 (image volume) | MI-11; M3 | mid-October |
+| MI-9 | **Evalpack plumbing:**<ul><li>machine user; private repo and CI with the anonymous-GET probe;</li><li>private GHCR package;</li><li>PAT → SOPS pull secret in `xlearn` and `flux-system`;</li><li>ImageRepository + ImagePolicy `>=1.0.0 <2.0.0`.</li></ul>The PAT's expiry date goes in status.md as a manual check, not an alert. | E + O + I | ○ | — | M3 (D41: the image-volume spike no longer waits for it) | weeks 2–4 |
+| MI-10 | **Spike week** (D23; owner go-ahead): P0–P3 on multipass and the amd64 replay (Go, C++ and Python allowlists; TSAN), **plus the image-volume spike** on the same throwaway k3s. **Optionally the WIF spike too.** **D41:** ran Fri 2026-09-25 (spk-01, spk-02 on `skriptvalley-vps` with a private registry, so no MI-9; spk-03 the same day), all GO. | scratch | ○ | owner go-ahead | MI-11; M3 | ✅ 2026-09-25 (planned mid-October) |
 | MI-11 | **October host window:**<ul><li>the host sandbox block;</li><li>**L23 kubelet args** (`system-reserved` 1 GiB, `eviction-hard memory.available<500Mi`) and pid limits;</li><li>k3s v1.36.5 (only if it's GA; `-rc1` today);</li><li>CNPG 18.6 (`18.6-system-trixie` verified).</li></ul>One k3s restart plus one PG restart. Snapshot first. | H + I | ◐ | MI-10 GO | MI-12 | late October |
 | **MI-11a** | **Limit hygiene:**<ul><li>the 6 Flux controllers go from 1 GiB to 512 Mi each (use is 70–174 Mi), freeing ≈ 3 GiB of limits;</li><li>limits on Traefik, cert-manager and metrics-server;</li><li>Longhorn budgeted at measured p95 × 1.5. Don't cap instance-manager blindly: it serves the PG and NATS volumes.</li></ul> | I | ◐ controller restarts | MI-3 | **MI-12** (the runner adds 3 GiB of limits) | October, before or with MI-11 |
 | MI-12 | **Runner dark:**<ul><li>`runner-v1.0.0` with **`strategy: Recreate`** and a 70 s grace period (its Quota would stall a surge);</li><li>the `runner` Kustomization `dependsOn: sandbox-guards`, **off `apps`' `wait` path**;</li><li>a 2nd IUA (`update.path: ./runner`); the bearer token in SOPS;</li><li>the acceptance suite; per-language time-limit multipliers.</li></ul>The image exists before its policy. | X + I | ○ dark | MI-4, MI-11, MI-11a | M3 | November |
@@ -258,14 +258,19 @@ A red item blocks the M3 UI sprint. Copy it verbatim into the M3 sprint plans.
 
 ## 6. Critical path, parallel tracks, owner calendar
 
+> **D41 (2026-09-25): spikes first.** MI-10 ran on 2026-09-25 (spk-01, spk-02 on `skriptvalley-vps` with a private
+> registry, so MI-9 no longer feeds it; WIF the same day) and S6 on 2026-09-26 with the owner present. **D42
+> (2026-09-26):** S6 → GPT-Live-1 with the fixed design; a ≤ 1 h `ev-s6-recheck` before ds-m6a-01 gates ADR-0032's
+> acceptance, and nothing before M6a. The chain and calendar below carry those dates.
+
 ```mermaid
 graph LR
   H0["MI-0 H0 reboot · Fri 9/25"] --> SAFE["MI-2 … MI-5a · weeks 1–3"]
   M1["M1 spine · 6–7 sp"] --> M2["M2 engine · 4–5 sp"] --> M3["M3 judge · 13–16 sp"]
   M1 -->|N0| NK["MI-7 N1–N3 · server-first"] --> M3
   M1 -->|item schema| TOOL["T25/T26 tooling"] --> PK["14 pilot packs · 28–41 owner h"] --> M3
-  GO{"spike go-ahead"} --> SPK["MI-10 spike week · mid-Oct"] --> WIN["MI-11 Oct host window"] --> RUN["MI-12 runner dark · Nov"] --> M3
-  MI9["MI-9 evalpack"] --> SPK
+  GO{"spike go-ahead"} --> SPK["MI-10 spikes · Sep 25 (D41) ✅"] --> WIN["MI-11 Oct host window"] --> RUN["MI-12 runner dark · Nov"] --> M3
+  MI9["MI-9 evalpack"] --> M3
   LH["MI-11a limit hygiene"] --> RUN
   SAFE --> M3
   SAFE -->|MI-5| LE
@@ -279,7 +284,7 @@ graph LR
   LE --> L["L exit · tester invite round-trip on prod"] --> GA
   M4 -->|consents| L
   M3 --> M6a["M6a text · 5–7 sp"] --> M6b["M6b voice · 4–5 sp"] --> V21(("v2.1.0"))
-  S6{"S6 · owner present"} --> M6a
+  S6{"S6 · Sep 26 ✅ → D42 · ev-s6-recheck"} --> M6a
   MI16["MI-16"] --> M6b
   GA -.-> OPEN(("Opening · v3 · owner's call"))
   MI5b -.->|still live| OPEN
@@ -291,11 +296,11 @@ graph LR
 
 | Chain | Path | Lands (inferred) |
 |---|---|---|
-| **Engineering** | spike go-ahead → spike week (mid-Oct) → October host window → runner dark (Nov) → M3 (Nov) → M4 (Dec) → GA | ≈ late Dec |
+| **Engineering** | the spikes (done 2026-09-25, D41) → October host window → runner dark (Nov) → M3 (Nov) → M4 (Dec) → GA | ≈ late Dec |
 | **Owner hours** | 14 packs (28–41 h) → M3 · pilot content (10–20 h) → P · acceptance set (5–10 h) → M4. **≈ 43–71 h**; at ~10 h/week from the M1a schema freeze (~Oct 5). The board hours are off this chain: agents draft every board (D38), each `ds-*` merge is its freeze, and the owner may review boards afterwards, asynchronously (D40). It was ≈ 58–96 h with "hero artboards and reviews (15–25 h)" | ≈ mid-Nov to mid-Dec |
 
 - **Both chains converge around December**, so GA lands ≈ Dec 2026–Jan 2027.
-- **The October window date can slip M3 by a month.** Book it the day the spike week is booked.
+- **The October window date can slip M3 by a month.** It is booked (tentative): Sat 2026-10-24 (BP4).
 - **Risk:** steal is elevated and noisy (9-day p95 5.2%, 7.1% on 9/24). If TR-STEAL fires early, R2 (2–3 days) moves ahead of M3.
 - Everything else (MI-2 … MI-9, L, S6) has float. **MI-5b has float only until the first `tester` is minted**, which is L-E, around the M2/M3 boundary.
 
@@ -306,7 +311,7 @@ graph LR
 | **Content** (owner, ~10 h/week) | 14 pilot packs → pilot course → acceptance set → **D6 waves after GA**: the week 1–4 packs (~35 in total) and the full 151-item self tier | after the M1a schema freeze |
 | **MI** (infra) | §2 | now |
 | **L** (identity-centred) | L-E after N3 + MI-5; L-A and L-C with M4 | during M3/M4 |
-| **Interviewer** | S6 any time the owner is present; M6a after M3, alongside M4 | after M3 |
+| **Interviewer** | S6 done 2026-09-26 (D41, D42); `ev-s6-recheck` before ds-m6a-01; M6a after M3, alongside M4 | after M3 |
 
 **Owner calendar events** (calendar events, not sprints). Since D40, an owner-only action is done **before launch**
 of the sprint that needs it (listed in that prompt's `## Before you launch (owner)` block), and nothing waits on the
@@ -318,10 +323,10 @@ owner mid-session. The build plan's calendar is the detailed list.
 | ✅ 2026-09-24 | **infra#28** (`host-bootstrap` + `host-verify`) merged at 10:03Z; local `../infra` `main` is synced. | MI-0 |
 | ✅ 2026-09-24 | **v1.5.2 live** (`1b90d2b`): MI-2b (xlearn#51, auto-link fix) and MI-2c (xlearn#52, `SIGNUP_MODE`; infra#30 sets `closed`), so **signup is closed in production**. **MI-2a done:** xlearn#53 (`.release-line`) + infra#29 (ranges `<2.0.0`) | M1 tags |
 | weeks 2–4 | **MI-5b:** a DNS record and cert for `ops.sujaykumar.dev`; update the landscape and kubescope bookmarks | the first `tester` (L-E) |
-| mid-October | **Spike week** (P0–P3, image volume, optionally WIF). The owner's go-ahead (D23) is launching the spike prompt (D40). | MI-11, M3 |
-| late October | **October host window** (MI-11, with MI-11a). Book it with the spike. | MI-12, M3 |
-| before M4 | **WIF spike** (≤ ½ day), if it didn't run in the spike week | M4 |
-| before the M6a design freeze | **S6** voice spike (owner present, $10 hard limit) | M6a |
+| ✅ **Fri 2026-09-25** (D41; planned mid-October) | **The spikes** (P0–P3, image volume, WIF), all GO. The owner's go-ahead (D23) was launching the spike prompt (D40). | MI-11, M3 |
+| **Sat 2026-10-24** | **October host window** (MI-11, with MI-11a). | MI-12, M3 |
+| ✅ Fri 2026-09-25 (D41) | **WIF spike** (≤ ½ day, spk-03): GO, with `check_jti=false` | M4 |
+| ✅ Sat 2026-09-26 (D41) · re-check before launch of ds-m6a-01 | **S6** voice spike (owner present, $10 hard limit) → D42; then the ≤ 1 h `ev-s6-recheck` (owner present) | M6a |
 | before launch of each contract, erase or GA tag sprint | **Hostinger manual snapshot** (hPanel; owner-only, D40) | — |
 | L exit | **Tester invite round-trip** on production (`invite` → `closed`) | L exit |
 | GA day | **GA snapshot** (before launch of the GA cut), then the range PR and the `v2.0.0` tag | v2.0.0 |

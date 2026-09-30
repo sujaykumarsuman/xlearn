@@ -788,7 +788,7 @@ Lanes — **product**: `m1-09`, `mi-05`, `m1-02` · **content**: `m3-01`, `m3-02
 | 14 | [`m3-02`](prompts/prompt-m3-02.md) | 📦 Eval packs & authoring tooling | Eval-pack pipeline: validation gates, data image, fixture pack |  |
 | 15 | [`mi-04`](prompts/prompt-mi-04.md) | 🛡️ Cluster guardrails & fences | Admin consoles move to ops.sujaykumar.dev |  |
 
-### W3 · Week 3 · spike week (Oct 12 – 16)
+### W3 · Week 3 (Oct 12 – 16)
 
 Lanes — **infra**: `mi-06` · **product**: `m1-03`, `m1-04`, `m1-10`, `m1-05`, `m1-06`
 
