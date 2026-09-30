@@ -13,7 +13,7 @@ MODULE  := github.com/sujaykumarsuman/xlearn
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X $(MODULE).Version=$(VERSION)
 
-.PHONY: all web build run test lint go-test go-lint web-test web-lint lint-migrations lint-bodies contentlint packlint install-hooks uninstall-hooks clean nats-acl-render nats-acl-test
+.PHONY: all web build run test lint go-test go-lint web-test web-lint lint-migrations lint-bodies contentlint packlint install-hooks uninstall-hooks clean nats-acl-render nats-acl-test runner-it
 
 all: build
 
@@ -115,6 +115,16 @@ install-hooks:
 
 uninstall-hooks:
 	git config --unset core.hooksPath || true
+
+## ---- runner (m3-03; ADR-0030) ----
+# The runner's Linux jail suite (build tag runner_it): the hostile corpus, the cleanup
+# invariants, the L14 caps and the API contract against the real runner binary. Run it as root on
+# a Linux host or VM with cgroup v2 and a delegated cgroup — CI's runner-it job does it in a
+# privileged debian:trixie-slim container; `sudo make runner-it` on a throwaway Linux VM is
+# equivalent. macOS can't run the jail. On an arm64 dev VM the exec filters' default is LOG (a
+# runner_it + RUNNER_MODE=dev switch; the allowlists are amd64 until m3-04 adds arm64 lists).
+runner-it:
+	go test -tags runner_it -count=1 -timeout 30m -v ./internal/runner/...
 
 ## ---- aggregate ----
 lint: go-lint lint-migrations lint-bodies web-lint
