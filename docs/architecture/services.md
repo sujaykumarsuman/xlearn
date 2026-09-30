@@ -138,6 +138,23 @@ Legend — **Deploy:** `edge` = has Traefik route; `internal` = ClusterIP only. 
   in-app channel (surfaced on Dashboard); email/push would justify splitting it into its own service.
 - **Owns:** `review.reminder` (v1). **Consumes:** `review.revision_due`.
 
+## runner · sandbox (`xlearn-runner` ns)
+
+- **Responsibility:** runs untrusted learner code for judge: one compile jail and one fresh jail per test
+  case (no user namespace), per-case cgroup v2 leaves, all verdict evidence measured outside the learner's
+  process, typed infra errors and `throttled` ([ADR-0030](../adr/0030-runner-technology-and-host-hardening.md),
+  [`runner.md`](runner.md)). A capability-holding spawner (PID 1) never parses a learner byte; a capless
+  front does all the parsing.
+- **Owns:** nothing. **No database, no NATS, no egress, no secret but its bearer token.**
+- **Called by:** **judge only** (bearer token, ClusterIP :8090). **Calls:** nothing — the runner never
+  initiates a connection.
+- **API:** `POST /v1/jobs` (a length-prefixed stream: `job.json` + one frame per case input), `GET /v1/profiles`,
+  `GET /v1/stats`, `GET /readyz`, `GET /healthz`. The contract is `internal/platform/runnerapi` (stdlib-only,
+  compiled into judge from `v1.13.0`; append-only from `runner-v1.0.0`, a break is a runner major,
+  [ADR-0034 §1.5](../adr/0034-v2-release-labelling-gating-and-rollback.md#15-other-release-streams)).
+- **Release:** its own stream (`runner-v*` tags, its own ImagePolicy and Flux Kustomization, off v1's critical
+  path); built in [m3-15](../v2/sprints/sprint-m3-15.md), deployed dark by [mi-10](../v2/sprints/sprint-mi-10.md).
+
 ## web (SPA)
 
 - **Responsibility:** all 12 screens (React + TS, Vite). Built to static assets, **embedded in and

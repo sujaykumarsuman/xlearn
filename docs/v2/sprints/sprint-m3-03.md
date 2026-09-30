@@ -9,18 +9,18 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done 2026-09-30 (run r-36, [PR #104](https://github.com/sujaykumarsuman/xlearn/pull/104), merge only; ships in `runner-v1.0.0`). ADR-0030 Accepted; `runner-it` green on amd64 CI.
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Accept ADR-0030 from the spike results (BP2), folding ADR-0035 §6 | X | ⬜ |
-| 2 | Contract types + wire stream: `internal/platform/runnerapi` | X | ⬜ |
-| 3 | Supervisor: spawner/front privilege split + per-case jail | X | ⬜ |
-| 4 | cgroups, measurement and hard caps (L14) | X | ⬜ |
-| 5 | HTTP API, typed infra errors, drain and front rotation | X | ⬜ |
-| 6 | `throttled`: steal, runner-owned canary, in-runner quiet re-run | X | ⬜ |
-| 7 | Hostile corpus, cleanup invariants, Linux CI job `runner-it` | X | ⬜ |
-| 8 | Docs: `docs/architecture/runner.md`, `services.md`, hand-offs | X | ⬜ |
+| 1 | Accept ADR-0030 from the spike results (BP2), folding ADR-0035 §6 | X | ✅ Accepted 2026-09-30; ADR-0035 §6 folded; §7 → a history note |
+| 2 | Contract types + wire stream: `internal/platform/runnerapi` | X | ✅ goldens round-trip; caps enforced from each prefix; stdlib-only |
+| 3 | Supervisor: spawner/front privilege split + per-case jail | X | ✅ spawner/front split, IPC, jail (no userns); proven in CI `runner-it` |
+| 4 | cgroups, measurement and hard caps (L14) | X | ✅ layout, measurement, L14 caps; `runner-it`: MLE 100/100, 0 container OOMs, the cap at 45.5 s |
+| 5 | HTTP API, typed infra errors, drain and front rotation | X | ✅ 401/400/503/disconnect/drain tested; rotation and `BootEpoch` |
+| 6 | `throttled`: steal, runner-owned canary, in-runner quiet re-run | X | ✅ s1, s2 (min of 2), suspect rules, quiet re-run → a quiet TLE in CI |
+| 7 | Hostile corpus, cleanup invariants, Linux CI job `runner-it` | X | ✅ corpus, 1,000 case cgroups, caps; CI `runner-it` (the privileged container works) |
+| 8 | Docs: `docs/architecture/runner.md`, `services.md`, hand-offs | X | ✅ `runner.md`, `services.md`, hand-offs |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row, the M3 milestone row, the MI-12 row's "runner code" part, and the ADR-0030 line).
@@ -28,11 +28,11 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] **spk-01 and spk-02 report GO** and a mechanism is chosen: [t3 §16.1–§16.4](../research/t3-sandbox.md) exist on `main`, and §16.4 reads "Spike P0–P3 GO" with the jail mechanism named (go-sandbox `forkexec.Runner`, or the nsjail `--disable_clone_newuser` fallback, R1-N).
-- [ ] **No open "needs owner decision" gate from the spike** (D40). If P1 fell through to R1-U or R1b, those are owner decisions (R1b is a D21 trigger that moves the runner to R2): the spike records the options and marks the gate ⛔ in `docs/v2/status.md`. The decision must be recorded there before this sprint starts; if it isn't, this gate is unmet (stop and report).
-- [ ] **ADR-0030 is still Proposed** and no peer PR edits it (`gh pr list --search 0030`, `git worktree list`, ListAgents). Task 1 accepts it; [mi-09](sprint-mi-09.md) and the spikes deliberately left it alone.
-- [ ] **The amd64 per-profile allowlists are in t3 §16.2** as sorted syscall-name lists (at least `go`). Task 7's test profile uses the `go` list; the `cpp` and `python` lists go to [m3-04](sprint-m3-04.md).
-- [ ] **No open peer PR touches** `cmd/runner`, `internal/runner`, `internal/platform/runnerapi` or `go.mod`'s go-sandbox line.
+- [x] **spk-01 and spk-02 report GO** and a mechanism is chosen: [t3 §16.1–§16.4](../research/t3-sandbox.md) exist on `main`, and §16.4 reads "Spike P0–P3 GO" with the jail mechanism named (go-sandbox `forkexec.Runner`, or the nsjail `--disable_clone_newuser` fallback, R1-N).
+- [x] **No open "needs owner decision" gate from the spike** (D40). If P1 fell through to R1-U or R1b, those are owner decisions (R1b is a D21 trigger that moves the runner to R2): the spike records the options and marks the gate ⛔ in `docs/v2/status.md`. The decision must be recorded there before this sprint starts; if it isn't, this gate is unmet (stop and report).
+- [x] **ADR-0030 is still Proposed** and no peer PR edits it (`gh pr list --search 0030`, `git worktree list`, ListAgents). Task 1 accepts it; [mi-09](sprint-mi-09.md) and the spikes deliberately left it alone.
+- [x] **The amd64 per-profile allowlists are in t3 §16.2** as sorted syscall-name lists (at least `go`). Task 7's test profile uses the `go` list; the `cpp` and `python` lists go to [m3-04](sprint-m3-04.md).
+- [x] **No open peer PR touches** `cmd/runner`, `internal/runner`, `internal/platform/runnerapi` or `go.mod`'s go-sandbox line.
 
 The [M3 hard entry checklist](../rollout-plan.md#5-m3-hard-entry-checklist) gates the M3 UI sprint ([m3-11](sprint-m3-11.md)) and is copied verbatim there and into [m3-13](sprint-m3-13.md). It does **not** gate this sprint: runner code runs nowhere near production until [mi-10](sprint-mi-10.md). This sprint consumes that checklist's first line (spike GO) and produces the code half of MI-12.
 
@@ -241,14 +241,14 @@ Sources: [t3 §5.10](../research/t3-sandbox.md#510-cleanup-invariants-release-ga
 
 ## Acceptance criteria
 
-- [ ] ADR-0030 is **Accepted** with the spike's results table, the chosen mechanism and ADR-0035 §6 folded into §5 (A3, A4, A5, A6, A8, Track B); **nothing from the old §7 is lost** (the mapping is in the PR description); the ADR index row is updated.
-- [ ] `internal/platform/runnerapi` round-trips the golden `job`/`result` fixtures and enforces every stream cap mid-stream; it has no non-stdlib import.
-- [ ] The **P2 corpus is classified correctly in a Linux jail-capable run** (CI `runner-it`, standing in for a local privileged VM run): **MLE 100/100, 0 container OOMs**, TLE/TLE (idle)/OLE/RE as specified, SIGSYS → `signal` + rotation, every network probe fails.
-- [ ] The **L14 caps hold**: compile ≤ 15 s → CE; the 45 s tests cap → in-flight `tle`, rest `not_run`, `TestsCapHit` (or `Throttled` when suspect); `job_timeout` only past the 170 s backstop.
-- [ ] **Cleanup invariants green**: 0 surviving processes, `runner/` memory baseline ±5 MiB, `nr_dying_descendants` → ~0 within 60 s after 1,000 case cgroups, cross-job markers invisible.
-- [ ] Contract behaviour: 401 / 400 / 503-on-third-job / disconnect-kills / drain-`killed` tested.
-- [ ] No release build contains `testgo@0`; no package imports `go-sandbox/container`; `go build ./...` and `go test ./...` are green on macOS and Linux; CI green (`sqlc diff` unchanged).
-- [ ] `docs/architecture/runner.md` and the `services.md` entry exist; hand-offs are in status.md.
+- [x] ADR-0030 is **Accepted** with the spike's results table, the chosen mechanism and ADR-0035 §6 folded into §5 (A3, A4, A5, A6, A8, Track B); **nothing from the old §7 is lost** (the mapping is in the PR description); the ADR index row is updated.
+- [x] `internal/platform/runnerapi` round-trips the golden `job`/`result` fixtures and enforces every stream cap mid-stream; it has no non-stdlib import.
+- [x] The **P2 corpus is classified correctly in a Linux jail-capable run** (CI `runner-it`, standing in for a local privileged VM run): **MLE 100/100, 0 container OOMs**, TLE/TLE (idle)/OLE/RE as specified, SIGSYS → `signal` + rotation, every network probe fails.
+- [x] The **L14 caps hold**: compile ≤ 15 s → CE; the 45 s tests cap → in-flight `tle`, rest `not_run`, `TestsCapHit` (or `Throttled` when suspect); `job_timeout` only past the 170 s backstop.
+- [x] **Cleanup invariants green**: 0 surviving processes, `runner/` memory baseline ±5 MiB, `nr_dying_descendants` → ~0 within 60 s after 1,000 case cgroups, cross-job markers invisible.
+- [x] Contract behaviour: 401 / 400 / 503-on-third-job / disconnect-kills / drain-`killed` tested.
+- [x] No release build contains `testgo@0`; no package imports `go-sandbox/container`; `go build ./...` and `go test ./...` are green on macOS and Linux; CI green (`sqlc diff` unchanged).
+- [x] `docs/architecture/runner.md` and the `services.md` entry exist; hand-offs are in status.md.
 
 ## Release
 
