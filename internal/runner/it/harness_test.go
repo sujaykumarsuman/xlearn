@@ -80,7 +80,7 @@ func setup() error {
 		return err
 	}
 	env.bin = filepath.Join(env.dir, "runner")
-	build := exec.Command("go", "build", "-tags", "runner_it", "-o", env.bin, "./cmd/runner")
+	build := exec.Command("go", "build", "-tags", "runner_it", "-buildvcs=false", "-o", env.bin, "./cmd/runner")
 	build.Dir = root
 	build.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := build.CombinedOutput(); err != nil {

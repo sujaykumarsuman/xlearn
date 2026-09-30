@@ -30,7 +30,8 @@ var allowedSandbox = map[string]bool{
 // deps lists "importpath imports…" for every package in pkgs and their dependencies.
 func deps(t *testing.T, tags string, pkgs ...string) map[string][]string {
 	t.Helper()
-	args := []string{"list", "-deps", "-f", "{{.ImportPath}}{{range .Imports}} {{.}}{{end}}"}
+	// -e: the module root embeds web/dist, which a lane without the SPA build lacks.
+	args := []string{"list", "-e", "-deps", "-f", "{{.ImportPath}}{{range .Imports}} {{.}}{{end}}"}
 	if tags != "" {
 		args = append(args, "-tags", tags)
 	}
@@ -38,9 +39,11 @@ func deps(t *testing.T, tags string, pkgs ...string) map[string][]string {
 	cmd.Dir = filepath.Join("..", "..")
 	// The jail is Linux-only: judge the Linux/amd64 build graph whatever the host.
 	cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH=amd64", "CGO_ENABLED=0")
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
-		t.Fatalf("go %s: %v", strings.Join(args, " "), err)
+		t.Fatalf("go %s: %v\n%s", strings.Join(args, " "), err, stderr.String())
 	}
 	m := map[string][]string{}
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
