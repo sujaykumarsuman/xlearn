@@ -9,16 +9,16 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Per-feature default keys: `key_default(feature)` the only source; stop writing `is_default` | X | ⬜ |
-| 2 | Server model catalog + `GET /api/coach/models`; custom ids; no base URLs | X | ⬜ |
-| 3 | Key crypto: AEAD associated data, `kek_id` keyring, background re-wrap | X | ⬜ |
-| 4 | Provider hygiene: OpenAI `store:false`, typed errors (`ErrModelAccess`…), usage + `est_cost_micros` | X | ⬜ |
-| 5 | Settings keys UI + model switcher from the catalog (AB01 F11–F15) | X | ⬜ |
-| 6 | Tests, gateway transit test, doc fixes | X | ⬜ |
+| 1 | Per-feature default keys: `key_default(feature)` the only source; stop writing `is_default` | X | ✅ |
+| 2 | Server model catalog + `GET /api/coach/models`; custom ids; no base URLs | X | ✅ |
+| 3 | Key crypto: AEAD associated data, `kek_id` keyring, background re-wrap | X | ✅ |
+| 4 | Provider hygiene: OpenAI `store:false`, typed errors (`ErrModelAccess`…), usage + `est_cost_micros` | X | ✅ |
+| 5 | Settings keys UI + model switcher from the catalog (AB01 F11–F15) | X | ✅ |
+| 6 | Tests, gateway transit test, doc fixes | X | ✅ |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + milestone).
@@ -26,20 +26,20 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] `v1.6.0` live ([m1-02](sprint-m1-02.md)): `coach.key_default(account_id, feature, key_id, model, updated_at)` exists
+- [x] `v1.6.0` live ([m1-02](sprint-m1-02.md)): `coach.key_default(account_id, feature, key_id, model, updated_at)` exists
       (PK `(account_id, feature)`, `feature ∈ {coach, interview}`, `key_id … ON DELETE CASCADE`), is backfilled from
       `is_default` and dual-written; `api_key_config.is_default` is nullable; readers prefer `key_default`
-- [ ] [m1-03](sprint-m1-03.md) merged (coach `path_slug` writes and the `<course>:` `page_context` prefix land first; rebase on them)
-- [ ] AB01 frozen: [ds-m1-01](sprint-ds-m1-01.md) merged (the merge is the freeze, D40). This sprint's frames are **F11–F15**: F11 model
+- [x] [m1-03](sprint-m1-03.md) merged (coach `path_slug` writes and the `<course>:` `page_context` prefix land first; rebase on them)
+- [x] AB01 frozen: [ds-m1-01](sprint-ds-m1-01.md) merged (the merge is the freeze, D40). This sprint's frames are **F11–F15**: F11 model
       access error, F12 catalog switcher, F13 Settings keys (per-feature defaults, "This month on your keys"), F14
       onboarding step, F15 no-usable-key empty state. F1–F10 belong to [m1-07](sprint-m1-07.md).
-- [ ] **File ownership** (so this runs beside m1-04 … m1-06): this sprint owns `internal/coach/**`,
+- [x] **File ownership** (so this runs beside m1-04 … m1-06): this sprint owns `internal/coach/**`,
       `internal/platform/secrets/**` (coach is its only importer), `cmd/coach/**` and the coach/settings web files
       (`web/src/components/Coach.tsx`, `CoachModelSwitcher.tsx`, `web/src/lib/settings.ts`, the keys section of
       `web/src/screens/Settings.tsx`, the onboarding coach step in `web/src/screens/Auth.tsx`). Its gateway change is
       **additive only**: a new file `internal/gateway/coach_models.go`, **one** `apiRoutes()` row, its
       `docs/architecture/openapi.yaml` path, and a new test file — rebase over whichever of m1-04 … m1-06 merged first
-- [ ] Parallel sessions: no open peer PR touches `internal/coach/**` or adds a coach goose migration (`gh pr list`,
+- [x] Parallel sessions: no open peer PR touches `internal/coach/**` or adds a coach goose migration (`gh pr list`,
       `git worktree list`, ListAgents)
 
 ## Goal
@@ -320,25 +320,25 @@ sprint's frames are **F11–F15**), [rollout §9](../rollout-plan.md#9-artboards
 
 ## Acceptance criteria
 
-- [ ] After one re-wrap pass every stored key has a current AD-bound pair under the active KEK. In compose, seeded
+- [x] After one re-wrap pass every stored key has a current AD-bound pair under the active KEK. In compose, seeded
       legacy rows are 100 % re-wrapped and a corrupted row is skipped, reported and untouched. Swapped pairs fail to
       decrypt: **AD pairs are written and verified**. The binding is **enforced once the legacy pair is contracted**
       ([l-01](sprint-l-01.md) / [l-02](sprint-l-02.md)); the residual risk is accepted until then.
-- [ ] The `v1.6.0` coach image still decrypts every key and serves chat against this sprint's schema (R-b rehearsal).
+- [x] The `v1.6.0` coach image still decrypts every key and serves chat against this sprint's schema (R-b rehearsal).
       A key replaced on `v1.6.0` is the one chat uses after rolling forward, and no key is disabled (digest check).
-- [ ] **`store:false` asserted on every OpenAI call**; provider fixture tests green for every error class; only auth
+- [x] **`store:false` asserted on every OpenAI call**; provider fixture tests green for every error class; only auth
       errors disable a key.
-- [ ] `GET /api/coach/models` serves the catalog (id, capabilities, price, `as_of`, recommended default, incl.
+- [x] `GET /api/coach/models` serves the catalog (id, capabilities, price, `as_of`, recommended default, incl.
       `claude-opus-5-5`, `gpt-6-sol/luna/astra`); custom ids accepted as "cost unknown"; malformed ids → 422; a
       `base_url` field → 400.
-- [ ] **No writer or reader of `is_default` left** (grep test in CI); no `SELECT *` on `coach.api_key_config`;
+- [x] **No writer or reader of `is_default` left** (grep test in CI); no `SELECT *` on `coach.api_key_config`;
       `key_default(feature)` is the only default source. The `interview` default accepts `interview_brain` catalog
       models or a valid custom id, and rejects known catalog ids without `interview_brain`.
-- [ ] Usage + `est_cost_micros` stored on assistant messages. Settings, the switcher, onboarding and the coach empty
+- [x] Usage + `est_cost_micros` stored on assistant messages. Settings, the switcher, onboarding and the coach empty
       and error states match **AB01 F11–F15** (copy verbatim; deliberate deltas listed in the PR). The coach chat flow,
       including v1.5.1's F010 fixes, is unchanged.
-- [ ] The gateway transit test proves the key PUT is forwarded but never logged or echoed.
-- [ ] CI green (`sqlc diff`, migration lint, gofmt/vet, `go test -race`, web typecheck/lint/test/build).
+- [x] The gateway transit test proves the key PUT is forwarded but never logged or echoed.
+- [x] CI green (`sqlc diff`, migration lint, gofmt/vet, `go test -race`, web typecheck/lint/test/build).
 
 ## Release
 
