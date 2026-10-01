@@ -690,9 +690,15 @@ function CoachSection() {
           <div className="xl-set-subh">Keys</div>
           {COACH_PROVIDERS.map((p) => {
             const cur = keys.find((k) => k.provider === p.id);
+            // The model a key ROTATION must carry forward is the one the coach feature
+            // actually answers with, not the key row's own default_model. The two diverge
+            // the moment the header switcher is used: it writes key_default.model and
+            // leaves api_key_config.default_model behind, so carrying the key's field
+            // would silently revert the learner's pick on every key update.
+            const carry = coachDefault?.provider === p.id ? coachDefault.model : cur?.default_model;
             // Remount on connect/disconnect so the panel's local key-field state re-seeds
             // from the freshly-connected key rather than the empty form.
-            return <ProviderPanel key={`${p.id}-${cur ? "on" : "off"}`} providerId={p.id} current={cur} roles={roles[p.id] ?? []} />;
+            return <ProviderPanel key={`${p.id}-${cur ? "on" : "off"}`} providerId={p.id} current={cur} carryModel={carry} roles={roles[p.id] ?? []} />;
           })}
         </div>
       )}
@@ -821,7 +827,19 @@ function UsageMonthHint({ usage }: { usage: CoachUsageMonth }) {
 
 /** One provider's panel: connect it, replace its key, or remove it. The model lives in the
  *  per-feature defaults above, not here. */
-function ProviderPanel({ providerId, current, roles }: { providerId: ProviderId; current?: CoachKey; roles: string[] }) {
+function ProviderPanel({
+  providerId,
+  current,
+  carryModel,
+  roles,
+}: {
+  providerId: ProviderId;
+  current?: CoachKey;
+  /** The model a key rotation carries forward — the coach feature default's when this
+   *  provider backs it, else the key's own. See the call site. */
+  carryModel?: string;
+  roles: string[];
+}) {
   const put = usePutCoachKey();
   const del = useDeleteCoachKey();
   const meta = COACH_PROVIDERS.find((p) => p.id === providerId)!;
@@ -833,12 +851,14 @@ function ProviderPanel({ providerId, current, roles }: { providerId: ProviderId;
 
   const save = () => {
     if (!canSave) return;
-    // Carry the model the key already had: a PUT with a key but no default_model resets the
-    // model to the catalog default server-side, which would silently undo the learner's
-    // pick every time they rotated a key. A first connect has nothing to carry, so the
-    // server picks the catalog default for it.
+    // Carry the model the coach is CURRENTLY answering with: a PUT with a key but no
+    // default_model resets the model to the catalog default server-side, which would
+    // silently undo the learner's pick every time they rotated a key. carryModel is the
+    // coach feature default's model (not the key row's, which goes stale as soon as the
+    // header switcher is used). A first connect has nothing to carry, so the server picks
+    // the catalog default for it.
     const body: PutCoachKeyBody = { provider: providerId, key: rawKey.trim() };
-    if (current?.default_model) body.default_model = current.default_model;
+    if (carryModel) body.default_model = carryModel;
     put.mutate(body, {
       onSuccess: () => {
         setRawKey("");

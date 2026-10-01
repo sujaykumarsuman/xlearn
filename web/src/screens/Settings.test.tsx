@@ -233,6 +233,35 @@ describe("Settings screen", () => {
     await waitFor(() => expect(putBody).toEqual({ provider: "anthropic", key: "sk-ant-rotated-9999", default_model: "claude-opus-4-8" }));
   });
 
+  it("replacing a key keeps the model the SWITCHER chose, not the key row's stale one", async () => {
+    // The header switcher writes key_default.model and leaves api_key_config.default_model
+    // behind, so the two diverge as soon as it is used. Carrying the key row's field here
+    // would silently revert the learner's pick on every key rotation — the m1-10
+    // adversarial review caught this. The test above cannot see it: there the two agree.
+    let putBody: unknown = null;
+    const stale: Key = { provider: "anthropic", masked_key: "sk-ant-...4a2f", default_model: "claude-opus-4-8", name: "Opus 4.8", enabled: true, is_default: true };
+    const body = keysBody([stale], { defaults: { coach: { provider: "anthropic", model: "claude-sonnet-5" } } });
+    installFetchMock((url, init) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.includes("/api/coach/models")) return { status: 200, body: MODELS };
+      if (url.includes("/api/coach/key") && init?.method === "PUT") {
+        putBody = init?.body ? JSON.parse(String(init.body)) : null;
+        return { status: 200, body };
+      }
+      if (url.includes("/api/coach/key")) return { status: 200, body };
+      return { status: 404 };
+    });
+    await openCoachTab();
+
+    const card = coachCard();
+    fireEvent.click(await within(card).findByRole("button", { name: /^update$/i }));
+    fireEvent.change(within(card).getByLabelText("Anthropic API key"), { target: { value: "sk-ant-rotated-9999" } });
+    fireEvent.click(within(card).getByRole("button", { name: /save anthropic/i }));
+    await waitFor(() =>
+      expect(putBody).toEqual({ provider: "anthropic", key: "sk-ant-rotated-9999", default_model: "claude-sonnet-5" }),
+    );
+  });
+
   it("shows each feature's default model, the month-to-date line and the key role chips", async () => {
     const keys: Key[] = [
       { provider: "anthropic", masked_key: "sk-ant-…4f2a", default_model: "claude-sonnet-5", name: "Sonnet 5", enabled: true, is_default: true },

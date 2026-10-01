@@ -522,6 +522,11 @@ func (s *PgStore) SetDefault(ctx context.Context, accountID, provider, feature, 
 		}
 		return KeyConfig{}, fmt.Errorf("get api key config: %w", err)
 	}
+	// A blank model still falls back to the key's own, but the HANDLER resolves and
+	// validates the effective model before calling here, so this is a safety net for a
+	// direct store caller rather than the path a request takes. It is deliberately NOT
+	// the place to validate: the store cannot import coach (a cycle), so it has no view
+	// of the catalog or of what a feature requires.
 	if model == "" {
 		model = target.DefaultModel
 	}

@@ -2,6 +2,7 @@ package coach
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 
 	"github.com/sujaykumarsuman/xlearn/internal/coach/store"
@@ -86,10 +87,30 @@ func (s *Service) sealKey(accountID, provider, rawKey string) (sealedKey, error)
 // during a rollback would be ignored in favour of the previous key after rolling forward —
 // and if they rotated because the old key was revoked, the resulting 401 would disable the
 // new key (KindAuth is the one kind that disables).
+// It does NOT share Reseal's ErrUnknownKEK fallback, and that asymmetry is deliberate.
+// Reseal is REPAIRING a row — it re-seals under the active KEK and hands the plaintext to
+// nobody — so falling back to the legacy pair there is free. openKey is SERVING a key to a
+// provider, and `kek_id` is a plain text column: if an unknown id fell back to the unbound
+// legacy pair, writing `kek_id = 'k99'` would be a one-column way to opt any row out of
+// the binding. So an unreadable current pair is an error here even when the cause is a
+// missing keyring entry rather than tampering.
+//
+// The operational cost is a bounded one: reverting COACH_MASTER_KEYS after a rotation
+// makes chats fail until the next re-wrap pass moves the rows back (≤ ~10 minutes). The
+// distinct log below is what makes that five seconds to diagnose instead of an hour.
 func (s *Service) openKey(kc store.KeyConfig) ([]byte, error) {
 	if kc.ADPairCurrent() {
 		ad := secrets.CoachKeyAD(kc.AccountID, kc.Provider)
-		return s.keyring().OpenAD(kc.EncKeyAD, kc.EncDataKeyAD, kc.KEKID, ad)
+		raw, err := s.keyring().OpenAD(kc.EncKeyAD, kc.EncDataKeyAD, kc.KEKID, ad)
+		if errors.Is(err, secrets.ErrUnknownKEK) {
+			// Not a corrupt row: this process simply does not hold the key that sealed it.
+			// Naming the entry (ids carry no key material) points straight at the cause —
+			// a retired or reverted COACH_MASTER_KEYS — rather than at the stored key.
+			s.log.Error("coach: key sealed under a keyring entry this process does not have; "+
+				"restore the entry or wait for the re-wrap pass",
+				"kek_id", kc.KEKID, "active_kek", s.keyring().Active(), "provider", kc.Provider)
+		}
+		return raw, err
 	}
 	return s.cipher.Open(kc.EncKey, kc.EncDataKey)
 }

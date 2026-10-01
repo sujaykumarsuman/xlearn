@@ -109,13 +109,22 @@ SELECT pg_try_advisory_xact_lock(hashtext('coach.rewrap')) AS locked;
 -- a KEK that is no longer active, or STALE — the legacy pair was rewritten underneath it
 -- (a v1.6.0 key replace during a rollback), which the digest detects.
 --
+-- This WHERE is the exact COMPLEMENT of the currency rule (KeyConfig.ADPairCurrent), and
+-- the `enc_data_key IS NOT NULL AND` guard is what makes it so. `sha256(NULL)` is NULL and
+-- `<non-null digest> IS DISTINCT FROM NULL` is TRUE, so without the guard a row with NO
+-- LEGACY PAIR — the state l-01 creates when it stops writing one — would read as pending
+-- forever while ADPairCurrent() called it current. The job would re-seal and discard it on
+-- every pass, and l-01's own precondition (`pending=0 skipped=0`) could never be met.
+-- Not reachable today (enc_key/enc_data_key are still NOT NULL), but this is the half of
+-- that forward-compat path that has to work when l-01 relaxes them.
+--
 -- Ordered by id for a stable, resumable scan. $2 is the batch size (≤ 50: the pass holds
 -- one of coach's 4 pooled connections and must stay inside the pod's 128 Mi, ADR-0035 §5).
 SELECT id, account_id, provider, enc_key, enc_data_key, enc_key_ad, enc_data_key_ad, kek_id, ad_src_digest
 FROM coach.api_key_config
 WHERE enc_key_ad IS NULL
    OR kek_id IS DISTINCT FROM sqlc.arg(active_kek_id)::text
-   OR ad_src_digest IS DISTINCT FROM sha256(enc_data_key)
+   OR (enc_data_key IS NOT NULL AND ad_src_digest IS DISTINCT FROM sha256(enc_data_key))
 ORDER BY id
 LIMIT sqlc.arg(batch_size);
 
@@ -125,7 +134,7 @@ LIMIT sqlc.arg(batch_size);
 SELECT count(*) FROM coach.api_key_config
 WHERE enc_key_ad IS NULL
    OR kek_id IS DISTINCT FROM sqlc.arg(active_kek_id)::text
-   OR ad_src_digest IS DISTINCT FROM sha256(enc_data_key);
+   OR (enc_data_key IS NOT NULL AND ad_src_digest IS DISTINCT FROM sha256(enc_data_key));
 
 -- name: UpdateApiKeyAD :execrows
 -- Install a freshly sealed AD pair. OPTIMISTIC on the legacy pair: the WHERE pins
@@ -133,13 +142,19 @@ WHERE enc_key_ad IS NULL
 -- mid-pass wins (0 rows affected) instead of being clobbered with a pair bound to the old
 -- key. ad_src_digest is computed by PG from those same bytes, so the digest and the pair
 -- are always written from one consistent observation.
+--
+-- IS NOT DISTINCT FROM, not `=`: with a NULL legacy pair (l-01 onwards) `NULL = NULL` is
+-- NULL, so a plain `=` could never match such a row and every pass would re-seal it and
+-- throw the result away. Against non-NULL bytes the two are identical, so this does not
+-- weaken the race check — a racing PUT always writes a non-NULL enc_data_key, which still
+-- fails to match the NULL the job observed.
 UPDATE coach.api_key_config
 SET enc_key_ad      = sqlc.arg(enc_key_ad),
     enc_data_key_ad = sqlc.arg(enc_data_key_ad),
     kek_id          = sqlc.arg(kek_id),
     ad_src_digest   = sha256(sqlc.arg(seen_enc_data_key)),
     updated_at      = now()
-WHERE id = sqlc.arg(id) AND enc_data_key = sqlc.arg(seen_enc_data_key);
+WHERE id = sqlc.arg(id) AND enc_data_key IS NOT DISTINCT FROM sqlc.arg(seen_enc_data_key);
 
 -- name: Sha256OfLegacyPair :one
 -- PG's sha256 of a row's legacy wrapped data key — the exact value the selector compares

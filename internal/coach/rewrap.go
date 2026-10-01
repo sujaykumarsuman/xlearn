@@ -157,14 +157,27 @@ func (w *Rewrapper) Pass(ctx context.Context) (int64, error) {
 			// would return the same ones.
 			i = rewrapMaxBatchesPass
 		case stats.Rewrapped == 0:
-			// No progress: the remaining rows are unfixable or racing.
+			// No progress. Batches are `ORDER BY id LIMIT 50` and a skipped row STAYS
+			// pending, so the window cannot advance past it — asking again would return
+			// the same rows forever.
+			//
+			// KNOWN LIMITATION: if a whole batch (50 rows) is undecryptable, any pending
+			// row sorting after it is never attempted, in this pass or any later one,
+			// because the ordering is stable. Fixing it properly means paging the selector
+			// past the ids already tried. Not done here because the state needs ≥ 50
+			// corrupt rows, and v2 is owner-only with at most two keys per account (D35) —
+			// but it is a real gap in the loop invariant, not a non-issue, and the
+			// `skipped` count below under-reports in exactly that case.
 			i = rewrapMaxBatchesPass
 		}
 		if i >= rewrapMaxBatchesPass {
 			break
 		}
 	}
-	total.Skipped = len(skipped) // DISTINCT rows, so the summary agrees with `pending`
+	// DISTINCT rows this pass actually attempted. It cannot over-count (the map is keyed
+	// by row id), but it UNDER-counts in the whole-batch-failure case above, where
+	// `pending` exceeds the rows the pass ever looked at.
+	total.Skipped = len(skipped)
 
 	if total.Rewrapped > 0 || total.Skipped > 0 || total.Raced > 0 || total.Pending > 0 {
 		w.log.Info("coach rewrap: pass",
@@ -186,6 +199,11 @@ var errAlreadySkipped = errors.New("coach rewrap: already skipped in this pass")
 // store.Resealer and is exported so the store's integration tests can drive THIS decision
 // tree against a real Postgres rather than a copy of it — an earlier draft reimplemented
 // it in the test and silently diverged on the ErrUnknownKEK fallback below.
+//
+// It is NOT the same decision tree as Service.openKey: this one falls back to the legacy
+// pair on ErrUnknownKEK and openKey does not. Repairing a row and serving a key to a
+// provider have different stakes — see openKey's comment for why the serving path must
+// refuse.
 //
 // WHICH PAIR IT READS FROM is the crux:
 //

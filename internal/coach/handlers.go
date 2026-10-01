@@ -302,9 +302,23 @@ func (s *Service) handlePutKey(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case body.Default:
-		// Point one feature's default at this provider's key. An explicit model is
-		// validated against the feature's requirements; an empty one takes the key's own
-		// default_model (what the coach feature always wants).
+		// Point one feature's default at this provider's key.
+		//
+		// An omitted model means "use the key's own default_model" — but that model must
+		// be validated for the FEATURE too, not waved through. Validating only what the
+		// client sent let `{"provider":"openai","default":true,"feature":"interview"}`
+		// store a chat-only model as the interview brain (every new OpenAI key's
+		// default_model is one), which is precisely what the 422 below exists to prevent.
+		// So resolve the effective model here and validate that, rather than leaving the
+		// store to fill a blank nobody checked.
+		if model == "" {
+			cur, err := s.store.GetKey(r.Context(), accountID, provider)
+			if err != nil {
+				s.mapErr(w, "set default: get key", err)
+				return
+			}
+			model = cur.DefaultModel
+		}
 		if model != "" && !s.validModelForFeature(w, feature, model) {
 			return
 		}
