@@ -18,6 +18,10 @@ import (
 	"github.com/sujaykumarsuman/xlearn/internal/packspec"
 )
 
+// gitkeep is the only file allowed directly under courses/<slug>/items/: an empty layout
+// placeholder (git keeps no empty directory).
+const gitkeep = ".gitkeep"
+
 // Finding levels.
 const (
 	levelError = "ERROR"
@@ -115,6 +119,9 @@ func (c *checker) run() error {
 	sort.Strings(dirs)
 	for _, d := range dirs {
 		fi, err := os.Stat(filepath.Join(c.pack, d))
+		if err == nil && fi.Mode().IsRegular() && path.Base(d) == gitkeep {
+			continue // the layout placeholder of an empty courses/<slug>/items/ (never built)
+		}
 		if err != nil || !fi.IsDir() {
 			c.add(levelError, 4, "", d, "not a directory (items/<id>/)")
 			continue

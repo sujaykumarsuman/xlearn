@@ -100,6 +100,18 @@ func TestFingerprintBuiltCases(t *testing.T) {
 	}
 }
 
+// An empty courses/<slug>/items/ may hold a .gitkeep placeholder (mi-07's scaffold layout).
+func TestCheckAllowsItemsPlaceholder(t *testing.T) {
+	pub := publicRoot(t)
+	pack := packRoot(t, pub)
+	write(t, filepath.Join(pack, "courses/dsa/items/.gitkeep"), "")
+	write(t, filepath.Join(pack, "courses/dsa/items/stray.txt"), "x")
+	_, out := runPacklint(t, nil, "check", "--public", pub, "--pack", pack)
+	if strings.Contains(out, ".gitkeep") || !strings.Contains(out, "items/stray.txt: not a directory") {
+		t.Fatalf("placeholder:\n%s", out)
+	}
+}
+
 // Rule 4 accepts the TL gate's timing.json beside pack.json.
 func TestCheckAllowsTiming(t *testing.T) {
 	pub := publicRoot(t)
