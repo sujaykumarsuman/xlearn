@@ -21,17 +21,31 @@ import (
 // this was reachable only through the API — which is why nothing surfaced it.
 func TestInterviewDefaultValidatesTheDerivedModelToo(t *testing.T) {
 	h := newHarness(t)
-	// A key whose own default_model is chat-only — the default for every new OpenAI key.
 	h.connect(t, "openai", "sk-live-abcdefghijklmnop")
+
+	// Pin the key's model to a known chat-only catalog entry rather than relying on the
+	// provider default happening to be one. Today it is (OpenAIDefaultModel is
+	// gpt-5.6-sol), but if a later release promotes an interview-capable model this test
+	// would quietly stop testing anything — which is the moment it matters most.
+	noBrain := firstModelWithout(t, CapInterviewBrain)
+	resp := h.do(t, http.MethodPut, "/keys", map[string]any{
+		"provider": "openai", "default_model": noBrain,
+	}, nil)
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		t.Fatalf("seed the key's model: status %d", resp.StatusCode)
+	}
+	resp.Body.Close()
+
 	k, err := h.store.GetKey(t.Context(), h.account, store.ProviderOpenAI)
 	if err != nil {
 		t.Fatalf("get key: %v", err)
 	}
 	if ok, _ := NewCatalog().InterviewCapable(k.DefaultModel); ok {
-		t.Skipf("the OpenAI default %q is interview-capable; this test needs one that is not", k.DefaultModel)
+		t.Fatalf("setup: %q is interview-capable, so this test proves nothing", k.DefaultModel)
 	}
 
-	resp := h.do(t, http.MethodPut, "/keys", map[string]any{
+	resp = h.do(t, http.MethodPut, "/keys", map[string]any{
 		"provider": "openai", "default": true, "feature": "interview", // no default_model
 	}, nil)
 	defer resp.Body.Close()
