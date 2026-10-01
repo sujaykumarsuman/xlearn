@@ -6,12 +6,22 @@
 //	packlint check --public . --pack ../xlearn-evalpack [--item <id>]… [--since <ref>] [--json] [--strict]
 //	packlint hash  --public . [--item <id>]…
 //	packlint fingerprint --pack ../xlearn-evalpack (--pre-push | --diff <range> | --tree <dir>) [--repo .] [--min-len 24]
+//	packlint lock      --public . --pack … [--item <id>]… (--write | --verify)                  (m3-02)
+//	packlint validate  --public . --pack … [--item <id>]…
+//	packlint exec      --public . --pack … [--item <id>]… --gate oracle|wrong|tl|syntax|all [--provisional]
+//	packlint exec      --warm-cache [--cache-dir <dir>]
+//	packlint build     --public . --pack … --out build/ --version <semver> --validated-against <sha>
+//	packlint listing   <image ref | image archive .tar | build directory>
 //
 // check (the default) applies the nine pack rules (docs/v2/sprints/sprint-m3-01.md task 2):
 // exit 0 clean, 1 on an ERROR (or a WARN with --strict), 2 on a usage error. hash prints
 // each item's content_hash and contract_hash (the author pastes the contract hash into
 // the pack's accepts_contract_hashes). fingerprint is the pre-push leak scan
-// (hack/git-hooks/pre-push): exit 1 when outgoing commits carry pack data.
+// (hack/git-hooks/pre-push): exit 1 when outgoing commits carry pack data. The m3-02
+// pipeline (pipeline.go) materializes cases (the expected outputs computed from the public
+// Go reference), locks, validates, runs the oracle / wrong-solution / time-limit gates,
+// builds the data image's root and checks an image against the allowlist; every program
+// runs in a network-less container (internal/packspec/executor), never on the host.
 //
 // Output never carries pack payloads: only ids, paths and hashes. --public takes the repo
 // root or any content root holding courses/ (with paths.json and ids.lock.json).
@@ -47,6 +57,16 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return runHash(args, stdout, stderr)
 	case "fingerprint":
 		return runFingerprint(args, stdin, stdout, stderr)
+	case "lock":
+		return runLock(args, stdout, stderr)
+	case "validate":
+		return runValidate(args, stdout, stderr)
+	case "exec":
+		return runExec(args, stdout, stderr)
+	case "build":
+		return runBuild(args, stdout, stderr)
+	case "listing":
+		return runListing(args, stdout, stderr)
 	case "help":
 		fmt.Fprint(stdout, usageText)
 		return exitOK
@@ -60,6 +80,13 @@ const usageText = `usage:
   packlint check --public . --pack ../xlearn-evalpack [--item <id>]... [--since <ref>] [--json] [--strict]
   packlint hash  --public . [--item <id>]...
   packlint fingerprint --pack ../xlearn-evalpack (--pre-push | --diff <range> | --tree <dir>) [--repo .] [--min-len 24]
+  packlint lock      --public . --pack ../xlearn-evalpack [--item <id>]... (--write | --verify)
+  packlint lock      --tools
+  packlint validate  --public . --pack ../xlearn-evalpack [--item <id>]...
+  packlint exec      --public . --pack ../xlearn-evalpack [--item <id>]... --gate oracle|wrong|tl|syntax|all [--provisional]
+  packlint exec      --warm-cache [--cache-dir <dir>]
+  packlint build     --public . --pack ../xlearn-evalpack --out build/ --version <semver> --validated-against <sha> [--dockerfile=false]
+  packlint listing   <image ref | image archive .tar | build directory>
 `
 
 // multiFlag is a repeatable string flag (--item a --item b).

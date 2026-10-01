@@ -36,20 +36,33 @@ Go types in `internal/course/item.go`). The grading-relevant fields: `parts[]` (
 fragments `_code/<stage>-<NN>.<lang>.snip`, which are never references. `packlint lock` (m3-02) computes
 expected outputs from `solution.go` only.
 
-**Private pack** (`internal/packspec`):
+**Private pack** (`internal/packspec`, format 1 since m3-02):
 
 ```
-pack.json                                    {"format_major": 0|1, "version": "X.Y.Z"}
+pack.json                                    {"format_major": 1, "version": "X.Y.Z"}
+tests.lock                                   written by `packlint lock --write`; never by hand
+drafts/                                      unstamped hint/editorial prose; never built
 courses/<slug>/items/<id>/
-  pack.json      {"item", "accepts_contract_hashes": [1..2], "wrong": [{"file", "expect", "category"?}],
-                  "keys"?: {"<part or probe id>": "keys/<file>"}, "review"?: {"tests": "YYYY-MM-DD"}}
-  tests/edge.jsonl   hand-picked cases: {args | ctor+ops+args, expected, tags}
+  pack.json      {"item", "accepts_contract_hashes": [1..2],
+                  "gen"?: [{"cmd": "gen/<name>.go", "args"?: [...], "count", "tags"?}
+                          | {"spec": {"gen": "int_array@1", "params": {...}}, "count", "tags"?}],
+                  "wrong": [{"file", "expect", "category"?}],
+                  "keys"?: {"<part or probe id>": "keys/<file>"}, "review"?: {"tests": "YYYY-MM-DD"},
+                  "large_case_exception"?: {"max_bytes": ≤ 2097152, "stamped": "YYYY-MM-DD"}}
+  tests/edge.jsonl   hand-picked INPUTS, one per line: {"args": [...]} or {"ops": [...], "args": [...]}, "tags"?
+                     — never an expected output (packlint computes it from the reference)
+  gen/<name>.go      a correctness-case generator: `--seed <u64>` + args → ONE input line on stdout
+  validate/<name>.go a custom structural invariant: the canonical input on stdin; exit 0 = valid
+  invalid/<name>.jsonl inputs that must be rejected (by the codec, the constraints or a custom validator)
+  submissions/brute.go  the oracle: a different algorithm, run on the small (edge + random) cases
+  submissions/wrong/*   declared in pack.json `wrong[]`
   keys/ anchors/ exemplars/                  only where the answer is not public-derivable
-  gen/ validate/ invalid/ submissions/{brute.*, wrong/*}
+  timing.json        written by the TL gate (provisional until m3-13)
 ```
 
 `expect` ∈ `WA TLE RE MLE CE REJECTED`; `category` is a mistake category of the course. Nothing else may sit
-beside `pack.json`; no dotfiles. m3-02 adds cases, `tests.lock`, `gen[]` and `format_major: 1`.
+beside `pack.json` and `timing.json`; no dotfiles. A class-mode input has the public sample shape: `ops` starts
+with the class name (the constructor), and `args[0]` holds the constructor's arguments.
 
 ## 3. Hashes
 
@@ -74,6 +87,47 @@ hashes in `accepts_contract_hashes` (at most 2) so either repo can ship first. T
 self-graded window for that item. A content-only edit to limits, samples, languages, constraints or prompts
 keeps the pack valid but may break its expectations: `packlint check --since <ref>` warns "re-run
 `make packcheck`" (TLE expectations, the validator).
+
+### The pipeline (m3-02)
+
+`packlint` turns the source into the built pack. Every program runs in a network-less container through
+packlint's executor, never on the host. The Go programs are the reference, the brute oracle, wrong solutions,
+generators and validators; they run in `golang:1.26.8` pinned by digest. C++ and Python references are
+syntax-checked only, and their execution gates report `pending(harness)` until m3-04.
+
+- **Cases.** A case is a canonical JSON line `{args | ops+args, expected, id, tags}` or, for a perf spec,
+  `{expected, gen, id, params, seed, tags}`.
+  - `id = sha256("xlearn.case@1\n" + canonical input)` hashes the input only, so fixing a case makes a new one.
+  - Cases are ordered edge → random → perf. `perf` cases come from `spec` entries of the public generator
+    registry (`internal/packspec/gen`: `int_array@1`, `string@1`, `permutation@1`, `tree@1`, `graph@1`,
+    `op_sequence@1`), or from a `cmd` entry tagged `perf`.
+  - A literal input is ≤ 256 KiB, or ≤ 2 MiB with a stamped `large_case_exception`.
+- **Seeds** are derived, never written: the first 8 bytes of
+  `sha256(item ‖ 0 ‖ cmd ‖ 0 ‖ args ‖ 0 ‖ index)`. For a spec, `cmd` is the spec's canonical JSON and `args`
+  is empty.
+- **Expected outputs** come from `_code/solution.go` only, run through the generated harness.
+  - A perf case under the `exact` checker with a float-free output stores `{"bytes", "sha256"}` of the
+    reference's fd-4 frame.
+  - Every other expected output is the literal result.
+- **Gates.**
+
+  | Command | Gate |
+  |---|---|
+  | `lock --verify` | regenerated cases equal `tests.lock` byte for byte |
+  | `validate` | the generic validator from `constraints[]`, plus `validate/*`; every `invalid/*` line is rejected |
+  | `exec --gate oracle` | the reference agrees with `submissions/brute.go` on the small cases |
+  | `exec --gate wrong` | every wrong solution gets exactly its declared verdict |
+  | `exec --gate tl --provisional` | see the TL rules below |
+
+  The TL gate checks that `time_ms ≥ max(3 × reference max CPU, 1000)`, that Σ TL ≤ 40 CPU-s, and that
+  `memory_mb ≥ 2 × reference peak + baseline`. It also checks that every `expect: TLE` solution exceeds the
+  TL on a perf case.
+- **Build.** `build` writes `manifest.json`, `courses/<slug>/items/<id>/cases.jsonl.zst` and
+  keys/anchors/exemplars for stamped items only. Unstamped items fall back to self.
+- **Listing.** `listing` checks the image allowlist.
+- **The public fixture.** `internal/judge/testdata` holds the synthetic `fixture` course (`fx-001…003`) with
+  its pack source and built pack. It runs every gate in public CI (`pack-fixture`) and in the private repo's
+  `selftest`.
 
 ## 4. Stamps
 
@@ -113,7 +167,8 @@ for a pure typo, put `label-edit-ok: <item>/<part>/<id>` in the PR body and re-r
 5. **Pack:** edge cases, generators, brute oracle, ≥ 2 wrong solutions, keys where needed.
 6. `packlint hash --item <id>` → paste the contract hash into the pack's `accepts_contract_hashes`.
 7. `packlint check --public . --pack ../xlearn-evalpack --item <id>` → clean.
-8. `make packcheck ITEM=<id>` (m3-02: lock, validator, oracle, wrong solutions, time limits).
+8. `make packcheck ITEM=<id>` in `../xlearn-evalpack`: lock, validator, oracle, wrong solutions, time limits.
+   Then `make lock ITEM=<id>` (rewrites `tests.lock`) once the cases are right.
 9. Stamp `review.tests`; open PRs in both repos (either order).
 
 ## 7. Tools
@@ -122,6 +177,11 @@ for a pure typo, put `label-edit-ok: <item>/<part>/<id>` in the PR body and re-r
 |---|---|
 | `packlint check [--item <id>] [--since <ref>] [--json] [--strict]` | the nine pack rules; exit 1 on an error (or a warning with `--strict`) |
 | `packlint hash [--item <id>]` | `<id> <content_hash> <contract_hash>` |
+| `packlint lock (--write \| --verify) [--item <id>]` | materialize the cases (expected from the Go reference) and write or verify `tests.lock` |
+| `packlint validate [--item <id>]` | the validators gate |
+| `packlint exec --gate oracle\|wrong\|tl\|syntax\|all [--provisional] [--item <id>]` | the execution gates (`--provisional` for `tl`); `exec --warm-cache` builds the Go std-cache volume once |
+| `packlint build --out build/ --version <v> --validated-against <sha>` | the built pack (stamped items) + its Dockerfile |
+| `packlint listing <image \| archive.tar \| dir>` | the image allowlist, one layer per course, the manifest verifies |
 | `make packlint` | `packlint check` over `PACK` (default `$XLEARN_EVALPACK_DIR` or `../xlearn-evalpack`) |
 | `make contentlint` | the public content checks (the CI `content` job) |
 | `make install-hooks` | per clone: `core.hooksPath` → `hack/git-hooks` (the pre-push fingerprint hook) |

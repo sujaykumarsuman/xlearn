@@ -1,0 +1,69 @@
+{{template "header" .}}
+func main() {
+	defer xlRecover()
+	p := &xlParser{b: xlReadInput()}
+	var spans [][]byte
+	var ops []string
+	p.expect('{')
+	for k := 0; k < 2; k++ {
+		if k > 0 {
+			p.expect(',')
+		}
+		switch xlString(p) {
+		case "args":
+			p.expect(':')
+			spans = xlSpans(p)
+		case "ops":
+			p.expect(':')
+			ops = xlSlice(p, xlString)
+		default:
+			xlFail("bad_input")
+		}
+	}
+	p.expect('}')
+	p.end()
+	if len(ops) == 0 || len(ops) != len(spans) || ops[0] != {{printf "%q" .Name}} {
+		xlFail("bad_input")
+	}
+	a := &xlParser{b: spans[0]}
+	a.expect('[')
+{{- range $i, $p := .Params}}
+{{- if $i}}
+	a.expect(','){{end}}
+	xlC{{$i}} := ({{$p.Dec}})(a)
+{{- end}}
+	a.expect(']')
+	a.end()
+	var w xlWriter
+	w.raw(`{"ok":[null`)
+	xlObj := Constructor({{range $i, $p := .Params}}{{if $i}}, {{end}}xlC{{$i}}{{end}})
+	for xlI := 1; xlI < len(ops); xlI++ {
+		w.raw(",")
+		a := &xlParser{b: spans[xlI]}
+		a.expect('[')
+		switch ops[xlI] {
+{{- range .Ops}}
+		case {{printf "%q" .Name}}:
+{{- range $i, $p := .Params}}
+{{- if $i}}
+			a.expect(','){{end}}
+			xlA{{$i}} := ({{$p.Dec}})(a)
+{{- end}}
+			a.expect(']')
+			a.end()
+{{- if .Void}}
+			xlObj.{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}xlA{{$i}}{{end}})
+			w.raw("null")
+{{- else}}
+			xlR := xlObj.{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}xlA{{$i}}{{end}})
+			({{.Enc}})(&w, xlR)
+{{- end}}
+{{- end}}
+		default:
+			xlFail("bad_input")
+		}
+	}
+	w.raw("]}")
+	xlWriteFrame(w.b)
+}
+{{template "runtime" .}}

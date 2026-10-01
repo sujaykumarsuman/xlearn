@@ -1,0 +1,43 @@
+{
+  "format_major": 1,
+  "version": "0.1.0",
+  "validated_against": "0000000000000000000000000000000000000000",
+  "items": {
+    "fx-001": {
+      "item_hash": "sha256:3ec3f9550005905223a5842783c75e8ff2f1b367b5f8c84dccabe8fec6fe645d",
+      "accepts_contract_hashes": [
+        "sha256:43ce62cb4ae05bc1f76ec77c48e4930432cd4eabaf80ab325d904f3d689c1fa0"
+      ],
+      "grader_kinds": [
+        "code"
+      ],
+      "files": {
+        "courses/fixture/items/fx-001/cases.jsonl.zst": "sha256:9902bd2e03264b3c05b3064970c6de3ac5c1828529064bb9a5da87f582f4d5b7"
+      }
+    },
+    "fx-002": {
+      "item_hash": "sha256:0118392fbbf90007b2dde5927e34fb9b23ea55efda0995b3d540009fc94c420e",
+      "accepts_contract_hashes": [
+        "sha256:0fa6416b2c4878722685c79a945ee7bc00fe379c6d2d7153b136f656b9226a28"
+      ],
+      "grader_kinds": [
+        "code"
+      ],
+      "files": {
+        "courses/fixture/items/fx-002/cases.jsonl.zst": "sha256:93fcb217529d14927ff5474aa3bbbebe67df36bb445ba24c522ce5396c0f8a51"
+      }
+    },
+    "fx-003": {
+      "item_hash": "sha256:4c589bdb6c37e6328bd378d7f83ea8ce8727319f0c2f3bd953477279983783cc",
+      "accepts_contract_hashes": [
+        "sha256:a0365c37d017ae79098cd7f928e918ff1bcba55d8dabfdd031044740228d477c"
+      ],
+      "grader_kinds": [
+        "code"
+      ],
+      "files": {
+        "courses/fixture/items/fx-003/cases.jsonl.zst": "sha256:a5ef2bad05c3c5bfa35da6dd7c7a569ad8e3b6938d7d1f5018b60b4a9b8a0c69"
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "item": "fx-001",
+  "accepts_contract_hashes": ["sha256:43ce62cb4ae05bc1f76ec77c48e4930432cd4eabaf80ab325d904f3d689c1fa0"],
+  "gen": [
+    {"cmd": "gen/random.go", "args": ["--max-n", "40", "--max-v", "5"], "count": 10, "tags": ["random"]},
+    {"spec": {"gen": "int_array@1", "params": {"n": 200000, "min": -1000, "max": 1000}}, "count": 2, "tags": ["perf"]}
+  ],
+  "wrong": [
+    {"file": "submissions/wrong/empty-part.go", "expect": "WA", "category": "off_by_one"},
+    {"file": "submissions/wrong/quadratic.go", "expect": "TLE", "category": "complexity_misjudged"}
+  ],
+  "review": {"tests": "2026-10-01"}
+}

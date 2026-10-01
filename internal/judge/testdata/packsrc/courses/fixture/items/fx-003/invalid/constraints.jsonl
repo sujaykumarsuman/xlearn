@@ -1,0 +1,4 @@
+{"ops": ["FixedShelf", "Put"], "args": [[0], [1, 1]]}
+{"ops": ["FixedShelf", "Put"], "args": [[2], [10001, 1]]}
+{"ops": ["FixedShelf", "Put"], "args": [[2], [1, -1]]}
+{"ops": ["FixedShelf", "Get", "Get"], "args": [[2], [1], [2]]}

@@ -1,0 +1,5 @@
+{"ops": ["FixedShelf", "Put", "Put", "Get", "Get"], "args": [[1], [1, 10], [2, 20], [1], [2]], "tags": ["capacity-one"]}
+{"ops": ["FixedShelf", "Put", "Put", "Put", "Put", "Get", "Get"], "args": [[2], [1, 10], [2, 20], [1, 11], [3, 30], [1], [2]], "tags": ["update-keeps-place"]}
+{"ops": ["FixedShelf", "Get", "Put", "Get"], "args": [[3], [4], [4, 0], [4]]}
+{"ops": ["FixedShelf", "Put", "Put", "Put", "Get", "Get", "Get"], "args": [[3], [0, 1000000000], [10000, 0], [5, 5], [0], [10000], [5]], "tags": ["bounds"]}
+{"ops": ["FixedShelf", "Put", "Put", "Put", "Put", "Get", "Get", "Get"], "args": [[2], [1, 1], [2, 2], [3, 3], [4, 4], [1], [2], [4]]}

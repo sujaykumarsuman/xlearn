@@ -1,0 +1,4 @@
+# The files generate.go may embed (//go:embed templates/go/*.tmpl): the public harness
+# templates, as path.Match patterns. m3-04 adds templates/cpp and templates/python.
+# cmd/contentlint fails CI on an embedded file no line matches.
+templates/go/*.tmpl

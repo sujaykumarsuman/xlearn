@@ -319,12 +319,12 @@ func (c *checker) checkFiles(dir, id string, pk *packspec.Item) {
 		}
 		top := strings.Split(rel, "/")[0]
 		switch {
-		case rel == packspec.ItemFile:
+		case !d.IsDir() && containsStr(packspec.ItemFiles, rel):
 		case !strings.Contains(rel, "/") && d.IsDir() && !allowed[top]:
 			c.add(levelError, 4, id, dir+"/"+rel+"/", "undeclared directory (allowed: %s)", strings.Join(packspec.ItemDirs, ", "))
 			return fs.SkipDir
 		case !strings.Contains(rel, "/") && !d.IsDir():
-			c.add(levelError, 4, id, dir+"/"+rel, "undeclared file (only pack.json and the allowed subdirectories)")
+			c.add(levelError, 4, id, dir+"/"+rel, "undeclared file (only %s and the allowed subdirectories)", strings.Join(packspec.ItemFiles, ", "))
 		}
 		return nil
 	})

@@ -211,15 +211,31 @@ func buildCorpus(pack string, minLen int) (*corpus, error) {
 			return nil, err
 		}
 	}
-	// Materialized cases (m3-02's build/); compressed ones are left to the private CI.
+	// Materialized cases under the pack's build/ (m3-02): plain *.jsonl and the built
+	// cases.jsonl.zst, decompressed in memory, so the hook covers generated cases too.
 	build := filepath.Join(pack, "build")
 	if fi, err := os.Stat(build); err == nil && fi.IsDir() {
 		err := filepath.WalkDir(build, func(p string, e fs.DirEntry, err error) error {
-			if err != nil || e.IsDir() || !strings.HasSuffix(p, ".jsonl") {
+			if err != nil || e.IsDir() {
 				return err
 			}
 			rel, _ := filepath.Rel(pack, p)
-			return c.addJSONL(p, filepath.ToSlash(rel))
+			rel = filepath.ToSlash(rel)
+			switch {
+			case strings.HasSuffix(p, ".jsonl"):
+				return c.addJSONL(p, rel)
+			case strings.HasSuffix(p, ".jsonl.zst"):
+				b, err := os.ReadFile(p)
+				if err != nil {
+					return err
+				}
+				raw, err := packspec.Decompress(b)
+				if err != nil {
+					return fmt.Errorf("%s: %w", rel, err)
+				}
+				return c.addLines(raw, rel)
+			}
+			return nil
 		})
 		if err != nil {
 			return nil, err
@@ -229,12 +245,16 @@ func buildCorpus(pack string, minLen int) (*corpus, error) {
 }
 
 func (c *corpus) addJSONL(p, rel string) error {
-	f, err := os.Open(p)
+	b, err := os.ReadFile(p)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	sc := bufio.NewScanner(f)
+	return c.addLines(b, rel)
+}
+
+// addLines records every case line of a JSONL body.
+func (c *corpus) addLines(b []byte, rel string) error {
+	sc := bufio.NewScanner(bytes.NewReader(b))
 	sc.Buffer(make([]byte, 0, 1<<20), maxLine)
 	for n := 1; sc.Scan(); n++ {
 		line := bytes.TrimSpace(sc.Bytes())
