@@ -87,6 +87,7 @@ func (s *Service) sealKey(accountID, provider, rawKey string) (sealedKey, error)
 // during a rollback would be ignored in favour of the previous key after rolling forward —
 // and if they rotated because the old key was revoked, the resulting 401 would disable the
 // new key (KindAuth is the one kind that disables).
+//
 // It does NOT share Reseal's ErrUnknownKEK fallback, and that asymmetry is deliberate.
 // Reseal is REPAIRING a row — it re-seals under the active KEK and hands the plaintext to
 // nobody — so falling back to the legacy pair there is free. openKey is SERVING a key to a
