@@ -348,3 +348,11 @@ func TestInputErrors(t *testing.T) {
 		t.Fatalf("LoadItemSource: %v", err)
 	}
 }
+
+// A gate line never has the "file.go: message" shape CI problem matchers turn into errors.
+func TestGateLineShape(t *testing.T) {
+	g := GateResult{Item: "fixture/fx-001", Gate: "oracle", Target: "submissions/brute.go", Status: Pass, Detail: "16 small cases agree"}
+	if s := g.String(); strings.Contains(s, ".go:") || s != "fixture/fx-001 oracle submissions/brute.go — pass (16 small cases agree)" {
+		t.Fatalf("gate line %q", s)
+	}
+}

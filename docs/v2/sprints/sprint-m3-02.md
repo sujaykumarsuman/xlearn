@@ -9,19 +9,19 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done (2026-10-01, run r-43): [xlearn#110](https://github.com/sujaykumarsuman/xlearn/pull/110) (`3f63285`) and xlearn-evalpack#1 (`aab613e`) merged; evalpack `v0.2.0` built, listed, pushed and probed
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Pack format v1 + `make packcheck` | E | ⬜ |
-| 2 | `internal/packspec` pipeline + `packlint` `lock` / `validate` / `exec` / `build` / `listing` | X | ⬜ |
-| 3 | Seeded perf generator registry (`gen@v`) | X | ⬜ |
-| 4 | Authoring executor (`--network none`) + `internal/platform/checker` + Go half of `internal/platform/harness` | X | ⬜ |
-| 5 | Private CI gates (`packcheck.yml`) incl. the fixture self-test | E | ⬜ |
-| 6 | Image build: `FROM scratch`, one layer per course, `/manifest.json`, listing test, multi-arch | E | ⬜ |
-| 7 | Synthetic fixture pack + public `pack-fixture` CI job + compose anchor | X | ⬜ |
-| 8 | Authoring rules (pack README) | E | ⬜ |
-| 9 | Verify + record | X · E | ⬜ |
+| 1 | Pack format v1 + `make packcheck` | E | ✅ evalpack#1: `format_major: 1`, `0.2.0`, `tests.lock` tool header, `drafts/`, Makefile via `go -C ../xlearn run ./cmd/packlint` |
+| 2 | `internal/packspec` pipeline + `packlint` `lock` / `validate` / `exec` / `build` / `listing` | X | ✅ #110 |
+| 3 | Seeded perf generator registry (`gen@v`) | X | ✅ #110: `internal/packspec/gen`, the six `@1` generators, golden hashes |
+| 4 | Authoring executor (`--network none`) + `internal/platform/checker` + Go half of `internal/platform/harness` | X | ✅ #110 |
+| 5 | Private CI gates (`packcheck.yml`) incl. the fixture self-test | E | ✅ evalpack#1: gates and `selftest` green on the PR and `main` |
+| 6 | Image build: `FROM scratch`, one layer per course, `/manifest.json`, listing test, multi-arch | E | ✅ `v0.2.0` (run 36835276038): listing before push, `linux/amd64` + `linux/arm64`, probe PASS |
+| 7 | Synthetic fixture pack + public `pack-fixture` CI job + compose anchor | X | ✅ #110 |
+| 8 | Authoring rules (pack README) | E | ✅ evalpack#1 |
+| 9 | Verify + record | X · E | ✅ this PR |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row, the M3
@@ -29,12 +29,12 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] MI-9 done ([mi-07](sprint-mi-07.md)): `sujaykumarsuman/xlearn-evalpack` is **private**, not a fork or template, checked out at
+- [x] MI-9 done ([mi-07](sprint-mi-07.md)): `sujaykumarsuman/xlearn-evalpack` is **private**, not a fork or template, checked out at
       `../xlearn-evalpack`; its probe is green on every push; `0.1.0` pushed; pull secrets + ImageRepository merged (no ImagePolicy)
-- [ ] [m3-01](sprint-m3-01.md) merged: `internal/course/canon`, `internal/packspec` source types, `cmd/packlint check|hash|fingerprint`;
+- [x] [m3-01](sprint-m3-01.md) merged: `internal/course/canon`, `internal/packspec` source types, `cmd/packlint check|hash|fingerprint`;
       the pre-push hook active in this clone (`git config core.hooksPath` → `hack/git-hooks`; if it's unset, run `make install-hooks`
       first: a per-clone setting the session applies itself, not an owner step)
-- [ ] Parallel sessions: no open PR (in either repo) touches `cmd/packlint`, `internal/packspec`, `internal/platform/checker`,
+- [x] Parallel sessions: no open PR (in either repo) touches `cmd/packlint`, `internal/packspec`, `internal/platform/checker`,
       `internal/platform/harness`, `docker-compose.yml` or the evalpack workflows in a conflicting way (`gh pr list` in both repos,
       `git worktree list`, ListAgents); no peer session is editing `../xlearn-evalpack`
 
@@ -379,15 +379,15 @@ authoring (`ev-packs-14`), not to this session:
 
 ## Acceptance criteria
 
-- [ ] A sample item passes every gate (the synthetic fixture, in public CI and in the private `selftest` job); a planted wrong solution fails as declared, and a wrong `expect` fails the gate.
-- [ ] `packlint lock --verify` regenerates `tests.lock` byte-for-byte; every `invalid/*` is rejected by the constraint-derived validator or a custom one.
-- [ ] The image contains only allowed files (listing test), one layer per course, and a `/manifest.json` whose file hashes verify.
-- [ ] Probe green on every push (and on the weekly schedule).
-- [ ] `docker-compose.yml` carries the `x-evalpack-mount` anchor; public CI needs no secrets; the `pack-fixture` job rebuilds `pack/`
+- [x] A sample item passes every gate (the synthetic fixture, in public CI and in the private `selftest` job); a planted wrong solution fails as declared, and a wrong `expect` fails the gate.
+- [x] `packlint lock --verify` regenerates `tests.lock` byte-for-byte; every `invalid/*` is rejected by the constraint-derived validator or a custom one.
+- [x] The image contains only allowed files (listing test), one layer per course, and a `/manifest.json` whose file hashes verify.
+- [x] Probe green on every push (and on the weekly schedule).
+- [x] `docker-compose.yml` carries the `x-evalpack-mount` anchor; public CI needs no secrets; the `pack-fixture` job rebuilds `pack/`
       from source identically and `fixture_test.go` passes without docker.
-- [ ] `internal/platform/harness` (Go half, m3-04's frame protocol), `internal/platform/checker` and `internal/packspec/gen` exist once,
+- [x] `internal/platform/harness` (Go half, m3-04's frame protocol), `internal/platform/checker` and `internal/packspec/gen` exist once,
       at those paths, with golden tests.
-- [ ] The pack README carries the authoring rules; `docs/v2/status.md` is updated.
+- [x] The pack README carries the authoring rules; `docs/v2/status.md` is updated.
 
 ## Release
 
