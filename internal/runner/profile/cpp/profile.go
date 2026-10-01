@@ -107,7 +107,8 @@ func Profile() *profile.Profile {
 
 // TLMultiplier is the provisional cpp multiplier over the Go TL (task 7: the runner-it lane's
 // max CPU ratio vs the Go references on the perf cases, rounded up to the next 0.5, floor
-// 1.0); mi-10 calibrates it on production.
+// 1.0); mi-10 calibrates it on production. CI amd64, 2026-10-01: ratios 0.41–0.77 → the 1.0
+// floor.
 const TLMultiplier = 1.0
 
 func init() { profile.Register(Profile()) }
