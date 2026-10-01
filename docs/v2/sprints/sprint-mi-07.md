@@ -9,17 +9,17 @@
 
 ## Status
 
-_Overall:_ 🔄 First launch landed 2026-09-28 (run r-11) except the `v0.1.0` tag: its push was held by the system tag hold dir-7 (`aib directive check --action tag` → 10, checked twice). Tasks 3–6 ⛔; next: push `v0.1.0` once the hold lifts, then the owner's re-run items, then the re-run.
+_Overall:_ ✅ Done 2026-10-01 (re-run, run r-41). First launch 2026-09-28 (run r-11). The manager pushed `v0.1.0` on 2026-09-29 once the tag hold lifted (the owner's chat decision, journal rm-104). The owner then did the re-run items (ask-23). The re-run landed infra#51: the Secrets and the ImageRepository, which is Ready with `[0.1.0]`. No ImagePolicy (m3-07).
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
 | 1 | Machine user + classic `read:packages` PAT — before launch | O | ✅ 2026-09-28 (`ev-machine-user`, attested at launch: name + expiry given; expiry in [status.md](../status.md#evalpack-pat-expiry-manual-d34)) |
 | 2 | Create `xlearn-evalpack` (fresh, private) + scaffold + CI with the anonymous-GET probe | E | ✅ 2026-09-28: `PRIVATE/false/false`, sibling checkout `../xlearn-evalpack`, scaffold `3191626` on `main`; first probe run green (negative control 200/200, anonymous token 403 → PASS, existence skipped: no tag yet) |
-| 3 | Tag `v0.1.0` → private scaffold image, probe green | E | ⛔ held: the tag push is behind the system hold dir-7 (`action:tag`, from the morning's red host-verify). Not pushed; push it once the hold lifts (the next launch's first step) |
-| 4 | Grant the machine user read on the package; verify a PAT pull — before the re-run's launch | O | ⛔ owner: package grant + PAT pull, then re-run (the package exists only once `v0.1.0` is pushed) |
-| 5 | SOPS pull secrets (`xlearn`, `flux-system`) + rotation helper (the helper merges on the first launch; the owner runs it before the re-run) | I | 🔄 5a ✅ infra#38 (`74c91a9`): `hack/evalpack-pull-secret.sh`, host-lint set, README rotation runbook. 5b ⛔ owner: run the helper, then re-run |
-| 6 | `xlearn-evalpack` ImageRepository with `secretRef` (no ImagePolicy), in the re-run's PR with the Secrets | I | ⛔ re-run (with 5b's two Secrets) |
-| 7 | Record (after each launch) | X | 🔄 first launch recorded 2026-09-28 (this docs PR); the re-run records again |
+| 3 | Tag `v0.1.0` → private scaffold image, probe green | E | ✅ 2026-09-29 13:57Z: the manager pushed `v0.1.0` on `3191626` after dir-7 lifted (rm-104). Run 36579035959 was green: build, digest `sha256:ca8738c7…b11e`, existence 200, anonymous token 401 → PASS, control 200/200 |
+| 4 | Grant the machine user read on the package; verify a PAT pull — before the re-run's launch | O | ✅ 2026-10-01 (ask-23): the machine user has **Read** on the package, and the repo's Actions keep Write. The PAT pull of `0.1.0` succeeds and returns the same digest; an anonymous pull fails. After the grant, the dispatch probe run 36826596751 is green |
+| 5 | SOPS pull secrets (`xlearn`, `flux-system`) + rotation helper (the helper merges on the first launch; the owner runs it before the re-run) | I | ✅ 5a infra#38 (`74c91a9`). 5b infra#51 (`a8c7546`): both files come from the owner's helper run, copied with identical sha256, `ENC[` only under `data`. Both are live as `kubernetes.io/dockerconfigjson` |
+| 6 | `xlearn-evalpack` ImageRepository with `secretRef` (no ImagePolicy), in the re-run's PR with the Secrets | I | ✅ 2026-10-01 infra#51: `Ready=True`, 1 tag `[0.1.0]` (the decisive PAT proof). No ImagePolicy. `apps` is Ready at `a8c7546`. `host-verify --cluster`: 64 pass / 1 warn (TR-STEAL) / 0 fail, 12/12 imagerepositories |
+| 7 | Record (after each launch) | X | ✅ first launch 2026-09-28; re-run 2026-10-01 (this docs PR) |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + MI track row MI-9 + the evalpack stream and PAT-expiry rows).
