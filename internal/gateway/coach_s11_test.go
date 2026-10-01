@@ -58,6 +58,17 @@ func newCoachS11Harness(t *testing.T) *coachS11Harness {
 			}
 			_ = json.NewEncoder(w).Encode(map[string]any{"state": map[string]any{"status": status, "firstSolvedAt": first}})
 		})
+		// m1-07: the coach mode gate reads /attempts/open (no open attempt here: these
+		// tests are about the mode, not the D27 confirm).
+		mux.HandleFunc("GET /attempts/open", func(w http.ResponseWriter, r *http.Request) {
+			id := r.URL.Query().Get("problem_id")
+			status, first := "available", any(nil)
+			if h.solved[id] {
+				status, first = "solved", "2026-09-21T00:00:00Z"
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"attempts": []any{},
+				"problem": map[string]any{"problemId": id, "status": status, "firstSolvedAt": first}})
+		})
 		return mux
 	}())
 	t.Cleanup(practice.Close)

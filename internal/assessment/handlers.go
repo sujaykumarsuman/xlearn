@@ -159,6 +159,28 @@ func (s *Service) handleGetMock(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, buildMockView(m, scores, time.Now()))
 }
 
+// handleLiveMock: GET /mocks/live — the account's live mock session (status live, its
+// deadline not yet passed) or {"live": null}. Gateway-internal: the coach mode gate reads
+// it to lock the coach during a mock (m1-07; D27, ADR-0031 §7).
+func (s *Service) handleLiveMock(w http.ResponseWriter, r *http.Request) {
+	accountID := auth.ClaimsFrom(r.Context()).Subject
+	m, ok, err := s.store.LiveMock(r.Context(), accountID)
+	if err != nil {
+		s.mapErr(w, "live mock", err)
+		return
+	}
+	if !ok {
+		writeJSON(w, http.StatusOK, map[string]any{"live": nil})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"live": map[string]any{
+		"id":         m.ID,
+		"pathSlug":   m.PathSlug,
+		"startedAt":  m.StartedAt.UTC().Format(time.RFC3339),
+		"deadlineAt": m.DeadlineAt.UTC().Format(time.RFC3339),
+	}})
+}
+
 // handleScoreMock: POST /mocks/{id}/score — record the seven-dimension rubric (each
 // 1..5), compute /35 server-side, latch the session scored, and emit mock_completed
 // via the outbox in the same transaction (R-MK2). Idempotent on re-submit.

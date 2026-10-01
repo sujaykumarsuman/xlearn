@@ -169,7 +169,7 @@ func TestStoreIntegration(t *testing.T) {
 		for _, m := range []struct{ role, content string }{
 			{store.RoleUser, "first"}, {store.RoleAssistant, "second"}, {store.RoleUser, "third"},
 		} {
-			if err := st.AppendMessage(ctx, id1, m.role, m.content); err != nil {
+			if err := st.AppendMessage(ctx, id1, m.role, m.content, store.MessageMeta{}); err != nil {
 				t.Fatalf("append: %v", err)
 			}
 		}

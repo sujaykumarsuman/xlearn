@@ -175,6 +175,71 @@ describe("Problem workspace", () => {
     expect(screen.queryByText("Two Pointers")).not.toBeInTheDocument();
   });
 
+  // m1-07 / AB01 F3: D27 — coach use on the open attempt caps it at Assisted.
+  const CAPPED_LINE = "Coach used on this attempt · capped at Assisted";
+
+  it("shows the HUD chip and the capped Clean/Rough outcome when the coach was used (D27)", async () => {
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.includes("/api/problems/16"))
+        return { status: 200, body: agg("attempting", "attempt", ["attempt"], [STATEMENT], { coachAssistAt: "2026-10-01T10:00:00Z" }) };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/dsa/problem/16");
+
+    expect(await screen.findByText("Coach used · capped at Assisted")).toBeInTheDocument();
+    expect(screen.getByText(CAPPED_LINE)).toBeInTheDocument();
+    for (const name of [/^Clean/, /^Rough/]) {
+      const btn = screen.getByRole("button", { name });
+      expect(btn).toHaveClass("xl-outcome--capped");
+      expect(btn).toHaveAccessibleDescription(CAPPED_LINE);
+    }
+    for (const name of [/^Assisted/, /^Miss/]) {
+      expect(screen.getByRole("button", { name })).not.toHaveClass("xl-outcome--capped");
+    }
+  });
+
+  it("shows neither the HUD chip nor the capped line without coach use", async () => {
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.includes("/api/problems/16")) return { status: 200, body: agg("attempting", "attempt", ["attempt"], [STATEMENT], { coachAssistAt: null }) };
+      return { status: 404 };
+    });
+    renderApp("/xlearn/dsa/problem/16");
+
+    expect(await screen.findByText("Log your outcome")).toBeInTheDocument();
+    expect(screen.queryByText("Coach used · capped at Assisted")).not.toBeInTheDocument();
+    expect(screen.queryByText(CAPPED_LINE)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Clean/ })).not.toHaveClass("xl-outcome--capped");
+  });
+
+  it("reflects a cappedBy: coach outcome in the recorded grade", async () => {
+    let logged = false;
+    installFetchMock((url, init) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.includes("/api/problems/16/outcome") && init?.method === "POST") {
+        logged = true;
+        const solved = agg("solved", "attempt", ["attempt", "hint", "solution"], [STATEMENT], { lastOutcome: "assisted", firstSolvedAt: "2026-10-01T10:30:00Z" });
+        return { status: 200, body: { state: solved.state, cappedBy: "coach" } };
+      }
+      if (url.includes("/api/problems/16")) {
+        return {
+          status: 200,
+          body: logged
+            ? agg("solved", "attempt", ["attempt", "hint", "solution"], [STATEMENT], { lastOutcome: "assisted", firstSolvedAt: "2026-10-01T10:30:00Z" })
+            : agg("attempting", "attempt", ["attempt"], [STATEMENT], { coachAssistAt: "2026-10-01T10:00:00Z" }),
+        };
+      }
+      return { status: 404 };
+    });
+    renderApp("/xlearn/dsa/problem/16");
+
+    await userEvent.click(await screen.findByRole("button", { name: /^Clean/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Mark solved/ }));
+    expect(await screen.findByText("Logged as Assisted")).toBeInTheDocument();
+    expect(screen.getByText(CAPPED_LINE)).toBeInTheDocument();
+  });
+
   it("renders the solution-stage facts block when it is delivered", async () => {
     const FACTS = { stage: "solution", kind: "solution_facts", order: 2, body_md: "", code: "", solution_facts: { complexity: { time: ["O(n^2)"], space: ["O(1)", "O(log n)"] } } };
     installFetchMock((url) => {

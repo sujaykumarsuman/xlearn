@@ -31,6 +31,29 @@ type stateJSON struct {
 	FirstSolvedAt  *string    `json:"firstSolvedAt"`
 	RevealedEarly  bool       `json:"revealedEarly"`
 	Timer          *timerJSON `json:"timer"`
+	// CoachAssistAt (m1-07, D27): when the coach was first used on the OPEN attempt; null
+	// when it never was or no attempt is open. The Problem HUD chip and the outcome step's
+	// cap line read it.
+	CoachAssistAt *string `json:"coachAssistAt"`
+}
+
+// openAttemptJSON is one entry of GET /attempts/open.
+type openAttemptJSON struct {
+	AttemptID     string  `json:"attemptId"`
+	ProblemID     string  `json:"problemId"`
+	PathSlug      string  `json:"pathSlug"`
+	Purpose       string  `json:"purpose"`
+	StartedAt     string  `json:"startedAt"`
+	StageReached  string  `json:"stageReached"`
+	CoachAssistAt *string `json:"coachAssistAt"`
+}
+
+// openProblemJSON is GET /attempts/open's `problem` slot (only with ?problem_id=): the
+// item's solve state, which the gateway's coach mode gate reads instead of /state/{id}.
+type openProblemJSON struct {
+	ProblemID     string  `json:"problemId"`
+	Status        string  `json:"status"`
+	FirstSolvedAt *string `json:"firstSolvedAt"`
 }
 
 type penaltyJSON struct {
@@ -136,12 +159,68 @@ func (s *Service) handleOutcome(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad_request", "invalid body")
 		return
 	}
-	st, err := s.store.LogOutcome(r.Context(), accountID, problemID, body.Outcome)
+	res, err := s.store.LogOutcome(r.Context(), accountID, problemID, body.Outcome)
 	if err != nil {
 		s.mapErr(w, "log outcome", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"state": toStateJSON(st)})
+	out := map[string]any{"state": toStateJSON(res.State)}
+	if res.CappedBy != "" {
+		// D27: the self-reported clean/rough was recorded as assisted.
+		out["cappedBy"] = res.CappedBy
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// handleAssist: POST /attempts/{id}/assist — record the first coach use on the
+// account's open attempt (D27; idempotent, the first time is kept). The gateway calls it
+// BEFORE forwarding a chat about the attempt's problem, and sends nothing if it fails.
+// 404 for an unknown attempt or another account's, 409 attempt_closed for a concluded one.
+func (s *Service) handleAssist(w http.ResponseWriter, r *http.Request) {
+	accountID := auth.ClaimsFrom(r.Context()).Subject
+	attemptID := r.PathValue("id")
+	at, err := s.store.MarkCoachAssist(r.Context(), accountID, attemptID)
+	if err != nil {
+		s.mapErr(w, "mark coach assist", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"attemptId": attemptID, "coachAssistAt": timePtr(at)})
+}
+
+// handleOpenAttempts: GET /attempts/open[?problem_id=] — the account's open attempts,
+// newest first (purpose "course" until M2a, when open touches join the same list), plus
+// with ?problem_id= the item's solve state. It is the coach mode gate's one practice read
+// (m1-07): it replaces the coach path's /state/{id} call.
+func (s *Service) handleOpenAttempts(w http.ResponseWriter, r *http.Request) {
+	accountID := auth.ClaimsFrom(r.Context()).Subject
+	problemID := strings.TrimSpace(r.URL.Query().Get("problem_id"))
+	atts, err := s.store.ListOpenAttempts(r.Context(), accountID, problemID)
+	if err != nil {
+		s.mapErr(w, "list open attempts", err)
+		return
+	}
+	list := make([]openAttemptJSON, 0, len(atts))
+	for _, a := range atts {
+		list = append(list, openAttemptJSON{
+			AttemptID:     a.ID,
+			ProblemID:     a.ProblemID,
+			PathSlug:      a.PathSlug,
+			Purpose:       a.Purpose,
+			StartedAt:     a.StartedAt.UTC().Format(time.RFC3339),
+			StageReached:  a.StageReached,
+			CoachAssistAt: timePtr(a.CoachAssistAt),
+		})
+	}
+	out := map[string]any{"attempts": list}
+	if problemID != "" {
+		st, err := s.store.GetState(r.Context(), accountID, problemID)
+		if err != nil {
+			s.mapErr(w, "open attempts: problem state", err)
+			return
+		}
+		out["problem"] = openProblemJSON{ProblemID: problemID, Status: st.Status, FirstSolvedAt: timePtr(st.FirstSolvedAt)}
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 // --- conversions + helpers ---
@@ -159,10 +238,8 @@ func toStateJSON(st store.State) stateJSON {
 		v := st.LastOutcome
 		out.LastOutcome = &v
 	}
-	if !st.FirstSolvedAt.IsZero() {
-		v := st.FirstSolvedAt.UTC().Format(time.RFC3339)
-		out.FirstSolvedAt = &v
-	}
+	out.FirstSolvedAt = timePtr(st.FirstSolvedAt)
+	out.CoachAssistAt = timePtr(st.CoachAssistAt)
 	if st.Timer != nil {
 		remaining := int(time.Until(st.Timer.DeadlineAt).Seconds())
 		if remaining < 0 {
@@ -176,6 +253,15 @@ func toStateJSON(st store.State) stateJSON {
 		}
 	}
 	return out
+}
+
+// timePtr renders a time as RFC 3339 (UTC), or nil for the zero time.
+func timePtr(t time.Time) *string {
+	if t.IsZero() {
+		return nil
+	}
+	v := t.UTC().Format(time.RFC3339)
+	return &v
 }
 
 // parseIDs splits a comma-separated id list, trimming blanks and de-duplicating.
@@ -207,6 +293,8 @@ func (s *Service) mapErr(w http.ResponseWriter, what string, err error) {
 		writeError(w, http.StatusConflict, "already_solved", "this problem is already solved")
 	case errors.Is(err, store.ErrNothingToReveal):
 		writeError(w, http.StatusConflict, "nothing_to_reveal", "the solution is already revealed")
+	case errors.Is(err, store.ErrAttemptClosed):
+		writeError(w, http.StatusConflict, "attempt_closed", "the attempt has concluded")
 	case errors.Is(err, store.ErrInvalidOutcome):
 		writeError(w, http.StatusUnprocessableEntity, "invalid_outcome", "outcome must be one of clean, rough, assisted, miss")
 	default:

@@ -27,9 +27,9 @@ func TestPathParam(t *testing.T) {
 			calls++
 			return store.RevealResult{Revealed: store.StageHint, State: store.State{ProblemID: "zz-1"}}, nil
 		},
-		logOutcome: func(context.Context, string, string, string) (store.State, error) {
+		logOutcome: func(context.Context, string, string, string) (store.OutcomeResult, error) {
 			calls++
-			return store.State{ProblemID: "zz-1", Status: "solved"}, nil
+			return store.OutcomeResult{State: store.State{ProblemID: "zz-1", Status: "solved"}}, nil
 		},
 	}
 	h := NewService(fs, fakeVerifier{subject: testAccount}, testLogger()).

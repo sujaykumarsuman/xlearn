@@ -41,6 +41,8 @@ type CoachCoachMessage struct {
 	OutputTokens  pgtype.Int4
 	EstCostMicros pgtype.Int8
 	StopReason    pgtype.Text
+	PromptV       pgtype.Text
+	AttemptID     pgtype.UUID
 }
 
 type CoachCoachThread struct {
@@ -57,4 +59,10 @@ type CoachKeyDefault struct {
 	KeyID     pgtype.UUID
 	Model     string
 	UpdatedAt pgtype.Timestamptz
+}
+
+type CoachMessageQuotaDay struct {
+	AccountID pgtype.UUID
+	Day       pgtype.Date
+	N         int32
 }

@@ -11,10 +11,6 @@ import (
 	"github.com/sujaykumarsuman/xlearn/internal/platform/secrets"
 )
 
-// historyLimit caps how many prior thread turns are replayed to the provider (bounds
-// token spend on the user's key). The full history is still returned by GET /threads.
-const historyLimit = 20
-
 // Service is the coach HTTP application: the key-config CRUD, the SSE chat stream, and
 // the thread history endpoint, plus the k8s probes. It verifies the gateway-minted JWT
 // on every user route (ADR-0006) and derives the account id from the token subject. The
@@ -35,8 +31,11 @@ type Service struct {
 	providers map[string]Provider
 	catalog   *Catalog
 	courses   *course.Registry
-	log       *slog.Logger
-	health    *health.Handler
+	// limits is L18's in-process state (concurrent streams, the per-minute bucket) and the
+	// clock every L18 check, the daily cap's UTC day included, reads (limits.go).
+	limits *limiter
+	log    *slog.Logger
+	health *health.Handler
 }
 
 // NewService wires the coach application. verifier checks gateway-minted JWTs; cipher
@@ -64,6 +63,7 @@ func NewService(st store.Store, verifier auth.Verifier, cipher *secrets.Cipher, 
 		providers: providers,
 		catalog:   NewCatalog(),
 		courses:   courses,
+		limits:    newLimiter(),
 		log:       log,
 		health: health.New(health.Named{
 			Name:  "postgres",
@@ -102,8 +102,8 @@ type userRoute struct {
 	Handler http.HandlerFunc
 }
 
-// userRoutes is coach's per-user route table: the key config, the chat stream and the
-// thread history.
+// userRoutes is coach's per-user route table: the key config, the chat stream, the L18
+// admission probe and the thread history.
 func (s *Service) userRoutes() []userRoute {
 	return []userRoute{
 		{http.MethodGet, "/keys", s.handleGetKey},
@@ -116,6 +116,9 @@ func (s *Service) userRoutes() []userRoute {
 		{http.MethodGet, "/models", s.handleModels},
 
 		{http.MethodPost, "/chat", s.handleChat},
+		// The L18 probe (m1-07): read-only, consumes nothing; the gateway calls it right
+		// before recording a D27 assist.
+		{http.MethodGet, "/admission", s.handleAdmission},
 		{http.MethodGet, "/threads", s.handleThread},
 	}
 }

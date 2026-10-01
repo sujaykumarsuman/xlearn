@@ -188,6 +188,28 @@ func newWithholdHarness(t *testing.T) *withholdHarness {
 	practice.HandleFunc("POST /problems/{id}/{op...}", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"state": fullState(r.PathValue("id"))})
 	})
+	// m1-07: the coach mode gate's reads. Item 1's open attempt is "att-1".
+	practice.HandleFunc("GET /attempts/open", func(w http.ResponseWriter, r *http.Request) {
+		if h.practiceDown {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		pid := r.URL.Query().Get("problem_id")
+		attempts := []any{}
+		if pid == "" || pid == "1" {
+			attempts = append(attempts, map[string]any{"attemptId": "att-1", "problemId": "1", "pathSlug": "dsa",
+				"purpose": "course", "startedAt": "2026-09-28T00:00:00Z", "stageReached": "attempt", "coachAssistAt": nil})
+		}
+		out := map[string]any{"attempts": attempts}
+		if pid != "" {
+			st := fullState(pid)
+			out["problem"] = map[string]any{"problemId": pid, "status": st["status"], "firstSolvedAt": st["firstSolvedAt"]}
+		}
+		writeJSON(w, out)
+	})
+	practice.HandleFunc("POST /attempts/{id}/assist", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]any{"attemptId": r.PathValue("id"), "coachAssistAt": "2026-09-28T00:05:00Z"})
+	})
 
 	review := http.NewServeMux()
 	review.HandleFunc("GET /revisions/due", func(w http.ResponseWriter, r *http.Request) {
@@ -229,8 +251,14 @@ func newWithholdHarness(t *testing.T) *withholdHarness {
 	assessment.HandleFunc("GET /progress/mastery", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"problems": []any{map[string]any{"problemId": "2", "weight": 0.5}, map[string]any{"problemId": "3", "weight": 1}}})
 	})
+	assessment.HandleFunc("GET /mocks/live", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]any{"live": nil})
+	})
 
 	coach := http.NewServeMux()
+	coach.HandleFunc("GET /admission", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
 	coach.HandleFunc("POST /chat", func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		h.mu.Lock()

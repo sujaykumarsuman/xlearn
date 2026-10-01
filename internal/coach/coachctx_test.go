@@ -12,9 +12,12 @@ import (
 )
 
 // chatOn sends one chat turn on a page context (with an optional ?path=) and fails the
-// test unless the reply streamed to done.
+// test unless the reply streamed to done. It first lets one L18 token refill (the
+// harness clock only moves when told to), so a table of chats never trips the 20-a-minute
+// bucket that limits_test.go exercises on purpose.
 func (h *harness) chatOn(t *testing.T, pageContext, pathParam string) {
 	t.Helper()
+	h.clock.Advance(rateRefillEvery)
 	target := "/chat"
 	if pathParam != "" {
 		target += "?path=" + url.QueryEscape(pathParam)

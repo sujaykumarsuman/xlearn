@@ -11,6 +11,66 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getLiveMockSession = `-- name: GetLiveMockSession :one
+SELECT id, account_id, set_id, problem_id, difficulty, date, status, notes, started_at,
+    deadline_at, created_at, updated_at, path_slug, rubric_id, rubric_snapshot, total,
+    max_total, scored_by
+FROM assessment.mock_session
+WHERE account_id = $1 AND status = 'live' AND deadline_at > now()
+ORDER BY started_at DESC
+LIMIT 1
+`
+
+type GetLiveMockSessionRow struct {
+	ID             pgtype.UUID
+	AccountID      pgtype.UUID
+	SetID          string
+	ProblemID      string
+	Difficulty     pgtype.Text
+	Date           pgtype.Date
+	Status         string
+	Notes          string
+	StartedAt      pgtype.Timestamptz
+	DeadlineAt     pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	PathSlug       string
+	RubricID       pgtype.Text
+	RubricSnapshot []byte
+	Total          pgtype.Int4
+	MaxTotal       pgtype.Int4
+	ScoredBy       pgtype.Text
+}
+
+// The account's live mock (m1-07): status 'live' and its 45-minute window still open,
+// newest first. It locks the coach (D27, ADR-0031 §7: coach_paused during a live mock);
+// ErrNoRows when there is none. Same column list as GetMockSession.
+func (q *Queries) GetLiveMockSession(ctx context.Context, accountID pgtype.UUID) (GetLiveMockSessionRow, error) {
+	row := q.db.QueryRow(ctx, getLiveMockSession, accountID)
+	var i GetLiveMockSessionRow
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.SetID,
+		&i.ProblemID,
+		&i.Difficulty,
+		&i.Date,
+		&i.Status,
+		&i.Notes,
+		&i.StartedAt,
+		&i.DeadlineAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PathSlug,
+		&i.RubricID,
+		&i.RubricSnapshot,
+		&i.Total,
+		&i.MaxTotal,
+		&i.ScoredBy,
+	)
+	return i, err
+}
+
 const getMockSession = `-- name: GetMockSession :one
 SELECT id, account_id, set_id, problem_id, difficulty, date, status, notes, started_at,
     deadline_at, created_at, updated_at, path_slug, rubric_id, rubric_snapshot, total,

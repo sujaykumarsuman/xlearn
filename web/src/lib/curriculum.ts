@@ -251,6 +251,9 @@ export interface PracticeState {
   firstSolvedAt: string | null;
   revealedEarly: boolean;
   timer: PracticeTimer | null;
+  /** When the learner confirmed coach use on the open attempt (D27, m1-07): that attempt
+   *  is capped at Assisted. Null/absent when the coach wasn't used (or no attempt is open). */
+  coachAssistAt?: string | null;
 }
 
 /** The curriculum gate on the Problem workspace (review round 2): must be enrolled to
@@ -287,9 +290,12 @@ export interface RevealResponse {
   state: PracticeState;
 }
 
-/** POST /problems/{id}/attempt/start and /outcome response. */
+/** POST /problems/{id}/attempt/start and /outcome response. `cappedBy: "coach"` is present
+ *  on an outcome only when the D27 clamp applied: a self-reported clean/rough was recorded
+ *  as assisted because the coach was used on this attempt (m1-07). */
 export interface StateResponse {
   state: PracticeState;
+  cappedBy?: "coach";
 }
 
 /** The outcome response when a solve is NOT counted toward the course: either ahead of

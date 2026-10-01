@@ -70,3 +70,15 @@ SELECT id, set_id, problem_id, difficulty, date, started_at, total, max_total
 FROM assessment.mock_session
 WHERE account_id = $1 AND path_slug = $2 AND status = 'scored'
 ORDER BY started_at, created_at;
+
+-- name: GetLiveMockSession :one
+-- The account's live mock (m1-07): status 'live' and its 45-minute window still open,
+-- newest first. It locks the coach (D27, ADR-0031 §7: coach_paused during a live mock);
+-- ErrNoRows when there is none. Same column list as GetMockSession.
+SELECT id, account_id, set_id, problem_id, difficulty, date, status, notes, started_at,
+    deadline_at, created_at, updated_at, path_slug, rubric_id, rubric_snapshot, total,
+    max_total, scored_by
+FROM assessment.mock_session
+WHERE account_id = $1 AND status = 'live' AND deadline_at > now()
+ORDER BY started_at DESC
+LIMIT 1;

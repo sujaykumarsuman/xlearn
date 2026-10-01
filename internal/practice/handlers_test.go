@@ -169,11 +169,11 @@ func TestRevealNothingLeft(t *testing.T) {
 
 func TestOutcome(t *testing.T) {
 	fs := &fakeStore{
-		logOutcome: func(_ context.Context, _, _, v string) (store.State, error) {
+		logOutcome: func(_ context.Context, _, _, v string) (store.OutcomeResult, error) {
 			if v != "clean" {
 				t.Fatalf("value = %q", v)
 			}
-			return store.State{ProblemID: "16", Status: "solved", LastOutcome: "clean", FirstSolvedAt: time.Now()}, nil
+			return store.OutcomeResult{State: store.State{ProblemID: "16", Status: "solved", LastOutcome: "clean", FirstSolvedAt: time.Now()}}, nil
 		},
 	}
 	h := newTestService(fs)
@@ -182,16 +182,139 @@ func TestOutcome(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 (%s)", rr.Code, rr.Body.String())
 	}
-	st := decodeBody(t, rr)["state"].(map[string]any)
+	body := decodeBody(t, rr)
+	st := body["state"].(map[string]any)
 	if st["status"] != "solved" || st["lastOutcome"] != "clean" {
 		t.Errorf("state = %v", st)
+	}
+	if _, ok := body["cappedBy"]; ok {
+		t.Errorf("an uncapped outcome carries cappedBy: %v", body)
+	}
+	if v, ok := st["coachAssistAt"]; !ok || v != nil {
+		t.Errorf("state.coachAssistAt = %v (present %v), want null", v, ok)
+	}
+}
+
+// m1-07 (D27): a clamped outcome reports cappedBy "coach" and the state's coachAssistAt.
+func TestOutcomeCappedByCoach(t *testing.T) {
+	assisted := time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC)
+	fs := &fakeStore{
+		logOutcome: func(_ context.Context, _, _, _ string) (store.OutcomeResult, error) {
+			return store.OutcomeResult{
+				State:    store.State{ProblemID: "16", Status: "solved", LastOutcome: "assisted", CoachAssistAt: assisted},
+				CappedBy: store.CappedByCoach,
+			}, nil
+		},
+	}
+	rr := httptest.NewRecorder()
+	newTestService(fs).ServeHTTP(rr, authedReq(http.MethodPost, "/problems/16/outcome", `{"outcome":"clean"}`))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d (%s)", rr.Code, rr.Body.String())
+	}
+	body := decodeBody(t, rr)
+	st := body["state"].(map[string]any)
+	if body["cappedBy"] != "coach" || st["lastOutcome"] != "assisted" || st["coachAssistAt"] != "2026-10-01T09:00:00Z" {
+		t.Errorf("capped outcome = %v", body)
+	}
+}
+
+// m1-07: POST /attempts/{id}/assist — 200 with the recorded time, 404 unknown / not
+// the account's, 409 attempt_closed for a concluded attempt.
+func TestAssist(t *testing.T) {
+	const attempt = "0b6b8a52-5c6f-4f50-9a3a-2a1b7c0d9e11"
+	at := time.Date(2026, 10, 1, 9, 30, 0, 0, time.UTC)
+	cases := []struct {
+		name     string
+		err      error
+		wantCode int
+		wantErr  string
+	}{
+		{"recorded", nil, http.StatusOK, ""},
+		{"unknown or another account's", store.ErrNotFound, http.StatusNotFound, "not_found"},
+		{"concluded", store.ErrAttemptClosed, http.StatusConflict, "attempt_closed"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var gotAccount, gotID string
+			fs := &fakeStore{assist: func(_ context.Context, a, id string) (time.Time, error) {
+				gotAccount, gotID = a, id
+				if c.err != nil {
+					return time.Time{}, c.err
+				}
+				return at, nil
+			}}
+			rr := httptest.NewRecorder()
+			newTestService(fs).ServeHTTP(rr, authedReq(http.MethodPost, "/attempts/"+attempt+"/assist", ""))
+			if rr.Code != c.wantCode {
+				t.Fatalf("status = %d, want %d (%s)", rr.Code, c.wantCode, rr.Body.String())
+			}
+			if gotAccount != testAccount || gotID != attempt {
+				t.Errorf("store got account %q attempt %q", gotAccount, gotID)
+			}
+			body := decodeBody(t, rr)
+			if c.wantErr != "" {
+				if code := body["error"].(map[string]any)["code"]; code != c.wantErr {
+					t.Errorf("error code = %v, want %s", code, c.wantErr)
+				}
+				return
+			}
+			if body["attemptId"] != attempt || body["coachAssistAt"] != "2026-10-01T09:30:00Z" {
+				t.Errorf("body = %v", body)
+			}
+		})
+	}
+}
+
+// m1-07: GET /attempts/open — the account's open attempts (purpose "course"), and with
+// ?problem_id= the item's solve state.
+func TestOpenAttempts(t *testing.T) {
+	started := time.Date(2026, 10, 1, 8, 0, 0, 0, time.UTC)
+	var gotProblem string
+	fs := &fakeStore{
+		listOpen: func(_ context.Context, _, p string) ([]store.OpenAttempt, error) {
+			gotProblem = p
+			return []store.OpenAttempt{{ID: "att-1", ProblemID: "16", PathSlug: "dsa", Purpose: store.PurposeCourse,
+				StartedAt: started, StageReached: "hint", CoachAssistAt: started.Add(time.Minute)}}, nil
+		},
+		getState: func(_ context.Context, _, p string) (store.State, error) {
+			return store.State{ProblemID: p, Status: "attempting"}, nil
+		},
+	}
+	h := newTestService(fs)
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, authedReq(http.MethodGet, "/attempts/open?problem_id=16", ""))
+	if rr.Code != http.StatusOK || gotProblem != "16" {
+		t.Fatalf("status = %d problem %q (%s)", rr.Code, gotProblem, rr.Body.String())
+	}
+	body := decodeBody(t, rr)
+	atts := body["attempts"].([]any)
+	a := atts[0].(map[string]any)
+	if len(atts) != 1 || a["attemptId"] != "att-1" || a["problemId"] != "16" || a["pathSlug"] != "dsa" ||
+		a["purpose"] != "course" || a["startedAt"] != "2026-10-01T08:00:00Z" || a["stageReached"] != "hint" ||
+		a["coachAssistAt"] != "2026-10-01T08:01:00Z" {
+		t.Errorf("attempts = %v", atts)
+	}
+	p := body["problem"].(map[string]any)
+	if p["problemId"] != "16" || p["status"] != "attempting" || p["firstSolvedAt"] != nil {
+		t.Errorf("problem = %v", p)
+	}
+
+	// Account-wide: no problem slot.
+	rr = httptest.NewRecorder()
+	h.ServeHTTP(rr, authedReq(http.MethodGet, "/attempts/open", ""))
+	if rr.Code != http.StatusOK || gotProblem != "" {
+		t.Fatalf("account-wide: status %d problem %q", rr.Code, gotProblem)
+	}
+	if _, ok := decodeBody(t, rr)["problem"]; ok {
+		t.Errorf("account-wide read carries a problem slot")
 	}
 }
 
 func TestOutcomeInvalid(t *testing.T) {
 	fs := &fakeStore{
-		logOutcome: func(_ context.Context, _, _, _ string) (store.State, error) {
-			return store.State{}, store.ErrInvalidOutcome
+		logOutcome: func(_ context.Context, _, _, _ string) (store.OutcomeResult, error) {
+			return store.OutcomeResult{}, store.ErrInvalidOutcome
 		},
 	}
 	h := newTestService(fs)

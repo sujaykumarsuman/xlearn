@@ -232,7 +232,12 @@ func newCourseHarness(t *testing.T, cacheTTL time.Duration) *courseHarness {
 			_ = json.NewEncoder(w).Encode(map[string]any{"problems": []any{}})
 		},
 		"GET /mocks/trend": echo("assessment"),
-		"POST /mocks":      echo("assessment"),
+		// m1-07: the coach mode gate's mock lock (no live mock).
+		"GET /mocks/live": func(w http.ResponseWriter, r *http.Request) {
+			h.record("assessment", r)
+			_, _ = w.Write([]byte(`{"live":null}`))
+		},
+		"POST /mocks": echo("assessment"),
 	}))
 	t.Cleanup(assessment.Close)
 
@@ -244,6 +249,15 @@ func newCourseHarness(t *testing.T, cacheTTL time.Duration) *courseHarness {
 		"GET /state/{id}": func(w http.ResponseWriter, r *http.Request) {
 			h.record("practice", r)
 			_ = json.NewEncoder(w).Encode(map[string]any{"state": map[string]any{"problemId": r.PathValue("id"), "status": "available", "unlockedStages": []string{"attempt"}}})
+		},
+		// m1-07: the coach mode gate's read (no open attempt, never solved).
+		"GET /attempts/open": func(w http.ResponseWriter, r *http.Request) {
+			h.record("practice", r)
+			out := map[string]any{"attempts": []any{}}
+			if id := r.URL.Query().Get("problem_id"); id != "" {
+				out["problem"] = map[string]any{"problemId": id, "status": "available", "firstSolvedAt": nil}
+			}
+			_ = json.NewEncoder(w).Encode(out)
 		},
 		"POST /problems/{id}/attempt/start": echo("practice"),
 		"POST /problems/{id}/reveal":        echo("practice"),

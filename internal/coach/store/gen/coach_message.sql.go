@@ -15,13 +15,15 @@ const insertAssistantMessage = `-- name: InsertAssistantMessage :one
 
 INSERT INTO coach.coach_message (
     thread_id, role, content, path_slug,
-    provider, model, input_tokens, output_tokens, est_cost_micros, stop_reason
+    provider, model, input_tokens, output_tokens, est_cost_micros, stop_reason,
+    prompt_v, attempt_id
 )
 SELECT t.id, $1, $2, t.path_slug,
        $3, $4, $5,
-       $6, $7, $8
+       $6, $7, $8,
+       $9, $10
 FROM coach.coach_thread t
-WHERE t.id = $9
+WHERE t.id = $11
 RETURNING id, seq, role, content, created_at
 `
 
@@ -34,6 +36,8 @@ type InsertAssistantMessageParams struct {
 	OutputTokens  pgtype.Int4
 	EstCostMicros pgtype.Int8
 	StopReason    pgtype.Text
+	PromptV       pgtype.Text
+	AttemptID     pgtype.UUID
 	ThreadID      pgtype.UUID
 }
 
@@ -54,6 +58,9 @@ type InsertAssistantMessageRow struct {
 //
 // Separate from InsertMessage so the user's turn cannot accidentally be stamped with the
 // assistant turn's usage (which would double-count the month-to-date total).
+//
+// m1-07: prompt_v and attempt_id as on InsertMessage — the same values as the turn's user
+// row.
 func (q *Queries) InsertAssistantMessage(ctx context.Context, arg InsertAssistantMessageParams) (InsertAssistantMessageRow, error) {
 	row := q.db.QueryRow(ctx, insertAssistantMessage,
 		arg.Role,
@@ -64,6 +71,8 @@ func (q *Queries) InsertAssistantMessage(ctx context.Context, arg InsertAssistan
 		arg.OutputTokens,
 		arg.EstCostMicros,
 		arg.StopReason,
+		arg.PromptV,
+		arg.AttemptID,
 		arg.ThreadID,
 	)
 	var i InsertAssistantMessageRow
@@ -78,17 +87,20 @@ func (q *Queries) InsertAssistantMessage(ctx context.Context, arg InsertAssistan
 }
 
 const insertMessage = `-- name: InsertMessage :one
-INSERT INTO coach.coach_message (thread_id, role, content, path_slug)
-SELECT t.id, $1, $2, t.path_slug
+INSERT INTO coach.coach_message (thread_id, role, content, path_slug, prompt_v, attempt_id)
+SELECT t.id, $1, $2, t.path_slug,
+       $3, $4
 FROM coach.coach_thread t
-WHERE t.id = $3
+WHERE t.id = $5
 RETURNING id, seq, role, content, created_at
 `
 
 type InsertMessageParams struct {
-	Role     string
-	Content  string
-	ThreadID pgtype.UUID
+	Role      string
+	Content   string
+	PromptV   pgtype.Text
+	AttemptID pgtype.UUID
+	ThreadID  pgtype.UUID
 }
 
 type InsertMessageRow struct {
@@ -102,8 +114,16 @@ type InsertMessageRow struct {
 // Append one message to a thread, labelled with the thread's course (path_slug, copied
 // from the thread so the two never disagree; NULL for an account-wide thread). seq
 // (identity) orders it; created_at is the wall time. No row when the thread is missing.
+// m1-07 (migration 00007): prompt_v is the system-prompt version the turn was built with
+// and attempt_id the attempt a D27 assist was recorded on; both NULL when absent.
 func (q *Queries) InsertMessage(ctx context.Context, arg InsertMessageParams) (InsertMessageRow, error) {
-	row := q.db.QueryRow(ctx, insertMessage, arg.Role, arg.Content, arg.ThreadID)
+	row := q.db.QueryRow(ctx, insertMessage,
+		arg.Role,
+		arg.Content,
+		arg.PromptV,
+		arg.AttemptID,
+		arg.ThreadID,
+	)
 	var i InsertMessageRow
 	err := row.Scan(
 		&i.ID,
@@ -129,8 +149,8 @@ type ListMessagesRow struct {
 	CreatedAt pgtype.Timestamptz
 }
 
-// A thread's messages oldest-first (seq is the stable total order). Used both for
-// GET /coach/thread history and to build the provider request's prior turns.
+// A thread's messages oldest-first (seq is the stable total order): the FULL history
+// GET /coach/thread returns (unchanged since v1).
 func (q *Queries) ListMessages(ctx context.Context, threadID pgtype.UUID) ([]ListMessagesRow, error) {
 	rows, err := q.db.Query(ctx, listMessages, threadID)
 	if err != nil {
@@ -140,6 +160,58 @@ func (q *Queries) ListMessages(ctx context.Context, threadID pgtype.UUID) ([]Lis
 	items := []ListMessagesRow{}
 	for rows.Next() {
 		var i ListMessagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Role,
+			&i.Content,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecentMessages = `-- name: ListRecentMessages :many
+SELECT r.id, r.role, r.content, r.created_at
+FROM (
+    SELECT m.id, m.seq, m.role, m.content, m.created_at
+    FROM coach.coach_message AS m
+    WHERE m.thread_id = $1
+    ORDER BY m.seq DESC
+    LIMIT $2
+) AS r
+ORDER BY r.seq
+`
+
+type ListRecentMessagesParams struct {
+	ThreadID    pgtype.UUID
+	MaxMessages int32
+}
+
+type ListRecentMessagesRow struct {
+	ID        pgtype.UUID
+	Role      string
+	Content   string
+	CreatedAt pgtype.Timestamptz
+}
+
+// The LAST max_messages messages of a thread, returned oldest-first: the history window a
+// chat turn replays to the provider (L18, m1-07: 20 messages, then trimmed to 32 KiB in
+// Go). Reading only the tail keeps a long thread from being loaded on every turn.
+func (q *Queries) ListRecentMessages(ctx context.Context, arg ListRecentMessagesParams) ([]ListRecentMessagesRow, error) {
+	rows, err := q.db.Query(ctx, listRecentMessages, arg.ThreadID, arg.MaxMessages)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRecentMessagesRow{}
+	for rows.Next() {
+		var i ListRecentMessagesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Role,

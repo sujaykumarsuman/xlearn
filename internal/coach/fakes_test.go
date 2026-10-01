@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/coach/store"
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
@@ -51,6 +52,10 @@ type memStore struct {
 	usage    map[string][]store.MessageUsage            // threadID -> assistant-turn usage
 	threadOf map[string]string                          // threadID -> accountID|context (bookkeeping)
 	pathOf   map[string]string                          // threadID -> path_slug ("" = NULL)
+	metas    map[string][]store.MessageMeta             // threadID -> each message's meta, parallel to messages
+	quota    map[string]int                             // accountID|YYYY-MM-DD (UTC) -> n (coach.message_quota_day)
+	// quotaErr, when set, fails every daily-quota call (the store-error path of L18).
+	quotaErr error
 	nextID   int
 }
 
@@ -63,6 +68,8 @@ func newMemStore() *memStore {
 		usage:    map[string][]store.MessageUsage{},
 		threadOf: map[string]string{},
 		pathOf:   map[string]string{},
+		metas:    map[string][]store.MessageMeta{},
+		quota:    map[string]int{},
 	}
 }
 
@@ -304,19 +311,118 @@ func (m *memStore) ThreadHistory(_ context.Context, accountID, pageContext strin
 	return append([]store.Message(nil), m.messages[id]...), nil
 }
 
-func (m *memStore) AppendMessage(_ context.Context, threadID, role, content string) error {
+// RecentMessages mirrors ListRecentMessages: the last limit messages, oldest-first.
+func (m *memStore) RecentMessages(_ context.Context, threadID string, limit int) ([]store.Message, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	msgs := m.messages[threadID]
+	if limit <= 0 {
+		return []store.Message{}, nil
+	}
+	if len(msgs) > limit {
+		msgs = msgs[len(msgs)-limit:]
+	}
+	return append([]store.Message{}, msgs...), nil
+}
+
+func (m *memStore) AppendMessage(_ context.Context, threadID, role, content string, meta store.MessageMeta) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.messages[threadID] = append(m.messages[threadID], store.Message{Role: role, Content: content})
+	m.metas[threadID] = append(m.metas[threadID], meta)
 	return nil
 }
 
-func (m *memStore) AppendAssistantMessage(_ context.Context, threadID, content string, u store.MessageUsage) error {
+func (m *memStore) AppendAssistantMessage(_ context.Context, threadID, content string, u store.MessageUsage, meta store.MessageMeta) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.messages[threadID] = append(m.messages[threadID], store.Message{Role: store.RoleAssistant, Content: content})
+	m.metas[threadID] = append(m.metas[threadID], meta)
 	m.usage[threadID] = append(m.usage[threadID], u)
 	return nil
+}
+
+// quotaKey is the fake's coach.message_quota_day primary key: the account and its UTC day.
+func quotaKey(accountID string, day time.Time) string {
+	return accountID + "|" + day.UTC().Format(time.DateOnly)
+}
+
+// TakeDailyMessage mirrors the conditional upsert: insert 1, or increment while below the
+// cap; at the cap nothing changes and ok is false.
+func (m *memStore) TakeDailyMessage(_ context.Context, accountID string, day time.Time, limit int) (int, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.quotaErr != nil {
+		return 0, false, m.quotaErr
+	}
+	k := quotaKey(accountID, day)
+	n, exists := m.quota[k]
+	if exists && n >= limit {
+		return limit, false, nil
+	}
+	m.quota[k] = n + 1
+	return n + 1, true, nil
+}
+
+func (m *memStore) RefundDailyMessage(_ context.Context, accountID string, day time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.quotaErr != nil {
+		return m.quotaErr
+	}
+	if k := quotaKey(accountID, day); m.quota[k] > 0 {
+		m.quota[k]--
+	}
+	return nil
+}
+
+func (m *memStore) DailyMessages(_ context.Context, accountID string, day time.Time) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.quotaErr != nil {
+		return 0, m.quotaErr
+	}
+	return m.quota[quotaKey(accountID, day)], nil
+}
+
+// dailyCount / setDailyCount read and seed the fake's quota row for (account, UTC day).
+func (m *memStore) dailyCount(accountID string, day time.Time) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.quota[quotaKey(accountID, day)]
+}
+
+func (m *memStore) setDailyCount(accountID string, day time.Time, n int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.quota[quotaKey(accountID, day)] = n
+}
+
+// setQuotaErr makes every daily-quota call fail (nil clears it).
+func (m *memStore) setQuotaErr(err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.quotaErr = err
+}
+
+// metasFor returns each persisted message's meta for (account, context), in order.
+func (m *memStore) metasFor(accountID, pageContext string) []store.MessageMeta {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]store.MessageMeta(nil), m.metas[m.threads[accountID+"|"+pageContext]]...)
+}
+
+// messageCount is how many coach_message rows the account has across all its threads.
+func (m *memStore) messageCount(accountID string) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for id, key := range m.threadOf {
+		if a, _, _ := strings.Cut(key, "|"); a == accountID {
+			n += len(m.messages[id])
+		}
+	}
+	return n
 }
 
 // usageFor returns the usage rows recorded against (account, context)'s assistant turns.
@@ -346,6 +452,33 @@ func itoa(n int) string {
 		n /= 10
 	}
 	return string(b[i:])
+}
+
+// fakeClock is the L18 clock seam for handler tests: it only moves when a test advances
+// it, so token refills and UTC-day boundaries are deterministic.
+type fakeClock struct {
+	mu sync.Mutex
+	t  time.Time
+}
+
+func newFakeClock(t time.Time) *fakeClock { return &fakeClock{t: t} }
+
+func (c *fakeClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.t
+}
+
+func (c *fakeClock) Advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.t = c.t.Add(d)
+}
+
+func (c *fakeClock) Set(t time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.t = t
 }
 
 // testCipher builds a Cipher with a random master key.

@@ -36,7 +36,7 @@ export function installFetchMock(handler: RouteHandler) {
 
 /** sseResponse builds a text/event-stream Response whose body streams the given frames
  *  (each a full "data: {...}\n\n" chunk) — the coach chat SSE test double. */
-export function sseResponse(frames: string[], status = 200): Response {
+export function sseResponse(frames: string[], status = 200, headers: Record<string, string> = {}): Response {
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       const enc = new TextEncoder();
@@ -44,7 +44,13 @@ export function sseResponse(frames: string[], status = 200): Response {
       controller.close();
     },
   });
-  return new Response(stream, { status, headers: { "Content-Type": "text/event-stream" } });
+  return new Response(stream, { status, headers: { "Content-Type": "text/event-stream", ...headers } });
+}
+
+/** jsonResponse builds a JSON Response with extra headers (e.g. the coach chat's
+ *  `X-Coach-Mode` and `Retry-After`), which the plain {status, body} route result can't carry. */
+export function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...headers } });
 }
 
 export function restoreFetch() {

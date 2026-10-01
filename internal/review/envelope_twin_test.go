@@ -83,6 +83,19 @@ func TestPracticeHandlerV1V2Twins(t *testing.T) {
 	}
 }
 
+// m1-07 (v1.7.0): problem_solved's additive `assist` object (D27) changes nothing for
+// review's practice consumer — the same store call as the plain v2 twin.
+func TestPracticeHandlerProblemSolvedAssist(t *testing.T) {
+	withAssist, err := handlePracticeFixture(t, store.SubjectProblemSolved, "problem_solved.v2-assist.json")
+	if err != nil || len(withAssist) != 1 {
+		t.Fatalf("v2 + assist: calls=%+v err=%v", withAssist, err)
+	}
+	v2, _ := handlePracticeFixture(t, store.SubjectProblemSolved, "problem_solved.v2.json")
+	if len(v2) != 1 || v2[0] != withAssist[0] {
+		t.Fatalf("v2 %+v\nv2+assist %+v", v2, withAssist)
+	}
+}
+
 // An unknown future version with extra fields is still processed; review's ignored
 // subject (attempt_logged) is acked without decoding, whatever its version.
 func TestPracticeHandlerUnknownVersionAndIgnored(t *testing.T) {

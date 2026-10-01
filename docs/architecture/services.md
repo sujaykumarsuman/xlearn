@@ -35,6 +35,9 @@ Legend — **Deploy:** `edge` = has Traefik route; `internal` = ClusterIP only. 
   would each admit a full burst and could serve a stale composed payload after a write on the other.
   Scaling out needs shared state (or sticky routing) first ([ADR-0035 §4](../adr/0035-v2-operations-nats-auth-limits-capacity.md#4-limits-inventory)
   L24; [rollout §12](../v2/rollout-plan.md#12-downstream-constraints-for-the-build-plan-session)).
+  **coach** (m1-07) is on the same list: it runs one replica and holds L18's per-account stream counter and
+  per-minute token bucket in process (a restart resets them; two replicas would each admit a full allowance).
+  Its daily cap is durable (`coach.message_quota_day`) and survives both.
 
 ## identity · `internal`
 
@@ -82,6 +85,11 @@ Legend — **Deploy:** `edge` = has Traefik route; `internal` = ClusterIP only. 
 - **API:** `GET /state?week=`, `GET /state/{problemId}`, `POST /problems/{id}/attempt/start`,
   `POST /problems/{id}/reveal` (returns penalty ack), `POST /problems/{id}/outcome`. The writes take
   `?path=<course>` (the item's course, from the gateway; absent → `course.DefaultSlug`, m1-03).
+  Gateway-internal for the coach mode gate (m1-07; no `/api` route): `GET /attempts/open[?problem_id=]` (the
+  account's open attempts, `purpose: "course"` until M2a adds touches to the same list, plus with
+  `?problem_id=` the item's solve state) and `POST /attempts/{id}/assist` (D27: records `coach_assist_at`,
+  idempotent; 404 / 409 `attempt_closed`). The outcome caps a self-reported clean/rough at assisted when the
+  coach was used on the attempt (`cappedBy: "coach"`).
 - **Emits:** `xlearn.practice.attempt_logged`, `xlearn.practice.problem_solved`,
   `xlearn.practice.solution_revealed_early`. **Consumes:** —.
 
@@ -116,7 +124,9 @@ Legend — **Deploy:** `edge` = has Traefik route; `internal` = ClusterIP only. 
   the summary's mock figures take `?path=<course>` (absent → `course.DefaultSlug`, m1-03); the projections
   stay account-grain until M2b. `POST /mocks` for a course with no mock (or a rubric other than DSA's,
   the only one scored so far) is `404 {"error":{"code":"not_found","message":"course has no mock"}}`.
-  Every internal `?path=` names a known course or gets `404 course_not_found`.
+  Every internal `?path=` names a known course or gets `404 course_not_found`. `GET /mocks/live` (m1-07,
+  gateway-internal): the account's live session (`status = 'live'`, deadline not passed) or `{"live": null}` —
+  the coach's mock lock.
 - **Emits:** `xlearn.assessment.mock_completed`.
   **Consumes:** `practice.*`, `review.*` (to update projections).
 
@@ -126,12 +136,24 @@ Legend — **Deploy:** `edge` = has Traefik route; `internal` = ClusterIP only. 
   ([ADR-0007](../adr/0007-ai-coach-byo-key-and-secrets.md)), builds page-context prompts (Socratic
   during attempts, reviewer post-solve), and fans out to the user's LLM provider. Never returns the key.
 - **Owns:** schema `coach` — `api_key_config` (encrypted), `key_default` (the per-feature default
-  key), `coach_thread`, `coach_message`.
+  key), `coach_thread`, `coach_message`, `message_quota_day` (L18's daily count, m1-07).
 - **API:** `PUT /keys` (store; `feature` ∈ `coach`/`interview` with `default:true`), `GET /keys`
   (masked only, plus `defaults` and `usage_month`), `DELETE /keys`, `GET /models` (the dated server
   model catalog), `POST /chat` (context + prompt → provider; streams back; `?path=` = a problem
-  context's course), `GET /threads?context=`. Every context is normalized with the shared parser
+  context's course), `GET /threads?context=`, `GET /admission` (m1-07: the read-only L18 probe the
+  gateway runs before recording a D27 assist — 204, or the typed 429 a chat would get; consumes
+  nothing). Every context is normalized with the shared parser
   (`course.NormalizeCoachContext`, m1-03): course-scoped contexts are keyed `<course>:<ctx>`.
+- **Mode gate and prompt (M1b, m1-07):** the gateway decides the mode (`X-Coach-Mode`: attempt / review
+  / general; `locked` never reaches coach), the course (`X-Coach-Course`, which picks the manifest's
+  `coach.persona`) and a recorded D27 assist (`X-Coach-Attempt`). The prompt is `coach-prompt@2`: frame →
+  persona → mode rules (hard constraints) → context; the pattern is used only in `review`, and `general`
+  names the body's `live_items` off-limits. Every message stores `prompt_v`, `path_slug` and `attempt_id`.
+- **Limits (L18, m1-07):** per account, checked in this order before the user turn is persisted or the
+  key decrypted — 2 concurrent streams (`429 coach_busy`, `Retry-After: 5`), 20 messages a minute
+  (`429 coach_rate_limited`), 300 messages a UTC day (`429 coach_daily_cap`, `Retry-After` to the next
+  UTC midnight); a rejected request consumes nothing. History replayed to the provider: the last 20
+  messages, trimmed to ≤ 32 KiB (the current turn always kept). Constants, not flags.
 - **Keys (M1b, m1-10):** two sealed pairs per key — the legacy unbound pair v1.6.0 can still read
   (the rollback floor) and an AD-bound pair keyed to `(account, provider)` under a `kek_id` from the
   `COACH_MASTER_KEYS` keyring, tied to the legacy pair by `ad_src_digest`. A background goroutine

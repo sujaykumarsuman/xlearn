@@ -18,6 +18,7 @@ type PracticeAttempt struct {
 	AccountID          pgtype.UUID
 	PathSlug           pgtype.Text
 	ProblemID          pgtype.Text
+	CoachAssistAt      pgtype.Timestamptz
 }
 
 type PracticeOutbox struct {

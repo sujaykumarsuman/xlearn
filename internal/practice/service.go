@@ -97,6 +97,11 @@ func (s *Service) userRoutes() []userRoute {
 		{http.MethodPost, "/problems/{id}/attempt/start", s.handleStartAttempt},
 		{http.MethodPost, "/problems/{id}/reveal", s.handleReveal},
 		{http.MethodPost, "/problems/{id}/outcome", s.handleOutcome},
+
+		// The coach mode gate's reads and the D27 assist record (m1-07). Gateway-internal:
+		// no /api route maps to them.
+		{http.MethodGet, "/attempts/open", s.handleOpenAttempts},
+		{http.MethodPost, "/attempts/{id}/assist", s.handleAssist},
 	}
 }
 

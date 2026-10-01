@@ -20,8 +20,10 @@ import (
 var coachEmptyKey = []byte(`{"keys":[],"connected":false,"default_provider":""}`)
 
 // coachModeHeader carries the SERVER-AUTHORITATIVE behaviour gate to coach: the gateway
-// derives it from practice's state (not the client), so a browser can't unlock reviewer
-// mode mid-attempt and leak a solution (ADR-0007). Must match coach's headerCoachMode.
+// derives it from the learner's state (coach_gate.go; never the client), so a browser
+// can't unlock reviewer mode mid-attempt and leak a solution (ADR-0007). Must match
+// coach's headerCoachMode. Since m1-07 the gateway also sets it on the relayed chat
+// response, so the SPA's mode chip shows what the server decided (AB01 F1, F6, F7).
 const coachModeHeader = "X-Coach-Mode"
 
 // coach behaviour modes (mirror internal/coach).
@@ -94,11 +96,18 @@ func (c *coachClient) jsonReq(ctx context.Context, method, path, token string, b
 	return respBody, resp.StatusCode, err
 }
 
+// chatHeaders are the server-authoritative gate values the gateway sends coach with a
+// chat (m1-07): the mode, the resolved course (persona) and, when a D27 assist is
+// recorded, the attempt it is on.
+type chatHeaders struct {
+	mode, course, attempt string
+}
+
 // chatStream POSTs the chat request to coach and returns the raw streaming response for
-// the caller to relay (it must close resp.Body). mode is the authoritative behaviour gate;
+// the caller to relay (it must close resp.Body). h carries the authoritative gate;
 // pathSlug (optional) is a problem context's course, which coach writes on the thread
 // (it defaults an absent one to course.DefaultSlug).
-func (c *coachClient) chatStream(ctx context.Context, token, mode, pathSlug string, body []byte) (*http.Response, error) {
+func (c *coachClient) chatStream(ctx context.Context, token string, h chatHeaders, pathSlug string, body []byte) (*http.Response, error) {
 	target := c.baseURL + "/chat"
 	if pathSlug != "" {
 		target = withPath(target, pathSlug)
@@ -110,7 +119,11 @@ func (c *coachClient) chatStream(ctx context.Context, token, mode, pathSlug stri
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "text/event-stream")
-	req.Header.Set(coachModeHeader, mode)
+	req.Header.Set(coachModeHeader, h.mode)
+	req.Header.Set(coachCourseHeader, h.course)
+	if h.attempt != "" {
+		req.Header.Set(coachAttemptHeader, h.attempt)
+	}
 	return c.streamc.Do(req)
 }
 
@@ -203,6 +216,12 @@ func (g *Gateway) handleDeleteCoachKey(w http.ResponseWriter, r *http.Request) {
 // GET /coach/thread?context=). The context is normalized first with the shared dual
 // parser (course.NormalizeCoachContext): a v1.6.0 tab's `week:3` reads the same thread as
 // v1.7.0's `<DefaultSlug>:week:3` (m1-03); coach normalizes again, which is a no-op.
+//
+// m1-07: the body gains `gate` — the mode the server would apply to a chat here, the lock
+// reason, and on a problem page the open attempt's D27 assist state — from the same
+// lookups as the chat, run read-only (no assist write, never a 409). If a lookup fails,
+// `gate` is omitted and the thread still loads: it is display-only (AB01's mode chip),
+// and the chat itself stays fail-closed.
 func (g *Gateway) handleCoachThread(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := g.authAccount(w, r)
 	if !ok {
@@ -213,7 +232,8 @@ func (g *Gateway) handleCoachThread(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad_request", "context is required")
 		return
 	}
-	pageContext = g.courses.NormalizeCoachContext(pageContext).Key
+	cc := g.courses.NormalizeCoachContext(pageContext)
+	pageContext = cc.Key
 	if g.coach == nil {
 		// No coach yet → an empty thread so the panel renders its empty state.
 		passthrough(w, http.StatusOK, []byte(`{"messages":[]}`))
@@ -223,20 +243,65 @@ func (g *Gateway) handleCoachThread(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
+	var (
+		wg     sync.WaitGroup
+		gate   coachGate
+		gateOK bool
+	)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		gate, gateOK = g.coachGateFor(r.Context(), accountID, cc)
+	}()
 	body, status, err := g.coach.getThread(r.Context(), token, pageContext)
+	wg.Wait()
 	if err != nil {
 		g.log.Warn("bff /coach/thread: coach call failed; empty thread", "err", err)
-		passthrough(w, http.StatusOK, []byte(`{"messages":[]}`))
-		return
+		body, status = []byte(`{"messages":[]}`), http.StatusOK
+	}
+	if status == http.StatusOK && gateOK {
+		body = withGate(body, gate.json())
 	}
 	passthrough(w, status, body)
 }
 
-// handleCoachChat proxies the coach chat SSE stream (api.md POST /coach/chat). It derives
-// the SERVER-AUTHORITATIVE behaviour mode from practice's state (never the client) and
-// passes it to coach as a header, then relays coach's response byte-for-byte with
-// flushing so the token stream reaches the browser live (no buffering). The gateway
-// never sees the raw provider key — coach makes the provider call.
+// withGate adds `gate` to a thread body (a JSON object); any other body is unchanged.
+func withGate(body []byte, gate gateJSON) []byte {
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(body, &obj); err != nil || obj == nil {
+		return body
+	}
+	raw, err := json.Marshal(gate)
+	if err != nil {
+		return body
+	}
+	obj["gate"] = raw
+	out, err := json.Marshal(obj)
+	if err != nil {
+		return body
+	}
+	return out
+}
+
+// handleCoachChat proxies the coach chat SSE stream (api.md POST /coach/chat). It
+// resolves the SERVER-AUTHORITATIVE gate (coach_gate.go: never the client) and, in this
+// order (sprint m1-07):
+//
+//  1. a lookup failed → 503 coach_state_unavailable, nothing sent (fails closed);
+//  2. locked (a live mock the course switches the coach off for) → 409 coach_paused;
+//  3. D27 — a problem:<id> chat while a counted attempt A on <id> is open:
+//     A already carries an assist → no confirm (it is capped; a reload never re-prompts);
+//     else assist_ack ≠ A → 409 assist_confirm_required {attemptId, problemId};
+//     else coach's L18 admission probe (a 429 is relayed as is, A stays uncapped), then
+//     practice records the assist (any failure → 503 assist_unavailable, nothing sent);
+//  4. the body is rewritten for the mode (coach_gate.go rewriteChatBody) and forwarded
+//     with X-Coach-Mode, X-Coach-Course and, after an assist, X-Coach-Attempt.
+//
+// Coach's response is relayed byte-for-byte with flushing so the token stream reaches
+// the browser live, with X-Coach-Mode (the mode the SPA's chip shows) and coach's
+// Retry-After (its L18 429s). The gateway never sees the raw provider key — coach makes
+// the provider call.
 func (g *Gateway) handleCoachChat(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := g.authAccount(w, r)
 	if !ok {
@@ -254,7 +319,49 @@ func (g *Gateway) handleCoachChat(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	mode, pathSlug, body := g.coachEnrich(r, accountID, reqBody)
+	var meta struct {
+		Context   string `json:"context"`
+		AssistAck string `json:"assist_ack"`
+	}
+	_ = json.Unmarshal(reqBody, &meta)
+	cc := g.courses.NormalizeCoachContext(meta.Context)
+
+	gate, ok := g.coachGateFor(r.Context(), accountID, cc)
+	if !ok {
+		writeGateError(w, http.StatusServiceUnavailable, "", codeStateUnavailable,
+			"the practice state could not be checked, so nothing was sent", nil)
+		return
+	}
+	if gate.mode == coachModeLocked {
+		writeGateError(w, http.StatusConflict, coachModeLocked, codeCoachPaused,
+			"the coach is paused while a revision touch or mock is live", map[string]any{"reason": gate.reason})
+		return
+	}
+
+	var assisted string
+	if a := gate.attempt; a != nil {
+		switch {
+		case a.assisted():
+			assisted = a.AttemptID
+		case meta.AssistAck != a.AttemptID:
+			writeGateError(w, http.StatusConflict, gate.mode, codeAssistConfirm,
+				"using the coach during a counted attempt caps it at Assisted; resend with assist_ack to confirm",
+				map[string]any{"attemptId": a.AttemptID, "problemId": gate.problemID})
+			return
+		default:
+			if !g.coachAdmit(w, r, token, gate.mode) {
+				return
+			}
+			if !g.recordAssist(r.Context(), accountID, a.AttemptID) {
+				g.log.Warn("bff /coach/chat: assist record failed; nothing sent (fail closed)", "attempt", a.AttemptID)
+				writeGateError(w, http.StatusServiceUnavailable, gate.mode, codeAssistUnavail,
+					"coach use could not be recorded on the attempt, so nothing was sent", nil)
+				return
+			}
+			assisted = a.AttemptID
+		}
+	}
+	body := gate.rewriteChatBody(reqBody, cc.Key)
 
 	// Clear the server WriteTimeout (60s) before dialling coach: chatStream can block up
 	// to the provider limit before coach's first byte, and a transport error after 60s
@@ -262,119 +369,43 @@ func (g *Gateway) handleCoachChat(w http.ResponseWriter, r *http.Request) {
 	// the success path). Reaches the base writer via httpx.statusWriter's Unwrap.
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Time{})
 
-	resp, err := g.coach.chatStream(r.Context(), token, mode, pathSlug, body)
+	resp, err := g.coach.chatStream(r.Context(), token, chatHeaders{mode: gate.mode, course: gate.course, attempt: assisted}, gate.problemPath, body)
 	if err != nil {
 		g.log.Error("bff /coach/chat: coach call failed", "err", err)
 		writeError(w, http.StatusBadGateway, "upstream", "coach unavailable")
 		return
 	}
 	defer resp.Body.Close()
+	w.Header().Set(coachModeHeader, gate.mode)
 	relayStream(w, resp)
 }
 
-// coachEnrich derives the SERVER-AUTHORITATIVE behaviour mode for a chat request AND
-// rebinds the problem it describes to the SAME id — the one in the thread's `context`
-// ("problem:<id>"), never a free client field. This closes the spoiler gate: reviewer
-// mode is granted only when the CONTEXT problem is solved, and the coach names that same
-// problem (title/pattern sourced from curriculum), so a client can't point the
-// solved-check at a solved problem B while the coach discusses unsolved problem A.
-//
-// Only a problem context can be an attempt or a review; every other page is the general
-// tutor. If practice can't confirm the problem is solved (or is unavailable) the mode is
-// the SAFE default — attempt (spoiler-free).
-//
-// The context is first normalized with the shared dual parser (m1-03): a v1.6.0 tab's
-// course-scoped context (`week:3`, `dashboard`, …) is rewritten to its `<course>:<ctx>`
-// key before coach sees it; a normalized key is forwarded unchanged. For a problem
-// context the item's course (curriculum's path_slug) is returned so coach can record it.
-// Returns the mode header value, the problem's course ("" otherwise) and the (possibly
-// rewritten) request body to forward to coach.
-func (g *Gateway) coachEnrich(r *http.Request, accountID string, body []byte) (string, string, []byte) {
-	var meta struct {
-		Context string `json:"context"`
-	}
-	_ = json.Unmarshal(body, &meta)
-	cc := g.courses.NormalizeCoachContext(meta.Context)
-	id, ok := problemIDFromContext(cc.Key)
-	if !ok {
-		if cc.Key == meta.Context {
-			return coachModeGeneral, "", body
-		}
-		var obj map[string]any
-		if err := json.Unmarshal(body, &obj); err != nil || obj == nil {
-			return coachModeGeneral, "", body
-		}
-		obj["context"] = cc.Key
-		rewritten, err := json.Marshal(obj)
-		if err != nil {
-			return coachModeGeneral, "", body
-		}
-		return coachModeGeneral, "", rewritten
-	}
-
-	// Authoritative problem descriptors from curriculum (best-effort). On failure we still
-	// bind problemId to the context id and clear the client's title/pattern, so the coach
-	// never names a spoofed problem.
-	var title, pattern, pathSlug string
-	if g.curriculum != nil {
-		meta := g.curriculumProblemMeta(r.Context(), id)
-		title, pattern = coachProblemTitlePattern(meta)
-		pathSlug = coachProblemPathSlug(meta)
-	}
-
-	// Authoritative mode from practice: review ONLY when THIS problem is solved. The same
-	// practice answer, with review's due set, decides the withholding (m1-06).
-	mode := coachModeAttempt
-	in := stateInputs{practice: map[string]practiceItem{}, practiceKnown: true, practiceOK: g.practice == nil}
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		in.due, in.dueOK = g.fetchDueSet(r.Context(), accountID, itemPathSlug(pathSlug))
-		in.dueKnown = true
-	}()
-	if g.practice != nil {
-		if token, okp := g.mintForPractice(accountID); okp {
-			if pbody, pstatus, perr := g.practice.get(r.Context(), token, "/state/"+url.PathEscape(id)); perr == nil && pstatus == http.StatusOK {
-				if practiceSolved(pbody) {
-					mode = coachModeReview
-				}
-				if item, iok := parsePracticeItem(pbody); iok {
-					in.practice[id], in.practiceOK = item, true
-				}
-			}
-		}
-	}
-	wg.Wait()
-	states, _ := g.combineStates([]string{id}, in)
-	wh := withhold(stateOf(states, id), surfaceCoach)
-
-	// Rewrite the descriptive problem fields to the authoritative values so the prompt
-	// names the gated problem, not a client-spoofed one. Other fields (message, context,
-	// kind, stage) pass through unchanged. A live or never-solved problem's pattern,
-	// concepts and solution facts never reach coach (m1-06): the keys are dropped, so a
-	// client-sent value can't pass through either.
-	var obj map[string]any
-	if err := json.Unmarshal(body, &obj); err != nil || obj == nil {
-		obj = map[string]any{}
-	}
-	obj["problemId"] = id
-	obj["problemTitle"] = title
-	obj["pattern"] = pattern
-	if wh.Pattern {
-		delete(obj, "pattern")
-	}
-	if wh.Concepts {
-		delete(obj, "concepts")
-	}
-	if wh.SolutionFacts {
-		delete(obj, "solution_facts")
-	}
-	rewritten, err := json.Marshal(obj)
+// coachAdmit runs coach's read-only L18 admission probe before a D27 assist is recorded,
+// so a chat the caps would refuse never caps the attempt. A 429 is relayed as is (its
+// typed code and Retry-After); a probe that fails otherwise is a 502 (nothing recorded,
+// nothing sent). It reports whether the chat may proceed.
+func (g *Gateway) coachAdmit(w http.ResponseWriter, r *http.Request, token, mode string) bool {
+	resp, body, err := g.coach.admission(r.Context(), token)
 	if err != nil {
-		return mode, pathSlug, body
+		g.log.Error("bff /coach/chat: admission probe failed", "err", err)
+		writeError(w, http.StatusBadGateway, "upstream", "coach unavailable")
+		return false
 	}
-	return mode, pathSlug, rewritten
+	switch resp.StatusCode {
+	case http.StatusNoContent, http.StatusOK:
+		return true
+	case http.StatusTooManyRequests:
+		if ra := resp.Header.Get("Retry-After"); ra != "" {
+			w.Header().Set("Retry-After", ra)
+		}
+		w.Header().Set(coachModeHeader, mode)
+		passthrough(w, http.StatusTooManyRequests, body)
+		return false
+	default:
+		g.log.Error("bff /coach/chat: admission probe refused", "status", resp.StatusCode)
+		writeError(w, http.StatusBadGateway, "upstream", "coach unavailable")
+		return false
+	}
 }
 
 // coachProblemPathSlug extracts the item's course from curriculum's raw `problem` object,
@@ -417,32 +448,20 @@ func coachProblemTitlePattern(raw json.RawMessage) (title, pattern string) {
 	return p.Title, p.Pattern
 }
 
-// practiceSolved reports whether a practice GET /state/{id} response marks the problem
-// solved ({"state":{"status":"solved"|firstSolvedAt:...}}).
-func practiceSolved(body []byte) bool {
-	var env struct {
-		State struct {
-			Status        string  `json:"status"`
-			FirstSolvedAt *string `json:"firstSolvedAt"`
-		} `json:"state"`
-	}
-	if err := json.Unmarshal(body, &env); err != nil {
-		return false
-	}
-	return env.State.Status == "solved" || (env.State.FirstSolvedAt != nil && *env.State.FirstSolvedAt != "")
-}
-
 // relayStream copies an upstream (coach) response to the client with per-chunk flushing
 // and no write deadline, so an SSE token stream is delivered live rather than buffered.
 // It passes coach's status + content-type through, so a non-SSE error (e.g. 409 no_key)
-// relays cleanly too. Flush + the deadline reset reach the base writer via
-// httpx.statusWriter's Unwrap.
+// relays cleanly too, with coach's Retry-After (m1-07: its typed L18 429s). Flush + the
+// deadline reset reach the base writer via httpx.statusWriter's Unwrap.
 func relayStream(w http.ResponseWriter, resp *http.Response) {
 	h := w.Header()
 	if ct := resp.Header.Get("Content-Type"); ct != "" {
 		h.Set("Content-Type", ct)
 	} else {
 		h.Set("Content-Type", "text/event-stream")
+	}
+	if ra := resp.Header.Get("Retry-After"); ra != "" {
+		h.Set("Retry-After", ra)
 	}
 	h.Set("Cache-Control", "no-cache")
 	h.Set("X-Accel-Buffering", "no")

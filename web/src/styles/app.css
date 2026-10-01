@@ -1039,6 +1039,151 @@ a.xl-brand:hover {
   margin-top: 8px;
 }
 
+/* ── Coach panel v2 states (AB01 F1–F10, m1-07) ─────────────────────────────
+   The board's ab01-* look-alikes as live classes. Classes only: the CSP (m1-04) is strict,
+   so nothing new carries an inline style. */
+.xl-coach__sub {
+  color: var(--ds-dim);
+  font-weight: 500;
+}
+.xl-coach__flex {
+  flex: 1;
+}
+.xl-coach__loading {
+  font-size: 12.5px;
+  color: var(--ds-muted);
+}
+.xl-coach__msg--pre {
+  white-space: pre-line;
+}
+/* The mode row: the server's mode chip (F1/F5/F6/F7) and the assist-recorded badge (F3). */
+.xl-coach__mode {
+  margin: 8px 16px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.xl-coach__note--info {
+  border-color: rgba(106, 166, 255, 0.35);
+  background: rgba(106, 166, 255, 0.1);
+}
+.xl-coach__note--info > svg,
+.xl-coach__note--info > .xl-ico {
+  color: var(--ds-info);
+}
+.xl-coach__note-txt {
+  flex: 1;
+  min-width: 0;
+}
+.xl-coach__mono {
+  font-family: var(--ds-font-mono);
+  font-size: 12px;
+}
+/* F2 — the D27 assist confirm, inline above the composer. */
+.xl-coach__confirm {
+  border: 1px solid rgba(240, 180, 41, 0.35);
+  background: var(--ds-panel-2);
+  border-radius: 12px;
+  padding: 14px;
+}
+.xl-coach__confirm h3 {
+  font-size: 13.5px;
+  font-weight: 600;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+}
+.xl-coach__confirm h3 > .xl-ico {
+  color: var(--ds-warn);
+  flex: none;
+}
+.xl-coach__confirm p {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ds-dim);
+  margin: 6px 0 0;
+}
+.xl-coach__confirm p b {
+  color: var(--ds-text);
+}
+.xl-coach__confirm-act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+/* F4 — under the composer: the draft was kept. */
+.xl-coach__foot-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--ds-dim);
+}
+/* F9 — the cut-short marker, inside the reply. */
+.xl-coach__cut {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--ds-line-2);
+  font-size: 12px;
+  color: var(--ds-dim);
+  white-space: normal;
+}
+/* F10 — the key stays on. */
+.xl-coach__keyline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ds-dim);
+}
+.xl-coach__send {
+  color: var(--ds-teal);
+}
+.xl-coach__send[aria-disabled="true"] {
+  color: var(--ds-muted);
+  cursor: not-allowed;
+}
+/* Phone width (AB01 N1/N2): the 392px panel becomes a full-width sheet, and F2's buttons
+   stack full width. */
+@media (max-width: 420px) {
+  .xl-coach {
+    width: 100%;
+  }
+  .xl-coach__confirm-act .ds-btn {
+    width: 100%;
+  }
+}
+
+/* Problem HUD + outcome step under D27 (AB01 F3, m1-07): the stage tabs, the timer and the
+   "Coach used · capped at Assisted" chip; below 1024px the chip drops below the timer. */
+.xl-hud {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.xl-outcome--capped {
+  opacity: 0.6;
+}
+.xl-outcome-capped {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 11.5px;
+  color: var(--ds-warn);
+}
+.xl-outcome-capped--solved {
+  margin: 0 0 12px;
+}
+
 /* ── Public user dashboard (F009 / ADR-0024) ──────────────────────────────
    The LeetCode-style profile at /xlearn/u/<username>. A 20:80 two-column grid: a left
    identity/activity column and a right totals + collapsible-courses column. The left

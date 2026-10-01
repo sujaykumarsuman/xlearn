@@ -14,7 +14,7 @@ import (
 const createAttempt = `-- name: CreateAttempt :one
 INSERT INTO practice.attempt (user_problem_state_id, account_id, path_slug, problem_id)
 VALUES ($1, $2, $3, $4)
-RETURNING id, user_problem_state_id, stage_reached, revealed_early, started_at, ended_at, account_id, path_slug, problem_id
+RETURNING id, user_problem_state_id, stage_reached, revealed_early, started_at, ended_at, account_id, path_slug, problem_id, coach_assist_at
 `
 
 type CreateAttemptParams struct {
@@ -44,6 +44,7 @@ func (q *Queries) CreateAttempt(ctx context.Context, arg CreateAttemptParams) (P
 		&i.AccountID,
 		&i.PathSlug,
 		&i.ProblemID,
+		&i.CoachAssistAt,
 	)
 	return i, err
 }
@@ -59,8 +60,31 @@ func (q *Queries) EndAttempt(ctx context.Context, id pgtype.UUID) error {
 	return err
 }
 
+const getAttemptOwned = `-- name: GetAttemptOwned :one
+SELECT id, ended_at FROM practice.attempt
+WHERE id = $1 AND account_id = $2
+`
+
+type GetAttemptOwnedParams struct {
+	ID        pgtype.UUID
+	AccountID pgtype.UUID
+}
+
+type GetAttemptOwnedRow struct {
+	ID      pgtype.UUID
+	EndedAt pgtype.Timestamptz
+}
+
+// An attempt by id, scoped to its account (MarkCoachAssist's 404 vs 409).
+func (q *Queries) GetAttemptOwned(ctx context.Context, arg GetAttemptOwnedParams) (GetAttemptOwnedRow, error) {
+	row := q.db.QueryRow(ctx, getAttemptOwned, arg.ID, arg.AccountID)
+	var i GetAttemptOwnedRow
+	err := row.Scan(&i.ID, &i.EndedAt)
+	return i, err
+}
+
 const getLatestAttempt = `-- name: GetLatestAttempt :one
-SELECT id, user_problem_state_id, stage_reached, revealed_early, started_at, ended_at, account_id, path_slug, problem_id FROM practice.attempt
+SELECT id, user_problem_state_id, stage_reached, revealed_early, started_at, ended_at, account_id, path_slug, problem_id, coach_assist_at FROM practice.attempt
 WHERE user_problem_state_id = $1
 ORDER BY started_at DESC
 LIMIT 1
@@ -79,12 +103,13 @@ func (q *Queries) GetLatestAttempt(ctx context.Context, userProblemStateID pgtyp
 		&i.AccountID,
 		&i.PathSlug,
 		&i.ProblemID,
+		&i.CoachAssistAt,
 	)
 	return i, err
 }
 
 const getOpenAttempt = `-- name: GetOpenAttempt :one
-SELECT id, user_problem_state_id, stage_reached, revealed_early, started_at, ended_at, account_id, path_slug, problem_id FROM practice.attempt
+SELECT id, user_problem_state_id, stage_reached, revealed_early, started_at, ended_at, account_id, path_slug, problem_id, coach_assist_at FROM practice.attempt
 WHERE user_problem_state_id = $1 AND ended_at IS NULL
 ORDER BY started_at DESC
 LIMIT 1
@@ -104,8 +129,115 @@ func (q *Queries) GetOpenAttempt(ctx context.Context, userProblemStateID pgtype.
 		&i.AccountID,
 		&i.PathSlug,
 		&i.ProblemID,
+		&i.CoachAssistAt,
 	)
 	return i, err
+}
+
+const getOpenAttemptForUpdate = `-- name: GetOpenAttemptForUpdate :one
+
+SELECT id, user_problem_state_id, stage_reached, revealed_early, started_at, ended_at, account_id, path_slug, problem_id, coach_assist_at FROM practice.attempt
+WHERE user_problem_state_id = $1 AND ended_at IS NULL
+ORDER BY started_at DESC
+LIMIT 1
+FOR UPDATE
+`
+
+// --- m1-07 (M1b, D27): the coach-assist record and the open-attempt read ---
+// The in-progress attempt, row-locked for LogOutcome: the conclusion and a concurrent
+// MarkCoachAssist serialise on it, so the Assisted clamp sees every assist recorded
+// before the conclusion, and an assist racing the conclusion finds the attempt closed.
+func (q *Queries) GetOpenAttemptForUpdate(ctx context.Context, userProblemStateID pgtype.UUID) (PracticeAttempt, error) {
+	row := q.db.QueryRow(ctx, getOpenAttemptForUpdate, userProblemStateID)
+	var i PracticeAttempt
+	err := row.Scan(
+		&i.ID,
+		&i.UserProblemStateID,
+		&i.StageReached,
+		&i.RevealedEarly,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.AccountID,
+		&i.PathSlug,
+		&i.ProblemID,
+		&i.CoachAssistAt,
+	)
+	return i, err
+}
+
+const listOpenAttempts = `-- name: ListOpenAttempts :many
+SELECT id, problem_id, path_slug, started_at, stage_reached, coach_assist_at
+FROM practice.attempt
+WHERE account_id = $1
+  AND ended_at IS NULL
+  AND ($2::text IS NULL OR problem_id = $2::text)
+ORDER BY started_at DESC
+`
+
+type ListOpenAttemptsParams struct {
+	AccountID pgtype.UUID
+	ProblemID pgtype.Text
+}
+
+type ListOpenAttemptsRow struct {
+	ID            pgtype.UUID
+	ProblemID     pgtype.Text
+	PathSlug      pgtype.Text
+	StartedAt     pgtype.Timestamptz
+	StageReached  string
+	CoachAssistAt pgtype.Timestamptz
+}
+
+// The account's open (not yet concluded) attempts, newest first, optionally for one
+// problem. Course attempts only until M2a (m2-01 adds attempt.purpose and reports open
+// touches in the same list).
+func (q *Queries) ListOpenAttempts(ctx context.Context, arg ListOpenAttemptsParams) ([]ListOpenAttemptsRow, error) {
+	rows, err := q.db.Query(ctx, listOpenAttempts, arg.AccountID, arg.ProblemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListOpenAttemptsRow{}
+	for rows.Next() {
+		var i ListOpenAttemptsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProblemID,
+			&i.PathSlug,
+			&i.StartedAt,
+			&i.StageReached,
+			&i.CoachAssistAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markCoachAssist = `-- name: MarkCoachAssist :one
+UPDATE practice.attempt
+SET coach_assist_at = COALESCE(coach_assist_at, now())
+WHERE id = $1 AND account_id = $2 AND ended_at IS NULL
+RETURNING coach_assist_at
+`
+
+type MarkCoachAssistParams struct {
+	ID        pgtype.UUID
+	AccountID pgtype.UUID
+}
+
+// D27: record the first coach chat about this problem during its open counted attempt.
+// Idempotent (COALESCE keeps the first time); no row when the attempt is unknown, not
+// the account's, or already concluded (the handler tells 404 from 409 afterwards).
+func (q *Queries) MarkCoachAssist(ctx context.Context, arg MarkCoachAssistParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, markCoachAssist, arg.ID, arg.AccountID)
+	var coach_assist_at pgtype.Timestamptz
+	err := row.Scan(&coach_assist_at)
+	return coach_assist_at, err
 }
 
 const setAttemptRevealedEarly = `-- name: SetAttemptRevealedEarly :exec

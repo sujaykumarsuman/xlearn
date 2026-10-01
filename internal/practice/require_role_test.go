@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/practice/store"
@@ -33,8 +34,14 @@ func TestUserRoutesRequireLearner(t *testing.T) {
 		reveal: func(context.Context, string, string) (store.RevealResult, error) {
 			return store.RevealResult{}, store.ErrNotFound
 		},
-		logOutcome: func(context.Context, string, string, string) (store.State, error) {
-			return store.State{}, store.ErrNotFound
+		logOutcome: func(context.Context, string, string, string) (store.OutcomeResult, error) {
+			return store.OutcomeResult{}, store.ErrNotFound
+		},
+		assist: func(context.Context, string, string) (time.Time, error) {
+			return time.Time{}, store.ErrNotFound
+		},
+		listOpen: func(context.Context, string, string) ([]store.OpenAttempt, error) {
+			return nil, store.ErrNotFound
 		},
 	}
 	learner := NewService(fs, fakeVerifier{subject: testAccount}, testLogger())

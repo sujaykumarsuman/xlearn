@@ -75,6 +75,20 @@ func TestProjectionHandlerV1V2Twins(t *testing.T) {
 	}
 }
 
+// m1-07 (v1.7.0): problem_solved's additive `assist` object (D27) changes nothing for
+// the projection consumer — the same ProjectionEvent as the plain v2 twin.
+func TestProjectionHandlerProblemSolvedAssist(t *testing.T) {
+	const subject = "xlearn.practice.problem_solved"
+	withAssist, applied, err := handleFixture(t, subject, "problem_solved.v2-assist.json")
+	if err != nil || !applied {
+		t.Fatalf("v2 + assist: applied=%v err=%v", applied, err)
+	}
+	v2, _, _ := handleFixture(t, subject, "problem_solved.v2.json")
+	if !reflect.DeepEqual(v2, withAssist) {
+		t.Fatalf("v2 %+v\nv2+assist %+v", v2, withAssist)
+	}
+}
+
 // An unknown future version with extra fields is still processed.
 func TestProjectionHandlerUnknownVersion(t *testing.T) {
 	v3, applied, err := handleFixture(t, "xlearn.practice.problem_solved", "problem_solved.v3-extra.json")

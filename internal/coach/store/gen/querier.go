@@ -25,6 +25,9 @@ type Querier interface {
 	DeleteKeyDefault(ctx context.Context, arg DeleteKeyDefaultParams) error
 	// One (account, provider) key config. ErrNoRows when that provider isn't connected.
 	GetApiKeyConfig(ctx context.Context, arg GetApiKeyConfigParams) (GetApiKeyConfigRow, error)
+	// Read-only: the account's messages so far on a UTC day, for GET /coach/admission (which
+	// must consume nothing). No row means none yet.
+	GetDailyMessages(ctx context.Context, arg GetDailyMessagesParams) (int32, error)
 	// coach.key_default(account_id, feature) — the PER-FEATURE default key.
 	//
 	// m1-02 (M1a) created it beside api_key_config.is_default and dual-wrote the
@@ -65,10 +68,15 @@ type Querier interface {
 	//
 	// Separate from InsertMessage so the user's turn cannot accidentally be stamped with the
 	// assistant turn's usage (which would double-count the month-to-date total).
+	//
+	// m1-07: prompt_v and attempt_id as on InsertMessage — the same values as the turn's user
+	// row.
 	InsertAssistantMessage(ctx context.Context, arg InsertAssistantMessageParams) (InsertAssistantMessageRow, error)
 	// Append one message to a thread, labelled with the thread's course (path_slug, copied
 	// from the thread so the two never disagree; NULL for an account-wide thread). seq
 	// (identity) orders it; created_at is the wall time. No row when the thread is missing.
+	// m1-07 (migration 00007): prompt_v is the system-prompt version the turn was built with
+	// and attempt_id the attempt a D27 assist was recorded on; both NULL when absent.
 	InsertMessage(ctx context.Context, arg InsertMessageParams) (InsertMessageRow, error)
 	// coach.api_key_config — one envelope-encrypted provider key per (account, provider).
 	//
@@ -95,9 +103,13 @@ type Querier interface {
 	// Settings panel renders as per-feature defaults (AB01 F13) and what GET /keys returns as
 	// `defaults`. A feature with no default is simply absent (the UI shows "Not set").
 	ListKeyDefaults(ctx context.Context, accountID pgtype.UUID) ([]ListKeyDefaultsRow, error)
-	// A thread's messages oldest-first (seq is the stable total order). Used both for
-	// GET /coach/thread history and to build the provider request's prior turns.
+	// A thread's messages oldest-first (seq is the stable total order): the FULL history
+	// GET /coach/thread returns (unchanged since v1).
 	ListMessages(ctx context.Context, threadID pgtype.UUID) ([]ListMessagesRow, error)
+	// The LAST max_messages messages of a thread, returned oldest-first: the history window a
+	// chat turn replays to the provider (L18, m1-07: 20 messages, then trimmed to 32 KiB in
+	// Go). Reading only the tail keeps a long thread from being loaded on every turn.
+	ListRecentMessages(ctx context.Context, arg ListRecentMessagesParams) ([]ListRecentMessagesRow, error)
 	// One batch of key configs whose AD pair needs (re)sealing: never written, wrapped under
 	// a KEK that is no longer active, or STALE — the legacy pair was rewritten underneath it
 	// (a v1.6.0 key replace during a rollback), which the digest detects.
@@ -119,6 +131,9 @@ type Querier interface {
 	// carrying that key's own model. The store calls this for `coach` ONLY — `interview` is
 	// never auto-promoted.
 	PromoteEarliestKeyDefault(ctx context.Context, arg PromoteEarliestKeyDefaultParams) error
+	// Give back one claimed message when the turn never reached the provider (a store or key
+	// error after the claim), so a request that spent nothing counts nothing. Never below 0.
+	RefundDailyMessage(ctx context.Context, arg RefundDailyMessageParams) error
 	// Flip one provider's enabled flag (Settings toggle / provider-AUTH failure — never a
 	// quota or rate limit, which keep the key). Returns the affected row count so a no-op
 	// can 404.
@@ -133,6 +148,17 @@ type Querier interface {
 	// purpose: an `interview` default pointing at the same key keeps its own chosen brain,
 	// which a coach-side model switch must not clobber.
 	SyncKeyDefaultModel(ctx context.Context, arg SyncKeyDefaultModelParams) error
+	// L18's durable daily cap (sprint m1-07 task 3, migration 00008): at most daily_cap coach
+	// messages per account per UTC day. `day` is ALWAYS the UTC date computed in Go and passed
+	// in (every query in this file), never current_date, so the cap does not depend on the session
+	// TimeZone.
+	//
+	// Claim one message of the account's day atomically. The first message of a day inserts
+	// n = 1; later ones increment n only while it is below the cap. At the cap the DO UPDATE's
+	// WHERE is false, so nothing is written and NO ROW comes back (pgx.ErrNoRows) — that is
+	// the "cap reached" signal. Concurrent claims serialize on the row lock and re-check the
+	// WHERE against the committed n, so they cannot overshoot (the store race test).
+	TakeDailyMessage(ctx context.Context, arg TakeDailyMessageParams) (int32, error)
 	// --- background re-wrap (m1-10 task 3; internal/coach/rewrap.go) ---
 	// Take the re-wrap lock for the CURRENT TRANSACTION. False means another runner (another
 	// replica, or a pass still in flight during a rolling update) holds it and this pass ends.

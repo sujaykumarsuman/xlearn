@@ -124,10 +124,11 @@ func TestStoreIntegration(t *testing.T) {
 		}
 
 		// Log a below-clean outcome → solved, last outcome recorded.
-		s2, err := st.LogOutcome(ctx, acct, problem, store.OutcomeMiss)
+		res2, err := st.LogOutcome(ctx, acct, problem, store.OutcomeMiss)
 		if err != nil {
 			t.Fatalf("log outcome: %v", err)
 		}
+		s2 := res2.State
 		if s2.Status != "solved" || s2.LastOutcome != store.OutcomeMiss || s2.FirstSolvedAt.IsZero() {
 			t.Fatalf("after outcome = %+v", s2)
 		}
@@ -175,10 +176,11 @@ func TestStoreIntegration(t *testing.T) {
 		if _, err := st.StartAttempt(ctx, acct, problem, "dsa"); err != nil {
 			t.Fatalf("start: %v", err)
 		}
-		s, err := st.LogOutcome(ctx, acct, problem, store.OutcomeClean)
+		res, err := st.LogOutcome(ctx, acct, problem, store.OutcomeClean)
 		if err != nil {
 			t.Fatalf("outcome: %v", err)
 		}
+		s := res.State
 		if s.Status != "solved" || s.LastOutcome != store.OutcomeClean {
 			t.Fatalf("solved-blind = %+v", s)
 		}
