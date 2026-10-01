@@ -1,0 +1,29 @@
+{
+  "id": "pair-sum",
+  "title": "Pair Sum (synthetic)",
+  "parts": [
+    {
+      "id": "solution",
+      "type": "code",
+      "config": {
+        "signature": {
+          "mode": "function",
+          "name": "pairSum",
+          "params": [
+            { "name": "nums", "type": "int[]" },
+            { "name": "target", "type": "int" }
+          ],
+          "returns": "int[]"
+        },
+        "languages": ["go", "cpp", "python"],
+        "harness": "func-json@1",
+        "checker": { "name": "exact" },
+        "samples": [
+          { "id": "s1", "args": [[2, 7, 11, 15], 9], "expected": [0, 1] },
+          { "id": "s2", "args": [[3, 2, 4], 6], "expected": [1, 2] }
+        ],
+        "limits": { "time_ms": 1000, "memory_mb": 256 }
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{{template "header" .}}
+
+
+def xl_case(p):
+    a = xl.args_of(p, {{len .Params}})
+    import solution
+{{range $i, $a := .Params}}
+    xlA{{$i}} = xl.{{$a.Dec}}(a[{{$i}}])
+{{- end}}
+    xlR = solution.Solution().{{.Name}}({{range $i, $a := .Params}}{{if $i}}, {{end}}xlA{{$i}}{{end}})
+    w = xl.Writer()
+    w.raw('{"ok":')
+    xl.{{.Enc}}(w, xlR)
+    w.raw("}")
+    return w
+
+
+xl.run(xl_case)

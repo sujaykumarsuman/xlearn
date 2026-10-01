@@ -1,0 +1,30 @@
+{
+  "id": "group-words",
+  "title": "Group Anagram Words (synthetic)",
+  "parts": [
+    {
+      "id": "solution",
+      "type": "code",
+      "config": {
+        "signature": {
+          "mode": "function",
+          "name": "groupWords",
+          "params": [{ "name": "words", "type": "string[]" }],
+          "returns": "string[][]"
+        },
+        "languages": ["go", "cpp", "python"],
+        "harness": "func-json@1",
+        "checker": { "name": "unordered_deep" },
+        "samples": [
+          {
+            "id": "s1",
+            "args": [["eat", "tea", "tan", "ate", "nat", "bat"]],
+            "expected": [["bat"], ["nat", "tan"], ["ate", "eat", "tea"]]
+          },
+          { "id": "s2", "args": [[""]], "expected": [[""]] }
+        ],
+        "limits": { "time_ms": 1000, "memory_mb": 256 }
+      }
+    }
+  ]
+}

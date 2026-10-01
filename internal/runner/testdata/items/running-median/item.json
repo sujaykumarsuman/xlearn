@@ -1,0 +1,26 @@
+{
+  "id": "running-median",
+  "title": "Running Median (synthetic)",
+  "parts": [
+    {
+      "id": "solution",
+      "type": "code",
+      "config": {
+        "signature": {
+          "mode": "function",
+          "name": "runningMedian",
+          "params": [{ "name": "nums", "type": "int[]" }],
+          "returns": "float64[]"
+        },
+        "languages": ["go", "cpp", "python"],
+        "harness": "func-json@1",
+        "checker": { "name": "float_abs", "params": { "eps": 0.000001 } },
+        "samples": [
+          { "id": "s1", "args": [[5, 15, 1, 3]], "expected": [5, 10, 5, 4] },
+          { "id": "s2", "args": [[2]], "expected": [2] }
+        ],
+        "limits": { "time_ms": 1000, "memory_mb": 256 }
+      }
+    }
+  ]
+}

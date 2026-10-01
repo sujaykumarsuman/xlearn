@@ -60,8 +60,10 @@ One binary (`cmd/runner`), several roles:
 foreign arch or an x32 number → `KILL_PROCESS`; the dangerous set (io_uring, bpf, perf, userfaultfd, the keyring,
 ptrace, `process_vm_*`, the mount family, unshare/setns, socket, splice/vmsplice/tee) → `KILL_PROCESS`; `clone3`
 → `ENOSYS`; optionally `clone` only with `CLONE_THREAD` and no namespace flag, `prctl` only with `PR_SET_VMA`.
-Exec filters default to `KILL_PROCESS`; compile filters to `ENOSYS`. A dev-only switch gives an arm64 exec filter
-a LOG default under the `runner_it` build tag with `RUNNER_MODE=dev` (the lists are amd64 until m3-04).
+Exec filters default to `KILL_PROCESS` on every arch and in every mode; compile filters to `ENOSYS` (the dangerous
+set still KILLs). The per-profile lists live with their profiles (below); every name must resolve at startup.
+m3-04 retired m3-03's dev-only arm64 LOG switch: an arm64 dev VM runs its own `seccomp_arm64.go` lists,
+KILL-default too, and never in a release image.
 
 **Spawn path** (`RUNNER_SPAWN_PATH`): `clone_into_cgroup` (default, clone3 + a cgroup fd) or `cgroup_procs` (a
 `cgroup.procs` write gated on a sync pipe). The bounding set is emptied on a locked OS thread that spawns and is
@@ -70,9 +72,71 @@ then discarded, which needs `CAP_SETPCAP` — as does go-sandbox's `PR_SET_SECUR
 ## Profiles
 
 `internal/runner/profile` holds the `Profile` type (compile and exec specs, binds, env, limits, rlimits, filters,
-`ArtifactMode`, the toolchain paths to pre-read, a no-op baseline program) and the registry. m3-04 adds `go@1.26`,
-`cpp` and `python`. The test-only `testgo@0` and `testgo-open@0` (build tag `runner_it`) exist for the jail suite
-and are never linked into a release build.
+`ArtifactMode`, the toolchain paths to pre-read, a no-op baseline program, the language it serves, the TL
+multiplier, the harness assets, toolchain detection and a diagnostics parser) and the registry. The three launch
+profiles (D20, m3-04) register from `internal/runner/profile/{go,cpp,python}`; the test-only `testgo@0` and
+`testgo-open@0` (build tag `runner_it`) exist for the jail suite and are never linked into a release build.
+
+| | `go@1.26` | `cpp@g++14` | `python@3.13` |
+|---|---|---|---|
+| Item language (`profile.ForLanguage`) | `go` | `cpp` | `python` |
+| Toolchain | go1.26 tarball at `$RUNNER_TOOLCHAINS_DIR/go` (default `/opt/xl/go`) | Debian trixie `g++` 14 | Debian trixie CPython 3.13 |
+| Compile | `go build -json -trimpath -buildvcs=false -o /w/bin solution.go zz_xl_harness.go`; `CGO_ENABLED=0 GOTOOLCHAIN=local GOPROXY=off GOFLAGS=-mod=readonly GOTELEMETRY=off GOENV=off`, `TMPDIR=/w`, `GOPATH=/w/gopath`, `HOME` unset (no telemetry), `GOROOT` set (no `/proc`), `GOCACHE` = **the read-only seed in place** (no overlay, no copy) | `g++ -std=gnu++20 -O2 -static -pipe -fdiagnostics-format=json -fmax-errors=20 -ftemplate-depth=512 -fconstexpr-depth=512 -o /w/bin zz_xl_harness.cpp`, `/usr` bound read-only | `python3 -I -S -B -c <driver>`: `compile()` every source, check `XL_REQUIRES`, then a deterministic stored zipapp `/w/app.pyz` |
+| Compile limits | 15 s, 768 MiB, pids 256 | 15 s, 1 GiB, pids 64, artifact ≤ 64 MiB | 15 s, 256 MiB, pids 16 |
+| Exec | `/job/bin` (`0111`) | `/job/bin` (`0111`, static) | `python3 -s -P -S -B /job/app.pyz` (`0444`) |
+| Exec env | `GOMAXPROCS=1`, `GOMEMLIMIT` unset, `TZ=UTC`, `LANG=C.UTF-8` | `TZ=UTC`, `LANG=C.UTF-8` | `PYTHONHASHSEED=0`, `PYTHONDONTWRITEBYTECODE=1`, `PYTHONIOENCODING=utf-8`, `TZ=UTC`, `LANG=C.UTF-8` |
+| Exec jail sees | the artifact | the artifact | the artifact, the interpreter, its stdlib, the multiarch libraries, the loader |
+| Case limits | pids 32 | pids 4, `RLIMIT_STACK` = the memory limit | pids 4, `RLIMIT_STACK` = the memory limit |
+| Exec seccomp (amd64) | t3 §16.2 `go` (27) + `close` | t3 §16.2 `cpp` (19) + abort's `getpid gettid rt_sigaction rt_sigprocmask tgkill` | t3 §16.2 `python` (39) |
+| Fixed rules | clone `CLONE_THREAD` only, prctl `PR_SET_VMA` only | no clone | clone `CLONE_THREAD` only |
+| Diagnostics | `go build -json` events → gc's `file:line:col` | GCC JSON (notes dropped) + the linker's text | the driver's JSON lines (`SyntaxError`, a missing requirement in `__main__.py`) |
+| TL multiplier (`calibrated: false`) | 1.0 (the baseline) | provisional (status.md decisions) | provisional |
+
+Every profile takes `func-json@1` and `class-ops@1`. **ProfileSHA** (`profile.Fingerprint`, at spawner startup) is a
+SHA-256 over the profile's description (commands, env, binds, limits, seccomp lists, the harness templates and
+preludes it carries, the multiplier), the detected toolchain version (`go1.26.x`, `g++ -dumpfullversion`,
+`python3 -VV`) and the tree hash of every toolchain path, which includes the Go seed; a one-byte template change
+moves it. The toolchain paths are pre-read at startup so their page cache is charged to `runner/`, never to a slot
+(whose teardown checks memory is back to baseline). `GET /v1/profiles` serves the language, toolchain, ProfileSHA,
+memory baseline, `baseline` profile (`go@1.26`), `tl_multiplier` and `calibrated`.
+
+**The Go GOCACHE seed** (`goprofile.BuildSeed`, `runner seed-gocache -out <dir> [-goroot <dir>]`): `go build std`
+with the compile's exact toolchain, flags and env into a fresh GOCACHE; every file gets a fixed future mtime (the go
+command never tries to refresh or trim the read-only seed) and the index entries and trim stamp a fixed time, so two
+builds of one toolchain give the same tree hash, which the command prints; nothing is left at `-out` on failure.
+m3-15's Dockerfile runs it; the profile binds `$RUNNER_TOOLCHAINS_DIR/gocache` read-only when it exists (else a cold
+cache on `/w`).
+
+**Lint** ([`internal/platform/runnerapi/lint`](../../internal/platform/runnerapi/lint/lint.go)): judge runs
+`lint.Check` before enqueue (a violation is REJECTED, uncounted); the front re-runs `lint.CheckNames` (only the
+profile's learner and harness file names, no hidden files) before writing a byte and answers a violation with 400.
+The lint reduces attack surface; the jail and seccomp are the boundary.
+
+## Harness protocol
+
+One process per case reads one `u32`-BE-framed canonical JSON frame on fd 3 and writes exactly one on fd 4:
+`{"ok":<value>}`, `{"panic":"<class>"}` (a caught runtime error from the language's closed set; the front copies
+the class into `CaseResult.PanicClass`) or `{"error":"<code>"}` (the result can't be encoded → WA; `bad_input` is a
+judge fault). stdout and stderr stay the learner's. Go, C++ and Python write byte-identical frames (the
+cross-language golden tests). The wire format, the generated files and the panic classes are
+[`internal/platform/harness/README.md`](../../internal/platform/harness/README.md), the `@1` spec; a change that
+moves a byte on fd 3 or fd 4 is `@2`.
+
+## Type registry
+
+The closed set ([README](../../internal/platform/harness/README.md#types-closed-t1-71), `harness.ParseType`): `int`
+(32-bit range), `int64`, `float64`, `bool`, `string`; `T[]` and `T[][]` over those; `ListNode`, `ListNode[]`,
+`TreeNode` (level order), `TreeNode[]`, `GraphNode` (1-indexed adjacency); `void` as a class-op return. Floats are
+never canonical (`CanonicalizableOutput`: compare with a float checker in bytes mode, never by sha256).
+
+| Type | Go | C++ | Python |
+|---|---|---|---|
+| `int` / `int64` | `int` / `int64` | `int` / `long long` | `int` |
+| `float64` / `bool` / `string` | `float64` / `bool` / `string` | `double` / `bool` / `string` | `float` / `bool` / `str` |
+| `T[]` / `T[][]` | `[]T` / `[][]T` | `vector<T>` / `vector<vector<T>>` | `List[T]` |
+| `ListNode` | `*ListNode{Val, Next}` | `ListNode*` (`val`, `next`) | `ListNode(val, next)` |
+| `TreeNode` | `*TreeNode{Val, Left, Right}` | `TreeNode*` | `TreeNode(val, left, right)` |
+| `GraphNode` | `*Node{Val, Neighbors}` | `Node*` | `Node(val, neighbors)` |
 
 ## Cgroup layout (`internal/runner/cgroup`)
 
@@ -180,6 +244,7 @@ assertion failed; 200), `killed` (drain; 503, judge re-queues as saturated), `jo
 | `RUNNER_SPAWN_PATH` | `clone_into_cgroup` | or `cgroup_procs` |
 | `RUNNER_CGROUP_ROOT` / `RUNNER_JAIL_DIR` | `/sys/fs/cgroup` / `/jail` | `/jail` is an `emptyDir`, the only place the AppArmor profile admits mounts |
 | `RUNNER_FRONT_UID` / `RUNNER_CANARY_EVERY` | `65532` / `5m` | |
+| `RUNNER_TOOLCHAINS_DIR` | `/opt/xl` | the Go toolchain (`go/`) and its GOCACHE seed (`gocache/`); tests point it at their own layout |
 
 ## Tests
 
@@ -190,3 +255,8 @@ assertion failed; 200), `killed` (drain; 503, judge re-queues as saturated), `jo
   case cgroups, the L14 caps, the quiet re-run and the API contract against the real binary in a privileged
   `debian:trixie-slim` container with a private cgroup namespace and the pod's limits. It does not exercise the pod's
   user namespace, the Localhost AppArmor and seccomp profiles or the VAP: m3-15's VM rehearsal and mi-10 do.
+  m3-04 adds `internal/runner/profile/refs_it_test.go` (seven synthetic items and m3-02's fixtures: references
+  in all three languages, wrong solutions per class, the lint-evasion fixtures, artifact modes, the read-only
+  GOCACHE seed, provisional TL multipliers) and `internal/platform/harness/contentcheck_it_test.go` (the public
+  content check). The shared runner harness is `internal/runner/it/itrt`; `make runner-it` runs the packages one
+  at a time (`-p 1`), each with its own runner. CI installs `g++` and `python3` from trixie in the same container.

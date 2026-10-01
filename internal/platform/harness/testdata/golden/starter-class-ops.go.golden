@@ -1,0 +1,15 @@
+package main
+
+type Shelf struct {
+}
+
+func Constructor(capacity int) Shelf {
+	return Shelf{}
+}
+
+func (this *Shelf) Put(key int, label string) {
+}
+
+func (this *Shelf) Get(key int) string {
+	return ""
+}

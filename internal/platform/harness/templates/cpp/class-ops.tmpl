@@ -1,0 +1,64 @@
+{{template "header" .}}
+
+signed main() {
+    return xlh::run([](xlh::W& xlW) {
+        xlh::P xlP(xlh::read_input());
+        std::vector<std::string> xlSpans;
+        std::vector<std::string> xlOps;
+        xlP.expect('{');
+        for (int xlK = 0; xlK < 2; xlK++) {
+            if (xlK > 0) xlP.expect(',');
+            std::string xlKey = xlP.str();
+            if (xlKey == "args") {
+                xlP.expect(':');
+                xlSpans = xlP.spans();
+            } else if (xlKey == "ops") {
+                xlP.expect(':');
+                xlOps = xlh::C<std::vector<std::string>>::dec(xlP);
+            } else {
+                xlh::fail("bad_input");
+            }
+        }
+        xlP.expect('}');
+        xlP.end();
+        if (xlOps.empty() || xlOps.size() != xlSpans.size() || xlOps[0] != {{cq .Name}}) xlh::fail("bad_input");
+        xlh::P xlCA(xlSpans[0]);
+        xlCA.expect('[');
+{{- range $i, $p := .Params}}
+{{- if $i}}
+        xlCA.expect(',');{{end}}
+        {{$p.Type}} xlC{{$i}} = xlh::C<{{$p.Type}}>::dec(xlCA);
+{{- end}}
+        xlCA.expect(']');
+        xlCA.end();
+        xlW.raw("{\"ok\":[null");
+        {{.Name}}* xlObj = new {{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}xlC{{$i}}{{end}});
+        for (std::size_t xlI = 1; xlI < xlOps.size(); xlI++) {
+            xlW.raw(",");
+            xlh::P xlA(xlSpans[xlI]);
+            xlA.expect('[');
+            const std::string& xlOp = xlOps[xlI];
+{{- range $k, $o := .Ops}}
+            {{if $k}}} else {{end}}if (xlOp == {{cq $o.Name}}) {
+{{- range $i, $p := $o.Params}}
+{{- if $i}}
+                xlA.expect(',');{{end}}
+                {{$p.Type}} xlA{{$i}} = xlh::C<{{$p.Type}}>::dec(xlA);
+{{- end}}
+                xlA.expect(']');
+                xlA.end();
+{{- if $o.Void}}
+                xlObj->{{$o.Name}}({{range $i, $p := $o.Params}}{{if $i}}, {{end}}xlA{{$i}}{{end}});
+                xlW.raw("null");
+{{- else}}
+                {{$o.Ret}} xlR = xlObj->{{$o.Name}}({{range $i, $p := $o.Params}}{{if $i}}, {{end}}xlA{{$i}}{{end}});
+                xlh::C<{{$o.Ret}}>::enc(xlW, xlR);
+{{- end}}
+{{- end}}
+            } else {
+                xlh::fail("bad_input");
+            }
+        }
+        xlW.raw("]}");
+    });
+}

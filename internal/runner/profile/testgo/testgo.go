@@ -7,8 +7,8 @@
 //   - testgo@0: compile = `go build` with the host Go toolchain bound read-only at its own path,
 //     GOROOT set (the jail has no /proc, t3 §16.2) and TMPDIR=/w; the Go compile cache is a
 //     read-only seed used in place when RUNNER_TESTGO_GOCACHE names one (t3 §16.2 block 1), else
-//     a cold cache on /w. exec = the artifact under spk-02's amd64 `go` allowlist, KILL-default
-//     (t3 §16.2 block 2), with its fixed rules. m3-04 moves this into the real go@1.26 profile.
+//     a cold cache on /w. exec = the artifact under the real go@1.26 profile's exec allowlist
+//     (goprofile.ExecAllow, t3 §16.2 block 2), KILL-default, with its fixed rules.
 //   - testgo-open@0: the same, but its exec filter allows everything except the dangerous set
 //     (minus socket and the keyring calls). It exists to test the namespace layer on its own —
 //     cross-job markers, fork bombs against pids.max, orphan double-forks, network probes in an
@@ -22,6 +22,7 @@ import (
 
 	"github.com/sujaykumarsuman/xlearn/internal/platform/runnerapi"
 	"github.com/sujaykumarsuman/xlearn/internal/runner/profile"
+	goprofile "github.com/sujaykumarsuman/xlearn/internal/runner/profile/go"
 	"github.com/sujaykumarsuman/xlearn/internal/runner/seccomp"
 )
 
@@ -63,7 +64,7 @@ func init() {
 		WInodes:    16384,
 		Seccomp: profile.Seccomp{
 			Default:      profile.DefaultENOSYS,
-			Allow:        append(append([]string{}, seccomp.GoBuildAMD64...), seccomp.CompileInitExtra...),
+			Allow:        append(append([]string{}, goprofile.CompileAllow()...), seccomp.CompileInitExtra...),
 			Kill:         seccomp.Dangerous,
 			Clone3ENOSYS: true,
 		},
@@ -78,7 +79,7 @@ func init() {
 		WInodes:    4096,
 		Seccomp: profile.Seccomp{
 			Default:         profile.DefaultKill,
-			Allow:           seccomp.Without(seccomp.GoExecAMD64, "clone", "prctl"),
+			Allow:           seccomp.Without(goprofile.ExecAllow(), "clone", "prctl"),
 			Kill:            seccomp.Dangerous,
 			Clone3ENOSYS:    true,
 			CloneThreadOnly: true,

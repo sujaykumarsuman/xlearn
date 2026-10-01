@@ -1,0 +1,4 @@
+{"id":"e1","group":"edge","args":[["a"]],"expected":[["a"]]}
+{"id":"e2","group":"edge","args":[["ab","ba","ab"]],"expected":[["ab","ab","ba"]]}
+{"id":"e3","group":"edge","args":[["é\"x","x\"é","q\\"]],"expected":[["q\\"],["x\"é","é\"x"]]}
+{"id":"r1","group":"random","args":[["listen","silent","enlist","google","gogole","cat","act","tac","dog"]]}

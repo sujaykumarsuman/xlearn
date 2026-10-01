@@ -1,0 +1,26 @@
+{
+  "id": "reverse-list",
+  "title": "Reverse a List (synthetic)",
+  "parts": [
+    {
+      "id": "solution",
+      "type": "code",
+      "config": {
+        "signature": {
+          "mode": "function",
+          "name": "reverseList",
+          "params": [{ "name": "head", "type": "ListNode" }],
+          "returns": "ListNode"
+        },
+        "languages": ["go", "cpp", "python"],
+        "harness": "func-json@1",
+        "checker": { "name": "exact" },
+        "samples": [
+          { "id": "s1", "args": [[1, 2, 3, 4, 5]], "expected": [5, 4, 3, 2, 1] },
+          { "id": "s2", "args": [[]], "expected": [] }
+        ],
+        "limits": { "time_ms": 1000, "memory_mb": 256 }
+      }
+    }
+  ]
+}

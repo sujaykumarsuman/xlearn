@@ -319,7 +319,7 @@ func TestGenerateGolden(t *testing.T) {
 			t.Errorf("%s: generated harness differs from %s (a byte change on fd 3/fd 4 is @2; otherwise -update)", name, golden)
 		}
 	}
-	if _, err := Generate("cpp", FuncJSON, funcSig(t)); !errors.Is(err, ErrLanguagePending) {
-		t.Errorf("cpp: %v, want ErrLanguagePending", err)
+	if _, err := Generate("rust", FuncJSON, funcSig(t)); err == nil {
+		t.Error("an unknown language must not generate")
 	}
 }

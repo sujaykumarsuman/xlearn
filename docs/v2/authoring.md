@@ -31,6 +31,26 @@ Go types in `internal/course/item.go`). The grading-relevant fields: `parts[]` (
 (`key_source` names where a key lives, never the key), `solution_facts`, `assets`. Layout and sidecars:
 [`curriculum/README.md`](../../curriculum/README.md).
 
+**Code-part types** (`config.signature` params, `returns` and op returns; the closed registry,
+[`internal/platform/harness`](../../internal/platform/harness/README.md#types-closed-t1-71), m3-04). Anything else is
+refused (a new type is code plus a release):
+
+| Type | Go | C++ | Python | JSON in cases and samples |
+|---|---|---|---|---|
+| `int` (32-bit range) / `int64` | `int` / `int64` | `int` / `long long` | `int` | integer |
+| `float64` | `float64` | `double` | `float` | number; **outputs need a float checker** (`float_abs`/`float_rel`), never `exact` by digest |
+| `bool` / `string` (UTF-8) | `bool` / `string` | `bool` / `string` | `bool` / `str` | `true`/`false` / string |
+| `T[]`, `T[][]` over the above | `[]T`, `[][]T` | `vector<T>`, `vector<vector<T>>` | `List[T]` | arrays |
+| `ListNode`, `ListNode[]` | `*ListNode{Val, Next}` | `ListNode*` (`val`, `next`) | `ListNode(val, next)` | `[1,2,3]` |
+| `TreeNode`, `TreeNode[]` | `*TreeNode{Val, Left, Right}` | `TreeNode*` | `TreeNode(val, left, right)` | level order, `null` holes: `[1,null,2]` |
+| `GraphNode` | `*Node{Val, Neighbors}` | `Node*` | `Node(val, neighbors)` | 1-indexed adjacency: `[[2],[1]]` (only nodes reachable from node 1 come back) |
+| `void` (an op with no `returns`) | — | `void` | `None` | `null` |
+
+Go calls the function (`func-json@1`) or `Constructor` and the methods (`class-ops@1`); C++ and Python call a
+method of `class Solution`, or the class itself. Without a `_starter/solution.<ext>`, `harness.Starter` generates
+the skeleton. `int` is 32-bit in every language (C++'s `int`); use `int64` when values can exceed it. Python's
+multiplier makes its TL longer: keep an item's Σ TL × the served `tl_multiplier` under the 45 s tests cap.
+
 **Public reference files:** `curriculum/courses/<slug>/items/<id>/_code/solution.go` (and `solution.cpp`,
 `solution.py`): whole, compilable files (a `.go` must be gofmt-clean). They are **not** the converted section
 fragments `_code/<stage>-<NN>.<lang>.snip`, which are never references. `packlint lock` (m3-02) computes

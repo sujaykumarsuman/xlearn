@@ -5,12 +5,8 @@ package spawner
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -21,7 +17,6 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/sujaykumarsuman/xlearn/internal/platform/runnerapi"
-	"github.com/sujaykumarsuman/xlearn/internal/runner"
 	"github.com/sujaykumarsuman/xlearn/internal/runner/cgroup"
 	"github.com/sujaykumarsuman/xlearn/internal/runner/ipc"
 	"github.com/sujaykumarsuman/xlearn/internal/runner/jail"
@@ -43,104 +38,66 @@ type profState struct {
 // profile's baseline (PeakKB subtracts it; mem_mb is enforced on top of it).
 const baselineRuns = 5
 
-// loadProfiles assembles each profile's filters and pre-reads and hashes its toolchain, so the
-// toolchain's page cache is charged to runner/ (not to a case cgroup that would then linger as
-// a dying memcg) and ProfileSHA covers it.
+// loadProfiles assembles each profile's filters, detects its toolchain version, and pre-reads
+// and hashes its toolchain (profile.TreeHash), so the toolchain's page cache is charged to
+// runner/ (not to a case cgroup that would then linger as a dying memcg) and ProfileSHA
+// (profile.Fingerprint: the description incl. lists and harness templates, the version, the
+// trees incl. the Go GOCACHE seed) covers it.
 func (s *Spawner) loadProfiles() error {
 	s.profiles = profile.All()
 	s.pstate = make([]*profState, len(s.profiles))
 	trees := map[string]string{}
-	dev := s.cfg.Mode == runner.ModeDev
 	for i, p := range s.profiles {
 		ps := &profState{toolchain: p.Toolchain}
 		var err error
-		if ps.execProg, err = s.assemble(p.Name+" exec", p.Exec.Seccomp.Policy(runtime.GOARCH, dev)); err != nil {
+		if ps.execProg, err = s.assemble(p.Name+" exec", p.Exec.Seccomp.Policy()); err != nil {
 			return err
 		}
-		if ps.compileProg, err = s.assemble(p.Name+" compile", p.Compile.Seccomp.Policy(runtime.GOARCH, dev)); err != nil {
+		if ps.compileProg, err = s.assemble(p.Name+" compile", p.Compile.Seccomp.Policy()); err != nil {
 			return err
 		}
-		h := sha256.New()
-		desc, err := json.Marshal(p)
+		if p.Detect != nil {
+			v, err := p.Detect()
+			if err != nil {
+				return fmt.Errorf("profile %s: detect the toolchain: %w", p.Name, err)
+			}
+			if v != "" {
+				ps.toolchain = v
+			}
+		}
+		ps.sha, err = profile.Fingerprint(p, ps.toolchain, func(path string) (string, error) {
+			if th, ok := trees[path]; ok {
+				return th, nil
+			}
+			t0 := time.Now()
+			th, err := profile.TreeHash(path)
+			if err != nil {
+				return "", fmt.Errorf("profile %s: pre-read %s: %w", p.Name, path, err)
+			}
+			trees[path] = th
+			s.log.Info("toolchain pre-read", "profile", p.Name, "path", path, "took_ms", time.Since(t0).Milliseconds())
+			return th, nil
+		})
 		if err != nil {
 			return err
 		}
-		h.Write(desc)
-		for _, path := range p.ToolchainPaths {
-			th, ok := trees[path]
-			if !ok {
-				t0 := time.Now()
-				if th, err = preReadTree(path); err != nil {
-					return fmt.Errorf("profile %s: pre-read %s: %w", p.Name, path, err)
-				}
-				trees[path] = th
-				s.log.Info("toolchain pre-read", "profile", p.Name, "path", path, "took_ms", time.Since(t0).Milliseconds())
-			}
-			fmt.Fprintf(h, "\n%s %s", path, th)
-		}
-		ps.sha = hex.EncodeToString(h.Sum(nil))
+		s.log.Info("profile loaded", "profile", p.Name, "toolchain", ps.toolchain, "profile_sha256", ps.sha)
 		s.pstate[i] = ps
 	}
 	return nil
 }
 
+// assemble builds one filter. Every name must resolve on this arch: amd64 runs t3 §16.2's
+// lists, an arm64 dev VM its own lists (seccomp_arm64.go); nothing is skipped.
 func (s *Spawner) assemble(what string, pol seccomp.Policy) (*syscall.SockFprog, error) {
 	prog, unresolved, err := seccomp.Assemble(pol, seccomp.Native())
 	if err != nil {
 		return nil, fmt.Errorf("%s filter: %w", what, err)
 	}
 	if len(unresolved) > 0 {
-		if runtime.GOARCH == "amd64" {
-			return nil, fmt.Errorf("%s filter: unknown syscall names on amd64: %s", what, strings.Join(unresolved, " "))
-		}
-		// The lists are amd64 (t3 §16.2); m3-04 adds arm64 lists.
-		s.log.Warn("filter names this arch lacks (skipped)", "filter", what, "arch", runtime.GOARCH, "names", unresolved)
+		return nil, fmt.Errorf("%s filter: unknown syscall names on %s: %s", what, runtime.GOARCH, strings.Join(unresolved, " "))
 	}
 	return seccomp.SockFprog(prog), nil
-}
-
-// preReadTree reads every regular file under root (charging its page cache to this cgroup) and
-// returns a hash over relative paths, modes, sizes, contents and symlink targets.
-func preReadTree(root string) (string, error) {
-	h := sha256.New()
-	buf := make([]byte, 1<<20)
-	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, _ := filepath.Rel(root, p)
-		info, err := d.Info()
-		if err != nil {
-			return err
-		}
-		switch {
-		case info.Mode()&fs.ModeSymlink != 0:
-			t, err := os.Readlink(p)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(h, "L %s %s\n", rel, t)
-		case info.Mode().IsRegular():
-			f, err := os.Open(p)
-			if err != nil {
-				return err
-			}
-			fh := sha256.New()
-			_, err = io.CopyBuffer(fh, f, buf)
-			f.Close()
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(h, "F %s %o %d %x\n", rel, info.Mode().Perm(), info.Size(), fh.Sum(nil))
-		case info.IsDir():
-			fmt.Fprintf(h, "D %s %o\n", rel, info.Mode().Perm())
-		}
-		return nil
-	})
-	if err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // measureBaselines compiles each profile's no-op program and runs it baselineRuns times in
