@@ -1,3 +1,5 @@
+SYNTHETIC — hand-made test data, never derived from xlearn-evalpack.
+
 # Synthetic test data
 
 Everything under `internal/runner/testdata/` is hand-made for the runner's own tests:
