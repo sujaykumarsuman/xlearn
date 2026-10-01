@@ -2,19 +2,36 @@
 -- Append one message to a thread, labelled with the thread's course (path_slug, copied
 -- from the thread so the two never disagree; NULL for an account-wide thread). seq
 -- (identity) orders it; created_at is the wall time. No row when the thread is missing.
-INSERT INTO coach.coach_message (thread_id, role, content, path_slug)
-SELECT t.id, sqlc.arg(role), sqlc.arg(content), t.path_slug
+-- m1-07 (migration 00007): prompt_v is the system-prompt version the turn was built with
+-- and attempt_id the attempt a D27 assist was recorded on; both NULL when absent.
+INSERT INTO coach.coach_message (thread_id, role, content, path_slug, prompt_v, attempt_id)
+SELECT t.id, sqlc.arg(role), sqlc.arg(content), t.path_slug,
+       sqlc.narg(prompt_v), sqlc.narg(attempt_id)
 FROM coach.coach_thread t
 WHERE t.id = sqlc.arg(thread_id)
 RETURNING id, seq, role, content, created_at;
 
 -- name: ListMessages :many
--- A thread's messages oldest-first (seq is the stable total order). Used both for
--- GET /coach/thread history and to build the provider request's prior turns.
+-- A thread's messages oldest-first (seq is the stable total order): the FULL history
+-- GET /coach/thread returns (unchanged since v1).
 SELECT id, role, content, created_at
 FROM coach.coach_message
 WHERE thread_id = $1
 ORDER BY seq;
+
+-- name: ListRecentMessages :many
+-- The LAST max_messages messages of a thread, returned oldest-first: the history window a
+-- chat turn replays to the provider (L18, m1-07: 20 messages, then trimmed to 32 KiB in
+-- Go). Reading only the tail keeps a long thread from being loaded on every turn.
+SELECT r.id, r.role, r.content, r.created_at
+FROM (
+    SELECT m.id, m.seq, m.role, m.content, m.created_at
+    FROM coach.coach_message AS m
+    WHERE m.thread_id = sqlc.arg(thread_id)
+    ORDER BY m.seq DESC
+    LIMIT sqlc.arg(max_messages)
+) AS r
+ORDER BY r.seq;
 
 -- --- m1-10 (M1b task 4): per-turn provider usage and cost ---
 
@@ -27,13 +44,18 @@ ORDER BY seq;
 --
 -- Separate from InsertMessage so the user's turn cannot accidentally be stamped with the
 -- assistant turn's usage (which would double-count the month-to-date total).
+--
+-- m1-07: prompt_v and attempt_id as on InsertMessage — the same values as the turn's user
+-- row.
 INSERT INTO coach.coach_message (
     thread_id, role, content, path_slug,
-    provider, model, input_tokens, output_tokens, est_cost_micros, stop_reason
+    provider, model, input_tokens, output_tokens, est_cost_micros, stop_reason,
+    prompt_v, attempt_id
 )
 SELECT t.id, sqlc.arg(role), sqlc.arg(content), t.path_slug,
        sqlc.narg(provider), sqlc.narg(model), sqlc.narg(input_tokens),
-       sqlc.narg(output_tokens), sqlc.narg(est_cost_micros), sqlc.narg(stop_reason)
+       sqlc.narg(output_tokens), sqlc.narg(est_cost_micros), sqlc.narg(stop_reason),
+       sqlc.narg(prompt_v), sqlc.narg(attempt_id)
 FROM coach.coach_thread t
 WHERE t.id = sqlc.arg(thread_id)
 RETURNING id, seq, role, content, created_at;

@@ -249,8 +249,9 @@ func TestWithholdCoachContext(t *testing.T) {
 		h.mu.Lock()
 		h.coach = nil
 		h.mu.Unlock()
-		// A spoofing client sends every withheld key itself; none may pass through.
-		body := `{"context":"problem:` + id + `","message":"help","pattern":"` + leakMark("PATTERN", id) +
+		// A spoofing client sends every withheld key itself; none may pass through. Item
+		// 1's open attempt needs the D27 confirm (m1-07), so its chat carries the ack.
+		body := `{"context":"problem:` + id + `","assist_ack":"att-1","message":"help","pattern":"` + leakMark("PATTERN", id) +
 			`","concepts":["` + leakMark("CONCEPT", id) + `"],"solution_facts":{"x":"` + leakMark("FACTS", id) + `"}}`
 		status, out := h.do(t, http.MethodPost, "/api/coach/chat", body)
 		if status != http.StatusOK {

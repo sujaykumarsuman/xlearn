@@ -219,7 +219,7 @@ func TestM1bThreadPathSlug(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ensure %q: %v", key, err)
 		}
-		if err := st.AppendMessage(ctx, id, store.RoleUser, "hi"); err != nil {
+		if err := st.AppendMessage(ctx, id, store.RoleUser, "hi", store.MessageMeta{}); err != nil {
 			t.Fatalf("append on %q: %v", key, err)
 		}
 		return id
@@ -263,7 +263,7 @@ func TestM1bThreadPathSlug(t *testing.T) {
 	}
 
 	// A message on a missing thread is ErrNotFound (no row to take the course from).
-	if err := st.AppendMessage(ctx, newTestUUID(), store.RoleUser, "x"); !errors.Is(err, store.ErrNotFound) {
+	if err := st.AppendMessage(ctx, newTestUUID(), store.RoleUser, "x", store.MessageMeta{}); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("append on a missing thread: %v, want ErrNotFound", err)
 	}
 }

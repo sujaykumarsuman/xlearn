@@ -22,6 +22,7 @@ func testLogger() *slog.Logger {
 type fakeStore struct {
 	createMock      func(ctx context.Context, accountID, pathSlug, setID, problemID, difficulty string, startedAt, deadlineAt time.Time) (store.MockSession, error)
 	getMock         func(ctx context.Context, accountID, mockID string) (store.MockSession, []store.RubricScore, error)
+	liveMock        func(ctx context.Context, accountID string) (store.MockSession, bool, error)
 	scoreMock       func(ctx context.Context, accountID, mockID string, scores map[string]int, notes string) (store.MockSession, []store.RubricScore, error)
 	trend           func(ctx context.Context, accountID, pathSlug string) ([]store.TrendPoint, error)
 	applyProjection func(ctx context.Context, ev store.ProjectionEvent) (bool, error)
@@ -43,6 +44,13 @@ func (f *fakeStore) CreateMock(ctx context.Context, accountID, pathSlug, setID, 
 
 func (f *fakeStore) GetMock(ctx context.Context, accountID, mockID string) (store.MockSession, []store.RubricScore, error) {
 	return f.getMock(ctx, accountID, mockID)
+}
+
+func (f *fakeStore) LiveMock(ctx context.Context, accountID string) (store.MockSession, bool, error) {
+	if f.liveMock == nil {
+		return store.MockSession{}, false, nil
+	}
+	return f.liveMock(ctx, accountID)
 }
 
 func (f *fakeStore) ScoreMock(ctx context.Context, accountID, mockID string, scores map[string]int, notes string) (store.MockSession, []store.RubricScore, error) {

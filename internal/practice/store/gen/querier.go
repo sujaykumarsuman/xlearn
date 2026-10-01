@@ -18,20 +18,35 @@ type Querier interface {
 	CreateStageEvent(ctx context.Context, arg CreateStageEventParams) error
 	CreateTimer(ctx context.Context, arg CreateTimerParams) (PracticeTimer, error)
 	EndAttempt(ctx context.Context, id pgtype.UUID) error
+	// An attempt by id, scoped to its account (MarkCoachAssist's 404 vs 409).
+	GetAttemptOwned(ctx context.Context, arg GetAttemptOwnedParams) (GetAttemptOwnedRow, error)
 	GetLatestAttempt(ctx context.Context, userProblemStateID pgtype.UUID) (PracticeAttempt, error)
 	// The in-progress attempt for a problem state (not yet logged), newest first.
 	GetOpenAttempt(ctx context.Context, userProblemStateID pgtype.UUID) (PracticeAttempt, error)
+	// --- m1-07 (M1b, D27): the coach-assist record and the open-attempt read ---
+	// The in-progress attempt, row-locked for LogOutcome: the conclusion and a concurrent
+	// MarkCoachAssist serialise on it, so the Assisted clamp sees every assist recorded
+	// before the conclusion, and an assist racing the conclusion finds the attempt closed.
+	GetOpenAttemptForUpdate(ctx context.Context, userProblemStateID pgtype.UUID) (PracticeAttempt, error)
 	// The latest timer of a kind for an attempt (attempt = 15m, hint = 10m).
 	GetTimer(ctx context.Context, arg GetTimerParams) (PracticeTimer, error)
 	GetUserProblemState(ctx context.Context, arg GetUserProblemStateParams) (PracticeUserProblemState, error)
 	// account_id is erase prep (m1-02, ADR-0027 §6): the envelope's account, as a column.
 	InsertOutbox(ctx context.Context, arg InsertOutboxParams) error
+	// The account's open (not yet concluded) attempts, newest first, optionally for one
+	// problem. Course attempts only until M2a (m2-01 adds attempt.purpose and reports open
+	// touches in the same list).
+	ListOpenAttempts(ctx context.Context, arg ListOpenAttemptsParams) ([]ListOpenAttemptsRow, error)
 	// The stages entered for an attempt; the distinct content stages here are the
 	// authoritative "unlocked stages" for the problem (R-PF1).
 	ListStageEvents(ctx context.Context, attemptID pgtype.UUID) ([]PracticeStageEvent, error)
 	ListTimers(ctx context.Context, attemptID pgtype.UUID) ([]PracticeTimer, error)
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]PracticeOutbox, error)
 	ListUserProblemStates(ctx context.Context, arg ListUserProblemStatesParams) ([]PracticeUserProblemState, error)
+	// D27: record the first coach chat about this problem during its open counted attempt.
+	// Idempotent (COALESCE keeps the first time); no row when the attempt is unknown, not
+	// the account's, or already concluded (the handler tells 404 from 409 afterwards).
+	MarkCoachAssist(ctx context.Context, arg MarkCoachAssistParams) (pgtype.Timestamptz, error)
 	MarkOutboxSent(ctx context.Context, eventID pgtype.UUID) error
 	SetAttemptRevealedEarly(ctx context.Context, id pgtype.UUID) error
 	SetAttemptStage(ctx context.Context, arg SetAttemptStageParams) error

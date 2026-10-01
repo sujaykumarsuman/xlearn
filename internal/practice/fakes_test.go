@@ -2,6 +2,7 @@ package practice
 
 import (
 	"context"
+	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/platform/auth"
 	"github.com/sujaykumarsuman/xlearn/internal/practice/store"
@@ -14,8 +15,18 @@ type fakeStore struct {
 	listStates func(ctx context.Context, accountID string, ids []string) (map[string]store.State, error)
 	start      func(ctx context.Context, accountID, problemID, pathSlug string) (store.State, error)
 	reveal     func(ctx context.Context, accountID, problemID string) (store.RevealResult, error)
-	logOutcome func(ctx context.Context, accountID, problemID, value string) (store.State, error)
+	logOutcome func(ctx context.Context, accountID, problemID, value string) (store.OutcomeResult, error)
+	assist     func(ctx context.Context, accountID, attemptID string) (time.Time, error)
+	listOpen   func(ctx context.Context, accountID, problemID string) ([]store.OpenAttempt, error)
 	pingErr    error
+}
+
+func (f *fakeStore) MarkCoachAssist(ctx context.Context, a, id string) (time.Time, error) {
+	return f.assist(ctx, a, id)
+}
+
+func (f *fakeStore) ListOpenAttempts(ctx context.Context, a, p string) ([]store.OpenAttempt, error) {
+	return f.listOpen(ctx, a, p)
 }
 
 func (f *fakeStore) GetState(ctx context.Context, a, p string) (store.State, error) {
@@ -34,7 +45,7 @@ func (f *fakeStore) Reveal(ctx context.Context, a, p string) (store.RevealResult
 	return f.reveal(ctx, a, p)
 }
 
-func (f *fakeStore) LogOutcome(ctx context.Context, a, p, v string) (store.State, error) {
+func (f *fakeStore) LogOutcome(ctx context.Context, a, p, v string) (store.OutcomeResult, error) {
 	return f.logOutcome(ctx, a, p, v)
 }
 

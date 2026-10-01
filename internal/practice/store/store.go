@@ -73,7 +73,18 @@ var (
 	ErrAlreadySolved   = errors.New("practice: already solved")
 	ErrNothingToReveal = errors.New("practice: nothing left to reveal")
 	ErrInvalidOutcome  = errors.New("practice: invalid outcome")
+	// ErrAttemptClosed: the attempt exists and is the account's, but it has concluded
+	// (MarkCoachAssist → 409 attempt_closed).
+	ErrAttemptClosed = errors.New("practice: attempt closed")
 )
+
+// PurposeCourse is the purpose of every attempt until M2a: a counted course attempt.
+// m2-01 adds attempt.purpose and reports open touches as "touch" in the same list.
+const PurposeCourse = "course"
+
+// CappedByCoach is OutcomeResult.CappedBy when a self-reported clean/rough was recorded
+// as assisted because the coach was used on the attempt (D27).
+const CappedByCoach = "coach"
 
 // Timer is the server-authoritative countdown mirror for the active stage. Expired
 // is computed from DeadlineAt so a refresh always resumes the same clock (R-PF3).
@@ -94,6 +105,28 @@ type State struct {
 	FirstSolvedAt  time.Time // zero until first solve
 	RevealedEarly  bool
 	Timer          *Timer // active timer for the current stage, or nil
+	// CoachAssistAt is when the coach was first used on the OPEN attempt (D27); zero when
+	// it never was, or when no attempt is open. It caps that attempt's grade at assisted.
+	CoachAssistAt time.Time
+}
+
+// OpenAttempt is one open (not yet concluded) attempt of the account (GET
+// /attempts/open). CoachAssistAt is zero until the coach is used on it.
+type OpenAttempt struct {
+	ID            string
+	ProblemID     string
+	PathSlug      string
+	Purpose       string
+	StartedAt     time.Time
+	StageReached  string
+	CoachAssistAt time.Time
+}
+
+// OutcomeResult is a logged outcome: the new state, and CappedBy = CappedByCoach when
+// the D27 clamp recorded a self-reported clean/rough as assisted.
+type OutcomeResult struct {
+	State    State
+	CappedBy string
 }
 
 // Penalty is the reveal-penalty acknowledgement (R-PF2).
@@ -136,8 +169,16 @@ type Store interface {
 	// solution_revealed_early via the outbox, in one transaction.
 	Reveal(ctx context.Context, accountID, problemID string) (RevealResult, error)
 	// LogOutcome records the outcome, marks the problem solved, and appends the
-	// problem_solved + attempt_logged outbox rows, all in one transaction.
-	LogOutcome(ctx context.Context, accountID, problemID, value string) (State, error)
+	// problem_solved + attempt_logged outbox rows, all in one transaction. A clean/rough
+	// on an attempt the coach was used on is recorded as assisted (D27; CappedBy).
+	LogOutcome(ctx context.Context, accountID, problemID, value string) (OutcomeResult, error)
+	// MarkCoachAssist records the first coach use on the account's open attempt
+	// (idempotent: the first time is kept) and returns it. ErrNotFound for an unknown
+	// attempt or another account's; ErrAttemptClosed for a concluded one.
+	MarkCoachAssist(ctx context.Context, accountID, attemptID string) (time.Time, error)
+	// ListOpenAttempts lists the account's open attempts, newest first; problemID ""
+	// lists every problem's.
+	ListOpenAttempts(ctx context.Context, accountID, problemID string) ([]OpenAttempt, error)
 	ListUnsentOutbox(ctx context.Context, limit int32) ([]OutboxRow, error)
 	MarkOutboxSent(ctx context.Context, eventID string) error
 	Ping(ctx context.Context) error
@@ -366,57 +407,66 @@ func (s *PgStore) Reveal(ctx context.Context, accountID, problemID string) (Reve
 }
 
 // LogOutcome records the outcome and emits the domain events in one transaction.
-func (s *PgStore) LogOutcome(ctx context.Context, accountID, problemID, value string) (State, error) {
+func (s *PgStore) LogOutcome(ctx context.Context, accountID, problemID, value string) (OutcomeResult, error) {
 	if !validOutcome(value) {
-		return State{}, ErrInvalidOutcome
+		return OutcomeResult{}, ErrInvalidOutcome
 	}
 	aid, err := parseUUID(accountID)
 	if err != nil {
-		return State{}, ErrNotFound
+		return OutcomeResult{}, ErrNotFound
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return State{}, fmt.Errorf("begin tx: %w", err)
+		return OutcomeResult{}, fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.q.WithTx(tx)
 
 	ups, err := qtx.GetUserProblemState(ctx, gen.GetUserProblemStateParams{AccountID: aid, ProblemID: problemID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return State{}, ErrNoAttempt
+		return OutcomeResult{}, ErrNoAttempt
 	}
 	if err != nil {
-		return State{}, fmt.Errorf("get state: %w", err)
+		return OutcomeResult{}, fmt.Errorf("get state: %w", err)
 	}
 	if ups.Status == "solved" {
-		return State{}, ErrAlreadySolved
+		return OutcomeResult{}, ErrAlreadySolved
 	}
-	att, err := qtx.GetOpenAttempt(ctx, ups.ID)
+	// Row-locked (m1-07): a concurrent MarkCoachAssist waits for this conclusion and then
+	// finds the attempt closed, so an assist this transaction can't see was refused (and
+	// its chat never forwarded).
+	att, err := qtx.GetOpenAttemptForUpdate(ctx, ups.ID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return State{}, ErrNoAttempt
+		return OutcomeResult{}, ErrNoAttempt
 	}
 	if err != nil {
-		return State{}, fmt.Errorf("get open attempt: %w", err)
+		return OutcomeResult{}, fmt.Errorf("get open attempt: %w", err)
 	}
 
 	firstSolve := !ups.FirstSolvedAt.Valid
 
+	// D27 / ADR-0029: coach help during the attempt caps it at assisted. The lock point is
+	// this conclusion (the outcome's logged_at); the attempt is locked and still open, so
+	// a coach_assist_at it carries was recorded before it (coach_assist_at <= lock_at).
+	coachUsed := att.CoachAssistAt.Valid
+	effective, cappedBy := clampOutcome(value, coachUsed)
+
 	if err := qtx.CreateOutcome(ctx, gen.CreateOutcomeParams{
 		AttemptID:     att.ID,
-		Value:         value,
+		Value:         effective,
 		RevealedEarly: att.RevealedEarly,
 	}); err != nil {
-		return State{}, fmt.Errorf("create outcome: %w", err)
+		return OutcomeResult{}, fmt.Errorf("create outcome: %w", err)
 	}
 	if err := qtx.EndAttempt(ctx, att.ID); err != nil {
-		return State{}, fmt.Errorf("end attempt: %w", err)
+		return OutcomeResult{}, fmt.Errorf("end attempt: %w", err)
 	}
 	if _, err := qtx.SetStateSolved(ctx, gen.SetStateSolvedParams{
 		AccountID:   aid,
 		ProblemID:   problemID,
-		LastOutcome: pgtype.Text{String: value, Valid: true},
+		LastOutcome: pgtype.Text{String: effective, Valid: true},
 	}); err != nil {
-		return State{}, fmt.Errorf("set solved: %w", err)
+		return OutcomeResult{}, fmt.Errorf("set solved: %w", err)
 	}
 
 	durationS := int(time.Since(att.StartedAt.Time).Seconds())
@@ -426,13 +476,16 @@ func (s *PgStore) LogOutcome(ctx context.Context, accountID, problemID, value st
 
 	// problem_solved — review schedules five-touch (on first clean solve) and opens
 	// a mistake when below_clean; assessment updates coverage/mastery projections.
+	// `assist` (m1-07) is additive on an existing subject: the v1.6.0 consumers decode
+	// with DecodeEnvelope, which ignores unknown fields (events.md).
 	if err := insertEvent(ctx, qtx, SubjectProblemSolved, accountID, ups.PathSlug, map[string]any{
 		"problem_id":  problemID,
-		"outcome":     value,
+		"outcome":     effective,
 		"first_solve": firstSolve,
-		"below_clean": value != OutcomeClean,
+		"below_clean": effective != OutcomeClean,
+		"assist":      assistData(att.StageReached, coachUsed),
 	}); err != nil {
-		return State{}, err
+		return OutcomeResult{}, err
 	}
 	// attempt_logged — assessment updates outcome-mix / coverage projections.
 	if err := insertEvent(ctx, qtx, SubjectAttemptLogged, accountID, ups.PathSlug, map[string]any{
@@ -440,13 +493,89 @@ func (s *PgStore) LogOutcome(ctx context.Context, accountID, problemID, value st
 		"stage_reached": att.StageReached,
 		"duration_s":    durationS,
 	}); err != nil {
-		return State{}, err
+		return OutcomeResult{}, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return State{}, fmt.Errorf("commit tx: %w", err)
+		return OutcomeResult{}, fmt.Errorf("commit tx: %w", err)
 	}
-	return s.GetState(ctx, accountID, problemID)
+	st, err := s.GetState(ctx, accountID, problemID)
+	if err != nil {
+		return OutcomeResult{}, err
+	}
+	return OutcomeResult{State: st, CappedBy: cappedBy}, nil
+}
+
+// clampOutcome applies the D27 ceiling: with the coach used on the attempt, a
+// self-reported clean or rough is recorded as assisted (cappedBy "coach"); assisted and
+// miss are unchanged (miss is already below the ceiling).
+func clampOutcome(value string, coachUsed bool) (effective, cappedBy string) {
+	if coachUsed && (value == OutcomeClean || value == OutcomeRough) {
+		return OutcomeAssisted, CappedByCoach
+	}
+	return value, ""
+}
+
+// assistData is problem_solved's `assist` object (m1-07): hint = the attempt went past
+// the statement (a hint or the solution was revealed); coach = the coach was used on it.
+func assistData(stageReached string, coachUsed bool) map[string]bool {
+	return map[string]bool{"hint": stageReached != StageAttempt, "coach": coachUsed}
+}
+
+// MarkCoachAssist records the first coach use on an open attempt (D27).
+func (s *PgStore) MarkCoachAssist(ctx context.Context, accountID, attemptID string) (time.Time, error) {
+	aid, err := parseUUID(accountID)
+	if err != nil {
+		return time.Time{}, ErrNotFound
+	}
+	id, err := parseUUID(attemptID)
+	if err != nil {
+		return time.Time{}, ErrNotFound
+	}
+	at, err := s.q.MarkCoachAssist(ctx, gen.MarkCoachAssistParams{ID: id, AccountID: aid})
+	if err == nil {
+		return at.Time, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, fmt.Errorf("mark coach assist: %w", err)
+	}
+	// No row: unknown or another account's (404), or concluded (409).
+	if _, err := s.q.GetAttemptOwned(ctx, gen.GetAttemptOwnedParams{ID: id, AccountID: aid}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return time.Time{}, ErrNotFound
+		}
+		return time.Time{}, fmt.Errorf("get attempt: %w", err)
+	}
+	return time.Time{}, ErrAttemptClosed
+}
+
+// ListOpenAttempts lists the account's open attempts (every one is a course attempt
+// until M2a).
+func (s *PgStore) ListOpenAttempts(ctx context.Context, accountID, problemID string) ([]OpenAttempt, error) {
+	aid, err := parseUUID(accountID)
+	if err != nil {
+		return []OpenAttempt{}, nil
+	}
+	rows, err := s.q.ListOpenAttempts(ctx, gen.ListOpenAttemptsParams{
+		AccountID: aid,
+		ProblemID: pgtype.Text{String: problemID, Valid: problemID != ""},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list open attempts: %w", err)
+	}
+	out := make([]OpenAttempt, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, OpenAttempt{
+			ID:            uuidString(r.ID),
+			ProblemID:     r.ProblemID.String,
+			PathSlug:      r.PathSlug.String,
+			Purpose:       PurposeCourse,
+			StartedAt:     r.StartedAt.Time,
+			StageReached:  r.StageReached,
+			CoachAssistAt: r.CoachAssistAt.Time,
+		})
+	}
+	return out, nil
 }
 
 // ListUnsentOutbox returns up to limit unsent outbox rows for the relay.
@@ -496,6 +625,12 @@ func (s *PgStore) composeState(ctx context.Context, ups gen.PracticeUserProblemS
 	}
 	st.StageReached = att.StageReached
 	st.RevealedEarly = att.RevealedEarly
+	if !att.EndedAt.Valid {
+		// Only the OPEN attempt's assist is reported (D27 caps that attempt; the HUD chip
+		// and the outcome step's cap line read it). A concluded attempt's grade already
+		// carries the cap.
+		st.CoachAssistAt = att.CoachAssistAt.Time
+	}
 
 	events, err := s.q.ListStageEvents(ctx, att.ID)
 	if err != nil {

@@ -9,17 +9,17 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ 🔄 In progress — tasks 1–5 done in the feature PR (run r-45, 2026-10-01); the tag and the owner role follow it
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | D27 per-problem assist capture (409 confirm, practice assist endpoint, Assisted ceiling, event field) | X | ⬜ |
-| 2 | Mode gate `locked`/`attempt`/`review`/`general` + `coach-prompt@2` + per-course persona | X | ⬜ |
-| 3 | L18 BYO caps (20/min, 2 streams, 300/day, history 20 turns / 32 KiB) | X | ⬜ |
-| 4 | Coach UI states (AB01) + outcome-step cap line | X | ⬜ |
-| 5 | M1b exit + M1c readiness (golden = v1; no reader/writer of a drop-list column) | X | ⬜ |
-| 6 | Tag `v1.7.0` (release checklist) | X | ⬜ |
-| 7 | Owner role set once (`ev-owner-role`), run by the session after the verify (D40) | H | ⬜ |
+| 1 | D27 per-problem assist capture (409 confirm, practice assist endpoint, Assisted ceiling, event field) | X | ✅ practice `00003` + `/attempts/{id}/assist`, `/attempts/open`, the clamp under a row lock, `problem_solved.assist`; gateway `coach_gate.go` 409 / admission probe / 503 (tests + compose walk) |
+| 2 | Mode gate `locked`/`attempt`/`review`/`general` + `coach-prompt@2` + per-course persona | X | ✅ gate on m1-06's `live()`, `X-Coach-Mode` on the response, `gate` on the thread read; coach `00007`, golden prompts per mode |
+| 3 | L18 BYO caps (20/min, 2 streams, 300/day, history 20 turns / 32 KiB) | X | ✅ `limits.go` + `00008` (UTC day, atomic upsert, race test), `GET /admission`, `Retry-After` relayed (compose: all three 429s seen) |
+| 4 | Coach UI states (AB01) + outcome-step cap line | X | ✅ F1–F10 verbatim from the board, HUD chip + capped outcome line; shots at 1440 / 390 |
+| 5 | M1b exit + M1c readiness (golden = v1; no reader/writer of a drop-list column) | X | ✅ full suite + e2e green; compose walk; M1c ready (no drop-list column, no v1 conflict target left — nothing to switch) |
+| 6 | Tag `v1.7.0` (release checklist) | X | ⬜ after the merge |
+| 7 | Owner role set once (`ev-owner-role`), run by the session after the verify (D40) | H | ⬜ after the verify |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + M1 milestone + tag → floor row + flag inventory).

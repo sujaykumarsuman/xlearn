@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/coach/store"
 	"github.com/sujaykumarsuman/xlearn/internal/course/coursetest"
@@ -29,11 +31,24 @@ type harness struct {
 	provider *httptest.Server
 	account  string
 
+	// svc is the Service under test, and clock its L18 clock (fixed at harnessEpoch until
+	// a test advances it).
+	svc   *Service
+	clock *fakeClock
+
 	// provHandler is the current fake provider behaviour (set per test).
 	provHandler http.HandlerFunc
 	// lastAuth captures the Authorization / x-api-key the provider saw (the decrypted key).
+	// authMu serializes the fake provider's writes to it, which run concurrently when a
+	// test holds two chats open at once (the L18 stream tests); tests read it after
+	// draining a response, as before.
 	lastAuth string
+	authMu   sync.Mutex
 }
+
+// harnessEpoch is where every harness's L18 clock starts: mid-afternoon UTC, so a test
+// that sends a burst of chats never straddles a UTC midnight by accident.
+var harnessEpoch = time.Date(2026, time.October, 1, 14, 30, 0, 0, time.UTC)
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
@@ -41,11 +56,13 @@ func newHarness(t *testing.T) *harness {
 	h.keys = secrets.KeyringOf(DefaultKEKID, h.cipher)
 
 	h.provider = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.authMu.Lock()
 		if a := r.Header.Get("Authorization"); a != "" {
 			h.lastAuth = strings.TrimPrefix(a, "Bearer ")
 		} else {
 			h.lastAuth = r.Header.Get("x-api-key")
 		}
+		h.authMu.Unlock()
 		if h.provHandler != nil {
 			h.provHandler(w, r)
 			return
@@ -57,6 +74,9 @@ func newHarness(t *testing.T) *harness {
 	openai := NewOpenAIProvider(h.provider.URL, h.provider.Client())
 	anthropic := NewAnthropicProvider(h.provider.URL, h.provider.Client())
 	svc := NewService(h.store, fakeVerifier{subject: h.account}, h.cipher, h.keys, openai, anthropic, coursetest.Registry(t), discardLogger())
+	h.svc = svc
+	h.clock = newFakeClock(harnessEpoch)
+	svc.limits.now = h.clock.Now
 
 	handler := httpx.Chain(svc.Handler(), httpx.RequestID, httpx.AccessLog(discardLogger()), httpx.Recoverer(discardLogger()))
 	h.server = httptest.NewServer(handler)

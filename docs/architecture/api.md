@@ -132,14 +132,48 @@ newly claimed or reactivated username can take up to a minute to appear.
 | `GET` | `/coach/key` | Masked key + provider + model + enabled (never the raw key). | coach |
 | `PUT` | `/coach/key` | Store/replace the user's provider key (encrypted). | coach |
 | `DELETE` | `/coach/key` | Remove the key. | coach |
-| `POST` | `/coach/chat` (SSE) | Send a message with page context; streams the coach reply. | coach |
-| `GET` | `/coach/thread?context=` | Thread history for a page context. | coach |
+| `POST` | `/coach/chat` (SSE) | Send a message with page context; streams the coach reply. Optional `assist_ack: <attemptId>` (D27 confirm). Response header `X-Coach-Mode`. | `agg` coach (+ practice, review, assessment) |
+| `GET` | `/coach/thread?context=` | Thread history for a page context, plus `gate` (the mode the server applies here). | `agg` coach (+ practice, review, assessment) |
 
 Coach page contexts (m1-03, t0 §7): items keep `problem:<id>`; account-wide contexts stay `catalog`,
 `settings`, `general`; every course-scoped context is `<course>:<ctx>` (`<course>:concept:<slug>`,
 `<course>:week:<n>`, `<course>:roadmap|dashboard|revision|mistakes|mock|progress`). The gateway and coach
 run one shared parser (`course.NormalizeCoachContext`) that maps the v1 forms from open `v1.6.0` tabs to the
 DSA course.
+
+**Coach mode gate and D27 (M1b, m1-07; [ADR-0031](../adr/0031-platform-ai-and-two-tier-keys.md) §7, t5 §9).**
+For every chat the gateway resolves one server-authoritative gate (`internal/gateway/coach_gate.go`) from
+practice's open attempts, review's due queue and assessment's live mock, using m1-06's `live()` predicate:
+
+| Mode | When | Chat |
+|---|---|---|
+| `locked` | a live mock (from M2a, an open touch) and the course's `coach.off_during` lists it | `409 coach_paused {reason: "mock" \| "touch"}`; nothing sent |
+| `attempt` | a problem page with an open counted attempt, a due touch, or never solved | no `pattern` / `concepts` / `solution_facts` reach coach |
+| `review` | a problem page, concluded, no touch due, no open attempt | the pattern reaches coach |
+| `general` | every other page | coach gets `live_items` (the account's live items) to keep off-limits |
+
+- `GET /coach/thread` adds `gate: {mode, reason?, attempt?: {attemptId, coachAssistAt}}` (`attempt` on a
+  problem page with an open counted attempt; `coachAssistAt` is `null` until the coach is used on it). The
+  read never writes and never answers 409; if a lookup fails, `gate` is omitted and the thread still loads.
+- `POST /coach/chat` relays coach's stream with `X-Coach-Mode: attempt|review|general` and coach's
+  `Retry-After`. In order, it may instead answer:
+  - `503 coach_state_unavailable` — practice, review or assessment didn't answer; nothing was sent (fails
+    closed);
+  - `409 coach_paused {reason}` (`X-Coach-Mode: locked`);
+  - `409 assist_confirm_required {attemptId, problemId}` — a chat in `problem:<id>`'s context while a counted
+    attempt on `<id>` is open and not yet assisted. Resending with `assist_ack: <attemptId>` runs coach's L18
+    admission probe (a `429` is relayed and the attempt stays uncapped), then records the assist in practice
+    (`503 assist_unavailable` if it can't, nothing sent), then forwards. Once recorded, the attempt is capped at
+    **Assisted** and later chats (and reloads) skip the confirm. Chats from any other page don't ask (D27's
+    honor-based bypass);
+  - coach's L18 `429`s, each with `Retry-After` (whole seconds): `coach_busy` (2 replies streaming on the
+    account; `Retry-After: 5`), `coach_rate_limited` (20 messages a minute), `coach_daily_cap` (300 messages a
+    **UTC** day; `Retry-After` runs to the next UTC midnight). They are distinct from the provider's
+    `provider_limited`.
+- `GET /problems/{id}`'s embedded `state` gains `coachAssistAt` — the open attempt's (`null` until the coach
+  is used on it, and once the attempt is concluded: the recorded grade then carries the cap), and
+  `POST /problems/{id}/outcome` answers `{state, cappedBy: "coach"}` when a self-reported Clean/Rough was
+  recorded as Assisted because the coach was used on the attempt.
 
 ### System
 | Method | Path | Purpose |

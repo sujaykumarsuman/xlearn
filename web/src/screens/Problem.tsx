@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Icon } from "../components/Icon";
@@ -136,6 +136,8 @@ function Workspace({ id, data }: { id: string; data: ProblemAggregate }) {
   const [draft, setDraft] = useState("");
   const [penalty, setPenalty] = useState<RevealPenalty | null>(null);
   const [aheadNote, setAheadNote] = useState<string | null>(null);
+  // The outcome response said the D27 clamp applied (clean/rough recorded as assisted).
+  const [cappedByCoach, setCappedByCoach] = useState(false);
 
   // Ahead of the frontier week (a future-week problem reached via the course): usable, but a
   // solve here won't count until the schedule reaches this week.
@@ -162,6 +164,7 @@ function Workspace({ id, data }: { id: string; data: ProblemAggregate }) {
         return;
       }
       setAheadNote(null);
+      setCappedByCoach(res.cappedBy === "coach");
       invalidate();
     },
   });
@@ -225,6 +228,7 @@ function Workspace({ id, data }: { id: string; data: ProblemAggregate }) {
           onReimplement={() => setReimplementing(true)}
           onOutcome={(o) => outcomeM.mutate(o)}
           loggingOutcome={outcomeM.isPending}
+          cappedByCoach={cappedByCoach}
         />
       </div>
     </>
@@ -365,12 +369,15 @@ const STAGE_TABS: { key: PracticeState["stageReached"] | "attempt"; label: strin
   { key: "solution", label: "2 · Solution" },
 ];
 
+/** The D27 honesty copy (AB01 F3): the attempt was capped because the coach was used. */
+const COACH_CAPPED_LINE = "Coach used on this attempt · capped at Assisted";
+
 function TimerHUD({ state }: { state: PracticeState }) {
   const remaining = useCountdown(state.timer);
   const active = state.stageReached === "" ? "attempt" : state.stageReached;
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+    <div className="xl-hud">
       <div className="ds-tabs" role="group" aria-label="Stage">
         {STAGE_TABS.map((tab) => (
           <span key={tab.key} className={tab.key === active ? "ds-tab ds-tab--active" : "ds-tab"}>
@@ -379,6 +386,12 @@ function TimerHUD({ state }: { state: PracticeState }) {
         ))}
       </div>
       {state.timer ? <CountdownRing timer={state.timer} remaining={remaining} /> : <IdleClock solved={state.status === "solved"} />}
+      {state.coachAssistAt && (
+        // AB01 F3's HUD chip: the coach panel invalidates this query after an acked send.
+        <span className="ds-badge ds-badge--warn">
+          <Icon name="spark" className="xl-ico--sm" /> Coach used · capped at Assisted
+        </span>
+      )}
     </div>
   );
 }
@@ -554,6 +567,7 @@ interface RailProps {
   onReimplement: () => void;
   onOutcome: (o: Outcome) => void;
   loggingOutcome: boolean;
+  cappedByCoach: boolean;
 }
 
 function MethodRail(p: RailProps) {
@@ -605,12 +619,17 @@ function MethodRail(p: RailProps) {
       )}
 
       {p.attempting && (
-        <OutcomePicker onOutcome={p.onOutcome} logging={p.loggingOutcome} revealedEarly={p.state.revealedEarly} />
+        <OutcomePicker
+          onOutcome={p.onOutcome}
+          logging={p.loggingOutcome}
+          revealedEarly={p.state.revealedEarly}
+          coachCapped={!!p.state.coachAssistAt}
+        />
       )}
 
       {p.penalty && p.attempting && <PenaltyNote penalty={p.penalty} />}
 
-      {p.solved && <SolvedCard state={p.state} />}
+      {p.solved && <SolvedCard state={p.state} cappedByCoach={p.cappedByCoach} />}
     </div>
   );
 }
@@ -645,8 +664,22 @@ function StageStepper({ state }: { state: PracticeState }) {
   );
 }
 
-function OutcomePicker({ onOutcome, logging, revealedEarly }: { onOutcome: (o: Outcome) => void; logging: boolean; revealedEarly: boolean }) {
+/** The outcomes D27 caps when the coach was used on the attempt: recorded as Assisted. */
+const COACH_CAPPED_OUTCOMES = new Set<Outcome>(["clean", "rough"]);
+
+function OutcomePicker({
+  onOutcome,
+  logging,
+  revealedEarly,
+  coachCapped,
+}: {
+  onOutcome: (o: Outcome) => void;
+  logging: boolean;
+  revealedEarly: boolean;
+  coachCapped: boolean;
+}) {
   const [selected, setSelected] = useState<Outcome | null>(null);
+  const cappedLineId = useId();
   return (
     <div className="xl-panel">
       <div className="xl-panel__h" style={{ padding: "10px 14px" }}>
@@ -655,19 +688,32 @@ function OutcomePicker({ onOutcome, logging, revealedEarly }: { onOutcome: (o: O
       </div>
       <div className="xl-panel__b">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          {OUTCOMES.map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              className={selected === o.value ? "ds-card ds-card--teal" : "ds-card ds-card--interactive"}
-              onClick={() => setSelected(o.value)}
-              style={{ padding: "10px 12px", textAlign: "left", cursor: "pointer" }}
-            >
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: o.color }}>{o.label}</div>
-              <div style={{ fontSize: 10.5, color: "var(--ds-muted)" }}>{o.hint}</div>
-            </button>
-          ))}
+          {OUTCOMES.map((o) => {
+            // D27: with the coach used on this attempt, Clean and Rough are recorded as
+            // Assisted — shown capped, and described by the honesty line below.
+            const capped = coachCapped && COACH_CAPPED_OUTCOMES.has(o.value);
+            const base = selected === o.value ? "ds-card ds-card--teal" : "ds-card ds-card--interactive";
+            return (
+              <button
+                key={o.value}
+                type="button"
+                className={capped ? `${base} xl-outcome--capped` : base}
+                aria-describedby={capped ? cappedLineId : undefined}
+                onClick={() => setSelected(o.value)}
+                style={{ padding: "10px 12px", textAlign: "left", cursor: "pointer" }}
+              >
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: o.color }}>{o.label}</div>
+                <div style={{ fontSize: 10.5, color: "var(--ds-muted)" }}>{o.hint}</div>
+              </button>
+            );
+          })}
         </div>
+        {coachCapped && (
+          <p className="xl-outcome-capped" id={cappedLineId}>
+            <Icon name="spark" className="xl-ico--sm" />
+            <span>{COACH_CAPPED_LINE}</span>
+          </p>
+        )}
         {revealedEarly && (
           <p style={{ display: "flex", gap: 6, margin: "10px 0 0", fontSize: 11.5, color: "var(--ds-warn)" }}>
             <Icon name="alert" className="xl-ico--sm" />
@@ -699,14 +745,22 @@ function PenaltyNote({ penalty }: { penalty: RevealPenalty }) {
 
 const TOUCH_LABELS = ["D1", "D3", "D7", "D21", "D45"];
 
-function SolvedCard({ state }: { state: PracticeState }) {
+function SolvedCard({ state, cappedByCoach }: { state: PracticeState; cappedByCoach: boolean }) {
   const slug = useCourseSlug();
+  // A capped outcome is recorded as Assisted, whatever the refetched state still says.
+  const grade = cappedByCoach ? "assisted" : state.lastOutcome;
   return (
     <div className="ds-card ds-card--teal" style={{ padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
         <Icon name="check" className="xl-ico--sm" />
-        <b style={{ fontSize: 13.5 }}>Logged as {state.lastOutcome ? OUTCOME_LABEL[state.lastOutcome] : "solved"}</b>
+        <b style={{ fontSize: 13.5 }}>Logged as {grade ? OUTCOME_LABEL[grade] : "solved"}</b>
       </div>
+      {cappedByCoach && (
+        <p className="xl-outcome-capped xl-outcome-capped--solved">
+          <Icon name="spark" className="xl-ico--sm" />
+          <span>{COACH_CAPPED_LINE}</span>
+        </p>
+      )}
       <p style={{ margin: "0 0 12px", fontSize: 12.5, color: "var(--ds-dim)" }}>
         Five-touch revision schedule created — reviews are re-solves from a blank editor, not re-reads.
       </p>

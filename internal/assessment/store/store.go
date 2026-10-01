@@ -183,6 +183,9 @@ type Store interface {
 	// GetMock returns a session scoped to its owner plus its rubric scores (empty
 	// until scored). ErrNotFound if it isn't the account's.
 	GetMock(ctx context.Context, accountID, mockID string) (MockSession, []RubricScore, error)
+	// LiveMock returns the account's live mock (status live, deadline not passed), or
+	// ok=false when there is none (m1-07: the coach's mock lock).
+	LiveMock(ctx context.Context, accountID string) (m MockSession, ok bool, err error)
 	// ScoreMock records the seven rubric scores, computes the total server-side,
 	// transitions the session live -> scored, and appends a mock_completed outbox row —
 	// all in one transaction (R-MK2). It is idempotent: a re-submit on an
@@ -320,6 +323,22 @@ func (s *PgStore) GetMock(ctx context.Context, accountID, mockID string) (MockSe
 		}
 	}
 	return toMockSession(m), scores, nil
+}
+
+// LiveMock returns the account's live mock, if any (m1-07).
+func (s *PgStore) LiveMock(ctx context.Context, accountID string) (MockSession, bool, error) {
+	aid, err := parseUUID(accountID)
+	if err != nil {
+		return MockSession{}, false, nil
+	}
+	m, err := s.q.GetLiveMockSession(ctx, aid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return MockSession{}, false, nil
+	}
+	if err != nil {
+		return MockSession{}, false, fmt.Errorf("get live mock session: %w", err)
+	}
+	return toMockSession(gen.GetMockSessionRow(m)), true, nil
 }
 
 // ScoreMock validates + records the seven-dimension rubric, computes the total

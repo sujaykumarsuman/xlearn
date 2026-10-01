@@ -13,6 +13,10 @@ import (
 type Querier interface {
 	// The "solved / 151" numerator: distinct problems the account has solved.
 	CountSolvedProblems(ctx context.Context, accountID pgtype.UUID) (int64, error)
+	// The account's live mock (m1-07): status 'live' and its 45-minute window still open,
+	// newest first. It locks the coach (D27, ADR-0031 §7: coach_paused during a live mock);
+	// ErrNoRows when there is none. Same column list as GetMockSession.
+	GetLiveMockSession(ctx context.Context, accountID pgtype.UUID) (GetLiveMockSessionRow, error)
 	// Read one session scoped to its owner (soft account ownership check).
 	GetMockSession(ctx context.Context, arg GetMockSessionParams) (GetMockSessionRow, error)
 	// Read + row-lock one session scoped to its owner, so concurrent score submits on the

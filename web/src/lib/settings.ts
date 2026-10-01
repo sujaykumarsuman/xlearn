@@ -259,10 +259,37 @@ export interface CoachMessage {
   createdAt?: string;
 }
 
-/** GET /coach/thread?context= payload. */
+/** The mode the gateway's gate decided for a coach chat (m1-07, ADR-0031 §7). The server
+ *  enforces it; the panel only reports it (AB01 F1 / F5–F7). `locked` never reaches the
+ *  coach: the gateway answers a chat in it with 409 coach_paused. */
+export type CoachMode = "attempt" | "review" | "general" | "locked";
+
+/** Why the coach is locked (AB01 F5): a live mock, or a live revision touch (from M2a). */
+export type CoachPausedReason = "mock" | "touch";
+
+/** The thread's view of the gate (GET /coach/thread). `attempt` is present on a problem
+ *  context with an open counted attempt; `coachAssistAt` is set once the learner has
+ *  confirmed coach use on it (D27), which caps that attempt at Assisted (AB01 F3). */
+export interface CoachGate {
+  mode: CoachMode;
+  reason?: CoachPausedReason;
+  attempt?: { attemptId: string; coachAssistAt: string | null };
+}
+
+/** GET /coach/thread?context= payload. `gate` is OMITTED when the gateway's state lookup
+ *  failed: the thread still loads, and the panel shows no mode chip (AB01 F4 b). */
 export interface CoachThreadResponse {
   context?: string;
   messages: CoachMessage[];
+  gate?: CoachGate;
+}
+
+const COACH_MODES: readonly string[] = ["attempt", "review", "general", "locked"];
+
+/** isCoachMode narrows a server-sent mode (the thread's `gate.mode`, the `X-Coach-Mode`
+ *  header), so an unknown one renders no chip rather than a blank one. */
+export function isCoachMode(v: unknown): v is CoachMode {
+  return typeof v === "string" && COACH_MODES.includes(v);
 }
 
 /** useCoachThread loads the message history for a page context (enabled by the panel). */
@@ -290,6 +317,9 @@ export interface CoachChatBody {
   weakArea?: string;
   recentOutcome?: string;
   message: string;
+  /** The open attempt's id, sent only when the learner confirmed AB01 F2's "Ask — cap at
+   *  Assisted" (D27). The gateway records the assist, then strips this before the coach. */
+  assist_ack?: string;
 }
 
 /** Why the provider refused, as the server classifies it (m1-10 task 4). The panel maps
@@ -307,11 +337,30 @@ export type CoachErrorReason = "auth" | "quota" | "rate_limit" | "model_access" 
 export class CoachChatError extends Error {
   readonly code: string;
   readonly reason: CoachErrorReason;
-  constructor(code: string, message: string, reason?: string) {
+  /** The HTTP status of a pre-stream refusal; 200 for an inline SSE `error` frame. */
+  readonly status: number;
+  /** Seconds from the `Retry-After` header (the L18 429s: coach_busy, coach_rate_limited,
+   *  coach_daily_cap). Absent when the response carried none. */
+  readonly retryAfter?: number;
+  /** 409 assist_confirm_required: the open attempt to acknowledge, and its problem. */
+  readonly attemptId?: string;
+  readonly problemId?: string;
+  /** 409 coach_paused: what the coach is paused for. Kept apart from `reason`, which is the
+   *  provider classification above and narrows to its own set. */
+  readonly pausedReason?: CoachPausedReason;
+  /** The `X-Coach-Mode` the gateway stamped on the refusal, when it did. */
+  readonly mode?: CoachMode;
+  constructor(code: string, message: string, reason?: string, extra: CoachChatErrorExtra = {}) {
     super(message);
     this.name = "CoachChatError";
     this.code = code;
     this.reason = isCoachErrorReason(reason) ? reason : "unavailable";
+    this.status = extra.status ?? 200;
+    this.retryAfter = extra.retryAfter;
+    this.attemptId = extra.attemptId;
+    this.problemId = extra.problemId;
+    this.mode = extra.mode;
+    if (code === "coach_paused") this.pausedReason = reason === "touch" ? "touch" : "mock";
   }
   /** True when the failure means the key must be (re)added in Settings. */
   get routesToSettings(): boolean {
@@ -323,7 +372,40 @@ export class CoachChatError extends Error {
   }
 }
 
+/** The HTTP-level details a refusal carries beyond its code (m1-07). */
+export interface CoachChatErrorExtra {
+  status?: number;
+  retryAfter?: number;
+  attemptId?: string;
+  problemId?: string;
+  mode?: CoachMode;
+}
+
 const COACH_ERROR_REASONS: readonly string[] = ["auth", "quota", "rate_limit", "model_access", "region", "unavailable"];
+
+/** parseRetryAfter reads a `Retry-After` header as whole seconds: the gateway sends an
+ *  integer (the L18 contract), and an HTTP-date is accepted as a courtesy. */
+export function parseRetryAfter(v: string | null, now = Date.now()): number | undefined {
+  if (v === null || v.trim() === "") return undefined;
+  const n = Number(v.trim());
+  if (Number.isFinite(n)) return Math.max(0, Math.ceil(n));
+  const at = Date.parse(v);
+  return Number.isNaN(at) ? undefined : Math.max(0, Math.ceil((at - now) / 1000));
+}
+
+/** What a completed chat stream reports. `truncated` is the SSE `done` frame's flag: the
+ *  provider stopped at its length limit (AB01 F9). */
+export interface CoachChatResult {
+  truncated: boolean;
+}
+
+/** streamCoachChat's optional hooks. `onMode` receives the `X-Coach-Mode` the gateway
+ *  stamped on the response (the server's mode for this turn) as soon as the headers
+ *  arrive — on a refusal too, before the CoachChatError is thrown. */
+export interface CoachChatOptions {
+  signal?: AbortSignal;
+  onMode?: (mode: CoachMode) => void;
+}
 
 /** isCoachErrorReason narrows a server-sent reason, so an unknown one (a newer coach
  *  classifying something this SPA has never heard of) degrades to the generic line rather
@@ -335,32 +417,53 @@ function isCoachErrorReason(v: unknown): v is CoachErrorReason {
 /**
  * streamCoachChat POSTs a chat turn and streams the coach's reply over SSE, invoking
  * onDelta for each token chunk. It resolves when the stream completes (a `done` frame or
- * EOF) and throws a CoachChatError on a non-2xx envelope (e.g. 409 no_key) or an inline
- * SSE `error` frame (e.g. provider_auth). It is NOT built on apiFetch — that wrapper is
- * JSON-only; SSE needs the raw response body reader.
+ * EOF) with the `done` frame's `truncated` flag, and throws a CoachChatError on a non-2xx
+ * envelope (e.g. 409 no_key, 409 assist_confirm_required, a typed 429 with its
+ * `Retry-After`) or an inline SSE `error` frame (e.g. provider_auth). It is NOT built on
+ * apiFetch — that wrapper is JSON-only; SSE needs the raw response body reader.
  */
-export async function streamCoachChat(body: CoachChatBody, onDelta: (delta: string) => void, signal?: AbortSignal): Promise<void> {
+export async function streamCoachChat(
+  body: CoachChatBody,
+  onDelta: (delta: string) => void,
+  opts: CoachChatOptions = {},
+): Promise<CoachChatResult> {
   const res = await fetch(`${API_BASE}/coach/chat`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
     body: JSON.stringify(body),
-    signal,
+    signal: opts.signal,
   });
+
+  const modeHeader = res.headers.get("X-Coach-Mode");
+  const mode = isCoachMode(modeHeader) ? modeHeader : undefined;
+  if (mode) opts.onMode?.(mode);
 
   if (!res.ok || !res.body) {
     let code = "coach_error";
     let message = `coach chat failed (${res.status})`;
     let reason: string | undefined;
+    let attemptId: string | undefined;
+    let problemId: string | undefined;
     try {
-      const j = (await res.json()) as { error?: { code?: string; message?: string; reason?: string } };
+      const j = (await res.json()) as {
+        error?: { code?: string; message?: string; reason?: string; attemptId?: string; problemId?: string };
+      };
       if (j.error?.code) code = j.error.code;
       if (j.error?.message) message = j.error.message;
       reason = j.error?.reason;
+      attemptId = j.error?.attemptId || undefined;
+      problemId = j.error?.problemId || undefined;
     } catch {
       // keep the defaults
     }
-    throw new CoachChatError(code, message, reason);
+    throw new CoachChatError(code, message, reason, {
+      status: res.status,
+      retryAfter: parseRetryAfter(res.headers.get("Retry-After")),
+      attemptId,
+      problemId,
+      mode,
+    });
   }
 
   const reader = res.body.getReader();
@@ -377,17 +480,31 @@ export async function streamCoachChat(body: CoachChatBody, onDelta: (delta: stri
       if (!line.startsWith("data:")) continue;
       const data = line.slice(5).trim();
       if (!data) continue;
-      let frame: { delta?: string; done?: boolean; error?: string; message?: string; reason?: string };
+      let frame: { delta?: string; done?: boolean; truncated?: boolean; error?: string; message?: string; reason?: string };
       try {
         frame = JSON.parse(data);
       } catch {
         continue;
       }
-      if (frame.error) throw new CoachChatError(frame.error, frame.message ?? "coach error", frame.reason);
+      if (frame.error) throw new CoachChatError(frame.error, frame.message ?? "coach error", frame.reason, { mode });
       if (typeof frame.delta === "string") onDelta(frame.delta);
-      if (frame.done) return;
+      if (frame.done) return { truncated: frame.truncated === true };
     }
   }
+  return { truncated: false };
+}
+
+/** The note the coach service appends to a reply the provider cut off — streamed as the
+ *  last delta and persisted with the reply, so history stays consistent on reload
+ *  (internal/coach/handlers.go `truncationNote`). The panel renders AB01 F9's marker in
+ *  its place. */
+export const COACH_TRUNCATION_NOTE = "⚠️ This reply was cut off at the length limit — ask me to continue.";
+
+/** splitTruncationNote strips the coach's trailing truncation note (with the blank line
+ *  that precedes it on a non-empty reply) and reports whether it was there. */
+export function splitTruncationNote(content: string): { text: string; cut: boolean } {
+  if (!content.endsWith(COACH_TRUNCATION_NOTE)) return { text: content, cut: false };
+  return { text: content.slice(0, -COACH_TRUNCATION_NOTE.length).replace(/\n*$/, ""), cut: true };
 }
 
 /** Provider display labels for the canonical ids the coach service stores. */

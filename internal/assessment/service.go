@@ -118,6 +118,8 @@ func (s *Service) userRoutes() []userRoute {
 		// `?path=<slug>` (m1-03, see resolveCourse); a session by id doesn't.
 		{http.MethodPost, "/mocks", s.handleStartMock},
 		{http.MethodGet, "/mocks/trend", s.handleTrend},
+		// The coach mode gate's mock lock (m1-07); gateway-internal, no /api route.
+		{http.MethodGet, "/mocks/live", s.handleLiveMock},
 		{http.MethodGet, "/mocks/{id}", s.handleGetMock},
 		{http.MethodPost, "/mocks/{id}/score", s.handleScoreMock},
 

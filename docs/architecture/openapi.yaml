@@ -666,13 +666,17 @@ paths:
                 outcome: { $ref: "#/components/schemas/Outcome" }
       responses:
         "200":
-          description: The updated practice state.
+          description: |
+            The updated practice state. `cappedBy: "coach"` (m1-07, D27) when a
+            self-reported clean/rough was recorded as assisted because the coach was used on
+            this attempt; absent otherwise.
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   state: { $ref: "#/components/schemas/PracticeState" }
+                  cappedBy: { type: string, enum: [coach] }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "409": { $ref: "#/components/responses/Conflict" }
@@ -1019,12 +1023,15 @@ paths:
     get:
       tags: [coach]
       operationId: coachThread
-      summary: Thread history for a page context.
+      summary: Thread history for a page context, with the server's mode gate.
       parameters:
         - { name: context, in: query, required: true, schema: { type: string } }
       responses:
         "200":
-          description: The thread messages for the context.
+          description: |
+            The thread messages for the context, plus `gate` (m1-07): the mode a chat here
+            gets, the lock reason, and on a problem page the open attempt's D27 assist
+            state. `gate` is omitted when a state lookup failed; the thread still loads.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CoachThread" }
@@ -1054,6 +1061,10 @@ paths:
             unavailable` (same taxonomy as the pre-stream JSON envelopes below; see
             `Error.reason`). The v1 `error`/`message` pair is unchanged, so a pre-m1-10
             client keeps working and `reason` is additive.
+          headers:
+            X-Coach-Mode:
+              description: The mode the server applied (m1-07) — what the SPA's mode chip shows.
+              schema: { type: string, enum: [attempt, review, general] }
           content:
             text/event-stream:
               schema: { type: string }
@@ -1064,20 +1075,54 @@ paths:
             No usable key: `no_key`, `key_disabled`, or `provider_auth` (the provider
             rejected the key before any byte was streamed; the key is now disabled).
             `provider_auth` carries `reason: auth`.
+
+            The mode gate (m1-07; nothing is sent or persisted):
+            `assist_confirm_required` (`X-Coach-Mode: attempt`) with `attemptId` and
+            `problemId` — a chat in `problem:<id>`'s context while a counted attempt on
+            `<id>` is open and not yet assisted; resend with `assist_ack: <attemptId>` to
+            confirm (it caps the attempt at Assisted; once recorded later chats skip it).
+            `coach_paused` (`X-Coach-Mode: locked`) with `reason: mock | touch` — a live mock
+            (from M2a, a live touch) on the account.
+          headers:
+            X-Coach-Mode:
+              description: On the mode gate's 409s (attempt / locked).
+              schema: { type: string }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+              example: { error: { code: assist_confirm_required, message: "using the coach during a counted attempt caps it at Assisted; resend with assist_ack to confirm", attemptId: "0b6b8a52-5c6f-4f50-9a3a-2a1b7c0d9e11", problemId: "16" } }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "429":
           description: |
             `provider_limited`: the provider account is out of credit or over a quota,
             spend, or rate limit, or can't use the model/region. The key stays enabled;
             top up and retry. `reason` says which — `quota | rate_limit | model_access |
             region` — and is what the SPA maps to its copy.
+
+            xLearn's own L18 caps on the learner's key (m1-07; ADR-0035 §4), each with
+            `Retry-After` (whole seconds) and consuming nothing: `coach_busy` (two replies
+            already streaming on the account; `Retry-After: 5`), `coach_rate_limited` (20
+            messages a minute; seconds to the next token), `coach_daily_cap` (300 messages a
+            UTC day; seconds to the next UTC midnight). On a D27 confirm the admission
+            probe's 429 is relayed as is and the attempt stays uncapped.
+          headers:
+            Retry-After:
+              description: On the L18 codes only — whole seconds until a retry can succeed.
+              schema: { type: integer, minimum: 1 }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
               example: { error: { code: provider_limited, message: "your provider account is out of credit or limited — top up and retry" } }
         "502": { $ref: "#/components/responses/BadGateway" }
+        "503":
+          description: |
+            Fails closed — nothing was sent (m1-07): `coach_state_unavailable` (practice,
+            review or assessment could not be checked) or `assist_unavailable` (the learner
+            confirmed but practice could not record the coach use on the attempt). Also
+            `unavailable` when coach is not configured.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
 
 components:
   securitySchemes:
@@ -1200,10 +1245,13 @@ components:
             `provider_limited` and `provider_error`, both in the pre-stream JSON envelope
             and in the chat SSE `event: error` frame — use exactly one of `auth`, `quota`,
             `rate_limit`, `model_access`, `region`, `unavailable`, which is what the SPA
-            maps to its copy; treat an unrecognised value as `unavailable`.
-          examples: [auth, quota, rate_limit, model_access, region, unavailable]
+            maps to its copy; treat an unrecognised value as `unavailable`. The coach mode
+            gate's `coach_paused` (m1-07) uses `mock` or `touch`.
+          examples: [auth, quota, rate_limit, model_access, region, unavailable, mock, touch]
         retry_after: { type: integer, description: "On a 429: seconds until a retry can succeed (= Retry-After)." }
         limit: { type: integer, description: "On a 413 body_too_large: the body cap in bytes." }
+        attemptId: { type: string, description: "On a 409 assist_confirm_required (m1-07): the open attempt to acknowledge." }
+        problemId: { type: string, description: "On a 409 assist_confirm_required (m1-07): that attempt's problem." }
         details: {}
     ErrorEnvelope:
       type: object
@@ -1534,6 +1582,12 @@ components:
           oneOf:
             - { $ref: "#/components/schemas/Timer" }
             - { type: "null" }
+        coachAssistAt:
+          type: [string, "null"]
+          format: date-time
+          description: >-
+            When the coach was first used on the OPEN attempt (m1-07, D27); null when it
+            never was or no attempt is open. It caps that attempt at Assisted.
     ProblemDetail:
       description: >-
         GET /problems/{id}'s problem: the Problem shape plus two additive, answer-free fields
@@ -2110,12 +2164,38 @@ components:
               role: { type: string }
               content: { type: string }
               createdAt: { type: string, format: date-time }
+        gate: { $ref: "#/components/schemas/CoachGate" }
+    CoachGate:
+      type: object
+      description: >-
+        The mode the server applies to a chat in this context (m1-07; ADR-0031 §7), from the
+        same lookups as the chat, run read-only. Display-only: omitted when a lookup failed
+        (the chat itself then fails closed with 503 coach_state_unavailable).
+      required: [mode]
+      properties:
+        mode: { type: string, enum: [attempt, review, general, locked] }
+        reason: { type: string, enum: [mock, touch], description: With mode locked only. }
+        attempt:
+          type: object
+          description: >-
+            On a problem page with an open counted attempt: its id and when the coach was first
+            used on it (null until then; once set the attempt is capped at Assisted and the
+            chat skips the D27 confirm).
+          required: [attemptId, coachAssistAt]
+          properties:
+            attemptId: { type: string }
+            coachAssistAt: { type: [string, "null"], format: date-time }
     CoachChatRequest:
       type: object
       required: [context, message]
       properties:
         context: { type: string, description: 'e.g. "problem:16"' }
         message: { type: string }
+        assist_ack:
+          type: string
+          description: >-
+            D27 (m1-07): the open attempt's id from a 409 assist_confirm_required — the
+            learner's confirmation that asking the coach caps the attempt at Assisted.
         kind: { type: string }
         label: { type: string }
         problemId: { type: string, description: Non-authoritative; the gateway rewrites it from practice state. }

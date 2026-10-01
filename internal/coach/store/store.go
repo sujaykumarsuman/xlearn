@@ -34,6 +34,12 @@
 // (course.NormalizeCoachContext: `<course>:<ctx>` for a course-scoped context), and the
 // thread and each of its messages carry the thread's course in path_slug (NULL for an
 // account-wide context). Migration 00005 moved the v1 rows onto that shape.
+//
+// v2 M1b (m1-07): each message also records the prompt version it was built with and, when
+// a D27 assist was recorded, the attempt it belongs to (MessageMeta; migration 00007). The
+// chat path replays only the thread's last messages (RecentMessages), while GET /threads
+// still reads all of them (ThreadHistory). L18's durable daily cap lives in
+// coach.message_quota_day (migration 00008), claimed with one atomic conditional upsert.
 package store
 
 import (
@@ -198,6 +204,18 @@ type Message struct {
 	CreatedAt time.Time
 }
 
+// MessageMeta is what a chat turn records about how it was produced (m1-07, migration
+// 00007). Both rows of a turn — the user's message and the coach's reply — carry the same
+// values. An empty field stores NULL; an AttemptID that is not a UUID also stores NULL (it
+// is a label, never a reason to fail a chat).
+type MessageMeta struct {
+	// PromptV is the system-prompt version the turn was built with ("coach-prompt@2").
+	PromptV string
+	// AttemptID is practice's id of the open attempt a D27 coach assist was recorded on
+	// (the gateway's X-Coach-Attempt header); "" when none was.
+	AttemptID string
+}
+
 // Store is the coach persistence seam. Handlers depend on this interface so they can be
 // unit-tested against an in-memory fake.
 type Store interface {
@@ -238,14 +256,30 @@ type Store interface {
 	// (course.NormalizeCoachContext); pathSlug is the thread's course, "" for NULL (an
 	// account-wide context). An existing thread keeps its path_slug; a NULL one is filled.
 	EnsureThread(ctx context.Context, accountID, pageContext, pathSlug string) (string, error)
-	// ThreadHistory returns the messages for (account, page context) oldest-first, or an
-	// empty slice when the account has never chatted on that page.
+	// ThreadHistory returns ALL the messages for (account, page context) oldest-first, or
+	// an empty slice when the account has never chatted on that page (GET /threads).
 	ThreadHistory(ctx context.Context, accountID, pageContext string) ([]Message, error)
-	// AppendMessage appends a message to a thread, with the thread's path_slug.
-	AppendMessage(ctx context.Context, threadID, role, content string) error
+	// RecentMessages returns a thread's last limit messages, oldest-first: the history
+	// window a chat turn replays to the provider (L18). Empty for an unknown thread.
+	RecentMessages(ctx context.Context, threadID string, limit int) ([]Message, error)
+	// AppendMessage appends a message to a thread, with the thread's path_slug and the
+	// turn's meta (prompt version, attempt id).
+	AppendMessage(ctx context.Context, threadID, role, content string, meta MessageMeta) error
 	// AppendAssistantMessage appends the coach's reply together with what the provider
-	// turn cost. A nil-cost usage stores NULL, which the month summary reports as unknown.
-	AppendAssistantMessage(ctx context.Context, threadID, content string, u MessageUsage) error
+	// turn cost and the turn's meta. A nil-cost usage stores NULL, which the month summary
+	// reports as unknown.
+	AppendAssistantMessage(ctx context.Context, threadID, content string, u MessageUsage, meta MessageMeta) error
+
+	// TakeDailyMessage claims one of the account's limit messages for the UTC day of day,
+	// atomically. ok is false (and nothing is written) when the day's count is already at
+	// limit; n is the count after the claim.
+	TakeDailyMessage(ctx context.Context, accountID string, day time.Time, limit int) (n int, ok bool, err error)
+	// RefundDailyMessage gives one claimed message back (never below zero): for a turn
+	// that was admitted but never reached the provider.
+	RefundDailyMessage(ctx context.Context, accountID string, day time.Time) error
+	// DailyMessages reads the account's count for the UTC day of day without changing it
+	// (0 when none yet).
+	DailyMessages(ctx context.Context, accountID string, day time.Time) (int, error)
 
 	Ping(ctx context.Context) error
 }
@@ -645,14 +679,50 @@ func (s *PgStore) ThreadHistory(ctx context.Context, accountID, pageContext stri
 	return out, nil
 }
 
-// AppendMessage appends a message to a thread; the message takes the thread's path_slug.
-// ErrNotFound when the thread doesn't exist.
-func (s *PgStore) AppendMessage(ctx context.Context, threadID, role, content string) error {
+// RecentMessages returns the thread's last limit messages oldest-first.
+func (s *PgStore) RecentMessages(ctx context.Context, threadID string, limit int) ([]Message, error) {
+	tid, err := parseUUID(threadID)
+	if err != nil {
+		return nil, fmt.Errorf("parse thread id: %w", err)
+	}
+	if limit <= 0 {
+		return []Message{}, nil
+	}
+	rows, err := s.q.ListRecentMessages(ctx, gen.ListRecentMessagesParams{ThreadID: tid, MaxMessages: int32(limit)})
+	if err != nil {
+		return nil, fmt.Errorf("list recent messages: %w", err)
+	}
+	out := make([]Message, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, Message{Role: r.Role, Content: r.Content, CreatedAt: r.CreatedAt.Time})
+	}
+	return out, nil
+}
+
+// metaParams maps a turn's meta to its nullable columns: "" is NULL, and so is an
+// attempt id that does not parse as a UUID.
+func metaParams(m MessageMeta) (pgtype.Text, pgtype.UUID) {
+	promptV := pgtype.Text{String: m.PromptV, Valid: m.PromptV != ""}
+	var attempt pgtype.UUID
+	if m.AttemptID != "" {
+		if u, err := parseUUID(m.AttemptID); err == nil {
+			attempt = u
+		}
+	}
+	return promptV, attempt
+}
+
+// AppendMessage appends a message to a thread; the message takes the thread's path_slug
+// and records the turn's meta. ErrNotFound when the thread doesn't exist.
+func (s *PgStore) AppendMessage(ctx context.Context, threadID, role, content string, meta MessageMeta) error {
 	tid, err := parseUUID(threadID)
 	if err != nil {
 		return fmt.Errorf("parse thread id: %w", err)
 	}
-	_, err = s.q.InsertMessage(ctx, gen.InsertMessageParams{ThreadID: tid, Role: role, Content: content})
+	promptV, attempt := metaParams(meta)
+	_, err = s.q.InsertMessage(ctx, gen.InsertMessageParams{
+		ThreadID: tid, Role: role, Content: content, PromptV: promptV, AttemptID: attempt,
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrNotFound
 	}
@@ -663,12 +733,13 @@ func (s *PgStore) AppendMessage(ctx context.Context, threadID, role, content str
 }
 
 // AppendAssistantMessage appends the coach's reply with the usage of the turn that
-// produced it. Unknown fields store NULL.
-func (s *PgStore) AppendAssistantMessage(ctx context.Context, threadID, content string, u MessageUsage) error {
+// produced it and the turn's meta. Unknown fields store NULL.
+func (s *PgStore) AppendAssistantMessage(ctx context.Context, threadID, content string, u MessageUsage, meta MessageMeta) error {
 	tid, err := parseUUID(threadID)
 	if err != nil {
 		return fmt.Errorf("parse thread id: %w", err)
 	}
+	promptV, attempt := metaParams(meta)
 	arg := gen.InsertAssistantMessageParams{
 		ThreadID:   tid,
 		Role:       RoleAssistant,
@@ -676,6 +747,8 @@ func (s *PgStore) AppendAssistantMessage(ctx context.Context, threadID, content 
 		Provider:   pgtype.Text{String: u.Provider, Valid: u.Provider != ""},
 		Model:      pgtype.Text{String: u.Model, Valid: u.Model != ""},
 		StopReason: pgtype.Text{String: u.StopReason, Valid: u.StopReason != ""},
+		PromptV:    promptV,
+		AttemptID:  attempt,
 	}
 	if u.HasTokens {
 		arg.InputTokens = pgtype.Int4{Int32: int32(u.InputTokens), Valid: true}
@@ -692,6 +765,59 @@ func (s *PgStore) AppendAssistantMessage(ctx context.Context, threadID, content 
 		return fmt.Errorf("insert assistant message: %w", err)
 	}
 	return nil
+}
+
+// --- L18 daily cap (m1-07; coach.message_quota_day) ---
+
+// utcDay is the UTC calendar date of t, as the date column wants it.
+func utcDay(t time.Time) pgtype.Date {
+	u := t.UTC()
+	return pgtype.Date{Time: time.Date(u.Year(), u.Month(), u.Day(), 0, 0, 0, 0, time.UTC), Valid: true}
+}
+
+// TakeDailyMessage claims one message of the account's UTC day with the atomic
+// conditional upsert. No row back is the cap: ok=false, nothing written.
+func (s *PgStore) TakeDailyMessage(ctx context.Context, accountID string, day time.Time, limit int) (int, bool, error) {
+	aid, err := parseUUID(accountID)
+	if err != nil {
+		return 0, false, fmt.Errorf("parse account id: %w", err)
+	}
+	n, err := s.q.TakeDailyMessage(ctx, gen.TakeDailyMessageParams{AccountID: aid, Day: utcDay(day), DailyCap: int32(limit)})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return limit, false, nil
+	}
+	if err != nil {
+		return 0, false, fmt.Errorf("take daily message: %w", err)
+	}
+	return int(n), true, nil
+}
+
+// RefundDailyMessage gives one claimed message of the account's UTC day back.
+func (s *PgStore) RefundDailyMessage(ctx context.Context, accountID string, day time.Time) error {
+	aid, err := parseUUID(accountID)
+	if err != nil {
+		return fmt.Errorf("parse account id: %w", err)
+	}
+	if err := s.q.RefundDailyMessage(ctx, gen.RefundDailyMessageParams{AccountID: aid, Day: utcDay(day)}); err != nil {
+		return fmt.Errorf("refund daily message: %w", err)
+	}
+	return nil
+}
+
+// DailyMessages reads the account's count for its UTC day (0 when no row yet).
+func (s *PgStore) DailyMessages(ctx context.Context, accountID string, day time.Time) (int, error) {
+	aid, err := parseUUID(accountID)
+	if err != nil {
+		return 0, fmt.Errorf("parse account id: %w", err)
+	}
+	n, err := s.q.GetDailyMessages(ctx, gen.GetDailyMessagesParams{AccountID: aid, Day: utcDay(day)})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("get daily messages: %w", err)
+	}
+	return int(n), nil
 }
 
 // --- row mapping ---

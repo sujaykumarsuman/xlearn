@@ -253,7 +253,7 @@ describe("course resolution (useCourse, AB02)", () => {
       expect(screen.getByRole("link", { name: /all paths/i })).toBeInTheDocument();
       expect(document.querySelector(".xl-side")).toBeNull();
       expect(screen.queryByRole("button", { name: /switch curriculum/i })).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /open ai coach/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Open Your AI coach (your key)" })).toBeInTheDocument();
       expect(requested(fn).every((u) => ACCOUNT_CALLS.has(u))).toBe(true);
       unmount();
       restoreFetch();

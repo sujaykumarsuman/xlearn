@@ -20,6 +20,20 @@ import (
 // client can never set it — the spoiler-control gate is not client-trusted (ADR-0007).
 const headerCoachMode = "X-Coach-Mode"
 
+// The other gateway→coach chat headers (m1-07), equally server-authoritative:
+//
+//   - X-Coach-Course is the course the gateway resolved for the page (a problem's
+//     path_slug, a course page's course, "" for an account-wide page). It picks the prompt
+//     persona only (coursePersona); the thread's label still comes from the context and
+//     ?path= (threadCourse).
+//   - X-Coach-Attempt is the open attempt's id, sent only when a D27 assist is recorded on
+//     it. It is stored on both rows of the turn (attempt_id); a value that isn't a UUID is
+//     ignored, never refused.
+const (
+	headerCoachCourse  = "X-Coach-Course"
+	headerCoachAttempt = "X-Coach-Attempt"
+)
+
 // Input caps guard the free-text fields so a hostile client can't stash unbounded text
 // or spend the user's key on a giant prompt.
 const (
@@ -488,26 +502,47 @@ func (s *Service) threadCourse(cc course.CoachContext, pathParam string) string 
 // context is normalized to its thread key (course.NormalizeCoachContext: a course-scoped
 // context is `<course>:<ctx>`, and a v1 form maps to DefaultSlug's), and the thread is
 // labelled with its course (threadCourse; ?path= matters only for a problem context).
-// The body is v1's: the course never travels in it. It persists the user message +
-// the assistant reply to the (account, context) thread, builds the server-side prompt
-// from the AUTHORITATIVE mode (X-Coach-Mode header), decrypts the key in memory only for
-// the provider call, and zeroes it after. A rejected key flips enabled=false so the
-// client routes back to Settings; an out-of-credit or rate-limited provider account keeps
-// the key and tells the learner to top up. Errors before the first byte are a clean 4xx/5xx;
-// after streaming has begun they surface as an SSE `error` event.
+// The body is v1's (plus the gateway's live_items in general mode): the course never
+// travels in it. It persists the user message + the assistant reply to the (account,
+// context) thread, builds the server-side prompt (coach-prompt@2) from the AUTHORITATIVE
+// mode (X-Coach-Mode) and the course persona (X-Coach-Course), decrypts the key in memory
+// only for the provider call, and zeroes it after. A rejected key flips enabled=false so
+// the client routes back to Settings; an out-of-credit or rate-limited provider account
+// keeps the key and tells the learner to top up. Errors before the first byte are a clean
+// 4xx/5xx; after streaming has begun they surface as an SSE `error` event.
+//
+// The order of the refusals (m1-07):
+//
+//	locked mode            409 coach_paused        (defensive; nothing parsed or taken)
+//	body                   400 bad_request
+//	key lookup             409 no_key / key_disabled, 500 unknown provider
+//	L18 (admitChat)        429 coach_busy → coach_rate_limited → coach_daily_cap
+//	persist, history, key  500, after giving the token and the day's message back
+//
+// so a request refused at any step persists nothing, and L18 runs before the user turn is
+// persisted and before the key is decrypted.
 func (s *Service) handleChat(w http.ResponseWriter, r *http.Request) {
 	accountID := auth.ClaimsFrom(r.Context()).Subject
+	rawMode := strings.TrimSpace(r.Header.Get(headerCoachMode))
+	if strings.EqualFold(rawMode, modeLocked) {
+		// The gateway answers locked itself and never forwards it; if one ever arrives,
+		// refuse it the same way rather than letting normalizeMode turn it into a mode.
+		writePaused(w)
+		return
+	}
+
 	var body struct {
-		Context       string `json:"context"`
-		Kind          string `json:"kind"`
-		Label         string `json:"label"`
-		ProblemID     string `json:"problemId"`
-		ProblemTitle  string `json:"problemTitle"`
-		Pattern       string `json:"pattern"`
-		Stage         string `json:"stage"`
-		WeakArea      string `json:"weakArea"`
-		RecentOutcome string `json:"recentOutcome"`
-		Message       string `json:"message"`
+		Context       string         `json:"context"`
+		Kind          string         `json:"kind"`
+		Label         string         `json:"label"`
+		ProblemID     string         `json:"problemId"`
+		ProblemTitle  string         `json:"problemTitle"`
+		Pattern       string         `json:"pattern"`
+		Stage         string         `json:"stage"`
+		WeakArea      string         `json:"weakArea"`
+		RecentOutcome string         `json:"recentOutcome"`
+		Message       string         `json:"message"`
+		LiveItems     []liveItemJSON `json:"live_items"`
 	}
 	if err := decodeJSONLoose(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "invalid body")
@@ -524,7 +559,7 @@ func (s *Service) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(message) > maxMessageLen {
-		message = message[:maxMessageLen]
+		message = strings.ToValidUTF8(message[:maxMessageLen], "")
 	}
 
 	// Load the DEFAULT provider's key config (the one the coach answers with). No key /
@@ -549,6 +584,15 @@ func (s *Service) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// L18: streams → per minute → per UTC day. A refusal has already been written and has
+	// consumed nothing. The stream slot is held until this handler returns — the stream
+	// ended, failed, or the client went.
+	adm, ok := s.admitChat(w, r, accountID)
+	if !ok {
+		return
+	}
+	defer adm.done()
+
 	// Descriptive (non-authoritative) context — flavours the prompt only. The behaviour
 	// gate is the mode header, so lying in these fields can't flip a spoiler-free attempt.
 	ctx := pageContext{
@@ -560,23 +604,30 @@ func (s *Service) handleChat(w http.ResponseWriter, r *http.Request) {
 		Stage:         clampField(body.Stage),
 		WeakArea:      clampField(body.WeakArea),
 		RecentOutcome: clampField(body.RecentOutcome),
+		LiveItems:     liveItemsFrom(body.LiveItems),
 	}
-	mode := normalizeMode(r.Header.Get(headerCoachMode), ctx)
+	mode := normalizeMode(rawMode, ctx)
+	// Both rows of this turn record how it was produced (migration 00007).
+	meta := store.MessageMeta{PromptV: PromptVersion, AttemptID: attemptHeader(r)}
 
-	// Persist the user's turn, then build the provider request from the thread history
-	// (which now ends with this message).
+	// Persist the user's turn, then build the provider request from the thread's recent
+	// history (which now ends with this message). Any failure from here until the provider
+	// is called gives the token and the day's message back: the turn spent nothing.
 	cc := s.courses.NormalizeCoachContext(pageKey)
 	threadID, err := s.store.EnsureThread(r.Context(), accountID, cc.Key, s.threadCourse(cc, r.URL.Query().Get("path")))
 	if err != nil {
+		adm.refund(context.WithoutCancel(r.Context()))
 		s.mapErr(w, "chat: ensure thread", err)
 		return
 	}
-	if err := s.store.AppendMessage(r.Context(), threadID, store.RoleUser, message); err != nil {
+	if err := s.store.AppendMessage(r.Context(), threadID, store.RoleUser, message, meta); err != nil {
+		adm.refund(context.WithoutCancel(r.Context()))
 		s.mapErr(w, "chat: append user message", err)
 		return
 	}
-	history, err := s.store.ThreadHistory(r.Context(), accountID, cc.Key)
+	history, err := s.store.RecentMessages(r.Context(), threadID, historyLimit)
 	if err != nil {
+		adm.refund(context.WithoutCancel(r.Context()))
 		s.mapErr(w, "chat: history", err)
 		return
 	}
@@ -592,13 +643,15 @@ func (s *Service) handleChat(w http.ResponseWriter, r *http.Request) {
 	if model == "" {
 		model = provider.DefaultModel()
 	}
-	req := ChatRequest{Model: model, System: systemPrompt(mode, ctx), Messages: buildTurns(history)}
+	persona := coursePersona(s.courses, strings.TrimSpace(r.Header.Get(headerCoachCourse)))
+	req := ChatRequest{Model: model, System: systemPrompt(persona, mode, ctx), Messages: buildTurns(history)}
 
 	// Decrypt the key IN MEMORY ONLY; zero it the moment the provider call returns.
 	// openKey prefers the AD-bound pair and falls back to the legacy pair only when the AD
 	// pair is absent or stale (see keycrypto.go).
 	rawKey, err := s.openKey(kc)
 	if err != nil {
+		adm.refund(context.WithoutCancel(r.Context()))
 		s.log.Error("coach: decrypt key failed", "err", err, "provider", kc.Provider)
 		writeError(w, http.StatusInternalServerError, "internal", "could not use stored key")
 		return
@@ -616,7 +669,56 @@ func (s *Service) handleChat(w http.ResponseWriter, r *http.Request) {
 	})
 	secrets.Zero(rawKey) // zero as soon as the provider call is done (before persistence)
 
-	s.finishChat(r, accountID, kc.Provider, model, threadID, &reply, sse, result, streamErr)
+	s.finishChat(r, accountID, kc.Provider, model, threadID, meta, &reply, sse, result, streamErr)
+}
+
+// attemptHeader returns X-Coach-Attempt, lower-cased, when it is a canonical UUID, and ""
+// otherwise: the attempt id only labels the turn's rows, so a malformed value is dropped
+// (stored NULL), never a reason to refuse the chat.
+func attemptHeader(r *http.Request) string {
+	v := strings.ToLower(strings.TrimSpace(r.Header.Get(headerCoachAttempt)))
+	if len(v) != 36 {
+		return ""
+	}
+	for i, c := range v {
+		switch i {
+		case 8, 13, 18, 23:
+			if c != '-' {
+				return ""
+			}
+		default:
+			if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+				return ""
+			}
+		}
+	}
+	return v
+}
+
+// liveItemJSON is one entry of the gateway's live_items (general mode). The id is a
+// problem id; it is accepted as a JSON string or number so a type slip in a producer can
+// never 400 every general-mode chat.
+type liveItemJSON struct {
+	ID    flexString `json:"id"`
+	Title string     `json:"title"`
+}
+
+// flexString decodes a JSON string or number as a string (anything else is "").
+type flexString string
+
+func (f *flexString) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err == nil {
+		*f = flexString(s)
+		return nil
+	}
+	var n json.Number
+	if err := json.Unmarshal(b, &n); err == nil {
+		*f = flexString(n.String())
+		return nil
+	}
+	*f = ""
+	return nil
 }
 
 // turnUsage builds what to store on the assistant message from the stream's outcome.
@@ -653,7 +755,7 @@ const (
 // write), and emits the closing SSE event. Before any byte was sent it can still write a
 // clean 4xx: a rejected key (409, and the key is disabled) or an out-of-credit / limited
 // provider account (429, and the key stays enabled).
-func (s *Service) finishChat(r *http.Request, accountID, provider, model, threadID string, reply *strings.Builder, sse *sseWriter, result StreamResult, streamErr error) {
+func (s *Service) finishChat(r *http.Request, accountID, provider, model, threadID string, meta store.MessageMeta, reply *strings.Builder, sse *sseWriter, result StreamResult, streamErr error) {
 	// A detached context so persistence survives a cancelled request (client gone).
 	bg, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Second)
 	defer cancel()
@@ -667,7 +769,7 @@ func (s *Service) finishChat(r *http.Request, accountID, provider, model, thread
 		if reply.Len() == 0 {
 			return
 		}
-		if err := s.store.AppendAssistantMessage(bg, threadID, reply.String(), usage); err != nil {
+		if err := s.store.AppendAssistantMessage(bg, threadID, reply.String(), usage, meta); err != nil {
 			s.log.Warn("coach: persist assistant reply failed", "err", err)
 		}
 	}
@@ -731,18 +833,23 @@ func (s *Service) finishChat(r *http.Request, accountID, provider, model, thread
 	}
 }
 
-// clampField trims a descriptive field and bounds its length (defence against a hostile
-// client stuffing the prompt). The label allows a slightly longer cap than other fields.
+// clampField makes a descriptive field one trimmed line and bounds its length (defence
+// against a hostile client stuffing the prompt). Collapsing whitespace keeps a field on its
+// own CONTEXT line, so a value with newlines can't pose as a section of the prompt (a
+// fake MODE line); the cut never splits a UTF-8 sequence.
 func clampField(s string) string {
-	s = strings.TrimSpace(s)
+	s = strings.Join(strings.Fields(s), " ")
 	if len(s) > maxLabelLen {
-		return s[:maxLabelLen]
+		return strings.ToValidUTF8(s[:maxLabelLen], "")
 	}
 	return s
 }
 
-// buildTurns maps the stored thread history to provider turns (last historyLimit). It
-// aligns the window to begin on a USER turn: a fixed-size tail of an alternating,
+// buildTurns maps the stored thread history to provider turns, within L18's history cap:
+// the last historyLimit messages, then the oldest dropped until their content totals at
+// most historyMaxBytes — ALWAYS keeping the last message, the current user turn.
+//
+// It aligns the window to begin on a USER turn: a fixed-size tail of an alternating,
 // odd-length history can otherwise start on an assistant turn, and Anthropic's
 // /v1/messages requires the first message to be role=user (a leading assistant → 400,
 // which would fail every turn on an over-length thread permanently). Dropping leading
@@ -750,6 +857,14 @@ func clampField(s string) string {
 func buildTurns(history []store.Message) []ChatMessage {
 	if len(history) > historyLimit {
 		history = history[len(history)-historyLimit:]
+	}
+	total := 0
+	for _, m := range history {
+		total += len(m.Content)
+	}
+	for len(history) > 1 && total > historyMaxBytes {
+		total -= len(history[0].Content)
+		history = history[1:]
 	}
 	for len(history) > 0 && history[0].Role != store.RoleUser {
 		history = history[1:]
