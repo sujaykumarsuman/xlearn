@@ -9,21 +9,22 @@
 
 ## Status
 
-_Overall:_ ⛔ Blocked 2026-09-28 (run r-22): entry gate 3 unmet. The `top` sampler held 1 h 45 m of the ≥ 48 h
-(started 2026-09-28T06:36:49Z); it is readable from **2026-09-30T06:37Z**. The run stopped at the gates and changed
-nothing in `../infra` or on the node; the sampler is still running. Re-run this prompt after that time (the planned
-calendar slot is week 4).
+_Overall:_ ✅ Done 2026-10-01 (re-run r-42; attempt 1, r-22, stopped at gate 3 on 2026-09-28). All four infra PRs
+merged on the preferred path, well before Thu 10-22: infra#52 (Flux), #53 (Traefik + cert-manager + budgets), #54
+(PSA), #55 (tokens off). `host-verify --cluster --with-runner` 65/1/0, **+1,323 Mi with the runner**. Two checks stay
+pending: the 24 h Flux watch (AI Builder ps-23, readable from 2026-10-02T06:56Z) and the owner's login smoke on the
+tokens-off pods (ps-22; production has no account).
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Read ≥ 48 h of top samples → p95 per container; stop the sampler if alive, delete its files | H | ⛔ gate 3: 1 h 45 m of samples at 2026-09-28T08:22Z (968 rows, PID 1569254 alive, not declined); readable from 2026-09-30T06:37Z |
-| 2 | Flux controllers 1 GiB → 512 Mi (`flux-system/kustomization.yaml` patch) | I | ⬜ |
-| 3 | Traefik + cert-manager limits; metrics-server budget entry | I | ⬜ |
-| 4 | Longhorn (and other limitless) budget rows; drop now-limited rows; re-embed in `host-verify.sh` (host-lint); UI limit if exposed | I | ⬜ |
-| 5 | PSA labels on `xlearn`, `databases`, `messaging` (server dry-run first) | I | ⬜ |
-| 6 | `automountServiceAccountToken: false` on the 7 `xlearn-*` releases | I | ⬜ |
-| 7 | Merge timing + re-verify (`host-verify --cluster --with-runner`) | H | ⬜ |
-| 8 | Record (MI-11a, MI-15 slice, memory-sum numbers, decisions) | X | ⬜ |
+| 1 | Read ≥ 48 h of top samples → p95 per container; stop the sampler if alive, delete its files | H | ✅ 2026-10-01: 72 h (09-28 06:36:49Z → 10-01 06:48:31Z, 867 rounds); the fresh `top` was under every limitless p95; the loop (PID 1569254) stopped and all three files deleted. Table in infra#53 |
+| 2 | Flux controllers 1 GiB → 512 Mi (`flux-system/kustomization.yaml` patch) | I | ✅ infra#52 (`d8efd62`, 06:55:55Z): 6 × `512Mi` (rendered with `flux build`); all six rolled by 06:56:30Z, 0 restarts, every Flux object Ready by 06:57Z. 24 h watch → ps-23 |
+| 3 | Traefik + cert-manager limits; metrics-server budget entry | I | ✅ infra#53 (`de13040`, 07:01:51Z): Traefik 144/288 Mi (rolled 1/0, no gap, `helm-install-traefik` OK); cert-manager 32/96, 32/96, 64/128 Mi, startupapicheck 32/128; certificates Ready; metrics-server budget-only (128 Mi) |
+| 4 | Longhorn (and other limitless) budget rows; drop now-limited rows; re-embed in `host-verify.sh` (host-lint); UI limit if exposed | I | ✅ infra#53: 17 p95 × 1.5 rows (19 containers, 944 Mi), traefik/cert-manager rows dropped, re-embedded (host-lint OK). No UI knob in chart 1.12.1, so Longhorn is all budget-only. 0 unbudgeted, 0 provisional, 0 unused. `/root` copy refreshed |
+| 5 | PSA labels on `xlearn`, `databases`, `messaging` (server dry-run first) | I | ✅ infra#54 (`bd52381`, 07:05:26Z): enforce baseline / restricted / baseline, `v1.36` pinned, warn/audit restricted; every dry-run clean; nothing restarted |
+| 6 | `automountServiceAccountToken: false` on the 7 `xlearn-*` releases | I | ✅ infra#55 (`dd19ab6`, 07:08:46Z): 7 pods rolled by 07:11:31Z with no `kube-api-access` volume; the 4 other releases identical; 8 nkey connections, 4 durables at 0 pending, outboxes 0. Owner login smoke → ps-22 |
+| 7 | Merge timing + re-verify (`host-verify --cluster --with-runner`) | H | ✅ merged 2026-10-01 (before 10-22, so nothing is batched into the window); 65/1/0; 14,157 / 15,480 Mi, +1,323 Mi |
+| 8 | Record (MI-11a, MI-15 slice, memory-sum numbers, decisions) | X | ✅ this PR: status.md (board, MI table, capacity read, hand-offs, pending smokes, decisions log) |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + the MI table's MI-11a / MI-15 rows).
@@ -33,9 +34,9 @@ calendar slot is week 4).
 
 - [x] MI-3 merged ([mi-01](sprint-mi-01.md)): chart `0.3.0` with the `automountServiceAccountToken` knob, and `hack/chart-diff.sh` — infra `origin/main` `15de23c`, 2026-09-28
 - [x] MI-8 memory-sum check available ([mi-02](sprint-mi-02.md)): `host-verify --cluster [--with-runner]`, `hack/memory-budget.tsv` and its embedded copy in `hack/host-verify.sh` (checked by `hack/host-lint.sh`) — `--cluster --with-runner` ran 2026-09-28 08:22Z: 64 pass / 1 warn / 1 fail (the FAIL is the expected pre-MI-11a `TR-MEM` with the runner, −1,175 Mi; without it +1,897 Mi)
-- [ ] ≥ 48 h of samples exist in `/var/tmp/xlearn-top.tsv` (mi-02 started the sampler after the H0 reboot; it self-stops after `SAMPLE_HOURS`, default 168 h, so by now it has normally finished) — **or** mi-02 recorded the sampler as declined (its Decisions-log line) → keep the provisional `top × 1.2` budgets and say so (task 1) — ⛔ **unmet 2026-09-28 08:22Z** (r-22): 06:36:49Z → 08:21:51Z, 1 h 45 m; met from 2026-09-30T06:37Z
-- [ ] Hostinger weekly image date checked (≤ 7 days): the owner reads hPanel **before launch** (the prompt's before-launch item; launching attests it, D40) — the controller restarts are a restart-inducing step ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag))
-- [ ] Parallel sessions: no `xlearn` tag rolling out and no peer PR open on the files below (a fleet rollout during the 24 h watch muddles it)
+- [x] ≥ 48 h of samples exist in `/var/tmp/xlearn-top.tsv` (mi-02 started the sampler after the H0 reboot; it self-stops after `SAMPLE_HOURS`, default 168 h, so by now it has normally finished) — **or** mi-02 recorded the sampler as declined (its Decisions-log line) → keep the provisional `top × 1.2` budgets and say so (task 1) — unmet at 2026-09-28 08:22Z (r-22, 1 h 45 m); **met 2026-10-01** (r-42): 06:36:49Z → 10-01 06:48:31Z, 72 h
+- [x] Hostinger weekly image date checked (≤ 7 days): the owner reads hPanel **before launch** (the prompt's before-launch item; launching attests it, D40) — the controller restarts are a restart-inducing step ([rollout §2.2](../rollout-plan.md#22-operating-rules-every-mi-step-and-every-tag)) — 2026-09-26, attested in ask-24 (acknowledged 2026-10-01 06:49Z)
+- [x] Parallel sessions: no `xlearn` tag rolling out and no peer PR open on the files below (a fleet rollout during the 24 h watch muddles it) — re-checked before each merge; mi-07's infra#51 had merged and reconciled before the Flux merge
 
 ## Goal
 
@@ -244,15 +245,18 @@ requests. Request ≈ p50.
 
 ## Acceptance criteria
 
-- [ ] Σ limits drop by ≈ 3 GiB from the Flux controllers (6 × 1 Gi → 6 × 512 Mi). The net Σ limits change and
+- [x] Σ limits drop by ≈ 3 GiB from the Flux controllers (6 × 1 Gi → 6 × 512 Mi). The net Σ limits change and
       the memory-sum delta are recorded (the new Traefik/cert-manager limits add back roughly their limit − p95).
-- [ ] No limitless container without a budget entry (`host-verify --cluster` has no such WARN).
-- [ ] `host-verify --cluster --with-runner`: the memory sum is **inside the rule** (≤ capacity − 0.5 GiB), with
-      the numbers recorded.
-- [ ] PSA labels applied, with **no admission warnings** for running pods (server dry-run output in the PR).
-- [ ] The 7 `xlearn-*` pods run with `automountServiceAccountToken: false`; chart-diff showed that field only,
-      and nothing on the 4 non-xlearn releases.
-- [ ] 24 h after the Flux PR: 0 controller restarts / OOMKills; all Flux objects Ready.
+      — 9,354 → 6,890 Mi (−3,072 Flux, +608 new limits); memory sum 13,583 → 11,085 Mi
+- [x] No limitless container without a budget entry (`host-verify --cluster` has no such WARN). — 19/19 budgeted
+- [x] `host-verify --cluster --with-runner`: the memory sum is **inside the rule** (≤ capacity − 0.5 GiB), with
+      the numbers recorded. — 14,157 / 15,480 Mi, +1,323 Mi
+- [x] PSA labels applied, with **no admission warnings** for running pods (server dry-run output in the PR). — infra#54
+- [x] The 7 `xlearn-*` pods run with `automountServiceAccountToken: false`; chart-diff showed that field only,
+      and nothing on the 4 non-xlearn releases. — infra#55 (chart-diff 11/11 identical, plus a values-side render
+      showing only the field on the 7)
+- [ ] 24 h after the Flux PR: 0 controller restarts / OOMKills; all Flux objects Ready. — pending (ps-23), readable
+      from 2026-10-02T06:56Z; at 07:12Z (16 min) 0 restarts, all Ready
 
 ## Release
 
