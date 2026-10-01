@@ -1,0 +1,48 @@
+{
+  "id": "fx-001",
+  "course": "fixture",
+  "week_n": 1,
+  "sort_order": 1,
+  "title": "Even Split",
+  "difficulty": "easy",
+  "pattern": "Prefix sums",
+  "role": "core",
+  "status": "live",
+  "provenance": {
+    "origin": "original",
+    "authored_by": "agent"
+  },
+  "review": { "statement": "2026-10-01" },
+  "concepts": ["fixture:concept:fixture-basics"],
+  "parts": [
+    {
+      "id": "solution",
+      "type": "code",
+      "cadence": "iterate",
+      "grading": "auto",
+      "required": true,
+      "config": {
+        "signature": {
+          "mode": "function",
+          "name": "canSplit",
+          "params": [{ "name": "nums", "type": "int[]" }],
+          "returns": "bool"
+        },
+        "languages": ["go", "cpp", "python"],
+        "harness": "func-json@1",
+        "checker": { "name": "exact" },
+        "constraints": [
+          { "arg": "nums", "len": [2, 200000] },
+          { "arg": "nums[*]", "range": [-1000, 1000] }
+        ],
+        "samples": [
+          { "id": "s1", "args": [[3, 1, 2]], "expected": true },
+          { "id": "s2", "args": [[1, 1, 1]], "expected": false }
+        ],
+        "limits": { "time_ms": 1000, "memory_mb": 64 }
+      }
+    }
+  ],
+  "grader": [{ "step": "tests", "kind": "code", "inputs": ["solution"], "required": true }],
+  "solution_facts": { "complexity": { "time": ["O(n)"], "space": ["O(1)"] } }
+}

@@ -138,6 +138,67 @@ jobs:
           XLEARN_TEST_DATABASE_URL: postgres://xlearn_curriculum:pw@localhost:5432/xlearndb?sslmode=disable
         run: go test -race -count=1 -p 1 ./internal/curriculum/... ./internal/course/... ./internal/packspec/... ./cmd/contentlint/ ./cmd/packlint/
 
+  # The SYNTHETIC fixture pack through the whole eval-pack pipeline (m3-02; t1 §3.7, §7.2):
+  # check → lock --verify → validate → exec --gate all → build + diff against the committed
+  # internal/judge/testdata/pack → listing (the directory, a locally built image, and a planted
+  # gen/ file that must fail). Every program runs in a network-less container through packlint's
+  # executor (docker is on the runner); no secrets. The fixture's wrong solutions (WA, TLE, RE)
+  # must fail as declared. The Go std-cache seed volume is restored from actions/cache, keyed by
+  # the pinned golang image digest and the seed recipe.
+  pack-fixture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      C: internal/judge/testdata/content
+      S: internal/judge/testdata/packsrc
+      FIXTURE_SHA: "0000000000000000000000000000000000000000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build packlint
+        run: go build -o "$RUNNER_TEMP/packlint" ./cmd/packlint
+      - name: Seed cache key (golang image digest + seed recipe)
+        id: seed
+        run: |
+          img=$(sed -n 's/^\tGoImage *= *"\(.*\)"$/\1/p' internal/packspec/executor/executor.go)
+          recipe=$(sed -n 's/^const SeedRecipe = "\(.*\)"$/\1/p' internal/packspec/executor/executor.go)
+          test -n "$img" && test -n "$recipe"
+          echo "key=packlint-gocache-${{ runner.arch }}-${img##*@sha256:}-${recipe}" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/packlint-cache
+          key: ${{ steps.seed.outputs.key }}
+      - name: Warm the std cache (restored, or built once and saved)
+        run: '"$RUNNER_TEMP/packlint" exec --warm-cache --cache-dir "$RUNNER_TEMP/packlint-cache"'
+      - name: packlint check
+        run: '"$RUNNER_TEMP/packlint" check --public "$C" --pack "$S"'
+      - name: packlint lock --verify (reproducibility)
+        run: '"$RUNNER_TEMP/packlint" lock --public "$C" --pack "$S" --verify'
+      - name: packlint validate (generic + custom validators, invalid inputs rejected)
+        run: '"$RUNNER_TEMP/packlint" validate --public "$C" --pack "$S"'
+      - name: packlint exec --gate all (syntax, oracle, wrong solutions, provisional TL)
+        run: '"$RUNNER_TEMP/packlint" exec --public "$C" --pack "$S" --gate all --provisional'
+      - name: packlint build, then diff against the committed pack
+        run: |
+          "$RUNNER_TEMP/packlint" build --public "$C" --pack "$S" --out "$RUNNER_TEMP/pack" \
+            --version 0.1.0 --validated-against "$FIXTURE_SHA" --dockerfile=false
+          diff -r "$RUNNER_TEMP/pack" internal/judge/testdata/pack
+      - name: packlint listing (directory, image, planted gen/ file)
+        run: |
+          P="$RUNNER_TEMP/packlint"
+          "$P" listing internal/judge/testdata/pack
+          "$P" build --public "$C" --pack "$S" --out "$RUNNER_TEMP/image" --version 0.1.0 --validated-against "$FIXTURE_SHA"
+          docker build -q -t xlearn-evalpack-fixture:ci "$RUNNER_TEMP/image"
+          "$P" listing xlearn-evalpack-fixture:ci
+          cp -R internal/judge/testdata/pack "$RUNNER_TEMP/planted"
+          mkdir -p "$RUNNER_TEMP/planted/courses/fixture/items/fx-001/gen"
+          echo 'package main' > "$RUNNER_TEMP/planted/courses/fixture/items/fx-001/gen/planted.go"
+          if "$P" listing "$RUNNER_TEMP/planted"; then echo "::error::a planted gen/ file passed the listing test"; exit 1; fi
+
   # NATS-auth integration test (mi-05, ADR-0035 §2 "Verification before any seed is
   # mounted"): boots the prod minor (nats:2.14, deploy/local/nats-acl.compose.yml) with
   # the authorization block rendered from topology.go for throwaway nkeys, then drives

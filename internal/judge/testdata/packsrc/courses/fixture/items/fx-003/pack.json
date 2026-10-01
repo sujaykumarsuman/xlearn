@@ -1,0 +1,16 @@
+{
+  "item": "fx-003",
+  "accepts_contract_hashes": ["sha256:a0365c37d017ae79098cd7f928e918ff1bcba55d8dabfdd031044740228d477c"],
+  "gen": [
+    {"cmd": "gen/ops.go", "args": ["--max-ops", "30", "--max-key", "6"], "count": 10, "tags": ["random"]},
+    {"spec": {"gen": "op_sequence@1", "params": {"n": 20000, "ctor": [500], "ops": [
+      {"name": "Put", "weight": 1, "args": [{"min": 0, "max": 5000}, {"min": 0, "max": 1000000000}]},
+      {"name": "Get", "weight": 1, "args": [{"min": 0, "max": 5000}]}
+    ]}}, "count": 2, "tags": ["perf"]}
+  ],
+  "wrong": [
+    {"file": "submissions/wrong/evict-newest.go", "expect": "WA", "category": "right_pattern_wrong_state"},
+    {"file": "submissions/wrong/no-map.go", "expect": "RE", "category": "language_bug"}
+  ],
+  "review": {"tests": "2026-10-01"}
+}

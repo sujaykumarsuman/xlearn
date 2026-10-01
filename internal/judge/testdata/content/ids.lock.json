@@ -1,0 +1,17 @@
+{
+  "items": {
+    "fx-001": {
+      "course": "fixture",
+      "status": "live"
+    },
+    "fx-002": {
+      "course": "fixture",
+      "status": "live"
+    },
+    "fx-003": {
+      "course": "fixture",
+      "status": "live"
+    }
+  },
+  "assets": {}
+}

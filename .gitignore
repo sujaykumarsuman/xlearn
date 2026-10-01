@@ -2,6 +2,10 @@
 /bin/
 # stray `go build ./cmd/gateway` output (the real build goes to bin/)
 /gateway
+/packlint
+
+# The fixture pack's TL-gate output (packlint exec --gate tl): timings are per machine.
+internal/judge/testdata/packsrc/courses/*/items/*/timing.json
 
 # Web
 web/node_modules/

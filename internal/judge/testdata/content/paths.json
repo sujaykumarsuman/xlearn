@@ -1,0 +1,11 @@
+[
+  {
+    "slug": "fixture",
+    "title": "Fixture (dev only)",
+    "status": "active",
+    "summary": "Three synthetic items that exercise the eval-pack pipeline; never embedded or seeded in production.",
+    "problem_total": 3,
+    "week_total": 1,
+    "sort_order": 0
+  }
+]

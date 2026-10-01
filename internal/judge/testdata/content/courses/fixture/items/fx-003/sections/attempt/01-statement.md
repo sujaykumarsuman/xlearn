@@ -1,0 +1,1 @@
+Build a shelf of `capacity` keys: `Put(key, value)` stores or updates a value (an update keeps the key's place), a new key on a full shelf first removes the key stored earliest, `Get(key)` returns the value or `-1`, and every call sequence stores at least one key.

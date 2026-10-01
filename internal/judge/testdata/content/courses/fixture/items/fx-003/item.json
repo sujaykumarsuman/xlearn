@@ -1,0 +1,56 @@
+{
+  "id": "fx-003",
+  "course": "fixture",
+  "week_n": 1,
+  "sort_order": 3,
+  "title": "Fixed Shelf",
+  "difficulty": "med",
+  "pattern": "Hash map + queue",
+  "role": "core",
+  "status": "live",
+  "provenance": {
+    "origin": "original",
+    "authored_by": "agent"
+  },
+  "review": { "statement": "2026-10-01" },
+  "concepts": ["fixture:concept:fixture-basics"],
+  "parts": [
+    {
+      "id": "solution",
+      "type": "code",
+      "cadence": "iterate",
+      "grading": "auto",
+      "required": true,
+      "config": {
+        "signature": {
+          "mode": "class",
+          "name": "FixedShelf",
+          "params": [{ "name": "capacity", "type": "int" }],
+          "ops": [
+            { "name": "Put", "params": [{ "name": "key", "type": "int" }, { "name": "value", "type": "int" }] },
+            { "name": "Get", "params": [{ "name": "key", "type": "int" }], "returns": "int" }
+          ]
+        },
+        "languages": ["go", "cpp", "python"],
+        "harness": "class-ops@1",
+        "checker": { "name": "exact" },
+        "constraints": [
+          { "arg": "capacity", "range": [1, 1000] },
+          { "arg": "key", "range": [0, 10000] },
+          { "arg": "value", "range": [0, 1000000000] }
+        ],
+        "samples": [
+          {
+            "id": "s1",
+            "ops": ["FixedShelf", "Put", "Put", "Get", "Put", "Get", "Get"],
+            "args": [[2], [1, 10], [2, 20], [1], [3, 30], [1], [3]],
+            "expected": [null, null, null, 10, null, -1, 30]
+          }
+        ],
+        "limits": { "time_ms": 1000, "memory_mb": 64 }
+      }
+    }
+  ],
+  "grader": [{ "step": "tests", "kind": "code", "inputs": ["solution"], "required": true }],
+  "solution_facts": { "complexity": { "time": ["O(1) per call"], "space": ["O(capacity)"] } }
+}

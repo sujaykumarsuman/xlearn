@@ -1,0 +1,227 @@
+{
+  "format": 1,
+  "slug": "fixture",
+  "title": "Fixture (dev only)",
+  "status": "active",
+  "id_prefix": "fx",
+  "nav": {
+    "item_noun": "exercise",
+    "groups": [
+      {
+        "items": [
+          {
+            "screen": "today",
+            "label": "Today"
+          },
+          {
+            "screen": "roadmap",
+            "label": "Roadmap"
+          },
+          {
+            "screen": "problems",
+            "label": "Exercises"
+          },
+          {
+            "screen": "progress",
+            "label": "Progress"
+          }
+        ]
+      },
+      {
+        "cap": "Practice loop",
+        "items": [
+          {
+            "screen": "revision",
+            "label": "Revision"
+          },
+          {
+            "screen": "mistakes",
+            "label": "Mistakes"
+          }
+        ]
+      }
+    ]
+  },
+  "stages": {
+    "attempt": {
+      "duration_s": 900,
+      "label": "Attempt"
+    },
+    "hint": {
+      "duration_s": 600,
+      "label": "Hint"
+    },
+    "solution": {
+      "label": "Solution"
+    },
+    "reimplement": "required",
+    "early_reveal_penalty_days": 3
+  },
+  "grading": {
+    "strategy": "self@1",
+    "self_report": {
+      "outcome": "allowed",
+      "touch": "allowed",
+      "mock": "allowed"
+    },
+    "params": {
+      "self@1": {
+        "cap": "none"
+      },
+      "verdict_timer@1": {
+        "time_limit_s": 2700,
+        "hint_at_s": 900,
+        "clean_within_s": 1200,
+        "max_failed_for_clean": 3,
+        "free_classes": [
+          "CE",
+          "REJECTED"
+        ]
+      }
+    }
+  },
+  "grades": [
+    {
+      "id": "clean",
+      "label": "Clean",
+      "hint": "no help, in time"
+    },
+    {
+      "id": "rough",
+      "label": "Rough",
+      "hint": "solved, ugly"
+    },
+    {
+      "id": "assisted",
+      "label": "Assisted",
+      "hint": "needed a hint"
+    },
+    {
+      "id": "miss",
+      "label": "Miss",
+      "hint": "didn’t get it"
+    }
+  ],
+  "revision": {
+    "ladder_days": [
+      1,
+      3,
+      7,
+      21,
+      45
+    ],
+    "bands": [
+      {
+        "levels": [
+          1,
+          2,
+          3
+        ],
+        "format": "resolve",
+        "label": "Re-solve",
+        "timer_s": 1200,
+        "parts": [
+          "solution"
+        ],
+        "criteria": [
+          {
+            "key": "pattern_named_fast",
+            "threshold_s": 120
+          },
+          {
+            "key": "correct_in_timer"
+          },
+          {
+            "key": "complexity_stated"
+          }
+        ],
+        "mock_mode": false
+      },
+      {
+        "levels": [
+          4,
+          5
+        ],
+        "format": "resolve",
+        "label": "Re-solve",
+        "timer_s": 1200,
+        "parts": [
+          "solution"
+        ],
+        "criteria": [
+          {
+            "key": "pattern_named_fast",
+            "threshold_s": 120
+          },
+          {
+            "key": "correct_in_timer"
+          },
+          {
+            "key": "complexity_stated"
+          }
+        ],
+        "mock_mode": true
+      }
+    ],
+    "drills": false
+  },
+  "mistakes": {
+    "categories": [
+      {
+        "id": "misread",
+        "label": "Misread"
+      },
+      {
+        "id": "wrong_pattern",
+        "label": "Wrong pattern"
+      },
+      {
+        "id": "right_pattern_wrong_state",
+        "label": "Right pattern, wrong state"
+      },
+      {
+        "id": "off_by_one",
+        "label": "Off-by-one / boundary"
+      },
+      {
+        "id": "language_bug",
+        "label": "Language bug"
+      },
+      {
+        "id": "complexity_misjudged",
+        "label": "Complexity misjudged"
+      },
+      {
+        "id": "communication",
+        "label": "Communication"
+      },
+      {
+        "id": "time_management",
+        "label": "Time management"
+      }
+    ],
+    "prefill": []
+  },
+  "plan": {
+    "est_minutes": {
+      "course_attempt": 30,
+      "touch_resolve": 15,
+      "touch_recall": 5
+    }
+  },
+  "public_stats": {
+    "default_visible": false,
+    "metrics": [
+      "solved",
+      "streak"
+    ]
+  },
+  "coach": {
+    "persona": "You are the xLearn coach for the synthetic fixture course used only in local development and tests.",
+    "primary_language": "go",
+    "off_during": [
+      "touch",
+      "mock"
+    ]
+  }
+}

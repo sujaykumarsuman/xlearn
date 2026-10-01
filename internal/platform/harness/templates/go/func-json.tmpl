@@ -1,0 +1,26 @@
+{{template "header" .}}
+func main() {
+	defer xlRecover()
+	p := &xlParser{b: xlReadInput()}
+	p.expect('{')
+	if xlString(p) != "args" {
+		xlFail("bad_input")
+	}
+	p.expect(':')
+	p.expect('[')
+{{- range $i, $a := .Params}}
+{{- if $i}}
+	p.expect(','){{end}}
+	xlA{{$i}} := ({{$a.Dec}})(p)
+{{- end}}
+	p.expect(']')
+	p.expect('}')
+	p.end()
+	xlR := {{.Name}}({{range $i, $a := .Params}}{{if $i}}, {{end}}xlA{{$i}}{{end}})
+	var w xlWriter
+	w.raw(`{"ok":`)
+	({{.Enc}})(&w, xlR)
+	w.raw("}")
+	xlWriteFrame(w.b)
+}
+{{template "runtime" .}}

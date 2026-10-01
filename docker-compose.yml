@@ -23,6 +23,15 @@ x-jwt-env: &jwt-env
   JWKS_URL: http://gateway:8080/.well-known/jwks.json
   JWT_ISSUER: xlearn-gateway
 
+# The eval pack judge mounts at /evalpack (t1 §3.7). Default: the synthetic fixture. For the real pack,
+# set EVALPACK_DIR=../xlearn-evalpack/build after `make build` there (local only; never committed).
+# m3-05's judge service attaches it (volumes: [*evalpack-mount]); see deploy/local/README.md.
+x-evalpack-mount: &evalpack-mount
+  type: bind
+  source: ${EVALPACK_DIR:-./internal/judge/testdata/pack}
+  target: /evalpack
+  read_only: true
+
 services:
   postgres:
     # Prod parity: CNPG runs PG 18 (../infra infrastructure/database/cluster/cluster.yaml).

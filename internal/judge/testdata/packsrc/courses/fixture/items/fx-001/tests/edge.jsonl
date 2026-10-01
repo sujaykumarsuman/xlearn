@@ -1,0 +1,6 @@
+{"args": [[1, -1]], "tags": ["zero-total"]}
+{"args": [[0, 0]]}
+{"args": [[5, 5]]}
+{"args": [[1, 2]]}
+{"args": [[-3, 1, 2, 0]], "tags": ["zero-total"]}
+{"args": [[1000, -1000, 1000, -1000]], "tags": ["zero-total"]}
