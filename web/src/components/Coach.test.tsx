@@ -551,8 +551,12 @@ describe("Coach L18 limits (AB01 F8)", () => {
     // The number updates without re-announcing the region.
     expect(within(note).getByText("12 s")).toHaveAttribute("aria-live", "off");
 
+    // Flush the countdown's effect (its interval) before moving the clock. The fake clock
+    // also advances with real time (shouldAdvanceTime), so a slow runner may already be
+    // a second further along: the number must have dropped, to 11 or 10.
+    await act(async () => {});
     act(() => void vi.advanceTimersByTime(1000));
-    expect(note).toHaveTextContent("try again in 11 s");
+    await waitFor(() => expect(note).toHaveTextContent(/try again in 1[01] s/));
     act(() => void vi.advanceTimersByTime(11_000));
     await waitFor(() => expect(within(panel).queryByRole("status")).toBeNull());
     expect(send).not.toHaveAttribute("aria-disabled");
