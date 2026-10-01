@@ -969,7 +969,19 @@ paths:
               schema: { $ref: "#/components/schemas/CoachKeyList" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
-        "422": { $ref: "#/components/responses/Unprocessable" }
+        "422":
+          description: |
+            A field is semantically invalid: `invalid_provider` (not a provider this build
+            has a client for), `invalid_key` / `invalid_model` / `invalid_name` (too long),
+            `unknown_model` (not a model id at all — a malformed id or a pasted URL; an id
+            this release simply doesn't know IS accepted, as a custom model),
+            `model_not_interview_capable` (a catalog model without the `interview_brain`
+            capability, asked to be the `interview` default) or `invalid_feature` (`feature`
+            is neither `coach` nor `interview`). None of these disables a key.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+              example: { error: { code: model_not_interview_capable, message: "that model can't run the interviewer" } }
         "502": { $ref: "#/components/responses/BadGateway" }
         "503": { $ref: "#/components/responses/Unavailable" }
     delete:
@@ -984,6 +996,23 @@ paths:
       responses:
         "204": { description: Key removed. }
         "422": { $ref: "#/components/responses/Unprocessable" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /coach/models:
+    get:
+      tags: [coach]
+      operationId: getCoachModels
+      summary: The dated model catalog this release can answer with (prices, capabilities, per-provider defaults).
+      responses:
+        "200":
+          description: |
+            The catalog this coach release knows (ADR-0031 §7). It carries no learner data
+            at all, but is session-gated like every other coach route. A learner may still
+            set a model id the catalog has never heard of — it is then priced "unknown".
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoachModelCatalog" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "502": { $ref: "#/components/responses/BadGateway" }
         "503": { $ref: "#/components/responses/Unavailable" }
   /coach/thread:
@@ -1018,9 +1047,13 @@ paths:
             `{"delta":"…"}`; a terminal `event: done` carries
             `{"done":true,"truncated":bool}` (`truncated` when the provider cut the reply
             off at its length limit — the reply then ends with a visible note); a
-            mid-stream failure is `event: error` with `{"error","message"}`, where
+            mid-stream failure is `event: error` with `{"error","message","reason"}`, where
             `error` is `provider_auth` (key rejected and disabled), `provider_limited`
-            (provider account out of credit or limited; key kept), or `provider_error`.
+            (provider account out of credit or limited; key kept), or `provider_error`, and
+            `reason` refines it — `auth | quota | rate_limit | model_access | region |
+            unavailable` (same taxonomy as the pre-stream JSON envelopes below; see
+            `Error.reason`). The v1 `error`/`message` pair is unchanged, so a pre-m1-10
+            client keeps working and `reason` is additive.
           content:
             text/event-stream:
               schema: { type: string }
@@ -1030,6 +1063,7 @@ paths:
           description: |
             No usable key: `no_key`, `key_disabled`, or `provider_auth` (the provider
             rejected the key before any byte was streamed; the key is now disabled).
+            `provider_auth` carries `reason: auth`.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -1037,7 +1071,8 @@ paths:
           description: |
             `provider_limited`: the provider account is out of credit or over a quota,
             spend, or rate limit, or can't use the model/region. The key stays enabled;
-            top up and retry.
+            top up and retry. `reason` says which — `quota | rate_limit | model_access |
+            region` — and is what the SPA maps to its copy.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -1157,7 +1192,16 @@ components:
       properties:
         code: { type: string }
         message: { type: string }
-        reason: { type: string, description: Refines some codes (e.g. the coach's provider_limited). }
+        reason:
+          type: string
+          description: >-
+            Refines some codes, as a free-form machine-readable token (no global enum: each
+            code owns its vocabulary). The COACH's codes — `provider_auth`,
+            `provider_limited` and `provider_error`, both in the pre-stream JSON envelope
+            and in the chat SSE `event: error` frame — use exactly one of `auth`, `quota`,
+            `rate_limit`, `model_access`, `region`, `unavailable`, which is what the SPA
+            maps to its copy; treat an unrecognised value as `unavailable`.
+          examples: [auth, quota, rate_limit, model_access, region, unavailable]
         retry_after: { type: integer, description: "On a 429: seconds until a retry can succeed (= Retry-After)." }
         limit: { type: integer, description: "On a 413 body_too_large: the body cap in bytes." }
         details: {}
@@ -1925,19 +1969,132 @@ components:
         keys: { type: array, items: { $ref: "#/components/schemas/CoachKey" } }
         connected: { type: boolean }
         default_provider: { type: string, description: The default provider id, or "" when none connected. }
+        defaults:
+          type: object
+          description: >-
+            The account's per-feature defaults, keyed by feature (`coach`, `interview`) —
+            which provider's key answers for that feature and with which model. Every
+            feature this release knows is PRESENT, with a `null` value when it has no
+            default (the normal starting state for `interview`, rendered "Not set"), so a
+            client can tell "not set" from "this release doesn't know that feature".
+            `keys[].is_default` and `default_provider` are the `coach` default's provider,
+            kept for v1 clients.
+          propertyNames: { $ref: "#/components/schemas/CoachFeature" }
+          additionalProperties:
+            oneOf:
+              - { $ref: "#/components/schemas/CoachFeatureDefault" }
+              - { type: "null" }
+        usage_month: { $ref: "#/components/schemas/CoachUsageMonth" }
+    CoachFeature:
+      type: string
+      description: A coach feature a key/model pair can be the default for.
+      enum: [coach, interview]
+    CoachFeatureDefault:
+      type: object
+      description: Which provider's key answers for a feature, and with which model.
+      properties:
+        provider: { type: string, enum: [openai, anthropic] }
+        model: { type: string, description: The model id this feature calls (a catalog id or a custom one). }
+    CoachUsageMonth:
+      type: object
+      description: >-
+        Month-to-date spend on the learner's OWN keys, for the current UTC calendar month
+        (it resets at the month boundary, not on a rolling window). DISPLAY ONLY and always
+        an ESTIMATE: it is computed from the catalog's dated list prices and the token
+        counts the providers reported, so cache reads, batch, service tiers and regional
+        pricing all make the real bill differ. Never presented as a bill.
+      properties:
+        messages: { type: integer, description: Answered coach turns this month. }
+        input_tokens: { type: integer }
+        output_tokens: { type: integer }
+        est_cost_micros: { type: integer, description: "Estimated spend in MICROS: 1000000 micros = $1.00." }
+        has_unknown_cost:
+          type: boolean
+          description: >-
+            True when at least one answered turn had NO published price — a custom model id
+            this release doesn't know, or a stream that reported no usage. The cost is then
+            a FLOOR, not a total, and the UI says so ("· custom models not estimated").
+    CoachModelCatalog:
+      type: object
+      description: >-
+        The server-side model catalog (ADR-0031 §7). It replaces the model list v1 baked
+        into the SPA, so the switcher, the Settings key panel and onboarding all render what
+        the DEPLOYED coach release knows. Prices are transcribed from the providers' own
+        pricing pages on `as_of`, never derived — the UI shows that date beside the numbers.
+      properties:
+        as_of:
+          type: string
+          format: date
+          description: >-
+            The date every price and capability in this catalog was read off the providers'
+            pricing and model pages (YYYY-MM-DD). Each model repeats its own `as_of`.
+        providers:
+          type: array
+          description: The provider ids this build has a client for; only their models are listed.
+          items: { type: string, enum: [openai, anthropic] }
+        models: { type: array, items: { $ref: "#/components/schemas/CoachModel" } }
+        defaults:
+          type: object
+          description: >-
+            Per-provider default model id, keyed by provider id — the model a key gets when
+            the learner names none, and the entry badged "Recommended". A provider with no
+            default is absent.
+          propertyNames: { type: string, enum: [openai, anthropic] }
+          additionalProperties: { type: string }
+    CoachCapability:
+      type: string
+      description: >-
+        What a model may be used FOR — what the per-feature defaults validate against:
+        `chat` (the chat coach; every entry has it), `interview_brain` (may back the
+        `interview` default, i.e. drive the text interviewer), `voice_shell` (may act as the
+        realtime voice shell — defined for the contract, carried by no entry yet).
+      enum: [chat, interview_brain, voice_shell]
+    CoachModelPrice:
+      type: object
+      description: >-
+        The model's published BASE list price in MICROS PER MILLION TOKENS — $2.00/MTok is
+        `2000000`. Integer micros keep a month of cost arithmetic exact. Cache reads, batch,
+        service tiers and regional multipliers all reprice a real call, so this is a floor.
+      properties:
+        input_micros_per_mtok: { type: integer, description: Micros per million input tokens ($2.00/MTok = 2000000). }
+        output_micros_per_mtok: { type: integer, description: Micros per million output tokens ($10.00/MTok = 10000000). }
+    CoachModel:
+      type: object
+      description: One catalog entry — a model this release can answer with.
+      properties:
+        id: { type: string, description: The provider's model id, as sent back in `default_model`. }
+        provider: { type: string, enum: [openai, anthropic] }
+        label: { type: string, description: Short human name for the switcher (e.g. "Sonnet 5"). }
+        capabilities: { type: array, items: { $ref: "#/components/schemas/CoachCapability" } }
+        price: { $ref: "#/components/schemas/CoachModelPrice" }
+        as_of: { type: string, format: date, description: The date this entry's prices were read off the provider's pricing page. }
+        recommended: { type: boolean, description: The provider's default pick, badged "Recommended" (exactly one per provider). }
+        covered_model:
+          type: boolean
+          description: >-
+            True when the provider retains the conversation for 30 days. Allowed on a BYO
+            key — it is the learner's own provider account — so these are LABELLED, not
+            refused.
     CoachKeyRequest:
       type: object
       description: >-
         Every mode is keyed to a `provider`. Modes: (1) store/replace — `provider` + `key`
-        (+ `default_model`, `name`); (2) set default — `provider` + `default: true`;
-        (3) toggle — `provider` + `enabled`; (4) meta update — `provider` + `default_model`
-        and/or `name` (no `key`) to change the model/name in place. An account may connect one
-        key per provider; the first becomes the default.
+        (+ `default_model`, `name`); (2) set default — `provider` + `default: true`
+        (+ `feature` to pick which feature's default); (3) toggle — `provider` + `enabled`;
+        (4) meta update — `provider` + `default_model` and/or `name` (no `key`) to change the
+        model/name in place. An account may connect one key per provider; the first becomes
+        the `coach` default.
       required: [provider]
       properties:
         provider: { type: string, enum: [openai, anthropic] }
         key: { type: string, description: Present → store/replace this provider's key. Omit for the other modes. }
-        default: { type: boolean, description: True → make this provider the account's default. }
+        default: { type: boolean, description: True → make this provider the default for `feature`. }
+        feature:
+          allOf: [{ $ref: "#/components/schemas/CoachFeature" }]
+          description: >-
+            Which feature `default: true` sets, defaulting to `coach`. `interview` requires a
+            model carrying the `interview_brain` capability (422 `model_not_interview_capable`
+            otherwise); an unknown value is 422 `invalid_feature`. Ignored without `default`.
         default_model: { type: string }
         name: { type: string, description: Display name for this coach (defaults to the model id). }
         enabled: { type: boolean }

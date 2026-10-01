@@ -19,8 +19,12 @@ import (
 // harness wires a coach Service (mem store + fixed-claims verifier + real cipher) behind
 // the standard middleware chain, plus a swappable fake provider server.
 type harness struct {
-	store    *memStore
-	cipher   *secrets.Cipher
+	store  *memStore
+	cipher *secrets.Cipher
+	// keys is the AD keyring the service seals new material under. Built over the same
+	// master key as cipher, under DefaultKEKID, which is exactly what production runs
+	// while COACH_MASTER_KEYS is unset.
+	keys     *secrets.Keyring
 	server   *httptest.Server
 	provider *httptest.Server
 	account  string
@@ -34,6 +38,7 @@ type harness struct {
 func newHarness(t *testing.T) *harness {
 	t.Helper()
 	h := &harness{store: newMemStore(), cipher: testCipher(), account: "11111111-1111-4111-8111-111111111111"}
+	h.keys = secrets.KeyringOf(DefaultKEKID, h.cipher)
 
 	h.provider = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if a := r.Header.Get("Authorization"); a != "" {
@@ -51,7 +56,7 @@ func newHarness(t *testing.T) *harness {
 
 	openai := NewOpenAIProvider(h.provider.URL, h.provider.Client())
 	anthropic := NewAnthropicProvider(h.provider.URL, h.provider.Client())
-	svc := NewService(h.store, fakeVerifier{subject: h.account}, h.cipher, openai, anthropic, coursetest.Registry(t), discardLogger())
+	svc := NewService(h.store, fakeVerifier{subject: h.account}, h.cipher, h.keys, openai, anthropic, coursetest.Registry(t), discardLogger())
 
 	handler := httpx.Chain(svc.Handler(), httpx.RequestID, httpx.AccessLog(discardLogger()), httpx.Recoverer(discardLogger()))
 	h.server = httptest.NewServer(handler)

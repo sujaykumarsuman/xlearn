@@ -6,12 +6,18 @@ import { Icon } from "./Icon";
 import { useCourse } from "../lib/course";
 import {
   CoachChatError,
+  catalogModelsFor,
+  coachFeatureDefault,
   streamCoachChat,
   useCoachKey,
+  useCoachModels,
   useCoachThread,
+  usePutCoachKey,
   type CoachChatBody,
+  type CoachErrorReason,
   type CoachMessage,
 } from "../lib/settings";
+import { CoachModelMenu } from "./CoachModelSwitcher";
 
 /**
  * Coach is the persistent AI-coach panel (Problem.dc.html / Concept.dc.html): a FAB that
@@ -29,14 +35,19 @@ export function Coach() {
   const ctx = useCoachContext(pathname);
 
   const keyQuery = useCoachKey(open);
-  // The coach answers with the DEFAULT provider's key, so usability tracks that one.
-  const key = keyQuery.data?.keys?.find((k) => k.is_default) ?? keyQuery.data?.keys?.[0];
+  // The coach answers with the key the `coach` FEATURE default points at, so usability
+  // tracks that one (AB01 F15: "no key row, or the default key for coach is missing").
+  const coachDefault = coachFeatureDefault(keyQuery.data, "coach");
+  const key = keyQuery.data?.keys?.find((k) => k.provider === coachDefault?.provider);
   const usable = !!key && key.enabled;
   const thread = useCoachThread(ctx.context, open && usable);
 
   const [messages, setMessages] = useState<CoachMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  // The last provider refusal AB01 gives a line of its own (quota, rate limit, region, a
+  // model this key may not use). It clears on the next send: it describes one attempt.
+  const [failure, setFailure] = useState<CoachErrorReason | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   // Load the server thread when it (re)loads or the page context changes, unless a live
@@ -60,6 +71,7 @@ export function Coach() {
     }
     setInput("");
     setSending(true);
+    setFailure(null);
     setMessages((prev) => [...prev, { role: "user", content: message }, { role: "assistant", content: "" }]);
 
     const appendDelta = (delta: string) =>
@@ -88,15 +100,20 @@ export function Coach() {
       qc.invalidateQueries({ queryKey: ["coach-thread", ctx.context] });
     } catch (err) {
       if (err instanceof CoachChatError && err.routesToSettings) {
+        // Only an auth failure disables a key, which is what routes back to Settings (F15b).
         qc.invalidateQueries({ queryKey: ["coach-key"] });
         navigate("/settings?tab=coach");
+      } else if (err instanceof CoachChatError && hasFailureNote(err.reason)) {
+        // A refusal AB01 has a line for: show that line instead of appending to the reply,
+        // and drop the empty assistant bubble the send optimistically opened. The key stays
+        // enabled — quota, a rate limit, a region and a model this key may not use are all
+        // things the learner fixes without re-entering a working key (the v1 bug this
+        // taxonomy exists to end).
+        setFailure(err.reason);
+        setMessages((prev) => (prev[prev.length - 1]?.role === "assistant" && prev[prev.length - 1]!.content === "" ? prev.slice(0, -1) : prev));
       } else {
-        // An out-of-credit / limited provider account keeps the key enabled; say what to do.
-        // Anything else is a transient failure.
-        const note =
-          err instanceof CoachChatError && err.isProviderLimited
-            ? "⚠️ Your provider account is out of credit or limited — top up and retry."
-            : "⚠️ The coach couldn’t reply just now. Please try again.";
+        // Anything else is a transient failure, noted on the reply itself (v1 behaviour).
+        const note = "⚠️ The coach couldn’t reply just now. Please try again.";
         setMessages((prev) => {
           const next = prev.slice();
           const last = next[next.length - 1];
@@ -173,6 +190,15 @@ export function Coach() {
                 </div>
               </>
             )}
+
+            {failure && (
+              <CoachFailureNote
+                reason={failure}
+                model={coachDefault?.model ?? key.default_model}
+                provider={key.provider}
+                onPicked={() => setFailure(null)}
+              />
+            )}
           </>
         )}
       </div>
@@ -213,9 +239,91 @@ export function Coach() {
   );
 }
 
+/**
+ * The line each provider refusal gets, copied verbatim from the frozen AB01 (m1-10 task 4).
+ * A reason absent from this map (including "auth", which routes to Settings instead, and
+ * "unavailable") falls through to the generic in-reply note.
+ *
+ * Why one line each: v1 reported every non-auth refusal as one "out of credit or limited",
+ * so a learner barred from a model, or in an unsupported region, was told to top up a fully
+ * funded account. Each line now names what actually happened and what to do about it.
+ */
+const FAILURE_LINES: Partial<Record<CoachErrorReason, string>> = {
+  // F10 — quota, billing, spend caps and rate limits share one line: all of them mean
+  // "the account, not the key", and all of them are fixed by topping up or waiting.
+  quota: "Your provider says this key is out of credit or rate-limited. Top up or wait, then retry.",
+  rate_limit: "Your provider says this key is out of credit or rate-limited. Top up or wait, then retry.",
+  // F10's variant strip.
+  region: "Your provider doesn't serve this region.",
+};
+
+/** hasFailureNote reports whether AB01 gives this reason a note of its own. `model_access`
+ *  has a whole frame (F11) rather than a fixed line, so it isn't in FAILURE_LINES. */
+function hasFailureNote(reason: CoachErrorReason): boolean {
+  return reason === "model_access" || reason in FAILURE_LINES;
+}
+
+/**
+ * CoachFailureNote is the alert for a provider refusal the board gives its own line
+ * (AB01 F10, F10's region variant, F11). The key stays enabled throughout — only an auth
+ * failure disables one — so the composer stays usable and the learner can retry.
+ *
+ * For `model_access` it also carries F11's affordance: the model the key may not use stays
+ * listed and marked in the catalog switcher, and picking another one sets the `coach`
+ * feature default and closes the list.
+ */
+function CoachFailureNote({ reason, model, provider, onPicked }: { reason: CoachErrorReason; model: string; provider: string; onPicked: () => void }) {
+  const catalog = useCoachModels();
+  const put = usePutCoachKey();
+  const [open, setOpen] = useState(reason === "model_access");
+
+  if (reason !== "model_access") {
+    return (
+      <div className="xl-coach__note" role="alert">
+        <Icon name="alert" className="xl-ico--sm" />
+        <span>{FAILURE_LINES[reason]}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="xl-coach__note xl-coach__note--err" role="alert">
+      <Icon name="alert" className="xl-ico--sm" />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <span>
+          This key can't use <span className="ds-mono">{model}</span>. Pick another model.
+        </span>
+        <div className="xl-coach__note-act">
+          <button type="button" className="ds-btn ds-btn--secondary ds-btn--sm" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            Pick another model <Icon name="chevdown" className="xl-ico--sm" />
+          </button>
+        </div>
+        {open && (
+          <CoachModelMenu
+            groups={[{ provider, models: catalogModelsFor(catalog.data?.models, provider, model) }]}
+            asOf={catalog.data?.as_of}
+            selected={model}
+            customProvider={provider}
+            failing={model}
+            onPick={(p, picked) => {
+              if (picked !== model) put.mutate({ provider: p, default: true, feature: "coach", default_model: picked });
+              setOpen(false);
+              onPicked();
+            }}
+            onManage={() => setOpen(false)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** CoachEmptyState prompts the user to add (or re-enable) a provider key, routing to
- *  Settings — the coach is off with no usable key (sprint-11 acceptance). */
+ *  Settings — the coach is off with no usable key (AB01 F15, v1 parity). Focus lands on
+ *  Open Settings, which is the one thing there is to do here. */
 function CoachEmptyState({ disabled, onOpenSettings }: { disabled: boolean; onOpenSettings: () => void }) {
+  const openSettings = useRef<HTMLButtonElement>(null);
+  useEffect(() => openSettings.current?.focus(), []);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, textAlign: "center", padding: "18px 6px" }}>
       <Icon name="key" style={{ color: "var(--ds-teal)", margin: "0 auto" }} />
@@ -225,7 +333,7 @@ function CoachEmptyState({ disabled, onOpenSettings }: { disabled: boolean; onOp
           ? "Re-enable your provider key in Settings to turn the coach back on."
           : "Add your own OpenAI or Anthropic API key to enable Socratic hints during attempts and a reviewer after each solve."}
       </div>
-      <button className="ds-btn ds-btn--secondary ds-btn--sm" style={{ alignSelf: "center" }} onClick={onOpenSettings}>
+      <button ref={openSettings} className="ds-btn ds-btn--secondary ds-btn--sm" style={{ alignSelf: "center" }} onClick={onOpenSettings}>
         <Icon name="settings" className="xl-ico--sm" /> Open Settings
       </button>
     </div>

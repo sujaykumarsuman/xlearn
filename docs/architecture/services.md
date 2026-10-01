@@ -125,11 +125,24 @@ Legend — **Deploy:** `edge` = has Traefik route; `internal` = ClusterIP only. 
 - **Responsibility:** the AI-coach gateway — stores each user's provider key **encrypted**
   ([ADR-0007](../adr/0007-ai-coach-byo-key-and-secrets.md)), builds page-context prompts (Socratic
   during attempts, reviewer post-solve), and fans out to the user's LLM provider. Never returns the key.
-- **Owns:** schema `coach` — `api_key_config` (encrypted), `coach_thread`, `coach_message`.
-- **API:** `PUT /keys` (store), `GET /keys` (masked only), `DELETE /keys`,
-  `POST /chat` (context + prompt → provider; streams back; `?path=` = a problem context's course),
-  `GET /threads?context=`. Every context is normalized with the shared parser
+- **Owns:** schema `coach` — `api_key_config` (encrypted), `key_default` (the per-feature default
+  key), `coach_thread`, `coach_message`.
+- **API:** `PUT /keys` (store; `feature` ∈ `coach`/`interview` with `default:true`), `GET /keys`
+  (masked only, plus `defaults` and `usage_month`), `DELETE /keys`, `GET /models` (the dated server
+  model catalog), `POST /chat` (context + prompt → provider; streams back; `?path=` = a problem
+  context's course), `GET /threads?context=`. Every context is normalized with the shared parser
   (`course.NormalizeCoachContext`, m1-03): course-scoped contexts are keyed `<course>:<ctx>`.
+- **Keys (M1b, m1-10):** two sealed pairs per key — the legacy unbound pair v1.6.0 can still read
+  (the rollback floor) and an AD-bound pair keyed to `(account, provider)` under a `kek_id` from the
+  `COACH_MASTER_KEYS` keyring, tied to the legacy pair by `ad_src_digest`. A background goroutine
+  (`rewrap.go`, no new pod) backfills and repairs them; a row it cannot decrypt is skipped and
+  reported, never deleted. Which key answers is per FEATURE, from `key_default` only
+  ([ADR-0031](../adr/0031-platform-ai-and-two-tier-keys.md) §7).
+- **Providers:** OpenAI and Anthropic, from the service's provider registry. Every OpenAI request
+  sends `store:false` (no provider-side retention of a learner's coach chats) and asks for the usage
+  frame; a turn's tokens and estimated cost are stored on the assistant message. Provider failures
+  are typed — only an **auth** failure disables a key; quota, rate limit, model access and region
+  keep it and carry a `reason` the SPA maps to copy.
 - **Emits:** —. **Consumes:** page context via API (reads practice/curriculum through the gateway).
 
 ## notifications *(worker inside `review` in v1)*

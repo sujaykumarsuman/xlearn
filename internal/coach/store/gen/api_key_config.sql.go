@@ -24,6 +24,22 @@ func (q *Queries) CountApiKeyConfigs(ctx context.Context, accountID pgtype.UUID)
 	return count, err
 }
 
+const countRewrapPending = `-- name: CountRewrapPending :one
+SELECT count(*) FROM coach.api_key_config
+WHERE enc_key_ad IS NULL
+   OR kek_id IS DISTINCT FROM $1::text
+   OR (enc_data_key IS NOT NULL AND ad_src_digest IS DISTINCT FROM sha256(enc_data_key))
+`
+
+// How many rows still need a re-wrap, for the pass summary log line (D34: a log line read
+// on demand, not an alert) and for l-01's `pending=0` precondition.
+func (q *Queries) CountRewrapPending(ctx context.Context, activeKekID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countRewrapPending, activeKekID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteApiKeyConfig = `-- name: DeleteApiKeyConfig :execrows
 DELETE FROM coach.api_key_config
 WHERE account_id = $1 AND provider = $2
@@ -35,6 +51,8 @@ type DeleteApiKeyConfigParams struct {
 }
 
 // Remove one provider's key. Returns the affected row count so DELETE can 404 a no-op.
+// coach.key_default rows pointing at it go with it (ON DELETE CASCADE, migration 00004);
+// the store then promotes the earliest surviving key to the account's `coach` default.
 func (q *Queries) DeleteApiKeyConfig(ctx context.Context, arg DeleteApiKeyConfigParams) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteApiKeyConfig, arg.AccountID, arg.Provider)
 	if err != nil {
@@ -44,7 +62,9 @@ func (q *Queries) DeleteApiKeyConfig(ctx context.Context, arg DeleteApiKeyConfig
 }
 
 const getApiKeyConfig = `-- name: GetApiKeyConfig :one
-SELECT id, account_id, provider, enc_key, enc_data_key, masked_key, default_model, enabled, created_at, updated_at, name, is_default FROM coach.api_key_config
+SELECT id, account_id, provider, enc_key, enc_data_key, masked_key, default_model, name,
+       enabled, created_at, updated_at, enc_key_ad, enc_data_key_ad, kek_id, ad_src_digest
+FROM coach.api_key_config
 WHERE account_id = $1 AND provider = $2
 `
 
@@ -53,10 +73,28 @@ type GetApiKeyConfigParams struct {
 	Provider  string
 }
 
+type GetApiKeyConfigRow struct {
+	ID           pgtype.UUID
+	AccountID    pgtype.UUID
+	Provider     string
+	EncKey       []byte
+	EncDataKey   []byte
+	MaskedKey    string
+	DefaultModel string
+	Name         string
+	Enabled      bool
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+	EncKeyAd     []byte
+	EncDataKeyAd []byte
+	KekID        pgtype.Text
+	AdSrcDigest  []byte
+}
+
 // One (account, provider) key config. ErrNoRows when that provider isn't connected.
-func (q *Queries) GetApiKeyConfig(ctx context.Context, arg GetApiKeyConfigParams) (CoachApiKeyConfig, error) {
+func (q *Queries) GetApiKeyConfig(ctx context.Context, arg GetApiKeyConfigParams) (GetApiKeyConfigRow, error) {
 	row := q.db.QueryRow(ctx, getApiKeyConfig, arg.AccountID, arg.Provider)
-	var i CoachApiKeyConfig
+	var i GetApiKeyConfigRow
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
@@ -65,84 +103,74 @@ func (q *Queries) GetApiKeyConfig(ctx context.Context, arg GetApiKeyConfigParams
 		&i.EncDataKey,
 		&i.MaskedKey,
 		&i.DefaultModel,
+		&i.Name,
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Name,
-		&i.IsDefault,
+		&i.EncKeyAd,
+		&i.EncDataKeyAd,
+		&i.KekID,
+		&i.AdSrcDigest,
 	)
 	return i, err
-}
-
-const getDefaultApiKeyConfig = `-- name: GetDefaultApiKeyConfig :one
-SELECT k.id, k.account_id, k.provider, k.enc_key, k.enc_data_key, k.masked_key, k.default_model, k.enabled, k.created_at, k.updated_at, k.name, k.is_default FROM coach.api_key_config AS k
-WHERE k.account_id = $1
-  AND k.id = COALESCE(
-      (SELECT d.key_id FROM coach.key_default AS d WHERE d.account_id = $1 AND d.feature = 'coach'),
-      (SELECT c.id FROM coach.api_key_config AS c WHERE c.account_id = $1 AND c.is_default
-       ORDER BY c.created_at, c.provider LIMIT 1))
-LIMIT 1
-`
-
-// The account's DEFAULT provider key — the one the coach answers with. ErrNoRows when the
-// account has no keys at all. m1-02 (M1a): key_default(feature='coach') is preferred and
-// is_default is the fallback (an account whose default predates key_default, e.g. one
-// set by v1.5.2 during an R-b).
-func (q *Queries) GetDefaultApiKeyConfig(ctx context.Context, accountID pgtype.UUID) (CoachApiKeyConfig, error) {
-	row := q.db.QueryRow(ctx, getDefaultApiKeyConfig, accountID)
-	var i CoachApiKeyConfig
-	err := row.Scan(
-		&i.ID,
-		&i.AccountID,
-		&i.Provider,
-		&i.EncKey,
-		&i.EncDataKey,
-		&i.MaskedKey,
-		&i.DefaultModel,
-		&i.Enabled,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Name,
-		&i.IsDefault,
-	)
-	return i, err
-}
-
-const getDefaultKeyID = `-- name: GetDefaultKeyID :one
-SELECT COALESCE(
-    (SELECT d.key_id FROM coach.key_default AS d WHERE d.account_id = $1 AND d.feature = 'coach'),
-    (SELECT c.id FROM coach.api_key_config AS c WHERE c.account_id = $1 AND c.is_default
-     ORDER BY c.created_at, c.provider LIMIT 1))::uuid AS key_id
-`
-
-// The id of the account's effective coach default: key_default first, then is_default
-// (m1-02, M1a). NULL when the account has no default. The store marks
-// KeyConfig.IsDefault from it, so the v1 JSON (keys[].is_default) reads the same source
-// as the coach.
-func (q *Queries) GetDefaultKeyID(ctx context.Context, accountID pgtype.UUID) (pgtype.UUID, error) {
-	row := q.db.QueryRow(ctx, getDefaultKeyID, accountID)
-	var key_id pgtype.UUID
-	err := row.Scan(&key_id)
-	return key_id, err
 }
 
 const listApiKeyConfigs = `-- name: ListApiKeyConfigs :many
-SELECT id, account_id, provider, enc_key, enc_data_key, masked_key, default_model, enabled, created_at, updated_at, name, is_default FROM coach.api_key_config
+
+SELECT id, account_id, provider, enc_key, enc_data_key, masked_key, default_model, name,
+       enabled, created_at, updated_at, enc_key_ad, enc_data_key_ad, kek_id, ad_src_digest
+FROM coach.api_key_config
 WHERE account_id = $1
 ORDER BY provider
 `
 
-// All of an account's provider key configs (0..2), stable-ordered. Includes the sealed
-// material (service-only — the HTTP layer returns only the masked view).
-func (q *Queries) ListApiKeyConfigs(ctx context.Context, accountID pgtype.UUID) ([]CoachApiKeyConfig, error) {
+type ListApiKeyConfigsRow struct {
+	ID           pgtype.UUID
+	AccountID    pgtype.UUID
+	Provider     string
+	EncKey       []byte
+	EncDataKey   []byte
+	MaskedKey    string
+	DefaultModel string
+	Name         string
+	Enabled      bool
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+	EncKeyAd     []byte
+	EncDataKeyAd []byte
+	KekID        pgtype.Text
+	AdSrcDigest  []byte
+}
+
+// coach.api_key_config — one envelope-encrypted provider key per (account, provider).
+//
+// EXPLICIT COLUMN LISTS, never `SELECT *` / `RETURNING *` (m1-10). Two reasons:
+//   - sqlc expands a star to the column set it saw at generate time, so generated code
+//     reads every column positionally. When m1-08 (M1c) drops is_default, a star query
+//     would scan a column count that no longer matches and fail at runtime — the drop's
+//     whole point is that nothing touches it first.
+//   - is_default is DEAD from m1-10 on: coach.key_default(account_id, feature) is the
+//     only default source. Naming the columns is what makes "no reader, no writer" a
+//     checkable property (internal/coach/contract_test.go greps for both, and
+//     hack/lint-dropped-columns.sh no longer allowlists coach).
+//
+// The sealed material comes back on the read paths (the service opens it in memory for a
+// provider call); the HTTP layer only ever serialises the masked view. Two pairs are
+// stored during M1b: the LEGACY unbound pair (enc_key, enc_data_key), still readable by
+// v1.6.0 so the rollback floor holds, and the AD-BOUND pair (enc_key_ad,
+// enc_data_key_ad) under keyring entry kek_id, tied to the legacy pair it was sealed
+// beside by ad_src_digest = sha256(enc_data_key). See migration 00006 and rewrap.go.
+// All of an account's provider key configs (0..2), stable-ordered. Includes both sealed
+// pairs (service-only — the HTTP layer returns only the masked view).
+func (q *Queries) ListApiKeyConfigs(ctx context.Context, accountID pgtype.UUID) ([]ListApiKeyConfigsRow, error) {
 	rows, err := q.db.Query(ctx, listApiKeyConfigs, accountID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []CoachApiKeyConfig{}
+	items := []ListApiKeyConfigsRow{}
 	for rows.Next() {
-		var i CoachApiKeyConfig
+		var i ListApiKeyConfigsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.AccountID,
@@ -151,11 +179,14 @@ func (q *Queries) ListApiKeyConfigs(ctx context.Context, accountID pgtype.UUID) 
 			&i.EncDataKey,
 			&i.MaskedKey,
 			&i.DefaultModel,
+			&i.Name,
 			&i.Enabled,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Name,
-			&i.IsDefault,
+			&i.EncKeyAd,
+			&i.EncDataKeyAd,
+			&i.KekID,
+			&i.AdSrcDigest,
 		); err != nil {
 			return nil, err
 		}
@@ -167,27 +198,76 @@ func (q *Queries) ListApiKeyConfigs(ctx context.Context, accountID pgtype.UUID) 
 	return items, nil
 }
 
-const promoteEarliestDefault = `-- name: PromoteEarliestDefault :one
-UPDATE coach.api_key_config AS k
-SET is_default = true, updated_at = now()
-WHERE k.id = (
-    SELECT c.id FROM coach.api_key_config AS c
-    WHERE c.account_id = $1
-      AND NOT EXISTS (SELECT 1 FROM coach.api_key_config AS d WHERE d.account_id = $1 AND d.is_default)
-    ORDER BY c.created_at, c.provider
-    LIMIT 1
-)
-RETURNING k.provider
+const listRewrapPending = `-- name: ListRewrapPending :many
+SELECT id, account_id, provider, enc_key, enc_data_key, enc_key_ad, enc_data_key_ad, kek_id, ad_src_digest
+FROM coach.api_key_config
+WHERE enc_key_ad IS NULL
+   OR kek_id IS DISTINCT FROM $1::text
+   OR (enc_data_key IS NOT NULL AND ad_src_digest IS DISTINCT FROM sha256(enc_data_key))
+ORDER BY id
+LIMIT $2
 `
 
-// After deleting the default, make the earliest-created remaining key the default. Does
-// nothing (ErrNoRows) when a default already exists or no keys remain. Keeps exactly one
-// default per account.
-func (q *Queries) PromoteEarliestDefault(ctx context.Context, accountID pgtype.UUID) (string, error) {
-	row := q.db.QueryRow(ctx, promoteEarliestDefault, accountID)
-	var provider string
-	err := row.Scan(&provider)
-	return provider, err
+type ListRewrapPendingParams struct {
+	ActiveKekID string
+	BatchSize   int32
+}
+
+type ListRewrapPendingRow struct {
+	ID           pgtype.UUID
+	AccountID    pgtype.UUID
+	Provider     string
+	EncKey       []byte
+	EncDataKey   []byte
+	EncKeyAd     []byte
+	EncDataKeyAd []byte
+	KekID        pgtype.Text
+	AdSrcDigest  []byte
+}
+
+// One batch of key configs whose AD pair needs (re)sealing: never written, wrapped under
+// a KEK that is no longer active, or STALE — the legacy pair was rewritten underneath it
+// (a v1.6.0 key replace during a rollback), which the digest detects.
+//
+// This WHERE is the exact COMPLEMENT of the currency rule (KeyConfig.ADPairCurrent), and
+// the `enc_data_key IS NOT NULL AND` guard is what makes it so. `sha256(NULL)` is NULL and
+// `<non-null digest> IS DISTINCT FROM NULL` is TRUE, so without the guard a row with NO
+// LEGACY PAIR — the state l-01 creates when it stops writing one — would read as pending
+// forever while ADPairCurrent() called it current. The job would re-seal and discard it on
+// every pass, and l-01's own precondition (`pending=0 skipped=0`) could never be met.
+// Not reachable today (enc_key/enc_data_key are still NOT NULL), but this is the half of
+// that forward-compat path that has to work when l-01 relaxes them.
+//
+// Ordered by id for a stable, resumable scan. $2 is the batch size (≤ 50: the pass holds
+// one of coach's 4 pooled connections and must stay inside the pod's 128 Mi, ADR-0035 §5).
+func (q *Queries) ListRewrapPending(ctx context.Context, arg ListRewrapPendingParams) ([]ListRewrapPendingRow, error) {
+	rows, err := q.db.Query(ctx, listRewrapPending, arg.ActiveKekID, arg.BatchSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRewrapPendingRow{}
+	for rows.Next() {
+		var i ListRewrapPendingRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.Provider,
+			&i.EncKey,
+			&i.EncDataKey,
+			&i.EncKeyAd,
+			&i.EncDataKeyAd,
+			&i.KekID,
+			&i.AdSrcDigest,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const setApiKeyEnabled = `-- name: SetApiKeyEnabled :execrows
@@ -202,8 +282,9 @@ type SetApiKeyEnabledParams struct {
 	Enabled   bool
 }
 
-// Flip one provider's enabled flag (Settings toggle / provider-auth failure). Returns the
-// affected row count so a no-op can 404.
+// Flip one provider's enabled flag (Settings toggle / provider-AUTH failure — never a
+// quota or rate limit, which keep the key). Returns the affected row count so a no-op
+// can 404.
 func (q *Queries) SetApiKeyEnabled(ctx context.Context, arg SetApiKeyEnabledParams) (int64, error) {
 	result, err := q.db.Exec(ctx, setApiKeyEnabled, arg.AccountID, arg.Provider, arg.Enabled)
 	if err != nil {
@@ -212,22 +293,78 @@ func (q *Queries) SetApiKeyEnabled(ctx context.Context, arg SetApiKeyEnabledPara
 	return result.RowsAffected(), nil
 }
 
-const setDefaultProvider = `-- name: SetDefaultProvider :execrows
-UPDATE coach.api_key_config
-SET is_default = (provider = $2), updated_at = now()
-WHERE account_id = $1
+const sha256OfLegacyPair = `-- name: Sha256OfLegacyPair :one
+SELECT sha256(enc_data_key) AS digest FROM coach.api_key_config WHERE id = $1
 `
 
-type SetDefaultProviderParams struct {
-	AccountID pgtype.UUID
-	Provider  string
+// PG's sha256 of a row's legacy wrapped data key — the exact value the selector compares
+// ad_src_digest against. Exists so a test can assert Go's crypto/sha256 and PG's
+// sha256(bytea) agree on real stored bytes (they must, or the selector would see every
+// row as stale forever and the job would spin).
+func (q *Queries) Sha256OfLegacyPair(ctx context.Context, id pgtype.UUID) ([]byte, error) {
+	row := q.db.QueryRow(ctx, sha256OfLegacyPair, id)
+	var digest []byte
+	err := row.Scan(&digest)
+	return digest, err
 }
 
-// Make one provider the account's default and clear the others, in a single statement
-// (exactly one row matches $2 → exactly one default). The store verifies the target
-// provider exists first, so an unknown provider can't blank the default.
-func (q *Queries) SetDefaultProvider(ctx context.Context, arg SetDefaultProviderParams) (int64, error) {
-	result, err := q.db.Exec(ctx, setDefaultProvider, arg.AccountID, arg.Provider)
+const tryLockRewrap = `-- name: TryLockRewrap :one
+
+SELECT pg_try_advisory_xact_lock(hashtext('coach.rewrap')) AS locked
+`
+
+// --- background re-wrap (m1-10 task 3; internal/coach/rewrap.go) ---
+// Take the re-wrap lock for the CURRENT TRANSACTION. False means another runner (another
+// replica, or a pass still in flight during a rolling update) holds it and this pass ends.
+//
+// It must be the TRANSACTION-scoped lock, never pg_try_advisory_lock: on a pgxpool the
+// matching unlock can be issued on a different pooled connection, which leaks the lock
+// for the lifetime of the pod. COMMIT or ROLLBACK releases this one on the connection
+// that took it, which is what makes it safe across a rolling update.
+func (q *Queries) TryLockRewrap(ctx context.Context) (bool, error) {
+	row := q.db.QueryRow(ctx, tryLockRewrap)
+	var locked bool
+	err := row.Scan(&locked)
+	return locked, err
+}
+
+const updateApiKeyAD = `-- name: UpdateApiKeyAD :execrows
+UPDATE coach.api_key_config
+SET enc_key_ad      = $1,
+    enc_data_key_ad = $2,
+    kek_id          = $3,
+    ad_src_digest   = sha256($4),
+    updated_at      = now()
+WHERE id = $5 AND enc_data_key IS NOT DISTINCT FROM $4
+`
+
+type UpdateApiKeyADParams struct {
+	EncKeyAd       []byte
+	EncDataKeyAd   []byte
+	KekID          pgtype.Text
+	SeenEncDataKey []byte
+	ID             pgtype.UUID
+}
+
+// Install a freshly sealed AD pair. OPTIMISTIC on the legacy pair: the WHERE pins
+// enc_data_key to the bytes the job decrypted from, so a PUT that replaced the key
+// mid-pass wins (0 rows affected) instead of being clobbered with a pair bound to the old
+// key. ad_src_digest is computed by PG from those same bytes, so the digest and the pair
+// are always written from one consistent observation.
+//
+// IS NOT DISTINCT FROM, not `=`: with a NULL legacy pair (l-01 onwards) `NULL = NULL` is
+// NULL, so a plain `=` could never match such a row and every pass would re-seal it and
+// throw the result away. Against non-NULL bytes the two are identical, so this does not
+// weaken the race check — a racing PUT always writes a non-NULL enc_data_key, which still
+// fails to match the NULL the job observed.
+func (q *Queries) UpdateApiKeyAD(ctx context.Context, arg UpdateApiKeyADParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateApiKeyAD,
+		arg.EncKeyAd,
+		arg.EncDataKeyAd,
+		arg.KekID,
+		arg.SeenEncDataKey,
+		arg.ID,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -238,7 +375,8 @@ const updateApiKeyMeta = `-- name: UpdateApiKeyMeta :one
 UPDATE coach.api_key_config
 SET default_model = $3, name = $4, updated_at = now()
 WHERE account_id = $1 AND provider = $2
-RETURNING id, account_id, provider, enc_key, enc_data_key, masked_key, default_model, enabled, created_at, updated_at, name, is_default
+RETURNING id, account_id, provider, enc_key, enc_data_key, masked_key, default_model, name,
+          enabled, created_at, updated_at, enc_key_ad, enc_data_key_ad, kek_id, ad_src_digest
 `
 
 type UpdateApiKeyMetaParams struct {
@@ -248,16 +386,34 @@ type UpdateApiKeyMetaParams struct {
 	Name         string
 }
 
-// Update a provider's model + name WITHOUT touching the sealed key (switch model / rename).
-// ErrNoRows when that provider isn't connected.
-func (q *Queries) UpdateApiKeyMeta(ctx context.Context, arg UpdateApiKeyMetaParams) (CoachApiKeyConfig, error) {
+type UpdateApiKeyMetaRow struct {
+	ID           pgtype.UUID
+	AccountID    pgtype.UUID
+	Provider     string
+	EncKey       []byte
+	EncDataKey   []byte
+	MaskedKey    string
+	DefaultModel string
+	Name         string
+	Enabled      bool
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+	EncKeyAd     []byte
+	EncDataKeyAd []byte
+	KekID        pgtype.Text
+	AdSrcDigest  []byte
+}
+
+// Update a provider's model + name WITHOUT touching either sealed pair (switch model /
+// rename). ErrNoRows when that provider isn't connected.
+func (q *Queries) UpdateApiKeyMeta(ctx context.Context, arg UpdateApiKeyMetaParams) (UpdateApiKeyMetaRow, error) {
 	row := q.db.QueryRow(ctx, updateApiKeyMeta,
 		arg.AccountID,
 		arg.Provider,
 		arg.DefaultModel,
 		arg.Name,
 	)
-	var i CoachApiKeyConfig
+	var i UpdateApiKeyMetaRow
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
@@ -266,28 +422,38 @@ func (q *Queries) UpdateApiKeyMeta(ctx context.Context, arg UpdateApiKeyMetaPara
 		&i.EncDataKey,
 		&i.MaskedKey,
 		&i.DefaultModel,
+		&i.Name,
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Name,
-		&i.IsDefault,
+		&i.EncKeyAd,
+		&i.EncDataKeyAd,
+		&i.KekID,
+		&i.AdSrcDigest,
 	)
 	return i, err
 }
 
 const upsertApiKeyConfig = `-- name: UpsertApiKeyConfig :one
-INSERT INTO coach.api_key_config (account_id, provider, enc_key, enc_data_key, masked_key, default_model, name, enabled, is_default)
-VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8)
+INSERT INTO coach.api_key_config (
+    account_id, provider, enc_key, enc_data_key, masked_key, default_model, name, enabled,
+    enc_key_ad, enc_data_key_ad, kek_id, ad_src_digest
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, $9, $10, $11)
 ON CONFLICT (account_id, provider) DO UPDATE
-SET enc_key       = EXCLUDED.enc_key,
-    enc_data_key  = EXCLUDED.enc_data_key,
-    masked_key    = EXCLUDED.masked_key,
-    default_model = EXCLUDED.default_model,
-    name          = EXCLUDED.name,
-    enabled       = true,
-    is_default    = coach.api_key_config.is_default OR EXCLUDED.is_default,
-    updated_at    = now()
-RETURNING id, account_id, provider, enc_key, enc_data_key, masked_key, default_model, enabled, created_at, updated_at, name, is_default
+SET enc_key         = EXCLUDED.enc_key,
+    enc_data_key    = EXCLUDED.enc_data_key,
+    masked_key      = EXCLUDED.masked_key,
+    default_model   = EXCLUDED.default_model,
+    name            = EXCLUDED.name,
+    enabled         = true,
+    enc_key_ad      = EXCLUDED.enc_key_ad,
+    enc_data_key_ad = EXCLUDED.enc_data_key_ad,
+    kek_id          = EXCLUDED.kek_id,
+    ad_src_digest   = EXCLUDED.ad_src_digest,
+    updated_at      = now()
+RETURNING id, account_id, provider, enc_key, enc_data_key, masked_key, default_model, name,
+          enabled, created_at, updated_at, enc_key_ad, enc_data_key_ad, kek_id, ad_src_digest
 `
 
 type UpsertApiKeyConfigParams struct {
@@ -298,14 +464,40 @@ type UpsertApiKeyConfigParams struct {
 	MaskedKey    string
 	DefaultModel string
 	Name         string
-	IsDefault    pgtype.Bool
+	EncKeyAd     []byte
+	EncDataKeyAd []byte
+	KekID        pgtype.Text
+	AdSrcDigest  []byte
+}
+
+type UpsertApiKeyConfigRow struct {
+	ID           pgtype.UUID
+	AccountID    pgtype.UUID
+	Provider     string
+	EncKey       []byte
+	EncDataKey   []byte
+	MaskedKey    string
+	DefaultModel string
+	Name         string
+	Enabled      bool
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+	EncKeyAd     []byte
+	EncDataKeyAd []byte
+	KekID        pgtype.Text
+	AdSrcDigest  []byte
 }
 
 // Store or replace the (account, provider) key with pre-sealed material, re-enabling it.
-// $8 is_default: the store passes true only when this is the account's first key. On
-// conflict the row keeps its default flag unless $8 promotes it. The raw key never reaches
-// this layer as a column.
-func (q *Queries) UpsertApiKeyConfig(ctx context.Context, arg UpsertApiKeyConfigParams) (CoachApiKeyConfig, error) {
+// BOTH pairs are written in this ONE statement together with kek_id and ad_src_digest, so
+// no v1.7.0+ writer can leave them divergent: the AD pair always describes the legacy
+// pair sitting next to it. (A v1.6.0 writer during a rollback rewrites only the legacy
+// pair; that is detected afterwards by the digest, not prevented — see rewrap.go.)
+//
+// is_default is NOT named: the column keeps its DEFAULT false for v1.6.0's benefit, and
+// the default itself is written to coach.key_default in the same transaction by the store.
+// The raw key never reaches this layer as a column.
+func (q *Queries) UpsertApiKeyConfig(ctx context.Context, arg UpsertApiKeyConfigParams) (UpsertApiKeyConfigRow, error) {
 	row := q.db.QueryRow(ctx, upsertApiKeyConfig,
 		arg.AccountID,
 		arg.Provider,
@@ -314,9 +506,12 @@ func (q *Queries) UpsertApiKeyConfig(ctx context.Context, arg UpsertApiKeyConfig
 		arg.MaskedKey,
 		arg.DefaultModel,
 		arg.Name,
-		arg.IsDefault,
+		arg.EncKeyAd,
+		arg.EncDataKeyAd,
+		arg.KekID,
+		arg.AdSrcDigest,
 	)
-	var i CoachApiKeyConfig
+	var i UpsertApiKeyConfigRow
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
@@ -325,11 +520,14 @@ func (q *Queries) UpsertApiKeyConfig(ctx context.Context, arg UpsertApiKeyConfig
 		&i.EncDataKey,
 		&i.MaskedKey,
 		&i.DefaultModel,
+		&i.Name,
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Name,
-		&i.IsDefault,
+		&i.EncKeyAd,
+		&i.EncDataKeyAd,
+		&i.KekID,
+		&i.AdSrcDigest,
 	)
 	return i, err
 }

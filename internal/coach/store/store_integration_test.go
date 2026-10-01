@@ -92,16 +92,16 @@ func TestStoreIntegration(t *testing.T) {
 		if keys, _ := st.ListKeys(ctx, acct); len(keys) != 2 {
 			t.Fatalf("want 2 keys, got %d", len(keys))
 		}
-		if def, _ := st.GetDefaultKey(ctx, acct); def.Provider != store.ProviderOpenAI {
+		if def, _ := st.GetDefaultKey(ctx, acct, store.FeatureCoach); def.Provider != store.ProviderOpenAI {
 			t.Fatalf("default = %q, want openai", def.Provider)
 		}
 
 		// Move the default to anthropic.
-		moved, err := st.SetDefault(ctx, acct, store.ProviderAnthropic)
+		moved, err := st.SetDefault(ctx, acct, store.ProviderAnthropic, store.FeatureCoach, "")
 		if err != nil || !moved.IsDefault || moved.Provider != store.ProviderAnthropic {
 			t.Fatalf("set default: %+v err=%v", moved, err)
 		}
-		if def, _ := st.GetDefaultKey(ctx, acct); def.Provider != store.ProviderAnthropic {
+		if def, _ := st.GetDefaultKey(ctx, acct, store.FeatureCoach); def.Provider != store.ProviderAnthropic {
 			t.Fatalf("default did not move: %q", def.Provider)
 		}
 
@@ -117,7 +117,7 @@ func TestStoreIntegration(t *testing.T) {
 		if err := st.DeleteKey(ctx, acct, store.ProviderAnthropic); err != nil {
 			t.Fatalf("delete: %v", err)
 		}
-		if def, _ := st.GetDefaultKey(ctx, acct); def.Provider != store.ProviderOpenAI {
+		if def, _ := st.GetDefaultKey(ctx, acct, store.FeatureCoach); def.Provider != store.ProviderOpenAI {
 			t.Fatalf("delete-default did not promote openai: %q", def.Provider)
 		}
 
@@ -125,7 +125,7 @@ func TestStoreIntegration(t *testing.T) {
 		if err := st.DeleteKey(ctx, acct, store.ProviderOpenAI); err != nil {
 			t.Fatalf("delete last: %v", err)
 		}
-		if _, err := st.GetDefaultKey(ctx, acct); err != store.ErrNotFound {
+		if _, err := st.GetDefaultKey(ctx, acct, store.FeatureCoach); err != store.ErrNotFound {
 			t.Fatalf("default after all deleted = %v, want ErrNotFound", err)
 		}
 		if err := st.DeleteKey(ctx, acct, store.ProviderOpenAI); err != store.ErrNotFound {

@@ -95,3 +95,37 @@ the request — so its schema has no outbox/inbox.
 | **NaCl `secretbox` (XSalsa20-Poly1305)** | Fine, but XChaCha20-Poly1305 is the named primitive and the modern default; both are in `x/crypto`. |
 | **Validate the key with a live provider call on PUT** | Adds latency + a network dependency to the store path; instead the first chat surfaces a bad key and flips `enabled=false`. |
 | **Buffer the coach response in the gateway** (reuse the existing `passthrough`) | Kills streaming — the whole reply would land at once after the model finishes; a dedicated flushing relay is required. |
+
+## Update — 2026-10-01: keys are per (account, provider); defaults are per feature
+
+Two statements in the Context/Consequences above are now out of date. Both were true when this ADR
+was written; neither is a change of decision.
+
+**"Single-key-per-account"** (and the `UNIQUE(account_id)` it implies) ended in **migration `00003`**
+(v1 round 2, F006): a learner connects one key **per provider** — Anthropic and/or OpenAI — and
+switches which one answers without re-pasting. The "multi-key is a later change behind the same
+masked-array response shape" the Consequences anticipated is exactly what happened; `GET /coach/key`
+still returns the masked array.
+
+**Which key answers is now per FEATURE, and lives in its own table.** v1 marked it with
+`api_key_config.is_default`. From sprint [m1-10](../v2/sprints/sprint-m1-10.md) (`v1.7.0`) the source is
+`coach.key_default(account_id, feature)` and `is_default` is neither read nor written by coach
+([m1-08](../v2/sprints/sprint-m1-08.md) drops the column in M1c; `internal/coach/contract_test.go` and
+`hack/lint-dropped-columns.sh` are that drop's precondition). Two features, deliberately asymmetric:
+
+| feature | maintained | who uses it |
+|---|---|---|
+| `coach` | implicitly — the first key becomes it, and deleting it promotes the earliest survivor, so an account with any key always has one | the chat coach (this ADR) |
+| `interview` | **explicitly only** — never auto-assigned, never auto-promoted, so "not set" is a real state the UI renders | the text interviewer ([m6a-02](../v2/sprints/sprint-m6a-02.md)) |
+
+`interview` is never auto-promoted on purpose: an interview brain is a deliberate choice, and
+silently moving it to a model the learner never picked — possibly one without the `interview_brain`
+capability — would be worse than showing "Not set".
+
+**Also from m1-10**, affecting this ADR's "rate/refusal handling and provider errors" sentence: the
+error taxonomy is finer, and **only an auth failure disables a key**. v1 disabled a key on any
+"limited" answer, so running out of credit made the learner re-paste a working key after topping up.
+A quota, rate limit, model-access or region failure now keeps the key and carries a `reason` the SPA
+maps to copy. The envelope-crypto decisions of this ADR (XChaCha20-Poly1305, in-memory-only
+decryption, `X-Coach-Mode`) are unchanged; see [ADR-0007](0007-ai-coach-byo-key-and-secrets.md)'s
+2026-10-01 update for the associated-data and keyring additions.

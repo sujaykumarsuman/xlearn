@@ -24,7 +24,7 @@ import {
 import { courseShortCode, languageNote } from "../lib/course";
 import { courseIcon } from "../lib/courseIcons";
 import { usePaths } from "../lib/curriculum";
-import { COACH_MODELS, COACH_PROVIDERS, coachModelLabel, usePutCoachKey, type ProviderId } from "../lib/settings";
+import { COACH_PROVIDERS, coachModelLabel, useCoachModels, usePutCoachKey, type ProviderId } from "../lib/settings";
 
 /**
  * Auth is the standalone pre-auth screen (no app shell): a two-column layout with a
@@ -764,9 +764,22 @@ function UsernameStepHint({
   return null;
 }
 
+/**
+ * StepCoach is onboarding's optional BYO-key step (AB01 F14, pre-M4 copy).
+ *
+ * The provider list comes from the server catalog, not a baked-in list — Anthropic and
+ * OpenAI today, Google still gone (v1.5.1 / F010). The catalog also names each provider's
+ * recommended model, which becomes the account's `coach` default; if the catalog can't be
+ * read we send no model and let coach pick its own default rather than guess an id here.
+ *
+ * The board's from-M4 variant (the "xLearn AI (included)" card) is deliberately NOT built:
+ * it may only appear once platform AI is actually on for the account (M4), and this step
+ * must promise nothing M4 hasn't shipped.
+ */
 function StepCoach({ onBack, onFinish }: { onBack: () => void; onFinish: () => void }) {
   const complete = useCompleteOnboarding();
   const putKey = usePutCoachKey();
+  const catalog = useCoachModels();
   const [provider, setProvider] = useState<ProviderId>("anthropic");
   const [rawKey, setRawKey] = useState("");
   // The provider whose key was stored here, so a retry after a failed Finish doesn't
@@ -776,6 +789,10 @@ function StepCoach({ onBack, onFinish }: { onBack: () => void; onFinish: () => v
   const key = rawKey.trim();
   const busy = putKey.isPending || complete.isPending;
   const meta = COACH_PROVIDERS.find((p) => p.id === provider)!;
+  // Order and filter the known providers by the catalog's list; before it loads (or if it
+  // fails) offer all of them — an empty segmented control would make an optional step look
+  // broken, and the server validates the provider anyway.
+  const offered = catalog.data ? COACH_PROVIDERS.filter((p) => catalog.data.providers.includes(p.id)) : COACH_PROVIDERS;
 
   const completeOnboarding = () => complete.mutate(undefined, { onSuccess: onFinish });
 
@@ -787,9 +804,9 @@ function StepCoach({ onBack, onFinish }: { onBack: () => void; onFinish: () => v
       completeOnboarding();
       return;
     }
-    const model = COACH_MODELS[provider][0]!.id;
+    const model = catalog.data?.defaults[provider];
     putKey.mutate(
-      { provider, key, default_model: model, name: coachModelLabel(model) },
+      model ? { provider, key, default_model: model, name: coachModelLabel(model, catalog.data?.models) } : { provider, key },
       {
         onSuccess: () => {
           setRawKey("");
@@ -814,16 +831,16 @@ function StepCoach({ onBack, onFinish }: { onBack: () => void; onFinish: () => v
   return (
     <>
       <div className="xl-eyebrow">Step 4 of 4 · optional</div>
-      <h2 style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>Power up your coach</h2>
+      <h2 style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>Your AI coach (your key)</h2>
       <p style={{ fontSize: 13, color: "var(--ds-muted)", marginTop: 4 }}>
-        Add an API key to enable the AI coach on every screen. Used only for your coach.
+        Optional: bring your own AI coach. Your key is stored encrypted; add it later in Settings.
       </p>
 
       <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 12 }}>
         <div className="ds-field">
           <span className="ds-field__label">Provider</span>
           <div className="ds-seg" role="group" aria-label="Coach provider">
-            {COACH_PROVIDERS.map((p) => (
+            {offered.map((p) => (
               <button
                 key={p.id}
                 type="button"
@@ -859,9 +876,11 @@ function StepCoach({ onBack, onFinish }: { onBack: () => void; onFinish: () => v
             onChange={(e) => editKey(e.target.value)}
           />
         </div>
+        {/* The board replaces v1's "stored encrypted" reassurance (now in the lede) with
+            t5 §9's spend-limit tip: the learner is about to hand us a key that spends their
+            money, and the cap lives at the provider, not here. */}
         <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11.5, color: "var(--ds-muted)" }}>
-          <Icon name="lock" className="xl-ico--sm" style={{ color: "var(--ds-ok)" }} /> Stored encrypted with the coach — you can add it
-          anytime from Settings.
+          <Icon name="alert" className="xl-ico--sm" /> Tip: set a monthly spend limit on this key at your provider.
         </div>
       </div>
 
@@ -884,8 +903,7 @@ function StepCoach({ onBack, onFinish }: { onBack: () => void; onFinish: () => v
         disabled={busy}
         onClick={finish}
       >
-        <Icon name="spark" className="xl-ico--sm" />{" "}
-        {putKey.isPending ? "Saving key…" : complete.isPending ? "Finishing…" : "Finish & enter xLearn"}
+        <Icon name="spark" className="xl-ico--sm" /> {putKey.isPending ? "Saving key…" : complete.isPending ? "Finishing…" : "Connect & finish"}
       </button>
       <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
         <button type="button" className="ds-btn ds-btn--ghost" onClick={onBack} disabled={busy}>

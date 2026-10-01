@@ -322,7 +322,7 @@ describe("Auth screen", () => {
 
     await waitFor(() => expect(usernamePosted).toEqual({ username: "ada-l" }));
     // Advances to the (optional) coach step.
-    expect(await screen.findByRole("heading", { name: /power up your coach/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /your ai coach \(your key\)/i })).toBeInTheDocument();
   });
 
   it("resumes at step 3, skips username, and completes onboarding on Finish", async () => {
@@ -342,8 +342,8 @@ describe("Auth screen", () => {
 
     // Skip the username step → coach step → Finish.
     fireEvent.click(await screen.findByRole("button", { name: /skip for now/i }));
-    expect(await screen.findByRole("heading", { name: /power up your coach/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /finish & enter xlearn/i }));
+    expect(await screen.findByRole("heading", { name: /your ai coach \(your key\)/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /connect & finish/i }));
 
     await waitFor(() => expect(posted).toEqual({ step: "finish" }));
   });
@@ -363,18 +363,33 @@ describe("Auth screen", () => {
     renderApp("/xlearn/auth");
 
     fireEvent.click(await screen.findByRole("button", { name: /skip for now/i })); // username step
-    expect(await screen.findByRole("heading", { name: /power up your coach/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /your ai coach \(your key\)/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /skip for now/i })); // coach step
     await waitFor(() => expect(posted).toEqual({ step: "finish" }));
   });
 
+  /** The coach step's providers and the model it saves come from the server catalog
+   *  (m1-10): Anthropic and OpenAI only — Google stays gone — with each provider's
+   *  recommended model as the account's coach default. */
+  const COACH_MODELS_BODY = {
+    as_of: "2026-10-01",
+    providers: ["anthropic", "openai"],
+    models: [
+      { id: "claude-sonnet-5", provider: "anthropic", label: "Sonnet 5", capabilities: ["chat"], price: { input_micros_per_mtok: 2_000_000, output_micros_per_mtok: 10_000_000 }, as_of: "2026-10-01", recommended: true, covered_model: false },
+      { id: "gpt-5.6-sol", provider: "openai", label: "GPT-5.6 Sol", capabilities: ["chat"], price: { input_micros_per_mtok: 4_000_000, output_micros_per_mtok: 20_000_000 }, as_of: "2026-10-01", recommended: true, covered_model: false },
+    ],
+    defaults: { anthropic: "claude-sonnet-5", openai: "gpt-5.6-sol" },
+  };
+
   /** coachStepMock resumes at the username step (path + budget done) and records the
-   *  coach-key PUT + onboarding/step POST bodies in order. `putStatus` fails the PUT. */
-  function coachStepMock(putStatus = 200) {
+   *  coach-key PUT + onboarding/step POST bodies in order. `putStatus` fails the PUT;
+   *  `catalog` false makes GET /coach/models unavailable. */
+  function coachStepMock(putStatus = 200, catalog = true) {
     const calls: Array<{ kind: "put" | "finish"; body: unknown }> = [];
     let finished = false;
     installFetchMock((url, init) => {
       if (url.endsWith("/api/me")) return { status: 200, body: onboardingMe(true, finished) };
+      if (url.includes("/api/coach/models")) return catalog ? { status: 200, body: COACH_MODELS_BODY } : { status: 503, body: { error: { code: "unavailable" } } };
       if (url.endsWith("/api/coach/key") && init?.method === "PUT") {
         calls.push({ kind: "put", body: JSON.parse(String(init.body)) });
         if (putStatus !== 200) return { status: putStatus, body: { error: { code: "invalid_key", message: "key is too long" } } };
@@ -395,40 +410,60 @@ describe("Auth screen", () => {
     renderApp("/xlearn/auth");
     fireEvent.click(await screen.findByRole("button", { name: /skip for now/i })); // username step
     const group = await screen.findByRole("group", { name: /coach provider/i });
-    expect(within(group).getAllByRole("button").map((b) => b.textContent)).toEqual(["Anthropic", "OpenAI"]);
+    await waitFor(() => expect(within(group).getAllByRole("button").map((b) => b.textContent)).toEqual(["Anthropic", "OpenAI"]));
+    // And the step's own copy, including the spend-limit tip: the cap lives at the
+    // provider, not in xLearn.
+    expect(screen.getByText("Optional: bring your own AI coach. Your key is stored encrypted; add it later in Settings.")).toBeInTheDocument();
+    expect(screen.getByText("Tip: set a monthly spend limit on this key at your provider.")).toBeInTheDocument();
+    // The from-M4 variant is not built here: it must promise nothing M4 hasn't shipped.
+    expect(screen.queryByText(/xLearn AI \(included\)/)).not.toBeInTheDocument();
   });
 
   it("saves the typed key via PUT /coach/key before completing onboarding", async () => {
     const calls = coachStepMock();
     renderApp("/xlearn/auth");
     fireEvent.click(await screen.findByRole("button", { name: /skip for now/i })); // username step
-    expect(await screen.findByRole("heading", { name: /power up your coach/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /your ai coach \(your key\)/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "OpenAI" }));
     fireEvent.change(screen.getByLabelText("API key"), { target: { value: "  sk-openai-test-1234  " } });
-    fireEvent.click(screen.getByRole("button", { name: /finish & enter xlearn/i }));
+    fireEvent.click(screen.getByRole("button", { name: /connect & finish/i }));
 
     await waitFor(() => expect(calls.map((c) => c.kind)).toEqual(["put", "finish"]));
-    // Same body shape Settings sends: provider + key + the provider's first model + its label.
+    // The catalog's recommended model for that provider becomes the coach default.
     expect(calls[0]!.body).toEqual({ provider: "openai", key: "sk-openai-test-1234", default_model: "gpt-5.6-sol", name: "GPT-5.6 Sol" });
     expect(calls[1]!.body).toEqual({ step: "finish" });
+  });
+
+  it("saves the key without a model when the catalog is unavailable", async () => {
+    const calls = coachStepMock(200, false);
+    renderApp("/xlearn/auth");
+    fireEvent.click(await screen.findByRole("button", { name: /skip for now/i })); // username step
+    expect(await screen.findByRole("heading", { name: /your ai coach \(your key\)/i })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("API key"), { target: { value: "sk-ant-test-1234" } });
+    fireEvent.click(screen.getByRole("button", { name: /connect & finish/i }));
+
+    // No model id is guessed client-side: coach applies its own catalog default.
+    await waitFor(() => expect(calls.map((c) => c.kind)).toEqual(["put", "finish"]));
+    expect(calls[0]!.body).toEqual({ provider: "anthropic", key: "sk-ant-test-1234" });
   });
 
   it("a failed key save shows an error and does not finish; Skip still completes without the key", async () => {
     const calls = coachStepMock(422);
     renderApp("/xlearn/auth");
     fireEvent.click(await screen.findByRole("button", { name: /skip for now/i })); // username step
-    expect(await screen.findByRole("heading", { name: /power up your coach/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /your ai coach \(your key\)/i })).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("API key"), { target: { value: "sk-ant-bad" } });
-    fireEvent.click(screen.getByRole("button", { name: /finish & enter xlearn/i }));
+    fireEvent.click(screen.getByRole("button", { name: /connect & finish/i }));
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(/couldn’t save your key \(key is too long\)/i);
     expect(alert).toHaveTextContent(/skip for now/i);
     // Onboarding is NOT marked finished and the learner stays on the coach step.
     expect(calls.map((c) => c.kind)).toEqual(["put"]);
-    expect(screen.getByRole("heading", { name: /power up your coach/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /your ai coach \(your key\)/i })).toBeInTheDocument();
 
     // Skip completes onboarding without re-sending the key.
     fireEvent.click(screen.getByRole("button", { name: /skip for now/i }));
@@ -439,7 +474,7 @@ describe("Auth screen", () => {
     const calls = coachStepMock();
     renderApp("/xlearn/auth");
     fireEvent.click(await screen.findByRole("button", { name: /skip for now/i })); // username step
-    fireEvent.click(await screen.findByRole("button", { name: /finish & enter xlearn/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /connect & finish/i }));
     await waitFor(() => expect(calls.map((c) => c.kind)).toEqual(["finish"]));
   });
 });

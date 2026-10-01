@@ -74,11 +74,11 @@ func (c *Cipher) Seal(plaintext []byte) (encKey, encDataKey []byte, err error) {
 	}
 	defer Zero(dataKey)
 
-	encKey, err = sealWith(dataKey, plaintext)
+	encKey, err = sealWith(dataKey, plaintext, nil)
 	if err != nil {
 		return nil, nil, err
 	}
-	encDataKey, err = sealWith(c.master, dataKey)
+	encDataKey, err = sealWith(c.master, dataKey, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -90,13 +90,13 @@ func (c *Cipher) Seal(plaintext []byte) (encKey, encDataKey []byte, err error) {
 // live secret material — the caller MUST Zero it once the provider call is done. Any
 // failure returns ErrDecrypt with no secret bytes.
 func (c *Cipher) Open(encKey, encDataKey []byte) ([]byte, error) {
-	dataKey, err := openWith(c.master, encDataKey)
+	dataKey, err := openWith(c.master, encDataKey, nil)
 	if err != nil {
 		return nil, ErrDecrypt
 	}
 	defer Zero(dataKey)
 
-	plaintext, err := openWith(dataKey, encKey)
+	plaintext, err := openWith(dataKey, encKey, nil)
 	if err != nil {
 		return nil, ErrDecrypt
 	}
@@ -104,8 +104,10 @@ func (c *Cipher) Open(encKey, encDataKey []byte) ([]byte, error) {
 }
 
 // sealWith seals plaintext under a 32-byte key: nonce (24 random bytes) || AEAD sealed
-// ciphertext. The random nonce makes reuse of the same key safe.
-func sealWith(key, plaintext []byte) ([]byte, error) {
+// ciphertext. The random nonce makes reuse of the same key safe. ad is the AEAD
+// associated data: authenticated but not encrypted, so an open with different ad fails.
+// A nil ad is the legacy (unbound) form Seal/Open use.
+func sealWith(key, plaintext, ad []byte) ([]byte, error) {
 	aead, err := chacha20poly1305.NewX(key)
 	if err != nil {
 		return nil, fmt.Errorf("secrets: new aead: %w", err)
@@ -115,12 +117,12 @@ func sealWith(key, plaintext []byte) ([]byte, error) {
 		return nil, fmt.Errorf("secrets: generate nonce: %w", err)
 	}
 	// Seal appends the ciphertext+tag to the nonce, so the result is nonce||ct.
-	return aead.Seal(nonce, nonce, plaintext, nil), nil
+	return aead.Seal(nonce, nonce, plaintext, ad), nil
 }
 
-// openWith reverses sealWith. It returns a bare error (callers map it to ErrDecrypt so
-// no secret bytes escape).
-func openWith(key, blob []byte) ([]byte, error) {
+// openWith reverses sealWith under the same associated data. It returns a bare error
+// (callers map it to ErrDecrypt so no secret bytes escape).
+func openWith(key, blob, ad []byte) ([]byte, error) {
 	aead, err := chacha20poly1305.NewX(key)
 	if err != nil {
 		return nil, err
@@ -130,7 +132,7 @@ func openWith(key, blob []byte) ([]byte, error) {
 		return nil, errors.New("secrets: ciphertext too short")
 	}
 	nonce, ct := blob[:ns], blob[ns:]
-	return aead.Open(nil, nonce, ct, nil)
+	return aead.Open(nil, nonce, ct, ad)
 }
 
 // Zero overwrites b with zeros — call it on a decrypted key buffer as soon as the

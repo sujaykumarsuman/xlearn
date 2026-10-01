@@ -89,6 +89,21 @@ func LoadConfig() Config {
 // MasterKeyFile returns the optional path to a mounted master-key file (COACH_MASTER_KEY_FILE).
 func MasterKeyFile() string { return strings.TrimSpace(os.Getenv("COACH_MASTER_KEY_FILE")) }
 
+// DefaultKEKID is the keyring entry id a single-key deployment stamps its AD-bound pairs
+// with. Production's COACH_MASTER_KEY is k0, so rotating later means prepending k1 to
+// COACH_MASTER_KEYS and letting the re-wrap job migrate every row onto it.
+const DefaultKEKID = "k0"
+
+// MasterKeysSpec returns the optional KEK keyring spec (COACH_MASTER_KEYS), of the form
+// "k1:<base64>,k0:<base64>" with the FIRST entry active. Unset means "run a one-entry
+// keyring over COACH_MASTER_KEY", which is what production does today — this sprint ships
+// the rotation machinery without performing a rotation or touching a SOPS secret.
+func MasterKeysSpec() string { return strings.TrimSpace(os.Getenv("COACH_MASTER_KEYS")) }
+
+// MasterKeysFile returns the optional path to a mounted keyring-spec file
+// (COACH_MASTER_KEYS_FILE), for when the spec is too long or too sensitive for env.
+func MasterKeysFile() string { return strings.TrimSpace(os.Getenv("COACH_MASTER_KEYS_FILE")) }
+
 // Addr is the listen address for http.Server.
 func (c Config) Addr() string { return ":" + c.Port }
 

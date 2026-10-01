@@ -62,3 +62,50 @@ anywhere but their own Settings form, and the key is never echoed back.
 | **External KMS (Vault / cloud KMS)** | Another stateful system / external dependency + cost for a solo single-node deploy; SOPS master key achieves the goal here. |
 | **Store the key in the browser, proxy blind** | Key would live in JS/localStorage (XSS-reachable) and travel on every request; server-side encrypted storage is safer and enables server-built context. |
 | **No storage — ask each session** | Poor UX for a daily-use coach; the design shows a persistent configured key. |
+
+## Update — 2026-10-01: the gateway transits the PUT; AEAD associated data + a KEK keyring
+
+Sprint [m1-10](../v2/sprints/sprint-m1-10.md) implements the P1 fixes [ADR-0031](0031-platform-ai-and-two-tier-keys.md) §7 asks of this ADR. Three
+clarifications to the handling rules above.
+
+**The gateway TRANSITS the key; it never stores or logs it — and that is now test-backed.**
+This ADR's "the key never crosses to the browser or gateway" is accurate about *storage* but reads as
+if the gateway never sees the bytes at all. It does: `PUT /api/coach/key` arrives at the gateway and
+is forwarded verbatim to coach, which seals it. The raw key exists in the gateway only as bytes in
+flight — never in a log, a response body or an error path. That is the one claim here a careless
+change could falsify invisibly (a debug log of a request body; an echoed upstream error), so
+`internal/gateway/coach_key_transit_test.go` now sends a sentinel key through the real middleware
+chain and asserts it appears in what coach received and in **no** log record at DEBUG (access log
+included), no response body, and no error path (coach down → a clean 502).
+
+**Sealed material is bound to its owner (associated data).** A sealed pair alone says nothing about
+whose it is, so anyone with database write access could swap two rows' ciphertext and have the coach
+answer one learner with another's key. Keys are now also sealed with AEAD associated data
+`xlearn/coach/key/v1|<account_id>|<provider>` on **both** envelope layers, so a pair moved between
+accounts or providers fails to open instead of decrypting into the wrong context.
+
+Because v1.6.0 opens the sealed material with **nil** associated data, re-sealing the existing
+columns in place would have made every key unreadable by the previous release — silently raising
+coach's rollback floor while `v1.7.0` declares 1.6.0 ([ADR-0034](0034-v2-release-labelling-gating-and-rollback.md) §3). So M1b stores **two** pairs: the
+legacy unbound pair (dual-written, still readable by v1.6.0) and the AD-bound pair, tied to the
+legacy pair it was sealed beside by `ad_src_digest = sha256(enc_data_key)`. The digest is what
+detects a key replaced by a v1.6.0 image during a rollback, which rewrites only the legacy columns:
+without it, chat would answer from the stale AD pair after rolling forward — billing the old key, or
+disabling the new one on a 401.
+
+**The binding is therefore not yet ENFORCED.** While the legacy pair exists, a reader still falls
+back to it when the AD pair is absent or stale, so the swap above is still reachable by forcing that
+path. Enforcement arrives when the legacy pair is contracted in two steps once the floor passes
+1.7.0 — [l-01](../v2/sprints/sprint-l-01.md) (`v1.11.0`) stops reading and writing it, [l-02](../v2/sprints/sprint-l-02.md) (`v1.12.0`) drops it. The residual risk is
+accepted until then: v2 is owner-only (D35) and the database is not reachable from outside the
+cluster (MI-5).
+
+**Master-key rotation is now code, not a procedure.** This ADR's "re-wrap data keys with the new
+master (background re-encrypt); overlap window" is realised as a **KEK keyring**
+(`COACH_MASTER_KEYS="k1:<b64>,k0:<b64>"`, first entry active) plus a background job
+(`internal/coach/rewrap.go`) that moves rows onto the active entry in batches while the retiring
+entry can still open what it sealed. Each pair records its `kek_id`, so the overlap window needs no
+coordination. Production runs a one-entry keyring (`k0` = today's `COACH_MASTER_KEY`): this sprint
+ships the machinery without performing a rotation and changes no SOPS secret. A row the job cannot
+decrypt is **skipped and reported, never deleted or disabled** — it is most likely sealed under a key
+retired too early, and the key itself may be perfectly valid.

@@ -20,9 +20,12 @@
 #   * the retired conflict target ON CONFLICT (account_id, week_of), case- and
 #     whitespace-tolerant (newlines between the tokens included).
 #
-# Allowlist: is_default in internal/coach/store/{queries/*.sql,gen/*.sql.go} until m1-10
-# stops coach reading it — printed as a note, never a failure. Migrations are not
-# scanned (history: never edited).
+# No allowlist. m1-03 exempted is_default in internal/coach/store/{queries,gen} because
+# coach still dual-wrote it then; m1-10 moved coach entirely onto coach.key_default, so
+# the gate now covers every service uniformly and a reintroduced reader fails CI wherever
+# it appears. (internal/coach/contract_test.go greps the Go source for the same thing, so
+# both the SQL and the code paths are covered.) Migrations are not scanned (history:
+# never edited).
 #
 # Usage:
 #   hack/lint-dropped-columns.sh              scan the tree
@@ -46,7 +49,6 @@ lint_file() {
 	BEGIN {
 		ncols = split("total_35 is_reinforcement leetcode_url neetcode_url code_template is_default", cols, " ")
 		gomode = (as ~ /\.go$/)
-		coach = (as ~ /(^|\/)internal\/coach\/store\/(queries\/[^\/]*\.sql|gen\/[^\/]*\.sql\.go)$/)
 		inraw = 0; buf = ""; bad = 0
 	}
 	{
@@ -69,12 +71,8 @@ lint_file() {
 		line = tolower(line)
 		for (c = 1; c <= ncols; c++) {
 			if (line ~ ("(^|[^a-z0-9_])" cols[c] "([^a-z0-9_]|$)")) {
-				if (cols[c] == "is_default" && coach) {
-					printf "note: %s:%d: is_default (allowlisted in coach until m1-10)\n", file, FNR
-				} else {
-					printf "%s:%d: %s\n", file, FNR, cols[c]
-					bad = 1
-				}
+				printf "%s:%d: %s\n", file, FNR, cols[c]
+				bad = 1
 			}
 		}
 		# Join the lines with a space so the conflict target is found across them;
