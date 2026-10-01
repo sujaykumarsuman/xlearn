@@ -1,0 +1,9 @@
+class Shelf:
+    def __init__(self, capacity: int):
+        pass
+
+    def Put(self, key: int, label: str) -> None:
+        pass
+
+    def Get(self, key: int) -> str:
+        return ""

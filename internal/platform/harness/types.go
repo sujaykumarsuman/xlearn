@@ -4,7 +4,7 @@
 // wire-format spec, `func-json@1` and `class-ops@1`).
 //
 // m3-02 created it with the Go half (this package's types, codec and the Go templates);
-// m3-04 adds the C++ and Python templates and preludes without changing a byte on fd 3 or
+// m3-04 added the C++ and Python templates and preludes without changing a byte on fd 3 or
 // fd 4. harness@v is part of contract_hash, so the wire format is fixed once: a change that
 // alters frame bytes is a new major (`@2`), never an edit of `@1`.
 //

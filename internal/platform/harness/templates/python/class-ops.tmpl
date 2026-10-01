@@ -1,0 +1,38 @@
+{{template "header" .}}
+
+
+def xl_case(p):
+    ops, args = xl.ops_of(p, {{q .Name}})
+    import solution
+
+    a = xl.arity(args[0], {{len .Params}})
+{{- range $i, $a := .Params}}
+    xlC{{$i}} = xl.{{$a.Dec}}(a[{{$i}}])
+{{- end}}
+    w = xl.Writer()
+    w.raw('{"ok":[null')
+    xlObj = solution.{{.Name}}({{range $i, $a := .Params}}{{if $i}}, {{end}}xlC{{$i}}{{end}})
+    for xlI in range(1, len(ops)):
+        w.raw(",")
+        xlOp = ops[xlI]
+{{- range $k, $o := .Ops}}
+        {{if $k}}elif{{else}}if{{end}} xlOp == {{q $o.Name}}:
+            a = xl.arity(args[xlI], {{len $o.Params}})
+{{- range $i, $a := $o.Params}}
+            xlA{{$i}} = xl.{{$a.Dec}}(a[{{$i}}])
+{{- end}}
+{{- if $o.Void}}
+            xlObj.{{$o.Name}}({{range $i, $a := $o.Params}}{{if $i}}, {{end}}xlA{{$i}}{{end}})
+            w.raw("null")
+{{- else}}
+            xlR = xlObj.{{$o.Name}}({{range $i, $a := $o.Params}}{{if $i}}, {{end}}xlA{{$i}}{{end}})
+            xl.{{$o.Enc}}(w, xlR)
+{{- end}}
+{{- end}}
+        else:
+            xl.fail("bad_input")
+    w.raw("]}")
+    return w
+
+
+xl.run(xl_case)

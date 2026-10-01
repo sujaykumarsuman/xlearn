@@ -1,0 +1,12 @@
+class Shelf {
+public:
+    Shelf(int capacity) {
+    }
+
+    void Put(int key, string label) {
+    }
+
+    string Get(int key) {
+        return {};
+    }
+};

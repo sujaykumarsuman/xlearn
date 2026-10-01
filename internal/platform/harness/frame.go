@@ -69,7 +69,7 @@ func ReadFrame(r io.Reader) ([]byte, error) {
 }
 
 // PanicClasses are the closed per-language panic classes a `{"panic"}` frame may carry.
-// Go's are generated here; m3-04 adds the C++ and Python harnesses that emit theirs.
+// Each language's generated harness (Go, C++, Python) emits only its own set.
 var PanicClasses = map[string][]string{
 	"go":     {"index_out_of_range", "nil_dereference", "divide_by_zero", "slice_bounds", "nil_map_write", "other"},
 	"cpp":    {"out_of_range", "bad_alloc", "length_error", "logic_error", "runtime_error", "other"},

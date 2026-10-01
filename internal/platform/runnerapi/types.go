@@ -317,6 +317,9 @@ type ProfileInfo struct {
 	TLMultiplier  float64  `json:"tl_multiplier"`
 	Calibrated    bool     `json:"calibrated"`
 	MemBaselineKB int64    `json:"mem_baseline_kb"`
+	// Language is the item `languages[]` value this profile serves (go, cpp, python; m3-04):
+	// the one language → profile table. Empty for a test profile.
+	Language string `json:"language,omitempty"`
 }
 
 // StatsResponse is the body of GET /v1/stats: read-only counters, no learner data. The

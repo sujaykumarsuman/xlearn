@@ -2,7 +2,7 @@
 
 The public, versioned harness codec: the closed type registry, canonical JSON, the fd-3/fd-4 frame protocol and
 the per-language harness generators. **This file is the `@1` spec.** m3-02 created the package with the Go half;
-m3-04 adds C++ and Python without changing a byte on fd 3 or fd 4. `harness@v` is part of `contract_hash`, so a
+m3-04 added C++ and Python without changing a byte on fd 3 or fd 4. `harness@v` is part of `contract_hash`, so a
 change that alters frame bytes is a new major (`@2`), never an edit of `@1`.
 
 Users: packlint (m3-02, every pack gate), the runner profiles (m3-04), judge (m3-06: `Generate`, `EncodeInput`,
@@ -73,9 +73,36 @@ fd 4  {"ok":<value>}          the result; class-ops@1: one entry per op, null fo
   `testdata/golden/` pin the generated source. A source change that keeps the frame bytes refreshes the goldens
   with `go test -update`; a byte change on fd 3/fd 4 is `@2`.
 - `Generate` returns `[]runnerapi.File` (`runnerapi` exists since m3-03).
-- m3-04 adds `templates/cpp`: `zz_xl_harness.cpp` + `xl_prelude.hpp`, where the learner calls a method of
-  `class Solution`.
-- m3-04 also adds `templates/python`: `__main__.py` + `xl_prelude.py`, also through `class Solution`.
+
+## Generated files (C++ and Python, m3-04)
+
+The same bytes on fd 3 and fd 4; only the source changes.
+
+| Language | Learner file | Harness files | Build (the runner profile) |
+|---|---|---|---|
+| C++ | `solution.cpp`: `class Solution` with the method (`func-json@1`), or the class with its constructor and one method per op (`class-ops@1`); no `main`, no includes needed | `zz_xl_harness.cpp`: includes `xl_prelude.hpp`, defines the node structs the signature uses (`ListNode{val,next}`, `TreeNode{val,left,right}`, `Node{val,neighbors}`, LeetCode shapes), `#include "solution.cpp"`, then `main`; `xl_prelude.hpp`: `<bits/stdc++.h>`, `using namespace std;`, the reader/writer and the exception → panic-class map in `namespace xlh` | `g++ -std=gnu++20 -O2 -static … zz_xl_harness.cpp`; diagnostics keep `solution.cpp:line` |
+| Python | `solution.py`: `class Solution` with the method, or the class with `__init__` and one method per op | `__main__.py`: `XL_REQUIRES`, installs the node classes the signature uses into `builtins` (so `solution.py` sees `ListNode`, `TreeNode`, `Node`), imports `solution`, one case; `xl_prelude.py`: the node classes, the reader (`json`) and writer, the exception → panic-class map | a stored zipapp `app.pyz`, run with `python3 -s -P -S -B` |
+
+- `xl_prelude.hpp` and `xl_prelude.py` are **one static file each** for every signature (a precompiled header can
+  serve the C++ one, m3-15). The node structs sit in the generated `zz_xl_harness.cpp`, and only the ones the
+  signature uses, so a learner's own `Node` helper doesn't clash.
+- A learner file without the function or with the wrong signature fails in the harness file: C++ at compile
+  (`zz_xl_harness.cpp`); Python at the profile's compile step, which checks `solution.py` against
+  `XL_REQUIRES` (class, `(method, positional arity)` pairs) and reports a miss in `__main__.py`.
+- A wrong-typed Python result (a `str` for `int`, `None` for a scalar, a `bool` for an `int`) raises `TypeError`
+  in the encoder: `{"panic":"TypeError"}`. `None` for an array or a node type is `[]`, like Go's nil. An `int`
+  outside its range is written as is (the decoder rejects it, as for Go).
+- C++ catches `out_of_range`, `length_error`, `logic_error`, `bad_alloc`, `runtime_error`, then anything else
+  (`other`); Python checks `RecursionError`, `ZeroDivisionError`, `IndexError`, `KeyError`, `ValueError`,
+  `TypeError`, `AttributeError`, `AssertionError` by `isinstance`, then `other`. A learner `exit`, a signal or a stack
+  overflow leaves fd 4 empty, as in Go. Python's harness raises `sys.setrecursionlimit` to 10⁶; the profile sets
+  `RLIMIT_STACK` to the memory limit for C++ and Python.
+- Floats: C++ and Python spell a float exactly as Go's `strconv.FormatFloat(v, 'g', -1, 64)` (shortest round-trip
+  digits from `std::to_chars` / `repr`, `%e` when the exponent is < -4 or ≥ 6).
+- Identifiers starting with `xl` are reserved; `Generate` refuses a name that is a keyword of the target language
+  or that the generated code uses (`main`, the node types, Python's `self`).
+- `Starter(lang, harness, sig)` returns the learner-file skeleton (zero-value returns, empty methods) used when an
+  item has no `_starter/solution.<ext>`; it compiles with the harness and fails the samples.
 
 ## Tests
 
@@ -83,3 +110,9 @@ fd 4  {"ok":<value>}          the result; class-ops@1: one entry per op, null fo
 - `generate_test.go` builds the generated Go harness with synthetic learner files and runs each case as its own
   process with fd 3 / fd 4. It checks that every type round-trips byte-identically to `OKFrame`, that panic
   classes and harness errors come back, and that a missing function fails in the harness file.
+- `crosslang_test.go` (m3-04): the C++ and Python harnesses against Go's bytes — every type through an echo class,
+  hundreds of floats, m3-02's fixture references, panic classes, harness errors in every language, a missing C++
+  method in the harness file, starters, and goldens for the generated C++ and Python sources. A missing `g++`
+  (with `bits/stdc++.h`) or `python3` ≥ 3.10 skips that language (macOS has no libstdc++); CI's Linux `go` lane has
+  both.
+- `contentcheck_it_test.go` (runner-it lane): the public content check through the real jail.

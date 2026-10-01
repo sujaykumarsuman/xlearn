@@ -1,0 +1,23 @@
+{{template "header" .}}
+
+signed main() {
+    return xlh::run([](xlh::W& xlW) {
+        xlh::P xlP(xlh::read_input());
+        xlP.expect('{');
+        if (xlP.str() != "args") xlh::fail("bad_input");
+        xlP.expect(':');
+        xlP.expect('[');
+{{- range $i, $a := .Params}}
+{{- if $i}}
+        xlP.expect(',');{{end}}
+        {{$a.Type}} xlA{{$i}} = xlh::C<{{$a.Type}}>::dec(xlP);
+{{- end}}
+        xlP.expect(']');
+        xlP.expect('}');
+        xlP.end();
+        {{.Ret}} xlR = Solution().{{.Name}}({{range $i, $a := .Params}}{{if $i}}, {{end}}xlA{{$i}}{{end}});
+        xlW.raw("{\"ok\":");
+        xlh::C<{{.Ret}}>::enc(xlW, xlR);
+        xlW.raw("}");
+    });
+}
