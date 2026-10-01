@@ -9,18 +9,18 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ✅ Done (run r-46, [PR #115](https://github.com/sujaykumarsuman/xlearn/pull/115), merge only; ships in `runner-v1.0.0`)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Closed type registry + canonical JSON (extend m3-02's `internal/platform/harness`) | X | ⬜ |
-| 2 | Harness codecs `func-json@1` and `class-ops@1` for Go, C++ and Python | X | ⬜ |
-| 3 | Profiles `go@1.26`, `cpp@g++14`, `python@3.13` | X | ⬜ |
-| 4 | Per-profile source lint (`internal/platform/runnerapi/lint`) | X | ⬜ |
-| 5 | amd64 allowlists: exec and compile filters per profile | X | ⬜ |
-| 6 | Synthetic items + reference and wrong-solution tests (Linux CI) | X | ⬜ |
-| 7 | Provisional TL multipliers, docs, hand-offs | X | ⬜ |
-| 8 | Public content CI: compiled starters + reference passes samples (m3-01's hand-off) | X | ⬜ |
+| 1 | Closed type registry + canonical JSON (extend m3-02's `internal/platform/harness`) | X | ✅ m3-02's registry and codec reused byte for byte; compatibility golden `compat-m3-02-fixtures.golden`; leaf guard extended |
+| 2 | Harness codecs `func-json@1` and `class-ops@1` for Go, C++ and Python | X | ✅ C++/Python templates + static preludes, `Starter`; frames byte-identical to Go's (cross-language goldens, CI `go` lane and the jail) |
+| 3 | Profiles `go@1.26`, `cpp@g++14`, `python@3.13` | X | ✅ seed read-only in place (`runner seed-gocache`), artifact modes, diagnostics, `ForLanguage`, ProfileSHA |
+| 4 | Per-profile source lint (`internal/platform/runnerapi/lint`) | X | ✅ `Check` + `CheckNames` (front: 400); goldens per rule; evasion fixtures stopped by the jail |
+| 5 | amd64 allowlists: exec and compile filters per profile | X | ✅ t3 §16.2 verbatim + go `close`, cpp abort's 5 calls; arm64 dev lists KILL-default; LOG switch retired |
+| 6 | Synthetic items + reference and wrong-solution tests (Linux CI) | X | ✅ 7 items + m3-02's 3 in 3 languages through the jail; WA/TLE/RE/CE/MLE/REJECTED; runner-it amd64 green |
+| 7 | Provisional TL multipliers, docs, hand-offs | X | ✅ multipliers from CI amd64 (status.md decisions); runner.md, authoring.md; hand-offs m3-06, m3-13, m3-15 |
+| 8 | Public content CI: compiled starters + reference passes samples (m3-01's hand-off) | X | ✅ `contentcheck_it_test.go` in runner-it: curriculum vacuous (no code item yet); self-test on m3-02's fixture content |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row, the M3 milestone row, the MI-12 "runner code" part).
@@ -28,11 +28,11 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] [m3-03](sprint-m3-03.md) merged: `internal/runner/profile` (the `Profile` type and registry), `internal/runner/seccomp` (filters from name lists), the jail and the `runner-it` CI job are on `main`; ADR-0030 is **Accepted**.
-- [ ] [t3 §16.2](../research/t3-sandbox.md) holds the amd64 allowlists for **`go`, `cpp` and `python`** as sorted syscall-name lists with **0 unexpected SIGSYS under KILL**, plus the compile-jail syscall sets.
-- [ ] The item schema is frozen ([m1-01](sprint-m1-01.md)): `internal/course` exposes `Signature{Mode, Name, Params[{Name, Type}], Returns, Ops}`, `Harness`, `Languages`.
-- [ ] [m3-02](sprint-m3-02.md) merged (it runs first, order 14): **`internal/platform/harness`** exists with the Go `func-json@1` / `class-ops@1` codec, its **README wire format** and goldens, and **`internal/platform/checker`** holds the closed checker registry; its synthetic fixture pack (`internal/judge/testdata/pack`) is on `main`. **The README's wire format must be t3 §6.2's** (one `u32`-BE-framed canonical JSON frame in on fd 3, one out on fd 4). If it chose another channel (stdin/stdout, no framing), **stop and report**: `harness@1` is inside `contract_hash`, so reconciling it is an owner-visible decision, not a silent rewrite. *(If m3-02 has not merged, follow its own rule in reverse — create `internal/platform/harness` here with the README, leave `internal/platform/checker` to m3-02 and use a test-only comparator until it lands — and record the order in the decisions log.)*
-- [ ] No open peer PR touches `internal/runner/profile/`, `internal/platform/harness/`, `internal/platform/checker/` or `internal/platform/runnerapi/lint/` (`gh pr list`, `git worktree list`, ListAgents).
+- [x] [m3-03](sprint-m3-03.md) merged: `internal/runner/profile` (the `Profile` type and registry), `internal/runner/seccomp` (filters from name lists), the jail and the `runner-it` CI job are on `main`; ADR-0030 is **Accepted**.
+- [x] [t3 §16.2](../research/t3-sandbox.md) holds the amd64 allowlists for **`go`, `cpp` and `python`** as sorted syscall-name lists with **0 unexpected SIGSYS under KILL**, plus the compile-jail syscall sets.
+- [x] The item schema is frozen ([m1-01](sprint-m1-01.md)): `internal/course` exposes `Signature{Mode, Name, Params[{Name, Type}], Returns, Ops}`, `Harness`, `Languages`.
+- [x] [m3-02](sprint-m3-02.md) merged (it runs first, order 14): **`internal/platform/harness`** exists with the Go `func-json@1` / `class-ops@1` codec, its **README wire format** and goldens, and **`internal/platform/checker`** holds the closed checker registry; its synthetic fixture pack (`internal/judge/testdata/pack`) is on `main`. **The README's wire format must be t3 §6.2's** (one `u32`-BE-framed canonical JSON frame in on fd 3, one out on fd 4). If it chose another channel (stdin/stdout, no framing), **stop and report**: `harness@1` is inside `contract_hash`, so reconciling it is an owner-visible decision, not a silent rewrite. *(If m3-02 has not merged, follow its own rule in reverse — create `internal/platform/harness` here with the README, leave `internal/platform/checker` to m3-02 and use a test-only comparator until it lands — and record the order in the decisions log.)*
+- [x] No open peer PR touches `internal/runner/profile/`, `internal/platform/harness/`, `internal/platform/checker/` or `internal/platform/runnerapi/lint/` (`gh pr list`, `git worktree list`, ListAgents).
 
 This sprint is not gated by the [M3 hard entry checklist](../rollout-plan.md#5-m3-hard-entry-checklist) (that gates [m3-11](sprint-m3-11.md)); it produces part of MI-12's code.
 
@@ -200,16 +200,16 @@ Sources: [t1 §7.2](../research/t1-content-data-model.md#72-ci-validation) ("sta
 
 ## Acceptance criteria
 
-- [ ] **Reference solutions pass** samples and synthetic hidden cases **in all 3 languages** for every item, through the real jail in CI.
-- [ ] **Wrong solutions are classified** WA / TLE / RE / CE (plus MLE and REJECTED) in all 3 languages; a runtime SIGSYS is `signal(SIGSYS)` → RE.
-- [ ] `func-json@1` and `class-ops@1` round-trip every registry type; non-float outputs are byte-identical across Go, C++ and Python; malformed inputs and unencodable outputs give typed errors.
-- [ ] Every profile's exec allowlist equals t3 §16.2 plus justified, recorded additions; the dangerous set is in no exec list; the arm64 delta never links into an amd64 build.
-- [ ] Lint golden fixtures pass; each lint-evasion fixture is stopped by the jail.
-- [ ] `GET /v1/profiles` serves the three profiles with toolchain versions, `ProfileSHA`, memory baselines and provisional multipliers (`calibrated: false`).
-- [ ] **One harness package:** `internal/platform/harness` is extended, not duplicated; m3-02's Go fixtures give the same fd-3/fd-4 bytes before and after; the leaf-library import guard passes; tests compare through `internal/platform/checker`.
-- [ ] Public content CI (task 8): every code item's starter compiles in each listed language, and every public `_code` reference passes its samples through the jail.
-- [ ] `runner seed-gocache` builds a seed that a compile uses **read-only in place** with no `std` rebuild (the `runner_it` test "compile with a read-only seed rebuilds no std"; no overlay); each profile's artifact runs with its `ArtifactMode`.
-- [ ] CI green (macOS-safe lanes and `runner-it`); `sqlc diff` unchanged; docs and hand-offs recorded.
+- [x] **Reference solutions pass** samples and synthetic hidden cases **in all 3 languages** for every item, through the real jail in CI.
+- [x] **Wrong solutions are classified** WA / TLE / RE / CE (plus MLE and REJECTED) in all 3 languages; a runtime SIGSYS is `signal(SIGSYS)` → RE.
+- [x] `func-json@1` and `class-ops@1` round-trip every registry type; non-float outputs are byte-identical across Go, C++ and Python; malformed inputs and unencodable outputs give typed errors.
+- [x] Every profile's exec allowlist equals t3 §16.2 plus justified, recorded additions; the dangerous set is in no exec list; the arm64 delta never links into an amd64 build.
+- [x] Lint golden fixtures pass; each lint-evasion fixture is stopped by the jail.
+- [x] `GET /v1/profiles` serves the three profiles with toolchain versions, `ProfileSHA`, memory baselines and provisional multipliers (`calibrated: false`).
+- [x] **One harness package:** `internal/platform/harness` is extended, not duplicated; m3-02's Go fixtures give the same fd-3/fd-4 bytes before and after; the leaf-library import guard passes; tests compare through `internal/platform/checker`.
+- [x] Public content CI (task 8): every code item's starter compiles in each listed language, and every public `_code` reference passes its samples through the jail.
+- [x] `runner seed-gocache` builds a seed that a compile uses **read-only in place** with no `std` rebuild (the `runner_it` test "compile with a read-only seed rebuilds no std"; no overlay); each profile's artifact runs with its `ArtifactMode`.
+- [x] CI green (macOS-safe lanes and `runner-it`); `sqlc diff` unchanged; docs and hand-offs recorded.
 
 ## Release
 
