@@ -197,7 +197,9 @@ jobs:
           cp -R internal/judge/testdata/pack "$RUNNER_TEMP/planted"
           mkdir -p "$RUNNER_TEMP/planted/courses/fixture/items/fx-001/gen"
           echo 'package main' > "$RUNNER_TEMP/planted/courses/fixture/items/fx-001/gen/planted.go"
-          if "$P" listing "$RUNNER_TEMP/planted"; then echo "::error::a planted gen/ file passed the listing test"; exit 1; fi
+          # The negative control's expected failure lines stay out of the log (no error annotations).
+          if "$P" listing "$RUNNER_TEMP/planted" >/dev/null; then echo "::error::a planted gen/ file passed the listing test"; exit 1; fi
+          echo "listing negative control: the planted gen/ file failed, as it must"
 
   # NATS-auth integration test (mi-05, ADR-0035 §2 "Verification before any seed is
   # mounted"): boots the prod minor (nats:2.14, deploy/local/nats-acl.compose.yml) with

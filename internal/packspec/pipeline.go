@@ -682,12 +682,15 @@ type GateResult struct {
 	Detail string `json:"detail,omitempty"`
 }
 
+// String is the gate's report line. The status follows " — ", never ": ", so a target path
+// such as submissions/brute.go is not read as a compiler diagnostic ("file.go: message") by
+// CI problem matchers (setup-go's flagged every passing gate as an error annotation).
 func (g GateResult) String() string {
 	s := fmt.Sprintf("%s %s", g.Item, g.Gate)
 	if g.Target != "" {
 		s += " " + g.Target
 	}
-	s += ": " + g.Status
+	s += " — " + g.Status
 	if g.Detail != "" {
 		s += " (" + g.Detail + ")"
 	}
