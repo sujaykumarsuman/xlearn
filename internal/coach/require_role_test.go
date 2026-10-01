@@ -29,7 +29,9 @@ func TestUserRoutesRequireLearner(t *testing.T) {
 	anthropic := NewAnthropicProvider(prov.URL, prov.Client())
 	const account = "11111111-1111-4111-8111-111111111111"
 	newSvc := func(v fakeVerifier) *Service {
-		return NewService(newMemStore(), v, testCipher(), openai, anthropic, coursetest.Registry(t), discardLogger())
+		// A nil keyring exercises the single-entry fallback over the legacy cipher, which
+		// is what production runs while COACH_MASTER_KEYS is unset.
+		return NewService(newMemStore(), v, testCipher(), nil, openai, anthropic, coursetest.Registry(t), discardLogger())
 	}
 	learner := newSvc(fakeVerifier{subject: account})
 	publicRead := newSvc(fakeVerifier{subject: account, roles: []string{auth.RolePublicRead}}).Handler()

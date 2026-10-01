@@ -11,29 +11,159 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const listKeyDefaults = `-- name: ListKeyDefaults :many
-SELECT account_id, feature, key_id, model, updated_at
-FROM coach.key_default
-WHERE account_id = $1
-ORDER BY feature
+const deleteKeyDefault = `-- name: DeleteKeyDefault :exec
+DELETE FROM coach.key_default
+WHERE account_id = $1 AND feature = $2
 `
 
-// An account's default rows (tests and m1-10's Settings panel).
-func (q *Queries) ListKeyDefaults(ctx context.Context, accountID pgtype.UUID) ([]CoachKeyDefault, error) {
+type DeleteKeyDefaultParams struct {
+	AccountID pgtype.UUID
+	Feature   string
+}
+
+// Clear one feature's default without touching the key (used to unset an `interview`
+// brain). `coach` is never cleared this way — it is promoted, not emptied.
+func (q *Queries) DeleteKeyDefault(ctx context.Context, arg DeleteKeyDefaultParams) error {
+	_, err := q.db.Exec(ctx, deleteKeyDefault, arg.AccountID, arg.Feature)
+	return err
+}
+
+const getKeyDefault = `-- name: GetKeyDefault :one
+
+SELECT k.id, k.account_id, k.provider, k.enc_key, k.enc_data_key, k.masked_key,
+       k.default_model, k.name, k.enabled, k.created_at, k.updated_at,
+       k.enc_key_ad, k.enc_data_key_ad, k.kek_id, k.ad_src_digest,
+       d.model AS feature_model
+FROM coach.key_default AS d
+JOIN coach.api_key_config AS k ON k.id = d.key_id
+WHERE d.account_id = $1 AND d.feature = $2
+`
+
+type GetKeyDefaultParams struct {
+	AccountID pgtype.UUID
+	Feature   string
+}
+
+type GetKeyDefaultRow struct {
+	ID           pgtype.UUID
+	AccountID    pgtype.UUID
+	Provider     string
+	EncKey       []byte
+	EncDataKey   []byte
+	MaskedKey    string
+	DefaultModel string
+	Name         string
+	Enabled      bool
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+	EncKeyAd     []byte
+	EncDataKeyAd []byte
+	KekID        pgtype.Text
+	AdSrcDigest  []byte
+	FeatureModel string
+}
+
+// coach.key_default(account_id, feature) — the PER-FEATURE default key.
+//
+// m1-02 (M1a) created it beside api_key_config.is_default and dual-wrote the
+// feature='coach' row. m1-10 (here) makes it the ONLY default source: is_default is no
+// longer read or written by coach, and `interview` joins `coach` as a feature. m1-08
+// (M1c) then drops the column.
+//
+// Two features, deliberately asymmetric:
+//   - coach     — always present once the account has any key. The first key becomes it;
+//     deleting it promotes the earliest surviving key. Chat resolves through it.
+//   - interview — only ever set EXPLICITLY (t6 §11 / m6a-02). Never auto-assigned and
+//     never auto-promoted: a learner who has not chosen an interview brain
+//     has none, and "Not set" is a real state the UI shows. Its model may be
+//     a catalog id with the interview_brain capability or a custom id.
+//
+// A row dies with its key (key_id … ON DELETE CASCADE, migration 00004).
+// The account's default key for one feature, with everything a provider call needs: the
+// key's sealed material (both pairs) and enabled flag, plus the FEATURE's chosen model.
+// ErrNoRows when that feature has no default (no keys at all, or `interview` never set).
+//
+// d.model is the feature's model and may differ from the key's own default_model — the
+// caller prefers d.model and falls back to k.default_model, then to the catalog default.
+func (q *Queries) GetKeyDefault(ctx context.Context, arg GetKeyDefaultParams) (GetKeyDefaultRow, error) {
+	row := q.db.QueryRow(ctx, getKeyDefault, arg.AccountID, arg.Feature)
+	var i GetKeyDefaultRow
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Provider,
+		&i.EncKey,
+		&i.EncDataKey,
+		&i.MaskedKey,
+		&i.DefaultModel,
+		&i.Name,
+		&i.Enabled,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.EncKeyAd,
+		&i.EncDataKeyAd,
+		&i.KekID,
+		&i.AdSrcDigest,
+		&i.FeatureModel,
+	)
+	return i, err
+}
+
+const getKeyDefaultKeyID = `-- name: GetKeyDefaultKeyID :one
+SELECT key_id FROM coach.key_default
+WHERE account_id = $1 AND feature = $2
+`
+
+type GetKeyDefaultKeyIDParams struct {
+	AccountID pgtype.UUID
+	Feature   string
+}
+
+// The key id backing one feature's default, or ErrNoRows. The store marks
+// KeyConfig.IsDefault from the feature='coach' answer, so GET /keys's v1 JSON
+// (keys[].is_default, default_provider) and the coach itself read the same source — an
+// open v1.6.0 tab and this release agree about which provider answers.
+func (q *Queries) GetKeyDefaultKeyID(ctx context.Context, arg GetKeyDefaultKeyIDParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getKeyDefaultKeyID, arg.AccountID, arg.Feature)
+	var key_id pgtype.UUID
+	err := row.Scan(&key_id)
+	return key_id, err
+}
+
+const listKeyDefaults = `-- name: ListKeyDefaults :many
+SELECT d.feature, d.model, d.updated_at, k.provider, k.id AS key_id
+FROM coach.key_default AS d
+JOIN coach.api_key_config AS k ON k.id = d.key_id
+WHERE d.account_id = $1
+ORDER BY d.feature
+`
+
+type ListKeyDefaultsRow struct {
+	Feature   string
+	Model     string
+	UpdatedAt pgtype.Timestamptz
+	Provider  string
+	KeyID     pgtype.UUID
+}
+
+// Every default the account has, with the provider of the key behind it — what the
+// Settings panel renders as per-feature defaults (AB01 F13) and what GET /keys returns as
+// `defaults`. A feature with no default is simply absent (the UI shows "Not set").
+func (q *Queries) ListKeyDefaults(ctx context.Context, accountID pgtype.UUID) ([]ListKeyDefaultsRow, error) {
 	rows, err := q.db.Query(ctx, listKeyDefaults, accountID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []CoachKeyDefault{}
+	items := []ListKeyDefaultsRow{}
 	for rows.Next() {
-		var i CoachKeyDefault
+		var i ListKeyDefaultsRow
 		if err := rows.Scan(
-			&i.AccountID,
 			&i.Feature,
-			&i.KeyID,
 			&i.Model,
 			&i.UpdatedAt,
+			&i.Provider,
+			&i.KeyID,
 		); err != nil {
 			return nil, err
 		}
@@ -47,19 +177,25 @@ func (q *Queries) ListKeyDefaults(ctx context.Context, accountID pgtype.UUID) ([
 
 const promoteEarliestKeyDefault = `-- name: PromoteEarliestKeyDefault :exec
 INSERT INTO coach.key_default (account_id, feature, key_id, model)
-SELECT c.account_id, 'coach', c.id, c.default_model
+SELECT c.account_id, $1, c.id, c.default_model
 FROM coach.api_key_config AS c
-WHERE c.account_id = $1
+WHERE c.account_id = $2
 ORDER BY c.created_at, c.provider
 LIMIT 1
 ON CONFLICT (account_id, feature) DO NOTHING
 `
 
-// After a delete: when the account has keys but no coach default left (the cascade
-// removed it with its key), make the earliest-created key the default — the same order
-// PromoteEarliestDefault uses for is_default, so the two stay equal.
-func (q *Queries) PromoteEarliestKeyDefault(ctx context.Context, accountID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, promoteEarliestKeyDefault, accountID)
+type PromoteEarliestKeyDefaultParams struct {
+	Feature   string
+	AccountID pgtype.UUID
+}
+
+// After a delete: when the account still has keys but the named feature has no default
+// left (the cascade removed it with its key), make the earliest-created key the default,
+// carrying that key's own model. The store calls this for `coach` ONLY — `interview` is
+// never auto-promoted.
+func (q *Queries) PromoteEarliestKeyDefault(ctx context.Context, arg PromoteEarliestKeyDefaultParams) error {
+	_, err := q.db.Exec(ctx, promoteEarliestKeyDefault, arg.Feature, arg.AccountID)
 	return err
 }
 
@@ -74,34 +210,37 @@ type SyncKeyDefaultModelParams struct {
 	Model string
 }
 
-// Keep the coach default's model equal to its key's default_model when that key's model
-// changes (a key replacement or a model switch). No row when the key isn't the default.
+// Keep the COACH default's model equal to its key's default_model when that key's model
+// changes (a key replacement or a model switch in Settings). Scoped to feature='coach' on
+// purpose: an `interview` default pointing at the same key keeps its own chosen brain,
+// which a coach-side model switch must not clobber.
 func (q *Queries) SyncKeyDefaultModel(ctx context.Context, arg SyncKeyDefaultModelParams) error {
 	_, err := q.db.Exec(ctx, syncKeyDefaultModel, arg.KeyID, arg.Model)
 	return err
 }
 
 const upsertKeyDefault = `-- name: UpsertKeyDefault :exec
-
 INSERT INTO coach.key_default (account_id, feature, key_id, model, updated_at)
-VALUES ($1, 'coach', $2, $3, now())
+VALUES ($1, $2, $3, $4, now())
 ON CONFLICT (account_id, feature) DO UPDATE
 SET key_id = EXCLUDED.key_id, model = EXCLUDED.model, updated_at = now()
 `
 
 type UpsertKeyDefaultParams struct {
 	AccountID pgtype.UUID
+	Feature   string
 	KeyID     pgtype.UUID
 	Model     string
 }
 
-// coach.key_default (m1-02, M1a expand): the per-feature default key that replaces
-// api_key_config.is_default. In v1.6.0 every writer of is_default dual-writes the
-// feature='coach' row here with the same meaning; m1-10 makes this the only source
-// (and adds the 'interview' feature); M1c drops is_default.
-// Make key_id the account's coach default, with its model (dual-write of the first key
-// and of set-default).
+// Set one feature's default key and model (the first key for `coach`, an explicit
+// set-default for either feature).
 func (q *Queries) UpsertKeyDefault(ctx context.Context, arg UpsertKeyDefaultParams) error {
-	_, err := q.db.Exec(ctx, upsertKeyDefault, arg.AccountID, arg.KeyID, arg.Model)
+	_, err := q.db.Exec(ctx, upsertKeyDefault,
+		arg.AccountID,
+		arg.Feature,
+		arg.KeyID,
+		arg.Model,
+	)
 	return err
 }

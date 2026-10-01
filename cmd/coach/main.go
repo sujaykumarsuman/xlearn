@@ -57,7 +57,7 @@ func run() int {
 	// The envelope master key is required (ADR-0007). Refuse to serve without a valid
 	// 32-byte key — the service cannot seal/open provider keys otherwise, and running
 	// with an ephemeral key would silently make every stored key unrecoverable.
-	cipher, err := loadCipher(cfg, logger)
+	cipher, keyring, err := loadKeys(cfg, logger)
 	if err != nil {
 		logger.Error("load master key; refusing to serve", "err", err)
 		return 1
@@ -95,7 +95,7 @@ func run() int {
 		return 1
 	}
 
-	svc := coach.NewService(st, verifier, cipher, openai, anthropic, courses, logger)
+	svc := coach.NewService(st, verifier, cipher, keyring, openai, anthropic, courses, logger)
 
 	handler := httpx.Chain(svc.Handler(),
 		httpx.RequestID,
@@ -106,6 +106,14 @@ func run() int {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// The background AD re-wrap (m1-10): backfills the AD-bound sealed pair migration
+	// 00006 added, and afterwards repairs rows left stale by a rollback key-replace or a
+	// master-key rotation. A GOROUTINE in this pod, not a new workload — no new container
+	// and no change to the memory sum (ADR-0035 §5). It ends with ctx on shutdown; a pass
+	// in flight holds a transaction-scoped advisory lock that COMMIT/ROLLBACK releases, so
+	// a rolling update never leaks it.
+	go coach.NewRewrapper(st, cipher, keyring, logger).Run(ctx)
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -133,27 +141,68 @@ func run() int {
 	return 0
 }
 
-// loadCipher resolves the envelope master key (ADR-0007): from COACH_MASTER_KEY (env),
-// then COACH_MASTER_KEY_FILE (a mounted secret file), decodes it (base64/hex/raw) to
-// exactly 32 bytes, and builds the Cipher. The key material is never logged.
-func loadCipher(cfg coach.Config, logger *slog.Logger) (*secrets.Cipher, error) {
-	raw := strings.TrimSpace(cfg.MasterKeyRaw)
-	if raw == "" {
-		if f := coach.MasterKeyFile(); f != "" {
-			b, err := os.ReadFile(f)
-			if err != nil {
-				return nil, err
-			}
-			raw = strings.TrimSpace(string(b))
-		}
+// loadKeys resolves BOTH halves of coach's key material (ADR-0007, ADR-0031 §7):
+//
+//   - the LEGACY cipher from COACH_MASTER_KEY / COACH_MASTER_KEY_FILE. Still REQUIRED,
+//     and not merely for backwards compatibility: it is the only thing that can open the
+//     unbound pair, which is what every key the re-wrap job has not reached yet is stored
+//     under, and what keeps v1.6.0 a valid rollback target (ADR-0034 §3). It is dropped
+//     when l-02 drops the legacy pair, not before.
+//
+//   - the KEK KEYRING from COACH_MASTER_KEYS / COACH_MASTER_KEYS_FILE
+//     ("k1:<base64>,k0:<base64>", first entry active). When unset — which is how
+//     PRODUCTION runs today, since this sprint changes no SOPS secret — the keyring is
+//     {k0: COACH_MASTER_KEY} with k0 active, so today's key wraps the AD pairs and a
+//     rotation later is a secret change rather than a code change.
+//
+// Neither key is ever logged; only the keyring's entry IDS, which carry no material.
+func loadKeys(cfg coach.Config, logger *slog.Logger) (*secrets.Cipher, *secrets.Keyring, error) {
+	raw, err := readKeyMaterial(cfg.MasterKeyRaw, coach.MasterKeyFile())
+	if err != nil {
+		return nil, nil, err
 	}
 	key, err := secrets.ParseMasterKey(raw)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer secrets.Zero(key)
+	cipher, err := secrets.NewCipher(key)
+	if err != nil {
+		return nil, nil, err
+	}
 	logger.Info("envelope master key loaded")
-	return secrets.NewCipher(key)
+
+	spec, err := readKeyMaterial(coach.MasterKeysSpec(), coach.MasterKeysFile())
+	if err != nil {
+		return nil, nil, err
+	}
+	if spec == "" {
+		keyring := secrets.KeyringOf(coach.DefaultKEKID, cipher)
+		logger.Info("coach keyring: single entry from COACH_MASTER_KEY", "active_kek", keyring.Active())
+		return cipher, keyring, nil
+	}
+	keyring, err := secrets.ParseKeyring(spec)
+	if err != nil {
+		return nil, nil, err
+	}
+	logger.Info("coach keyring loaded", "active_kek", keyring.Active(), "entries", keyring.IDs())
+	return cipher, keyring, nil
+}
+
+// readKeyMaterial prefers an env value and falls back to a mounted file. It returns ""
+// when neither is set, so the caller decides whether that is fatal.
+func readKeyMaterial(env, file string) (string, error) {
+	if v := strings.TrimSpace(env); v != "" {
+		return v, nil
+	}
+	if file == "" {
+		return "", nil
+	}
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(b)), nil
 }
 
 // newPool opens a pgxpool and pins search_path to the service's schema (defence in

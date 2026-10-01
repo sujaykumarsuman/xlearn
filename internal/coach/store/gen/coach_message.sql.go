@@ -11,6 +11,72 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const insertAssistantMessage = `-- name: InsertAssistantMessage :one
+
+INSERT INTO coach.coach_message (
+    thread_id, role, content, path_slug,
+    provider, model, input_tokens, output_tokens, est_cost_micros, stop_reason
+)
+SELECT t.id, $1, $2, t.path_slug,
+       $3, $4, $5,
+       $6, $7, $8
+FROM coach.coach_thread t
+WHERE t.id = $9
+RETURNING id, seq, role, content, created_at
+`
+
+type InsertAssistantMessageParams struct {
+	Role          string
+	Content       string
+	Provider      pgtype.Text
+	Model         pgtype.Text
+	InputTokens   pgtype.Int4
+	OutputTokens  pgtype.Int4
+	EstCostMicros pgtype.Int8
+	StopReason    pgtype.Text
+	ThreadID      pgtype.UUID
+}
+
+type InsertAssistantMessageRow struct {
+	ID        pgtype.UUID
+	Seq       pgtype.Int8
+	Role      string
+	Content   string
+	CreatedAt pgtype.Timestamptz
+}
+
+// --- m1-10 (M1b task 4): per-turn provider usage and cost ---
+// Append the coach's reply with the usage of the provider turn that produced it
+// (migration 00006). Every usage field is nullable and passed NULL when the stream
+// reported none: a reply still persists if the provider sent no usage frame, and v1 rows
+// keep NULL forever. est_cost_micros is the catalog price × tokens computed in Go and is
+// NULL for a custom model id (no published price) — "cost unknown" in the UI.
+//
+// Separate from InsertMessage so the user's turn cannot accidentally be stamped with the
+// assistant turn's usage (which would double-count the month-to-date total).
+func (q *Queries) InsertAssistantMessage(ctx context.Context, arg InsertAssistantMessageParams) (InsertAssistantMessageRow, error) {
+	row := q.db.QueryRow(ctx, insertAssistantMessage,
+		arg.Role,
+		arg.Content,
+		arg.Provider,
+		arg.Model,
+		arg.InputTokens,
+		arg.OutputTokens,
+		arg.EstCostMicros,
+		arg.StopReason,
+		arg.ThreadID,
+	)
+	var i InsertAssistantMessageRow
+	err := row.Scan(
+		&i.ID,
+		&i.Seq,
+		&i.Role,
+		&i.Content,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const insertMessage = `-- name: InsertMessage :one
 INSERT INTO coach.coach_message (thread_id, role, content, path_slug)
 SELECT t.id, $1, $2, t.path_slug
@@ -88,4 +154,54 @@ func (q *Queries) ListMessages(ctx context.Context, threadID pgtype.UUID) ([]Lis
 		return nil, err
 	}
 	return items, nil
+}
+
+const usageMonthForAccount = `-- name: UsageMonthForAccount :one
+SELECT count(*)::bigint                                   AS messages,
+       COALESCE(sum(m.input_tokens), 0)::bigint           AS input_tokens,
+       COALESCE(sum(m.output_tokens), 0)::bigint          AS output_tokens,
+       COALESCE(sum(m.est_cost_micros), 0)::bigint        AS est_cost_micros,
+       -- The ::boolean cast is required, not decorative: without it sqlc cannot infer the
+       -- COALESCE's type and generates ` + "`" + `interface{}` + "`" + ` for the field.
+       COALESCE(bool_or(m.est_cost_micros IS NULL), false)::boolean AS has_unknown_cost
+FROM coach.coach_message AS m
+JOIN coach.coach_thread AS t ON t.id = m.thread_id
+WHERE t.account_id = $1
+  AND m.role = 'assistant'
+  AND m.created_at >= date_trunc('month', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'
+`
+
+type UsageMonthForAccountRow struct {
+	Messages       int64
+	InputTokens    int64
+	OutputTokens   int64
+	EstCostMicros  int64
+	HasUnknownCost bool
+}
+
+// Month-to-date spend on the account's own keys, for "This month on your keys" (AB01
+// F13). The window is the current UTC CALENDAR month — date_trunc on a timestamptz is
+// evaluated in the session TimeZone, so it is pinned to UTC here rather than inheriting
+// whatever the connection happens to carry; the UI labels it as a UTC month.
+//
+// has_unknown_cost marks that at least one answered turn had no price (a custom model, or
+// a turn whose stream reported no usage), so the displayed total is a FLOOR and the UI
+// says custom models are not estimated. Display only; always an estimate.
+// Every aggregate is COALESCEd, bool_or included: over ZERO rows — a learner who has
+// just connected a key and not chatted yet — sum() and bool_or() both return NULL, and
+// sqlc types these columns as non-null, so an un-COALESCEd bool_or makes GET /keys fail
+// with "cannot scan NULL into *bool" for every brand-new account. (Found by the m1-10
+// compose rehearsal; the handler unit tests run against an in-memory fake and never
+// execute this SQL. TestUsageMonthOnAnEmptyAccount pins it.)
+func (q *Queries) UsageMonthForAccount(ctx context.Context, accountID pgtype.UUID) (UsageMonthForAccountRow, error) {
+	row := q.db.QueryRow(ctx, usageMonthForAccount, accountID)
+	var i UsageMonthForAccountRow
+	err := row.Scan(
+		&i.Messages,
+		&i.InputTokens,
+		&i.OutputTokens,
+		&i.EstCostMicros,
+		&i.HasUnknownCost,
+	)
+	return i, err
 }

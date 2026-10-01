@@ -1,10 +1,12 @@
-// lint-expect: 0
+// lint-expect: 1
 // lint-as: internal/coach/store/gen/api_key_config.sql.go
-// coach's generated SQL may read is_default until m1-10 (its `SELECT *` expands to it).
+// Same flip for the generated half: m1-10's queries use explicit column lists that never
+// name is_default, so a `SELECT *` expansion reaching it is a real regression — exactly
+// the breakage m1-08's contract migration would hit.
 
 package gen
 
 const getKey = `-- name: GetKey :one
 SELECT id, account_id, provider, is_default, created_at FROM coach.api_key_config
-WHERE id = $1
+WHERE account_id = $1
 `

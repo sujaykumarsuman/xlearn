@@ -44,20 +44,51 @@ type keyViewJSON struct {
 	IsDefault    bool   `json:"is_default"`
 }
 
-// keysResponse is the GET /keys payload: the account's masked provider keys (0..2), a
-// connected flag, and which provider is the default (empty when none).
+// featureDefaultJSON is one per-feature default: which provider's key answers for that
+// feature and which model it uses. Absent (null) when the feature has no default — for
+// `interview` that is the normal starting state, rendered "Not set" (AB01 F13).
+type featureDefaultJSON struct {
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+}
+
+// usageMonthJSON is the account's month-to-date spend on its own keys, for F13's "This
+// month on your keys" line. Display only, and always an estimate: HasUnknownCost says at
+// least one turn had no published price (a custom model id, or a stream that reported no
+// usage), which the UI surfaces as "· custom models not estimated" so the number is never
+// mistaken for a total.
+type usageMonthJSON struct {
+	Messages       int64 `json:"messages"`
+	InputTokens    int64 `json:"input_tokens"`
+	OutputTokens   int64 `json:"output_tokens"`
+	EstCostMicros  int64 `json:"est_cost_micros"`
+	HasUnknownCost bool  `json:"has_unknown_cost"`
+}
+
+// keysResponse is the GET /keys payload. The v1 shape (keys[].is_default,
+// default_provider) is PRESERVED so a v1.6.0 tab left open across the upgrade keeps
+// working — but both are now derived from key_default(feature='coach'), never from the
+// dead api_key_config.is_default column. m1-10 adds the per-feature defaults and the
+// month-to-date usage.
 type keysResponse struct {
 	Keys            []keyViewJSON `json:"keys"`
 	Connected       bool          `json:"connected"`
 	DefaultProvider string        `json:"default_provider"`
+
+	// Defaults is keyed by feature ("coach", "interview"); a feature with no default maps
+	// to null rather than being omitted, so the client can tell "not set" from "this
+	// release doesn't know about that feature".
+	Defaults   map[string]*featureDefaultJSON `json:"defaults"`
+	UsageMonth usageMonthJSON                 `json:"usage_month"`
 }
 
 func keyView(k store.KeyConfig) keyViewJSON {
 	return keyViewJSON{Provider: k.Provider, MaskedKey: k.Masked, DefaultModel: k.DefaultModel, Name: k.Name, Enabled: k.Enabled, IsDefault: k.IsDefault}
 }
 
-// keysResponseFrom builds the masked list payload from the stored configs.
-func keysResponseFrom(keys []store.KeyConfig) keysResponse {
+// keysResponseFrom builds the masked list payload from the stored configs, the account's
+// per-feature defaults and its month-to-date usage.
+func keysResponseFrom(keys []store.KeyConfig, defaults []store.FeatureDefault, usage store.Usage) keysResponse {
 	views := make([]keyViewJSON, 0, len(keys))
 	def := ""
 	for _, k := range keys {
@@ -66,19 +97,106 @@ func keysResponseFrom(keys []store.KeyConfig) keysResponse {
 			def = k.Provider
 		}
 	}
-	return keysResponse{Keys: views, Connected: len(views) > 0, DefaultProvider: def}
+	// Every known feature is present as a key, null when unset.
+	byFeature := map[string]*featureDefaultJSON{
+		store.FeatureCoach:     nil,
+		store.FeatureInterview: nil,
+	}
+	for _, d := range defaults {
+		byFeature[d.Feature] = &featureDefaultJSON{Provider: d.Provider, Model: d.Model}
+	}
+	return keysResponse{
+		Keys:            views,
+		Connected:       len(views) > 0,
+		DefaultProvider: def,
+		Defaults:        byFeature,
+		UsageMonth: usageMonthJSON{
+			Messages:       usage.Messages,
+			InputTokens:    usage.InputTokens,
+			OutputTokens:   usage.OutputTokens,
+			EstCostMicros:  usage.EstCostMicros,
+			HasUnknownCost: usage.HasUnknownCost,
+		},
+	}
 }
 
 // --- key config handlers ---
 
-// writeKeys reads the account's provider keys and writes the masked list + default.
+// writeKeys reads the account's provider keys, per-feature defaults and month-to-date
+// usage, and writes the masked payload.
 func (s *Service) writeKeys(w http.ResponseWriter, r *http.Request, accountID string) {
 	keys, err := s.store.ListKeys(r.Context(), accountID)
 	if err != nil {
 		s.mapErr(w, "list keys", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, keysResponseFrom(keys))
+	defaults, err := s.store.ListDefaults(r.Context(), accountID)
+	if err != nil {
+		s.mapErr(w, "list defaults", err)
+		return
+	}
+	usage, err := s.store.UsageMonth(r.Context(), accountID)
+	if err != nil {
+		s.mapErr(w, "usage month", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, keysResponseFrom(keys, defaults, usage))
+}
+
+// --- model catalog ---
+
+// modelJSON is one catalog entry as served.
+type modelJSON struct {
+	ID           string   `json:"id"`
+	Provider     string   `json:"provider"`
+	Label        string   `json:"label"`
+	Capabilities []string `json:"capabilities"`
+	Price        Price    `json:"price"`
+	AsOf         string   `json:"as_of"`
+	Recommended  bool     `json:"recommended"`
+	CoveredModel bool     `json:"covered_model"`
+}
+
+// handleModels: GET /models — the dated server catalog (ADR-0031 §7, t5 §9).
+//
+// This replaces the model list v1 baked into the SPA, which could only be corrected by a
+// frontend release. It carries no learner data at all, but stays behind the same JWT gate
+// as every other coach route so the public profile remains the ONLY unauthenticated /api
+// route.
+func (s *Service) handleModels(w http.ResponseWriter, r *http.Request) {
+	c := s.catalog
+	// ChatModels, not Models: this endpoint feeds the coach/interview model pickers, so a
+	// non-chat entry (a realtime voice shell, when m6b-01 adds one) must never be offered
+	// here as something a learner can answer chats with.
+	chat := c.ChatModels()
+	models := make([]modelJSON, 0, len(chat))
+	for _, m := range chat {
+		// Only offer models whose provider this build actually has a client for, so the
+		// catalog can never advertise something a chat would then fail on.
+		if _, ok := s.providerFor(m.Provider); !ok {
+			continue
+		}
+		caps := m.Capabilities
+		if caps == nil {
+			caps = []string{}
+		}
+		models = append(models, modelJSON{
+			ID: m.ID, Provider: m.Provider, Label: m.Label, Capabilities: caps,
+			Price: m.Price, AsOf: m.AsOf, Recommended: m.Recommended, CoveredModel: m.CoveredModel,
+		})
+	}
+	defaults := map[string]string{}
+	for _, id := range s.ProviderIDs() {
+		if d := c.DefaultModel(id); d != "" {
+			defaults[id] = d
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"as_of":     c.AsOf(),
+		"providers": s.ProviderIDs(),
+		"models":    models,
+		"defaults":  defaults,
+	})
 }
 
 // handleGetKey: GET /keys — the masked provider keys + connected + default (never a raw key).
@@ -88,12 +206,17 @@ func (s *Service) handleGetKey(w http.ResponseWriter, r *http.Request) {
 
 // handlePutKey: PUT /keys — one body, four modes, every mode keyed to a provider:
 //
-//	{provider, key[, default_model, name]} → store/replace that provider's key (sealed)
-//	{provider, default:true}               → make that provider the account's default
-//	{provider, enabled}                    → toggle that provider's enabled flag
-//	{provider, default_model|name}         → change that provider's model/name (no key)
+//	{provider, key[, default_model, name]}      → store/replace that provider's key (sealed)
+//	{provider, default:true[, feature, model]}  → make that provider a feature's default
+//	{provider, enabled}                         → toggle that provider's enabled flag
+//	{provider, default_model|name}              → change that provider's model/name (no key)
 //
-// The gateway never sees the raw key beyond forwarding it; coach seals it here.
+// m1-10 adds `feature` to the default mode: "coach" (the implicit default) or "interview"
+// (the text interviewer's brain, m6a-02). Omitted means "coach", which is what every
+// v1.6.0 client sends.
+//
+// The gateway never sees the raw key beyond forwarding it; coach seals it here, into both
+// sealed pairs at once (sealKey).
 func (s *Service) handlePutKey(w http.ResponseWriter, r *http.Request) {
 	accountID := auth.ClaimsFrom(r.Context()).Subject
 	var body struct {
@@ -103,13 +226,19 @@ func (s *Service) handlePutKey(w http.ResponseWriter, r *http.Request) {
 		Name         string `json:"name"`
 		Enabled      *bool  `json:"enabled"`
 		Default      bool   `json:"default"`
+		Feature      string `json:"feature"`
 	}
+	// Strict decoding (DisallowUnknownFields) is load-bearing, not tidiness: it is what
+	// makes a `base_url` field a 400 rather than a silently ignored SSRF attempt. Coach
+	// calls provider endpoints this build was configured with, never one from a request.
 	if err := decodeJSONStrict(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "invalid body")
 		return
 	}
 	provider := strings.ToLower(strings.TrimSpace(body.Provider))
-	if !store.ValidProvider(provider) {
+	// Validate against the Service's provider REGISTRY, not a static list: a provider this
+	// build has no client for must not be storable, or the key would be unusable.
+	if _, ok := s.providerFor(provider); !ok {
 		writeError(w, http.StatusUnprocessableEntity, "invalid_provider", "provider must be openai or anthropic")
 		return
 	}
@@ -124,6 +253,14 @@ func (s *Service) handlePutKey(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, "invalid_name", "name is too long")
 		return
 	}
+	feature := strings.ToLower(strings.TrimSpace(body.Feature))
+	if feature == "" {
+		feature = store.FeatureCoach
+	}
+	if !store.ValidFeature(feature) {
+		writeError(w, http.StatusUnprocessableEntity, "invalid_feature", "feature must be coach or interview")
+		return
+	}
 
 	switch {
 	case rawKey != "":
@@ -133,14 +270,20 @@ func (s *Service) handlePutKey(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if model == "" {
+			model = s.catalog.DefaultModel(provider)
+		}
+		if model == "" {
 			if p, ok := s.providerFor(provider); ok {
 				model = p.DefaultModel()
 			}
 		}
+		if !s.validModelForKey(w, model) {
+			return
+		}
 		if name == "" {
 			name = model
 		}
-		encKey, encDataKey, err := s.cipher.Seal([]byte(rawKey))
+		sealed, err := s.sealKey(accountID, provider, rawKey)
 		if err != nil {
 			// Never log the key; the seal error carries no secret bytes.
 			s.log.Error("coach: seal key failed", "err", err)
@@ -148,7 +291,10 @@ func (s *Service) handlePutKey(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if _, err := s.store.PutKey(r.Context(), store.KeyConfig{
-			AccountID: accountID, Provider: provider, EncKey: encKey, EncDataKey: encDataKey,
+			AccountID: accountID, Provider: provider,
+			EncKey: sealed.EncKey, EncDataKey: sealed.EncDataKey,
+			EncKeyAD: sealed.EncKeyAD, EncDataKeyAD: sealed.EncDataKeyAD,
+			KEKID: sealed.KEKID, ADSrcDigest: sealed.ADSrcDigest,
 			Masked: secrets.Mask(rawKey), DefaultModel: model, Name: name,
 		}); err != nil {
 			s.mapErr(w, "put key", err)
@@ -156,8 +302,13 @@ func (s *Service) handlePutKey(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case body.Default:
-		// Make this provider the account's default.
-		if _, err := s.store.SetDefault(r.Context(), accountID, provider); err != nil {
+		// Point one feature's default at this provider's key. An explicit model is
+		// validated against the feature's requirements; an empty one takes the key's own
+		// default_model (what the coach feature always wants).
+		if model != "" && !s.validModelForFeature(w, feature, model) {
+			return
+		}
+		if _, err := s.store.SetDefault(r.Context(), accountID, provider, feature, model); err != nil {
 			s.mapErr(w, "set default", err)
 			return
 		}
@@ -172,6 +323,9 @@ func (s *Service) handlePutKey(w http.ResponseWriter, r *http.Request) {
 	case model != "" || name != "":
 		// Meta update: switch model / rename this provider's coach without re-entering the key.
 		// A partial edit keeps the untouched field; an empty name falls back to the model id.
+		if model != "" && !s.validModelForKey(w, model) {
+			return
+		}
 		cur, err := s.store.GetKey(r.Context(), accountID, provider)
 		if err != nil {
 			s.mapErr(w, "meta: get key", err)
@@ -196,11 +350,56 @@ func (s *Service) handlePutKey(w http.ResponseWriter, r *http.Request) {
 	s.writeKeys(w, r, accountID)
 }
 
+// validModelForKey rejects a malformed model id (422 `unknown_model`) and accepts
+// everything else: a catalog entry, or a well-formed id this release has never heard of,
+// which is stored as-is and shown "cost unknown". It writes the error response and
+// reports false when the request should stop.
+//
+// Accepting unknown-but-well-formed ids is deliberate. The catalog goes stale between
+// releases, learners have fine-tunes (`ft:gpt-6-luna:org:suffix`) and dated snapshots, and
+// it is their key and their money — refusing an id we simply don't recognise would make
+// every provider release a blocker on ours.
+func (s *Service) validModelForKey(w http.ResponseWriter, model string) bool {
+	if _, res := s.catalog.ResolveModel(model); res == ModelUnknown {
+		writeError(w, http.StatusUnprocessableEntity, "unknown_model", "that isn't a model id")
+		return false
+	}
+	return true
+}
+
+// validModelForFeature validates a model against what the FEATURE needs.
+//
+// For `interview` (t6 §11, T5 §9 key/catalog row):
+//   - a catalog model carrying interview_brain → accepted;
+//   - a catalog model WITHOUT it → 422 `model_not_interview_capable`. We know this model
+//     and know it is the wrong tool, so refusing now beats failing mid-interview;
+//   - a well-formed custom id → accepted. We cannot know what it is, the learner may have
+//     a fine-tune built for exactly this, and it is their key. It never gets an AI
+//     proposal (t6 §11) and never gets a cost estimate;
+//   - anything else → 422 `unknown_model`.
+//
+// For `coach`, any model that passes validModelForKey is fine.
+func (s *Service) validModelForFeature(w http.ResponseWriter, feature, model string) bool {
+	if feature != store.FeatureInterview {
+		return s.validModelForKey(w, model)
+	}
+	ok, res := s.catalog.InterviewCapable(model)
+	switch {
+	case res == ModelUnknown:
+		writeError(w, http.StatusUnprocessableEntity, "unknown_model", "that isn't a model id")
+		return false
+	case !ok:
+		writeError(w, http.StatusUnprocessableEntity, "model_not_interview_capable", "that model can't run the interviewer")
+		return false
+	}
+	return true
+}
+
 // handleDeleteKey: DELETE /keys?provider= — remove one provider's key.
 func (s *Service) handleDeleteKey(w http.ResponseWriter, r *http.Request) {
 	accountID := auth.ClaimsFrom(r.Context()).Subject
 	provider := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("provider")))
-	if !store.ValidProvider(provider) {
+	if _, ok := s.providerFor(provider); !ok {
 		writeError(w, http.StatusUnprocessableEntity, "invalid_provider", "provider must be openai or anthropic")
 		return
 	}
@@ -317,7 +516,7 @@ func (s *Service) handleChat(w http.ResponseWriter, r *http.Request) {
 	// Load the DEFAULT provider's key config (the one the coach answers with). No key /
 	// disabled key → a clean 4xx the client maps to the Settings empty state (this is BEFORE
 	// any SSE bytes, so a real status is possible).
-	kc, err := s.store.GetDefaultKey(r.Context(), accountID)
+	kc, err := s.store.GetDefaultKey(r.Context(), accountID, store.FeatureCoach)
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusConflict, "no_key", "no provider key configured")
 		return
@@ -367,16 +566,26 @@ func (s *Service) handleChat(w http.ResponseWriter, r *http.Request) {
 		s.mapErr(w, "chat: history", err)
 		return
 	}
-	model := kc.DefaultModel
+	// The model comes from the COACH feature's default row first (what the switcher
+	// writes), then the key's own default_model, then the catalog/provider default.
+	model := kc.FeatureModel
+	if model == "" {
+		model = kc.DefaultModel
+	}
+	if model == "" {
+		model = s.catalog.DefaultModel(kc.Provider)
+	}
 	if model == "" {
 		model = provider.DefaultModel()
 	}
 	req := ChatRequest{Model: model, System: systemPrompt(mode, ctx), Messages: buildTurns(history)}
 
 	// Decrypt the key IN MEMORY ONLY; zero it the moment the provider call returns.
-	rawKey, err := s.cipher.Open(kc.EncKey, kc.EncDataKey)
+	// openKey prefers the AD-bound pair and falls back to the legacy pair only when the AD
+	// pair is absent or stale (see keycrypto.go).
+	rawKey, err := s.openKey(kc)
 	if err != nil {
-		s.log.Error("coach: decrypt key failed", "err", err)
+		s.log.Error("coach: decrypt key failed", "err", err, "provider", kc.Provider)
 		writeError(w, http.StatusInternalServerError, "internal", "could not use stored key")
 		return
 	}
@@ -393,7 +602,26 @@ func (s *Service) handleChat(w http.ResponseWriter, r *http.Request) {
 	})
 	secrets.Zero(rawKey) // zero as soon as the provider call is done (before persistence)
 
-	s.finishChat(r, accountID, kc.Provider, threadID, &reply, sse, result, streamErr)
+	s.finishChat(r, accountID, kc.Provider, model, threadID, &reply, sse, result, streamErr)
+}
+
+// turnUsage builds what to store on the assistant message from the stream's outcome.
+// est_cost_micros is NULL unless both the catalog knows the model's price and the stream
+// actually reported token counts — a cost we cannot compute is recorded as unknown rather
+// than as zero, which is what keeps the month-to-date line honest.
+func (s *Service) turnUsage(provider, model string, result StreamResult) store.MessageUsage {
+	u := store.MessageUsage{
+		Provider:     provider,
+		Model:        model,
+		StopReason:   result.StopReason,
+		InputTokens:  result.Usage.InputTokens,
+		OutputTokens: result.Usage.OutputTokens,
+		HasTokens:    result.Usage.HasTokens,
+	}
+	if result.Usage.HasTokens {
+		u.EstCostMicros = s.catalog.EstimateCostMicros(model, result.Usage.InputTokens, result.Usage.OutputTokens)
+	}
+	return u
 }
 
 // Learner-facing copy for the provider outcomes the coach explains in the panel.
@@ -411,26 +639,44 @@ const (
 // write), and emits the closing SSE event. Before any byte was sent it can still write a
 // clean 4xx: a rejected key (409, and the key is disabled) or an out-of-credit / limited
 // provider account (429, and the key stays enabled).
-func (s *Service) finishChat(r *http.Request, accountID, provider, threadID string, reply *strings.Builder, sse *sseWriter, result StreamResult, streamErr error) {
+func (s *Service) finishChat(r *http.Request, accountID, provider, model, threadID string, reply *strings.Builder, sse *sseWriter, result StreamResult, streamErr error) {
 	// A detached context so persistence survives a cancelled request (client gone).
 	bg, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Second)
 	defer cancel()
 
-	// persistReply saves whatever reply text there is, so the thread isn't left with a
-	// dangling user message after a partial stream.
+	usage := s.turnUsage(provider, model, result)
+
+	// persistReply saves whatever reply text there is — with the turn's usage — so the
+	// thread isn't left with a dangling user message after a partial stream, and a
+	// partial turn is still counted against the month (the learner was billed for it).
 	persistReply := func() {
 		if reply.Len() == 0 {
 			return
 		}
-		if err := s.store.AppendMessage(bg, threadID, store.RoleAssistant, reply.String()); err != nil {
+		if err := s.store.AppendAssistantMessage(bg, threadID, reply.String(), usage); err != nil {
 			s.log.Warn("coach: persist assistant reply failed", "err", err)
+		}
+	}
+
+	// errorEvent emits the terminal failure. The v1 `error` code and `message` are kept
+	// verbatim so an open v1.6.0 tab keeps rendering them; `reason` is the finer m1-10
+	// classification the current SPA maps to AB01's copy (F10 quota/rate_limit, F11
+	// model_access, F15b auth, and F10's region variant).
+	errorEvent := func(status int, code, message string) {
+		reason := ErrorReason(streamErr)
+		if sse.started {
+			_ = sse.event("error", map[string]any{"error": code, "message": message, "reason": reason})
+		} else {
+			writeJSON(sse.w, status, map[string]any{
+				"error": map[string]any{"code": code, "message": message, "reason": reason},
+			})
 		}
 	}
 
 	switch {
 	case streamErr == nil:
 		if result.Truncated {
-			s.log.Info("coach: reply truncated", "provider", provider, "stop_reason", result.StopReason)
+			s.log.Info("coach: reply truncated", "provider", provider, "model", model, "stop_reason", result.StopReason)
 			note := truncationNote
 			if reply.Len() > 0 {
 				note = "\n\n" + note
@@ -442,36 +688,31 @@ func (s *Service) finishChat(r *http.Request, accountID, provider, threadID stri
 		_ = sse.event("done", map[string]any{"done": true, "truncated": result.Truncated})
 
 	case errors.Is(streamErr, ErrProviderAuth):
-		// The user's key is bad: disable that provider so the client routes back to Settings.
+		// The key ITSELF is bad: disable that provider so the client routes back to
+		// Settings (AB01 F15b). This is the ONLY kind that disables a key.
 		if err := s.store.SetKeyEnabled(bg, accountID, provider, false); err != nil {
 			s.log.Warn("coach: disable bad key failed", "err", err)
 		}
-		if sse.started {
-			_ = sse.event("error", map[string]any{"error": "provider_auth", "message": msgProviderAuth})
-		} else {
-			writeError(sse.w, http.StatusConflict, "provider_auth", msgProviderAuth)
-		}
+		errorEvent(http.StatusConflict, "provider_auth", msgProviderAuth)
 
 	case errors.Is(streamErr, ErrProviderLimited):
-		// The key is fine; the provider account is out of credit or over a quota / spend /
-		// rate limit, or can't use this model or region. Keep the key ENABLED: disabling
-		// it would make the learner re-enter a working key after topping up.
-		s.log.Info("coach: provider account limited", "provider", provider, "err", streamErr)
+		// The key is fine; the account is out of credit, rate limited, barred from this
+		// model, or in an unsupported region. Keep the key ENABLED — disabling it would
+		// make the learner re-enter a working key after topping up, which is exactly the
+		// v1 bug this taxonomy fixes. `reason` tells the SPA which line to show.
+		s.log.Info("coach: provider account limited",
+			"provider", provider, "model", model, "reason", ErrorReason(streamErr), "err", streamErr)
 		persistReply()
-		if sse.started {
-			_ = sse.event("error", map[string]any{"error": "provider_limited", "message": msgProviderLimited})
-		} else {
-			writeError(sse.w, http.StatusTooManyRequests, "provider_limited", msgProviderLimited)
-		}
+		errorEvent(http.StatusTooManyRequests, "provider_limited", msgProviderLimited)
 
 	default:
 		// Other provider/transport error (or client disconnect).
 		s.log.Warn("coach: chat stream error", "err", streamErr)
 		persistReply()
 		if sse.started {
-			_ = sse.event("error", map[string]any{"error": "provider_error", "message": "the coach could not complete the reply"})
+			errorEvent(0, "provider_error", "the coach could not complete the reply")
 		} else {
-			writeError(sse.w, http.StatusBadGateway, "provider_error", "the coach provider is unavailable")
+			errorEvent(http.StatusBadGateway, "provider_error", "the coach provider is unavailable")
 		}
 	}
 }

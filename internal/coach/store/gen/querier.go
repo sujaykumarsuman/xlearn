@@ -13,67 +13,147 @@ import (
 type Querier interface {
 	// How many providers the account has connected (drives "is this the first key?").
 	CountApiKeyConfigs(ctx context.Context, accountID pgtype.UUID) (int64, error)
+	// How many rows still need a re-wrap, for the pass summary log line (D34: a log line read
+	// on demand, not an alert) and for l-01's `pending=0` precondition.
+	CountRewrapPending(ctx context.Context, activeKekID string) (int64, error)
 	// Remove one provider's key. Returns the affected row count so DELETE can 404 a no-op.
+	// coach.key_default rows pointing at it go with it (ON DELETE CASCADE, migration 00004);
+	// the store then promotes the earliest surviving key to the account's `coach` default.
 	DeleteApiKeyConfig(ctx context.Context, arg DeleteApiKeyConfigParams) (int64, error)
+	// Clear one feature's default without touching the key (used to unset an `interview`
+	// brain). `coach` is never cleared this way — it is promoted, not emptied.
+	DeleteKeyDefault(ctx context.Context, arg DeleteKeyDefaultParams) error
 	// One (account, provider) key config. ErrNoRows when that provider isn't connected.
-	GetApiKeyConfig(ctx context.Context, arg GetApiKeyConfigParams) (CoachApiKeyConfig, error)
-	// The account's DEFAULT provider key — the one the coach answers with. ErrNoRows when the
-	// account has no keys at all. m1-02 (M1a): key_default(feature='coach') is preferred and
-	// is_default is the fallback (an account whose default predates key_default, e.g. one
-	// set by v1.5.2 during an R-b).
-	GetDefaultApiKeyConfig(ctx context.Context, accountID pgtype.UUID) (CoachApiKeyConfig, error)
-	// The id of the account's effective coach default: key_default first, then is_default
-	// (m1-02, M1a). NULL when the account has no default. The store marks
-	// KeyConfig.IsDefault from it, so the v1 JSON (keys[].is_default) reads the same source
-	// as the coach.
-	GetDefaultKeyID(ctx context.Context, accountID pgtype.UUID) (pgtype.UUID, error)
+	GetApiKeyConfig(ctx context.Context, arg GetApiKeyConfigParams) (GetApiKeyConfigRow, error)
+	// coach.key_default(account_id, feature) — the PER-FEATURE default key.
+	//
+	// m1-02 (M1a) created it beside api_key_config.is_default and dual-wrote the
+	// feature='coach' row. m1-10 (here) makes it the ONLY default source: is_default is no
+	// longer read or written by coach, and `interview` joins `coach` as a feature. m1-08
+	// (M1c) then drops the column.
+	//
+	// Two features, deliberately asymmetric:
+	//   * coach     — always present once the account has any key. The first key becomes it;
+	//                 deleting it promotes the earliest surviving key. Chat resolves through it.
+	//   * interview — only ever set EXPLICITLY (t6 §11 / m6a-02). Never auto-assigned and
+	//                 never auto-promoted: a learner who has not chosen an interview brain
+	//                 has none, and "Not set" is a real state the UI shows. Its model may be
+	//                 a catalog id with the interview_brain capability or a custom id.
+	//
+	// A row dies with its key (key_id … ON DELETE CASCADE, migration 00004).
+	// The account's default key for one feature, with everything a provider call needs: the
+	// key's sealed material (both pairs) and enabled flag, plus the FEATURE's chosen model.
+	// ErrNoRows when that feature has no default (no keys at all, or `interview` never set).
+	//
+	// d.model is the feature's model and may differ from the key's own default_model — the
+	// caller prefers d.model and falls back to k.default_model, then to the catalog default.
+	GetKeyDefault(ctx context.Context, arg GetKeyDefaultParams) (GetKeyDefaultRow, error)
+	// The key id backing one feature's default, or ErrNoRows. The store marks
+	// KeyConfig.IsDefault from the feature='coach' answer, so GET /keys's v1 JSON
+	// (keys[].is_default, default_provider) and the coach itself read the same source — an
+	// open v1.6.0 tab and this release agree about which provider answers.
+	GetKeyDefaultKeyID(ctx context.Context, arg GetKeyDefaultKeyIDParams) (pgtype.UUID, error)
 	// Resolve an existing thread id for (account, page context). ErrNoRows when the account
 	// has never chatted on that page (GET /coach/thread returns empty history).
 	GetThread(ctx context.Context, arg GetThreadParams) (pgtype.UUID, error)
+	// --- m1-10 (M1b task 4): per-turn provider usage and cost ---
+	// Append the coach's reply with the usage of the provider turn that produced it
+	// (migration 00006). Every usage field is nullable and passed NULL when the stream
+	// reported none: a reply still persists if the provider sent no usage frame, and v1 rows
+	// keep NULL forever. est_cost_micros is the catalog price × tokens computed in Go and is
+	// NULL for a custom model id (no published price) — "cost unknown" in the UI.
+	//
+	// Separate from InsertMessage so the user's turn cannot accidentally be stamped with the
+	// assistant turn's usage (which would double-count the month-to-date total).
+	InsertAssistantMessage(ctx context.Context, arg InsertAssistantMessageParams) (InsertAssistantMessageRow, error)
 	// Append one message to a thread, labelled with the thread's course (path_slug, copied
 	// from the thread so the two never disagree; NULL for an account-wide thread). seq
 	// (identity) orders it; created_at is the wall time. No row when the thread is missing.
 	InsertMessage(ctx context.Context, arg InsertMessageParams) (InsertMessageRow, error)
-	// All of an account's provider key configs (0..2), stable-ordered. Includes the sealed
-	// material (service-only — the HTTP layer returns only the masked view).
-	ListApiKeyConfigs(ctx context.Context, accountID pgtype.UUID) ([]CoachApiKeyConfig, error)
-	// An account's default rows (tests and m1-10's Settings panel).
-	ListKeyDefaults(ctx context.Context, accountID pgtype.UUID) ([]CoachKeyDefault, error)
+	// coach.api_key_config — one envelope-encrypted provider key per (account, provider).
+	//
+	// EXPLICIT COLUMN LISTS, never `SELECT *` / `RETURNING *` (m1-10). Two reasons:
+	//   * sqlc expands a star to the column set it saw at generate time, so generated code
+	//     reads every column positionally. When m1-08 (M1c) drops is_default, a star query
+	//     would scan a column count that no longer matches and fail at runtime — the drop's
+	//     whole point is that nothing touches it first.
+	//   * is_default is DEAD from m1-10 on: coach.key_default(account_id, feature) is the
+	//     only default source. Naming the columns is what makes "no reader, no writer" a
+	//     checkable property (internal/coach/contract_test.go greps for both, and
+	//     hack/lint-dropped-columns.sh no longer allowlists coach).
+	//
+	// The sealed material comes back on the read paths (the service opens it in memory for a
+	// provider call); the HTTP layer only ever serialises the masked view. Two pairs are
+	// stored during M1b: the LEGACY unbound pair (enc_key, enc_data_key), still readable by
+	// v1.6.0 so the rollback floor holds, and the AD-BOUND pair (enc_key_ad,
+	// enc_data_key_ad) under keyring entry kek_id, tied to the legacy pair it was sealed
+	// beside by ad_src_digest = sha256(enc_data_key). See migration 00006 and rewrap.go.
+	// All of an account's provider key configs (0..2), stable-ordered. Includes both sealed
+	// pairs (service-only — the HTTP layer returns only the masked view).
+	ListApiKeyConfigs(ctx context.Context, accountID pgtype.UUID) ([]ListApiKeyConfigsRow, error)
+	// Every default the account has, with the provider of the key behind it — what the
+	// Settings panel renders as per-feature defaults (AB01 F13) and what GET /keys returns as
+	// `defaults`. A feature with no default is simply absent (the UI shows "Not set").
+	ListKeyDefaults(ctx context.Context, accountID pgtype.UUID) ([]ListKeyDefaultsRow, error)
 	// A thread's messages oldest-first (seq is the stable total order). Used both for
 	// GET /coach/thread history and to build the provider request's prior turns.
 	ListMessages(ctx context.Context, threadID pgtype.UUID) ([]ListMessagesRow, error)
-	// After deleting the default, make the earliest-created remaining key the default. Does
-	// nothing (ErrNoRows) when a default already exists or no keys remain. Keeps exactly one
-	// default per account.
-	PromoteEarliestDefault(ctx context.Context, accountID pgtype.UUID) (string, error)
-	// After a delete: when the account has keys but no coach default left (the cascade
-	// removed it with its key), make the earliest-created key the default — the same order
-	// PromoteEarliestDefault uses for is_default, so the two stay equal.
-	PromoteEarliestKeyDefault(ctx context.Context, accountID pgtype.UUID) error
-	// Flip one provider's enabled flag (Settings toggle / provider-auth failure). Returns the
-	// affected row count so a no-op can 404.
+	// One batch of key configs whose AD pair needs (re)sealing: never written, wrapped under
+	// a KEK that is no longer active, or STALE — the legacy pair was rewritten underneath it
+	// (a v1.6.0 key replace during a rollback), which the digest detects.
+	//
+	// Ordered by id for a stable, resumable scan. $2 is the batch size (≤ 50: the pass holds
+	// one of coach's 4 pooled connections and must stay inside the pod's 128 Mi, ADR-0035 §5).
+	ListRewrapPending(ctx context.Context, arg ListRewrapPendingParams) ([]ListRewrapPendingRow, error)
+	// After a delete: when the account still has keys but the named feature has no default
+	// left (the cascade removed it with its key), make the earliest-created key the default,
+	// carrying that key's own model. The store calls this for `coach` ONLY — `interview` is
+	// never auto-promoted.
+	PromoteEarliestKeyDefault(ctx context.Context, arg PromoteEarliestKeyDefaultParams) error
+	// Flip one provider's enabled flag (Settings toggle / provider-AUTH failure — never a
+	// quota or rate limit, which keep the key). Returns the affected row count so a no-op
+	// can 404.
 	SetApiKeyEnabled(ctx context.Context, arg SetApiKeyEnabledParams) (int64, error)
-	// Make one provider the account's default and clear the others, in a single statement
-	// (exactly one row matches $2 → exactly one default). The store verifies the target
-	// provider exists first, so an unknown provider can't blank the default.
-	SetDefaultProvider(ctx context.Context, arg SetDefaultProviderParams) (int64, error)
-	// Keep the coach default's model equal to its key's default_model when that key's model
-	// changes (a key replacement or a model switch). No row when the key isn't the default.
+	// PG's sha256 of a row's legacy wrapped data key — the exact value the selector compares
+	// ad_src_digest against. Exists so a test can assert Go's crypto/sha256 and PG's
+	// sha256(bytea) agree on real stored bytes (they must, or the selector would see every
+	// row as stale forever and the job would spin).
+	Sha256OfLegacyPair(ctx context.Context, id pgtype.UUID) ([]byte, error)
+	// Keep the COACH default's model equal to its key's default_model when that key's model
+	// changes (a key replacement or a model switch in Settings). Scoped to feature='coach' on
+	// purpose: an `interview` default pointing at the same key keeps its own chosen brain,
+	// which a coach-side model switch must not clobber.
 	SyncKeyDefaultModel(ctx context.Context, arg SyncKeyDefaultModelParams) error
-	// Update a provider's model + name WITHOUT touching the sealed key (switch model / rename).
-	// ErrNoRows when that provider isn't connected.
-	UpdateApiKeyMeta(ctx context.Context, arg UpdateApiKeyMetaParams) (CoachApiKeyConfig, error)
+	// --- background re-wrap (m1-10 task 3; internal/coach/rewrap.go) ---
+	// Take the re-wrap lock for the CURRENT TRANSACTION. False means another runner (another
+	// replica, or a pass still in flight during a rolling update) holds it and this pass ends.
+	//
+	// It must be the TRANSACTION-scoped lock, never pg_try_advisory_lock: on a pgxpool the
+	// matching unlock can be issued on a different pooled connection, which leaks the lock
+	// for the lifetime of the pod. COMMIT or ROLLBACK releases this one on the connection
+	// that took it, which is what makes it safe across a rolling update.
+	TryLockRewrap(ctx context.Context) (bool, error)
+	// Install a freshly sealed AD pair. OPTIMISTIC on the legacy pair: the WHERE pins
+	// enc_data_key to the bytes the job decrypted from, so a PUT that replaced the key
+	// mid-pass wins (0 rows affected) instead of being clobbered with a pair bound to the old
+	// key. ad_src_digest is computed by PG from those same bytes, so the digest and the pair
+	// are always written from one consistent observation.
+	UpdateApiKeyAD(ctx context.Context, arg UpdateApiKeyADParams) (int64, error)
+	// Update a provider's model + name WITHOUT touching either sealed pair (switch model /
+	// rename). ErrNoRows when that provider isn't connected.
+	UpdateApiKeyMeta(ctx context.Context, arg UpdateApiKeyMetaParams) (UpdateApiKeyMetaRow, error)
 	// Store or replace the (account, provider) key with pre-sealed material, re-enabling it.
-	// $8 is_default: the store passes true only when this is the account's first key. On
-	// conflict the row keeps its default flag unless $8 promotes it. The raw key never reaches
-	// this layer as a column.
-	UpsertApiKeyConfig(ctx context.Context, arg UpsertApiKeyConfigParams) (CoachApiKeyConfig, error)
-	// coach.key_default (m1-02, M1a expand): the per-feature default key that replaces
-	// api_key_config.is_default. In v1.6.0 every writer of is_default dual-writes the
-	// feature='coach' row here with the same meaning; m1-10 makes this the only source
-	// (and adds the 'interview' feature); M1c drops is_default.
-	// Make key_id the account's coach default, with its model (dual-write of the first key
-	// and of set-default).
+	// BOTH pairs are written in this ONE statement together with kek_id and ad_src_digest, so
+	// no v1.7.0+ writer can leave them divergent: the AD pair always describes the legacy
+	// pair sitting next to it. (A v1.6.0 writer during a rollback rewrites only the legacy
+	// pair; that is detected afterwards by the digest, not prevented — see rewrap.go.)
+	//
+	// is_default is NOT named: the column keeps its DEFAULT false for v1.6.0's benefit, and
+	// the default itself is written to coach.key_default in the same transaction by the store.
+	// The raw key never reaches this layer as a column.
+	UpsertApiKeyConfig(ctx context.Context, arg UpsertApiKeyConfigParams) (UpsertApiKeyConfigRow, error)
+	// Set one feature's default key and model (the first key for `coach`, an explicit
+	// set-default for either feature).
 	UpsertKeyDefault(ctx context.Context, arg UpsertKeyDefaultParams) error
 	// Get-or-create the thread for (account, page context), labelled with its course
 	// (path_slug; NULL for an account-wide context). The DO UPDATE always fires, so the
@@ -81,6 +161,21 @@ type Querier interface {
 	// on the same page can't create duplicate threads (UNIQUE(account_id, page_context)). It
 	// keeps an existing path_slug and fills a NULL one (a thread written before m1-03).
 	UpsertThread(ctx context.Context, arg UpsertThreadParams) (pgtype.UUID, error)
+	// Month-to-date spend on the account's own keys, for "This month on your keys" (AB01
+	// F13). The window is the current UTC CALENDAR month — date_trunc on a timestamptz is
+	// evaluated in the session TimeZone, so it is pinned to UTC here rather than inheriting
+	// whatever the connection happens to carry; the UI labels it as a UTC month.
+	//
+	// has_unknown_cost marks that at least one answered turn had no price (a custom model, or
+	// a turn whose stream reported no usage), so the displayed total is a FLOOR and the UI
+	// says custom models are not estimated. Display only; always an estimate.
+	// Every aggregate is COALESCEd, bool_or included: over ZERO rows — a learner who has
+	// just connected a key and not chatted yet — sum() and bool_or() both return NULL, and
+	// sqlc types these columns as non-null, so an un-COALESCEd bool_or makes GET /keys fail
+	// with "cannot scan NULL into *bool" for every brand-new account. (Found by the m1-10
+	// compose rehearsal; the handler unit tests run against an in-memory fake and never
+	// execute this SQL. TestUsageMonthOnAnEmptyAccount pins it.)
+	UsageMonthForAccount(ctx context.Context, accountID pgtype.UUID) (UsageMonthForAccountRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

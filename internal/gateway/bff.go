@@ -55,6 +55,7 @@ const (
 	whyMockTrend   = "mock trend: rubric totals, no item data"
 	whyPublic      = "public profile: aggregates only (publicShapeAllowlist, m1-05)"
 	whyCoachKey    = "coach key config (masked); no item data"
+	whyCoachModels = "model catalog; no item data"
 	whyCoachThread = "coach thread: the learner's own chat history; the problem context is withheld when the chat is composed"
 	whyEnroll      = "enrollment write; returns the enrollment"
 )
@@ -145,6 +146,7 @@ func (g *Gateway) apiRoutes() []apiRoute {
 		{Method: "GET", Pattern: "/api/coach/key", Handler: g.handleCoachKey, Doc: true, Withhold: exempt(whyCoachKey)},
 		{Method: "PUT", Pattern: "/api/coach/key", Handler: g.handlePutCoachKey, Doc: true, Withhold: exempt(whyCoachKey)},
 		{Method: "DELETE", Pattern: "/api/coach/key", Handler: g.handleDeleteCoachKey, Doc: true, Withhold: exempt(whyCoachKey)},
+		{Method: "GET", Pattern: "/api/coach/models", Handler: g.handleCoachModels, Doc: true, Withhold: exempt(whyCoachModels)},
 		{Method: "GET", Pattern: "/api/coach/thread", Handler: g.handleCoachThread, Doc: true, Withhold: exempt(whyCoachThread)},
 		{Method: "POST", Pattern: "/api/coach/chat", Handler: g.handleCoachChat, Doc: true, Withhold: withholdApplies},
 	}

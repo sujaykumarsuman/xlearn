@@ -34,25 +34,57 @@ func (f fakeVerifier) Verify(_ context.Context, token string) (auth.Claims, erro
 }
 
 // memStore is an in-memory Store for unit tests. keys is account -> provider -> config,
-// mirroring the multi-provider schema (one key per provider, exactly one default).
+// mirroring the multi-provider schema (one key per provider). defaults is
+// account -> feature -> default row, mirroring coach.key_default — including the
+// asymmetry the handler tests exercise: `coach` is maintained implicitly (first key in,
+// survivor promoted on delete) while `interview` is only ever set explicitly.
+//
+// IsDefault is DERIVED from the coach default row on every read, never stored on the key,
+// so the fake can't accidentally pass a test the real store (which reads key_default)
+// would fail.
 type memStore struct {
 	mu       sync.Mutex
-	keys     map[string]map[string]store.KeyConfig // accountID -> provider -> config
-	threads  map[string]string                     // accountID|context -> threadID
-	messages map[string][]store.Message            // threadID -> messages
-	threadOf map[string]string                     // threadID -> accountID|context (bookkeeping)
-	pathOf   map[string]string                     // threadID -> path_slug ("" = NULL)
+	keys     map[string]map[string]store.KeyConfig      // accountID -> provider -> config
+	defaults map[string]map[string]store.FeatureDefault // accountID -> feature -> default
+	threads  map[string]string                          // accountID|context -> threadID
+	messages map[string][]store.Message                 // threadID -> messages
+	usage    map[string][]store.MessageUsage            // threadID -> assistant-turn usage
+	threadOf map[string]string                          // threadID -> accountID|context (bookkeeping)
+	pathOf   map[string]string                          // threadID -> path_slug ("" = NULL)
 	nextID   int
 }
 
 func newMemStore() *memStore {
 	return &memStore{
 		keys:     map[string]map[string]store.KeyConfig{},
+		defaults: map[string]map[string]store.FeatureDefault{},
 		threads:  map[string]string{},
 		messages: map[string][]store.Message{},
+		usage:    map[string][]store.MessageUsage{},
 		threadOf: map[string]string{},
 		pathOf:   map[string]string{},
 	}
+}
+
+// setDefaultLocked writes one feature's default row (callers hold m.mu). An empty model
+// takes the key's own default_model, as UpsertKeyDefault does.
+func (m *memStore) setDefaultLocked(accountID, feature string, k store.KeyConfig, model string) {
+	if m.defaults[accountID] == nil {
+		m.defaults[accountID] = map[string]store.FeatureDefault{}
+	}
+	if model == "" {
+		model = k.DefaultModel
+	}
+	m.defaults[accountID][feature] = store.FeatureDefault{
+		Feature: feature, Provider: k.Provider, Model: model, KeyID: k.Provider,
+	}
+}
+
+// withDefaultFlagLocked stamps IsDefault from the coach default row.
+func (m *memStore) withDefaultFlagLocked(accountID string, k store.KeyConfig) store.KeyConfig {
+	d, ok := m.defaults[accountID][store.FeatureCoach]
+	k.IsDefault = ok && d.Provider == k.Provider
+	return k
 }
 
 func (m *memStore) ListKeys(_ context.Context, accountID string) ([]store.KeyConfig, error) {
@@ -61,7 +93,7 @@ func (m *memStore) ListKeys(_ context.Context, accountID string) ([]store.KeyCon
 	ps := m.keys[accountID]
 	out := make([]store.KeyConfig, 0, len(ps))
 	for _, k := range ps {
-		out = append(out, k)
+		out = append(out, m.withDefaultFlagLocked(accountID, k))
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Provider < out[j].Provider })
 	return out, nil
@@ -74,18 +106,35 @@ func (m *memStore) GetKey(_ context.Context, accountID, provider string) (store.
 	if !ok {
 		return store.KeyConfig{}, store.ErrNotFound
 	}
+	return m.withDefaultFlagLocked(accountID, k), nil
+}
+
+func (m *memStore) GetDefaultKey(_ context.Context, accountID, feature string) (store.KeyConfig, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	d, ok := m.defaults[accountID][feature]
+	if !ok {
+		return store.KeyConfig{}, store.ErrNotFound
+	}
+	k, ok := m.keys[accountID][d.Provider]
+	if !ok {
+		return store.KeyConfig{}, store.ErrNotFound
+	}
+	k = m.withDefaultFlagLocked(accountID, k)
+	k.FeatureModel = d.Model
+	k.IsDefault = feature == store.FeatureCoach
 	return k, nil
 }
 
-func (m *memStore) GetDefaultKey(_ context.Context, accountID string) (store.KeyConfig, error) {
+func (m *memStore) ListDefaults(_ context.Context, accountID string) ([]store.FeatureDefault, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	for _, k := range m.keys[accountID] {
-		if k.IsDefault {
-			return k, nil
-		}
+	out := make([]store.FeatureDefault, 0, len(m.defaults[accountID]))
+	for _, d := range m.defaults[accountID] {
+		out = append(out, d)
 	}
-	return store.KeyConfig{}, store.ErrNotFound
+	sort.Slice(out, func(i, j int) bool { return out[i].Feature < out[j].Feature })
+	return out, nil
 }
 
 func (m *memStore) PutKey(_ context.Context, k store.KeyConfig) (store.KeyConfig, error) {
@@ -96,13 +145,20 @@ func (m *memStore) PutKey(_ context.Context, k store.KeyConfig) (store.KeyConfig
 	}
 	ps := m.keys[k.AccountID]
 	k.Enabled = true
-	if existing, ok := ps[k.Provider]; ok {
-		k.IsDefault = existing.IsDefault // replacing a provider keeps its default status
-	} else {
-		k.IsDefault = len(ps) == 0 // the account's first key becomes the default
-	}
+	first := len(ps) == 0
 	ps[k.Provider] = k
-	return k, nil
+	d, hasCoach := m.defaults[k.AccountID][store.FeatureCoach]
+	switch {
+	case first:
+		// The account's first key becomes its coach default.
+		m.setDefaultLocked(k.AccountID, store.FeatureCoach, k, k.DefaultModel)
+	case hasCoach && d.Provider == k.Provider:
+		// A replaced key that already backs the coach default carries its (possibly new)
+		// model over — SyncKeyDefaultModel. An `interview` default pointing at the same
+		// key keeps its own chosen brain.
+		m.setDefaultLocked(k.AccountID, store.FeatureCoach, k, k.DefaultModel)
+	}
+	return m.withDefaultFlagLocked(k.AccountID, k), nil
 }
 
 func (m *memStore) UpdateKeyMeta(_ context.Context, accountID, provider, model, name string) (store.KeyConfig, error) {
@@ -115,7 +171,10 @@ func (m *memStore) UpdateKeyMeta(_ context.Context, accountID, provider, model, 
 	k.DefaultModel = model
 	k.Name = name
 	m.keys[accountID][provider] = k
-	return k, nil
+	if d, ok := m.defaults[accountID][store.FeatureCoach]; ok && d.Provider == provider {
+		m.setDefaultLocked(accountID, store.FeatureCoach, k, model)
+	}
+	return m.withDefaultFlagLocked(accountID, k), nil
 }
 
 func (m *memStore) SetKeyEnabled(_ context.Context, accountID, provider string, enabled bool) error {
@@ -130,47 +189,68 @@ func (m *memStore) SetKeyEnabled(_ context.Context, accountID, provider string, 
 	return nil
 }
 
-func (m *memStore) SetDefault(_ context.Context, accountID, provider string) (store.KeyConfig, error) {
+func (m *memStore) SetDefault(_ context.Context, accountID, provider, feature, model string) (store.KeyConfig, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	ps := m.keys[accountID]
-	if _, ok := ps[provider]; !ok {
+	k, ok := m.keys[accountID][provider]
+	if !ok {
 		return store.KeyConfig{}, store.ErrNotFound
 	}
-	var def store.KeyConfig
-	for p, k := range ps {
-		k.IsDefault = p == provider
-		ps[p] = k
-		if k.IsDefault {
-			def = k
-		}
-	}
-	return def, nil
+	m.setDefaultLocked(accountID, feature, k, model)
+	return m.withDefaultFlagLocked(accountID, k), nil
 }
 
 func (m *memStore) DeleteKey(_ context.Context, accountID, provider string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	ps := m.keys[accountID]
-	k, ok := ps[provider]
-	if !ok {
+	if _, ok := ps[provider]; !ok {
 		return store.ErrNotFound
 	}
-	wasDefault := k.IsDefault
 	delete(ps, provider)
-	if wasDefault && len(ps) > 0 {
-		// Promote a survivor (lowest provider id, for deterministic tests) to default.
+	// ON DELETE CASCADE: every default row pointing at the key dies with it.
+	for feature, d := range m.defaults[accountID] {
+		if d.Provider == provider {
+			delete(m.defaults[accountID], feature)
+		}
+	}
+	// Only `coach` is promoted (lowest provider id, for deterministic tests);
+	// `interview` is deliberately left unset rather than moved to a model the learner
+	// never chose.
+	if _, ok := m.defaults[accountID][store.FeatureCoach]; !ok && len(ps) > 0 {
 		pick := ""
 		for p := range ps {
 			if pick == "" || p < pick {
 				pick = p
 			}
 		}
-		pk := ps[pick]
-		pk.IsDefault = true
-		ps[pick] = pk
+		m.setDefaultLocked(accountID, store.FeatureCoach, ps[pick], ps[pick].DefaultModel)
 	}
 	return nil
+}
+
+func (m *memStore) UsageMonth(_ context.Context, accountID string) (store.Usage, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out store.Usage
+	for id, key := range m.threadOf {
+		if a, _, _ := strings.Cut(key, "|"); a != accountID {
+			continue
+		}
+		for _, u := range m.usage[id] {
+			out.Messages++
+			out.InputTokens += int64(u.InputTokens)
+			out.OutputTokens += int64(u.OutputTokens)
+			if u.EstCostMicros == nil {
+				// An un-priced turn makes the total a floor, not a sum — the same thing
+				// bool_or(est_cost_micros IS NULL) reports in SQL.
+				out.HasUnknownCost = true
+				continue
+			}
+			out.EstCostMicros += *u.EstCostMicros
+		}
+	}
+	return out, nil
 }
 
 func (m *memStore) EnsureThread(_ context.Context, accountID, pageContext, pathSlug string) (string, error) {
@@ -229,6 +309,21 @@ func (m *memStore) AppendMessage(_ context.Context, threadID, role, content stri
 	defer m.mu.Unlock()
 	m.messages[threadID] = append(m.messages[threadID], store.Message{Role: role, Content: content})
 	return nil
+}
+
+func (m *memStore) AppendAssistantMessage(_ context.Context, threadID, content string, u store.MessageUsage) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.messages[threadID] = append(m.messages[threadID], store.Message{Role: store.RoleAssistant, Content: content})
+	m.usage[threadID] = append(m.usage[threadID], u)
+	return nil
+}
+
+// usageFor returns the usage rows recorded against (account, context)'s assistant turns.
+func (m *memStore) usageFor(accountID, pageContext string) []store.MessageUsage {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]store.MessageUsage(nil), m.usage[m.threads[accountID+"|"+pageContext]]...)
 }
 
 func (m *memStore) Ping(context.Context) error { return nil }

@@ -21,16 +21,26 @@ type CoachApiKeyConfig struct {
 	UpdatedAt    pgtype.Timestamptz
 	Name         string
 	IsDefault    pgtype.Bool
+	EncKeyAd     []byte
+	EncDataKeyAd []byte
+	KekID        pgtype.Text
+	AdSrcDigest  []byte
 }
 
 type CoachCoachMessage struct {
-	ID        pgtype.UUID
-	ThreadID  pgtype.UUID
-	Seq       pgtype.Int8
-	Role      string
-	Content   string
-	CreatedAt pgtype.Timestamptz
-	PathSlug  pgtype.Text
+	ID            pgtype.UUID
+	ThreadID      pgtype.UUID
+	Seq           pgtype.Int8
+	Role          string
+	Content       string
+	CreatedAt     pgtype.Timestamptz
+	PathSlug      pgtype.Text
+	Provider      pgtype.Text
+	Model         pgtype.Text
+	InputTokens   pgtype.Int4
+	OutputTokens  pgtype.Int4
+	EstCostMicros pgtype.Int8
+	StopReason    pgtype.Text
 }
 
 type CoachCoachThread struct {

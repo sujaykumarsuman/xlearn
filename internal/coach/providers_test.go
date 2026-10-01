@@ -245,9 +245,18 @@ func TestProviderAuthFailureMapsToErrProviderAuth(t *testing.T) {
 	}
 }
 
-// TestProviderStatusClassification pins which upstream rejections disable a key (auth)
-// and which keep it (limited / unavailable). Only 401, invalid_api_key and
-// authentication_error may disable a key.
+// TestProviderStatusClassification pins the full error taxonomy from recorded error
+// bodies, per provider and per class (m1-10 task 6).
+//
+// Two properties it exists to defend:
+//
+//   - ONLY auth disables a key. Every other class keeps it, because v1's coarse
+//     "limited" bucket disabled a key when the account merely ran out of credit, forcing
+//     the learner to re-paste a working key after topping up.
+//   - The classes the learner is ADVISED differently about stay apart. A 429 is a rate
+//     limit ("wait") or an exhausted quota ("top up"); a 403 is a model permission error
+//     ("pick another model") or a blocked region ("nothing you can do here"). Classifying
+//     on status alone — as v1 did — collapses all four into one wrong message.
 func TestProviderStatusClassification(t *testing.T) {
 	cases := []struct {
 		provider string
@@ -256,35 +265,55 @@ func TestProviderStatusClassification(t *testing.T) {
 		body     string
 		want     ProviderErrorKind
 	}{
-		// OpenAI
+		// --- OpenAI: auth ---
 		{"openai", "401 invalid_api_key", 401, `{"error":{"message":"Incorrect API key provided: sk-abc***wxyz.","type":"invalid_request_error","param":null,"code":"invalid_api_key"}}`, KindAuth},
 		{"openai", "401 no body", 401, ``, KindAuth},
-		{"openai", "429 insufficient_quota", 429, `{"error":{"message":"You exceeded your current quota, please check your plan and billing details.","type":"insufficient_quota","param":null,"code":"insufficient_quota"}}`, KindLimited},
-		{"openai", "429 credit_balance_exhausted", 429, `{"error":{"message":"You have run out of credits.","type":"insufficient_quota","param":null,"code":"credit_balance_exhausted"}}`, KindLimited},
-		{"openai", "429 org spend limit", 429, `{"error":{"message":"Organization spend limit reached","type":"insufficient_quota","param":null,"code":"organization_spend_limit_exceeded"}}`, KindLimited},
-		{"openai", "429 project spend limit", 429, `{"error":{"message":"Project spend limit reached","type":"insufficient_quota","param":null,"code":"project_spend_limit_exceeded"}}`, KindLimited},
-		{"openai", "403 model_not_found", 403, `{"error":{"message":"Project does not have access to model gpt-5.6-sol","type":"invalid_request_error","param":null,"code":"model_not_found"}}`, KindLimited},
+		{"openai", "401 authentication_error type", 401, `{"error":{"message":"bad key","type":"authentication_error","code":null}}`, KindAuth},
+		// --- OpenAI: quota (out of credit, billing, spend/usage limits) ---
+		{"openai", "429 insufficient_quota", 429, `{"error":{"message":"You exceeded your current quota, please check your plan and billing details.","type":"insufficient_quota","param":null,"code":"insufficient_quota"}}`, KindQuota},
+		{"openai", "429 credit_balance_exhausted", 429, `{"error":{"message":"You have run out of credits.","type":"insufficient_quota","param":null,"code":"credit_balance_exhausted"}}`, KindQuota},
+		{"openai", "429 org spend limit", 429, `{"error":{"message":"Organization spend limit reached","type":"insufficient_quota","param":null,"code":"organization_spend_limit_exceeded"}}`, KindQuota},
+		{"openai", "429 project spend limit", 429, `{"error":{"message":"Project spend limit reached","type":"insufficient_quota","param":null,"code":"project_spend_limit_exceeded"}}`, KindQuota},
+		{"openai", "429 org usage limit", 429, `{"error":{"message":"Organization usage limit reached","type":"insufficient_quota","param":null,"code":"organization_usage_limit_exceeded"}}`, KindQuota},
+		{"openai", "400 billing_hard_limit_reached", 400, `{"error":{"message":"Billing hard limit has been reached","type":"invalid_request_error","param":null,"code":"billing_hard_limit_reached"}}`, KindQuota},
+		{"openai", "402 payment required", 402, `{"error":{"message":"payment required","type":"billing_error","code":null}}`, KindQuota},
+		// --- OpenAI: rate limit ---
+		{"openai", "429 rate_limit_exceeded", 429, `{"error":{"message":"Rate limit reached","type":"requests","param":null,"code":"rate_limit_exceeded"}}`, KindRateLimited},
+		{"openai", "429 slow_down", 429, `{"error":{"message":"Slow down","type":"tokens","param":null,"code":"slow_down"}}`, KindRateLimited},
+		{"openai", "429 bare", 429, ``, KindRateLimited},
+		// --- OpenAI: model access (pick another model; NEVER a disable) ---
+		{"openai", "403 model_not_found", 403, `{"error":{"message":"Project does not have access to model gpt-5.6-sol","type":"invalid_request_error","param":null,"code":"model_not_found"}}`, KindModelAccess},
+		{"openai", "404 model_not_found", 404, `{"error":{"message":"The model does not exist or you do not have access to it.","type":"invalid_request_error","param":null,"code":"model_not_found"}}`, KindModelAccess},
+		{"openai", "403 permission_error", 403, `{"error":{"message":"You do not have access to this model","type":"permission_error","code":null}}`, KindModelAccess},
+		// --- OpenAI: region ---
+		{"openai", "403 unsupported region", 403, `{"error":{"message":"Country, region, or territory not supported","type":"request_forbidden","param":null,"code":"unsupported_country_region_territory"}}`, KindRegion},
+		// --- OpenAI: unavailable (ours or theirs, not the account's) ---
 		{"openai", "503 server_is_overloaded", 503, `{"error":{"message":"overloaded","type":"service_unavailable_error","param":null,"code":"server_is_overloaded"}}`, KindUnavailable},
 		{"openai", "400 unsupported_parameter", 400, `{"error":{"message":"Unsupported parameter","type":"invalid_request_error","param":"max_tokens","code":"unsupported_parameter"}}`, KindUnavailable},
-		{"openai", "429 rate_limit_exceeded", 429, `{"error":{"message":"Rate limit reached","type":"requests","param":null,"code":"rate_limit_exceeded"}}`, KindLimited},
-		{"openai", "400 billing_hard_limit_reached", 400, `{"error":{"message":"Billing hard limit has been reached","type":"invalid_request_error","param":null,"code":"billing_hard_limit_reached"}}`, KindLimited},
-		{"openai", "402 payment required", 402, `{"error":{"message":"payment required","type":"billing_error","code":null}}`, KindLimited},
-		{"openai", "403 unsupported region", 403, `{"error":{"message":"Country, region, or territory not supported","type":"request_forbidden","param":null,"code":"unsupported_country_region_territory"}}`, KindLimited},
-		{"openai", "404 model_not_found", 404, `{"error":{"message":"The model does not exist or you do not have access to it.","type":"invalid_request_error","param":null,"code":"model_not_found"}}`, KindLimited},
 		{"openai", "400 other", 400, `{"error":{"message":"bad","type":"invalid_request_error","param":"messages","code":null}}`, KindUnavailable},
 		{"openai", "500 server_error", 500, `{"error":{"message":"boom","type":"server_error","code":null}}`, KindUnavailable},
 		{"openai", "503 no body", 503, ``, KindUnavailable},
-		// Anthropic
+
+		// --- Anthropic: auth ---
 		{"anthropic", "401 authentication_error", 401, `{"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}`, KindAuth},
-		{"anthropic", "402 billing_error", 402, `{"type":"error","error":{"type":"billing_error","message":"There's an issue with your billing or payment information."}}`, KindLimited},
-		{"anthropic", "403 permission_error", 403, `{"type":"error","error":{"type":"permission_error","message":"Your API key does not have permission to use the specified resource."}}`, KindLimited},
-		{"anthropic", "429 rate_limit_error", 429, `{"type":"error","error":{"type":"rate_limit_error","message":"Number of request tokens has exceeded your per-minute rate limit"}}`, KindLimited},
-		{"anthropic", "429 tier spend cap", 429, `{"type":"error","error":{"type":"rate_limit_error","message":"You have reached your API usage limits: your organization has crossed its monthly API usage threshold.","details":{"error_code":"enforced_spend_limit_reached"}}}`, KindLimited},
-		{"anthropic", "400 org spend limit", 400, `{"type":"error","error":{"type":"invalid_request_error","message":"You have reached your specified API usage limits. You will regain access on 2026-10-01 at 00:00 UTC."}}`, KindLimited},
-		{"anthropic", "400 workspace spend limit", 400, `{"type":"error","error":{"type":"invalid_request_error","message":"You have reached your specified workspace API usage limits. You will regain access on 2026-10-01 at 00:00 UTC."}}`, KindLimited},
-		{"anthropic", "400 credit balance", 400, `{"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}}`, KindLimited},
+		{"anthropic", "401 no body", 401, ``, KindAuth},
+		// --- Anthropic: quota ---
+		{"anthropic", "402 billing_error", 402, `{"type":"error","error":{"type":"billing_error","message":"There's an issue with your billing or payment information."}}`, KindQuota},
+		// The tier's monthly spend cap arrives as a 429 rate_limit_error and is told apart
+		// from a real rate limit only by its message — "top up" vs "wait".
+		{"anthropic", "429 tier spend cap", 429, `{"type":"error","error":{"type":"rate_limit_error","message":"You have reached your API usage limits: your organization has crossed its monthly API usage threshold.","details":{"error_code":"enforced_spend_limit_reached"}}}`, KindQuota},
+		{"anthropic", "400 org spend limit", 400, `{"type":"error","error":{"type":"invalid_request_error","message":"You have reached your specified API usage limits. You will regain access on 2026-10-01 at 00:00 UTC."}}`, KindQuota},
+		{"anthropic", "400 workspace spend limit", 400, `{"type":"error","error":{"type":"invalid_request_error","message":"You have reached your specified workspace API usage limits. You will regain access on 2026-10-01 at 00:00 UTC."}}`, KindQuota},
+		{"anthropic", "400 credit balance", 400, `{"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}}`, KindQuota},
+		// --- Anthropic: rate limit ---
+		{"anthropic", "429 rate_limit_error", 429, `{"type":"error","error":{"type":"rate_limit_error","message":"Number of request tokens has exceeded your per-minute rate limit"}}`, KindRateLimited},
+		// --- Anthropic: model access ---
+		{"anthropic", "403 permission_error", 403, `{"type":"error","error":{"type":"permission_error","message":"Your API key does not have permission to use the specified resource."}}`, KindModelAccess},
+		{"anthropic", "404 not_found_error", 404, `{"type":"error","error":{"type":"not_found_error","message":"model: claude-nope"}}`, KindModelAccess},
+		// --- Anthropic: region ---
+		{"anthropic", "403 region", 403, `{"type":"error","error":{"type":"permission_error","message":"Claude Code is not available in your region."}}`, KindRegion},
+		// --- Anthropic: unavailable ---
 		{"anthropic", "400 malformed", 400, `{"type":"error","error":{"type":"invalid_request_error","message":"messages: at least one message is required"}}`, KindUnavailable},
-		{"anthropic", "404 not_found_error", 404, `{"type":"error","error":{"type":"not_found_error","message":"model: claude-nope"}}`, KindUnavailable},
 		{"anthropic", "500 api_error", 500, `{"type":"error","error":{"type":"api_error","message":"Internal server error"}}`, KindUnavailable},
 		{"anthropic", "529 overloaded_error", 529, `{"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}`, KindUnavailable},
 	}
@@ -311,8 +340,10 @@ func TestProviderStatusClassification(t *testing.T) {
 	}
 }
 
-// assertKind checks err is a *ProviderError of kind want (and status), and that the
-// sentinels match exactly that kind.
+// assertKind checks err is a *ProviderError of kind want (and status), that EVERY
+// sentinel matches exactly its own kind and no other, that ErrProviderLimited still
+// covers every account-side kind as an umbrella (so v1 call sites keep working), and that
+// the wire `reason` the SPA switches on is the kind's name.
 func assertKind(t *testing.T, err error, want ProviderErrorKind, status int) {
 	t.Helper()
 	var pe *ProviderError
@@ -322,11 +353,31 @@ func assertKind(t *testing.T, err error, want ProviderErrorKind, status int) {
 	if pe.Kind != want || pe.Status != status {
 		t.Fatalf("kind/status = %s/%d, want %s/%d (%v)", pe.Kind, pe.Status, want, status, err)
 	}
-	if errors.Is(err, ErrProviderAuth) != (want == KindAuth) {
-		t.Fatalf("errors.Is(ErrProviderAuth) = %v for kind %s", !(want == KindAuth), want)
+	for _, s := range []struct {
+		sentinel error
+		kind     ProviderErrorKind
+	}{
+		{ErrProviderAuth, KindAuth},
+		{ErrQuota, KindQuota},
+		{ErrRateLimited, KindRateLimited},
+		{ErrModelAccess, KindModelAccess},
+		{ErrRegion, KindRegion},
+	} {
+		if got := errors.Is(err, s.sentinel); got != (want == s.kind) {
+			t.Fatalf("errors.Is(%v) = %v for kind %s, want %v", s.sentinel, got, want, want == s.kind)
+		}
 	}
-	if errors.Is(err, ErrProviderLimited) != (want == KindLimited) {
-		t.Fatalf("errors.Is(ErrProviderLimited) = %v for kind %s", !(want == KindLimited), want)
+	// The umbrella: every account-side kind, and nothing else. Auth must NOT match it —
+	// finishChat's auth arm is the only one that disables a key, and an auth error reaching
+	// the limited arm instead would silently stop disabling bad keys.
+	if got := errors.Is(err, ErrProviderLimited); got != want.AccountSide() {
+		t.Fatalf("errors.Is(ErrProviderLimited) = %v for kind %s, want %v", got, want, want.AccountSide())
+	}
+	if want == KindAuth && errors.Is(err, ErrProviderLimited) {
+		t.Fatal("auth error matched ErrProviderLimited; it would not disable the key")
+	}
+	if got := ErrorReason(err); got != want.String() {
+		t.Fatalf("ErrorReason = %q, want %q", got, want.String())
 	}
 }
 
@@ -351,9 +402,9 @@ func TestOpenAIInlineErrorEvent(t *testing.T) {
 	}{
 		{"auth", `data: {"error":{"message":"bad key","type":"authentication_error"}}`, KindAuth},
 		{"invalid key", `data: {"error":{"message":"bad key","type":"invalid_request_error","code":"invalid_api_key"}}`, KindAuth},
-		{"quota", `data: {"error":{"message":"quota","type":"insufficient_quota","code":"insufficient_quota"}}`, KindLimited},
-		{"permission", `data: {"error":{"message":"no access","type":"permission_error"}}`, KindLimited},
-		{"rate limit", `data: {"error":{"message":"slow down","type":"requests","code":"rate_limit_exceeded"}}`, KindLimited},
+		{"quota", `data: {"error":{"message":"quota","type":"insufficient_quota","code":"insufficient_quota"}}`, KindQuota},
+		{"permission", `data: {"error":{"message":"no access","type":"permission_error"}}`, KindModelAccess},
+		{"rate limit", `data: {"error":{"message":"slow down","type":"requests","code":"rate_limit_exceeded"}}`, KindRateLimited},
 		{"server", `data: {"error":{"message":"boom","type":"server_error"}}`, KindUnavailable},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -373,9 +424,11 @@ func TestAnthropicInlineErrorEvent(t *testing.T) {
 		want ProviderErrorKind
 	}{
 		{"auth", "authentication_error", "bad key", KindAuth},
-		{"billing", "billing_error", "billing", KindLimited},
-		{"rate limit", "rate_limit_error", "slow down", KindLimited},
-		{"spend limit", "invalid_request_error", "You have reached your specified API usage limits.", KindLimited},
+		{"billing", "billing_error", "billing", KindQuota},
+		{"rate limit", "rate_limit_error", "slow down", KindRateLimited},
+		{"spend limit", "invalid_request_error", "You have reached your specified API usage limits.", KindQuota},
+		{"model access", "not_found_error", "model: claude-nope", KindModelAccess},
+		{"region", "permission_error", "not available in your region", KindRegion},
 		{"overloaded", "overloaded_error", "Overloaded", KindUnavailable},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
