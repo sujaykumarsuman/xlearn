@@ -19,9 +19,16 @@ var execAllow = []string{
 }
 
 // compileAllow is spk-02's logged amd64 `g++ -static` compile set, copied verbatim from t3
-// §16.2 (38 names). The profile unions it with the go build set for the runner's compile init.
+// §16.2 (38 names), plus:
+//
+//   - dup2: + m3-04. With -pipe, g++ wires cc1plus | as through posix_spawn file actions, and
+//     glibc's dup2 is the dup2 syscall on x86_64 (dup3 on arm64); ENOSYS there fails the spawn
+//     ("posix_spawn: Function not implemented"). spk-02's logged compile ran without -pipe. It
+//     only renumbers the compiler's own fds.
+//
+// The profile unions it with the go build set for the runner's compile init.
 var compileAllow = []string{
-	"access", "arch_prctl", "brk", "chmod", "clone", "close", "dup", "execve", "exit_group",
+	"access", "arch_prctl", "brk", "chmod", "clone", "close", "dup", "dup2", "execve", "exit_group",
 	"faccessat2", "fcntl", "fstat", "futex", "getcwd", "getrandom", "getrusage", "ioctl", "lseek",
 	"mmap", "mprotect", "mremap", "munmap", "newfstatat", "openat", "pread64", "prlimit64", "read",
 	"readlink", "rseq", "rt_sigaction", "rt_sigprocmask", "set_robust_list", "set_tid_address",
