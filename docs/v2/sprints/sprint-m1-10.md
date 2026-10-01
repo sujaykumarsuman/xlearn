@@ -9,7 +9,7 @@
 
 ## Status
 
-_Overall:_ ✅ Done
+_Overall:_ ✅ Done ([PR #112](https://github.com/sujaykumarsuman/xlearn/pull/112), 2026-10-01; merge only — ships in `v1.7.0`, tagged by [m1-07](sprint-m1-07.md))
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
