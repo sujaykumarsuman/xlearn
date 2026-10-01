@@ -60,9 +60,11 @@ bounded SSE ([m6a-04](../sprints/sprint-m6a-04.md), possibly in flight in parall
    then status, then message"; `internal/coach/interview/classify.go` with the plan's policy table; table tests for both providers; the
    test that reads `docs/v2/research/t6-s6-fixtures/index.json` **in place** (relative path, no copy) and fails on an unmapped fixture.
 3. **[X] Probe** (task 2): `probe.go` (16-token call, same key/model); `POST /interviews/{id}/probe` (≤ 1 / 10 s, ≤ 15 per grace);
-   register it as the sweeper's `Prober`; success within the grace → `cleared` → re-prime from checkpoint + verbatim tail (no paid
-   summary; ≤ 2 automatic re-primes per grace).
-4. **[X] Segment + brain** (task 1): `segment.go` (`Segment`, `TextSegment`), `brain/` with `interviewer-frame@1`, the context
+   register it as the sweeper's `Prober`; success within the grace → `cleared` → re-prime from checkpoint + verbatim tail + the code
+   snapshot (no paid summary; ≤ 2 automatic re-primes per grace).
+4. **[X] Segment + brain** (task 1): `segment.go` (`Segment`, `TextSegment`; **every `Prime` carries the code snapshot**: the latest
+   code with line numbers, trimmed around the cursor to fit ≤ 8,192 tokens, because M6b reseeds voice from `Prime` alone, t6 §16.6;
+   test it), `brain/` with `interviewer-frame@1`, the context
    builder (cached prefix, one-line state, current-screen item ≤ 16 KiB + diff fed by `ScreenSink.OnScreen` — adopt m6a-04's
    interface or define it for m6a-04 to adopt — transcript within 32 KiB), key decrypted per open
    segment and zeroed on close/interrupt/pause; pre-flight (`preflight_ok`/`preflight_fail`) re-applying m1-10's model rule against
@@ -78,7 +80,7 @@ bounded SSE ([m6a-04](../sprints/sprint-m6a-04.md), possibly in flight in parall
    then the turn, then context; never code; ≤ 1 per phase); `brief.go` (`POST /interviews/{id}/brief`: probe first → 409
    `still_no_credit`; else `interview-brief@1` structured call, cached in `interview_pause.brief`; the schema in t5's portable subset
    with the 600-char / ≤ 5-item / ≤ 1.2k-token limits enforced in Go, plus a schema test that forbids the length/count keywords); resume re-prime (prefix + brief +
-   state + last ≤ 4 turns + cue); BYO `Complete` with JSON schema + `store:false` in `llm/openai.go` (platform lint untouched).
+   state + code snapshot + last ≤ 4 turns + cue); BYO `Complete` with JSON schema + `store:false` in `llm/openai.go` (platform lint untouched).
 7. **[X] `store:false`** (task 4): the `callKinds` registry; per kind and per provider, a recording `llm.Provider` asserting
    `llm.Req.NoStore == true` at the adapter boundary (this is what covers Anthropic keys), plus the fake OpenAI server asserting
    `"store": false` in each body; the coverage meta-test (both providers) and the no-unregistered-call-site test.

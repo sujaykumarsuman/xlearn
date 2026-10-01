@@ -94,6 +94,16 @@ added by spk-04), [t6 §11](../research/t6-realtime-interviewer.md#11-what-t6-co
   D29's cadence cost; *Links* adds t6 §16 and the fixtures directory. If S6 found **both shells failing**, the P1 row reads
   "deferred: voice revisited by <date + 3 months>" and the Consequences say so. If the D34 note isn't there yet, record that T6's
   opscheck interview counters are superseded (the release checklist's "no live interviews" check stays).
+- **ADR-0032 §3, what the live model gets (D42's fixed design,
+  [t6 §16.3](../research/t6-realtime-interviewer.md#163-owner-decision-d42-the-fixed-design-and-the-re-check)):** amend *Context handling*:
+  - the live voice model gets context **only at the candidate's turn start**: the raw numbered code as one versioned `[editor vN]`
+    `thinking.append` (≤ 500 tokens), never while the candidate is silent or typing or while the model speaks. GPT-Live has no replaceable
+    current-screen item (S6 M17);
+  - the director feeds **facts only**, never speakable prompts. It reaches the live model only through those pushes and answers to
+    delegations;
+  - the model answers from that context, and delegation (`delegation:{type:"client"}`) is only for explicit deep checks.
+
+  [m6b-01](sprint-m6b-01.md) task 7 is written to this.
 - **ADR-0007:** turn the header's "Amended by ADR-0032 (v2, Proposed)" into "Accepted <date>" and add a short *Amendment
   (ADR-0032)* section with its §7 text: SDP brokering only, each segment creation logged; the Realtime `client_secrets` fallback
   (30–60 s TTL) **only if S6 showed brokering failing**; the key held as a `[]byte` per live segment, dropped on `interrupted` or

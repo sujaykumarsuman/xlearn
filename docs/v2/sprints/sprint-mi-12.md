@@ -131,6 +131,16 @@ Maintenance note and the Status line; otherwise fold as described.
 - **Consequences:** "alerts at `retire_not_before`" → "a manual `retire_not_before` check before each model change (D34)".
 - **§8** shrinks to a dated amendment history (three lines, pointing to 0033/0035) now that the body carries the text.
 - `docs/adr/README.md`: row 0031 → `Accepted (2026-12-DD; WIF GO | fallback key)`.
+- **ADR-0007, narrowed by 0031:**
+  - the header's "Narrowed by ADR-0031 (v2, Proposed)" and the `docs/adr/README.md` row 0007's "narrowed by 0031 (Proposed)" both become
+    **"narrowed by 0031 (Accepted 2026-12-DD)"**. Leave the ADR-0032 part of both as it is;
+  - add an **"Amendment (ADR-0031 §7)"** section listing the P0/P1 fixes to ADR-0007 that M1 shipped, each with its sprint and PR (from
+    `docs/v2/status.md`):
+    - P0: quota and billing errors never disable a key; `max_tokens` and effort are set; the onboarding key step saves the key (v1.5.1);
+    - P1: OpenAI `store:false`; the server-side model catalog (no user base URLs); AEAD associated data bound to account and provider;
+      the master-key keyring with `kek_id`; per-feature default keys (`coach`, `interview`);
+    - the derived-credentials clause for T6 realtime points to ADR-0032 §7;
+    - a fix that hasn't shipped yet is listed as pending, with its sprint.
 
 ### 2 · Provider runbook [X]
 
@@ -307,7 +317,7 @@ repo** (the AGENT.md never-copy rule, [m3-01](sprint-m3-01.md)) — not into the
 
 ## Acceptance criteria
 
-- [ ] [ADR-0031](../../adr/0031-platform-ai-and-two-tier-keys.md) **Accepted** with the spk-03 result and the T7 amendments folded into its body; ADR index row updated
+- [ ] [ADR-0031](../../adr/0031-platform-ai-and-two-tier-keys.md) **Accepted** with the spk-03 result and the T7 amendments folded into its body; ADR index row updated; ADR-0007 reads "narrowed by 0031 (Accepted <date>)" with its *Amendment (ADR-0031 §7)* section
 - [ ] judge's NetworkPolicy adds exactly **one** egress rule — **TCP 443 to non-cluster addresses** — nothing else new; m3-07's **`xlearn-identity` :8081** rule present (before/after diff in the PR); judge Ready and a cohort judged submit still grades. Policy verified here; functional 443 reachability is proven by `judge admin llm-smoke` from the pod ([m4-01](sprint-m4-01.md) task 10, m4-07 step 1)
 - [ ] `xlearn-judge-llm` loaded via `envFrom`; `LLM_PLATFORM_ENABLED=false`; the projected token (audience `https://api.anthropic.com`, 3600 s) mounted at `/var/run/secrets/anthropic.com/token` with automount still off
 - [ ] Runbook merged; org limit **$20** (D43), Console limit **$15** (`xlearn-calib` **$5**), alerts **50%/80%**, auto-reload **off**, WIF issuer/rule/service account set (`keys` array, `check_jti` off, rule lifetime 1 h set explicitly, the scope recorded) and the spk-03 Console objects cleaned up (the owner's before-launch setup, attested at launch and recorded with its date and IDs)

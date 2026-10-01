@@ -94,8 +94,12 @@ Sources: [t6 §3](../research/t6-realtime-interviewer.md#3-architecture--media-p
   `Brain` with m6a-01's service so `start` stops returning 503.
 - **`Segment` abstraction** (`segment.go`): `Open(ctx, Prime)`, `Turn(ctx, CandidateInput, sink)`, `Cue(ctx, Cue)`, `Close(reason)`;
   `TextSegment` implements it over `llm.Provider.Stream`; M6b's `VoiceShell` implements the same interface. `Prime` = stable
-  instruction prefix + phase state (+ brief on resume) + the last ≤ 4 turns + a cue. Each open writes the `interview_segment` row
-  (m6a-01), each close records usage and `cost_micros`.
+  instruction prefix + phase state (+ brief on resume) + **the code snapshot** + the last ≤ 4 turns + a cue. The code snapshot is the
+  latest code from m6a-04's intake, as raw text with line numbers (the current-screen item's window, trimmed around the cursor to fit the
+  Prime's ≤ 8,192 tokens). Every `Prime` carries it (open, re-prime, resume), because M6b reseeds a voice session from `Prime` alone: in
+  S6 a reseed brief without the editor code scored continuity 2/5
+  ([t6 §16.6](../research/t6-realtime-interviewer.md#166-for-m6b-02-rollover-reseed-push-to-talk-cache)). Each open writes the
+  `interview_segment` row (m6a-01), each close records usage and `cost_micros`.
 - **Instruction prefix** `interviewer-frame@1` (a versioned file under `brain/prompts/`, recorded as `prompt_v` on every turn):
   the frame, conduct rules (never ask about age, caste, religion, family, health, disability, nationality or salary history; never
   comment on appearance, voice, accent or emotion; never claim to be human; never state or hint at a score), persona and
@@ -153,8 +157,8 @@ Sources: [t6 §4 Classifier table](../research/t6-realtime-interviewer.md#4-sess
 - **Probe** (`probe.go`): a 16-token text call on the brain model with the same key (≈ $0.0001): quota → `Quota`, success → clear.
   `POST /interviews/{id}/probe` (the grace modal's *Check now*) ≤ 1 / 10 s and ≤ 15 per grace (m6a-01's counters); registered as
   the sweeper's `Prober` for the final probe at `grace_until`. A successful probe within the grace → `cleared` → a new segment
-  primed from the **checkpoint plus the verbatim transcript tail** — **no paid summary** (failsafe 1 step 5); ≤ 2 automatic
-  re-primes per grace.
+  primed from the **checkpoint plus the verbatim transcript tail** and the code snapshot (task 1's `Prime`) — **no paid summary**
+  (failsafe 1 step 5); ≤ 2 automatic re-primes per grace.
 - **Tests:** a table test per class for both providers from recorded bodies; a test that reads
   `docs/v2/research/t6-s6-fixtures/index.json` **in place** (a relative path from the package, as the OpenAPI drift test does — no
   copy) and fails if any fixture has no expected class and action; `Quota` never flips `enabled`.
@@ -181,7 +185,7 @@ Sources: [t6 §5 Hints (S4)](../research/t6-realtime-interviewer.md#5-the-coding
   `interview-brief@1` carries only types, `enum`, `anyOf:[T,null]`, every field required and `additionalProperties:false`; the
   600-char, ≤ 5-item and ≤ 1.2k-token limits are enforced **in Go** after decoding (truncate strings at a rune boundary, drop
   items beyond 5; an over-long `interviewer_brief` is cut to budget). A schema test fails if any of those keywords appears.
-- **Re-prime on resume** (`resume_confirmed`): stable prefix + brief + phase state + last ≤ 4 turns + the cue "welcome back in one
+- **Re-prime on resume** (`resume_confirmed`): stable prefix + brief + phase state + the code snapshot + last ≤ 4 turns + the cue "welcome back in one
   sentence, recap in ≤ 2, continue with ⟨next_step⟩" (within GPT-Live's 128 msg / 8,192-token seeding limit, so M6b reuses it).
 - **OpenAI structured output for BYO:** `internal/platform/llm/openai.go` `Complete` currently returns `ErrUnsupported`
   (m4-01, no platform OpenAI use). Add a BYO `Complete` with JSON-schema output and `store:false`; the CI lint that confines
@@ -208,7 +212,7 @@ Sources: [t6 §9 P0](../research/t6-realtime-interviewer.md#9-phased-plan) ("CI 
 - `internal/coach/interview/replay/`: a **scripted synthetic interview** (candidate turns, code snapshots, run echoes, pauses) driven
   through the real brain loop with a fake clock and a fake provider that serves **recorded, scrubbed** responses keyed by call kind
   and order. Golden (`-update`): the turn log (role, kind, seq, truncated), hint ledger, checkpoints, FSM transitions, classifier
-  decisions, spend. Scenarios: happy 45-minute path; quota mid-Code → grace → probe success → re-prime with the verbatim tail;
+  decisions, spend. Scenarios: happy 45-minute path; quota mid-Code → grace → probe success → re-prime with the verbatim tail and the code snapshot;
   quota → grace expiry → `paused` → brief → resume; still dry on resume (cached brief, no second charge); rate limit → retries →
   `interrupt(rate)`; transient → 2 tries → `interrupt(provider)`; auth → `paused` + key disabled; `ErrModelAccess` at pre-flight;
   `transcript_full` → wrap-up; distress word → safety card; every S6 quota fixture through the classifier API.
@@ -237,7 +241,8 @@ Sources: [t6 §9 P0](../research/t6-realtime-interviewer.md#9-phased-plan) ("CI 
 - [ ] Custom model ids work per m1-10's rule (pre-flight: catalog `interview_brain` ok, absent → `model_is_custom`, known without the
       capability → `preflight_fail(model_access)`); the brief schema is in the portable subset with its limits enforced in Go.
 - [ ] Hints are recorded before their text reaches any context; the unreleased ladder never appears in a context; the model cannot release a hint.
-- [ ] The resume brief is charged at most once per pause (cached); a dry key on resume charges nothing; re-prime uses brief + state + ≤ 4 turns.
+- [ ] The resume brief is charged at most once per pause (cached); a dry key on resume charges nothing; re-prime uses brief + state + the code snapshot + ≤ 4 turns.
+- [ ] Every `Prime` (open, re-prime, resume) carries the latest code snapshot with line numbers, within ≤ 8,192 tokens (test).
 - [ ] The AI disclosure is the first turn (fixed text); the debrief never states a score; the never-list scan sets `review_flag`.
 - [ ] The key is held only while a segment is open (zeroed on close/interrupt/pause); canary log test green on the new routes.
 - [ ] A cohort account completes a full text interview through the API in compose (fake provider); coach RSS recorded.
