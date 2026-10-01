@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Icon, type IconName } from "../components/Icon";
 import { ProviderLogo } from "../components/ProviderLogo";
@@ -17,15 +17,25 @@ import {
   type Account,
   type WeekendBand,
 } from "../lib/auth";
+import { CoachModelMenu, type CoachModelGroup } from "../components/CoachModelSwitcher";
 import {
-  COACH_MODELS,
   COACH_PROVIDERS,
+  catalogModelsFor,
+  coachFeatureDefault,
   coachModelLabel,
+  coachUsageLine,
   providerLabel,
   useCoachKey,
+  useCoachModels,
   useDeleteCoachKey,
+  usePopoverDismiss,
   usePutCoachKey,
+  type CoachFeature,
+  type CoachFeatureDefault,
   type CoachKey,
+  type CoachKeyResponse,
+  type CoachModelsResponse,
+  type CoachUsageMonth,
   type ProviderId,
   type PutCoachKeyBody,
 } from "../lib/settings";
@@ -34,9 +44,10 @@ import {
  * Settings is the account surface: Profile, Study budget, your Coach and Reminders.
  * Redesigned (F006): a two-column layout — a section rail + a column of soft cards. The rail
  * items are tabs (one section shown at a time), so navigation is a deterministic click rather
- * than a scroll-spy. The Coach section connects one key PER PROVIDER (Anthropic and/or OpenAI),
- * each with its own model, and one marked the default the coach answers with. Fully-rounded
- * (pill) controls + circular tiles. Every write is live (PATCH /me · PUT/DELETE /coach/key).
+ * than a scroll-spy. The Coach section connects one key PER PROVIDER (Anthropic and/or OpenAI)
+ * and points each FEATURE (chat coach, interview brain) at its own default model from the
+ * server catalog. Fully-rounded (pill) controls + circular tiles. Every write is live
+ * (PATCH /me · PUT/DELETE /coach/key).
  */
 export default function Settings() {
   const me = useMe();
@@ -622,43 +633,66 @@ function BudgetSection({ account }: { account: Account }) {
   );
 }
 
-// --- Coach (per-provider keys + default model) ---
+// --- Coach: per-provider keys + per-feature default models (AB01 F13) ---
 
-const CUSTOM = "__custom__";
+/**
+ * The features that each carry their own default model, in the board's order. `note` is the
+ * parenthetical the row shows: only Interview has one, because only Interview constrains
+ * which models are offered (interview_brain, t6 §11 — the earlier "realtime-capable" rule
+ * was dropped there).
+ */
+const COACH_FEATURE_ROWS: { feature: CoachFeature; label: string; note?: string }[] = [
+  { feature: "coach", label: "Coach" },
+  { feature: "interview", label: "Interview", note: "(needs an interview-capable model)" },
+];
 
+/** The chip each provider panel wears when it backs a feature's default. */
+const COACH_ROLE_TAGS: { feature: CoachFeature; tag: string }[] = [
+  { feature: "coach", tag: "Coach default" },
+  { feature: "interview", tag: "Interview default" },
+];
+
+/**
+ * CoachSection is Settings' coach card (AB01 F13). Since m1-10 the per-feature DEFAULTS own
+ * the model choice — one default model per feature, from the server catalog — and each
+ * provider panel is reduced to what it is actually for: connect, update, remove. v1's
+ * per-provider model pills and "Set as default" are gone, because a key is no longer tied
+ * to one model and "the default" is no longer a single account-wide thing.
+ */
 function CoachSection() {
   const coach = useCoachKey();
+  const catalog = useCoachModels();
   const keys = coach.data?.keys ?? [];
-  const defaultKey = keys.find((k) => k.is_default);
-  const byProvider = (id: ProviderId) => keys.find((k) => k.provider === id);
+  const usage = coach.data?.usage_month;
+  const coachDefault = coachFeatureDefault(coach.data, "coach");
+  // The status badge tracks the key the CHAT coach answers with — a paused interview key
+  // doesn't make the coach itself paused.
+  const coachKey = keys.find((k) => k.provider === coachDefault?.provider);
+  const roles = featureRoleTags(coach.data);
 
   return (
     <Card
       icon="spark"
-      title="Your AI coach"
-      subtitle="Connect one or both providers. Your default model is the one the coach answers with — stored encrypted."
-      right={<CoachStatus defaultKey={defaultKey} />}
+      title="Your AI coach (your key)"
+      subtitle="Connect one or both providers. Each feature uses its own default model. Keys are stored encrypted."
+      right={<CoachStatus coachKey={coachKey} />}
     >
       {coach.isLoading ? (
         <Centered>Loading…</Centered>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div className="xl-coach-summary">
-            {defaultKey ? (
-              <>
-                <Star /> Default: <b style={{ color: "var(--ds-text)" }}>{defaultKey.name || coachModelLabel(defaultKey.default_model)}</b>
-                <span className="ds-chip ds-chip--xs ds-mono">{defaultKey.default_model}</span>
-                <span style={{ color: "var(--ds-muted)" }}>· {providerLabel(defaultKey.provider)}</span>
-              </>
-            ) : (
-              <span style={{ color: "var(--ds-muted)" }}>No default yet — connect a provider below to start coaching.</span>
-            )}
-          </div>
+          <div className="xl-set-subh">Default model per feature</div>
+          {COACH_FEATURE_ROWS.map((row) => (
+            <FeatureDefaultRow key={row.feature} feature={row.feature} label={row.label} note={row.note} keys={keys} current={coachFeatureDefault(coach.data, row.feature)} catalog={catalog.data} />
+          ))}
+          {usage && <UsageMonthHint usage={usage} />}
+
+          <div className="xl-set-subh">Keys</div>
           {COACH_PROVIDERS.map((p) => {
-            const cur = byProvider(p.id);
-            // Remount on connect/disconnect so the panel's local edit state (model/name/key
-            // field) re-seeds from the freshly-connected key rather than the empty form.
-            return <ProviderPanel key={`${p.id}-${cur ? "on" : "off"}`} providerId={p.id} current={cur} />;
+            const cur = keys.find((k) => k.provider === p.id);
+            // Remount on connect/disconnect so the panel's local key-field state re-seeds
+            // from the freshly-connected key rather than the empty form.
+            return <ProviderPanel key={`${p.id}-${cur ? "on" : "off"}`} providerId={p.id} current={cur} roles={roles[p.id] ?? []} />;
           })}
         </div>
       )}
@@ -666,37 +700,145 @@ function CoachSection() {
   );
 }
 
-function CoachStatus({ defaultKey }: { defaultKey?: CoachKey }) {
-  if (!defaultKey) return <span className="ds-badge ds-badge--warn">Coach off</span>;
-  if (!defaultKey.enabled) return <span className="ds-badge ds-badge--warn">Paused</span>;
+function CoachStatus({ coachKey }: { coachKey?: CoachKey }) {
+  if (!coachKey) return <span className="ds-badge ds-badge--warn">Coach off</span>;
+  if (!coachKey.enabled) return <span className="ds-badge ds-badge--warn">Paused</span>;
   return <span className="ds-badge ds-badge--ok">● Active</span>;
 }
 
-/** One provider's panel — connect it, pick its model, name it, and mark it the default.
- *  Handles both the connected and the not-yet-connected states. */
-function ProviderPanel({ providerId, current }: { providerId: ProviderId; current?: CoachKey }) {
+/**
+ * FeatureDefaultRow is one "Default model per feature" row: what answers for this feature
+ * now, and a Change (or Choose, when nothing is set yet) that opens F12's catalog list
+ * scoped to this feature. Picking writes the feature's default — it never touches the key
+ * itself, which is why switching the interview brain can't disturb the chat coach.
+ */
+function FeatureDefaultRow({
+  feature,
+  label,
+  note,
+  keys,
+  current,
+  catalog,
+}: {
+  feature: CoachFeature;
+  label: string;
+  note?: string;
+  keys: CoachKey[];
+  current: CoachFeatureDefault | null;
+  catalog?: CoachModelsResponse;
+}) {
+  const put = usePutCoachKey();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  usePopoverDismiss(ref, open, () => setOpen(false));
+
+  const groups = featureModelGroups(keys, catalog, feature, current);
+  const anyProvider = current?.provider ?? groups[0]?.provider ?? "";
+
+  return (
+    <div className="xl-feat">
+      <span className="xl-feat__k">{label}</span>
+      <span className="xl-feat__v">
+        {current ? (
+          <>
+            <b>{coachModelLabel(current.model, catalog?.models)}</b>
+            <span className="ds-chip ds-chip--xs ds-mono">{current.model}</span>
+            <span>· {providerLabel(current.provider)}</span>
+          </>
+        ) : (
+          <b>Not set</b>
+        )}
+        {note && <span>{note}</span>}
+        {put.isError && <span style={{ color: "var(--ds-err)" }}>Couldn’t save — check the key/model and try again.</span>}
+      </span>
+      <div ref={ref} style={{ position: "relative" }}>
+        <button
+          type="button"
+          className="ds-btn ds-btn--secondary ds-btn--sm"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          disabled={groups.length === 0 || put.isPending}
+          onClick={() => setOpen((o) => !o)}
+        >
+          {current ? "Change" : "Choose"}
+        </button>
+        {open && (
+          <CoachModelMenu
+            groups={groups}
+            asOf={catalog?.as_of}
+            selected={current?.model ?? ""}
+            customProvider={anyProvider}
+            ariaLabel={`${label} model`}
+            onPick={(provider, model) => {
+              put.mutate({ provider, default: true, feature, default_model: model });
+              setOpen(false);
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * featureModelGroups lists the models this feature may be pointed at, grouped by connected
+ * provider: every catalog chat model for `coach`, and only the interview_brain ones for
+ * `interview` (a known id without that capability is refused server-side, so offering it
+ * would be offering a dead end). The model currently in use is always kept in its group,
+ * even when it is a custom id or one the catalog has since dropped.
+ */
+function featureModelGroups(keys: CoachKey[], catalog: CoachModelsResponse | undefined, feature: CoachFeature, current: CoachFeatureDefault | null): CoachModelGroup[] {
+  return COACH_PROVIDERS.filter((p) => keys.some((k) => k.provider === p.id)).map((p) => {
+    const all = catalogModelsFor(catalog?.models, p.id, current?.provider === p.id ? current.model : "");
+    const models = feature === "interview" ? all.filter((m) => m.capabilities.includes("interview_brain") || m.id === current?.model) : all;
+    return { provider: p.id, models };
+  });
+}
+
+/** featureRoleTags maps provider → the feature chips its panel wears. */
+function featureRoleTags(data?: CoachKeyResponse): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const { feature, tag } of COACH_ROLE_TAGS) {
+    const d = coachFeatureDefault(data, feature);
+    if (d) (out[d.provider] ??= []).push(tag);
+  }
+  return out;
+}
+
+/** UsageMonthHint is F13's month-to-date line. Display only, and always an estimate — the
+ *  "custom models not estimated" tail is what keeps the number from reading as a total. */
+function UsageMonthHint({ usage }: { usage: CoachUsageMonth }) {
+  return (
+    <div className="xl-set-hint">
+      <Icon name="chart" className="xl-ico--sm" style={{ color: "var(--ds-teal)" }} />
+      <span>
+        This month on your keys: <b style={{ color: "var(--ds-text)" }}>{coachUsageLine(usage)}</b>
+        {usage.has_unknown_cost && " · custom models not estimated"}
+      </span>
+    </div>
+  );
+}
+
+/** One provider's panel: connect it, replace its key, or remove it. The model lives in the
+ *  per-feature defaults above, not here. */
+function ProviderPanel({ providerId, current, roles }: { providerId: ProviderId; current?: CoachKey; roles: string[] }) {
   const put = usePutCoachKey();
   const del = useDeleteCoachKey();
   const meta = COACH_PROVIDERS.find((p) => p.id === providerId)!;
-  const models = COACH_MODELS[providerId];
   const connected = !!current;
 
-  const inList = current ? models.some((m) => m.id === current.default_model) : true;
-  const [modelSel, setModelSel] = useState<string>(current && !inList ? CUSTOM : current?.default_model ?? models[0]!.id);
-  const [customModel, setCustomModel] = useState(current && !inList ? current.default_model : "");
-  const [name, setName] = useState(current?.name ?? "");
   const [rawKey, setRawKey] = useState("");
   const [editingKey, setEditingKey] = useState(!connected);
-
-  const model = modelSel === CUSTOM ? customModel.trim() : modelSel;
-  const canSave = model.length > 0 && (connected || rawKey.trim().length > 0) && !put.isPending;
+  const canSave = rawKey.trim().length > 0 && !put.isPending;
 
   const save = () => {
     if (!canSave) return;
-    const finalName = name.trim() || coachModelLabel(model);
-    const body: PutCoachKeyBody = rawKey.trim()
-      ? { provider: providerId, key: rawKey.trim(), default_model: model, name: finalName }
-      : { provider: providerId, default_model: model, name: finalName };
+    // Carry the model the key already had: a PUT with a key but no default_model resets the
+    // model to the catalog default server-side, which would silently undo the learner's
+    // pick every time they rotated a key. A first connect has nothing to carry, so the
+    // server picks the catalog default for it.
+    const body: PutCoachKeyBody = { provider: providerId, key: rawKey.trim() };
+    if (current?.default_model) body.default_model = current.default_model;
     put.mutate(body, {
       onSuccess: () => {
         setRawKey("");
@@ -706,8 +848,7 @@ function ProviderPanel({ providerId, current }: { providerId: ProviderId; curren
   };
 
   return (
-    <div className={connected && current!.is_default ? "xl-prov xl-prov--default" : "xl-prov"}>
-      {/* header */}
+    <div className="xl-prov">
       <div className="xl-prov__head">
         <ProviderLogo provider={providerId} size={42} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -723,81 +864,42 @@ function ProviderPanel({ providerId, current }: { providerId: ProviderId; curren
             <div className="xl-prov__status xl-prov__status--off">Not connected</div>
           )}
         </div>
-        {connected &&
-          (current!.is_default ? (
-            <span className="xl-defbadge">
-              <Star size={12} /> Default
-            </span>
-          ) : (
-            <button type="button" className="xl-setdef" disabled={put.isPending} onClick={() => put.mutate({ provider: providerId, default: true })}>
-              <Star size={13} /> Set as default
-            </button>
-          ))}
+        {roles.map((r) => (
+          <span key={r} className="xl-tag">
+            {r}
+          </span>
+        ))}
       </div>
 
-      {/* model pills */}
-      <Field label="Model">
-        <div className="xl-pills">
-          {models.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              className={modelSel === m.id ? "xl-mpill xl-mpill--on" : "xl-mpill"}
-              aria-pressed={modelSel === m.id}
-              onClick={() => {
-                setModelSel(m.id);
-                setCustomModel("");
-              }}
-            >
-              {m.label}
+      <div className="xl-keyline">
+        {connected && !editingKey ? (
+          <>
+            <input className="ds-input ds-input--mono" value={current!.masked_key} readOnly aria-label={`${meta.label} API key`} style={{ color: "var(--ds-dim)" }} />
+            <button type="button" className="ds-btn ds-btn--secondary ds-btn--sm" onClick={() => setEditingKey(true)}>
+              Update
             </button>
-          ))}
-          <button type="button" className={modelSel === CUSTOM ? "xl-mpill xl-mpill--on" : "xl-mpill"} aria-pressed={modelSel === CUSTOM} onClick={() => setModelSel(CUSTOM)}>
-            Custom…
-          </button>
-        </div>
-        {modelSel === CUSTOM && (
+          </>
+        ) : (
           <input
             className="ds-input ds-input--mono"
-            style={{ marginTop: 10 }}
-            placeholder={providerId === "anthropic" ? "claude-…" : "gpt-…"}
-            value={customModel}
-            onChange={(e) => setCustomModel(e.target.value)}
+            type="password"
+            placeholder={meta.keyHint}
+            aria-label={`${meta.label} API key`}
+            autoComplete="off"
+            spellCheck={false}
+            value={rawKey}
+            onChange={(e) => setRawKey(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && save()}
           />
         )}
-      </Field>
-
-      {/* name + key */}
-      <div className="xl-prov__grid">
-        <Field label="Name" hint="default = model">
-          <input className="ds-input" placeholder={coachModelLabel(model) || "My coach"} value={name} onChange={(e) => setName(e.target.value)} />
-        </Field>
-        <Field label="API key">
-          {connected && !editingKey ? (
-            <div className="xl-keyline">
-              <input className="ds-input ds-input--mono" value={current!.masked_key} readOnly style={{ color: "var(--ds-dim)" }} />
-              <button type="button" className="ds-btn ds-btn--secondary ds-btn--sm" onClick={() => setEditingKey(true)}>
-                Update
-              </button>
-            </div>
-          ) : (
-            <input
-              className="ds-input ds-input--mono"
-              type="password"
-              placeholder={meta.keyHint}
-              value={rawKey}
-              onChange={(e) => setRawKey(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && save()}
-            />
-          )}
-        </Field>
       </div>
 
-      {/* actions */}
       <div className="xl-prov__actions">
-        <button type="button" className="ds-btn ds-btn--primary ds-btn--sm" disabled={!canSave} onClick={save}>
-          <Icon name="check" className="xl-ico--sm" /> {put.isPending ? "Saving…" : connected ? `Save ${meta.label}` : `Connect ${meta.label}`}
-        </button>
+        {(!connected || editingKey) && (
+          <button type="button" className="ds-btn ds-btn--primary ds-btn--sm" disabled={!canSave} onClick={save}>
+            <Icon name="check" className="xl-ico--sm" /> {put.isPending ? "Saving…" : connected ? `Save ${meta.label}` : `Connect ${meta.label}`}
+          </button>
+        )}
         {connected && (
           <button type="button" className="ds-btn ds-btn--ghost ds-btn--sm" style={{ color: "var(--ds-err)" }} disabled={del.isPending} onClick={() => del.mutate(providerId)}>
             Remove
@@ -809,15 +911,6 @@ function ProviderPanel({ providerId, current }: { providerId: ProviderId; curren
       </div>
       {put.isError && <span style={{ fontSize: 12, color: "var(--ds-err)" }}>Couldn’t save — check the key/model and try again.</span>}
     </div>
-  );
-}
-
-/** A small filled star for the default marker (the Icon set has no star). */
-function Star({ size = 12 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ flex: "none" }}>
-      <path d="M12 2l2.9 6.3L22 9.3l-5 4.9 1.2 7L12 17.8 5.8 21.2 7 14.2 2 9.3l7.1-1z" />
-    </svg>
   );
 }
 

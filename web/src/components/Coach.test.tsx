@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 import { routes } from "../router";
@@ -97,20 +97,63 @@ describe("Coach panel", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
   });
 
-  it("shows the top-up message and keeps the coach on when the provider account is limited", async () => {
+  /** sendAndFail sends a turn that the provider refuses with the given `reason`, and
+   *  returns once the panel has rendered its line for it. */
+  async function sendAndFail(reason: string, opts: { status?: number; key?: { keys: unknown[]; connected: boolean } } = {}) {
     coachMock({
-      key: enabledKey,
-      chat: () => ({ status: 429, body: { error: { code: "provider_limited", message: "your provider account is out of credit or limited — top up and retry" } } }),
+      key: opts.key ?? enabledKey,
+      chat: () => ({
+        status: opts.status ?? 429,
+        body: { error: { code: "provider_limited", message: "your provider account is out of credit or limited — top up and retry", reason } },
+      }),
     });
     renderApp("/xlearn/dsa/dashboard");
     fireEvent.click(await screen.findByRole("button", { name: /open ai coach/i }));
     fireEvent.change(await screen.findByLabelText(/message coach/i), { target: { value: "hint please" } });
     fireEvent.click(screen.getByRole("button", { name: /^send$/i }));
+    return screen.findByRole("alert");
+  }
 
-    expect(await screen.findByText(/out of credit or limited — top up and retry/i)).toBeInTheDocument();
+  it.each([
+    // Quota and a rate limit share one line: both mean "the account, not the key".
+    ["quota", "Your provider says this key is out of credit or rate-limited. Top up or wait, then retry."],
+    ["rate_limit", "Your provider says this key is out of credit or rate-limited. Top up or wait, then retry."],
+    ["region", "Your provider doesn't serve this region."],
+  ])("reason=%s shows its own line and keeps the coach on", async (reason, line) => {
+    const alert = await sendAndFail(reason);
+    expect(alert).toHaveTextContent(line);
     // No bounce to Settings: the key is fine, so the panel stays usable.
     expect(screen.queryByRole("heading", { level: 1, name: "Settings" })).not.toBeInTheDocument();
     expect(screen.getByLabelText(/message coach/i)).toBeInTheDocument();
+  });
+
+  it("reason=model_access offers the catalog switcher instead of blaming the key", async () => {
+    const alert = await sendAndFail("model_access");
+    expect(alert).toHaveTextContent("This key can't use gpt-4o-mini. Pick another model.");
+    // The list opens with the affordance, and the failing model stays listed and marked.
+    const list = await screen.findByRole("listbox", { name: /coach model/i });
+    expect(within(list).getByText("This key can't use it")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /pick another model/i })).toHaveAttribute("aria-expanded", "true");
+    // The key is untouched — a model error is never a disable.
+    expect(screen.queryByRole("heading", { level: 1, name: "Settings" })).not.toBeInTheDocument();
+  });
+
+  it("falls back to the generic line when the server sends no reason (a pre-m1-10 coach)", async () => {
+    coachMock({ key: enabledKey, chat: () => ({ status: 502, body: { error: { code: "provider_error", message: "upstream" } } }) });
+    renderApp("/xlearn/dsa/dashboard");
+    fireEvent.click(await screen.findByRole("button", { name: /open ai coach/i }));
+    fireEvent.change(await screen.findByLabelText(/message coach/i), { target: { value: "hint please" } });
+    fireEvent.click(screen.getByRole("button", { name: /^send$/i }));
+    expect(await screen.findByText(/The coach couldn’t reply just now/i)).toBeInTheDocument();
+  });
+
+  it("shows F15b's copy when the key itself has been turned off", async () => {
+    coachMock({ key: { keys: [{ provider: "openai", masked_key: "sk-...1234", default_model: "gpt-4o-mini", enabled: false }], connected: true } });
+    renderApp("/xlearn/dsa/dashboard");
+    fireEvent.click(await screen.findByRole("button", { name: /open ai coach/i }));
+    expect(await screen.findByText("Your coach key is turned off")).toBeInTheDocument();
+    expect(screen.getByText("Re-enable your provider key in Settings to turn the coach back on.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add your key in settings/i })).toBeInTheDocument();
   });
 
   it("reflects the current page in the context chip", async () => {

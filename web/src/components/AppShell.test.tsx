@@ -169,8 +169,9 @@ describe("course resolution (useCourse, AB02)", () => {
   }
 
   /** The account-wide calls any frame makes (session, catalog, the top bar's coach model
-   *  switcher); anything else would be a course data call. */
-  const ACCOUNT_CALLS = new Set(["/me", "/paths", "/coach/key"]);
+   *  switcher — its keys and the server model catalog); anything else would be a course
+   *  data call. */
+  const ACCOUNT_CALLS = new Set(["/me", "/paths", "/coach/key", "/coach/models"]);
 
   /** requested lists the API paths fetched (without the /api/v1 prefix). */
   function requested(fn: ReturnType<typeof installFetchMock>): string[] {

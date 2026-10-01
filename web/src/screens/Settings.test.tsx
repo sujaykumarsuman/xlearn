@@ -23,21 +23,95 @@ interface Key {
   enabled: boolean;
   is_default: boolean;
 }
-function keysBody(keys: Key[]) {
-  return { keys, connected: keys.length > 0, default_provider: keys.find((k) => k.is_default)?.provider ?? "" };
+/** Per-feature defaults + month-to-date usage, as m1-10's GET /coach/key returns them. */
+interface CoachState {
+  defaults?: { coach?: { provider: string; model: string } | null; interview?: { provider: string; model: string } | null };
+  usage?: { messages: number; input_tokens: number; output_tokens: number; est_cost_micros: number; has_unknown_cost: boolean };
+}
+function keysBody(keys: Key[], state: CoachState = {}) {
+  const coach = state.defaults?.coach ?? defaultFromKeys(keys);
+  return {
+    keys,
+    connected: keys.length > 0,
+    default_provider: coach?.provider ?? "",
+    defaults: { coach: coach ?? null, interview: state.defaults?.interview ?? null },
+    usage_month: state.usage ?? { messages: 0, input_tokens: 0, output_tokens: 0, est_cost_micros: 0, has_unknown_cost: false },
+  };
+}
+function defaultFromKeys(keys: Key[]) {
+  const k = keys.find((x) => x.is_default) ?? keys[0];
+  return k ? { provider: k.provider, model: k.default_model } : null;
 }
 
-/** A settings fetch mock: /me (GET + PATCH capture) and /coach/key (GET, given a fixed coach state). */
-function settingsMock(onPatch?: (body: unknown) => void, coach: Key[] = []) {
+/** The server model catalog as GET /coach/models serves it (a trimmed stand-in: two
+ *  Anthropic models, one of them interview-capable, and two OpenAI ones). */
+const MODELS = {
+  as_of: "2026-10-01",
+  providers: ["anthropic", "openai"],
+  models: [
+    {
+      id: "claude-sonnet-5",
+      provider: "anthropic",
+      label: "Sonnet 5",
+      capabilities: ["chat", "interview_brain"],
+      price: { input_micros_per_mtok: 2_000_000, output_micros_per_mtok: 10_000_000 },
+      as_of: "2026-10-01",
+      recommended: true,
+      covered_model: false,
+    },
+    {
+      id: "claude-opus-4-8",
+      provider: "anthropic",
+      label: "Opus 4.8",
+      capabilities: ["chat"],
+      price: { input_micros_per_mtok: 5_000_000, output_micros_per_mtok: 25_000_000 },
+      as_of: "2026-10-01",
+      recommended: false,
+      covered_model: false,
+    },
+    {
+      id: "gpt-6-sol",
+      provider: "openai",
+      label: "GPT-6 Sol",
+      capabilities: ["chat", "interview_brain"],
+      price: { input_micros_per_mtok: 2_000_000, output_micros_per_mtok: 10_000_000 },
+      as_of: "2026-10-01",
+      recommended: false,
+      covered_model: false,
+    },
+    {
+      id: "gpt-5.6-luna",
+      provider: "openai",
+      label: "GPT-5.6 Luna",
+      capabilities: ["chat"],
+      price: { input_micros_per_mtok: 200_000, output_micros_per_mtok: 1_200_000 },
+      as_of: "2026-10-01",
+      recommended: true,
+      covered_model: false,
+    },
+  ],
+  defaults: { anthropic: "claude-sonnet-5", openai: "gpt-5.6-luna" },
+};
+
+/** A settings fetch mock: /me (GET + PATCH capture), /coach/key (GET, given a fixed coach
+ *  state) and the model catalog. */
+function settingsMock(onPatch?: (body: unknown) => void, coach: Key[] = [], state?: CoachState) {
   return installFetchMock((url, init) => {
     if (url.endsWith("/api/me") && init?.method === "PATCH") {
       onPatch?.(init?.body ? JSON.parse(String(init.body)) : null);
       return { status: 200, body: authedMe("dsa") };
     }
     if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
-    if (url.includes("/api/coach/key")) return { status: 200, body: keysBody(coach) };
+    if (url.includes("/api/coach/models")) return { status: 200, body: MODELS };
+    if (url.includes("/api/coach/key")) return { status: 200, body: keysBody(coach, state) };
     return { status: 404 };
   });
+}
+
+/** openCoachTab renders Settings on the coach tab and resolves once the card is up. */
+async function openCoachTab() {
+  renderApp("/xlearn/settings?tab=coach");
+  await screen.findByRole("heading", { name: /your ai coach/i });
 }
 
 /** The rendered "Your AI coach" card, for scoping queries away from the header switcher. */
@@ -109,77 +183,184 @@ describe("Settings screen", () => {
     expect(within(card).getByRole("button", { name: /connect anthropic/i })).toBeEnabled();
   });
 
-  it("connects a provider via PUT /coach/key (provider + first model + name + key)", async () => {
+  it("connects a provider via PUT /coach/key (provider + key; the server picks the model)", async () => {
     let putBody: unknown = null;
     let keys: Key[] = [];
     installFetchMock((url, init) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.includes("/api/coach/models")) return { status: 200, body: MODELS };
       if (url.includes("/api/coach/key") && init?.method === "PUT") {
         putBody = init?.body ? JSON.parse(String(init.body)) : null;
-        keys = [{ provider: "anthropic", masked_key: "sk-ant-...1234", default_model: "claude-opus-5", name: "Opus 5", enabled: true, is_default: true }];
+        keys = [{ provider: "anthropic", masked_key: "sk-ant-...1234", default_model: "claude-sonnet-5", name: "Sonnet 5", enabled: true, is_default: true }];
         return { status: 200, body: keysBody(keys) };
       }
       if (url.includes("/api/coach/key")) return { status: 200, body: keysBody(keys) };
       return { status: 404 };
     });
-    renderApp("/xlearn/settings");
+    await openCoachTab();
 
-    fireEvent.click(await screen.findByRole("tab", { name: /your ai coach/i }));
-    await screen.findByRole("heading", { name: /your ai coach/i });
     const card = coachCard();
-    fireEvent.change(await within(card).findByPlaceholderText("sk-ant-…"), { target: { value: "sk-ant-secret-key-1234" } });
+    fireEvent.change(await within(card).findByLabelText("Anthropic API key"), { target: { value: "sk-ant-secret-key-1234" } });
     fireEvent.click(within(card).getByRole("button", { name: /connect anthropic/i }));
 
-    // The first curated Anthropic model is the default; name defaults to its label.
-    await waitFor(() => expect(putBody).toEqual({ provider: "anthropic", key: "sk-ant-secret-key-1234", default_model: "claude-opus-5", name: "Opus 5" }));
-    expect(await within(coachCard()).findByText("sk-ant-...1234")).toBeInTheDocument();
+    // A first connect names no model: the server applies the catalog default, so the SPA
+    // can't pin a stale id into a brand-new key.
+    await waitFor(() => expect(putBody).toEqual({ provider: "anthropic", key: "sk-ant-secret-key-1234" }));
+    expect(await within(coachCard()).findByDisplayValue("sk-ant-...1234")).toBeInTheDocument();
   });
 
-  it("switches a connected provider's model without a key (meta PUT)", async () => {
+  it("replacing a key keeps the model the key already had", async () => {
     let putBody: unknown = null;
-    const saved: Key = { provider: "anthropic", masked_key: "sk-ant-...4a2f", default_model: "claude-sonnet-5", name: "Sonnet 5", enabled: true, is_default: true };
+    const saved: Key = { provider: "anthropic", masked_key: "sk-ant-...4a2f", default_model: "claude-opus-4-8", name: "Opus 4.8", enabled: true, is_default: true };
     installFetchMock((url, init) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.includes("/api/coach/models")) return { status: 200, body: MODELS };
       if (url.includes("/api/coach/key") && init?.method === "PUT") {
         putBody = init?.body ? JSON.parse(String(init.body)) : null;
-        return { status: 200, body: keysBody([{ ...saved, default_model: "claude-opus-5" }]) };
+        return { status: 200, body: keysBody([saved]) };
       }
       if (url.includes("/api/coach/key")) return { status: 200, body: keysBody([saved]) };
       return { status: 404 };
     });
-    renderApp("/xlearn/settings");
+    await openCoachTab();
 
-    fireEvent.click(await screen.findByRole("tab", { name: /your ai coach/i }));
-    await screen.findByRole("heading", { name: /your ai coach/i });
     const card = coachCard();
-    // Pick a different model pill, then Save (no key entered).
-    fireEvent.click(await within(card).findByRole("button", { name: /^opus 5$/i }));
+    fireEvent.click(await within(card).findByRole("button", { name: /^update$/i }));
+    fireEvent.change(within(card).getByLabelText("Anthropic API key"), { target: { value: "sk-ant-rotated-9999" } });
     fireEvent.click(within(card).getByRole("button", { name: /save anthropic/i }));
-    await waitFor(() => expect(putBody).toEqual({ provider: "anthropic", default_model: "claude-opus-5", name: "Sonnet 5" }));
+    // Without default_model the server would reset the model to the catalog default —
+    // silently undoing the learner's pick on every key rotation.
+    await waitFor(() => expect(putBody).toEqual({ provider: "anthropic", key: "sk-ant-rotated-9999", default_model: "claude-opus-4-8" }));
   });
 
-  it("sets a provider as the default via PUT /coach/key", async () => {
-    let putBody: unknown = null;
-    const both: Key[] = [
-      { provider: "anthropic", masked_key: "sk-ant-...4a2f", default_model: "claude-opus-5", name: "Opus 5", enabled: true, is_default: true },
-      { provider: "openai", masked_key: "sk-...9f2c", default_model: "gpt-5.6-sol", name: "GPT-5.6 Sol", enabled: true, is_default: false },
+  it("shows each feature's default model, the month-to-date line and the key role chips", async () => {
+    const keys: Key[] = [
+      { provider: "anthropic", masked_key: "sk-ant-…4f2a", default_model: "claude-sonnet-5", name: "Sonnet 5", enabled: true, is_default: true },
+      { provider: "openai", masked_key: "sk-…9c1e", default_model: "gpt-6-sol", name: "GPT-6 Sol", enabled: true, is_default: false },
     ];
+    settingsMock(undefined, keys, {
+      defaults: { coach: { provider: "anthropic", model: "claude-sonnet-5" }, interview: { provider: "openai", model: "gpt-6-sol" } },
+      usage: { messages: 212, input_tokens: 1_000_000, output_tokens: 400_000, est_cost_micros: 3_100_000, has_unknown_cost: false },
+    });
+    await openCoachTab();
+    const card = coachCard();
+
+    // Coach row: label from the catalog + the id + its provider. Interview row carries the
+    // capability parenthetical.
+    expect(await within(card).findByText("Sonnet 5")).toBeInTheDocument();
+    expect(within(card).getByText("claude-sonnet-5")).toBeInTheDocument();
+    expect(within(card).getByText("GPT-6 Sol")).toBeInTheDocument();
+    expect(within(card).getByText("(needs an interview-capable model)")).toBeInTheDocument();
+    // Both rows are set, so both read Change (never Choose).
+    expect(within(card).getAllByRole("button", { name: /^change$/i })).toHaveLength(2);
+
+    expect(within(card).getByText("212 messages · 1.4 M tokens · ≈ $3.10 (estimate)")).toBeInTheDocument();
+    expect(within(card).queryByText(/custom models not estimated/)).not.toBeInTheDocument();
+
+    expect(within(card).getByText("Coach default")).toBeInTheDocument();
+    expect(within(card).getByText("Interview default")).toBeInTheDocument();
+  });
+
+  it("reads 'Not set' with a Choose affordance when the interview default is unset", async () => {
+    settingsMock(undefined, [{ provider: "anthropic", masked_key: "sk-ant-…4f2a", default_model: "claude-sonnet-5", name: "Sonnet 5", enabled: true, is_default: true }], {
+      usage: { messages: 96, input_tokens: 400_000, output_tokens: 200_000, est_cost_micros: 1_200_000, has_unknown_cost: true },
+    });
+    await openCoachTab();
+    const card = coachCard();
+
+    expect(await within(card).findByText("Not set")).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: /^choose$/i })).toBeInTheDocument();
+    // has_unknown_cost appends the note outside the figures, so the number is never read
+    // as a total.
+    expect(within(card).getByText("96 messages · 0.6 M tokens · ≈ $1.20 (estimate)")).toBeInTheDocument();
+    expect(within(card).getByText(/· custom models not estimated/)).toBeInTheDocument();
+  });
+
+  it("changes the coach default model from the catalog (PUT default + feature + model)", async () => {
+    let putBody: unknown = null;
+    const keys: Key[] = [{ provider: "anthropic", masked_key: "sk-ant-…4f2a", default_model: "claude-sonnet-5", name: "Sonnet 5", enabled: true, is_default: true }];
     installFetchMock((url, init) => {
       if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.includes("/api/coach/models")) return { status: 200, body: MODELS };
       if (url.includes("/api/coach/key") && init?.method === "PUT") {
         putBody = init?.body ? JSON.parse(String(init.body)) : null;
-        return { status: 200, body: keysBody(both) };
+        return { status: 200, body: keysBody(keys) };
       }
-      if (url.includes("/api/coach/key")) return { status: 200, body: keysBody(both) };
+      if (url.includes("/api/coach/key")) return { status: 200, body: keysBody(keys) };
       return { status: 404 };
     });
-    renderApp("/xlearn/settings");
+    await openCoachTab();
+    const card = coachCard();
 
-    fireEvent.click(await screen.findByRole("tab", { name: /your ai coach/i }));
-    await screen.findByRole("heading", { name: /your ai coach/i });
-    // Anthropic is default (badge); OpenAI offers "Set as default".
-    fireEvent.click(await within(coachCard()).findByRole("button", { name: /set as default/i }));
-    await waitFor(() => expect(putBody).toEqual({ provider: "openai", default: true }));
+    fireEvent.click(await within(card).findByRole("button", { name: /^change$/i }));
+    const list = within(card).getByRole("listbox", { name: /coach model/i });
+    // The catalog's own labels, badge, capability tags and dated prices.
+    expect(within(list).getByText("Anthropic · models")).toBeInTheDocument();
+    expect(within(list).getByText("Prices per MTok, as of Oct 1, 2026")).toBeInTheDocument();
+    expect(within(list).getByText("Recommended")).toBeInTheDocument();
+    expect(within(list).getByText("$2 in · $10 out")).toBeInTheDocument();
+    expect(within(list).getByText("$5 in · $25 out")).toBeInTheDocument();
+
+    fireEvent.click(within(list).getByRole("option", { name: /opus 4\.8/i }));
+    await waitFor(() => expect(putBody).toEqual({ provider: "anthropic", default: true, feature: "coach", default_model: "claude-opus-4-8" }));
+  });
+
+  it("offers only interview-capable models for the interview default, plus a custom id", async () => {
+    let putBody: unknown = null;
+    const keys: Key[] = [{ provider: "openai", masked_key: "sk-…9c1e", default_model: "gpt-5.6-luna", name: "GPT-5.6 Luna", enabled: true, is_default: true }];
+    installFetchMock((url, init) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.includes("/api/coach/models")) return { status: 200, body: MODELS };
+      if (url.includes("/api/coach/key") && init?.method === "PUT") {
+        putBody = init?.body ? JSON.parse(String(init.body)) : null;
+        return { status: 200, body: keysBody(keys) };
+      }
+      if (url.includes("/api/coach/key")) return { status: 200, body: keysBody(keys) };
+      return { status: 404 };
+    });
+    await openCoachTab();
+    const card = coachCard();
+
+    fireEvent.click(await within(card).findByRole("button", { name: /^choose$/i }));
+    const list = within(card).getByRole("listbox", { name: /interview model/i });
+    // GPT-6 Sol carries interview_brain; GPT-5.6 Luna doesn't, so it isn't offered — the
+    // server would refuse it (422 model_not_interview_capable).
+    expect(within(list).getByRole("option", { name: /gpt-6 sol/i })).toBeInTheDocument();
+    expect(within(list).queryByRole("option", { name: /gpt-5\.6 luna/i })).not.toBeInTheDocument();
+
+    // A custom id is accepted (it may be a fine-tune built for exactly this) and shown
+    // "cost unknown"; a URL is not a model id.
+    fireEvent.click(within(list).getByRole("option", { name: /custom model id/i }));
+    const field = within(list).getByLabelText("Model id");
+    fireEvent.change(field, { target: { value: "https://proxy.example.com/v1" } });
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    expect(within(list).getByText("That isn't a model id. Use letters, digits and . _ : - (no URLs).")).toBeInTheDocument();
+    expect(within(list).getByRole("button", { name: /^use$/i })).toBeDisabled();
+
+    fireEvent.change(field, { target: { value: "ft:gpt-6-luna:personal:coach" } });
+    expect(within(list).getByText("cost unknown")).toBeInTheDocument();
+    fireEvent.click(within(list).getByRole("button", { name: /^use$/i }));
+    await waitFor(() => expect(putBody).toEqual({ provider: "openai", default: true, feature: "interview", default_model: "ft:gpt-6-luna:personal:coach" }));
+  });
+
+  it("shows only the model in use when the catalog can't be read", async () => {
+    const keys: Key[] = [{ provider: "anthropic", masked_key: "sk-ant-…4f2a", default_model: "claude-sonnet-5", name: "Sonnet 5", enabled: true, is_default: true }];
+    installFetchMock((url) => {
+      if (url.endsWith("/api/me")) return { status: 200, body: authedMe("dsa") };
+      if (url.includes("/api/coach/models")) return { status: 503, body: { error: { code: "unavailable" } } };
+      if (url.includes("/api/coach/key")) return { status: 200, body: keysBody(keys) };
+      return { status: 404 };
+    });
+    await openCoachTab();
+    const card = coachCard();
+
+    fireEvent.click(await within(card).findByRole("button", { name: /^change$/i }));
+    const list = within(card).getByRole("listbox", { name: /coach model/i });
+    expect(within(list).getAllByRole("option")).toHaveLength(2); // the model in use + "Custom model id…"
+    expect(within(list).getByRole("option", { name: /claude-sonnet-5/ })).toBeInTheDocument();
+    // No price and no date are invented from a catalog we never read.
+    expect(within(list).queryByText(/Prices per MTok/)).not.toBeInTheDocument();
+    expect(within(list).getByText("cost unknown")).toBeInTheDocument();
   });
 
   it("removes a provider via DELETE /coach/key?provider=", async () => {
