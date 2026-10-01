@@ -99,8 +99,8 @@ Sources: [t6 §3](../research/t6-realtime-interviewer.md#3-architecture--media-p
   segment_n int NOT NULL, holder text NOT NULL, epoch bigint NOT NULL, renewed_at timestamptz NOT NULL, expires_at timestamptz NOT NULL,
   handoff_requested_at timestamptz NULL)`. `holder` = pod hostname + a random boot nonce. Taken in the transaction that confirms a voice
   segment (m6b-01), renewed every **5 s**, TTL **15 s**, deleted when the segment closes.
-- **Only the holder touches the provider:** the sideband, the segment's key buffer, director/brain voice pushes, current-screen pushes,
-  PTT mute/unmute and hang-ups. A request that lands on another pod writes its intent to the DB and wakes the holder with
+- **Only the holder touches the provider:** the sideband, the segment's key buffer, m6b-01's turn-start context pushes, brain speech and
+  delegation answers, PTT mute/unmute and hang-ups. A request that lands on another pod writes its intent to the DB and wakes the holder with
   `pg_notify('coach_interview', '{"interview_id","epoch","kind"}')` (kinds `snapshot`, `ptt`, `hold`, `mode`, `ask`, `close`, `handoff`,
   `taken` — never transcript, SDP or key material); the holder ignores stale epochs. Segment closes triggered by the FSM on a non-holder pod
   (e.g. m6a-01's sweeper firing `interrupt(network)`) are routed the same way, so `HangUp` always runs in the holder.
@@ -211,14 +211,31 @@ Sources: [t6 §5](../research/t6-realtime-interviewer.md#5-the-coding-round) (qu
 
 ### 6 · Rollover, checkpoints, self-edit, mirror [X]
 
-- **Rollover (`bridging`):** FSM rows `live —rollover→ bridging` and `bridging —segment_open→ live`. Realtime — at the start of Code when the
-  segment is over 40 min or its context over ~24k tokens; **forced** for any 60-minute rail or multiplier > 1× (the 60-minute hard cap).
-  GPT-Live — only if S6 found a duration limit shorter than the interview, or when `usage_ratio` passes **0.8** (at the next turn boundary).
-  Mechanism: the brain speaks a bridge line; event `segment{event:"rollover"}`; the old segment closes (**hang-up**) and the SPA posts a new offer
-  (same `client_id`, `purpose:'live'`) — m6a-01's index allows one open segment, so the swap is close-then-open at a phase boundary (≈ 1–3 s
-  of silence behind the bridge line); the new segment is primed with m6a-02's `Prime` (stable prefix + brief/phase state + last ≤ 4 turns +
-  "continue with ⟨next_step⟩", ≤ 8,192 tokens). `ErrSessionCap` (`expired`) takes the same path as a free reseed. A creation error on
-  the new offer takes m6b-01's `connecting` effects through one more voice-only row, `bridging —interrupt(reason)→ interrupted`.
+- **Rollover (`bridging`):** FSM rows `live —rollover→ bridging` and `bridging —segment_open→ live`.
+  - **Realtime:** at the start of Code when the segment is over 40 min or its context over ~24k tokens; **forced** for any 60-minute rail or
+    multiplier > 1× (the 60-minute hard cap).
+  - **GPT-Live: before 55 min of segment time, at the next phase boundary where it can**
+    ([t6 §16.6](../research/t6-realtime-interviewer.md#166-for-m6b-02-rollover-reseed-push-to-talk-cache), S6 M5). `expires_at` is 7,200 s,
+    but at ~60.5 min the provider swaps engines silently, and remote audio stalled ~6.3 s there. A segment never rides that swap.
+    - At each phase boundary, roll over if the next boundary (from the rail × multiplier) would land past 55 min of segment time.
+    - If a phase overruns, roll over at the next turn boundary before 55 min, and at 55 min at the latest.
+    - Also at the next turn boundary once `usage_ratio` passes **0.8** (it pre-empts the 8,192-token replacement).
+    - A 1× 45-minute rail (≈ 48 min wall) never rolls over; longer interviews roll over about once per 55 min.
+  - **Mechanism:** the brain speaks a bridge line; event `segment{event:"rollover"}`; the old segment closes (**hang-up**) and the SPA posts a
+    new offer (same `client_id`, `purpose:'live'`). m6a-01's index allows one open segment, so the swap is close-then-open (≈ 1–3 s of
+    silence behind the bridge line). The new segment is reseeded as below. `ErrSessionCap` (`expired`) takes the same path as a free
+    reseed. A creation error on the new offer takes m6b-01's `connecting` effects through one more voice-only row,
+    `bridging —interrupt(reason)→ interrupted`.
+- **Reseed** ([t6 §16.6](../research/t6-realtime-interviewer.md#166-for-m6b-02-rollover-reseed-push-to-talk-cache)). Every new segment primed
+  from our state reseeds the same way: rollover, the free re-prime (task 1), Talk from `held` (task 5) and `ErrSessionCap`.
+  - **Brief:** m6a-02's `Prime` (stable prefix + brief/phase state + **the code snapshot** + last ≤ 4 turns + "continue with ⟨next_step⟩",
+    ≤ 8,192 tokens). The code snapshot is the latest raw code with line numbers, labelled as the next `[editor vN]`, so m6b-01's turn-start
+    pushes carry on from it. S6's mini reseed scored continuity 2/5 because its brief lacked the editor code (M10).
+  - **Kick (GPT-Live):** GPT-Live stays **silent** on a seeded history that ends on an assistant turn. In S6 it said nothing for > 90 s
+    with a cue in its startup instructions, and with a `session.instructions.append` it spoke only after the candidate did (14 s). So the
+    reseed **opens with a brain-authored `session.commentary.append`
+    kick** right after `session.started`: the bridge line's continuation, or the resume cue. S6 TTFA was 1.68 s; the target is ≤ 3 s.
+  - **Kick (Realtime):** `conversation.item.create` × N + `response.create` (S6 TTFA 1.72 s).
 - **AI notes checkpoints:** at phase boundaries the director also emits `{evidence[≤ 3 per public dimension, with turn refs], covered[],
   pending_followups[], next_step}` into m6a-01's checkpoints (C4; same retention and erase); its cost is in the estimate.
 - **Learner transcript self-edit (voice):** `PATCH /interviews/{id}/turns/{seq} {"text"}` — candidate turns only, only in `finished` /
@@ -313,7 +330,9 @@ row (`v2.0.N`, floor unchanged, no snapshot), PR A/B numbers, the pinned version
 - [ ] Voice idle: `notice{idle_check}` 60 s before m6a-01's `interrupt(idle)`, which hangs up
 - [ ] Standard / Patient / push-to-talk behave per the S6 winner; hold closes the segment with the clock running; Talk reseeds free; a held
       interview still wraps on rail end, finish or cap; `interrupt(mic)` and `interrupt(voice_limit)` close the segment and hang up
-- [ ] Rollover primes ≤ 8,192 tokens and swaps close-then-open at a phase boundary; self-edit and mirror turns block `ai-byo`
+- [ ] Rollover swaps close-then-open at a phase boundary; a GPT-Live segment never reaches 55 min (trigger table test: phase boundary,
+      overrun, `usage_ratio` 0.8). Every reseed primes ≤ 8,192 tokens **with the code snapshot**, and on GPT-Live opens with a
+      `session.commentary.append` kick right after `session.started` (fake-shell test); self-edit and mirror turns block `ai-byo`
 - [ ] (M7 failed only) PR A (peer side) merged before `v2.0.N`; `v2.0.N` tagged and verified; PR B (with `coach-interview`'s own
       NetworkPolicy and `expected-netpol.tsv` row) merged after it with the memory sum inside the rule; `/api/interviews/*` **and** the
       gateway's `/internal/interviews/*` calls served by `coach-interview`; the `interview` role opens no NATS connection; runbook section +

@@ -23,7 +23,10 @@ Launching this prompt attests these are done (D40). If one turns out to be missi
   [§13](../research/t6-realtime-interviewer.md#13-owner-decisions--resolved-2026-09-24-they-override-the-body-where-they-conflict) (D29 overrides
   §5's 20 s code debounce: 2–3 s + every turn, one replaceable current-screen item), and the **S6 results** — t6 **§16** "S6 results (spk-04, <date>)"
   appended by [spk-04](../sprints/sprint-spk-04.md), the scrubbed fixtures in `docs/v2/research/t6-s6-fixtures/` (`index.json`), and the
-  spike-results row in [`../status.md`](../status.md).
+  spike-results row in [`../status.md`](../status.md). **[§16.3](../research/t6-realtime-interviewer.md#163-owner-decision-d42-the-fixed-design-and-the-re-check)
+  is D42's fixed design and overrides D29 for the live model:** context only at the candidate's turn start, a facts-only director,
+  delegation only for explicit deep checks. [§16.5](../research/t6-realtime-interviewer.md#165-for-m6b-01-adapter-sdp-broker-sideband) is
+  the adapter, broker and sideband detail.
 - [ADR-0032](../../adr/0032-realtime-ai-mock-interviewer.md) §2 (architecture), §3 (D29), §6 (EU/EEA, caps), §7 (ADR-0007 amendments);
   [ADR-0007](../../adr/0007-ai-coach-byo-key-and-secrets.md) (key handling); [ADR-0005](../../adr/0005-data-ownership-and-migrations.md)
   (schema-per-service, goose); [ADR-0034 §2](../../adr/0034-v2-release-labelling-gating-and-rollback.md#2-feature-gating-three-tiers-no-flag-service)
@@ -84,17 +87,21 @@ drain, cost, caps and modes are [m6b-02](../sprints/sprint-m6b-02.md); the UI is
    consent kinds to `internal/coach/interview/consent.go` with the AB29 F2 strings.
 4. **[X] Catalog + transport + `voice.Segment` + adapter** (plan task 2): finalise the winner's `voice_shell` row (billing shape,
    `session_cap_s`, `voices`, `min_tier`, `billing_url`, `probe_model`, `as_of` = today's pricing page); delete the loser's row. Create
-   `internal/coach/interview/voice/` with the `VoiceShell`/`Sideband` transport (incl. `Detach` ≠ `HangUp`), `voice.Segment` implementing
+   `internal/coach/interview/voice/` with the `VoiceShell`/`Sideband` transport (`Context`, `Speak`, `Answer`; incl. `Detach` ≠ `HangUp`), `voice.Segment` implementing
    m6a-02's `Segment` (`Open`/`Turn`/`Cue`/`Close` — so every FSM exit that closes a segment hangs up), the **winner's adapter only** (from the
-   S6 fixture shapes, on coach's `OPENAI_BASE_URL`, sideband scheme derived from it), and the test fakes. Validate the snapshot's
+   S6 fixture shapes, on coach's `OPENAI_BASE_URL`, sideband scheme derived from it), and the test fakes. Every GPT-Live session is created
+   with `store:false`, `delegation:{type:"client"}` and `client.data_channel.allowed_client_events:["session.close"]` (S6 M13: the data
+   channel is **not required**, because captions come over the sideband; default permissions would let the browser append context and
+   commentary). Validate the snapshot's
    `interviewer.voice_default` against the catalog `voices` at a voice start (422 `voice_unavailable`). Extend the setup/pre-flight DTO with
-   `voice{available, reason, shell, voice, data_channel}`.
+   `voice{available, reason, shell, voice, data_channel}` (`data_channel`: GPT-Live optional, `session.close` only; Realtime never).
 5. **[X] Segment key** (plan task 3): extend m6a-02's segment-owned `[]byte` to the sideband, director pushes, reaper and supersede paths;
    add the `[redacted]` formatters if missing; sideband goroutines `recover()` and log only the panic type.
 6. **[X] SDP broker** (plan task 4): coach `POST /interviews/{id}/segments` with the checks **in the plan's order** and their typed errors
    (`not_found`; `lease_lost`; `illegal_transition` — with the `interrupted` → `cleared` rule, fired only after `CreateSession` succeeds so a failed re-prime keeps the grace; `consent_required {kinds}`;
    `voice_unavailable_region` — identity `GET /internal/accounts/{id}` `region`, add the field there if missing, cache 60 s, NULL refused, and
-   the same refusal on `POST /interviews` with `mode=voice`; `voice_key_required`; `sdp_invalid`; the `voiceAdmission` no-op hook; an
+   the same refusal on `POST /interviews` with `mode=voice`; `voice_key_required`; `sdp_invalid` (an `m=application` only where
+   `voice.data_channel` allows it); the `voiceAdmission` no-op hook; an
    unconfirmed same-client segment replaced); `CreateSession` under 15 s; the mint row + one slog line without SDP/key/IP; attach the
    sideband; `201 {segment_n, sdp, shell, confirm_by}` with `no-store`; classifier mapping to HTTP (`voice_model_access`, `provider_quota`,
    `provider_auth`, `provider_unavailable`, `sdp_timeout`) with the FSM effect **by source state** (the plan's second table:
@@ -113,28 +120,55 @@ drain, cost, caps and modes are [m6b-02](../sprints/sprint-m6b-02.md); the UI is
    right after the dial** — the library's default is 32 KiB per message on `Reader` too, and a bigger `session.updated` (instructions echo)
    or audio frame would close the sideband with `StatusMessageTooBig`; use the larger of 1 MiB and 2× the largest S6 M8 fixture frame, and
    state it in the PR; stream frames via `conn.Reader`, each read to its end; the **512-byte prefix scanner** — audio types →
-   `io.Copy(io.Discard, r)`, allowlisted types → `io.LimitReader(256 KiB)` + unmarshal (longer ones drained and dropped), everything else
+   `io.Copy(io.Discard, r)`, keeping only the type and arrival time for step 9's "model speaking" signal; allowlisted types →
+   `io.LimitReader(256 KiB)` + unmarshal (longer ones drained and dropped), everything else
    dropped; dropped frames tallied per segment and logged once at close (no metric); the event filter too if S6 found one; tamper →
    reconfigure, then hang up + `session_tampered` caveat.
-9. **[X] Director, current screen, captions, ask** (plan task 7): the voice sink for m6a-02's director (context vs speak per shell;
-   brain-authored evaluative speech; a **voice-mode fixed disclosure turn** with AB30 F1's text spoken as the opener — never m6a-02's text
-   disclosure, which says "can't see or hear you"; test it); `POST /interviews/{id}/ask {repeat|rephrase}`
-   (+ gateway row); the single replaceable current-screen item on snapshot change (2–3 s, never unchanged) and every final candidate turn — or
-   diffs-only if S6 found no in-place replace; hints recorded before push; run echo as a note; final transcripts → `interview_turn`
-   (`source='server'`, `truncated`) + the `turn` event + `last_input_at`; the distress text check and the never-list scan on voice turns;
-   partial captions as the `caption` event-log kind added in step 3 (coalesced ≥ 300 ms, ≤ 4 KiB, C4 retention) — **one caption path for
-   both shells**.
+9. **[X] Turn-start context, director, delegation, captions, ask** (plan task 7; **D42's fixed design**, t6 §16.3):
+   - **Turn-start context:** at the candidate's turn start, and only then, send one `Sideband.Context`. The turn start is the earliest
+     sideband signal of a new candidate item (in the S6 fixtures, its first `session.input_transcript.delta`), or a typed input through
+     `Turn`. The push is the raw numbered code as one `[editor vN]` `session.thinking.append` (≤ 500 tokens; over that, a numbered window
+     around the latest edit, `[editor vN lines a–b of c]`), plus the facts queued since the last push: run echo, hints released, phase and
+     time left. Unchanged code is not re-sent.
+   - **Never** while the candidate is silent or typing: queue, don't send. **Never** while the model is speaking (an output-audio or
+     output-transcript event in the last ~1 s; record the value): wait for the output to end, and drop the push if the turn has ended.
+   - GPT-Live has no replaceable screen item (M17); there is no 2–3 s push to the live model.
+   - **Facts-only director:** m6a-02's director gets a voice sink, but no note of it is ever sent as speakable text: no "next question", no
+     prompt. Its analysis goes to the brain and the transcript or checkpoints. It reaches the live model only as turn-start facts and
+     delegation answers. It still gets m6a-04's snapshot diffs for its own analysis.
+   - **Delegation:** `delegation:{type:"client"}` (set at create). The instruction prefix says to answer code questions from the latest
+     `[editor vN]` and to delegate only for an explicit deep check (correctness, complexity or an edge case it can't settle from the code).
+     The director answers each `session.delegation.created` with facts only through `Sideband.Answer`. Count delegations in the
+     segment-close log line. The Responses backend is not built: it's t6 §16.3's measured follow-up. If `ev-s6-recheck`'s t6 §16 result
+     says otherwise, follow it.
+   - **Brain speech** through `Sideband.Speak` (`session.commentary.append`): phase cues, check-ins, hints (recorded first), the debrief and
+     the **voice-mode fixed disclosure turn** with AB30 F1's text, spoken as the opener. Never m6a-02's text disclosure, which says "can't
+     see or hear you"; test it. Its timing is your call: record it.
+   - `POST /interviews/{id}/ask {repeat|rephrase}` (+ gateway row) → the brain speaks its last question again (verbatim or reworded).
+   - The run echo is queued for the next turn-start push.
+   - Final transcripts → `interview_turn` (`source='server'`, `truncated`) + the `turn` event + `last_input_at`; the distress text check and
+     the never-list scan on voice turns.
+   - Partial captions as the `caption` event-log kind added in step 3 (coalesced ≥ 300 ms, ≤ 4 KiB, C4 retention): **one caption path for
+     both shells**.
 10. **[X] Tests** (plan task 8): unit (offer table, precondition order, per-source-state error effects + the new FSM row in the table test and
     model check, decoder garbage-after-prefix + allocation benchmark at 32 KiB and 512 KiB, tamper, the S1 allowlist with `caption`/`segment`,
     the voice disclosure), **> 32 KiB `session.updated` and audio frames through the fake shell's real WebSocket** (no `StatusMessageTooBig`,
     sideband still attached), integration on real Postgres with the fake shell (201, every typed error, mint row clean, 15 s reaper with a fake clock, lease takeover → hang-up +
     `lease_lost`, `interrupted` → `cleared` (and a failed re-prime keeps `grace_until`), every FSM exit from `live` hangs up, key zeroed, `caption` → `turn` order), **the no-audio-persisted
     canary scan** over every coach table + logs + panics, the extended canary for `/api/interviews/*` and the decoder, the fixture contract,
-    the gateway confirm/ask routes + OpenAPI drift. `go test ./...`, `go vet`, lint, `sqlc diff`, the web suite.
+    the gateway confirm/ask routes + OpenAPI drift. **D42 tests** (fake shell, fake clock): **nothing is pushed** while the candidate is
+    silent or typing or while the model speaks; one `[editor vN]` per turn start, none when the code is unchanged; a scripted director's
+    "next question" note produces **no** sideband frame; every `thinking.append` is an `[editor vN]` item, an allowlisted fact or a
+    delegation answer; every `commentary.append` is a brain-speech kind; a scripted delegation gets a facts-only answer. **Allowlist (S6 M13):**
+    the create body carries `allowed_client_events:["session.close"]` and `delegation:{type:"client"}` (contract against
+    `live-tamper.jsonl`'s allowlisted create), and a fake-shell replay of that session shows a browser `session.thinking.append` getting
+    `event_not_allowed`. The fixture's six data-channel rejections at 88.6–96.7 s have the code scrubbed to `s6-id-0002`, and `index.json`
+    mislabels them "harness command sent while closing": correct that entry. `go test ./...`, `go vet`, lint, `sqlc diff`, the web suite.
 11. **[X] Optional live check** (plan task 8, last bullet), pre-approved by launching this prompt (D40): verify the before-launch item —
     the owner's own OpenAI key in the local compose Settings as the `interview` default (you never type a key). If it's there, record the
     voice consent for your test interview (compose test data; the audio is a fake clip), drive Chrome with fake media and the DevTools
-    snippet (`purpose:'preflight'`), ≤ 2 minutes, ≈ $0.10; confirm `connected`, the greeting caption on SSE, the hang-up,
+    snippet (`purpose:'preflight'`), ≤ 2 minutes, ≈ $0.10; confirm `connected`, the greeting caption on SSE, on GPT-Live one
+    `session.thinking.append` from the page's data channel answered with `event_not_allowed`, the hang-up,
     `coach admin interviews --live` empty, and repeat the no-audio scan. Otherwise record "live leg deferred to m6b-04" (not ⛔).
 12. **[X] Docs + status** (plan task 9), then ship: see **Ship** below (**no tag**).
 
@@ -178,7 +212,8 @@ drain, cost, caps and modes are [m6b-02](../sprints/sprint-m6b-02.md); the UI is
   "frozen (PR #, date)" if not already; owner event `ev-freeze-ds-m6b-01` ✅ ("automatic at the merge") if status.md still lists it; flags —
   none new; **Decisions log** — the S6 winner + catalog `as_of`, precondition order and error
   codes (with their per-source-state FSM effects), confirm = browser call or first media event, supersede through the client lease, the
-  current-screen mechanism (or diffs-only), the `caption` and `segment` event kinds (widened `kind` set), voice turns as `source='server'`,
+  turn-start context rule (trigger, "model speaking" window, over-500-token window), `delegation:{type:"client"}` and when it's used, the
+  brain-speech timing, the data-channel allowlist, the `caption` and `segment` event kinds (widened `kind` set), voice turns as `source='server'`,
   the sideband read limit, the `session_tampered` caveat, "brokering works; `client_secrets` fallback not needed", whether the live check ran (or deferred to
   m6b-04); a **hand-off line for m6b-03** — the `voice` block fields, the routes (`segments`, `confirm`, `ask`), the event kinds and the
   fake-provider endpoints for its compose walk.
@@ -198,6 +233,9 @@ drain, cost, caps and modes are [m6b-02](../sprints/sprint-m6b-02.md); the UI is
 - [ ] Server-side preconditions: client lease, FSM state, voice consent (`consent_required`), EU/EEA (`voice_unavailable_region`, NULL refused,
       voice creates too), OpenAI interview key + catalog shell, audio-only offer
 - [ ] Captions reach the event log as `caption` → `turn` (one path for both shells)
+- [ ] D42: code and facts reach the live model only at the candidate's turn start (never while silent, typing or the model speaks); no
+      speakable director note is ever sent; `delegation:{type:"client"}`, answered with facts only (tests)
+- [ ] Every GPT-Live session has `allowed_client_events:["session.close"]`; a browser append gets `event_not_allowed` (fixture test)
 - [ ] Tamper re-applied once, hung up on the second
 - [ ] The sideband survives > 32 KiB frames (`SetReadLimit`; real-socket test); `caption`/`segment` in the widened `kind` set and the S1 allowlist
 - [ ] CI green; merged; no tag

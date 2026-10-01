@@ -96,8 +96,8 @@ TTFA = time to first audio **token**, as measured by Artificial Analysis. That t
 ```
 Browser SPA /xlearn/<course>/mock/live        (voice: Chrome/Edge; other browsers → text mode)
  │ mic ═══ WebRTC ICE/DTLS/RTP  browser ↔ OpenAI only — never via the VPS ═══════════►  OpenAI  gpt-live-1 session | realtime call
- │ captions ◄═ oai-events data channel (GPT-Live: required; browser may send only        ▲
- │             session.close per docs — S6 M13)   (Realtime: no data channel — S6)       │ sideband WSS, OUTBOUND from coach,
+ │ captions ◄═ sideband → our SSE. oai-events data channel: GPT-Live optional, browser   ▲
+ │             may send only session.close (allowlist, S6 §16.5); Realtime: none         │ sideband WSS, OUTBOUND from coach,
  │ camera ─► <video muted> local self-view; OFF by default; never in the PeerConnection  │ raw BYO key (standard auth).
  │                                                                                       │  in : transcripts, usage, errors, delegation,
  ├─ POST /api/interviews/{id}/segments  (SDP offer ≤16 KiB) ─► Traefik ─► gateway        │       + transient base64 audio copies
@@ -142,6 +142,12 @@ Client delegation is used only when the live model asks. The brain writes all ev
 | GPT-Live | The docs list only `session.close` as a browser-sent event | S6 M13 tries `session.update` and instruction events from DevTools. If they are accepted, coach re-applies its configuration and hangs up on a second attempt |
 | Realtime | Change instructions with `session.update` when a data channel exists (demonstrated in the 2025-05 community thread) | **Open the connection with no data channel.** Captions come from the sideband over our SSE (+0.2–0.5 s, inferred). If S6 shows the channel is mandatory, coach re-applies its configuration on any `session.updated` it didn't send and hangs up on the second |
 | Both | — | The score never comes from the realtime model; it comes from coach's own transcript and review. All instruction text is treated as learner-visible (S4, §7) |
+
+> **S6 update (2026-09-26, [§16.5](#165-for-m6b-01-adapter-sdp-broker-sideband), M13).** GPT-Live doesn't need the data channel: captions
+> come over the sideband. Its default permissions let the browser send `session.thinking.append`, `session.commentary.append`,
+> `session.instructions.append` and mute/unmute. So coach creates every GPT-Live session with
+> `client.data_channel.allowed_client_events:["session.close"]`, and the browser's appends then get `event_not_allowed`
+> ([m6b-01](../sprints/sprint-m6b-01.md) tasks 2 and 8). Realtime runs with no data channel.
 
 **Surviving deploys.** Flux rolls coach on every release tag (the ImagePolicy is `>=1.0.0` with a 1-minute poll; `replicaCount: 1`, RollingUpdate), and AGENT.md mandates a ship at the end of every session.
 
@@ -280,6 +286,10 @@ The probe is a 16-token text call on the brain model (≈ $0.0001): quota if it 
 **Planned rollover:**
 - **Realtime:** at the start of Code when the segment is over 40 minutes or its context is over ~24k tokens. It is forced by any 60-minute rail or any multiplier above 1×.
 - **GPT-Live:** only if S6 finds a duration limit shorter than the interview, or when `usage_ratio` passes 0.8, which pre-empts the provider's 8,192-token replacement.
+  - *S6 update (2026-09-26, [§16.6](#166-for-m6b-02-rollover-reseed-push-to-talk-cache)):* the session cap is 7,200 s, but the provider
+    swaps engines silently at ~60.5 min with a ~6.3 s audio stall. So a GPT-Live segment rolls over **before 55 min of segment time**, at
+    a phase boundary where it can. The reseed opens with a brain-authored `session.commentary.append` kick, and its brief carries the
+    code snapshot ([m6b-02](../sprints/sprint-m6b-02.md) task 6; [m6a-02](../sprints/sprint-m6a-02.md)'s `Prime`).
 
 **Other failure modes:**
 

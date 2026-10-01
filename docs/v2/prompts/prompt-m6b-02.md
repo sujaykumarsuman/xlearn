@@ -105,10 +105,16 @@ means a `v2.0.x` patch tag first (image before HelmRelease). Everything stays da
    text turns); **`mic`** as a new client-postable interrupt reason next to `voice_limit` (m6b-03 posts it after 30 s of mic loss; the clock
    stops at the interrupt); on `ErrQuota` the segment closes at once; `notice{probe, checked_at}` per probe. Gateway interview-proxy rows +
    `openapi.yaml`/`api.md` for every new route.
-8. **[X] Rollover, checkpoints, self-edit, mirror** (plan task 6): FSM rows `live —rollover→ bridging —segment_open→ live`; Realtime rollover at the
-   start of Code (> 40 min or ~24k tokens; forced for a 60-minute rail or multiplier > 1×), GPT-Live on a short S6 duration limit or
-   `usage_ratio` > 0.8; close-then-open with the bridge line; `Prime` ≤ 8,192 tokens; `ErrSessionCap` → same path; a creation error on the new
-   offer → a voice-only `bridging —interrupt→ interrupted` row (m6b-01's `connecting` effects); AI notes checkpoints at phase
+8. **[X] Rollover, checkpoints, self-edit, mirror** (plan task 6): FSM rows `live —rollover→ bridging —segment_open→ live`.
+   - **Rollover.** Realtime at the start of Code (> 40 min or ~24k tokens; forced for a 60-minute rail or multiplier > 1×). GPT-Live **before
+     55 min of segment time**, at the phase boundary where the next one would land past 55 min, else at the next turn boundary before
+     55 min (55 min at the latest), and also once `usage_ratio` > 0.8. The reason is t6 §16.6: a silent engine swap at ~60.5 min with a
+     ~6.3 s audio stall. Close-then-open with the bridge line; `ErrSessionCap` → same path.
+   - **Every reseed** (rollover, free re-prime, Talk, `ErrSessionCap`): `Prime` ≤ 8,192 tokens **with the code snapshot** (the latest raw
+     numbered code as the next `[editor vN]`). On GPT-Live, open with a **brain-authored `session.commentary.append` kick** right after
+     `session.started`: it stays silent on a seeded history otherwise (S6 TTFA 1.68 s with the kick). Realtime: `conversation.item.create` ×
+     N + `response.create`.
+   - A creation error on the new offer → a voice-only `bridging —interrupt→ interrupted` row (m6b-01's `connecting` effects); AI notes checkpoints at phase
    boundaries; `PATCH …/turns/{seq}` (candidate turns, `finished`/`proposed` only, ≤ 2 KiB, `edited` → `transcript_edited` → `self`);
    `POST …/turns/mirror` (≤ 20 × 2 KiB, only inside a re-prime gap, `source='client'`, else 409 `no_gap`).
 8b. **[X] Only if S6 M7 failed** (recorded at entry; plan task 7a) — otherwise skip and mark rows 7a–7e ✅ "n/a — M7 passed". All of it goes
@@ -125,7 +131,9 @@ means a `v2.0.x` patch tag first (image before HelmRelease). Everything stays da
    hang-up; crash → cold re-attach ≤ 20 s; refused → re-prime, TTFA ≤ 3 s on the fake); the drain < 50 s with 3 sessions; cap 85/100 and
    `cap_reached`; `voice_capacity`; the **76th-minute `voice_daily_limit`** at 1× (and 112.5 min at 1.5×); idle notice + hang-up; PTT across
    instances; hold (and `held` → `wrapping` on rail end / finish / cap); `interrupt(mic)` and `interrupt(voice_limit)` hang up; rollover (and a
-   failed rollover offer → `interrupted`); self-edit and mirror → no `ai-byo`; the estimate table (rail-derived profile). Then a **compose run** with two coach containers on the
+   failed rollover offer → `interrupted`), the GPT-Live trigger table (phase boundary, overrun, `usage_ratio` 0.8; no segment reaches 55 min),
+   and every reseed's `Prime` carrying the code snapshot with a `commentary.append` kick first on GPT-Live; self-edit and mirror → no `ai-byo`;
+   the estimate table (rail-derived profile). Then a **compose run** with two coach containers on the
    same DB and the scratchpad fake provider (never committed): start a fake call, SIGTERM the holder, confirm the fake saw a second sideband
    before the first detached and no hang-up — paste the log excerpt into the PR ([m6b-04](../sprints/sprint-m6b-04.md) relies on it).
    `go test ./...`, `go vet`, lint, `sqlc diff`, OpenAPI drift.
@@ -215,7 +223,8 @@ means a `v2.0.x` patch tag first (image before HelmRelease). Everything stays da
 - [ ] The 76th voice-minute of the day → typed 429 `voice_daily_limit` (1×); a 4th live voice → 429 `voice_capacity`
 - [ ] `notice{idle_check}` 60 s before `interrupt(idle)`, which hangs up
 - [ ] Standard / Patient / push-to-talk per the S6 winner; hold keeps the clock and reseeds free on Talk
-- [ ] Rollover primes ≤ 8,192 tokens, close-then-open at a phase boundary; self-edit and mirror turns block `ai-byo`
+- [ ] Rollover close-then-open at a phase boundary; no GPT-Live segment reaches 55 min; every reseed primes ≤ 8,192 tokens with the code
+      snapshot and opens with a `commentary.append` kick on GPT-Live; self-edit and mirror turns block `ai-byo`
 - [ ] (M7 failed only) PR A (peer side) → `v2.0.N` → PR B (with its own NetworkPolicy + `expected-netpol.tsv` row) in order;
       `coach-interview` Ready on `2.0.N` and serving `/api/interviews/*` and the gateway's `/internal/interviews/*` calls; no NATS in the
       `interview` role; memory sum inside the rule; runbook + hand-off recorded

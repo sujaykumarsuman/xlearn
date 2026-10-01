@@ -42,7 +42,10 @@ The rollout freeze rule: AB13 and AB24–AB28 are frozen before M6a; [m6a-01](..
 1. **[X] Accept ADR-0032 (own docs PR).** Branch `docs/adr-0032-accept` off an up-to-date `origin/main`. Apply the plan's task 1:
    ADR-0032 Status → **Accepted (<date>)** with the S6 result folded into §2 (shell + measured reason; deploy shape from M7), §4
    (fixtures = spend-limit path; the probe arbitrates prepaid), §6 (browser list; measured cost; D29 cadence cost), Links (t6 §16,
-   fixtures) — and, if both shells failed, P1 "deferred: voice revisited by <date>". ADR-0007: the ADR-0032 amendment → Accepted
+   fixtures) — and, if both shells failed, P1 "deferred: voice revisited by <date>". §3 *Context handling* takes D42's fixed design (the
+   plan's §3 bullet; t6 §16.3): the live model gets the raw numbered code as one `[editor vN]` push only at the candidate's turn start,
+   never while they are silent or typing or the model speaks; the director feeds facts only; delegation (`client`) only for explicit deep
+   checks. ADR-0007: the ADR-0032 amendment → Accepted
    plus a short *Amendment (ADR-0032)* section (SDP brokering; `client_secrets` fallback only if S6 needed it; the key per live
    segment). ADR-0024: its ADR-0032 note → Accepted. `docs/adr/README.md` and the feasibility T6 rows → Accepted. `docs/v2/status.md`:
    ADR row, Decisions log, this sprint's board row 🔄; this sprint file: task 1 ✅, _Overall_ 🔄. Commit `docs(adr): accept ADR-0032
