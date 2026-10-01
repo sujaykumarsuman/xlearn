@@ -1,0 +1,4 @@
+{"id":"e1","group":"edge","args":[[1]],"expected":[1]}
+{"id":"e2","group":"edge","args":[[1,2]],"expected":[2,1]}
+{"id":"e3","group":"edge","args":[[-2147483648,2147483647,0]],"expected":[0,2147483647,-2147483648]}
+{"id":"r1","group":"random","args":[[7,7,3,9,1,1]],"expected":[1,1,9,3,7,7]}

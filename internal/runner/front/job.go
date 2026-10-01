@@ -9,8 +9,6 @@ import (
 	"hash"
 	"io"
 	"os"
-	"regexp"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -20,6 +18,7 @@ import (
 	"github.com/sujaykumarsuman/xlearn/internal/platform/runnerapi"
 	"github.com/sujaykumarsuman/xlearn/internal/runner/ipc"
 	"github.com/sujaykumarsuman/xlearn/internal/runner/measure"
+	"github.com/sujaykumarsuman/xlearn/internal/runner/profile"
 )
 
 // disposition says how handleJob answers.
@@ -208,7 +207,12 @@ func (jr *jobRun) compile(ctx context.Context) error {
 		for _, f := range jr.job.HiddenFiles {
 			names[f.Path] = true
 		}
-		jr.res.Compile.Diags = parseDiags(append(stderr.kept, stdout.kept...), names)
+		out := append(stderr.kept, stdout.kept...)
+		if parse := jr.pe.prof.Diagnostics; parse != nil {
+			jr.res.Compile.Diags = parse(out, names)
+		} else {
+			jr.res.Compile.Diags = profile.TextDiags(out, names)
+		}
 	}
 	return nil
 }
@@ -227,31 +231,6 @@ func compileLimit(d *ipc.CompileDone) runnerapi.CompileLimit {
 		return runnerapi.CompileLimitPids
 	}
 	return ""
-}
-
-var diagRE = regexp.MustCompile(`(?m)^(?:\./|/src/)?([A-Za-z0-9_]+\.[A-Za-z0-9_]+):(\d+)(?::(\d+))?: (.+)$`)
-
-// parseDiags extracts "file:line[:col]: msg" diagnostics for the job's own file names (a
-// generic parser; m3-04 adds per-profile ones such as `go build -json`).
-func parseDiags(out []byte, names map[string]bool) []runnerapi.Diag {
-	var diags []runnerapi.Diag
-	for _, m := range diagRE.FindAllSubmatch(out, -1) {
-		file := string(m[1])
-		if !names[file] {
-			continue
-		}
-		line, _ := strconv.Atoi(string(m[2]))
-		col, _ := strconv.Atoi(string(m[3]))
-		msg := string(m[4])
-		if len(msg) > runnerapi.MaxDiagMsgBytes {
-			msg = msg[:runnerapi.MaxDiagMsgBytes]
-		}
-		diags = append(diags, runnerapi.Diag{File: file, Line: line, Col: col, Msg: msg})
-		if len(diags) == runnerapi.MaxDiags {
-			break
-		}
-	}
-	return diags
 }
 
 // ---- cases ----
@@ -437,7 +416,7 @@ func (jr *jobRun) runOne(ctx context.Context, i int, quiet bool, left time.Durat
 	stdout := &keeper{keep: keepOut, hard: runnerapi.HardFdCapBytes, over: overCap}
 	stderr := &keeper{keep: keepErr, hard: runnerapi.HardFdCapBytes, over: overCap}
 	outCap := int(job.Limits.Case.OutputKB << 10)
-	result := &keeper{keep: outCap, hard: outCap, over: overCap, h: sha256.New()}
+	result := &keeper{keep: outCap, hard: outCap, over: overCap, h: sha256.New(), headMax: panicFrameMax}
 	if job.OutputMode == runnerapi.OutputSHA256 {
 		result.keep = 0
 	}
@@ -471,6 +450,9 @@ func (jr *jobRun) runOne(ctx context.Context, i int, quiet bool, left time.Durat
 	if job.OutputMode == runnerapi.OutputBytes && len(result.kept) > 0 {
 		cr.Output = result.kept
 	}
+	if result.n == int64(len(result.head)) {
+		cr.PanicClass = panicClass(jr.pe.prof.Language, result.head)
+	}
 	if job.Mode == runnerapi.ModeRun {
 		cr.Stdout, cr.Stderr = nonEmpty(stdout.kept), nonEmpty(stderr.kept)
 	}
@@ -492,16 +474,22 @@ func nonEmpty(b []byte) []byte {
 	return b
 }
 
-// keeper counts, keeps up to keep bytes, optionally hashes, and calls over once past hard.
+// keeper counts, keeps up to keep bytes, optionally hashes, and calls over once past hard. It
+// also keeps the first headMax bytes whatever keep is (the panic-frame check reads them).
 type keeper struct {
 	keep, hard int
 	over       func()
 	h          hash.Hash
 	n          int64
 	kept       []byte
+	headMax    int
+	head       []byte
 }
 
 func (k *keeper) Write(p []byte) (int, error) {
+	if room := k.headMax - len(k.head); room > 0 {
+		k.head = append(k.head, p[:min(room, len(p))]...)
+	}
 	prev := k.n
 	k.n += int64(len(p))
 	if k.hard > 0 && prev <= int64(k.hard) {

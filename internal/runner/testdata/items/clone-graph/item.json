@@ -1,0 +1,27 @@
+{
+  "id": "clone-graph",
+  "title": "Clone a Graph (synthetic)",
+  "parts": [
+    {
+      "id": "solution",
+      "type": "code",
+      "config": {
+        "signature": {
+          "mode": "function",
+          "name": "cloneGraph",
+          "params": [{ "name": "node", "type": "GraphNode" }],
+          "returns": "GraphNode"
+        },
+        "languages": ["go", "cpp", "python"],
+        "harness": "func-json@1",
+        "checker": { "name": "exact" },
+        "samples": [
+          { "id": "s1", "args": [[[2, 4], [1, 3], [2, 4], [1, 3]]], "expected": [[2, 4], [1, 3], [2, 4], [1, 3]] },
+          { "id": "s2", "args": [[[]]], "expected": [[]] },
+          { "id": "s3", "args": [[]], "expected": [] }
+        ],
+        "limits": { "time_ms": 1000, "memory_mb": 256 }
+      }
+    }
+  ]
+}

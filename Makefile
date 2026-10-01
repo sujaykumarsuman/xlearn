@@ -118,13 +118,16 @@ uninstall-hooks:
 
 ## ---- runner (m3-03; ADR-0030) ----
 # The runner's Linux jail suite (build tag runner_it): the hostile corpus, the cleanup
-# invariants, the L14 caps and the API contract against the real runner binary. Run it as root on
-# a Linux host or VM with cgroup v2 and a delegated cgroup — CI's runner-it job does it in a
-# privileged debian:trixie-slim container; `sudo make runner-it` on a throwaway Linux VM is
-# equivalent. macOS can't run the jail. On an arm64 dev VM the exec filters' default is LOG (a
-# runner_it + RUNNER_MODE=dev switch; the allowlists are amd64 until m3-04 adds arm64 lists).
+# invariants, the L14 caps and the API contract against the real runner binary (m3-03); the
+# go@1.26 / cpp@g++14 / python@3.13 profiles with their references, wrong solutions, evasion
+# fixtures and GOCACHE seed (m3-04), and the public content check (internal/platform/harness).
+# Run it as root on a Linux host or VM with cgroup v2, a delegated cgroup, g++ and python3 —
+# CI's runner-it job does it in a privileged debian:trixie-slim container; `sudo make runner-it`
+# on a throwaway Linux VM is equivalent. macOS can't run the jail. -p 1: each package runs its
+# own runner on the same cgroup root and port, one package at a time. Exec filters are
+# KILL-default on amd64 and on an arm64 dev VM (its own lists, never in a release image).
 runner-it:
-	go test -tags runner_it -count=1 -timeout 30m -v ./internal/runner/...
+	go test -tags runner_it -p 1 -count=1 -timeout 45m -v ./internal/runner/... ./internal/platform/harness/
 
 ## ---- aggregate ----
 lint: go-lint lint-migrations lint-bodies web-lint

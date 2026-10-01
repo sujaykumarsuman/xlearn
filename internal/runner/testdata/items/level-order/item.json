@@ -1,0 +1,26 @@
+{
+  "id": "level-order",
+  "title": "Tree Levels (synthetic)",
+  "parts": [
+    {
+      "id": "solution",
+      "type": "code",
+      "config": {
+        "signature": {
+          "mode": "function",
+          "name": "levelOrder",
+          "params": [{ "name": "root", "type": "TreeNode" }],
+          "returns": "int[][]"
+        },
+        "languages": ["go", "cpp", "python"],
+        "harness": "func-json@1",
+        "checker": { "name": "exact" },
+        "samples": [
+          { "id": "s1", "args": [[3, 9, 20, null, null, 15, 7]], "expected": [[3], [9, 20], [15, 7]] },
+          { "id": "s2", "args": [[]], "expected": [] }
+        ],
+        "limits": { "time_ms": 1000, "memory_mb": 256 }
+      }
+    }
+  ]
+}

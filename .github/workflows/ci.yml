@@ -224,6 +224,13 @@ jobs:
   # limits (2 CPUs, 3 GiB), so "0 container OOMs" means what it says. It stands in for a local
   # privileged VM run. It does NOT exercise the pod's user namespace, the Localhost AppArmor and
   # pod seccomp profiles or the VAP: m3-15's VM rehearsal and mi-10 cover those.
+  # m3-04 adds the launch profiles (go@1.26, cpp@g++14, python@3.13: references and wrong
+  # solutions in all three languages, the evasion fixtures, the GOCACHE seed built with
+  # `runner seed-gocache`, the provisional TL multipliers as RUNNER-IT-METRIC lines) and the
+  # public content check (curriculum/ starters and references). g++ and python3 come from trixie,
+  # like the image; a patch may differ from the image's, so this lane is functional and m3-15's
+  # in-image run is authoritative. The job has no path filter: it runs on every push and PR,
+  # curriculum/** included.
   runner-it:
     runs-on: ubuntu-24.04
     container:
@@ -236,7 +243,9 @@ jobs:
       - name: Base packages
         run: |
           apt-get update -qq
-          apt-get install -y -qq --no-install-recommends ca-certificates curl git make >/dev/null
+          apt-get install -y -qq --no-install-recommends ca-certificates curl git make g++ python3 >/dev/null
+          g++ --version | head -1
+          python3 -VV
       - uses: actions/checkout@v4
       - name: Pinned Go tarball (checksummed)
         run: |

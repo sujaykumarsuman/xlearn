@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/sujaykumarsuman/xlearn/internal/platform/runnerapi"
+	"github.com/sujaykumarsuman/xlearn/internal/platform/runnerapi/lint"
 	"github.com/sujaykumarsuman/xlearn/internal/runner"
 	"github.com/sujaykumarsuman/xlearn/internal/runner/ipc"
 	"github.com/sujaykumarsuman/xlearn/internal/runner/measure"
@@ -199,6 +200,14 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 		s.badRequest(w, errors.New("declared tests need the go-race/gotest@1 profiles (p-01)"))
 		return
 	}
+	// The front's re-check of the profile's file names and types (t3 §2.4 A5; judge ran the
+	// full lint before enqueue): a violation is 400, never a verdict.
+	if pe.prof.Language != "" {
+		if vs := lint.CheckNames(job.Profile, job.Files, job.HiddenFiles); len(vs) > 0 {
+			s.badRequest(w, vs[0])
+			return
+		}
+	}
 
 	// The job's context: the client's connection (a disconnect kills the job and sends no
 	// Result), the runner's own 170 s backstop, and the drain's kill.
@@ -301,9 +310,14 @@ func (s *Server) handleProfiles(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			continue
 		}
+		mult := pe.prof.TLMultiplier
+		if mult <= 0 {
+			mult = 1
+		}
 		resp.Profiles = append(resp.Profiles, runnerapi.ProfileInfo{
 			Profile: pm.Name, Toolchain: pm.Toolchain, ProfileSHA256: pm.ProfileSHA256, ImageDigest: s.cfg.ImageDigest,
-			Harnesses: append([]string{}, pe.prof.Harnesses...), TLMultiplier: 1, MemBaselineKB: pm.BaselineBytes / 1024,
+			Harnesses: append([]string{}, pe.prof.Harnesses...), Baseline: pe.prof.Baseline, TLMultiplier: mult,
+			Calibrated: pe.prof.Calibrated, MemBaselineKB: pm.BaselineBytes / 1024, Language: pe.prof.Language,
 		})
 	}
 	writeJSON(w, http.StatusOK, resp)

@@ -239,7 +239,7 @@ func TestDrainKilled(t *testing.T) {
 	waitBusy(t, 1)
 	time.Sleep(time.Second)
 	t0 := time.Now()
-	if err := p.cmd.Process.Signal(syscall.SIGTERM); err != nil {
+	if err := p.Signal(syscall.SIGTERM); err != nil {
 		t.Fatal(err)
 	}
 	// A new job during the drain is refused.

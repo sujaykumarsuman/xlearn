@@ -27,6 +27,16 @@ var allowedSandbox = map[string]bool{
 	goSandbox + "/runner":             true, // pkg/rlimit's size type
 }
 
+// runnerMayImport are the module packages outside internal/runner the runner may import: the
+// judge↔runner contract, its logger, and the shared leaf libraries (the harness templates the
+// profiles hash and the front's panic-frame check; the front's name re-check).
+var runnerMayImport = map[string]bool{
+	module + "/internal/platform/runnerapi":      true,
+	module + "/internal/platform/runnerapi/lint": true,
+	module + "/internal/platform/harness":        true,
+	module + "/internal/platform/slogx":          true,
+}
+
 // deps lists "importpath imports…" for every package in pkgs and their dependencies.
 func deps(t *testing.T, tags string, pkgs ...string) map[string][]string {
 	t.Helper()
@@ -79,12 +89,20 @@ func TestImportGuards(t *testing.T) {
 					}
 				}
 				if strings.HasPrefix(pkg, runnerPkgs) && strings.HasPrefix(imp, module+"/internal/") &&
-					!strings.HasPrefix(imp, runnerPkgs) && imp != module+"/internal/platform/runnerapi" &&
-					imp != module+"/internal/platform/slogx" {
+					!strings.HasPrefix(imp, runnerPkgs) && !runnerMayImport[imp] {
 					t.Errorf("[tags=%q] %s imports %s: the runner imports no other service (ADR-0005)", tags, pkg, imp)
 				}
 				if pkg == module+"/internal/platform/runnerapi" && strings.Contains(strings.SplitN(imp, "/", 2)[0], ".") {
 					t.Errorf("runnerapi imports %s: it is stdlib-only", imp)
+				}
+			}
+		}
+		// The shared leaf libraries judge and packlint link (m3-04): nothing they pull in may
+		// reach the jail, cgroups, go-sandbox or any runner package.
+		for _, leaf := range []string{module + "/internal/platform/harness", module + "/internal/platform/runnerapi/lint"} {
+			for pkg := range deps(t, tags, "./"+strings.TrimPrefix(leaf, module+"/")) {
+				if strings.HasPrefix(pkg, runnerPkgs) || strings.HasPrefix(pkg, goSandbox) {
+					t.Errorf("[tags=%q] %s pulls in %s: a shared leaf library never links runner code", tags, leaf, pkg)
 				}
 			}
 		}
@@ -95,5 +113,40 @@ func TestImportGuards(t *testing.T) {
 	}
 	if _, ok := deps(t, "runner_it", "./cmd/runner")[testgoPkg]; !ok {
 		t.Errorf("the runner_it build of cmd/runner should link %s", testgoPkg)
+	}
+}
+
+// TestArm64ListsNeverInAmd64Builds: each profile's seccomp_arm64.go (the dev-VM lists, never in
+// a release image) is linked only into arm64 builds, and its seccomp_amd64.go (t3 §16.2) only
+// into amd64 builds; a release build of cmd/runner links all three launch profiles.
+func TestArm64ListsNeverInAmd64Builds(t *testing.T) {
+	if testing.Short() {
+		t.Skip("runs go list")
+	}
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go not on PATH")
+	}
+	files := func(arch, pkg string) string {
+		cmd := exec.Command("go", "list", "-f", "{{join .GoFiles \" \"}}", pkg)
+		cmd.Dir = filepath.Join("..", "..")
+		cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH="+arch, "CGO_ENABLED=0")
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("go list %s (%s): %v", pkg, arch, err)
+		}
+		return " " + strings.TrimSpace(string(out)) + " "
+	}
+	for _, p := range []string{"go", "cpp", "python"} {
+		pkg := "./internal/runner/profile/" + p
+		amd, arm := files("amd64", pkg), files("arm64", pkg)
+		if strings.Contains(amd, " seccomp_arm64.go ") || !strings.Contains(amd, " seccomp_amd64.go ") {
+			t.Errorf("%s amd64 build files: %s", pkg, amd)
+		}
+		if !strings.Contains(arm, " seccomp_arm64.go ") || strings.Contains(arm, " seccomp_amd64.go ") {
+			t.Errorf("%s arm64 build files: %s", pkg, arm)
+		}
+		if _, ok := deps(t, "", "./cmd/runner")[runnerPkgs+"/profile/"+p]; !ok {
+			t.Errorf("a release build of cmd/runner does not link the %s profile", p)
+		}
 	}
 }

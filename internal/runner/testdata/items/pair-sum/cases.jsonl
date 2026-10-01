@@ -1,0 +1,6 @@
+{"id":"e1","group":"edge","args":[[3,3],6],"expected":[0,1]}
+{"id":"e2","group":"edge","args":[[-1,-2,-3,-4,-5],-8],"expected":[2,4]}
+{"id":"e3","group":"edge","args":[[0,4,3,0],0],"expected":[0,3]}
+{"id":"e4","group":"edge","args":[[2147483647,-2147483648,5],-1],"expected":[0,1]}
+{"id":"r1","group":"random","args":[[1,5,9,13,2],15],"expected":[3,4]}
+{"id":"r2","group":"random","args":[[10,20,30,40,50,60],110],"expected":[4,5]}

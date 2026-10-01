@@ -143,4 +143,8 @@ var nativeNumbers = map[string]uint32{
 	"semget":            unix.SYS_SEMGET,
 	"sched_setaffinity": unix.SYS_SCHED_SETAFFINITY,
 	"personality":       unix.SYS_PERSONALITY,
+	// m3-04: the cpp and python profiles' lists and the arm64 dev-VM delta.
+	"ioctl":     unix.SYS_IOCTL,
+	"mremap":    unix.SYS_MREMAP,
+	"faccessat": unix.SYS_FACCESSAT,
 }

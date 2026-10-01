@@ -10,8 +10,8 @@
 //     and prctl only with PR_SET_VMA;
 //
 // then the allowlist, then the default action (KILL_PROCESS for exec filters, ERRNO(ENOSYS)
-// for compile filters). m3-04 adds the real per-profile lists; this sprint's test profile uses
-// spk-02's amd64 `go` list.
+// for compile filters). The per-profile lists live with their profiles
+// (internal/runner/profile/<p>/seccomp_<arch>.go, m3-04); this package keeps the dangerous set.
 package seccomp
 
 import (
@@ -205,16 +205,11 @@ func uniq(in []string) []string {
 	return out
 }
 
-// ExecDefault is the default action of a per-case (exec) filter: KILL_PROCESS. The one
-// exception is the dev-only LOG switch for arm64 dev VMs, which only a runner_it build honours
-// with RUNNER_MODE=dev (the allowlists are amd64, t3 §16.2; m3-04 adds arm64 lists and retires
-// the switch). No release or image build ever has a LOG default.
-func ExecDefault(goarch string, devMode bool) Action {
-	if goarch != "amd64" && devLogBuild && devMode {
-		return ActLog
-	}
-	return ActKillProcess
-}
+// ExecDefault is the default action of a per-case (exec) filter: KILL_PROCESS, on every arch
+// and in every mode. m3-04 retired m3-03's dev-only arm64 LOG switch: the arm64 dev-VM lists
+// (each profile's seccomp_arm64.go, never in a release image) are KILL-default like amd64's;
+// LOG was only how their delta was found.
+func ExecDefault() Action { return ActKillProcess }
 
 // CompileDefault is the default action of a compile filter: ERRNO(ENOSYS) (t3 §5.4), with
 // the dangerous set still KILL.

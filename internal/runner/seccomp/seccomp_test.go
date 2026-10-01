@@ -3,6 +3,7 @@ package seccomp
 import (
 	"encoding/binary"
 	"runtime"
+	"slices"
 	"testing"
 )
 
@@ -141,28 +142,33 @@ func TestAssembleRejectsContradictions(t *testing.T) {
 	}
 }
 
+// TestExecDefault: exec filters are KILL-default on every arch, in every build and mode (the
+// dev-only arm64 LOG switch is retired; m3-04).
 func TestExecDefault(t *testing.T) {
-	if ExecDefault("amd64", true) != ActKillProcess {
-		t.Error("amd64 exec filters are KILL-default in every build and mode")
-	}
-	if ExecDefault("arm64", false) != ActKillProcess {
-		t.Error("arm64 in prod mode is KILL-default")
+	if ExecDefault() != ActKillProcess {
+		t.Error("exec filters are KILL-default")
 	}
 }
 
-func TestGoListsResolveNatively(t *testing.T) {
-	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
-		t.Skip("the amd64 lists are authoritative only on linux/amd64")
+func TestSharedListsResolveNatively(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("the syscall tables are Linux-only")
 	}
-	for name, names := range map[string][]string{
-		"GoExecAMD64": GoExecAMD64, "GoBuildAMD64": GoBuildAMD64, "Dangerous": Dangerous, "CompileInitExtra": CompileInitExtra,
-	} {
+	for name, names := range map[string][]string{"Dangerous": Dangerous, "CompileInitExtra": CompileInitExtra} {
 		_, unresolved, err := Assemble(Policy{Default: ActKillProcess, Allow: names}, Native())
 		if err != nil || len(unresolved) != 0 {
 			t.Errorf("%s: unresolved %v (%v)", name, unresolved, err)
 		}
 	}
-	if len(GoExecAMD64) != 27 || len(GoBuildAMD64) != 54 {
-		t.Errorf("spk-02's lists are 27 and 54 names; got %d and %d", len(GoExecAMD64), len(GoBuildAMD64))
+	for _, n := range []string{"splice", "vmsplice", "tee", "socket", "io_uring_setup", "ptrace"} {
+		if !slices.Contains(Dangerous, n) {
+			t.Errorf("the dangerous set lacks %s", n)
+		}
+	}
+}
+
+func TestUnion(t *testing.T) {
+	if got := Union([]string{"b", "a"}, []string{"a", "c"}); !slices.Equal(got, []string{"a", "b", "c"}) {
+		t.Errorf("Union = %v", got)
 	}
 }

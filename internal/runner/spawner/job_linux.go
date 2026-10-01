@@ -364,10 +364,16 @@ func (s *Spawner) runCase(slotIdx int, req *ipc.CaseRun, hooks caseHooks) (*ipc.
 	resR, resW := pipes.pair(3)
 
 	rl := []rlimit.RLimit{{Res: unix.RLIMIT_CPU, Rlim: syscall.Rlimit{Cur: measure.RlimitCPUSeconds(tl), Max: measure.RlimitCPUSeconds(tl)}}}
+	stack := p.Exec.StackBytes
+	if p.Exec.StackFromMemory {
+		// Deep recursion is bounded by the case's memory limit, not by an 8 MiB stack (C++,
+		// Python; the cgroup still caps the total).
+		stack = uint64(req.MemMB)<<20 + uint64(max(j.ps.baseline, 0))
+	}
 	for _, r := range []struct {
 		res int
 		v   uint64
-	}{{unix.RLIMIT_FSIZE, p.Exec.FSizeBytes}, {unix.RLIMIT_NOFILE, p.Exec.NoFile}, {unix.RLIMIT_STACK, p.Exec.StackBytes}} {
+	}{{unix.RLIMIT_FSIZE, p.Exec.FSizeBytes}, {unix.RLIMIT_NOFILE, p.Exec.NoFile}, {unix.RLIMIT_STACK, stack}} {
 		if r.v > 0 {
 			rl = append(rl, rlimit.RLimit{Res: r.res, Rlim: syscall.Rlimit{Cur: r.v, Max: r.v}})
 		}

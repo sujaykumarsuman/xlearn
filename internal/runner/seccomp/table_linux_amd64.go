@@ -167,4 +167,8 @@ var nativeNumbers = map[string]uint32{
 	"creat":             unix.SYS_CREAT,
 	"link":              unix.SYS_LINK,
 	"symlink":           unix.SYS_SYMLINK,
+	// m3-04: the cpp and python profiles' lists (t3 §16.2).
+	"ioctl":     unix.SYS_IOCTL,
+	"mremap":    unix.SYS_MREMAP,
+	"faccessat": unix.SYS_FACCESSAT,
 }

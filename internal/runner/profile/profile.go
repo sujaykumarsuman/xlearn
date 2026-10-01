@@ -5,6 +5,9 @@
 package profile
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"sort"
@@ -27,9 +30,9 @@ type Bind struct {
 // SeccompDefault names a filter's default action.
 type SeccompDefault string
 
-// Defaults. Kill is the exec default (subject only to the dev-only arm64 LOG switch); ENOSYS
-// is the compile default; Allow exists only for runner_it test profiles that exercise the
-// namespace layer on its own.
+// Defaults. Kill is the exec default on every arch (m3-04 retired m3-03's dev-only arm64 LOG
+// switch); ENOSYS is the compile default; Allow exists only for runner_it test profiles that
+// exercise the namespace layer on its own.
 const (
 	DefaultKill   SeccompDefault = "kill"
 	DefaultENOSYS SeccompDefault = "enosys"
@@ -46,8 +49,8 @@ type Seccomp struct {
 	PrctlSetVMAOnly bool
 }
 
-// Policy turns the description into an assembler policy for this goarch and mode.
-func (s Seccomp) Policy(goarch string, devMode bool) seccomp.Policy {
+// Policy turns the description into an assembler policy.
+func (s Seccomp) Policy() seccomp.Policy {
 	var def seccomp.Action
 	switch s.Default {
 	case DefaultENOSYS:
@@ -55,7 +58,7 @@ func (s Seccomp) Policy(goarch string, devMode bool) seccomp.Policy {
 	case DefaultAllow:
 		def = seccomp.ActAllow
 	default:
-		def = seccomp.ExecDefault(goarch, devMode)
+		def = seccomp.ExecDefault()
 	}
 	return seccomp.Policy{
 		Default: def, Allow: s.Allow, Kill: s.Kill, Clone3ENOSYS: s.Clone3ENOSYS,
@@ -92,6 +95,9 @@ type Exec struct {
 	FSizeBytes uint64
 	NoFile     uint64
 	StackBytes uint64
+	// StackFromMemory sets RLIMIT_STACK to the case's memory limit (mem_mb + the baseline), so
+	// deep recursion is bounded by memory, not by an 8 MiB stack (C++, Python).
+	StackFromMemory bool
 	// WMB and WInodes size the per-case /w tmpfs (default 64 MiB, 4k inodes).
 	WMB     int64
 	WInodes int64
@@ -123,6 +129,59 @@ type Profile struct {
 	Exec          Exec
 	// TestOnly marks runner_it profiles; a release build must not register one.
 	TestOnly bool
+
+	// Language is the item `languages[]` value the profile serves ("go", "cpp", "python"; ""
+	// for a test profile). ForLanguage is the one table; GET /v1/profiles serves it.
+	Language string
+	// Baseline is the TL baseline profile: judge's pack TLs are measured on it, and judge
+	// multiplies them by TLMultiplier for this profile (ADR-0030 §3).
+	Baseline string
+	// TLMultiplier and Calibrated are served by GET /v1/profiles: provisional (false) from the
+	// runner-it lane until mi-10 calibrates on production. The runner enforces only the CPU TL
+	// judge sends.
+	TLMultiplier float64
+	Calibrated   bool
+	// Assets are the public harness templates and preludes the profile's jobs carry (path →
+	// bytes); they are part of ProfileSHA, so a one-byte template change moves it.
+	Assets map[string][]byte
+	// Detect reports the toolchain version at spawner startup (go version, g++
+	// -dumpfullversion, python3 -VV); "" keeps Toolchain.
+	Detect func() (string, error) `json:"-"`
+	// Diagnostics parses compile output into positioned diagnostics for the job's own file
+	// names; nil uses the front's generic file:line:col parser.
+	Diagnostics func(out []byte, names map[string]bool) []runnerapi.Diag `json:"-"`
+}
+
+// ForLanguage returns the registered profile serving an item language ("go", "cpp", "python").
+func ForLanguage(lang string) (*Profile, bool) {
+	for _, p := range All() {
+		if !p.TestOnly && p.Language == lang && lang != "" {
+			return p, true
+		}
+	}
+	return nil, false
+}
+
+// Fingerprint is ProfileSHA: a SHA-256 over the profile's description (commands, env, binds,
+// limits, the seccomp lists, the harness templates and preludes, the TL multiplier), the
+// detected toolchain version, and the tree hash of every toolchain path (the toolchain itself
+// and, for Go, the GOCACHE seed). tree returns a path's tree hash.
+func Fingerprint(p *Profile, toolchain string, tree func(path string) (string, error)) (string, error) {
+	h := sha256.New()
+	desc, err := json.Marshal(p)
+	if err != nil {
+		return "", err
+	}
+	h.Write(desc)
+	fmt.Fprintf(h, "\ntoolchain %s", toolchain)
+	for _, path := range p.ToolchainPaths {
+		th, err := tree(path)
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(h, "\n%s %s", path, th)
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // Accepts reports whether the profile takes harness h.

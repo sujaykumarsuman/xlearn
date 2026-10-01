@@ -1,0 +1,34 @@
+{
+  "id": "min-stack",
+  "title": "Min Stack (synthetic)",
+  "parts": [
+    {
+      "id": "solution",
+      "type": "code",
+      "config": {
+        "signature": {
+          "mode": "class",
+          "name": "MinStack",
+          "ops": [
+            { "name": "push", "params": [{ "name": "val", "type": "int" }] },
+            { "name": "pop" },
+            { "name": "top", "returns": "int" },
+            { "name": "getMin", "returns": "int" }
+          ]
+        },
+        "languages": ["go", "cpp", "python"],
+        "harness": "class-ops@1",
+        "checker": { "name": "exact" },
+        "samples": [
+          {
+            "id": "s1",
+            "ops": ["MinStack", "push", "push", "push", "getMin", "pop", "top", "getMin"],
+            "args": [[], [-2], [0], [-3], [], [], [], []],
+            "expected": [null, null, null, null, -3, null, 0, -2]
+          }
+        ],
+        "limits": { "time_ms": 1000, "memory_mb": 256 }
+      }
+    }
+  ]
+}
