@@ -50,8 +50,10 @@ mode ([`runner.md`](runner.md#tests), `make runner-acceptance … CALIBRATE=1`).
 **The production column** is mi-10's: the same profiles at the same `profile_sha256` (the image is
 digest-identical), with `SUBSET=prod REQUIRE_PROD=1 CALIBRATE=1` on the node.
 
-**The image:** `runner-v1.0.0` at `ghcr.io/sujaykumarsuman/xlearn-runner:1.0.0`. Its digest is recorded in
-[`docs/v2/status.md`](../v2/status.md#release-streams) (runner stream).
+**The image:** `runner-v1.0.0` at `ghcr.io/sujaykumarsuman/xlearn-runner:1.0.0`,
+`sha256:3defadd790e04e4d44086f22c9dc8ea2dc22339633e3f429f6b5238e003e2cab` (also recorded in
+[`docs/v2/status.md`](../v2/status.md#release-streams), runner stream). Its release notes read the same three
+`profile_sha256` values from the pushed image, so the CI column below applies to it unchanged.
 
 **Checksums:** every kernel returned the same checksum in all three languages (the same work).
 
