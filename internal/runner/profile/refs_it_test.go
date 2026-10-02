@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"io/fs"
 	"math"
-	"math/rand/v2"
 	"net/http"
 	"os"
 	"os/exec"
@@ -47,6 +46,7 @@ import (
 	"github.com/sujaykumarsuman/xlearn/internal/runner/it/itrt"
 	"github.com/sujaykumarsuman/xlearn/internal/runner/profile"
 	goprofile "github.com/sujaykumarsuman/xlearn/internal/runner/profile/go"
+	"github.com/sujaykumarsuman/xlearn/internal/runner/profile/proftest"
 )
 
 func TestMain(m *testing.M) { os.Exit(itrt.Main(m)) }
@@ -136,7 +136,7 @@ func loadItem(t *testing.T, dir string, hidden bool) *titem {
 		}
 		it.add(t, c.ID, c.Group, c.Ops, c.Args, c.Expected)
 	}
-	for i, raw := range perfCases(it.slug) {
+	for i, raw := range proftest.PerfCases(it.slug) {
 		it.addRaw(t, "p"+strconv.Itoa(i+1), runnerapi.GroupPerf, raw, nil)
 	}
 	return it
@@ -174,79 +174,6 @@ func (it *titem) addRaw(t *testing.T, id string, g runnerapi.Group, raw, expecte
 		c.want = &v
 	}
 	it.cases = append(it.cases, c)
-}
-
-// perfCases are each item's generated perf inputs (deterministic seeds).
-func perfCases(slug string) [][]byte {
-	r := rand.New(rand.NewPCG(4, uint64(len(slug))))
-	js := func(v any) []byte { b, _ := json.Marshal(v); return b }
-	args := func(a ...any) []byte { return js(map[string]any{"args": a}) }
-	switch slug {
-	case "pair-sum":
-		var out [][]byte
-		for _, n := range []int{100000, 200000} {
-			nums := make([]int, n)
-			for i := range nums {
-				nums[i] = 2*i + 1 // odd values: the only pair summing to target is the last two
-			}
-			out = append(out, args(nums, nums[n-2]+nums[n-1]))
-		}
-		return out
-	case "group-words":
-		words := make([]string, 50000)
-		for i := range words {
-			b := make([]byte, 8)
-			for k := range b {
-				b[k] = byte('a' + r.IntN(4))
-			}
-			words[i] = string(b)
-		}
-		return [][]byte{args(words)}
-	case "reverse-list":
-		vals := make([]int, 300000)
-		for i := range vals {
-			vals[i] = r.IntN(2000001) - 1000000
-		}
-		return [][]byte{args(vals)}
-	case "level-order":
-		vals := make([]int, 200000)
-		for i := range vals {
-			vals[i] = i + 1
-		}
-		return [][]byte{args(vals)}
-	case "clone-graph":
-		n := 50000
-		adj := make([][]int, n)
-		for i := range adj {
-			adj[i] = []int{(i+n-1)%n + 1, (i+1)%n + 1, (i+n/2)%n + 1}
-		}
-		return [][]byte{args(adj)}
-	case "running-median":
-		nums := make([]int, 100000)
-		for i := range nums {
-			nums[i] = r.IntN(2000000001) - 1000000000
-		}
-		return [][]byte{args(nums)}
-	case "min-stack":
-		ops, as := []string{"MinStack"}, []any{[]int{}}
-		depth := 0
-		for i := 0; i < 200000; i++ {
-			switch k := r.IntN(10); {
-			case depth == 0 || k < 4:
-				ops, as = append(ops, "push"), append(as, []int{r.IntN(2000001) - 1000000})
-				depth++
-			case k < 6:
-				ops, as = append(ops, "pop"), append(as, []int{})
-				depth--
-			case k < 8:
-				ops, as = append(ops, "top"), append(as, []int{})
-			default:
-				ops, as = append(ops, "getMin"), append(as, []int{})
-			}
-		}
-		return [][]byte{js(map[string]any{"ops": ops, "args": as})}
-	}
-	return nil
 }
 
 func syntheticItems(t *testing.T) []*titem {

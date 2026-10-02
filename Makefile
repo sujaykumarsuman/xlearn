@@ -13,7 +13,7 @@ MODULE  := github.com/sujaykumarsuman/xlearn
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X $(MODULE).Version=$(VERSION)
 
-.PHONY: all web build run test lint go-test go-lint web-test web-lint lint-migrations lint-bodies contentlint packlint install-hooks uninstall-hooks clean nats-acl-render nats-acl-test runner-it
+.PHONY: all web build run test lint go-test go-lint web-test web-lint lint-migrations lint-bodies contentlint packlint install-hooks uninstall-hooks clean nats-acl-render nats-acl-test runner-it runner-acceptance
 
 all: build
 
@@ -128,6 +128,35 @@ uninstall-hooks:
 # KILL-default on amd64 and on an arm64 dev VM (its own lists, never in a release image).
 runner-it:
 	go test -tags runner_it -p 1 -count=1 -timeout 45m -v ./internal/runner/... ./internal/platform/harness/
+
+## ---- runner acceptance (m3-15; t3 §5.10's A8 gate) ----
+# The black-box acceptance suite against a RUNNING runner (internal/runner/acceptance, build tag
+# runner_acceptance): A contract, B network, C syscalls, D the P2 corpus, E cross-job markers,
+# F cleanup, G references in the image's toolchains (full only), H canary, I prod-only
+# (REQUIRE_PROD=1); CALIBRATE=1 adds the 5-kernel calibration. SUBSET has NO default: full is CI's
+# in-image lane and the VM rehearsal, prod is mi-10's production run (A–F + H at the A8 counts, no
+# G). It waits across every SIGSYS rotation (the runner drains and exits after one). The JSON
+# report goes to bin/ (never committed) with a Markdown summary beside it and on stdout.
+#   make runner-acceptance RUNNER_URL=http://127.0.0.1:18090 RUNNER_TOKEN_FILE=deploy/local/runner-token.dev SUBSET=full
+# The token file may be a process substitution (<(sops -d …)): the recipe builds the test binary
+# and runs it directly, so the binary inherits the descriptor (`go test` itself would not pass it on).
+RUNNER_URL        ?=
+RUNNER_TOKEN_FILE ?=
+SUBSET            ?=
+REQUIRE_PROD      ?=
+CALIBRATE         ?=
+ONLY              ?=
+runner-acceptance:
+	@test -n "$(SUBSET)" || { echo "runner-acceptance: SUBSET is required (full or prod); there is no default" >&2; \
+	  echo "usage: make runner-acceptance RUNNER_URL=… RUNNER_TOKEN_FILE=… SUBSET=full|prod [REQUIRE_PROD=1] [CALIBRATE=1]" >&2; exit 2; }
+	@case "$(SUBSET)" in full|prod) ;; *) echo "runner-acceptance: SUBSET=$(SUBSET): want full or prod" >&2; exit 2;; esac
+	@test -n "$(RUNNER_URL)" && test -n "$(RUNNER_TOKEN_FILE)" || { \
+	  echo "usage: make runner-acceptance RUNNER_URL=… RUNNER_TOKEN_FILE=… SUBSET=full|prod [REQUIRE_PROD=1] [CALIBRATE=1]" >&2; exit 2; }
+	@mkdir -p $(BIN)
+	go test -c -tags runner_acceptance -o $(BIN)/runner-acceptance.test ./internal/runner/acceptance/
+	$(BIN)/runner-acceptance.test -test.v -test.count=1 -test.timeout=180m -test.run '^TestAcceptance$$' \
+	  -url="$(RUNNER_URL)" -token-file="$(RUNNER_TOKEN_FILE)" -subset="$(SUBSET)" -require-prod="$(REQUIRE_PROD)" \
+	  -calibrate="$(CALIBRATE)" -only="$(ONLY)" -repo="$(CURDIR)"
 
 ## ---- aggregate ----
 lint: go-lint lint-migrations lint-bodies web-lint
