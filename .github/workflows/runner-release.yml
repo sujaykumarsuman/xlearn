@@ -1,0 +1,243 @@
+name: runner-release
+
+# The runner's own release stream (ADR-0034 §1.5; docs/git-strategy.md "Runner stream"): a
+# `runner-vX.Y.Z[-rc.N]` tag builds ghcr.io/sujaykumarsuman/xlearn-runner:X.Y.Z[-rc.N] from
+# deploy/runner.Dockerfile, reproducibly, and pushes it. It deploys nothing by itself: the runner's
+# ImagePolicy (mi-10, `^\d+\.\d+\.\d+$`, >=1.0.0 <2.0.0) picks a stable tag up, never a prerelease.
+# Self-contained on purpose: deploy.yml (the fleet, `v*`) never builds the runner, and this
+# workflow never runs for a `v*` tag (deploy/workflows_test.go checks both directions).
+on:
+  push:
+    tags: ["runner-v*"]
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/sujaykumarsuman/xlearn-runner
+  # The one pinned BuildKit image (CI's runner-repro, this workflow and any local rebuild): layer
+  # bytes depend on the BuildKit version and the compression settings, so all three must match
+  # for a local rebuild to reproduce the pushed digest. Renovate (mi-11) bumps it.
+  BUILDKIT_IMAGE: moby/buildkit:v0.33.1@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea
+
+jobs:
+  # Runner major-line guard (mirrors deploy.yml's release-line job, ADR-0034 §1.3): the tag must be
+  # runner-vX.Y.Z[-prerelease]; a stable tag's major must equal deploy/runner.release-line. A runner
+  # major is a judge↔runner contract break: move that file in a reviewed PR, then GA in miniature.
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      prerelease: ${{ steps.check.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: deploy/runner.release-line
+          sparse-checkout-cone-mode: false
+      - name: Tag major must match deploy/runner.release-line
+        id: check
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          line=""
+          if [[ -f deploy/runner.release-line ]]; then line="$(tr -d '[:space:]' < deploy/runner.release-line)"; fi
+          if [[ ! "$line" =~ ^[0-9]+$ ]]; then
+            echo "::error::deploy/runner.release-line must hold the runner's live major (e.g. 1); got '${line}'"
+            exit 1
+          fi
+          re='^runner-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$'
+          if [[ ! "$TAG" =~ $re ]]; then
+            echo "::error::'${TAG}' is not a runner release tag (runner-vX.Y.Z or runner-vX.Y.Z-<prerelease>)"
+            exit 1
+          fi
+          major="${BASH_REMATCH[1]}"
+          if [[ -n "${BASH_REMATCH[4]}" ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${TAG} is a prerelease: it builds and pushes, but no ImagePolicy selects it"
+            exit 0
+          fi
+          echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          if [[ "$major" != "$line" ]]; then
+            echo "::error::${TAG} is major ${major} but deploy/runner.release-line is ${line}; refusing to build. See docs/git-strategy.md (Runner stream)."
+            exit 1
+          else
+            echo "${TAG} is on runner release line ${line}"
+          fi
+
+  image:
+    needs: guard
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: SOURCE_DATE_EPOCH (the tagged commit's time)
+        id: sde
+        run: echo "epoch=$(git log -1 --format=%ct)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=${{ env.BUILDKIT_IMAGE }}
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # runner-v1.0.0 → 1.0.0 (mi-10's filterTags ^\d+\.\d+\.\d+$ selects it); runner-v1.0.0-rc.1 →
+      # 1.0.0-rc.1 (selected by nothing). Only the tags: metadata-action's labels and annotations
+      # carry a wall-clock `created`, so the image keeps the Dockerfile's own labels.
+      - uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        id: meta
+        with:
+          images: ${{ env.IMAGE }}
+          tags: type=match,pattern=runner-v(\d+\.\d+\.\d+.*),group=1
+          flavor: latest=false
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        id: build
+        with:
+          context: .
+          file: deploy/runner.Dockerfile
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            VERSION=${{ github.ref_name }}
+            REVISION=${{ github.sha }}
+            SOURCE_DATE_EPOCH=${{ steps.sde.outputs.epoch }}
+          # Attestations would wrap the image in an index with non-deterministic content.
+          provenance: false
+          sbom: false
+          no-cache: true
+          outputs: type=image,push=true,oci-mediatypes=true,compression=gzip,compression-level=9,force-compression=true
+      - name: Digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+          SDE: ${{ steps.sde.outputs.epoch }}
+        run: |
+          {
+            echo "### xlearn-runner ${GITHUB_REF_NAME}"
+            echo
+            echo "- Image: \`${TAGS}\`"
+            echo "- Digest: \`${DIGEST}\`"
+            echo "- Revision: \`${GITHUB_SHA}\`, SOURCE_DATE_EPOCH \`${SDE}\`"
+            echo "- BuildKit: \`${BUILDKIT_IMAGE}\`"
+            echo
+            echo "Rebuild locally on the same BuildKit image (docs/git-strategy.md, Runner stream) to reproduce this digest."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "digest ${DIGEST}"
+
+  # The smoke (every tag; m3-15 task 8): the pushed image itself, by digest, run in dev mode like
+  # CI's in-image lane (privileged, private cgroupns, 3 GiB, 2 CPUs, --restart=always: the runner
+  # exits on purpose after a SIGSYS), then `make runner-acceptance SUBSET=prod` against it. It pulls
+  # with the workflow token, so it also runs while the package is still private (the anonymous pull
+  # is checked separately, by the tagging session).
+  smoke:
+    needs: image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run the pushed image (dev mode)
+        env:
+          REF: ${{ env.IMAGE }}@${{ needs.image.outputs.digest }}
+          DIGEST: ${{ needs.image.outputs.digest }}
+        run: |
+          docker pull "$REF"
+          head -c 24 /dev/urandom | base64 | tr -d '\n=' > "$RUNNER_TEMP/token"
+          chmod 0444 "$RUNNER_TEMP/token"
+          docker run -d --name runner --restart=always --privileged --cgroupns=private --memory=3g --cpus=2 \
+            -e RUNNER_MODE=dev -e RUNNER_TOKEN_FILE=/run/xl/token -e RUNNER_IMAGE_DIGEST="$DIGEST" \
+            -v "$RUNNER_TEMP/token:/run/xl/token:ro" -p 127.0.0.1:18090:8090 "$REF"
+          for _ in $(seq 1 150); do
+            if curl -fsS http://127.0.0.1:18090/readyz; then echo; break; fi
+            sleep 2
+          done
+      - name: Acceptance smoke (SUBSET=prod)
+        run: make runner-acceptance RUNNER_URL=http://127.0.0.1:18090 RUNNER_TOKEN_FILE="$RUNNER_TEMP/token" SUBSET=prod
+      - name: Report
+        if: always()
+        run: |
+          for f in bin/runner-acceptance-*.md; do [ -f "$f" ] && cat "$f" >> "$GITHUB_STEP_SUMMARY"; done
+          docker logs runner 2>&1 | tail -n 200 > bin/runner-container.log || true
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: runner-smoke-report
+          path: |
+            bin/runner-acceptance-*.json
+            bin/runner-acceptance-*.md
+            bin/runner-container.log
+          retention-days: 7
+          if-no-files-found: warn
+
+  # The GitHub release (stable tags only, after the smoke; a prerelease is a rehearsal, its record
+  # is the job summaries). The notes carry the digest and each profile's profile_sha256, read from
+  # the pushed image itself (started in dev mode, like the smoke), and the TL-baselines doc.
+  release:
+    needs: [guard, image, smoke]
+    if: ${{ needs.guard.outputs.prerelease == 'false' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+    steps:
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Profiles from the pushed image
+        env:
+          REF: ${{ env.IMAGE }}@${{ needs.image.outputs.digest }}
+        run: |
+          printf 'release-notes-dev-token-0123456789\n' > "$RUNNER_TEMP/token"
+          chmod 0444 "$RUNNER_TEMP/token"
+          docker run -d --name runner --privileged --cgroupns=private --memory=3g --cpus=2 \
+            -e RUNNER_MODE=dev -e RUNNER_TOKEN_FILE=/run/xl/token -e RUNNER_IMAGE_DIGEST="${{ needs.image.outputs.digest }}" \
+            -v "$RUNNER_TEMP/token:/run/xl/token:ro" -p 127.0.0.1:18090:8090 "$REF"
+          for _ in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:18090/readyz >/dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          curl -fsS -H "Authorization: Bearer $(cat "$RUNNER_TEMP/token")" http://127.0.0.1:18090/v1/profiles > "$RUNNER_TEMP/profiles.json"
+          docker rm -f runner
+          jq -r '.profiles[] | "| `\(.profile)` | \(.toolchain) | `\(.profile_sha256)` | \(.tl_multiplier) (calibrated: \(.calibrated)) |"' \
+            "$RUNNER_TEMP/profiles.json" > "$RUNNER_TEMP/profiles.md"
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          DIGEST: ${{ needs.image.outputs.digest }}
+          VERSION: ${{ needs.image.outputs.version }}
+        run: |
+          # The title is the annotated tag's subject (e.g. "runner-v1.0.0 — v2 build · M3 runner (dark)").
+          obj=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq '.object.sha + " " + .object.type')
+          title="${TAG}"
+          if [[ "${obj#* }" == "tag" ]]; then
+            title=$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${obj% *}" --jq '.message' | head -1)
+          fi
+          {
+            echo "Runner image \`${IMAGE}:${VERSION}\`"
+            echo
+            echo "- Digest: \`${DIGEST}\`"
+            echo "- Built by \`runner-release.yml\` (reproducible; BuildKit \`${BUILDKIT_IMAGE}\`). Deploys nothing by itself: the runner's ImagePolicy (mi-10) selects stable tags."
+            echo "- TL baselines: [docs/architecture/runner-tl-baselines.md](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/docs/architecture/runner-tl-baselines.md)"
+            echo
+            echo "| Profile | Toolchain | profile_sha256 | tl_multiplier |"
+            echo "|---|---|---|---|"
+            cat "$RUNNER_TEMP/profiles.md"
+          } > "$RUNNER_TEMP/notes.md"
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$title" --notes-file "$RUNNER_TEMP/notes.md"

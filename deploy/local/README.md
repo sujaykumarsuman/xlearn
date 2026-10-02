@@ -78,7 +78,41 @@ m3-06, m3-11 and m3-12 compose e2e.
 - With the overlay, `GET /internal/evaluable?path=fixture` lists `fx-001…003` as `ok`. m3-05's compose check
   reads `path=fixture`, not `path=dsa`.
 
+## Runner in compose (dev mode)
+
+The runner ([`docs/architecture/runner.md`](../../docs/architecture/runner.md)) sits behind the compose profile
+`runner`, so a plain `docker compose up` doesn't start it:
+
+```bash
+docker compose --profile runner up --build runner
+```
+
+- **Dev mode, privileged, compose only.** It runs with `RUNNER_MODE=dev`, `privileged: true` and a private cgroup
+  namespace, because it builds cgroups and mounts for its jails. Production never runs privileged: mi-14's VAP
+  forbids it, and the pod uses a user namespace, AppArmor and seccomp instead. `dev` only downgrades the failing
+  *security* canaries (AppArmor label, UID map, userns, `fsopen`, SCTP) to warnings, so `/readyz` is 200 and jobs
+  run. Limits: 3 GiB, 2 CPUs (the pod's).
+- **Apple Silicon.** The image builds for arm64 from the same Dockerfile (the base is pinned by its multi-arch
+  index digest). The jails then use the arm64 dev exec allowlists, which are KILL-default like amd64's. Docker
+  Desktop's kernel has no Ubuntu AppArmor userns restriction, which is one more reason this is `dev` mode only.
+- **Restarts are normal.** `restart: unless-stopped`: the runner drains and exits **on purpose** after any SIGSYS
+  (a learner hit the seccomp filter), after `RUNNER_MAX_JOBS` jobs and after `RUNNER_MAX_AGE`. Each restart has a
+  new `boot_epoch` in `GET /v1/profiles`.
+- **Token.** `deploy/local/runner-token.dev` is a committed, obviously non-secret dev-only token, used nowhere but
+  compose. judge's compose service (m3-05/m3-06) must send the **same value** (`RUNNER_TOKEN`, or mount the same
+  file).
+- **Reaching it.** Port 8090 stays on the compose network (`http://runner:8090`). To run the acceptance suite
+  from the host, add the loopback-only port override:
+
+  ```bash
+  docker compose -f docker-compose.yml -f deploy/local/runner-ports.compose.yml --profile runner up -d --build runner
+  make runner-acceptance RUNNER_URL=http://127.0.0.1:18090 RUNNER_TOKEN_FILE=deploy/local/runner-token.dev SUBSET=full
+  ```
+
+  `SUBSET` is required (`full` here; `prod` is mi-10's production run). The JSON report lands in `bin/`.
+
 ## Ports
 
 - `8080` → gateway / SPA (the only one you need)
 - `5433` → Postgres (host side; `psql postgres://xlearn:xlearn@localhost:5433/xlearndb`)
+- `8090` → the runner (compose network only; `127.0.0.1:18090` with the override above)

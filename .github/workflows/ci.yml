@@ -261,6 +261,157 @@ jobs:
       - name: runner-it
         run: make runner-it
 
+  # Does this push or PR touch what goes into the runner image? (m3-15's two image lanes below.)
+  # The plan's paths (deploy/runner*, cmd/runner, internal/runner, the runner API, curriculum/),
+  # plus what else is compiled into the binary (the harness templates, go.mod/go.sum) and the
+  # lanes' own workflow files.
+  runner-paths:
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.f.outputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: f
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || github.event.before }}
+        run: |
+          if [ -z "$BASE" ] || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
+            echo "runner=true" >> "$GITHUB_OUTPUT"; echo "no usable base: run the runner lanes"; exit 0
+          fi
+          re='^(deploy/runner|cmd/runner/|internal/runner/|internal/platform/runnerapi/|internal/platform/harness/|curriculum/|go\.mod$|go\.sum$|\.github/workflows/(ci|runner-release)\.yml$)'
+          if git diff --name-only "$BASE" HEAD | grep -qE "$re"; then
+            echo "runner=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "runner=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Reproducibility (m3-15 task 3): two --no-cache builds of the runner image on the ONE pinned
+  # BuildKit image (the same as runner-release.yml) with the release's output settings must give
+  # the same OCI manifest digest. On a mismatch, a pinned diffoci names the differing files; fix
+  # the cause, never relax the check. The builds export the docker exporter's tarball: it is an OCI
+  # layout too (index.json), with the same manifest digest as type=oci and the pushed type=image,
+  # plus the manifest.json the runner's classic docker image store needs to load it.
+  runner-repro:
+    needs: runner-paths
+    if: needs.runner-paths.outputs.runner == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      BUILDKIT_IMAGE: moby/buildkit:v0.33.1@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=${{ env.BUILDKIT_IMAGE }}
+      - name: Two clean builds
+        id: builds
+        run: |
+          sde=$(git log -1 --format=%ct)
+          for n in 1 2; do
+            docker buildx build --no-cache -f deploy/runner.Dockerfile --platform linux/amd64 \
+              --build-arg VERSION=runner-ci --build-arg REVISION="$GITHUB_SHA" --build-arg SOURCE_DATE_EPOCH="$sde" \
+              --provenance=false --sbom=false \
+              --output "type=docker,dest=$RUNNER_TEMP/b$n.tar,name=xlearn-runner:repro$n,oci-mediatypes=true,compression=gzip,compression-level=9,force-compression=true" .
+            mkdir -p "$RUNNER_TEMP/b$n" && tar -C "$RUNNER_TEMP/b$n" -xf "$RUNNER_TEMP/b$n.tar" index.json
+            echo "d$n=$(jq -r '.manifests[0].digest' "$RUNNER_TEMP/b$n/index.json")" >> "$GITHUB_OUTPUT"
+          done
+          ls -l "$RUNNER_TEMP"/b*.tar
+      - name: Same manifest digest
+        env:
+          D1: ${{ steps.builds.outputs.d1 }}
+          D2: ${{ steps.builds.outputs.d2 }}
+        run: |
+          echo "build 1: $D1"; echo "build 2: $D2"
+          { echo "### runner-repro"; echo; echo "- build 1: \`$D1\`"; echo "- build 2: \`$D2\`"; echo "- BuildKit: \`$BUILDKIT_IMAGE\`"; } >> "$GITHUB_STEP_SUMMARY"
+          test "$D1" = "$D2"
+      - uses: actions/setup-go@v5
+        if: failure()
+        with:
+          go-version-file: go.mod
+      - name: diffoci (on a mismatch)
+        if: failure()
+        run: |
+          go install github.com/reproducible-containers/diffoci/cmd/diffoci@v0.1.8
+          for n in 1 2; do docker load -i "$RUNNER_TEMP/b$n.tar"; done
+          "$(go env GOPATH)/bin/diffoci" diff docker://xlearn-runner:repro1 docker://xlearn-runner:repro2 || true
+
+  # The authoritative in-image run (m3-15 task 3; t1 §7.2's "in the public production runner
+  # image"): build the image on the pinned BuildKit, check its rootfs (no setuid/setgid file, no
+  # secret, no eval-pack path), run it like the pod's limits in dev mode — privileged, private
+  # cgroupns, 3 GiB, 2 CPUs, --restart=always because the runner exits on purpose after a SIGSYS —
+  # then the acceptance suite SUBSET=full (A–H: m3-04's references and public content check run
+  # inside the image's toolchains) with CALIBRATE=1 (the TL-baselines doc's CI column). Privileged
+  # containers are CI and compose only; production never runs privileged (the VAP forbids it).
+  runner-image-acceptance:
+    needs: runner-paths
+    if: needs.runner-paths.outputs.runner == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      BUILDKIT_IMAGE: moby/buildkit:v0.33.1@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=${{ env.BUILDKIT_IMAGE }}
+      - name: Build the image (the release's settings)
+        id: build
+        run: |
+          docker buildx build -f deploy/runner.Dockerfile --platform linux/amd64 \
+            --build-arg VERSION=runner-ci --build-arg REVISION="$GITHUB_SHA" --build-arg SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" \
+            --provenance=false --sbom=false \
+            --output "type=docker,dest=$RUNNER_TEMP/runner.tar,name=xlearn-runner:ci,oci-mediatypes=true,compression=gzip,compression-level=9,force-compression=true" .
+          mkdir -p "$RUNNER_TEMP/oci" && tar -C "$RUNNER_TEMP/oci" -xf "$RUNNER_TEMP/runner.tar" index.json
+          digest=$(jq -r '.manifests[0].digest' "$RUNNER_TEMP/oci/index.json")
+          docker load -i "$RUNNER_TEMP/runner.tar"
+          docker image inspect xlearn-runner:ci --format '{{.Id}}'
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "image digest $digest, compressed $(du -h "$RUNNER_TEMP/runner.tar" | cut -f1)"
+      - name: Rootfs check (setuid/setgid, secrets, eval-pack paths)
+        run: |
+          mkdir "$RUNNER_TEMP/rootfs"
+          docker create --name rootfs xlearn-runner:ci >/dev/null
+          docker export rootfs | tar -C "$RUNNER_TEMP/rootfs" -xf -
+          docker rm rootfs >/dev/null
+          sh deploy/runner-rootfs-check.sh "$RUNNER_TEMP/rootfs"
+      - name: Start the runner (dev mode, the pod's limits)
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          # A CI-only token, generated per run; never used outside this job.
+          head -c 24 /dev/urandom | base64 | tr -d '\n=' > "$RUNNER_TEMP/token"
+          chmod 0444 "$RUNNER_TEMP/token"
+          docker run -d --name runner --restart=always --privileged --cgroupns=private --memory=3g --cpus=2 \
+            -e RUNNER_MODE=dev -e RUNNER_TOKEN_FILE=/run/xl/token -e RUNNER_IMAGE_DIGEST="$DIGEST" \
+            -v "$RUNNER_TEMP/token:/run/xl/token:ro" -p 127.0.0.1:18090:8090 xlearn-runner:ci
+          for _ in $(seq 1 150); do
+            if curl -fsS http://127.0.0.1:18090/readyz; then echo; break; fi
+            sleep 2
+          done
+          uname -r
+      - name: Acceptance suite (SUBSET=full, CALIBRATE=1)
+        run: make runner-acceptance RUNNER_URL=http://127.0.0.1:18090 RUNNER_TOKEN_FILE="$RUNNER_TEMP/token" SUBSET=full CALIBRATE=1
+      - name: Report
+        if: always()
+        run: |
+          for f in bin/runner-acceptance-*.md; do [ -f "$f" ] && cat "$f" >> "$GITHUB_STEP_SUMMARY"; done
+          docker logs runner 2>&1 | tail -n 200 > bin/runner-container.log || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: runner-acceptance-report
+          path: |
+            bin/runner-acceptance-*.json
+            bin/runner-acceptance-*.md
+            bin/runner-container.log
+          retention-days: 7
+          if-no-files-found: warn
+
   # Core-loop e2e over REAL JetStream + the transactional outbox (events.md Flows 1-4).
   # NATS runs IN-PROCESS (an embedded nats-server with JetStream), so the job needs only
   # a Postgres — the outbox → relay → JetStream → durable-consumer path is the production

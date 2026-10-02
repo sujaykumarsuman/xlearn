@@ -164,6 +164,37 @@ services:
       postgres:
         condition: service_healthy
 
+  # The runner (m3-15; ADR-0030), dev mode, behind the compose profile `runner` so a plain
+  # `docker compose up` is unchanged:  docker compose --profile runner up --build runner
+  # Privileged with a private cgroup namespace (it builds cgroups and mounts for its jails) — compose
+  # and CI only; production never runs privileged (mi-14's VAP forbids it). `restart:
+  # unless-stopped` because the runner exits ON PURPOSE after any SIGSYS (a rotation, new BootEpoch)
+  # and after RUNNER_MAX_JOBS / RUNNER_MAX_AGE. Port 8090 stays on the compose network: judge
+  # (m3-05/m3-06) reaches http://runner:8090 with the same dev token. deploy/local/README.md.
+  runner:
+    profiles: ["runner"]
+    build:
+      context: .
+      dockerfile: deploy/runner.Dockerfile
+      args:
+        VERSION: runner-dev
+        # A dev build is never a release artifact; the release passes the commit time.
+        SOURCE_DATE_EPOCH: "0"
+    privileged: true
+    cgroup: private
+    mem_limit: 3g
+    cpus: 2
+    restart: unless-stopped
+    environment:
+      RUNNER_MODE: dev
+      RUNNER_TOKEN_FILE: /run/xl/runner-token
+      LOG_LEVEL: info
+    volumes:
+      # An obviously non-secret dev-only token (≥ 16 bytes); never used outside compose.
+      - ./deploy/local/runner-token.dev:/run/xl/runner-token:ro
+    expose:
+      - "8090"
+
   gateway:
     build:
       context: .

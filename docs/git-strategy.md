@@ -127,6 +127,65 @@ The move to a new major is the [GA procedure](#ga-procedure-1x--20) below. After
      that one policy);
   3. tag the major.
 
+#### Runner stream (`runner-v*`)
+
+The runner's own release procedure (m3-15; [ADR-0034 §1.5](adr/0034-v2-release-labelling-gating-and-rollback.md#15-other-release-streams)).
+
+- **Tags:** `runner-vX.Y.Z` (stable) and `runner-vX.Y.Z-rc.N` (rehearsal), annotated, on `main`. The annotation's
+  subject is the GitHub release title, e.g. `runner-v1.0.0 — v2 build · M3 runner (dark)`.
+- **Workflow:** only `.github/workflows/runner-release.yml` builds the runner (`on: push: tags: ["runner-v*"]`), never
+  `deploy.yml`. Its jobs run in order:
+  1. `guard` checks the tag and the major line;
+  2. `image` builds and pushes `ghcr.io/sujaykumarsuman/xlearn-runner:X.Y.Z[-rc.N]` (`type=match` strips the
+     `runner-v` prefix) for `linux/amd64`, and writes the digest to the job summary;
+  3. `smoke` (every tag) runs the pushed image by digest in dev mode and runs `make runner-acceptance SUBSET=prod`
+     against it;
+  4. `release` (stable tags only, after the smoke) creates the GitHub release, whose notes carry the digest, each
+     profile's `profile_sha256` and the TL-baselines link.
+- **Major-line guard: `deploy/runner.release-line`** holds the runner's live major, `1`. ADR-0034 §1.5 doesn't name
+  this file; this section is its record. A stable tag whose major differs fails `guard` before anything is built. A
+  prerelease builds with a notice. The fleet's `.release-line` governs `v*` tags only.
+- **No collision:** `deploy.yml`'s `v*` never matches `runner-v…`, and `runner-v*` never matches `v…`.
+  `deploy/workflows_test.go` checks both directions with GitHub's filter-pattern rules, and every rc rehearsal
+  confirms it live (no `deploy.yml` run for the ref).
+- **Reproducible:** two builds of one commit give the same manifest digest when they share:
+  - the one pinned BuildKit image (`moby/buildkit:<v>@sha256:…`, the same in `runner-release.yml`, CI's
+    `runner-repro` and the local recipe; `deploy/workflows_test.go` checks they agree);
+  - `provenance`/`sbom` off;
+  - the outputs `oci-mediatypes=true,compression=gzip,compression-level=9,force-compression=true`;
+  - `SOURCE_DATE_EPOCH` = the tagged commit's time.
+
+  CI's `runner-repro` builds twice on every change to the runner's paths. To reproduce a pushed digest locally:
+
+  ```bash
+  docker buildx create --name xl-repro --driver docker-container --driver-opt image=<the BuildKit pin>
+  docker buildx build --builder xl-repro --no-cache -f deploy/runner.Dockerfile --platform linux/amd64 \
+    --build-arg VERSION=<tag> --build-arg REVISION=<sha> --build-arg SOURCE_DATE_EPOCH=$(git log -1 --format=%ct <sha>) \
+    --provenance=false --sbom=false \
+    --output type=oci,dest=runner.tar,oci-mediatypes=true,compression=gzip,compression-level=9,force-compression=true .
+  ```
+- **The `-rc` rehearsal, before every stable runner tag:**
+  1. push `runner-vX.Y.Z-rc.N`;
+  2. check that `runner-release.yml` built it and that `deploy.yml` didn't run for the ref;
+  3. check the anonymous pull (`docker logout ghcr.io`, then `docker pull`). Production can't use a pull secret (the VAP
+     forbids `imagePullSecrets`), so a private package is an owner-only settings change, recorded ⛔ in
+     `docs/v2/status.md`, never a wait;
+  4. rebuild locally on the same BuildKit image and compare the digests;
+  5. check that the workflow's `smoke` job is green: `make runner-acceptance SUBSET=prod` against the pushed image.
+
+  Then tag `runner-vX.Y.Z` on the same commit. If the runner's paths changed since, cut `-rc.N+1` first.
+- **Deploys nothing by itself:** the runner's ImagePolicy (mi-10, `^\d+\.\d+\.\d+$`, `>=1.0.0 <2.0.0`) selects stable
+  tags only, and it exists only after the first image (image before policy).
+- **Never move or re-push a tag.** A fix is a new patch, or a new rc.
+- **A patch** is usually a toolchain patch: run the ±5% speed check ([`runner-tl-baselines.md`](architecture/runner-tl-baselines.md)).
+- **A runner major** is a judge↔runner contract break, because `internal/platform/runnerapi` is append-only from
+  `runner-v1.0.0`. It follows GA in miniature (above):
+  1. judge learns the new contract in a fleet tag;
+  2. move `deploy/runner.release-line` in a reviewed PR;
+  3. pre-flip check, then the superset widening of the runner ImagePolicy;
+  4. the rc rehearsal;
+  5. tag the major.
+
 ### ImagePolicy range changes
 
 Ordinary releases **never touch a range**; a release is only a tag. Each kind of range change has one
@@ -326,7 +385,8 @@ Runs on PR + push to `main` (mirrors the sibling repos):
   - the NATS topology tests (the golden ACL block, the stream-budget sum, the subject registry);
   - the contract-header lint (`-- xlearn:contract floor=…`);
   - the course-manifest golden and slug-guard tests;
-  - the runner's reproducible-build check.
+  - the runner's image lanes (m3-15, path-filtered to the runner's sources): `runner-repro` (two clean builds, one
+    digest) and `runner-image-acceptance` (the acceptance suite `SUBSET=full CALIBRATE=1` against the image itself).
 
 ## Repo hygiene
 

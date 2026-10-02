@@ -1,0 +1,8 @@
+# Publish the compose runner on the host's loopback only, to run the acceptance suite against it
+# (m3-15). The base service keeps 8090 on the compose network; this override is opt-in:
+#   docker compose -f docker-compose.yml -f deploy/local/runner-ports.compose.yml --profile runner up -d --build runner
+#   make runner-acceptance RUNNER_URL=http://127.0.0.1:18090 RUNNER_TOKEN_FILE=deploy/local/runner-token.dev SUBSET=full
+services:
+  runner:
+    ports:
+      - "127.0.0.1:18090:8090"
