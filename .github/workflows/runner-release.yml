@@ -128,16 +128,77 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           echo "digest ${DIGEST}"
 
-  # The GitHub release (stable tags only; a prerelease is a rehearsal, its record is the job
-  # summary). The notes carry the digest and each profile's profile_sha256, read from the pushed
-  # image itself (started in dev mode, privileged, like CI's in-image lane), and the TL-baselines doc.
+  # The smoke (every tag; m3-15 task 8): the pushed image itself, by digest, run in dev mode like
+  # CI's in-image lane (privileged, private cgroupns, 3 GiB, 2 CPUs, --restart=always: the runner
+  # exits on purpose after a SIGSYS), then `make runner-acceptance SUBSET=prod` against it. It pulls
+  # with the workflow token, so it also runs while the package is still private (the anonymous pull
+  # is checked separately, by the tagging session).
+  smoke:
+    needs: image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run the pushed image (dev mode)
+        env:
+          REF: ${{ env.IMAGE }}@${{ needs.image.outputs.digest }}
+          DIGEST: ${{ needs.image.outputs.digest }}
+        run: |
+          docker pull "$REF"
+          head -c 24 /dev/urandom | base64 | tr -d '\n=' > "$RUNNER_TEMP/token"
+          chmod 0444 "$RUNNER_TEMP/token"
+          docker run -d --name runner --restart=always --privileged --cgroupns=private --memory=3g --cpus=2 \
+            -e RUNNER_MODE=dev -e RUNNER_TOKEN_FILE=/run/xl/token -e RUNNER_IMAGE_DIGEST="$DIGEST" \
+            -v "$RUNNER_TEMP/token:/run/xl/token:ro" -p 127.0.0.1:18090:8090 "$REF"
+          for _ in $(seq 1 150); do
+            if curl -fsS http://127.0.0.1:18090/readyz; then echo; break; fi
+            sleep 2
+          done
+      - name: Acceptance smoke (SUBSET=prod)
+        run: make runner-acceptance RUNNER_URL=http://127.0.0.1:18090 RUNNER_TOKEN_FILE="$RUNNER_TEMP/token" SUBSET=prod
+      - name: Report
+        if: always()
+        run: |
+          for f in bin/runner-acceptance-*.md; do [ -f "$f" ] && cat "$f" >> "$GITHUB_STEP_SUMMARY"; done
+          docker logs runner 2>&1 | tail -n 200 > bin/runner-container.log || true
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: runner-smoke-report
+          path: |
+            bin/runner-acceptance-*.json
+            bin/runner-acceptance-*.md
+            bin/runner-container.log
+          retention-days: 7
+          if-no-files-found: warn
+
+  # The GitHub release (stable tags only, after the smoke; a prerelease is a rehearsal, its record
+  # is the job summaries). The notes carry the digest and each profile's profile_sha256, read from
+  # the pushed image itself (started in dev mode, like the smoke), and the TL-baselines doc.
   release:
-    needs: [guard, image]
+    needs: [guard, image, smoke]
     if: ${{ needs.guard.outputs.prerelease == 'false' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: read
     steps:
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Profiles from the pushed image
         env:
           REF: ${{ env.IMAGE }}@${{ needs.image.outputs.digest }}
@@ -147,7 +208,7 @@ jobs:
           docker run -d --name runner --privileged --cgroupns=private --memory=3g --cpus=2 \
             -e RUNNER_MODE=dev -e RUNNER_TOKEN_FILE=/run/xl/token -e RUNNER_IMAGE_DIGEST="${{ needs.image.outputs.digest }}" \
             -v "$RUNNER_TEMP/token:/run/xl/token:ro" -p 127.0.0.1:18090:8090 "$REF"
-          for i in $(seq 1 120); do
+          for _ in $(seq 1 120); do
             if curl -fsS http://127.0.0.1:18090/readyz >/dev/null 2>&1; then break; fi
             sleep 2
           done

@@ -391,7 +391,7 @@ jobs:
           docker run -d --name runner --restart=always --privileged --cgroupns=private --memory=3g --cpus=2 \
             -e RUNNER_MODE=dev -e RUNNER_TOKEN_FILE=/run/xl/token -e RUNNER_IMAGE_DIGEST="$DIGEST" \
             -v "$RUNNER_TEMP/token:/run/xl/token:ro" -p 127.0.0.1:18090:8090 xlearn-runner:ci
-          for i in $(seq 1 150); do
+          for _ in $(seq 1 150); do
             if curl -fsS http://127.0.0.1:18090/readyz; then echo; break; fi
             sleep 2
           done

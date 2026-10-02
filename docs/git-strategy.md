@@ -138,8 +138,10 @@ The runner's own release procedure (m3-15; [ADR-0034 §1.5](adr/0034-v2-release-
   1. `guard` checks the tag and the major line;
   2. `image` builds and pushes `ghcr.io/sujaykumarsuman/xlearn-runner:X.Y.Z[-rc.N]` (`type=match` strips the
      `runner-v` prefix) for `linux/amd64`, and writes the digest to the job summary;
-  3. `release` (stable tags only) creates the GitHub release, whose notes carry the digest, each profile's
-     `profile_sha256` and the TL-baselines link.
+  3. `smoke` (every tag) runs the pushed image by digest in dev mode and runs `make runner-acceptance SUBSET=prod`
+     against it;
+  4. `release` (stable tags only, after the smoke) creates the GitHub release, whose notes carry the digest, each
+     profile's `profile_sha256` and the TL-baselines link.
 - **Major-line guard: `deploy/runner.release-line`** holds the runner's live major, `1`. ADR-0034 §1.5 doesn't name
   this file; this section is its record. A stable tag whose major differs fails `guard` before anything is built. A
   prerelease builds with a notice. The fleet's `.release-line` governs `v*` tags only.
@@ -169,7 +171,7 @@ The runner's own release procedure (m3-15; [ADR-0034 §1.5](adr/0034-v2-release-
      forbids `imagePullSecrets`), so a private package is an owner-only settings change, recorded ⛔ in
      `docs/v2/status.md`, never a wait;
   4. rebuild locally on the same BuildKit image and compare the digests;
-  5. run `make runner-acceptance SUBSET=prod` against it as a smoke.
+  5. check that the workflow's `smoke` job is green: `make runner-acceptance SUBSET=prod` against the pushed image.
 
   Then tag `runner-vX.Y.Z` on the same commit. If the runner's paths changed since, cut `-rc.N+1` first.
 - **Deploys nothing by itself:** the runner's ImagePolicy (mi-10, `^\d+\.\d+\.\d+$`, `>=1.0.0 <2.0.0`) selects stable
