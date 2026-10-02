@@ -9,7 +9,7 @@
 
 ## Status
 
-_Overall:_ ✅ Done except task 7 — [PR #113](https://github.com/sujaykumarsuman/xlearn/pull/113) (`598269f`), **`v1.7.0` tagged, deployed and verified** 2026-10-01 (run r-45; rollback floor 1.6.0); ⛔ task 7 waits for a production account
+_Overall:_ ✅ Done — [PR #113](https://github.com/sujaykumarsuman/xlearn/pull/113) (`598269f`), **`v1.7.0` tagged, deployed and verified** 2026-10-01 (run r-45; rollback floor 1.6.0); task 7 ✅ 2026-10-02 (run r-48, docs only)
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
@@ -18,8 +18,8 @@ _Overall:_ ✅ Done except task 7 — [PR #113](https://github.com/sujaykumarsum
 | 3 | L18 BYO caps (20/min, 2 streams, 300/day, history 20 turns / 32 KiB) | X | ✅ `limits.go` + `00008` (UTC day, atomic upsert, race test), `GET /admission`, `Retry-After` relayed (compose: all three 429s seen) |
 | 4 | Coach UI states (AB01) + outcome-step cap line | X | ✅ F1–F10 verbatim from the board, HUD chip + capped outcome line; shots at 1440 / 390 |
 | 5 | M1b exit + M1c readiness (golden = v1; no reader/writer of a drop-list column) | X | ✅ full suite + e2e green; compose walk; M1c ready (no drop-list column, no v1 conflict target left — nothing to switch) |
-| 6 | Tag `v1.7.0` (release checklist) | X | ✅ 2026-10-01 11:01Z on `598269f`, release "v1.7.0 — v2 build · M1b"; healthz `v1.7.0`, 7/7 images and ImagePolicies at 1.7.0, HelmReleases Ready; anonymous smokes passed; owner smokes pending (no account) |
-| 7 | Owner role set once (`ev-owner-role`), run by the session after the verify (D40) | H | ⛔ no production account yet: `identity admin account list` = 0 (logged in status.md's CLI-use log); `set-role` not run, nothing created; the owner re-creates the account, then a session sets the role |
+| 6 | Tag `v1.7.0` (release checklist) | X | ✅ 2026-10-01 11:01Z on `598269f`, release "v1.7.0 — v2 build · M1b"; healthz `v1.7.0`, 7/7 images and ImagePolicies at 1.7.0, HelmReleases Ready; anonymous smokes passed; owner smokes: sign-in observed by the owner 2026-10-02, dashboard / coach parts with the owner |
+| 7 | Owner role set once (`ev-owner-role`), run by the session after the verify (D40) | H | ✅ owner role set by the owner via the identity admin CLI 2026-10-02; verified read-only by r-48 (`account list --role owner` = 1 row, `5784e217…`, active). r-45 found 0 accounts (2026-10-01) |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row + M1 milestone + tag → floor row + flag inventory).
