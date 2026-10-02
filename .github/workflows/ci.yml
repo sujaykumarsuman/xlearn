@@ -290,7 +290,9 @@ jobs:
   # Reproducibility (m3-15 task 3): two --no-cache builds of the runner image on the ONE pinned
   # BuildKit image (the same as runner-release.yml) with the release's output settings must give
   # the same OCI manifest digest. On a mismatch, a pinned diffoci names the differing files; fix
-  # the cause, never relax the check.
+  # the cause, never relax the check. The builds export the docker exporter's tarball: it is an OCI
+  # layout too (index.json), with the same manifest digest as type=oci and the pushed type=image,
+  # plus the manifest.json the runner's classic docker image store needs to load it.
   runner-repro:
     needs: runner-paths
     if: needs.runner-paths.outputs.runner == 'true'
@@ -311,7 +313,7 @@ jobs:
             docker buildx build --no-cache -f deploy/runner.Dockerfile --platform linux/amd64 \
               --build-arg VERSION=runner-ci --build-arg REVISION="$GITHUB_SHA" --build-arg SOURCE_DATE_EPOCH="$sde" \
               --provenance=false --sbom=false \
-              --output "type=oci,dest=$RUNNER_TEMP/b$n.tar,name=xlearn-runner:repro$n,oci-mediatypes=true,compression=gzip,compression-level=9,force-compression=true" .
+              --output "type=docker,dest=$RUNNER_TEMP/b$n.tar,name=xlearn-runner:repro$n,oci-mediatypes=true,compression=gzip,compression-level=9,force-compression=true" .
             mkdir -p "$RUNNER_TEMP/b$n" && tar -C "$RUNNER_TEMP/b$n" -xf "$RUNNER_TEMP/b$n.tar" index.json
             echo "d$n=$(jq -r '.manifests[0].digest' "$RUNNER_TEMP/b$n/index.json")" >> "$GITHUB_OUTPUT"
           done
@@ -332,8 +334,6 @@ jobs:
         if: failure()
         run: |
           go install github.com/reproducible-containers/diffoci/cmd/diffoci@v0.1.8
-          # The name= in the OCI output (an index.json annotation; the manifest digest doesn't move)
-          # lets the classic docker image store load the archive.
           for n in 1 2; do docker load -i "$RUNNER_TEMP/b$n.tar"; done
           "$(go env GOPATH)/bin/diffoci" diff docker://xlearn-runner:repro1 docker://xlearn-runner:repro2 || true
 
@@ -365,11 +365,9 @@ jobs:
           docker buildx build -f deploy/runner.Dockerfile --platform linux/amd64 \
             --build-arg VERSION=runner-ci --build-arg REVISION="$GITHUB_SHA" --build-arg SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" \
             --provenance=false --sbom=false \
-            --output "type=oci,dest=$RUNNER_TEMP/runner.tar,name=xlearn-runner:ci,oci-mediatypes=true,compression=gzip,compression-level=9,force-compression=true" .
+            --output "type=docker,dest=$RUNNER_TEMP/runner.tar,name=xlearn-runner:ci,oci-mediatypes=true,compression=gzip,compression-level=9,force-compression=true" .
           mkdir -p "$RUNNER_TEMP/oci" && tar -C "$RUNNER_TEMP/oci" -xf "$RUNNER_TEMP/runner.tar" index.json
           digest=$(jq -r '.manifests[0].digest' "$RUNNER_TEMP/oci/index.json")
-          # name= (an index.json annotation; the manifest digest doesn't move) lets the classic
-          # docker image store load the OCI archive as xlearn-runner:ci.
           docker load -i "$RUNNER_TEMP/runner.tar"
           docker image inspect xlearn-runner:ci --format '{{.Id}}'
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
