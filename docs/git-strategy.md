@@ -155,7 +155,9 @@ The runner's own release procedure (m3-15; [ADR-0034 §1.5](adr/0034-v2-release-
   - the outputs `oci-mediatypes=true,compression=gzip,compression-level=9,force-compression=true`;
   - `SOURCE_DATE_EPOCH` = the tagged commit's time.
 
-  CI's `runner-repro` builds twice on every change to the runner's paths. To reproduce a pushed digest locally:
+  CI's `runner-repro` builds twice on every change to the runner's paths. To reproduce a pushed digest locally (an
+  Apple Silicon Mac builds `linux/amd64` under Rosetta; the rootfs stage's `HOME=/dev/null` keeps Rosetta's cache out
+  of the image, so the digest still matches):
 
   ```bash
   docker buildx create --name xl-repro --driver docker-container --driver-opt image=<the BuildKit pin>

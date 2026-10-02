@@ -68,6 +68,11 @@ EOF
 
 # ---- rootfs: Debian trixie (snapshot) + g++ 14 + CPython 3.13 + Go + the runner ----
 FROM ${BASE} AS rootfs
+# Build-time only (a non-final stage's ENV never reaches the image config): nothing here needs a
+# HOME, and an emulator that caches under it — Docker Desktop's Rosetta writes
+# $HOME/.cache/rosetta for amd64 builds on Apple Silicon — then can't leave files in the rootfs, so
+# a local amd64 rebuild on a Mac reproduces the release digest (m3-15's rc rehearsal proved it).
+ENV HOME=/dev/null
 ARG DEBIAN_SNAPSHOT
 ARG SOURCE_DATE_EPOCH
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
