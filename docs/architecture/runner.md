@@ -12,7 +12,30 @@ and spike results are [t3](../v2/research/t3-sandbox.md). This page is the map o
   ([mi-10](../v2/sprints/sprint-mi-10.md) deploys it; [mi-14](../v2/sprints/sprint-mi-14.md)'s VAP pins the shape).
 - **Judge is the only caller** (ClusterIP `:8090`, a bearer token). The runner has no database, no NATS, no egress
   and no secret but that token, and never initiates a connection ([`services.md`](services.md)).
-- Own release stream: `runner-v*` tags and the image `ghcr.io/sujaykumarsuman/xlearn-runner` ([m3-15](../v2/sprints/sprint-m3-15.md)).
+- Own release stream: `runner-v*` tags and the image `ghcr.io/sujaykumarsuman/xlearn-runner` ([m3-15](../v2/sprints/sprint-m3-15.md);
+  the procedure is [`docs/git-strategy.md` "Runner stream"](../git-strategy.md#runner-stream-runner-v)). Time limits:
+  [`runner-tl-baselines.md`](runner-tl-baselines.md).
+
+## Image (`deploy/runner.Dockerfile`)
+
+- **One layer.** `FROM scratch` + `COPY` of a Debian trixie-slim rootfs. The base is pinned by its multi-arch index
+  digest, so compose on an arm64 Mac and the amd64 release build the same file. apt reads `snapshot.debian.org` at a
+  pinned date and installs g++ 14 and CPython 3.13. Go is the pinned go1.26 tarball (checksummed per `TARGETARCH`)
+  at `/opt/xl/go`, pruned of `test/`, `api/`, `doc/`, `misc/`, `testdata/` and `*_test.go`. The runner binary is
+  `/usr/local/bin/runner`. `/jail` is the mount point for the pod's `emptyDir`. Every pin is an `ARG` at the top,
+  read by Renovate (mi-11).
+- **Reproducible.** Every setuid/setgid bit is stripped, and caches, logs and docs are deleted. Every mtime is
+  `SOURCE_DATE_EPOCH` (the commit time), with two exceptions:
+  - **GOROOT has a fixed past mtime** (`GOROOT_MTIME`), set *before* the seed is built. The go command's module index
+    keys each std package on its files' mtimes, so a seed built under other mtimes misses, and a read-only seed then
+    fails. A commit-independent mtime also keeps go@1.26's `profile_sha256` stable across runner tags.
+  - **The GOCACHE seed** (`runner seed-gocache`) keeps its fixed *future* mtime. That's why BuildKit's
+    `rewrite-timestamp` isn't used.
+- **Python stdlib bytecode** is `compileall --invalidation-mode checked-hash`, so it's valid whatever the mtime.
+- **No C++ precompiled header.** GCC's PCH for `xl_prelude.hpp` is 187 MB and not byte-stable (three builds, three
+  hashes), so it would break the reproducible digest. Without it, a C++ compile costs about 0.7 s more CPU.
+- **CI's image lanes:** `runner-repro` (two clean builds, one digest) and `runner-image-acceptance` (the acceptance
+  suite against the image itself, plus a rootfs check: no setuid/setgid file, no secret, no eval-pack path).
 
 ## Process model and R-FS
 
@@ -260,3 +283,32 @@ assertion failed; 200), `killed` (drain; 503, judge re-queues as saturated), `jo
   GOCACHE seed, provisional TL multipliers) and `internal/platform/harness/contentcheck_it_test.go` (the public
   content check). The shared runner harness is `internal/runner/it/itrt`; `make runner-it` runs the packages one
   at a time (`-p 1`), each with its own runner. CI installs `g++` and `python3` from trixie in the same container.
+- **The acceptance suite** (m3-15; `internal/runner/acceptance`, build tag `runner_acceptance`) is a black-box HTTP
+  client against a *running* runner. Run it with
+  `make runner-acceptance RUNNER_URL=… RUNNER_TOKEN_FILE=… SUBSET=full|prod [REQUIRE_PROD=1] [CALIBRATE=1]`.
+  `SUBSET` has no default. Its probes and kernels go through the real profiles (`func-json@1`); they're under its
+  `testdata/`.
+
+  | Section | Checks |
+  |---|---|
+  | A · contract | 401 without a token; 400 for a bad profile, harness, file or media type; 503 on a third concurrent job; a client disconnect kills the job; `pids.current` 0 afterwards |
+  | B · network | per language, one job: TCP to `1.1.1.1:443`, the apiserver VIP and kube-dns, UDP to kube-dns, a DNS lookup, a loopback bind; every attempt fails (SIGSYS, or an in-process error) |
+  | C · syscalls | per language, one job: `io_uring_setup`, `bpf`, `perf_event_open`, `userfaultfd`, `keyctl`, `add_key`, `ptrace`, `process_vm_readv`, `mount`, `unshare(CLONE_NEWUSER)`, `setns`, `clone(CLONE_NEWNS)`, `socket(AF_NETLINK)`; each is `signal(SIGSYS)`; `/readyz` still reports `core_pattern` not a pipe (required in prod) |
+  | D · P2 corpus | the 1 GiB balloon × 100 is MLE 100/100 with a container `oom_kill` delta of 0; per language, tmpfs and inode fill, stdout flood (OLE), spin (TLE), sleep (TLE idle), thread bomb, fork bomb and orphan get their specified state; 0 survivors |
+  | E · cross-job markers | per language, one job tries `/w`, `/tmp`, `/dev/shm`, SysV shm, POSIX mq, an abstract socket and the keyring (the denied ones die of SIGSYS); the writable ones are written by job N and looked for by job N+1 under the same `BootEpoch`; nothing is visible |
+  | F · cleanup | ≥ 1,000 case cgroups after a warm-up: slots and `runner/` back at baseline ±5 MiB, `pids.current` 0, `nr_dying_descendants` ~0 within 60 s |
+  | G · references (`full` only) | m3-04's items: references in Go, C++ and Python; wrong solutions classified; the public content check; the lint-evasion fixtures die of SIGSYS. All inside the image's toolchains |
+  | H · canary | `canary_median_us` and its CV over the run (reported only) |
+  | I · prod-only (`REQUIRE_PROD=1`) | `mode=prod`; `/readyz` green: AppArmor label, non-identity UID map, userns/`fsopen`/SCTP denied, every egress target blocked |
+  | Calibration (`CALIBRATE=1`) | 5 kernels × 30 runs × 3 languages: medians, CV, steal, `baseline@1` per `profile_sha256`, `speed_index`, language ratios |
+
+  - **Rotation-aware.** Every SIGSYS-expected case runs inside one job per language per section. After each such job,
+    the suite waits (≤ 6 min) for `/readyz` and a new `boot_epoch`, then reports expected vs observed rotations.
+  - **Stop conditions.** Any of these aborts the run:
+    - an epoch change that no SIGSYS explains;
+    - a container `oom_kill`;
+    - `/v1/stats` going away outside a rotation.
+  - **Where it runs:**
+    - CI's `runner-image-acceptance` lane (`SUBSET=full CALIBRATE=1`, dev mode);
+    - the arm64 VM rehearsal (`SUBSET=full REQUIRE_PROD=1`);
+    - mi-10, on production (`SUBSET=prod REQUIRE_PROD=1 CALIBRATE=1`).
