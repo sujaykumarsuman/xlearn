@@ -9,19 +9,19 @@
 
 ## Status
 
-_Overall:_ ⬜ Not started
+_Overall:_ ⛔ **task 6 only** (the VM rehearsal: no VM on the build Mac, see the row); every other task ✅, and **`runner-v1.0.0` is tagged** (2026-10-02, run r-47; xlearn#116, #117; `sha256:3defadd790e0…`; not deployed, mi-10 deploys dark). A re-run of this prompt after the owner starts multipass picks up at task 6.
 
 | # | Task | Repo | Status |
 |---|------|------|--------|
-| 1 | Reproducible `deploy/runner.Dockerfile` | X | ⬜ |
-| 2 | `.github/workflows/runner-release.yml` + runner major-line guard + no `v*` collision + git-strategy runner section | X | ⬜ |
-| 3 | CI: reproducibility check and in-image acceptance lane | X | ⬜ |
-| 4 | Acceptance suite `make runner-acceptance` (+ calibration mode) | X | ⬜ |
-| 5 | Compose `runner` service (dev mode) | X | ⬜ |
-| 6 | Full-shape rehearsal on a throwaway arm64 VM (k3s + host block + guards) | H | ⬜ |
-| 7 | TL-baselines doc `docs/architecture/runner-tl-baselines.md` | X | ⬜ |
-| 8 | Rehearsal prerelease `runner-v1.0.0-rc.1`; the image is anonymously pullable (a private package: ⛔ owner action recorded in status.md, never a wait) | X | ⬜ |
-| 9 | Tag `runner-v1.0.0` (release checklist) and record | X | ⬜ |
+| 1 | Reproducible `deploy/runner.Dockerfile` | X | ✅ two `--no-cache` builds, one digest (CI amd64, local arm64); no PCH; 236 MB amd64 |
+| 2 | `.github/workflows/runner-release.yml` + runner major-line guard + no `v*` collision + git-strategy runner section | X | ✅ #116 (+ the `smoke` job) |
+| 3 | CI: reproducibility check and in-image acceptance lane | X | ✅ `runner-repro`, `runner-image-acceptance` green |
+| 4 | Acceptance suite `make runner-acceptance` (+ calibration mode) | X | ✅ `SUBSET=full CALIBRATE=1` green in CI, 15/15 rotations |
+| 5 | Compose `runner` service (dev mode) | X | ✅ dev mode, new `boot_epoch` after each SIGSYS |
+| 6 | Full-shape rehearsal on a throwaway arm64 VM (k3s + host block + guards) | H | ⛔ multipassd not running on the Mac (socket absent); starting it needs root, an owner action. mi-09's sandbox block is not on infra `main` yet |
+| 7 | TL-baselines doc `docs/architecture/runner-tl-baselines.md` | X | ✅ CI column; production pending mi-10 |
+| 8 | Rehearsal prerelease `runner-v1.0.0-rc.1`; the image is anonymously pullable (a private package: ⛔ owner action recorded in status.md, never a wait) | X | ✅ rc.1 + rc.2: public, no `deploy.yml` run, smoke green, local rebuild = pushed digest |
+| 9 | Tag `runner-v1.0.0` (release checklist) and record | X | ✅ `sha256:3defadd790e0…`, GitHub release, fleet unchanged |
 
 > **Keep this current.** Set a task 🔄 when you start it, ✅ when its acceptance bullet passes, ⛔ if blocked (note why).
 > Update the _Overall_ line accordingly, and mirror the sprint's state into [`../status.md`](../status.md) (Sprint board row, the M3 milestone row, the MI-12 row, and the **runner stream** tag row).
@@ -29,11 +29,11 @@ _Overall:_ ⬜ Not started
 
 ## Entry gates
 
-- [ ] [m3-04](sprint-m3-04.md) merged: the three profiles, the extended `internal/platform/harness`, `runnerapi/lint`, the `runner seed-gocache` subcommand and the amd64 allowlists (arm64 dev lists KILL-default) are on `main`, and `runner-it` is green with Go, C++ and Python.
-- [ ] ADR-0030 is **Accepted** ([m3-03](sprint-m3-03.md) task 1), so the image implements the mechanism the spike chose (go-sandbox `forkexec`, or the pinned `nsjail` for R1-N).
-- [ ] **No runner tag exists yet**: `git ls-remote --tags origin 'refs/tags/runner-v*'` is empty, and no peer PR touches `deploy/runner*`, `.github/workflows/`, `docker-compose.yml` or `Makefile` (`gh pr list`, `git worktree list`, ListAgents).
-- [ ] MI-2a live ✅: `.release-line` = `1` and `deploy.yml`'s guard refuses non-`vX.Y.Z` tags (xlearn#53).
-- [ ] *(For task 6)* local `../infra` `main` is synced and holds [mi-09](sprint-mi-09.md)'s sandbox block in `hack/host-bootstrap.sh` and [mi-14](sprint-mi-14.md)'s `infrastructure/sandbox/` manifests. If either is still a PR, use its branch (or t3 §16.1 and the t3 §8.2 draft) and note it; the rehearsal is local and read-only toward `../infra`.
+- [x] [m3-04](sprint-m3-04.md) merged: the three profiles, the extended `internal/platform/harness`, `runnerapi/lint`, the `runner seed-gocache` subcommand and the amd64 allowlists (arm64 dev lists KILL-default) are on `main`, and `runner-it` is green with Go, C++ and Python. *(2026-10-02: xlearn#115, `47e18cb`.)*
+- [x] ADR-0030 is **Accepted** ([m3-03](sprint-m3-03.md) task 1), so the image implements the mechanism the spike chose (go-sandbox `forkexec`, or the pinned `nsjail` for R1-N). *(Accepted 2026-09-30.)*
+- [x] **No runner tag exists yet**: `git ls-remote --tags origin 'refs/tags/runner-v*'` is empty, and no peer PR touches `deploy/runner*`, `.github/workflows/`, `docker-compose.yml` or `Makefile` (`gh pr list`, `git worktree list`, ListAgents). *(2026-10-02: no runner tag, no open PR.)*
+- [x] MI-2a live ✅: `.release-line` = `1` and `deploy.yml`'s guard refuses non-`vX.Y.Z` tags (xlearn#53).
+- [ ] *(For task 6)* local `../infra` `main` is synced and holds [mi-09](sprint-mi-09.md)'s sandbox block in `hack/host-bootstrap.sh` and [mi-14](sprint-mi-14.md)'s `infrastructure/sandbox/` manifests. If either is still a PR, use its branch (or t3 §16.1 and the t3 §8.2 draft) and note it; the rehearsal is local and read-only toward `../infra`. *(2026-10-02: infra `main` has mi-14's `infrastructure/sandbox/`, but `hack/host-bootstrap.sh`'s sandbox block is still the "FUTURE" stub (mi-09 pending). Moot this launch: task 6 is ⛔ on the VM itself.)*
 
 This sprint is not gated by the [M3 hard entry checklist](../rollout-plan.md#5-m3-hard-entry-checklist) (that gates [m3-11](sprint-m3-11.md)); it supplies MI-12's image, which the checklist reads through [mi-10](sprint-mi-10.md).
 
@@ -187,32 +187,32 @@ After the PR (tasks 1–7) merges and CI is green:
 
 ## Acceptance criteria
 
-- [ ] **Reproducible image digest across two builds** (CI `runner-repro`), and the pushed rc digest equals a local rebuild on the same pinned BuildKit image and output settings.
-- [ ] **Acceptance suite green against a local jail-capable VM** (task 6, prod mode, full pod shape) and in the CI in-image lane (task 3, dev mode).
-- [ ] `deploy.yml` never runs for a `runner-v*` tag and `runner-release.yml` never for a `v*` tag (test + the rc observation).
-- [ ] **`runner-v1.0.0` image exists** at `ghcr.io/sujaykumarsuman/xlearn-runner:1.0.0`, anonymously pullable (a private package: ⛔ recorded in status.md naming the owner action, never a wait; the pull must pass before mi-10 deploys), digest recorded; **nothing deployed** (no fleet image or ImagePolicy moved).
-- [ ] The TL-baselines doc is published with the CI column and a "pending mi-10" production column.
-- [ ] The compose `runner` service starts in dev mode, answers `/healthz` and `/v1/profiles`, and comes back (new `boot_epoch`) after a SIGSYS rotation.
-- [ ] The suite waits across every SIGSYS rotation (expected = observed rotation count; no unexplained epoch change); `SUBSET` is required and `prod` is defined; `docs/git-strategy.md` has the runner-stream subsection.
-- [ ] The image holds no setuid/setgid file, no secret and no pack content (CI grep).
+- [x] **Reproducible image digest across two builds** (CI `runner-repro`), and the pushed rc digest equals a local rebuild on the same pinned BuildKit image and output settings. *(CI `runner-repro`: one digest twice; rc.2 `sha256:76180bde491d…` and 1.0.0 `sha256:3defadd790e0…` each equal a local Mac rebuild; rc.1 differed only by Rosetta's cache dir → #117.)*
+- [ ] **Acceptance suite green against a local jail-capable VM** (task 6, prod mode, full pod shape) and in the CI in-image lane (task 3, dev mode). *(⛔ task 6: no VM on the build Mac; the CI in-image lane is green.)*
+- [x] `deploy.yml` never runs for a `runner-v*` tag and `runner-release.yml` never for a `v*` tag (test + the rc observation). *(`deploy/workflows_test.go`; no `deploy.yml` run for rc.1, rc.2 or 1.0.0.)*
+- [x] **`runner-v1.0.0` image exists** at `ghcr.io/sujaykumarsuman/xlearn-runner:1.0.0`, anonymously pullable (a private package: ⛔ recorded in status.md naming the owner action, never a wait; the pull must pass before mi-10 deploys), digest recorded; **nothing deployed** (no fleet image or ImagePolicy moved). *(`sha256:3defadd790e04e4d44086f22c9dc8ea2dc22339633e3f429f6b5238e003e2cab`; public, anonymous pull OK; nothing deployed.)*
+- [x] The TL-baselines doc is published with the CI column and a "pending mi-10" production column. *(`docs/architecture/runner-tl-baselines.md`, `speed_index(CI)` 57.13 ms.)*
+- [x] The compose `runner` service starts in dev mode, answers `/healthz` and `/v1/profiles`, and comes back (new `boot_epoch`) after a SIGSYS rotation. *(Docker Desktop, 2026-10-02: 3 SIGSYS rotations, 3 new epochs.)*
+- [x] The suite waits across every SIGSYS rotation (expected = observed rotation count; no unexplained epoch change); `SUBSET` is required and `prod` is defined; `docs/git-strategy.md` has the runner-stream subsection. *(CI 15/15 full, rc smokes 12/12 prod; the Makefile and the test refuse an empty SUBSET.)*
+- [x] The image holds no setuid/setgid file, no secret and no pack content (CI grep). *(`deploy/runner-rootfs-check.sh` in `runner-image-acceptance`.)*
 
 ## Release
 
 **Tag `runner-v1.0.0`** on the runner stream, after the `runner-v1.0.0-rc.1` rehearsal (task 8); it deploys nothing and needs no infra PR ([ADR-0034 §1.5](../../adr/0034-v2-release-labelling-gating-and-rollback.md#15-other-release-streams); [rollout §7](../rollout-plan.md#7-indicative-tag-timeline): "runner-v1.0.0 · runner dark (MI-12)"). Release checklist ([ADR-0034 §6](../../adr/0034-v2-release-labelling-gating-and-rollback.md#6-release-checklist), verbatim, plus the ADR-0035 §2 standing rule):
 
-- [ ] Before the tag: peers' tags and PRs are checked (parallel sessions; `git ls-remote --tags origin`, `gh pr list`, `git worktree list`, ListAgents)
-- [ ] Before the tag: it is the next free version, and its major equals `.release-line`
-- [ ] Before the tag: ACL PRs for new streams and consumers are merged
-- [ ] Before the tag: a new service's image comes before its policy
-- [ ] Before the tag: for a contract: rehearsed in compose, floor marked
-- [ ] Before the tag: for a contract, erase or GA tag: `host-verify --cluster` is green (ADR-0035), the host has settled, and the snapshot is taken
-- [ ] Before the tag: from M6: no live interviews
-- [ ] After the tag (by looking, D34): `/xlearn/api/v1/healthz` reports the version
-- [ ] After the tag: `k3s kubectl get deploy -n xlearn` shows the new images
-- [ ] After the tag: every `xlearn-*` ImagePolicy's latest equals the tag, and the HelmReleases are Ready
-- [ ] After the tag: smoke-test login, the dashboard and coach
-- [ ] Record milestone → tag → floor → snapshot and any flag changes in `docs/v2/status.md`
-- [ ] (ADR-0035 §2 standing rule, not part of ADR-0034 §6) Every new in-cluster HTTP or NATS caller this tag introduces has its NetworkPolicy (ingress and egress) change in its own infra PR, merged before the tag
+- [x] Before the tag: peers' tags and PRs are checked (parallel sessions; `git ls-remote --tags origin`, `gh pr list`, `git worktree list`, ListAgents) *(only runner rc tags; no open PRs.)*
+- [x] Before the tag: it is the next free version, and its major equals `.release-line` *(first stable runner tag; major 1 = `deploy/runner.release-line`.)*
+- [x] Before the tag: ACL PRs for new streams and consumers are merged *(n/a: no NATS.)*
+- [x] Before the tag: a new service's image comes before its policy *(this tag is the image; no runner ImagePolicy yet.)*
+- [x] Before the tag: for a contract: rehearsed in compose, floor marked *(n/a.)*
+- [x] Before the tag: for a contract, erase or GA tag: `host-verify --cluster` is green (ADR-0035), the host has settled, and the snapshot is taken *(n/a: nothing deploys.)*
+- [x] Before the tag: from M6: no live interviews *(n/a.)*
+- [x] After the tag (by looking, D34): `/xlearn/api/v1/healthz` reports the version *(unchanged `v1.7.0`, as intended.)*
+- [x] After the tag: `k3s kubectl get deploy -n xlearn` shows the new images *(unchanged: all seven `1.7.0`.)*
+- [x] After the tag: every `xlearn-*` ImagePolicy's latest equals the tag, and the HelmReleases are Ready *(unchanged `1.7.0`; HelmReleases 15/15 Ready.)*
+- [ ] After the tag: smoke-test login, the dashboard and coach *(pending: the credential-free checks passed; the owner login smoke waits on the production account, `ps-31`.)*
+- [x] Record milestone → tag → floor → snapshot and any flag changes in `docs/v2/status.md` *(status.md: the runner stream rows, the milestone row; no flag change.)*
+- [x] (ADR-0035 §2 standing rule, not part of ADR-0034 §6) Every new in-cluster HTTP or NATS caller this tag introduces has its NetworkPolicy (ingress and egress) change in its own infra PR, merged before the tag *(n/a: no new caller.)*
 
 **For this tag (runner stream):**
 - *Peers / next free:* `git ls-remote --tags origin 'refs/tags/runner-v*'` shows only `runner-v1.0.0-rc.1`; `runner-v1.0.0` is the first stable runner tag. Its major (`1`) equals **`deploy/runner.release-line`**; the fleet's `.release-line` governs `v*` tags only and is untouched.
